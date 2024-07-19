@@ -456,6 +456,10 @@ public class AiServicesIT {
         @SystemMessage("You are very {{character}} chef")
         Recipe createRecipeFrom(@UserMessage CreateRecipePrompt prompt, @V("character") String character);
 
+        @SystemMessage("You are very {{character}} chef")
+        @UserMessage("Create a recipe that can be prepared using only {{items}}")
+        Recipe createRecipeFromVarargs(@V("character") String character, @V("items") String... ingredients);
+
         @SystemMessage(fromResource = "chefs-prompt-system-message.txt")
         Recipe createRecipeFromUsingResource(@UserMessage CreateRecipePrompt prompt, @V("character") String character);
     }
@@ -650,6 +654,29 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(asList(
                 systemMessage("You are very funny chef"),
                 userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
+                        "}")
+        ));
+    }
+
+    @Test
+    void test_create_recipe_using_multiple_args_with_varargs_prompt_and_system_message() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        Recipe recipe = chef.createRecipeFromVarargs("creative", "rice", "beans");
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(asList(
+                systemMessage("You are very creative chef"),
+                userMessage("Create a recipe that can be prepared using only [rice, beans]\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +

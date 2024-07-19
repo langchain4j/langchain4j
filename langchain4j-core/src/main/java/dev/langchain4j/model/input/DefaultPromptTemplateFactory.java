@@ -2,6 +2,7 @@ package dev.langchain4j.model.input;
 
 import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -62,7 +63,10 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
             if (value == null || value.toString() == null) {
                 throw illegalArgument("Value for the variable '%s' is null", variable);
             }
-            return template.replace(inDoubleCurlyBrackets(variable), value.toString());
+            String replacement = value instanceof String[]
+                    ? Arrays.toString((String[]) value)
+                    : value.toString();
+            return template.replace(inDoubleCurlyBrackets(variable), replacement);
         }
 
         private static String inDoubleCurlyBrackets(String variable) {

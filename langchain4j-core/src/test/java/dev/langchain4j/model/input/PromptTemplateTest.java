@@ -198,4 +198,21 @@ class PromptTemplateTest {
         // then
         assertThat(prompt.text()).isEqualTo("This is " + s + ".");
     }
+
+    @Test
+    void should_create_prompt_from_template_with_varargs() {
+
+        // given
+        PromptTemplate promptTemplate = PromptTemplate.from("Create a recipe with this ingredients: {{ingredients}}");
+
+        Map<String, Object> variables = new HashMap<>();
+        String[] ingredients = {"rice", "beans"};
+        variables.put("ingredients", ingredients);
+
+        // when
+        Prompt prompt = promptTemplate.apply(variables);
+
+        // then
+        assertThat(prompt.text()).isEqualTo("Create a recipe with this ingredients: [rice, beans]");
+    }
 }
