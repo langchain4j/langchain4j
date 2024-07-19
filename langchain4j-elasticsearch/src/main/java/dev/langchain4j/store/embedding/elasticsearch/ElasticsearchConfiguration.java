@@ -7,8 +7,8 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 
 import java.io.IOException;
 
-public interface ElasticsearchConfiguration {
-    SearchResponse<Document> internalSearch(ElasticsearchClient client,
+public abstract class ElasticsearchConfiguration {
+    abstract SearchResponse<Document> internalSearch(ElasticsearchClient client,
                                             String indexName,
                                             EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException;

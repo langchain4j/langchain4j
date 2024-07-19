@@ -14,7 +14,7 @@ import java.io.IOException;
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store
  * using the Knn implementation.
  */
-public class ElasticsearchConfigurationKnn implements ElasticsearchConfiguration {
+public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationKnn.class);
 
     public static class Builder {
@@ -32,7 +32,7 @@ public class ElasticsearchConfigurationKnn implements ElasticsearchConfiguration
     }
 
     @Override
-    public SearchResponse<Document> internalSearch(ElasticsearchClient client,
+    SearchResponse<Document> internalSearch(ElasticsearchClient client,
                                                    String indexName,
                                                    EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
         KnnQuery.Builder krb = new KnnQuery.Builder()

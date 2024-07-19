@@ -24,7 +24,7 @@ import java.io.IOException;
  * (provided inside {@link EmbeddingSearchRequest}).
  * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine">vector-functions-cosine</a>
  */
-public class ElasticsearchConfigurationScript implements ElasticsearchConfiguration {
+public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public static class Builder {
@@ -42,7 +42,7 @@ public class ElasticsearchConfigurationScript implements ElasticsearchConfigurat
     }
 
     @Override
-    public SearchResponse<Document> internalSearch(ElasticsearchClient client,
+    SearchResponse<Document> internalSearch(ElasticsearchClient client,
                                                    String indexName,
                                                    EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
         ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(embeddingSearchRequest.queryEmbedding().vector(),
