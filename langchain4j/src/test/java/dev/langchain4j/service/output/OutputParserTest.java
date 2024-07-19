@@ -118,7 +118,7 @@ class OutputParserTest implements WithAssertions {
     public void test_Enum_format_instruction() {
         EnumOutputParser parser = new EnumOutputParser(Enum.class);
         assertThat(parser.formatInstructions())
-                .isEqualTo("one of these enums:\n" +
+                .isEqualTo("\nYou must answer strictly with one of these enums:\n" +
                         "A\n" +
                         "B\n" +
                         "C");
@@ -129,7 +129,7 @@ class OutputParserTest implements WithAssertions {
     public void test_Enum_with_description_format_instruction() {
         EnumOutputParser parser = new EnumOutputParser(EnumWithDescription.class);
         assertThat(parser.formatInstructions())
-                .isEqualTo("one of these enums:\n" +
+                .isEqualTo("\nYou must answer strictly with one of these enums:\n" +
                         "A - Majority of keywords starting with A\n" +
                         "B - Majority of keywords starting with B\n" +
                         "C - Majority of keywords starting with C");

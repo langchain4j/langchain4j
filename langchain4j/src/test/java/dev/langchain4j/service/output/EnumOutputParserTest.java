@@ -1,14 +1,14 @@
 package dev.langchain4j.model.output;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class EnumOutputParserTest {
 
-    private final EnumOutputParser sut = new EnumOutputParser(WEATHER.class);
+    private final EnumOutputParser sut = new EnumOutputParser(Weather.class);
 
-    enum WEATHER {
+    enum Weather {
         SUNNY,
         CLOUDY,
         RAINY,
@@ -21,34 +21,39 @@ public class EnumOutputParserTest {
         String instruction = sut.formatInstructions();
 
         // Then
-        assertEquals("one of [SUNNY, CLOUDY, RAINY, SNOWY]", instruction);
+        assertEquals("\n" +
+                "You must answer strictly with one of these enums:\n" +
+                "SUNNY\n" +
+                "CLOUDY\n" +
+                "RAINY\n" +
+                "SNOWY", instruction);
     }
 
     @Test
     public void parseResponse() {
         // When
-        Enum<?> resultedEnum = sut.parse(WEATHER.SUNNY.name());
+        Enum<?> resultedEnum = sut.parse(Weather.SUNNY.name());
 
         // Then
-        assertEquals(WEATHER.SUNNY, resultedEnum);
+        assertEquals(Weather.SUNNY, resultedEnum);
     }
 
     @Test
     public void parseResponseWithSpaces() {
         // When
-        Enum<?> resultedEnum = sut.parse(" " + WEATHER.SUNNY.name() + "    ");
+        Enum<?> resultedEnum = sut.parse(" " + Weather.SUNNY.name() + "    ");
 
         // Then
-        assertEquals(WEATHER.SUNNY, resultedEnum);
+        assertEquals(Weather.SUNNY, resultedEnum);
     }
 
     @Test
     public void parseResponseWithBrackets() {
         // When
-        Enum<?> resultedEnum = sut.parse(" [  " + WEATHER.SUNNY.name() + "  ]  ");
+        Enum<?> resultedEnum = sut.parse(" [  " + Weather.SUNNY.name() + "  ]  ");
 
         // Then
-        assertEquals(WEATHER.SUNNY, resultedEnum);
+        assertEquals(Weather.SUNNY, resultedEnum);
     }
 
 

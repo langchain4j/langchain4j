@@ -12,8 +12,8 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.TypeUtils.*;
 import static java.lang.String.format;
-import static java.util.Arrays.asList;
 
 public class ServiceOutputParser {
 
@@ -23,44 +23,58 @@ public class ServiceOutputParser {
         this.outputParserFactory = outputParserFactory;
     }
 
-    public Object parse(Response<AiMessage> response, Class<?> returnType) {
+    public Object parse(Response<AiMessage> response, Type returnType) {
 
-        if (returnType == Response.class) {
+        if (typeHasRawClass(returnType, Result.class)) {
+            returnType = resolveFirstGenericParameterClass(returnType);
+        }
+
+        // Explanation (which will make this a lot easier to understand):
+        // In the case of List<String> these two would be set like:
+        // rawClass: List.class
+        // typeArgumentClass: String.class
+        Class<?> rawReturnClass = getRawClass(returnType);
+        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
+
+        if (rawReturnClass == Response.class) {
             return response;
         }
 
         AiMessage aiMessage = response.content();
-        if (returnType == AiMessage.class) {
+        if (rawReturnClass == AiMessage.class) {
             return aiMessage;
         }
 
         String text = aiMessage.text();
-        if (returnType == String.class) {
+        if (rawReturnClass == String.class) {
             return text;
         }
 
-        Optional<OutputParser<?>> optionalOutputParser = outputParserFactory.get(returnType);
+        Optional<OutputParser<?>> optionalOutputParser = outputParserFactory.get(rawReturnClass, typeArgumentClass);
         if (optionalOutputParser.isPresent()) {
             return optionalOutputParser.get().parse(text);
         }
 
-        if (returnType == List.class) {
-            return asList(text.split("\n"));
-        }
-
-        if (returnType == Set.class) {
-            return new HashSet<>(asList(text.split("\n")));
-        }
-
-        return Json.fromJson(text, returnType);
+        return Json.fromJson(text, rawReturnClass);
     }
 
-    public String outputFormatInstructions(Class<?> returnType) {
+    public String outputFormatInstructions(Type returnType) {
 
-        if (returnType == String.class
-                || returnType == AiMessage.class
-                || returnType == TokenStream.class
-                || returnType == Response.class) {
+        if (typeHasRawClass(returnType, Result.class)) {
+            returnType = resolveFirstGenericParameterClass(returnType);
+        }
+
+        // Explanation (which will make this a lot easier to understand):
+        // In the case of List<String> these two would be set like:
+        // rawClass: List.class
+        // typeArgumentClass: String.class
+        Class<?> rawClass = getRawClass(returnType);
+        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
+
+        if (rawClass == String.class
+                || rawClass == AiMessage.class
+                || rawClass == TokenStream.class
+                || rawClass == Response.class) {
             return "";
         }
 
@@ -68,22 +82,22 @@ public class ServiceOutputParser {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
 
-        if (returnType.isEnum()) {
-            String formatInstructions = new EnumOutputParser(returnType.asSubclass(Enum.class)).formatInstructions();
-            return "\nYou must answer strictly with " + formatInstructions;
-        }
-
-        Optional<OutputParser<?>> outputParser = outputParserFactory.get(returnType);
+        Optional<OutputParser<?>> outputParser = outputParserFactory.get(rawClass, typeArgumentClass);
         if (outputParser.isPresent()) {
             String formatInstructions = outputParser.get().formatInstructions();
-            return "\nYou must answer strictly in the following format: " + formatInstructions;
+
+            if (rawClass == List.class ||
+                rawClass == Set.class ||
+                rawClass.isEnum()) {
+                // In these cases complete instruction is already
+                // constructed by concrete output parsers.
+                return formatInstructions;
+            } else {
+                return "\nYou must answer strictly in the following format: " + formatInstructions;
+            }
         }
 
-        if (returnType == List.class || returnType == Set.class) {
-            return "\nYou must put every item on a separate line.";
-        }
-
-        return "\nYou must answer strictly in the following JSON format: " + jsonStructure(returnType, new HashSet<>());
+        return "\nYou must answer strictly in the following JSON format: " + jsonStructure((rawClass), new HashSet<>());
     }
 
     public static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
