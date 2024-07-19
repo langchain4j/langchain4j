@@ -19,12 +19,6 @@ final class CommonTestOperations {
      */
     private static final EmbeddingModel EMBEDDING_MODEL = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    /**
-     * A lazily initialized docker container of Oracle Database. May be null if environment variables have configured
-     * tests to use an alternative database.
-     */
-    private static OracleContainer oracleContainer = null;
-
     private CommonTestOperations() {}
 
     private static final DataSource DATA_SOURCE;
