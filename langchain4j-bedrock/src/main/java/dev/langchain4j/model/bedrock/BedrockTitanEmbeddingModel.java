@@ -46,8 +46,7 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
      *  A flag indicating whether to normalize the output embeddings.
      *  It defaults to true, which is optimal for RAG use cases.
      */
-    @Builder.Default
-    private final Boolean normalize = true;
+    private final Boolean normalize;
 
 
     @Override
