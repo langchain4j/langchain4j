@@ -1,5 +1,4 @@
 ---
-id: response-streaming
 sidebar_position: 5
 ---
 

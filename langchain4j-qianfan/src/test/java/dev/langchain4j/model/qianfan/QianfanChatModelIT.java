@@ -3,8 +3,11 @@ package dev.langchain4j.model.qianfan;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.qianfan.client.QianfanApiException;
+import dev.langchain4j.model.qianfan.client.QianfanHttpException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -149,6 +152,22 @@ class QianfanChatModelIT {
 
         assertThat(response.content().text()).containsIgnoringCase("hello");
 
+    }
+
+    @Test
+    void should_throw_exception_when_api_has_error_code() {
+        ChatLanguageModel chatModel = QianfanChatModel.builder()
+                // Any other models that have not been activated yet.
+                .modelName("EB-turbo-AppBuilder")
+                .apiKey(apiKey)
+                .secretKey(secretKey)
+                .build();
+
+        try {
+            chatModel.generate(userMessage("Where is the capital of China"));
+        } catch (RuntimeException e) {
+          assertThat(e.getCause()).isInstanceOf(QianfanApiException.class);
+        }
     }
 
 }

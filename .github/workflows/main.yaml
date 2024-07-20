@@ -4,9 +4,25 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - 'LICENSE'
+      - '.github/*.md'
+      - '.github/*.yml'
+      - '.github/*.conf'
+      - '.github/ISSUE_TEMPLATE/*.md'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - 'LICENSE'
+      - '.github/*.md'
+      - '.github/*.yml'
+      - '.github/*.conf'
+      - '.github/ISSUE_TEMPLATE/*.md'
 
 jobs:
   java_build:
@@ -15,11 +31,11 @@ jobs:
         java_version: [8, 11, 17, 21]
         include:
           - java_version: '8'
-            included_modules: '-pl !code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-cassandra,!langchain4j-infinispan,!langchain4j-neo4j,!langchain4j-opensearch,!langchain4j-azure-ai-search'
+            included_modules: '-pl !langchain4j-jlama,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-cassandra,!langchain4j-infinispan,!langchain4j-neo4j,!langchain4j-opensearch,!langchain4j-azure-ai-search'
           - java_version: '11'
-            included_modules: '-pl !code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-infinispan,!langchain4j-neo4j'
+            included_modules: '-pl !langchain4j-jlama,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-infinispan,!langchain4j-neo4j'
           - java_version: '17'
-            included_modules: '-pl !code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
+            included_modules: '-pl !langchain4j-jlama,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
           - java_version: '21'
             included_modules: ''
     runs-on: ubuntu-latest
@@ -32,7 +48,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build with JDK ${{ matrix.java_version }}
-        run: mvn --batch-mode install -DskipITs ${{ matrix.included_modules }}
+        run: mvn -B -U install -DskipITs ${{ matrix.included_modules }}
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
   compliance:

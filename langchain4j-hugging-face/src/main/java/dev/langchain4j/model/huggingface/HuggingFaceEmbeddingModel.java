@@ -2,7 +2,7 @@ package dev.langchain4j.model.huggingface;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
@@ -17,12 +17,13 @@ import static dev.langchain4j.model.huggingface.HuggingFaceModelName.SENTENCE_TR
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
-public class HuggingFaceEmbeddingModel implements EmbeddingModel {
+public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
 
     private final HuggingFaceClient client;
     private final boolean waitForModel;
+    private final String modelId;
 
     @Builder
     public HuggingFaceEmbeddingModel(String accessToken, String modelId, Boolean waitForModel, Duration timeout) {
@@ -46,6 +47,7 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
             }
         });
         this.waitForModel = waitForModel == null || waitForModel;
+        this.modelId = modelId;
     }
 
     @Override

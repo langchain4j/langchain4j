@@ -2,17 +2,24 @@ package dev.langchain4j.model.zhipu;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
@@ -21,6 +28,7 @@ import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Fail.fail;
 
 @EnabledIfEnvironmentVariable(named = "ZHIPU_API_KEY", matches = ".+")
 class ZhipuAiChatModelIT {
@@ -57,15 +65,21 @@ class ZhipuAiChatModelIT {
 
     @Test
     void should_sensitive_words_answer() {
+        ZhipuAiChatModel model = ZhipuAiChatModel.builder()
+                .apiKey(apiKey + 1)
+                .logRequests(true)
+                .logResponses(true)
+                .maxRetries(1)
+                .build();
         // given
-        UserMessage userMessage = userMessage("fuck you");
+        UserMessage userMessage = userMessage("this message will fail");
 
         // when
-        Response<AiMessage> response = chatModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
-        assertThat(response.content().text()).isEqualTo("系统检测到输入或生成内容可能包含不安全或敏感内容，请您避免输入易产生敏感内容的提示语，感谢您的配合。");
+        assertThat(response.content().text()).isEqualTo("Authorization Token非法，请确认Authorization Token正确传递。");
 
-        assertThat(response.finishReason()).isEqualTo(CONTENT_FILTER);
+        assertThat(response.finishReason()).isEqualTo(OTHER);
     }
 
     @Test
@@ -158,5 +172,162 @@ class ZhipuAiChatModelIT {
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+
+    @Test
+    void should_listen_request_and_response() {
+
+        // given
+        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
+
+        ChatModelListener listener = new ChatModelListener() {
+
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                requestReference.set(requestContext.request());
+                requestContext.attributes().put("id", "12345");
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                responseReference.set(responseContext.response());
+                assertThat(responseContext.request()).isSameAs(requestReference.get());
+                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
+            }
+
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                fail("onError() must not be called");
+            }
+        };
+
+        double temperature = 0.7;
+        double topP = 0.7;
+        int maxTokens = 7;
+
+        ZhipuAiChatModel model = ZhipuAiChatModel.builder()
+                .apiKey(apiKey)
+                .topP(topP)
+                .maxToken(maxTokens)
+                .temperature(temperature)
+                .logRequests(true)
+                .logResponses(true)
+                .maxRetries(1)
+                .listeners(singletonList(listener))
+                .build();
+
+        UserMessage userMessage = UserMessage.from("hello");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("add")
+                .addParameter("a", INTEGER)
+                .addParameter("b", INTEGER)
+                .build();
+
+        // when
+        AiMessage aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
+
+        // then
+        ChatModelRequest request = requestReference.get();
+        assertThat(request.temperature()).isEqualTo(temperature);
+        assertThat(request.topP()).isEqualTo(topP);
+        assertThat(request.maxTokens()).isEqualTo(maxTokens);
+        assertThat(request.messages()).containsExactly(userMessage);
+        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+
+        ChatModelResponse response = responseReference.get();
+        assertThat(response.id()).isNotBlank();
+        assertThat(response.model()).isNotBlank();
+        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        assertThat(response.finishReason()).isNotNull();
+        assertThat(response.aiMessage()).isEqualTo(aiMessage);
+    }
+
+    @Test
+    void should_listen_error() {
+
+        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<Throwable> errorReference = new AtomicReference<>();
+
+        ChatModelListener listener = new ChatModelListener() {
+
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                requestReference.set(requestContext.request());
+                requestContext.attributes().put("id", "12345");
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                fail("onResponse() must not be called");
+            }
+
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                errorReference.set(errorContext.error());
+                assertThat(errorContext.request()).isSameAs(requestReference.get());
+                assertThat(errorContext.partialResponse()).isNull();
+                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
+            }
+        };
+
+        ZhipuAiChatModel model = ZhipuAiChatModel.builder()
+                .apiKey(apiKey + 1)
+                .logRequests(true)
+                .logResponses(true)
+                .maxRetries(1)
+                .listeners(singletonList(listener))
+                .build();
+
+        String userMessage = "this message will fail";
+        model.generate(userMessage);
+
+        // then
+        Throwable throwable = errorReference.get();
+        assertThat(throwable).isInstanceOf(ZhipuAiException.class);
+        assertThat(throwable).hasMessageContaining("Authorization Token非法，请确认Authorization Token正确传递。");
+    }
+
+    @Test
+    public void should_send_multimodal_image_data_and_receive_response() {
+        ChatLanguageModel model = ZhipuAiChatModel.builder()
+                .apiKey(apiKey)
+                .model(ChatCompletionModel.GLM_4V)
+                .build();
+
+        Response<AiMessage> response = model.generate(multimodalChatMessagesWithImageData());
+        System.out.println(response);
+
+        assertThat(response.content().text()).containsIgnoringCase("parrot");
+        assertThat(response.content().text()).endsWith("That's all!");
+    }
+
+    public static List<ChatMessage> multimodalChatMessagesWithImageData() {
+        Image image = Image.builder()
+                .base64Data(multimodalImageData())
+                .build();
+        ImageContent imageContent = ImageContent.from(image);
+        TextContent textContent = TextContent.from("What animal is in the picture? When you're done, end with \"That's all!\".");
+        return Collections.singletonList(UserMessage.from(imageContent, textContent));
+    }
+
+    public static String multimodalImageData() {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (InputStream in = ZhipuAiChatModelIT.class.getResourceAsStream("/parrot.jpg")) {
+            assertThat(in).isNotNull();
+            byte[] data = new byte[512];
+            int n;
+            while ((n = in.read(data)) != -1) {
+                buffer.write(data, 0, n);
+            }
+        } catch (IOException e) {
+            Assertions.fail("", e.getMessage());
+        }
+
+        return Base64.getEncoder().encodeToString(buffer.toByteArray());
     }
 }

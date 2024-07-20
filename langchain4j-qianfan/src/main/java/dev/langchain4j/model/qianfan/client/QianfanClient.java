@@ -98,6 +98,10 @@ public class QianfanClient {
         refreshToken();
 
         return new RequestExecutor(this.qianfanApi.chatCompletions(endpoint,request, this.token), (r) -> {
+            if (r instanceof ChatCompletionResponse && ((ChatCompletionResponse) r).getErrorCode() != null) {
+                ChatCompletionResponse response = (ChatCompletionResponse) r;
+                throw new QianfanApiException(response.getErrorCode(), response.getErrorMsg());
+            }
             return r;
         }, this.okHttpClient, this.formatUrl("rpc/2.0/ai_custom/v1/wenxinworkshop/chat/"+endpoint+"?access_token="+this.token), () -> {
             return ChatCompletionRequest.builder().from(request).stream(true).build();

@@ -14,16 +14,16 @@ import com.azure.search.documents.util.SearchPagedIterable;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchFilterMapper;
+import dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchQueryType;
+import dev.langchain4j.rag.content.retriever.azure.search.DefaultAzureAiSearchFilterMapper;
+import dev.langchain4j.store.embedding.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
@@ -61,8 +61,16 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     private String indexName;
 
-    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index, String indexName) {
+    protected AzureAiSearchFilterMapper filterMapper;
+
+    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index, String indexName, AzureAiSearchFilterMapper filterMapper) {
         ensureNotNull(endpoint, "endpoint");
+
+        if (filterMapper == null) {
+            this.filterMapper = new DefaultAzureAiSearchFilterMapper();
+        } else {
+            this.filterMapper = filterMapper;
+        }
         if (index != null && isNotNullOrBlank(indexName)) {
             // if an index is provided, it has its own name already configured
             // if the indexName is provided, it will be used when creating the default index
@@ -256,42 +264,56 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        List<Float> vector = referenceEmbedding.vectorAsList();
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+
+        List<Float> vector = request.queryEmbedding().vectorAsList();
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
-                .setKNearestNeighborsCount(maxResults);
+                .setKNearestNeighborsCount(request.maxResults());
 
         SearchPagedIterable searchResults =
                 searchClient.search(null,
                         new SearchOptions()
+                                .setFilter(filterMapper.map(request.filter()))
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery)),
                         Context.NONE);
 
+        return  new EmbeddingSearchResult<>(getEmbeddingMatches(searchResults, request.minScore(), AzureAiSearchQueryType.VECTOR));
+    }
+
+    protected List<EmbeddingMatch<TextSegment>> getEmbeddingMatches(SearchPagedIterable searchResults, Double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         for (SearchResult searchResult : searchResults) {
-            Double score = fromAzureScoreToRelevanceScore(searchResult.getScore());
+            Double score = fromAzureScoreToRelevanceScore(searchResult, azureAiSearchQueryType);
             if (score < minScore) {
                 continue;
             }
             SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
             String embeddingId = (String) searchDocument.get(DEFAULT_FIELD_ID);
             List<Double> embeddingList = (List<Double>) searchDocument.get(DEFAULT_FIELD_CONTENT_VECTOR);
-            float[] embeddingArray = doublesListToFloatArray(embeddingList);
-            Embedding embedding = Embedding.from(embeddingArray);
+            Embedding embedding = null;
+            if (embeddingList != null) {
+                float[] embeddingArray = doublesListToFloatArray(embeddingList);
+                embedding = Embedding.from(embeddingArray);
+            }
             String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
             EmbeddingMatch<TextSegment> embeddingMatch;
             if (isNotNullOrBlank(embeddedContent)) {
                 LinkedHashMap metadata = (LinkedHashMap) searchDocument.get(DEFAULT_FIELD_METADATA);
-                List attributes = (List) metadata.get(DEFAULT_FIELD_METADATA_ATTRS);
-                Map<String, String> attributesMap = new HashMap<>();
-                for (Object attribute : attributes) {
-                    LinkedHashMap innerAttribute = (LinkedHashMap) attribute;
-                    String key = (String) innerAttribute.get("key");
-                    String value = (String) innerAttribute.get("value");
-                    attributesMap.put(key, value);
+                Metadata langChainMetadata;
+                if (metadata == null) {
+                    langChainMetadata = Metadata.from(Collections.emptyMap());
+                } else {
+                    List attributes = (List) metadata.get(DEFAULT_FIELD_METADATA_ATTRS);
+                    Map<String, String> attributesMap = new HashMap<>();
+                    for (Object attribute : attributes) {
+                        LinkedHashMap innerAttribute = (LinkedHashMap) attribute;
+                        String key = (String) innerAttribute.get("key");
+                        String value = (String) innerAttribute.get("value");
+                        attributesMap.put(key, value);
+                    }
+                    langChainMetadata = Metadata.from(attributesMap);
                 }
-                Metadata langChainMetadata = Metadata.from(attributesMap);
                 TextSegment embedded = TextSegment.textSegment(embeddedContent, langChainMetadata);
                 embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
             } else {
@@ -299,7 +321,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             }
             result.add(embeddingMatch);
         }
-        return result;
+        return result ;
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
@@ -371,4 +393,35 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         double cosineSimilarity = -cosineDistance + 1;
         return RelevanceScore.fromCosineSimilarity(cosineSimilarity);
     }
+
+    /**
+     * Calculates LangChain4j's RelevanceScore from Azure AI Search's score, for the 4 types of search.
+     */
+    public static double fromAzureScoreToRelevanceScore(SearchResult searchResult, AzureAiSearchQueryType azureAiSearchQueryType) {
+        if (azureAiSearchQueryType == AzureAiSearchQueryType.VECTOR) {
+            // Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
+
+            //  Score in Azure AI Search is transformed into a cosine similarity as described here:
+            // https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
+
+            // RelevanceScore in LangChain4j is a derivative of cosine similarity,
+            // but it compresses it into 0..1 range (instead of -1..1) for ease of use.
+            double score = searchResult.getScore();
+            return AbstractAzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(score);
+        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.FULL_TEXT) {
+            // Search score is into 0..1 range already
+            return searchResult.getScore();
+        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID) {
+            // Search score is into 0..1 range already
+            return searchResult.getScore();
+        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID_WITH_RERANKING) {
+            // Re-ranker score is into 0..4 range, so we need to divide the re-reranker score by 4 to fit in the 0..1 range.
+            // The re-ranker score is a separate result from the original search score.
+            // See https://azuresdkdocs.blob.core.windows.net/$web/java/azure-search-documents/11.6.2/com/azure/search/documents/models/SearchResult.html#getSemanticSearch()
+            return searchResult.getSemanticSearch().getRerankerScore() / 4.0;
+        } else {
+            throw new AzureAiSearchRuntimeException("Unknown Azure AI Search Query Type: " + azureAiSearchQueryType);
+        }
+    }
+
 }

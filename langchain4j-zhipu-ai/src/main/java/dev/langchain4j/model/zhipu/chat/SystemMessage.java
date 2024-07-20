@@ -17,6 +17,7 @@ import static dev.langchain4j.model.zhipu.chat.Role.SYSTEM;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public final class SystemMessage implements Message {
 
+    @Builder.Default
     private Role role = SYSTEM;
     private String content;
     private String name;

@@ -1,7 +1,6 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
@@ -16,6 +15,8 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.service.tool.ToolExecutor;
 
 import java.io.InputStream;
 import java.lang.reflect.*;
@@ -28,10 +29,11 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
-import static dev.langchain4j.service.ServiceOutputParser.parse;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
 class DefaultAiServices<T> extends AiServices<T> {
+
+    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
 
@@ -68,8 +70,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                 throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. " +
                         "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
             }
-            if (method.getReturnType() == Result.class) {
-                validateResultReturnType(method);
+            if (method.getReturnType() == Result.class ||
+                    method.getReturnType() == List.class ||
+                    method.getReturnType() == Set.class) {
+                TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
             }
         }
 
@@ -106,18 +110,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         // TODO give user ability to provide custom OutputParser
-                        Class<?> returnType = method.getReturnType();
-                        boolean isReturnTypeResult = false;
-                        if (returnType == Result.class) {
-                            isReturnTypeResult = true;
-                            AnnotatedType annotatedReturnType = method.getAnnotatedReturnType();
-                            ParameterizedType type = (ParameterizedType) annotatedReturnType.getType();
-                            Type[] typeArguments = type.getActualTypeArguments();
-                            for (Type typeArg : typeArguments) {
-                                returnType = Class.forName(typeArg.getTypeName());
-                            }
-                        }
-                        String outputFormatInstructions = outputFormatInstructions(returnType);
+                        Type returnType = method.getGenericReturnType();
+                        String outputFormatInstructions = serviceOutputParser.outputFormatInstructions(returnType);
                         String text = userMessage.singleText() + outputFormatInstructions;
                         if (isNotNullOrBlank(userMessage.name())) {
                             userMessage = UserMessage.from(userMessage.name(), text);
@@ -197,13 +191,15 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
-                        Object parsedResponse = parse(response, returnType);
 
-                        if (isReturnTypeResult) {
+                        Object parsedResponse;
+                        parsedResponse = serviceOutputParser.parse(response, returnType);
+                        if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()
                                     .content(parsedResponse)
                                     .tokenUsage(tokenUsageAccumulator)
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .finishReason(response.finishReason())
                                     .build();
                         } else {
                             return parsedResponse;
@@ -371,8 +367,12 @@ class DefaultAiServices<T> extends AiServices<T> {
         return messageTemplate;
     }
 
-    private static String getResourceText(Class<?> clazz, String name) {
-        return getText(clazz.getResourceAsStream(name));
+    private static String getResourceText(Class<?> clazz, String resource) {
+        InputStream inputStream = clazz.getResourceAsStream(resource);
+        if (inputStream == null) {
+            inputStream = clazz.getResourceAsStream("/" + resource);
+        }
+        return getText(inputStream);
     }
 
     private static String getText(InputStream inputStream) {

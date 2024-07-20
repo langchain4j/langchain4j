@@ -1,5 +1,4 @@
 ---
-id: supported-language-models
 title: Comparison Table of all supported Language Models
 hide_title: false
 sidebar_position: 0
@@ -15,10 +14,11 @@ sidebar_position: 0
 | [Google Vertex AI Gemini](/integrations/language-models/google-gemini) | ✅                                          | ✅                         | ✅            |                                                         |        |
 | [Google Vertex AI PaLM 2](/integrations/language-models/google-palm)   |                                            |                           |              |                                                         | ✅      |
 | [Hugging Face](/integrations/language-models/hugging-face)             |                                            |                           |              |                                                         |        |
+| [Jlama](/integrations/language-models/jlama)                           | ✅                                          |                           |              | ✅                                                       | ✅      |
 | [LocalAI](/integrations/language-models/local-ai)                      | ✅                                          | ✅                         |              | ✅                                                       |        |
 | [Mistral AI](/integrations/language-models/mistral-ai)                 | ✅                                          | ✅                         |              |                                                         |        |
 | [Ollama](/integrations/language-models/ollama)                         | ✅                                          |                           | ✅            | ✅                                                       |        |
 | [OpenAI](/integrations/language-models/open-ai)                        | ✅                                          | ✅                         | ✅            | Compatible with: Groq, Ollama, LM Studio, GPT4All, etc. | ✅      |
 | [Qianfan](/integrations/language-models/qianfan)                       | ✅                                          | ✅                         |              |                                                         |        |
 | [Cloudflare Workers AI](/integrations/language-models/workers-ai)      |                                            |                           |              |                                                         |        |
-| [Zhipu AI](/integrations/language-models/zhipu-ai)                     | ✅                                          | ✅                         |              |                                                         |        |
+| [Zhipu AI](/integrations/language-models/zhipu-ai)                     | ✅                                          | ✅                         | ✅            |                                                         |        |
