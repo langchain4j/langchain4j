@@ -45,7 +45,6 @@ import java.util.function.UnaryOperator;
  *   return preparedStatement.executeQuery();
  * }
  * }</pre>
- * </p>
  */
 public interface SQLFilter {
 
