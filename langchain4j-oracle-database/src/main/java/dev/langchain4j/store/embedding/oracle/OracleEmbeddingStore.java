@@ -187,7 +187,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
             // In 23.4, the database will only use a vector index for approximate search. This may change in a later
             // release.
-            if (builder.isExactSearch) {
+            if (!builder.isExactSearch) {
                 statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + tableName + "_embedding_index" +
                         " ON " + tableName + "(embedding)" +
                         " ORGANIZATION NEIGHBOR PARTITIONS" +
