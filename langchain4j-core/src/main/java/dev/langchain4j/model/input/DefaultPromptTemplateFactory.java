@@ -63,8 +63,8 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
             if (value == null || value.toString() == null) {
                 throw illegalArgument("Value for the variable '%s' is null", variable);
             }
-            String replacement = value instanceof String[]
-                    ? Arrays.toString((String[]) value)
+            String replacement = value instanceof Object[]
+                    ? Arrays.toString((Object[]) value)
                     : value.toString();
             return template.replace(inDoubleCurlyBrackets(variable), replacement);
         }
