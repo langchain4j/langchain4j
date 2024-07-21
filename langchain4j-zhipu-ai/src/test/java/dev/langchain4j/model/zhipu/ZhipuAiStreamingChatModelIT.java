@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -23,6 +24,7 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.zhipu.ZhipuAiChatModelIT.multimodalChatMessagesWithImageData;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -343,5 +345,20 @@ public class ZhipuAiStreamingChatModelIT {
         assertThat(content).contains("Authorization Token非法，请确认Authorization Token正确传递。");
 
         assertThat(errorReference.get()).isInstanceOf(ZhipuAiException.class);
+    }
+
+    @Test
+    public void should_send_multimodal_image_data_and_receive_response() {
+        StreamingChatLanguageModel model = ZhipuAiStreamingChatModel.builder()
+                .apiKey(apiKey)
+                .model(ChatCompletionModel.GLM_4V)
+                .build();
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(multimodalChatMessagesWithImageData(), handler);
+        Response<AiMessage> response = handler.get();
+        System.out.println(response);
+
+        assertThat(response.content().text()).containsIgnoringCase("parrot");
+        assertThat(response.content().text()).endsWith("That's all!");
     }
 }
