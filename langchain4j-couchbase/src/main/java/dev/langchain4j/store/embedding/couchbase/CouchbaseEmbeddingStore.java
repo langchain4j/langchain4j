@@ -3,7 +3,6 @@ package dev.langchain4j.store.embedding.couchbase;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.databind.ObjectMapper;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
-import com.couchbase.client.java.kv.GetResult;
 import com.couchbase.client.java.manager.search.SearchIndex;
 import com.couchbase.client.java.search.SearchQuery;
 import com.couchbase.client.java.search.SearchRequest;
@@ -22,14 +21,12 @@ import reactor.util.annotation.Nullable;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Represents an <a href="https://www.couchbase.com/">Couchbase</a> index as an embedding store.
  * Current implementation assumes the index uses the cosine distance metric.
  * <br>
- * Supports storing {@link Metadata} and filtering by it using {@link Filter}
- * (provided inside {@link EmbeddingSearchRequest}).
+ * Supports storing {@link Metadata}
  */
 public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
