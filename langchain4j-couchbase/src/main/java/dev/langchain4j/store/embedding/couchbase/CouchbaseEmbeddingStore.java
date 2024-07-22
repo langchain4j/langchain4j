@@ -58,7 +58,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
             String bucketName,
             String scopeName,
             String collectionName,
-            String searchIndex,
+            String searchIndexName,
             Integer dimensions
     ) {
         this.cluster = Cluster.connect(clusterUrl, username, password);
