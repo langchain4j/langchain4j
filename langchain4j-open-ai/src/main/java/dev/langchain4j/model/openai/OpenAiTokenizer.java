@@ -33,7 +33,6 @@ public class OpenAiTokenizer implements Tokenizer {
 
     /**
      * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-3.5-turbo" model.
-     * It should be suitable for all current OpenAI models, as they all use the same cl100k_base encoding.
      */
     public OpenAiTokenizer() {
         this(GPT_3_5_TURBO.toString());
