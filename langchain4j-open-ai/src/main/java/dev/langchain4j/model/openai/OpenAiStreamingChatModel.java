@@ -108,7 +108,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.responseFormat = responseFormat;
         this.seed = seed;
         this.user = user;
-        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
         this.isOpenAiModel = isOpenAiModel(this.modelName);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
