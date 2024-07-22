@@ -31,6 +31,7 @@ public class OpenAiTokenizer implements Tokenizer {
     private final String modelName;
     private final Optional<Encoding> encoding;
 
+    // TODO revise consuming test & remove
     /**
      * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-3.5-turbo" model.
      */
