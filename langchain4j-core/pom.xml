@@ -150,6 +150,7 @@
                                         <exclude>dev.langchain4j.rag.query</exclude>
                                         <exclude>dev.langchain4j.rag.query.router</exclude>
                                         <exclude>dev.langchain4j.rag.query.transformer</exclude>
+                                        <exclude>dev.langchain4j.retriever</exclude>
                                     </excludes>
                                     <element>PACKAGE</element>
                                     <limits>

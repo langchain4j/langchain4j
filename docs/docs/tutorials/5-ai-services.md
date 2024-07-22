@@ -174,7 +174,7 @@ Currently, AI Services support the following return types:
 - `byte`/`Byte`/`short`/`Short`/`int`/`Integer`/`BigInteger`/`long`/`Long`/`float`/`Float`/`double`/`Double`/`BigDecimal`
 - `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
 - `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
-- Any `Enum`, if you want to classify text, e.g. sentiment, user intent, etc.
+- Any `Enum`, `List<Enum>` and `Set<Enum>`, if you want to classify text, e.g. sentiment, user intent, etc.
 - Any custom POJO
 - `Result<T>`, if you need to access `TokenUsage` or sources (`Content`s retrieved during RAG), aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
 
@@ -194,31 +194,53 @@ ChatLanguageModel model = OpenAiChatModel.builder()
 
 Now let's take a look at some examples.
 
-### `Enum` and `boolean` as return types
+### `boolean` as return type
+
 ```java
-enum Sentiment {
-    POSITIVE, NEUTRAL, NEGATIVE
-}
-
 interface SentimentAnalyzer {
-
-    @UserMessage("Analyze sentiment of {{it}}")
-    Sentiment analyzeSentimentOf(String text);
 
     @UserMessage("Does {{it}} has a positive sentiment?")
     boolean isPositive(String text);
+
 }
 
 SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
 
-Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("This is great!");
-// POSITIVE
-
-boolean positive = sentimentAnalyzer.isPositive("It's awful!");
-// false
+boolean positive = sentimentAnalyzer.isPositive("It's wonderful!");
+// true
 ```
 
-### Custom POJO as a return type
+### `Enum` as return type
+```java
+enum Priority {
+    
+    @Description("Critical issues such as payment gateway failures or security breaches.")
+    CRITICAL,
+    
+    @Description("High-priority issues like major feature malfunctions or widespread outages.")
+    HIGH,
+    
+    @Description("Low-priority issues such as minor bugs or cosmetic problems.")
+    LOW
+}
+
+interface PriorityAnalyzer {
+    
+    @UserMessage("Analyze the priority of the following issue: {{it}}")
+    Priority analyzePriority(String issueDescription);
+}
+
+PriorityAnalyzer priorityAnalyzer = AiServices.create(PriorityAnalyzer.class, model);
+
+Priority priority = priorityAnalyzer.analyzePriority("The main payment gateway is down, and customers cannot process transactions.");
+// CRITICAL
+```
+
+:::note
+`@Description` annotation is optional. It's suggested to be used when enum names are not self-explanatory.
+:::
+
+### POJO as a return type
 ```java
 class Person {
     String firstName;
