@@ -5,17 +5,17 @@ import io.pinecone.clients.Pinecone;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-public class PineconeServerlessIndexParam implements PineconeIndexParam {
+public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
 
     private final Integer dimension;
     private final String cloud;
     private final String region;
-    private final String metrics;
+    private final String metric;
 
-    PineconeServerlessIndexParam(Integer dimension,
-                                 String cloud,
-                                 String region,
-                                 String metrics) {
+    PineconeServerlessIndexConfig(Integer dimension,
+                                  String cloud,
+                                  String region,
+                                  String metric) {
         cloud = ensureNotNull(cloud, "cloud");
         region = ensureNotNull(region, "region");
         ensureNotNull(dimension, "dimension");
@@ -23,14 +23,14 @@ public class PineconeServerlessIndexParam implements PineconeIndexParam {
         this.dimension = dimension;
         this.cloud = cloud;
         this.region = region;
-        this.metrics = getOrDefault(metrics, "cosine");
+        this.metric = getOrDefault(metric, "cosine");
     }
 
     @Override
     public void createIndex(Pinecone pinecone, String index) {
         ensureNotNull(pinecone, "pinecone");
         ensureNotNull(index, "index");
-        pinecone.createServerlessIndex(index, metrics, dimension, cloud, region);
+        pinecone.createServerlessIndex(index, metric, dimension, cloud, region);
     }
 
     public static Builder builder() {
@@ -42,7 +42,7 @@ public class PineconeServerlessIndexParam implements PineconeIndexParam {
         private Integer dimension;
         private String cloud;
         private String region;
-        private String metrics;
+        private String metric;
 
         public Builder dimension(Integer dimension) {
             this.dimension = dimension;
@@ -59,13 +59,13 @@ public class PineconeServerlessIndexParam implements PineconeIndexParam {
             return this;
         }
 
-        public Builder metrics(String metrics) {
-            this.metrics = metrics;
+        public Builder metric(String metric) {
+            this.metric = metric;
             return this;
         }
 
-        public PineconeServerlessIndexParam build() {
-            return new PineconeServerlessIndexParam(dimension, cloud, region, metrics);
+        public PineconeServerlessIndexConfig build() {
+            return new PineconeServerlessIndexConfig(dimension, cloud, region, metric);
         }
     }
 }

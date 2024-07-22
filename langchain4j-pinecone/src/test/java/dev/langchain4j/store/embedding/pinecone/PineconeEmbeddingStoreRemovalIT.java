@@ -1,17 +1,19 @@
 package dev.langchain4j.store.embedding.pinecone;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import lombok.SneakyThrows;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
 @EnabledIfEnvironmentVariable(named = "PINECONE_API_KEY", matches = ".+")
-class PineconeEmbeddingStoreIT extends EmbeddingStoreIT {
+public class PineconeEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -34,6 +36,16 @@ class PineconeEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
+    }
+
+    @Test
+    @Disabled("should be enabled once implemented")
+    void should_remove_all_by_filter() {
+    }
+
+    @Test
+    @Disabled("should be enabled once implemented")
+    void should_fail_to_remove_all_by_filter_null() {
     }
 
     @Override

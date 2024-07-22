@@ -2,17 +2,20 @@ package dev.langchain4j.store.embedding.pinecone;
 
 import io.pinecone.clients.Pinecone;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-public class PineconePodIndexParam implements PineconeIndexParam {
+public class PineconePodIndexConfig implements PineconeIndexConfig {
 
     private final Integer dimension;
     private final String environment;
     private final String podType;
+    private final String metric;
 
-    PineconePodIndexParam(Integer dimension,
-                          String environment,
-                          String podType) {
+    PineconePodIndexConfig(Integer dimension,
+                           String environment,
+                           String podType,
+                           String metric) {
         environment = ensureNotNull(environment, "environment");
         podType = ensureNotNull(podType, "podType");
         ensureNotNull(dimension, "dimension");
@@ -20,13 +23,14 @@ public class PineconePodIndexParam implements PineconeIndexParam {
         this.dimension = dimension;
         this.environment = environment;
         this.podType = podType;
+        this.metric = getOrDefault(metric, "cosine");
     }
 
     @Override
     public void createIndex(Pinecone pinecone, String index) {
         ensureNotNull(index, "index");
         ensureNotNull(pinecone, "pinecone");
-        pinecone.createPodsIndex(index, dimension, environment, podType);
+        pinecone.createPodsIndex(index, dimension, environment, podType, metric);
     }
 
     public static Builder builder() {
@@ -38,6 +42,7 @@ public class PineconePodIndexParam implements PineconeIndexParam {
         private Integer dimension;
         private String environment;
         private String podType;
+        private String metric;
 
         public Builder dimension(Integer dimension) {
             this.dimension = dimension;
@@ -54,8 +59,13 @@ public class PineconePodIndexParam implements PineconeIndexParam {
             return this;
         }
 
-        public PineconePodIndexParam build() {
-            return new PineconePodIndexParam(dimension, environment, podType);
+        public Builder metric(String metric) {
+            this.metric = metric;
+            return this;
+        }
+
+        public PineconePodIndexConfig build() {
+            return new PineconePodIndexConfig(dimension, environment, podType, metric);
         }
     }
 }
