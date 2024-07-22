@@ -62,7 +62,7 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         UserMessage.from(PdfFileContent.from("cGRm", "application/pdf")),
-                        "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"application/pdf\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"
+                        "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         AiMessage.from("hello"),
