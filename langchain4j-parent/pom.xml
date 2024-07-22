@@ -52,6 +52,7 @@
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
+        <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
     </properties>
 
     <dependencyManagement>
