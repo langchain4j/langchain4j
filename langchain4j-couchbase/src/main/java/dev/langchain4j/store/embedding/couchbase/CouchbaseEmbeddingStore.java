@@ -4,15 +4,10 @@ import com.couchbase.client.core.deps.com.fasterxml.jackson.databind.ObjectMappe
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.manager.search.SearchIndex;
-import com.couchbase.client.java.search.SearchQuery;
-import com.couchbase.client.java.search.SearchRequest;
-import com.couchbase.client.java.search.vector.VectorQuery;
-import com.couchbase.client.java.search.vector.VectorSearch;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.*;
-import dev.langchain4j.store.embedding.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.util.annotation.NonNull;
@@ -46,7 +41,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param bucketName     name of a cluster bucket in which to store the embeddings
      * @param scopeName      name of a scope in the bucket in which to store the embeddings
      * @param collectionName name of a collection in the scope in which to store the embeddings
-     * @param searchIndex    name of the FTS index to be used for searching embeddings
+     * @param searchIndexName    name of the FTS index to be used for searching embeddings
      */
     public CouchbaseEmbeddingStore(
             String clusterUrl,
@@ -63,9 +58,9 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
         bucket.waitUntilReady(Duration.ofSeconds(10));
 
         this.collection = bucket.scope(scopeName).collection(collectionName);
-        this.searchIndex = searchIndex;
+        this.searchIndex = searchIndexName;
 
-        if (cluster.searchIndexes().getAllIndexes().stream().noneMatch(i -> i.name().equals(searchIndex))) {
+        if (cluster.searchIndexes().getAllIndexes().stream().noneMatch(i -> i.name().equals(searchIndexName))) {
             HashMap<String, Object> sourceParams = new HashMap<>();
             HashMap<String, Object> params = new HashMap<>();
             params.put("doc_config", docConfig());
@@ -73,7 +68,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
             HashMap<String, Object> planParams = new HashMap<>();
             SearchIndex index = new SearchIndex(
                     null,
-                    searchIndex,
+                    searchIndexName,
                     "fulltext-index",
                     params,
                     null,
@@ -235,44 +230,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public void removeAll(Filter filter) {
-        final String where = CouchbaseMetadataFilterMapper.map(filter);
-        cluster.query(String.format(removeQueryPattern, collection.bucketName(), collection.scopeName(), collection.name(), where));
-    }
-
-    @Override
     public void removeAll() {
         cluster.query(String.format(removeQueryPattern, collection.bucketName(), collection.scopeName(), collection.name(), "true"));
-    }
-
-    @Override
-    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
-        VectorQuery vectorQuery = VectorQuery.create("vector", request.queryEmbedding().vector())
-                .numCandidates(request.maxResults());
-        SearchQuery metadataFilter = CouchbaseSearchMetadataFilterMapper.map(request.filter());
-
-        return new EmbeddingSearchResult<>(cluster.search(searchIndex,
-                        SearchRequest.create(
-                                VectorSearch.create(
-                                        vectorQuery.numCandidates(request.maxResults())
-                                )
-                        ).searchQuery(metadataFilter)
-                ).rows().stream()
-                .filter(Objects::nonNull)
-                .map(row -> {
-                    Document data = collection.get(row.id()).contentAs(Document.class);
-                    if (data == null) {
-                        throw new IllegalStateException(String.format("document with id '%s' not found", row.id()));
-                    }
-                    Embedding embedding = new Embedding(data.getVector());
-                    return new EmbeddingMatch<TextSegment>(
-                            RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, request.queryEmbedding())),
-                            row.id(),
-                            embedding,
-                            data.getText() == null ? null : new TextSegment(data.getText(), new Metadata(data.getMetadata()))
-                    );
-                })
-                .filter(r -> r.score() >= request.minScore())
-                .collect(Collectors.toList()));
     }
 }
