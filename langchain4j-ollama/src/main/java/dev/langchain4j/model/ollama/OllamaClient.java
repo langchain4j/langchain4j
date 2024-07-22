@@ -1,7 +1,6 @@
 package dev.langchain4j.model.ollama;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
@@ -16,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,15 +26,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static java.lang.Boolean.TRUE;
 
 @Slf4j
 class OllamaClient {
 
-    private static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
-            .create();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .enable(INDENT_OUTPUT);
 
     private final OllamaApi ollamaApi;
     private final boolean logStreamingResponses;
@@ -65,9 +63,9 @@ class OllamaClient {
         OkHttpClient okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/")
                 .client(okHttpClient)
-                .addConverterFactory(GsonConverterFactory.create(GSON))
+                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();
 
         ollamaApi = retrofit.create(OllamaApi.class);
@@ -114,10 +112,12 @@ class OllamaClient {
                         byte[] bytes = new byte[1024];
                         int len = inputStream.read(bytes);
                         String partialResponse = new String(bytes, 0, len);
+
                         if (logStreamingResponses) {
                             log.debug("Streaming partial response: {}", partialResponse);
                         }
-                        CompletionResponse completionResponse = GSON.fromJson(partialResponse, CompletionResponse.class);
+
+                        CompletionResponse completionResponse = OBJECT_MAPPER.readValue(partialResponse, CompletionResponse.class);
                         contentBuilder.append(completionResponse.getResponse());
                         handler.onNext(completionResponse.getResponse());
 
@@ -160,8 +160,7 @@ class OllamaClient {
                                 log.debug("Streaming partial response: {}", partialResponse);
                             }
 
-                            ChatResponse chatResponse = GSON.fromJson(partialResponse, ChatResponse.class);
-
+                            ChatResponse chatResponse = OBJECT_MAPPER.readValue(partialResponse, ChatResponse.class);
                             String content = chatResponse.getMessage().getContent();
                             contentBuilder.append(content);
                             handler.onNext(content);

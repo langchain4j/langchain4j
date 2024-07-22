@@ -186,7 +186,6 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
         // then
         assertThat(future.get())
-                .isExactlyInstanceOf(NullPointerException.class)
-                .hasMessageContaining("is null");
+                .isExactlyInstanceOf(NullPointerException.class);
     }
 }

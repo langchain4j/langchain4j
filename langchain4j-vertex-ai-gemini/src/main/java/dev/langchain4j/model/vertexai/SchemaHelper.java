@@ -76,6 +76,14 @@ public class SchemaHelper {
         } else if (Collection.class.isAssignableFrom(theClass)) {
             // Because of type erasure, we can't easily know the type of the items in the collection
             return Schema.newBuilder().setType(Type.ARRAY).build();
+        } else if (theClass.isEnum()) {
+            List<String> enumConstantNames = Arrays.stream(theClass.getEnumConstants())
+                .map(Object::toString)
+                .collect(Collectors.toList());
+            return Schema.newBuilder()
+                .setType(Type.STRING)
+                .addAllEnum(enumConstantNames)
+                .build();
         } else {
             // This is some kind of object, let's go through its fields
             Schema.Builder schemaBuilder = Schema.newBuilder().setType(Type.OBJECT);
