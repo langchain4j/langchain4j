@@ -13,8 +13,6 @@ This module implements `EmbeddingStore` using Oracle Database.
 </dependency>
 ```
 
-## Configuration
-
 ## Running the Test Suite
 By default, integration tests will
 [run a docker image of Oracle Database using TestContainers](https://java.testcontainers.org/modules/databases/oraclefree/).

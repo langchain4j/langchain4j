@@ -6,7 +6,9 @@ import oracle.jdbc.datasource.OracleDataSource;
 import org.testcontainers.oracle.OracleContainer;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 /**
  * A collection of operations which are shared by tests in this package.
@@ -60,4 +62,20 @@ final class CommonTestOperations {
         return DATA_SOURCE;
     }
 
+    /**
+     * Drops the table and index created by an embedding store. Tests can call this method in an
+     * {@link org.junit.jupiter.api.AfterAll} method to clean up.
+     *
+     * @param tableName Name of table to drop. Not null.
+     *
+     * @throws SQLException If a database error prevents the drop.
+     */
+    static void dropTable(String tableName) throws SQLException {
+        try (Connection connection = DATA_SOURCE.getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.addBatch("DROP INDEX IF EXISTS " + tableName + "_embedding_index");
+            statement.addBatch("DROP TABLE IF EXISTS " + tableName);
+            statement.executeBatch();
+        }
+    }
 }
