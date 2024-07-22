@@ -11,7 +11,6 @@ import static dev.langchain4j.internal.Utils.quoted;
 public class PdfFile {
     private final URI url;
     private final String base64Data;
-    private final String mimeType;
 
     /**
      * Create a new {@link PdfFile} from the Builder.
@@ -20,7 +19,6 @@ public class PdfFile {
     private PdfFile(Builder builder) {
         this.url = builder.url;
         this.base64Data = builder.base64Data;
-        this.mimeType = builder.mimeType;
     }
 
     /**
@@ -47,27 +45,18 @@ public class PdfFile {
         return base64Data;
     }
 
-    /**
-     * Get the mime type of the rich format document.
-     * @return the mime type of the rich format document, or null if not set.
-     */
-    public String mimeType() {
-        return mimeType;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         PdfFile that = (PdfFile) o;
         return Objects.equals(this.url, that.url)
-            && Objects.equals(this.base64Data, that.base64Data)
-            && Objects.equals(this.mimeType, that.mimeType);
+            && Objects.equals(this.base64Data, that.base64Data);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(url, base64Data, mimeType);
+        return Objects.hash(url, base64Data);
     }
 
     @Override
@@ -75,7 +64,6 @@ public class PdfFile {
         return "PdfFile {" +
             " url = " + quoted(url) +
             ", base64Data = " + quoted(base64Data) +
-            ", mimeType = " + quoted(mimeType) +
             " }";
     }
 
@@ -86,7 +74,6 @@ public class PdfFile {
 
         private URI url;
         private String base64Data;
-        private String mimeType;
 
         /**
          * Create a new {@link Builder}.
@@ -119,16 +106,6 @@ public class PdfFile {
          */
         public Builder base64Data(String base64Data) {
             this.base64Data = base64Data;
-            return this;
-        }
-
-        /**
-         * Set the mime type of the PDF document.
-         * @param mimeType the mime type of the PDF document.
-         * @return {@code this}
-         */
-        public Builder mimeType(String mimeType) {
-            this.mimeType = mimeType;
             return this;
         }
 

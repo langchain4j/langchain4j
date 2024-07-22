@@ -49,7 +49,7 @@ public class PdfFileContent implements Content {
     public PdfFileContent(String base64Data, String mimeType) {
         this.pdfFile = PdfFile.builder()
             .base64Data(ensureNotBlank(base64Data, "base64data"))
-            .mimeType(ensureNotBlank(mimeType, "mimeType")).build();
+            .build();
     }
 
     /**

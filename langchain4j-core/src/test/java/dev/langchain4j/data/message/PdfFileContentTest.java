@@ -23,7 +23,7 @@ class PdfFileContentTest {
                 "PdfFileContent { " +
                     "pdfFile = PdfFile { " +
                     "url = \"https://example.com/pdfFile.pdf\", " +
-                    "base64Data = null, mimeType = null } " +
+                    "base64Data = null } " +
                     "}");
     }
 
@@ -66,12 +66,9 @@ class PdfFileContentTest {
 
         PdfFile base64pdfFile = PdfFile.builder()
             .base64Data("cGRmDQo=")
-            .mimeType("mimeType")
             .build();
         assertThat(new PdfFileContent(base64pdfFile))
             .isEqualTo(new PdfFileContent(base64pdfFile))
-            .isEqualTo(PdfFileContent.from(base64pdfFile))
-            .isEqualTo(new PdfFileContent(base64pdfFile.base64Data(), base64pdfFile.mimeType()))
-            .isEqualTo(PdfFileContent.from(base64pdfFile.base64Data(), base64pdfFile.mimeType()));
+            .isEqualTo(PdfFileContent.from(base64pdfFile));
     }
 }
