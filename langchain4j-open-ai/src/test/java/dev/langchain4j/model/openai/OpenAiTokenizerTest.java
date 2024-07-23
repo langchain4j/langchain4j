@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.openai.OpenAiTokenizer.countArguments;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -194,12 +195,33 @@ class OpenAiTokenizerTest {
     void should_get_tokenizer_preferring_supplied() {
 
         // given
-        Tokenizer suppliedTokenizer = new ExampleTestTokenizer();
+        final Tokenizer suppliedTokenizer = new ExampleTestTokenizer();
+        final String modelName = GPT_3_5_TURBO.toString();
 
         // when
-        Tokenizer retrieved = OpenAiTokenizer.getTokenizerOrDefault(suppliedTokenizer, GPT_3_5_TURBO.name());
+        Tokenizer retrieved = OpenAiTokenizer.getTokenizerOrDefault(suppliedTokenizer, modelName);
 
         // then
         assertThat(retrieved).isEqualTo(suppliedTokenizer);
+    }
+
+    @Test
+    void should_get_tokenizer_preferring_model_default() {
+
+        // given
+        final String modelName = GPT_4_O.toString();
+
+        // when
+        Tokenizer retrievedTokenizer = OpenAiTokenizer.getTokenizerOrDefault(null, modelName);
+
+        // then
+        assertIsGpt4oTokenizer(retrievedTokenizer);
+    }
+
+    private void assertIsGpt4oTokenizer(Tokenizer tokenizerToAssert) {
+        // GPT 4o's tokenizer (o200k_base) uses fewer tokens for some languages than GPT 3.5's (cl100k_base)
+        final String testText = "ਟੱਬਰ";
+        final int expectedTokens = 4;
+        assertThat(tokenizerToAssert.estimateTokenCountInText(testText)).isEqualTo(expectedTokens);
     }
 }
