@@ -67,14 +67,18 @@ public class OpenAiTokenizer implements Tokenizer {
     // TODO rename
     public static Tokenizer getOpenAiTokenizerInOrder(Tokenizer specifiedTokenizer, String modelName) {
         if (specifiedTokenizer != null) {
+            // Use the tokenizer provided by the consumer, if present
             return specifiedTokenizer;
         }
         if (modelName != null && !modelName.trim().isEmpty()) {
+            // Attempt to retrieve the model's associated tokenizer
             OpenAiTokenizer candidate = new OpenAiTokenizer(modelName);
             if (candidate.encoding.isPresent()) {
                 return candidate;
             }
         }
+        // Failing the other options, default to GPT 3.5's tokenizer, since it is the most prevalent, and is used by
+        // other (non-OpenAI) models
         return new OpenAiTokenizer(GPT_3_5_TURBO);
     }
 
