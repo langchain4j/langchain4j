@@ -8,9 +8,6 @@ LangChain4j provides a few popular local embedding models packaged as maven depe
 They are powered by [ONNX runtime](https://onnxruntime.ai/docs/get-started/with-java.html)
 and are running in the same java process.
 
-By default, embedding is parallelized using all available CPU cores.
-Embedding using GPU is not supported yet.
-
 Each model is provided in 2 flavours: original and quantized (has a `-q` suffix in maven artifact name and `Quantized` in the class name).
 
 For example:
@@ -43,6 +40,24 @@ Embedding embedding = response.content();
 
 The complete list of all embedding models can be found [here](https://github.com/langchain4j/langchain4j-embeddings).
 
+
+## Parallelization
+
+By default, the embedding process is parallelized using all available CPU cores,
+so each `TextSegment` is embedded in a separate thread.
+
+The parallelization is done by using an `Executor`.
+By default, in-process embedding models use a cached thread pool
+with the number of threads equal to the number of available processors.
+Threads are cached for 1 second.
+
+You can provide a custom instance of the `Executor` when creating a model:
+```java
+Executor = ...;
+EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel(executor);
+```
+
+Embedding using GPU is not supported yet.
 
 ## Custom models
 
