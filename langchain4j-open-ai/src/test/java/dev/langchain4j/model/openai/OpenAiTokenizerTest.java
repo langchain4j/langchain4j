@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.chat.ChatCompletionModel;
 import dev.ai4j.openai4j.completion.CompletionModel;
 import dev.ai4j.openai4j.embedding.EmbeddingModel;
+import dev.langchain4j.model.ExampleTestTokenizer;
 import dev.langchain4j.model.Tokenizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -187,5 +188,18 @@ class OpenAiTokenizerTest {
             result.add(strings);
         }
         return result;
+    }
+
+    @Test
+    void should_get_tokenizer_preferring_supplied() {
+
+        // given
+        Tokenizer suppliedTokenizer = new ExampleTestTokenizer();
+
+        // when
+        Tokenizer retrieved = OpenAiTokenizer.getTokenizerOrDefault(suppliedTokenizer, GPT_3_5_TURBO.name());
+
+        // then
+        assertThat(retrieved).isEqualTo(suppliedTokenizer);
     }
 }
