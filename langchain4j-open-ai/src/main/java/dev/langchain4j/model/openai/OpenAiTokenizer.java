@@ -64,6 +64,20 @@ public class OpenAiTokenizer implements Tokenizer {
         this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
     }
 
+    // TODO rename
+    public static Tokenizer getOpenAiTokenizerInOrder(Tokenizer specifiedTokenizer, String modelName) {
+        if (specifiedTokenizer != null) {
+            return specifiedTokenizer;
+        }
+        if (modelName != null && !modelName.trim().isEmpty()) {
+            OpenAiTokenizer candidate = new OpenAiTokenizer(modelName);
+            if (candidate.encoding.isPresent()) {
+                return candidate;
+            }
+        }
+        return new OpenAiTokenizer(GPT_3_5_TURBO);
+    }
+
     public int estimateTokenCountInText(String text) {
         return encoding.orElseThrow(unknownModelException())
                 .countTokensOrdinary(text);
