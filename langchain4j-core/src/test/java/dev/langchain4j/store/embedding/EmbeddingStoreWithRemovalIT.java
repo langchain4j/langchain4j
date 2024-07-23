@@ -145,6 +145,8 @@ public abstract class EmbeddingStoreWithRemovalIT {
         // when
         embeddingStore().removeAll();
 
+        awaitUntilPersisted();
+
         // then
         assertThat(getAllEmbeddings()).isEmpty();
     }

@@ -20,7 +20,7 @@ sidebar_position: 0
 | [Neo4j](/integrations/embedding-stores/neo4j)                                         |                  |                       |                     |
 | [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                |                       |                     |
 | [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                | ✅                     | ✅                   |
-| [Pinecone](/integrations/embedding-stores/pinecone)                                   |                  |                       |                     |
+| [Pinecone](/integrations/embedding-stores/pinecone)                                   | ✅                |                       | ✅                   |
 | [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                |                       |                     |
 | [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                       |                     |
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                       |                     |
