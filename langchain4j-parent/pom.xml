@@ -26,13 +26,13 @@
         <azure.identity.version>1.13.1</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
-        <jtokkit.version>1.0.0</jtokkit.version>
+        <jtokkit.version>1.1.0</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
         <jsoup.veresion>1.16.1</jsoup.veresion>
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.10.0</junit.version>
-        <testcontainers.version>1.19.7</testcontainers.version>
+        <testcontainers.version>1.20.0</testcontainers.version>
         <bytebuddy.version>1.14.10</bytebuddy.version>
         <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>

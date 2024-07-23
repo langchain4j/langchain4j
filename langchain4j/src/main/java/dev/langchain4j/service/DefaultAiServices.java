@@ -1,7 +1,6 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
@@ -16,6 +15,8 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.service.tool.ToolExecutor;
 
 import java.io.InputStream;
 import java.lang.reflect.*;
@@ -30,10 +31,9 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
-
 class DefaultAiServices<T> extends AiServices<T> {
 
-    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser(new DefaultOutputParserFactory());
+    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
 
@@ -71,8 +71,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
             }
             if (method.getReturnType() == Result.class ||
-                method.getReturnType() == List.class ||
-                method.getReturnType() == Set.class) {
+                    method.getReturnType() == List.class ||
+                    method.getReturnType() == Set.class) {
                 TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
             }
         }

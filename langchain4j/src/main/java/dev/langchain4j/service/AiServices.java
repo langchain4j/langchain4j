@@ -1,8 +1,8 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.DefaultToolExecutor;
+import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
