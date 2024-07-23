@@ -192,7 +192,7 @@ class OpenAiTokenizerTest {
     }
 
     @Test
-    void should_get_tokenizer_preferring_supplied() {
+    void should_get_tokenizer_preferring_supplied_tokenizer() {
 
         // given
         final Tokenizer suppliedTokenizer = new ExampleTestTokenizer();
@@ -218,10 +218,43 @@ class OpenAiTokenizerTest {
         assertIsGpt4oTokenizer(retrievedTokenizer);
     }
 
+    @Test
+    void should_get_tokenizer_fallback_if_not_specified() {
+
+        // given
+        final String modelName = null;
+
+        // when
+        Tokenizer retrievedTokenizer = OpenAiTokenizer.getTokenizerOrDefault(null, modelName);
+
+        // then
+        assertIsGpt35TurboTokenizer(retrievedTokenizer);
+    }
+
+    @Test
+    void should_get_tokenizer_fallback_if_not_known() {
+
+        // given
+        final String modelName = "an unknown model";
+
+        // when
+        Tokenizer retrievedTokenizer = OpenAiTokenizer.getTokenizerOrDefault(null, modelName);
+
+        // then
+        assertIsGpt35TurboTokenizer(retrievedTokenizer);
+    }
+
     private void assertIsGpt4oTokenizer(Tokenizer tokenizerToAssert) {
         // GPT 4o's tokenizer (o200k_base) uses fewer tokens for some languages than GPT 3.5's (cl100k_base)
         final String testText = "ਟੱਬਰ";
         final int expectedTokens = 4;
+        assertThat(tokenizerToAssert.estimateTokenCountInText(testText)).isEqualTo(expectedTokens);
+    }
+
+    private void assertIsGpt35TurboTokenizer(Tokenizer tokenizerToAssert) {
+        // GPT 3.5 Turbo uses cl100k_base as its tokenizer
+        final String testText = "ਟੱਬਰ";
+        final int expectedTokens = 8;
         assertThat(tokenizerToAssert.estimateTokenCountInText(testText)).isEqualTo(expectedTokens);
     }
 }
