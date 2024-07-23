@@ -66,7 +66,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
         this.temperature = getOrDefault(temperature, 0.7);
-        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
+        this.tokenizer = OpenAiTokenizer.getTokenizerOrDefault(tokenizer, this.modelName);
     }
 
     public String modelName() {
