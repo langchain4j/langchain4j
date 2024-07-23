@@ -77,12 +77,10 @@ public final class EmbeddingResponse {
         }
 
         public Builder data(List<EmbeddingData> data) {
-            if (data == null) {
-                return this;
-            } else {
+            if (data != null) {
                 this.data = Collections.unmodifiableList(data);
-                return this;
             }
+            return this;
         }
 
         public Builder usage(Usage usage) {

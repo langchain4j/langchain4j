@@ -1,12 +1,12 @@
 package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.api.*;
+import com.google.gson.Gson;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolExecutionRequestUtil;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
@@ -17,6 +17,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 class FunctionCallHelper {
+
+    private static final Gson GSON = new Gson();
+
     static Type fromType(String type) {
         //TODO: is it covering all the types correctly?
         switch (type) {
@@ -65,7 +68,7 @@ class FunctionCallHelper {
             Map<String, Value> callArgsFieldsMap = callArgs.getFieldsMap();
             callArgsFieldsMap.forEach((key, value) -> callArgsMap.put(key, unwrapProtoValue(value)));
 
-            String serializedArgsMap = ToolExecutionRequestUtil.GSON.toJson(callArgsMap);
+            String serializedArgsMap = GSON.toJson(callArgsMap);
             builder.arguments(serializedArgsMap);
 
             toolExecutionRequests.add(builder.build());
@@ -112,20 +115,23 @@ class FunctionCallHelper {
             Schema.Builder schema = Schema.newBuilder().setType(Type.OBJECT);
 
             ToolParameters parameters = toolSpecification.parameters();
-            for (String paramName : parameters.required()) {
-                schema.addRequired(paramName);
+            if (parameters != null) {
+                for (String paramName : parameters.required()) {
+                    schema.addRequired(paramName);
+                }
+
+                parameters.properties().forEach((paramName, paramProps) -> {
+                    //TODO: is it covering all types & cases of tool parameters? (array & object in particular)
+                    Type type = fromType((String) paramProps.getOrDefault("type", Type.TYPE_UNSPECIFIED));
+
+                    String description = (String) paramProps.getOrDefault("description", "");
+
+                    schema.putProperties(paramName, Schema.newBuilder()
+                            .setDescription(description)
+                            .setType(type)
+                            .build());
+                });
             }
-            parameters.properties().forEach((paramName, paramProps) -> {
-                //TODO: is it covering all types & cases of tool parameters? (array & object in particular)
-                Type type = fromType((String) paramProps.getOrDefault("type", Type.TYPE_UNSPECIFIED));
-
-                String description = (String) paramProps.getOrDefault("description", "");
-
-                schema.putProperties(paramName, Schema.newBuilder()
-                        .setDescription(description)
-                        .setType(type)
-                        .build());
-            });
             fnBuilder.setParameters(schema.build());
             tool.addFunctionDeclarations(fnBuilder.build());
         }

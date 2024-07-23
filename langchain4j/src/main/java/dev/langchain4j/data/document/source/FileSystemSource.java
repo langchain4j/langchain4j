@@ -31,8 +31,8 @@ public class FileSystemSource implements DocumentSource {
     @Override
     public Metadata metadata() {
         return new Metadata()
-                .add(FILE_NAME, path.getFileName().toString())
-                .add(ABSOLUTE_DIRECTORY_PATH, path.getParent().toAbsolutePath().toString());
+                .put(FILE_NAME, path.getFileName().toString())
+                .put(ABSOLUTE_DIRECTORY_PATH, path.toAbsolutePath().getParent().toString());
     }
 
     public static FileSystemSource from(Path filePath) {

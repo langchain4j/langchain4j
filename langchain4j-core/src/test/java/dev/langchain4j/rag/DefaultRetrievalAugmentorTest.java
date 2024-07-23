@@ -1,5 +1,6 @@
 package dev.langchain4j.rag;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
@@ -9,9 +10,10 @@ import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
+import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Collection;
@@ -24,6 +26,7 @@ import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,7 +36,7 @@ class DefaultRetrievalAugmentorTest {
 
     @ParameterizedTest
     @MethodSource("executors")
-    void should_augment_user_message(Executor executor) {
+    void should_augment_user_message__multiple_queries_multiple_retrievers(Executor executor) {
 
         // given
         Query query1 = Query.from("query 1");
@@ -70,13 +73,13 @@ class DefaultRetrievalAugmentorTest {
         UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
 
         // then
-        assertThat(augmented.text()).isEqualTo(
+        assertThat(augmented.singleText()).isEqualTo(
                 "query\n" +
                         "content 1\n" +
                         "content 2\n" +
                         "content 3\n" +
                         "content 4\n" +
-                        "content 1\n" +
+                        "content 1\n" + // contents are repeating because TestContentAggregator does not perform RRF
                         "content 2\n" +
                         "content 3\n" +
                         "content 4"
@@ -115,7 +118,157 @@ class DefaultRetrievalAugmentorTest {
                 content1, content2, content3, content4,
                 content1, content2, content3, content4
         ), userMessage);
+        verify(contentInjector).inject(asList(
+                content1, content2, content3, content4,
+                content1, content2, content3, content4
+        ), (ChatMessage) userMessage);
         verifyNoMoreInteractions(contentInjector);
+    }
+
+    @Test
+    void should_augment_user_message__single_query_multiple_retrievers() {
+
+        // given
+        QueryTransformer queryTransformer = spy(new DefaultQueryTransformer());
+
+        Content content1 = Content.from("content 1");
+        Content content2 = Content.from("content 2");
+        ContentRetriever contentRetriever1 = spy(new TestContentRetriever(content1, content2));
+
+        Content content3 = Content.from("content 3");
+        Content content4 = Content.from("content 4");
+        ContentRetriever contentRetriever2 = spy(new TestContentRetriever(content3, content4));
+
+        QueryRouter queryRouter = spy(new DefaultQueryRouter(contentRetriever1, contentRetriever2));
+
+        ContentAggregator contentAggregator = spy(new TestContentAggregator());
+
+        ContentInjector contentInjector = spy(new TestContentInjector());
+
+        Executor executor = spy(new TestExecutor());
+
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .queryTransformer(queryTransformer)
+                .queryRouter(queryRouter)
+                .contentAggregator(contentAggregator)
+                .contentInjector(contentInjector)
+                .executor(executor)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("query");
+
+        Metadata metadata = Metadata.from(userMessage, null, null);
+
+        // when
+        UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
+
+        // then
+        assertThat(augmented.singleText()).isEqualTo(
+                "query\n" +
+                        "content 1\n" +
+                        "content 2\n" +
+                        "content 3\n" +
+                        "content 4"
+        );
+
+        Query query = Query.from("query", metadata);
+        verify(queryTransformer).transform(query);
+        verifyNoMoreInteractions(queryTransformer);
+
+        verify(queryRouter).route(query);
+        verifyNoMoreInteractions(queryRouter);
+
+        verify(contentRetriever1).retrieve(query);
+        verifyNoMoreInteractions(contentRetriever1);
+
+        verify(contentRetriever2).retrieve(query);
+        verifyNoMoreInteractions(contentRetriever2);
+
+        Map<Query, Collection<List<Content>>> queryToContents = new HashMap<>();
+        queryToContents.put(query, asList(
+                asList(content1, content2),
+                asList(content3, content4)
+
+        ));
+        verify(contentAggregator).aggregate(queryToContents);
+        verifyNoMoreInteractions(contentAggregator);
+
+        verify(contentInjector).inject(asList(content1, content2, content3, content4), userMessage);
+        verify(contentInjector).inject(asList(content1, content2, content3, content4), (ChatMessage) userMessage);
+        verifyNoMoreInteractions(contentInjector);
+
+        verify(executor, times(2)).execute(any());
+        verifyNoMoreInteractions(executor);
+    }
+
+    private static class TestExecutor implements Executor {
+
+        @Override
+        public void execute(Runnable command) {
+            command.run();
+        }
+    }
+
+    @Test
+    void should_augment_user_message__single_query_single_retriever() {
+
+        // given
+        QueryTransformer queryTransformer = spy(new DefaultQueryTransformer());
+
+        Content content1 = Content.from("content 1");
+        Content content2 = Content.from("content 2");
+        ContentRetriever contentRetriever = spy(new TestContentRetriever(content1, content2));
+
+        QueryRouter queryRouter = spy(new DefaultQueryRouter(contentRetriever));
+
+        ContentAggregator contentAggregator = spy(new TestContentAggregator());
+
+        ContentInjector contentInjector = spy(new TestContentInjector());
+
+        Executor executor = mock(Executor.class);
+
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .queryTransformer(queryTransformer)
+                .queryRouter(queryRouter)
+                .contentAggregator(contentAggregator)
+                .contentInjector(contentInjector)
+                .executor(executor)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("query");
+
+        Metadata metadata = Metadata.from(userMessage, null, null);
+
+        // when
+        UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
+
+        // then
+        assertThat(augmented.singleText()).isEqualTo(
+                "query\n" +
+                        "content 1\n" +
+                        "content 2"
+        );
+
+        Query query = Query.from("query", metadata);
+        verify(queryTransformer).transform(query);
+        verifyNoMoreInteractions(queryTransformer);
+
+        verify(queryRouter).route(query);
+        verifyNoMoreInteractions(queryRouter);
+
+        verify(contentRetriever).retrieve(query);
+        verifyNoMoreInteractions(contentRetriever);
+
+        Map<Query, Collection<List<Content>>> queryToContents = new HashMap<>();
+        queryToContents.put(query, singletonList(asList(content1, content2)));
+        verify(contentAggregator).aggregate(queryToContents);
+        verifyNoMoreInteractions(contentAggregator);
+
+        verify(contentInjector).inject(asList(content1, content2), userMessage);
+        verify(contentInjector).inject(asList(content1, content2), (ChatMessage) userMessage);
+        verifyNoMoreInteractions(contentInjector);
+
+        verifyNoInteractions(executor);
     }
 
     @ParameterizedTest
@@ -145,13 +298,15 @@ class DefaultRetrievalAugmentorTest {
         verifyNoMoreInteractions(queryRouter);
     }
 
-    static Stream<Arguments> executors() {
-        return Stream.<Arguments>builder()
-                .add(Arguments.of(Executors.newCachedThreadPool()))
-                .add(Arguments.of(Executors.newFixedThreadPool(1)))
-                .add(Arguments.of(Executors.newFixedThreadPool(2)))
-                .add(Arguments.of(Executors.newFixedThreadPool(3)))
-                .add(Arguments.of(Executors.newFixedThreadPool(4)))
+    static Stream<Executor> executors() {
+        return Stream.<Executor>builder()
+                .add(Executors.newCachedThreadPool())
+                .add(Executors.newFixedThreadPool(1))
+                .add(Executors.newFixedThreadPool(2))
+                .add(Executors.newFixedThreadPool(3))
+                .add(Executors.newFixedThreadPool(4))
+                .add(Runnable::run) // same thread executor
+                .add(null) // to use default Executor in DefaultRetrievalAugmentor
                 .build();
     }
 

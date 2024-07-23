@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -45,6 +46,24 @@ class UtilsTest {
     }
 
     @Test
+    public void test_string_isNullOrEmpty() {
+        assertThat(Utils.isNullOrEmpty((String) null)).isTrue();
+        assertThat(Utils.isNullOrEmpty("")).isTrue();
+        assertThat(Utils.isNullOrEmpty(" ")).isFalse();
+        assertThat(Utils.isNullOrEmpty("\n")).isFalse();
+        assertThat(Utils.isNullOrEmpty("foo")).isFalse();
+    }
+
+    @Test
+    public void test_string_isNotNullOrEmpty() {
+        assertThat(Utils.isNotNullOrEmpty(null)).isFalse();
+        assertThat(Utils.isNotNullOrEmpty("")).isFalse();
+        assertThat(Utils.isNotNullOrEmpty(" ")).isTrue();
+        assertThat(Utils.isNotNullOrEmpty("\n")).isTrue();
+        assertThat(Utils.isNotNullOrEmpty("foo")).isTrue();
+    }
+
+    @Test
     public void test_areNotNullOrBlank() {
         assertThat(Utils.areNotNullOrBlank()).isFalse();
         assertThat(Utils.areNotNullOrBlank((String) null)).isFalse();
@@ -58,10 +77,17 @@ class UtilsTest {
     }
 
     @Test
-    public void test_isNullOrEmpty() {
-        assertThat(Utils.isNullOrEmpty(null)).isTrue();
+    public void test_collection_isNullOrEmpty() {
+        assertThat(Utils.isNullOrEmpty((Collection<?>) null)).isTrue();
         assertThat(Utils.isNullOrEmpty(emptyList())).isTrue();
         assertThat(Utils.isNullOrEmpty(Collections.singletonList("abc"))).isFalse();
+    }
+
+    @Test
+    public void test_iterable_isNullOrEmpty() {
+        assertThat(Utils.isNullOrEmpty((Iterable<?>) null)).isTrue();
+        assertThat(Utils.isNullOrEmpty((Iterable<?>) emptyList())).isTrue();
+        assertThat(Utils.isNullOrEmpty((Iterable<?>) Collections.singletonList("abc"))).isFalse();
     }
 
     @Test

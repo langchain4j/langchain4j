@@ -52,12 +52,10 @@ public final class EmbeddingData {
         }
 
         public Builder embedding(List<Float> embedding) {
-            if (embedding == null) {
-                return this;
-            } else {
+            if (embedding != null) {
                 this.embedding = Collections.unmodifiableList(embedding);
-                return this;
             }
+            return this;
         }
 
         public Builder index(Integer index) {

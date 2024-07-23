@@ -2,7 +2,6 @@ package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.*;
-import com.google.cloud.vertexai.generativeai.GenerateContentConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -13,9 +12,16 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
 import lombok.Builder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -43,11 +49,24 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * <br>
  * 3. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#prerequisites">Prerequisites</a>
  */
-public class VertexAiGeminiChatModel implements ChatLanguageModel {
+public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
     private final Integer maxRetries;
+    private final VertexAI vertexAI;
+
+    private final Map<HarmCategory, SafetyThreshold> safetySettings;
+
+    private final Tool googleSearch;
+    private final Tool vertexSearch;
+
+    private final ToolConfig toolConfig;
+    private final List<String> allowedFunctionNames;
+
+    private final Boolean logRequests;
+    private final Boolean logResponses;
+    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
 
     @Builder
     public VertexAiGeminiChatModel(String project,
@@ -57,7 +76,16 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
                                    Integer maxOutputTokens,
                                    Integer topK,
                                    Float topP,
-                                   Integer maxRetries) {
+                                   Integer maxRetries,
+                                   String responseMimeType,
+                                   Schema responseSchema,
+                                   Map<HarmCategory, SafetyThreshold> safetySettings,
+                                   Boolean useGoogleSearch,
+                                   String vertexSearchDatastore,
+                                   ToolCallingMode toolCallingMode,
+                                   List<String> allowedFunctionNames,
+                                   Boolean logRequests,
+                                   Boolean logResponses) {
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
@@ -71,61 +99,164 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
         if (topP != null) {
             generationConfigBuilder.setTopP(topP);
         }
+        if (responseMimeType != null) {
+            generationConfigBuilder.setResponseMimeType(responseMimeType);
+        }
+        if (responseSchema != null) {
+            generationConfigBuilder.setResponseMimeType("application/json");
+            generationConfigBuilder.setResponseSchema(responseSchema);
+        }
         this.generationConfig = generationConfigBuilder.build();
 
-        try (VertexAI vertexAI = new VertexAI(
-            ensureNotBlank(project, "project"),
-            ensureNotBlank(location, "location"))
-        ) {
-            this.generativeModel = new GenerativeModel(
-                ensureNotBlank(modelName, "modelName"), generationConfig, vertexAI);
+        if (safetySettings != null) {
+            this.safetySettings = new HashMap<>(safetySettings);
+        } else {
+            this.safetySettings = Collections.emptyMap();
         }
 
+        if (useGoogleSearch != null && useGoogleSearch) {
+            googleSearch = ResponseGrounding.googleSearchTool();
+        } else {
+            googleSearch = null;
+        }
+        if (vertexSearchDatastore != null) {
+            vertexSearch = ResponseGrounding.vertexAiSearch(vertexSearchDatastore);
+        } else {
+            vertexSearch = null;
+        }
+
+        if (allowedFunctionNames != null) {
+            this.allowedFunctionNames = Collections.unmodifiableList(allowedFunctionNames);
+        } else {
+            this.allowedFunctionNames = Collections.emptyList();
+        }
+        if (toolCallingMode != null) {
+            // only a subset of functions allowed to be used by the model
+            if (toolCallingMode == ToolCallingMode.ANY &&
+                allowedFunctionNames != null && !allowedFunctionNames.isEmpty()) {
+                this.toolConfig = ToolConfig.newBuilder().setFunctionCallingConfig(
+                    FunctionCallingConfig.newBuilder()
+                        .setMode(FunctionCallingConfig.Mode.ANY)
+                        .addAllAllowedFunctionNames(this.allowedFunctionNames)
+                        .build()
+                ).build();
+            } else if (toolCallingMode == ToolCallingMode.NONE) { // no functions allowed
+                this.toolConfig = ToolConfig.newBuilder().setFunctionCallingConfig(
+                    FunctionCallingConfig.newBuilder()
+                        .setMode(FunctionCallingConfig.Mode.NONE)
+                        .build()
+                ).build();
+            } else { // Mode AUTO by default
+                this.toolConfig = ToolConfig.newBuilder().setFunctionCallingConfig(
+                    FunctionCallingConfig.newBuilder()
+                        .setMode(FunctionCallingConfig.Mode.AUTO)
+                        .build()
+                ).build();
+            }
+        } else {
+            this.toolConfig = ToolConfig.newBuilder().setFunctionCallingConfig(
+                FunctionCallingConfig.newBuilder()
+                    .setMode(FunctionCallingConfig.Mode.AUTO)
+                    .build()
+            ).build();
+        }
+
+        this.vertexAI = new VertexAI(
+            ensureNotBlank(project, "project"),
+            ensureNotBlank(location, "location"));
+
+        this.generativeModel = new GenerativeModel(
+            ensureNotBlank(modelName, "modelName"), vertexAI)
+            .withGenerationConfig(generationConfig);
+
         this.maxRetries = getOrDefault(maxRetries, 3);
+
+        if (logRequests != null) {
+            this.logRequests = logRequests;
+        } else {
+            this.logRequests = false;
+        }
+        if (logResponses != null) {
+            this.logResponses = logResponses;
+        } else {
+            this.logResponses = false;
+        }
     }
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
                                    GenerationConfig generationConfig) {
-        this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
-        this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
-        this.generativeModel.setGenerationConfig(this.generationConfig);
-        this.maxRetries = 3;
+        this(generativeModel, generationConfig, 3);
     }
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
                                    GenerationConfig generationConfig,
                                    Integer maxRetries) {
-        this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
-        this.generativeModel.setGenerationConfig(this.generationConfig);
+        this.generativeModel = ensureNotNull(generativeModel, "generativeModel")
+            .withGenerationConfig(generationConfig);
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.vertexAI = null;
+        this.safetySettings = Collections.emptyMap();
+        this.googleSearch = null;
+        this.vertexSearch = null;
+        this.toolConfig = ToolConfig.newBuilder().setFunctionCallingConfig(
+            FunctionCallingConfig.newBuilder()
+                .setMode(FunctionCallingConfig.Mode.AUTO)
+                .build()
+        ).build();
+        this.allowedFunctionNames = Collections.emptyList();
+        this.logRequests = false;
+        this.logResponses = false;
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        List<Content> contents = ContentsMapper.map(messages);
-
-        GenerateContentResponse response = withRetry(() ->
-            generativeModel.generateContent(contents), maxRetries);
-
-        return Response.from(
-            AiMessage.from(ResponseHandler.getText(response)),
-            TokenUsageMapper.map(response.getUsageMetadata()),
-            FinishReasonMapper.map(ResponseHandler.getFinishReason(response))
-        );
+        return generate(messages, new ArrayList<>());
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        List<Content> contents = ContentsMapper.map(messages);
-        Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
-        GenerateContentConfig generateContentConfig = GenerateContentConfig.newBuilder()
-                .setGenerationConfig(generationConfig)
-                .setTools(Collections.singletonList(tool))
-                .build();
+        String modelName = generativeModel.getModelName();
 
+        List<Tool> tools = new ArrayList<>();
+        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+            tools.add(tool);
+        }
+
+        if (this.googleSearch != null) {
+            tools.add(this.googleSearch);
+        }
+        if (this.vertexSearch != null) {
+            tools.add(this.vertexSearch);
+        }
+
+        GenerativeModel model = this.generativeModel
+            .withTools(tools)
+            .withToolConfig(this.toolConfig);
+
+        ContentsMapper.InstructionAndContent instructionAndContent =
+            ContentsMapper.splitInstructionAndContent(messages);
+
+        if (instructionAndContent.systemInstruction != null) {
+            model = model.withSystemInstruction(instructionAndContent.systemInstruction);
+        }
+
+        if (!this.safetySettings.isEmpty()) {
+            model = model.withSafetySettings(SafetySettingsMapper.mapSafetySettings(this.safetySettings));
+        }
+
+        if (this.logRequests && logger.isDebugEnabled()) {
+            logger.debug("GEMINI ({}) request: {} tools: {}", modelName, instructionAndContent, tools);
+        }
+
+        GenerativeModel finalModel = model;
         GenerateContentResponse response = withRetry(() ->
-            generativeModel.generateContent(contents, generateContentConfig), maxRetries);
+            finalModel.generateContent(instructionAndContent.contents), maxRetries);
+
+        if (this.logResponses && logger.isDebugEnabled()) {
+            logger.debug("GEMINI ({}) response: {}", modelName, response);
+        }
 
         Content content = ResponseHandler.getContent(response);
 
@@ -157,6 +288,13 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
             return generate(messages);
         } else {
             return generate(messages, Collections.singletonList(toolSpecification));
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (this.vertexAI != null) {
+            vertexAI.close();
         }
     }
 

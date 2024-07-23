@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 6
 ---
 
 # Google Vertex AI Gemini
@@ -68,14 +68,14 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai-gemini</artifactId>
-  <version>{your-version}</version> <!-- Specify langchain4j version here -->
+  <version>0.32.0</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:{your-version}'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:0.32.0'
 ```
 
 ### Try out an example code:
@@ -140,6 +140,12 @@ Caused by: io.grpc.StatusRuntimeException:
   `projects/{YOUR_PROJECT_ID}/locations/us-central1/publishers/google/models/gemini-ultra`
 ```
 
+## Warning
+
+Please note that Gemini does not support `SystemMessage`s.
+If there are `SystemMessage`s provided to the `generate()` methods, they will be merged into the first
+`UserMessage` (before the content of the `UserMessage`).
+
 ## Apply for early access
 
 [Early access for Gemma](https://docs.google.com/forms/d/e/1FAIpQLSe0grG6mRFW6dNF3Rb1h_YvKqUp2GaXiglZBgA2Os5iTLWlcg/viewform)
@@ -151,3 +157,8 @@ Caused by: io.grpc.StatusRuntimeException:
 [Available locations](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#available-regions)
 
 [Multimodal capabilities](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/overview#multimodal_models)
+
+
+## Examples
+
+- [Google Vertex AI Gemini Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/vertex-ai-gemini-examples/src/main/java)

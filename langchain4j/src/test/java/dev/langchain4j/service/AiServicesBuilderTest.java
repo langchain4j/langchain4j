@@ -1,11 +1,17 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.IllegalConfigurationException;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.mockito.Spy;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
@@ -100,4 +106,26 @@ public class AiServicesBuilderTest {
         });
     }
 
+    static class HelloWorld {
+
+        @Tool("Say hello")
+        void add(String name) {
+            System.out.printf("Hello %s!", name);
+        }
+    }
+
+    interface Assistant {
+
+        Response<AiMessage> chat(String userMessage);
+    }
+
+    @Test
+    public void should_raise_an_error_when_tools_are_classes() {
+        ChatLanguageModel chatLanguageModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThrows(IllegalConfigurationException.class, () -> AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .tools(HelloWorld.class)
+                .build());
+    }
 }

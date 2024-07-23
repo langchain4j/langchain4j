@@ -41,8 +41,8 @@ class DocumentBySentenceSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(firstSentence, metadata("index", "0").add("document", "0")),
-                textSegment(secondSentence, metadata("index", "1").add("document", "0"))
+                textSegment(firstSentence, metadata("index", "0").put("document", "0")),
+                textSegment(secondSentence, metadata("index", "1").put("document", "0"))
         );
     }
 
@@ -71,8 +71,8 @@ class DocumentBySentenceSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(firstSentence + " " + secondSentence, metadata("index", "0").add("document", "0")),
-                textSegment(thirdSentence, metadata("index", "1").add("document", "0"))
+                textSegment(firstSentence + " " + secondSentence, metadata("index", "0").put("document", "0")),
+                textSegment(thirdSentence, metadata("index", "1").put("document", "0"))
         );
     }
 
@@ -102,10 +102,10 @@ class DocumentBySentenceSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(firstSentence, metadata("index", "0").add("document", "0")),
-                textSegment("This is a very long sentence that does", metadata("index", "1").add("document", "0")),
-                textSegment("not fit into segment.", metadata("index", "2").add("document", "0")),
-                textSegment(thirdSentence, metadata("index", "3").add("document", "0"))
+                textSegment(firstSentence, metadata("index", "0").put("document", "0")),
+                textSegment("This is a very long sentence that does", metadata("index", "1").put("document", "0")),
+                textSegment("not fit into segment.", metadata("index", "2").put("document", "0")),
+                textSegment(thirdSentence, metadata("index", "3").put("document", "0"))
         );
     }
 
@@ -160,17 +160,17 @@ class DocumentBySentenceSplitterTest {
         segments.forEach(segment ->
                 assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(s1 + " " + s2, metadata("index", "0").add("document", "0")),
-                textSegment(s3 + " " + s4, metadata("index", "1").add("document", "0")),
-                textSegment(s5p1, metadata("index", "2").add("document", "0")),
-                textSegment(s5p2, metadata("index", "3").add("document", "0")),
-                textSegment(s6, metadata("index", "4").add("document", "0")),
-                textSegment(s7, metadata("index", "5").add("document", "0")),
-                textSegment(s8 + " " + s9, metadata("index", "6").add("document", "0")),
-                textSegment(s10, metadata("index", "7").add("document", "0")),
-                textSegment(s11 + " " + s12 + " " + s13 + " " + s14, metadata("index", "8").add("document", "0")),
-                textSegment(s15 + " " + s16 + " " + s17, metadata("index", "9").add("document", "0")),
-                textSegment(s18, metadata("index", "10").add("document", "0"))
+                textSegment(s1 + " " + s2, metadata("index", "0").put("document", "0")),
+                textSegment(s3 + " " + s4, metadata("index", "1").put("document", "0")),
+                textSegment(s5p1, metadata("index", "2").put("document", "0")),
+                textSegment(s5p2, metadata("index", "3").put("document", "0")),
+                textSegment(s6, metadata("index", "4").put("document", "0")),
+                textSegment(s7, metadata("index", "5").put("document", "0")),
+                textSegment(s8 + " " + s9, metadata("index", "6").put("document", "0")),
+                textSegment(s10, metadata("index", "7").put("document", "0")),
+                textSegment(s11 + " " + s12 + " " + s13 + " " + s14, metadata("index", "8").put("document", "0")),
+                textSegment(s15 + " " + s16 + " " + s17, metadata("index", "9").put("document", "0")),
+                textSegment(s18, metadata("index", "10").put("document", "0"))
         );
     }
 }

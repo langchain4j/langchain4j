@@ -1,12 +1,12 @@
 package dev.langchain4j.store.embedding.filter;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Arrays.asList;
@@ -16,7 +16,6 @@ import static java.util.stream.Collectors.toList;
 /**
  * A helper class for building a {@link Filter} for {@link Metadata} key.
  */
-@Experimental
 public class MetadataFilterBuilder {
 
     private final String key;
@@ -25,7 +24,6 @@ public class MetadataFilterBuilder {
         this.key = ensureNotBlank(key, "key");
     }
 
-    @Experimental
     public static MetadataFilterBuilder metadataKey(String key) {
         return new MetadataFilterBuilder(key);
     }
@@ -34,6 +32,10 @@ public class MetadataFilterBuilder {
     // isEqualTo
 
     public Filter isEqualTo(String value) {
+        return new IsEqualTo(key, value);
+    }
+
+    public Filter isEqualTo(UUID value) {
         return new IsEqualTo(key, value);
     }
 
@@ -57,6 +59,10 @@ public class MetadataFilterBuilder {
     // isNotEqualTo
 
     public Filter isNotEqualTo(String value) {
+        return new IsNotEqualTo(key, value);
+    }
+
+    public Filter isNotEqualTo(UUID value) {
         return new IsNotEqualTo(key, value);
     }
 
@@ -198,6 +204,10 @@ public class MetadataFilterBuilder {
         return new IsIn(key, asList(values));
     }
 
+    public Filter isIn(UUID... values) {
+        return new IsIn(key, asList(values));
+    }
+
     public Filter isIn(int... values) {
         return new IsIn(key, stream(values).boxed().collect(toList()));
     }
@@ -226,6 +236,10 @@ public class MetadataFilterBuilder {
     // isNotIn
 
     public Filter isNotIn(String... values) {
+        return new IsNotIn(key, asList(values));
+    }
+
+    public Filter isNotIn(UUID... values) {
         return new IsNotIn(key, asList(values));
     }
 

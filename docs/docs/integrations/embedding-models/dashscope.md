@@ -1,9 +1,27 @@
 ---
-sidebar_position: 30
+sidebar_position: 5
 ---
 
 # DashScope
 
-[DashScope](https://dashscope.aliyun.com/) 
+https://dashscope.aliyun.com/
 
-Coming soon
+
+## Maven Dependency
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-dashscope</artifactId>
+    <version>0.32.0</version>
+</dependency>
+```
+
+## APIs
+
+- `QwenEmbeddingModel`
+
+
+## Examples
+
+- [QwenEmbeddingModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-dashscope/src/test/java/dev/langchain4j/model/dashscope/QwenEmbeddingModelIT.java)

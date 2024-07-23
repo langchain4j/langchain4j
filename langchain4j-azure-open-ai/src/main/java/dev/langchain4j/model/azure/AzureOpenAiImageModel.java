@@ -4,17 +4,21 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.*;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.azure.spi.AzureOpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.imageFrom;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
@@ -45,6 +49,8 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
 public class AzureOpenAiImageModel implements ImageModel {
+
+    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiImageModel.class);
 
     private OpenAIClient client;
     private final String deploymentName;
@@ -78,10 +84,11 @@ public class AzureOpenAiImageModel implements ImageModel {
                                 Duration timeout,
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
-                                boolean logRequestsAndResponses) {
+                                boolean logRequestsAndResponses,
+                                String userAgentSuffix) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     public AzureOpenAiImageModel(String endpoint,
@@ -96,10 +103,11 @@ public class AzureOpenAiImageModel implements ImageModel {
                                  Duration timeout,
                                  Integer maxRetries,
                                  ProxyOptions proxyOptions,
-                                 boolean logRequestsAndResponses) {
+                                 boolean logRequestsAndResponses,
+                                 String userAgentSuffix) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     public AzureOpenAiImageModel(String endpoint,
@@ -114,10 +122,11 @@ public class AzureOpenAiImageModel implements ImageModel {
                                  Duration timeout,
                                  Integer maxRetries,
                                  ProxyOptions proxyOptions,
-                                 boolean logRequestsAndResponses) {
+                                 boolean logRequestsAndResponses,
+                                 String userAgentSuffix) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     private AzureOpenAiImageModel(String deploymentName, String quality, String size, String user, String style, String responseFormat) {
@@ -150,9 +159,19 @@ public class AzureOpenAiImageModel implements ImageModel {
                 .setStyle(style)
                 .setResponseFormat(responseFormat);
 
-        ImageGenerations imageGenerations = client.getImageGenerations(deploymentName, options);
-        Image image = imageFrom(imageGenerations.getData().get(0));
-        return Response.from(image);
+        try {
+            ImageGenerations imageGenerations = client.getImageGenerations(deploymentName, options);
+            Image image = imageFrom(imageGenerations.getData().get(0));
+            return Response.from(image);
+        } catch (HttpResponseException httpResponseException) {
+            logger.info("Error generating image, {}", httpResponseException.getValue());
+            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_policy_violation");
+            return Response.from(
+                    Image.builder().build(),
+                    null,
+                    exceptionFinishReason
+            );
+        }
     }
 
     public static Builder builder() {
@@ -180,6 +199,7 @@ public class AzureOpenAiImageModel implements ImageModel {
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
+        private String userAgentSuffix;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -372,6 +392,11 @@ public class AzureOpenAiImageModel implements ImageModel {
             return this;
         }
 
+        public Builder userAgentSuffix(String userAgentSuffix) {
+            this.userAgentSuffix = userAgentSuffix;
+            return this;
+        }
+
         public AzureOpenAiImageModel build() {
             if (openAIClient == null) {
                 if (tokenCredential != null) {
@@ -388,7 +413,9 @@ public class AzureOpenAiImageModel implements ImageModel {
                             timeout,
                             maxRetries,
                             proxyOptions,
-                            logRequestsAndResponses);
+                            logRequestsAndResponses,
+                            userAgentSuffix
+                    );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiImageModel(
                             endpoint,
@@ -403,7 +430,9 @@ public class AzureOpenAiImageModel implements ImageModel {
                             timeout,
                             maxRetries,
                             proxyOptions,
-                            logRequestsAndResponses);
+                            logRequestsAndResponses,
+                            userAgentSuffix
+                    );
                 }
                 return new AzureOpenAiImageModel(
                         endpoint,
@@ -418,7 +447,9 @@ public class AzureOpenAiImageModel implements ImageModel {
                         timeout,
                         maxRetries,
                         proxyOptions,
-                        logRequestsAndResponses);
+                        logRequestsAndResponses,
+                        userAgentSuffix
+                );
             }
             return new AzureOpenAiImageModel(
                     openAIClient,

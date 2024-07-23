@@ -7,7 +7,7 @@ import com.mongodb.client.model.Filters;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -15,12 +15,8 @@ import lombok.SneakyThrows;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.DockerComposeContainer;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.shaded.com.google.common.collect.Sets;
 
-import java.io.File;
-import java.time.Duration;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -29,13 +25,7 @@ import static org.assertj.core.data.Percentage.withPercentage;
 
 class MongoDbEmbeddingStoreFilterIT {
 
-    static final String MONGO_SERVICE_NAME = "mongo";
-    static final Integer MONGO_SERVICE_PORT = 27778;
-    static DockerComposeContainer<?> mongodb = new DockerComposeContainer<>(new File("src/test/resources/docker-compose.yml"))
-            .withExposedService(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT, new LogMessageWaitStrategy()
-                    .withRegEx(".*Deployment created!.*\\n")
-                    .withTimes(1)
-                    .withStartupTimeout(Duration.ofMinutes(30)));
+    static MongoDBAtlasContainer mongodb = new MongoDBAtlasContainer();
 
     static MongoClient client;
 
@@ -66,8 +56,7 @@ class MongoDbEmbeddingStoreFilterIT {
                 MongoClientSettings.builder()
                         .credential(credential)
                         .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
-                        .applyConnectionString(new ConnectionString(String.format("mongodb://%s:%s/?directConnection=true",
-                                mongodb.getServiceHost(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT), mongodb.getServicePort(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT))))
+                        .applyConnectionString(new ConnectionString(mongodb.getConnectionString()))
                         .build());
     }
 

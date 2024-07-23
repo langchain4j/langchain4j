@@ -1,7 +1,14 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonValue;
+
+import java.util.Locale;
 
 public enum ToolType {
-    @SerializedName("function") FUNCTION
+    FUNCTION;
+
+    @JsonValue
+    public String serialize() {
+        return name().toLowerCase(Locale.ROOT);
+    }
 }
