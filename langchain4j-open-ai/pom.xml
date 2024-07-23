@@ -21,10 +21,34 @@
             <artifactId>langchain4j-core</artifactId>
         </dependency>
 
+        <!-- DEPENDENCY CONFLICT RESOLUTION FOR OPENAI4J (START) -->
+
+        <!-- To resolve version conflicts inside the 'openai4j' library, we are excluding the transitive -->
+        <!-- dependencies causing version divergence errors and including them explicitly. This ensures a consistent -->
+        <!-- version to be used in the project and satisfies Maven Enforcer requirements to avoid version divergence -->
+        <!-- in the project. -->
+
+        <!-- Please check whether version conflicts are gone after upgrading  this library as this will make it -->
+        <!-- possible to remove these exclusions and explicit inclusions below. -->
+
         <dependency>
             <groupId>dev.ai4j</groupId>
             <artifactId>openai4j</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib-jdk8</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
+
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib-jdk8</artifactId>
+            <version>1.9.10</version>
+        </dependency>
+
+        <!-- DEPENDENCY CONFLICT RESOLUTION FOR OPENAI4J (END)  -->
 
         <dependency>
             <groupId>com.knuddels</groupId>
@@ -75,6 +99,29 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>enforce</id>
+                        <configuration>
+                            <rules>
+                                <dependencyConvergence/>
+                            </rules>
+                        </configuration>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
     <licenses>
         <license>
