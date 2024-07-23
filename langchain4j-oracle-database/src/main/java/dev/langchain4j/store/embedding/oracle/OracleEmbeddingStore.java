@@ -187,7 +187,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                     + embeddingColumn + " VECTOR(*, FLOAT32) NOT NULL, "
                     + builder.textColumn + " CLOB, "
                     + builder.metadataColumn + " JSON, "
-                    + "PRIMARY KEY (id))");
+                    + "PRIMARY KEY (" + builder.idColumn + "))");
 
             statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + tableName + "_embedding_index" +
                     " ON " + tableName + "(" + embeddingColumn + ")" +

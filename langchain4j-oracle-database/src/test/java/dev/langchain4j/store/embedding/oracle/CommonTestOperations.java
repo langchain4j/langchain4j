@@ -9,6 +9,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Random;
 
 /**
  * A collection of operations which are shared by tests in this package.
@@ -20,6 +21,18 @@ final class CommonTestOperations {
      * implementations of EmbeddingStoreIT.
      */
     private static final EmbeddingModel EMBEDDING_MODEL = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+    /**
+     * Seed for random numbers. When a test fails, "-Ddev.langchain4j.store.embedding.oracle.SEED=..." can be used to
+     * re-execute it with the same random numbers.
+     */
+    private static final long SEED = Long.getLong(
+            "dev.langchain4j.store.embedding.oracle.SEED", System.currentTimeMillis());
+
+    /**
+     * Used to generate random numbers, such as those for an embedding vector.
+     */
+    private static final Random RANDOM = new Random(SEED);
 
     private CommonTestOperations() {}
 
@@ -77,5 +90,20 @@ final class CommonTestOperations {
             statement.addBatch("DROP TABLE IF EXISTS " + tableName);
             statement.executeBatch();
         }
+    }
+
+    /**
+     * Returns an array of random floats, which can be used to generate test embedding vectors.
+     *
+     * @param length Array length.
+     * @return Array of random floats. Not null.
+     */
+    static float[] randomFloats(int length) {
+        float[] floats = new float[length];
+
+        for (int i = 0; i < floats.length; i++)
+            floats[i] = RANDOM.nextFloat();
+
+        return floats;
     }
 }
