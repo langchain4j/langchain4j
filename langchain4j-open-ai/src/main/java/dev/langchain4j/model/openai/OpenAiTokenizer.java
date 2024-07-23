@@ -64,8 +64,7 @@ public class OpenAiTokenizer implements Tokenizer {
         this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
     }
 
-    // TODO rename
-    public static Tokenizer getOpenAiTokenizerInOrder(Tokenizer specifiedTokenizer, String modelName) {
+    public static Tokenizer getTokenizerOrDefault(Tokenizer specifiedTokenizer, String modelName) {
         if (specifiedTokenizer != null) {
             // Use the tokenizer provided by the consumer, if present
             return specifiedTokenizer;
