@@ -36,7 +36,7 @@ class DefaultRetrievalAugmentorTest {
 
     @ParameterizedTest
     @MethodSource("executors")
-    void should_augment_user_message_multiple_queries_multiple_retrievers(Executor executor) {
+    void should_augment_user_message__multiple_queries_multiple_retrievers(Executor executor) {
 
         // given
         Query query1 = Query.from("query 1");
@@ -126,7 +126,7 @@ class DefaultRetrievalAugmentorTest {
     }
 
     @Test
-    void should_augment_user_message_single_query_multiple_retrievers() {
+    void should_augment_user_message__single_query_multiple_retrievers() {
 
         // given
         QueryTransformer queryTransformer = spy(new DefaultQueryTransformer());
@@ -210,7 +210,7 @@ class DefaultRetrievalAugmentorTest {
     }
 
     @Test
-    void should_augment_user_message_single_query_single_retriever() {
+    void should_augment_user_message__single_query_single_retriever() {
 
         // given
         QueryTransformer queryTransformer = spy(new DefaultQueryTransformer());
