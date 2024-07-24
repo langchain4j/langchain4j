@@ -2,10 +2,17 @@
 sidebar_position: 10
 ---
 
-# MongoDB Atlas
+# MongoDB Atlas and Vector Search
 
-https://www.mongodb.com/atlas
+[MongoDB Atlas](https://www.mongodb.com/docs/atlas/) is a fully-managed cloud database available in AWS, Azure, and GCP. It supports native Vector Search and full text search (BM25) on your MongoDB document data.
 
+[MongoDB Atlas Vector Search](https://www.mongodb.com/products/platform/atlas-vector-search) allows to store your embeddings in MongoDB documents, create a vector search index, and perform KNN search with an approximate nearest neighbor algorithm (Hierarchical Navigable Small Worlds). It uses the $vectorSearch MQL Stage.
+
+## Prerequisites
+
+You must have an Atlas cluster with either MongoDB version 6.0.11, 7.0.2, or later (including RCs).
+
+You will also need an Atlas cluster deployed. MongoDB offers a free forever cluster that you can use to try out [MongoDB Atlas](https://www.mongodb.com/docs/atlas/getting-started/). Once you have a cluster, you can create a vector search index via the JSON Editor.
 
 ## Maven Dependency
 
@@ -17,11 +24,9 @@ https://www.mongodb.com/atlas
 </dependency>
 ```
 
-
 ## APIs
 
 - `MongoDbEmbeddingStore`
-
 
 ## Examples
 
