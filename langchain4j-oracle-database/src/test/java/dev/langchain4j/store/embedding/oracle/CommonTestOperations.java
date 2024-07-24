@@ -3,10 +3,13 @@ package dev.langchain4j.store.embedding.oracle;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import oracle.jdbc.datasource.OracleDataSource;
+import oracle.sql.CHAR;
+import oracle.sql.CharacterSet;
 import org.testcontainers.oracle.OracleContainer;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Random;
@@ -89,6 +92,19 @@ final class CommonTestOperations {
             statement.addBatch("DROP INDEX IF EXISTS " + tableName + "_embedding_index");
             statement.addBatch("DROP TABLE IF EXISTS " + tableName);
             statement.executeBatch();
+        }
+    }
+
+    /**
+     * Returns the character set of the database. This can be used in {@link org.junit.jupiter.api.Assumptions} that
+     * require a unicode character set.
+     */
+    static CharacterSet getCharacterSet() throws SQLException {
+        try (Connection connection = CommonTestOperations.getDataSource().getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT 'c' FROM sys.dual")) {
+            resultSet.next();
+            return resultSet.getObject(1, CHAR.class).getCharacterSet();
         }
     }
 
