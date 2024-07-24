@@ -109,9 +109,9 @@ public class DefaultToolExecutor implements ToolExecutor {
                 if( parameterType == List.class || parameterType == Set.class || parameterType == Map.class)  {
                     ParameterizedType parameterizedType = (ParameterizedType) parameters[i].getParameterizedType();
                     arguments[i] = coerceCollectionArgument(argument, parameterName, parameterType, parameterizedType);
-                } if(parameterType.isArray() && argument instanceof Collection) {
+                } else if(parameterType.isArray() && argument instanceof Collection) {
                     arguments[i] = coerceCollectionArgument(argument, parameterName, parameterType, parameterType.getComponentType());
-                }else {
+                } else {
                     arguments[i] = coerceArgument(argument, parameterName, parameterType);
                 }
             }

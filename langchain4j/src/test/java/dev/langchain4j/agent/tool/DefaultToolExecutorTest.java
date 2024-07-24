@@ -307,6 +307,8 @@ class DefaultToolExecutorTest implements WithAssertions {
         public Person[] saveArray(Person[] arg) {
             assert arg != null;
             assert arg.length == 2;
+            assert arg[0].getClass() == Person.class;
+            assert arg[1].getClass() == Person.class;
             return arg;
         }
 
@@ -314,7 +316,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         public List<Person> saveList(List<Person> personList) {
             assert personList != null;
             assert personList.size() == 2;
-            assert personList.get(0) != null;
+            personList.forEach(person -> { assert person.getClass() == Person.class;} );
             return personList;
         }
 
@@ -322,6 +324,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         public Set<Person> saveSet(Set<Person> personSet) {
             assert personSet != null;
             assert personSet.size() == 2;
+            personSet.forEach(person -> { assert person.getClass() == Person.class;});
             return personSet;
         }
 
@@ -329,6 +332,10 @@ class DefaultToolExecutorTest implements WithAssertions {
         public Map<String,Person> saveMap (Map<String,Person> idPersonMap) {
             assert idPersonMap != null;
             assert idPersonMap.size() == 2;
+            idPersonMap.forEach((id, person) -> {
+                assert id.getClass() == String.class;
+                assert person.getClass() == Person.class;
+            });
             return idPersonMap;
         }
     }
