@@ -14,18 +14,15 @@ import java.util.stream.Collectors;
 
 /**
  * Bedrock Amazon Titan embedding model with support for both versions:
- * <ul>
- *     <li>amazon.titan-embed-text-v1</li>
- *     <li>amazon.titan-embed-text-v2:0</li>
- * </ul>
- *
- * @link https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html
- * @link https://aws.amazon.com/blogs/aws/amazon-titan-text-v2-now-available-in-amazon-bedrock-optimized-for-improving-rag/
- * </ul>
+ * {@code amazon.titan-embed-text-v1} and {@code amazon.titan-embed-text-v2:0}
+ * <br>
+ * See more details <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html">here</a> and
+ * <a href="https://aws.amazon.com/blogs/aws/amazon-titan-text-v2-now-available-in-amazon-bedrock-optimized-for-improving-rag/">here</a>.
  */
 @SuperBuilder
 @Getter
 public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockTitanEmbeddingResponse> {
+
     private final static String MODEL_V1_ID = "amazon.titan-embed-text-v1";
     private final static String MODEL_V2_ID = "amazon.titan-embed-text-v2:0";
 
@@ -43,8 +40,8 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
     private final Integer dimensions;
 
     /**
-     *  A flag indicating whether to normalize the output embeddings.
-     *  It defaults to true, which is optimal for RAG use cases.
+     * A flag indicating whether to normalize the output embeddings.
+     * It defaults to true, which is optimal for RAG use cases.
      */
     private final Boolean normalize;
 
@@ -87,5 +84,4 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
             this.value = modelID;
         }
     }
-
 }
