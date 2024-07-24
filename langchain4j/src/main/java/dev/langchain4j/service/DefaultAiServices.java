@@ -15,6 +15,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.service.output.DefaultServiceOutputParser;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutor;
 
@@ -31,9 +32,10 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
+
 class DefaultAiServices<T> extends AiServices<T> {
 
-    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
+    private final ServiceOutputParser serviceOutputParser = new DefaultServiceOutputParser();
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
 
@@ -109,9 +111,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
 
-                        // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
-                        String outputFormatInstructions = serviceOutputParser.outputFormatInstructions(returnType);
+                        String outputFormatInstructions = context.hasServiceOutputParser()
+                                ? context.serviceOutputParser.outputFormatInstructions(returnType)
+                                : serviceOutputParser.outputFormatInstructions(returnType);
                         String text = userMessage.singleText() + outputFormatInstructions;
                         if (isNotNullOrBlank(userMessage.name())) {
                             userMessage = UserMessage.from(userMessage.name(), text);
@@ -192,8 +195,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
 
-                        Object parsedResponse;
-                        parsedResponse = serviceOutputParser.parse(response, returnType);
+                        Object parsedResponse = context.hasServiceOutputParser()
+                                ? context.serviceOutputParser.parse(response, returnType)
+                                : serviceOutputParser.parse(response, returnType);
                         if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()
                                     .content(parsedResponse)
