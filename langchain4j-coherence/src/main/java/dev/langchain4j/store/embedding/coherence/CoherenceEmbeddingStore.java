@@ -174,6 +174,18 @@ public class CoherenceEmbeddingStore
     }
 
     /**
+     * Perform a KNN search.
+     *
+     * @param vector  the vector to find the nearest neighbours to
+     * @param k       the maximum number of neighbours to find
+     *
+     * @return  the search results
+     */
+    public List<QueryResult<DocumentChunk.Id, DocumentChunk>> search(float[] vector, int k) {
+         return documentChunks.aggregate(new SimilaritySearch<>(DocumentChunk::vector, new Float32Vector(vector), k));
+     }
+
+    /**
      * Obtain the {@link NamedMap} used to store embeddings.
      *
      * @return the {@link NamedMap} used to store embeddings
