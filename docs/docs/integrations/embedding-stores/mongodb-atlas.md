@@ -6,7 +6,7 @@ sidebar_position: 10
 
 [MongoDB Atlas](https://www.mongodb.com/docs/atlas/) is a fully-managed cloud database available in AWS, Azure, and GCP. It supports native Vector Search and full text search (BM25) on your MongoDB document data.
 
-[MongoDB Atlas Vector Search](https://www.mongodb.com/products/platform/atlas-vector-search) allows to store your embeddings in MongoDB documents, create a vector search index, and perform KNN search with an approximate nearest neighbor algorithm (Hierarchical Navigable Small Worlds). It uses the $vectorSearch MQL Stage.
+[MongoDB Atlas Vector Search](https://www.mongodb.com/products/platform/atlas-vector-search) allows you to store your embeddings in MongoDB documents, create vector search indexes, and perform KNN search with an approximate nearest neighbor algorithm called Hierarchical Navigable Small Worlds. You can implement this feature by using the `$vectorSearch` MQL aggregation stage.
 
 ## Prerequisites
 
