@@ -20,7 +20,8 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
 
     static class DefaultTemplate implements Template {
 
-        private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{(.+?)}}");
+        @SuppressWarnings("RegExpRedundantEscape")
+        private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{(.+?)\\}\\}");
 
         private final String template;
         private final Set<String> allVariables;
