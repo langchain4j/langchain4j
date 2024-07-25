@@ -24,7 +24,7 @@ To use Atlas Vector search, you need to have an Atlas deployment. MongoDB offers
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mongodb-atlas</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 
