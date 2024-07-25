@@ -23,7 +23,6 @@ import dev.langchain4j.data.embedding.Embedding;
 
 import dev.langchain4j.data.segment.TextSegment;
 
-import dev.langchain4j.store.memory.chat.coherence.CoherenceChatMemoryStore;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -78,7 +77,7 @@ public class CoherenceEmbeddingStore
     /**
      * Create an {@link CoherenceEmbeddingStore}.
      * <p>
-     * This method is protected, instances of {@link CoherenceChatMemoryStore}
+     * This method is protected, instances of {@link CoherenceEmbeddingStore}
      * are created using the builder.
      *
      * @param namedMap        the {@link NamedMap} to contain the {@link DocumentChunk document chunks}
