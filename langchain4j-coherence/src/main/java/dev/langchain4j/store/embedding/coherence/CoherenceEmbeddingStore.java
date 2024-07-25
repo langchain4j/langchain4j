@@ -175,6 +175,15 @@ public class CoherenceEmbeddingStore
     }
 
     /**
+     * Obtain the {@link NamedMap} used to store embeddings.
+     *
+     * @return the {@link NamedMap} used to store embeddings
+     */
+    public NamedMap<DocumentChunk.Id, DocumentChunk> getDocumentChunks() {
+        return documentChunks;
+    }
+
+    /**
      * Clear the embedding store.
      */
     public void clearAll() {
