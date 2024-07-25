@@ -7,7 +7,6 @@ import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import lombok.SneakyThrows;
 import org.testcontainers.couchbase.BucketDefinition;
 import org.testcontainers.couchbase.CouchbaseContainer;
@@ -27,8 +26,6 @@ class CouchbaseEmbeddingStoreIT extends EmbeddingStoreIT {
     @Container
     private static final CouchbaseContainer couchbaseContainer =
             new CouchbaseContainer(DockerImageName.parse("couchbase:enterprise").asCompatibleSubstituteFor("couchbase/server"))
-//                    .withExposedPorts(8091, 11207, 11210, 11211, 18091, 18092, 18093)
-//                    .withExposedPorts(8092, 8093, 8094, 8095)
                     .withCredentials("Administrator", "password")
                     .withBucket(testBucketDefinition)
                     .withStartupTimeout(Duration.ofMinutes(1));
@@ -58,16 +55,15 @@ class CouchbaseEmbeddingStoreIT extends EmbeddingStoreIT {
             Bucket bucket = cluster.bucket(testBucketDefinition.getName());
             bucket.waitUntilReady(Duration.ofSeconds(30));
 
-            embeddingStore = new CouchbaseEmbeddingStore(
-                    couchbaseContainer.getConnectionString(),
-                    couchbaseContainer.getUsername(),
-                    couchbaseContainer.getPassword(),
-                    testBucketDefinition.getName(),
-                    "_default",
-                    "_default",
-                    "test",
-                    TEST_DIMENSIONS
-            );
+            embeddingStore = new CouchbaseEmbeddingStore.Builder(couchbaseContainer.getConnectionString())
+                    .username(couchbaseContainer.getUsername())
+                    .password(couchbaseContainer.getPassword())
+                    .bucketName(testBucketDefinition.getName())
+                    .scopeName("_default")
+                    .collectionName("_default")
+                    .searchIndexName("test")
+                    .dimensions(TEST_DIMENSIONS)
+                    .build();
         }
         return embeddingStore;
     }

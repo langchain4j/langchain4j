@@ -17,16 +17,15 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 @EnabledIfEnvironmentVariable(named = "CB_CLUSTER", matches = ".+")
 class CouchbaseEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 
-    EmbeddingStore<TextSegment> embeddingStore = new CouchbaseEmbeddingStore(
-            System.getenv("CB_CLUSTER"),
-            System.getenv("CB_USERNAME"),
-            System.getenv("CB_PASSWORD"),
-            System.getenv("CB_BUCKET"),
-            System.getenv("CB_SCOPE"),
-            System.getenv("CB_COLLECTION"),
-            System.getenv("CB_FTS_INDEX"),
-            CouchbaseEmbeddingStoreIT.TEST_DIMENSIONS
-    );
+    EmbeddingStore<TextSegment> embeddingStore = new CouchbaseEmbeddingStore.Builder(System.getenv("CB_CLUSTER"))
+            .username(System.getenv("CB_USERNAME"))
+            .password(System.getenv("CB_PASSWORD"))
+            .bucketName(System.getenv("CB_BUCKET"))
+            .scopeName(System.getenv("CB_SCOPE"))
+            .collectionName(System.getenv("CB_COLLECTION"))
+            .searchIndexName(System.getenv("CB_FTS_INDEX"))
+            .dimensions(CouchbaseEmbeddingStoreIT.TEST_DIMENSIONS)
+            .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 

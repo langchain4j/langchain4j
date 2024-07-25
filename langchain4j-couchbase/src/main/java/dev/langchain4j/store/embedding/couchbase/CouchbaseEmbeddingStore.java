@@ -4,6 +4,9 @@ import com.couchbase.client.core.deps.com.fasterxml.jackson.databind.ObjectMappe
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.manager.search.SearchIndex;
+import com.couchbase.client.java.search.SearchRequest;
+import com.couchbase.client.java.search.vector.VectorQuery;
+import com.couchbase.client.java.search.vector.VectorSearch;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -26,11 +29,10 @@ import java.util.stream.Collectors;
 public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final String removeQueryPattern = "DELETE FROM `%s`.`%s`.`%s` WHERE %s";
-    private static final Logger log = LoggerFactory.getLogger(CouchbaseEmbeddingStore.class);
-    private Cluster cluster;
-    private com.couchbase.client.java.Collection collection;
-    private String searchIndex;
-    private ObjectMapper mapper = new ObjectMapper();
+    private final Cluster cluster;
+    private final com.couchbase.client.java.Collection collection;
+    private final String searchIndex;
+    private final ObjectMapper mapper = new ObjectMapper();
 
     /**
      * Creates an instance of CouchbaseEmbeddingStore
@@ -122,7 +124,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
     private Map<String, Object> text() {
         Map<String, Object> text = new HashMap<>();
         text.put("enabled", true);
-        List fields = new ArrayList();
+        List<Map<String, Object>> fields = new ArrayList<>();
         text.put("fields", fields);
 
         Map<String, Object> field = new HashMap<>();
@@ -147,7 +149,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
     private Map<String, Object> embedding(Integer dimensions) {
         Map<String, Object> embedding = new HashMap<>();
         embedding.put("enabled", true);
-        List fields = new ArrayList();
+        List<Map<String, Object>> fields = new ArrayList<>();
         embedding.put("fields", fields);
 
         Map<String, Object> field = new HashMap<>();
@@ -213,6 +215,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         for (int i = 0; i < size; i++) {
             Document document = new Document();
+            document.setId(ids.get(i));
             Embedding embedding = embeddings.get(i);
             document.setVector(embedding.vector());
             if (embedded != null) {
@@ -232,5 +235,98 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll() {
         cluster.query(String.format(removeQueryPattern, collection.bucketName(), collection.scopeName(), collection.name(), "true"));
+    }
+
+    @Override
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        VectorQuery vectorQuery = VectorQuery.create("vector", request.queryEmbedding().vector())
+                .numCandidates(request.maxResults());
+
+        return new EmbeddingSearchResult<>(cluster.search(searchIndex,
+                        SearchRequest.create(
+                                VectorSearch.create(
+                                        vectorQuery.numCandidates(request.maxResults())
+                                )
+                        )
+                ).rows().stream()
+                .filter(Objects::nonNull)
+                .map(row -> {
+                    Document data = collection.get(row.id()).contentAs(Document.class);
+                    if (data == null) {
+                        throw new IllegalStateException(String.format("document with id '%s' not found", row.id()));
+                    }
+                    Embedding embedding = new Embedding(data.getVector());
+                    return new EmbeddingMatch<TextSegment>(
+                            RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, request.queryEmbedding())),
+                            row.id(),
+                            embedding,
+                            data.getText() == null ? null : new TextSegment(data.getText(), new Metadata(data.getMetadata()))
+                    );
+                })
+                .filter(r -> r.score() >= request.minScore())
+                .collect(Collectors.toList()));
+    }
+
+    public static class Builder {
+        String clusterUrl;
+        String username;
+        String password;
+        String bucketName;
+        String scopeName;
+        String collectionName;
+        String searchIndexName;
+        Integer dimensions;
+
+        public Builder(String clusterUrl) {
+            this.clusterUrl = clusterUrl;
+        }
+
+        public CouchbaseEmbeddingStore build() {
+            return new CouchbaseEmbeddingStore(
+                    clusterUrl,
+                    username,
+                    password,
+                    bucketName,
+                    scopeName,
+                    collectionName,
+                    searchIndexName,
+                    dimensions
+            );
+        }
+
+        public Builder username(String username) {
+            this.username = username;
+            return this;
+        }
+
+        public Builder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        public Builder bucketName(String bucketName) {
+            this.bucketName = bucketName;
+            return this;
+        }
+
+        public Builder scopeName(String scopeName) {
+            this.scopeName = scopeName;
+            return this;
+        }
+
+        public Builder collectionName(String collectionName) {
+            this.collectionName = collectionName;
+            return this;
+        }
+
+        public Builder searchIndexName(String searchIndexName) {
+            this.searchIndexName = searchIndexName;
+            return this;
+        }
+
+        public Builder dimensions(Integer dimensions) {
+            this.dimensions = dimensions;
+            return this;
+        }
     }
 }
