@@ -10,7 +10,6 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
-import dev.langchain4j.service.output.ServiceOutputParser;
 import lombok.Builder;
 import lombok.ToString;
 import org.junit.jupiter.api.AfterEach;
@@ -878,29 +877,5 @@ public class AiServicesIT {
                         "\"bookingId\": (type: string)\n" +
                         "}")
         ));
-    }
-
-    @Test
-    void should_use_configured_service_output_parser() {
-
-        // given
-        ServiceOutputParser parser = mock(ServiceOutputParser.class);
-
-        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
-                .chatLanguageModel(chatLanguageModel)
-                .serviceOutputParser(parser)
-                .build();
-
-        when(parser.outputFormatInstructions(String.class)).thenReturn("");
-        when(parser.parse(any(), eq(String.class))).thenReturn("Berlin");
-
-        String userMessage = "What is the capital of Germany?";
-
-        // when
-        assistant.chat(userMessage);
-
-        // then
-        verify(parser).outputFormatInstructions(String.class);
-        verify(parser).parse(any(), eq(String.class));
     }
 }
