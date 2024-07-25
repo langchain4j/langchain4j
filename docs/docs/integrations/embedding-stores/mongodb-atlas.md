@@ -10,7 +10,11 @@ sidebar_position: 10
 
 ## Prerequisites
 
-You must have an Atlas cluster with either MongoDB version 6.0.11, 7.0.2, or later (including RCs).
+You must have an Atlas cluster that runs one of the following MongoDB versions:
+
+- 6.0.11
+- 7.0.2
+- Later versions (including Release Candidates).
 
 You will also need an Atlas cluster deployed. MongoDB offers a free forever cluster that you can use to try out [MongoDB Atlas](https://www.mongodb.com/docs/atlas/getting-started/). Once you have a cluster, you can create a vector search index via the JSON Editor.
 
