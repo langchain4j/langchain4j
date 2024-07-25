@@ -2,6 +2,7 @@ package dev.langchain4j.model.huggingface;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
@@ -38,7 +39,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                 .create();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://api-inference.huggingface.co")
+                .baseUrl(Utils.ensureTrailingForwardSlash("https://api-inference.huggingface.co/"))
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build();

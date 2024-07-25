@@ -2,6 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -63,7 +64,7 @@ class OllamaClient {
         OkHttpClient okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/")
+                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClient)
                 .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();

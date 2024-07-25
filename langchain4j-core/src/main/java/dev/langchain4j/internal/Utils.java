@@ -179,6 +179,16 @@ public class Utils {
   }
 
   /**
+   * Creates a new string with a trailing '/' if the provided path does not end with '/'
+   * 
+   * @param str String to check for trailing '/'
+   * @return Same string if it already ends with '/' or a new string that ends with '/'
+   */
+  public static String ensureTrailingForwardSlash(String str) {
+      return str.endsWith("/") ? str : str + "/";
+  }
+
+  /**
    * Returns the given object's {@code toString()} surrounded by quotes.
    *
    * <p>If the given object is {@code null}, the string {@code "null"} is returned.
