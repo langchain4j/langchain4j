@@ -13,7 +13,7 @@ https://azure.microsoft.com/en-us/products/ai-services/ai-search/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-ai-search</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 
