@@ -15,7 +15,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * A chain for conversing with a specified {@link ChatLanguageModel} while maintaining a memory of the conversation.
  * Includes a default {@link ChatMemory} (a message window with maximum 10 messages), which can be overridden.
  * <br>
- * It is recommended to use {@link AiServices} instead, as it is more powerful.
+ * Chains are not going to be developed further, it is recommended to use {@link AiServices} instead.
  */
 public class ConversationalChain implements Chain<String, String> {
 

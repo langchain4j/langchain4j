@@ -22,6 +22,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.File;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -645,5 +647,109 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(handler.get().content().hasToolExecutionRequests()).isEqualTo(false);
+    }
+
+    @Test
+    void should_accept_audio() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            AudioContent.from("gs://cloud-samples-data/generative-ai/audio/pixel.mp3"),
+            TextContent.from("Give a summary of the audio")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(msg), handler);
+
+        // then
+        assertThat(handler.get().content().text()).containsIgnoringCase("Pixel");
+    }
+
+    @Test
+    void should_accept_video() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            AudioContent.from("https://storage.googleapis.com/cloud-samples-data/video/animals.mp4"),
+            TextContent.from("What's in this video?")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(msg), handler);
+
+        // then
+        assertThat(handler.get().content().text()).containsIgnoringCase("animal");
+    }
+
+    @Test
+    void should_accept_local_file() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        File file = new File("src/test/resources/fingers.mp4");
+        assertThat(file).exists();
+
+        UserMessage msg = UserMessage.from(
+            AudioContent.from(Paths.get("src/test/resources/fingers.mp4").toUri()),
+            TextContent.from("What's in this video?")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(msg), handler);
+
+        // then
+        assertThat(handler.get().content().text()).containsAnyOf("finger", "hand");
+    }
+
+
+    @Test
+    void should_accept_PDF_documents() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+            TextContent.from("Provide a summary of the document")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(msg), handler);
+
+        // then
+        assertThat(handler.get().content().text()).containsIgnoringCase("Gemini");
     }
 }

@@ -6,7 +6,7 @@ class Collection {
 
     private String id;
     private String name;
-    private Map<String, String> metadata;
+    private Map<String, Object> metadata;
 
     public String id() {
         return id;
@@ -16,7 +16,7 @@ class Collection {
         return name;
     }
 
-    public Map<String, String> metadata() {
+    public Map<String, Object> metadata() {
         return metadata;
     }
 }

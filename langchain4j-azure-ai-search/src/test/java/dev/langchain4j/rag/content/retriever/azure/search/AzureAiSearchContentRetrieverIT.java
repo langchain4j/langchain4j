@@ -3,9 +3,10 @@ package dev.langchain4j.rag.content.retriever.azure.search;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.search.documents.indexes.SearchIndexClient;
 import com.azure.search.documents.indexes.SearchIndexClientBuilder;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
@@ -17,7 +18,9 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
 import static java.util.Arrays.asList;
@@ -128,8 +131,11 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         String content4 = "The house is open";
         List<String> contents = asList(content1, content2, content3, content4);
 
-        for (String content : contents) {
-            TextSegment textSegment = TextSegment.from(content);
+        for (int index = 0; index < contents.size(); index++) {
+            Map<String, String> meta = new HashMap<>();
+            meta.put("id", "content" + index);
+            String content = contents.get(index);
+            TextSegment textSegment = new TextSegment(content, new Metadata(meta));
             Embedding embedding = embeddingModel.embed(content).content();
             contentRetrieverWithVector.add(embedding, textSegment);
         }
@@ -143,6 +149,8 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         List<Content> relevant = contentRetrieverWithVector.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         assertThat(relevant.get(0).textSegment().text()).isEqualTo("The house is open");
+        assertThat(relevant.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
+
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
 
         log.info("Testing Full Text Search");
@@ -150,18 +158,21 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         List<Content> relevant2 = contentRetrieverWithFullText.retrieve(query);
         assertThat(relevant2).hasSizeGreaterThan(0);
         assertThat(relevant2.get(0).textSegment().text()).isEqualTo("The house is open");
+        assertThat(relevant2.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search");
         List<Content> relevant3 = contentRetrieverWithHybrid.retrieve(query);
         assertThat(relevant3).hasSizeGreaterThan(0);
         assertThat(relevant3.get(0).textSegment().text()).isEqualTo("The house is open");
+        assertThat(relevant3.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
         log.info("#1 relevant item: {}", relevant3.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search with Reranking");
         List<Content> relevant4 = contentRetrieverWithHybridAndReranking.retrieve(query);
         assertThat(relevant4).hasSizeGreaterThan(0);
         assertThat(relevant4.get(0).textSegment().text()).isEqualTo("The house is open");
+        assertThat(relevant4.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
         log.info("#1 relevant item: {}", relevant4.get(0).textSegment().text());
 
         log.info("Test complete");
