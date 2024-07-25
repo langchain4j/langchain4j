@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 @Testcontainers
-class Neo4jEmbeddingStoreTest {
+class Neo4jEmbeddingStoreIT {
 
     public static final String USERNAME = "neo4j";
     public static final String ADMIN_PASSWORD = "adminPass";
