@@ -27,9 +27,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 
-class DefaultServiceOutputParserTest {
+class ServiceOutputParserTest {
 
-    DefaultServiceOutputParser sut = new DefaultServiceOutputParser();
+    ServiceOutputParser sut = new ServiceOutputParser();
 
     @Test
     void makeSureThatCorrectOutputParserIsUsedForParsing() {
@@ -75,21 +75,21 @@ class DefaultServiceOutputParserTest {
         // Given
         DefaultOutputParserFactory defaultOutputParserFactory = new DefaultOutputParserFactory();
         OutputParserFactory defaultOutputParserFactorySpy = spy(defaultOutputParserFactory);
-        
+
         Response<AiMessage> responseStub = Response.from(aiMessage);
-        sut = new DefaultServiceOutputParser(defaultOutputParserFactorySpy);
-        
+        sut = new ServiceOutputParser(defaultOutputParserFactorySpy);
+
         AtomicReference<Optional<OutputParser<?>>> capturedParserReference = new AtomicReference<>();
-        
+
         doAnswer((Answer<Optional<?>>) invocation -> {
             Optional<OutputParser<?>> result = (Optional<OutputParser<?>>) invocation.callRealMethod();
             capturedParserReference.set(result);
             return result;
         }).when(defaultOutputParserFactorySpy).get(any(), any());
-        
+
         // When
         sut.parse(responseStub, rawReturnType);
-        
+
         // Then
         Object capturedOutputParser = capturedParserReference.get().get();
         assertInstanceOf(expectedOutputParserType, capturedOutputParser);
@@ -110,7 +110,7 @@ class DefaultServiceOutputParserTest {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
         Response<AiMessage> responseStub = Response.from(aiMessage);
-        sut = new DefaultServiceOutputParser();
+        sut = new ServiceOutputParser();
         
         // When
         Object result = sut.parse(responseStub, KeyProperty.class);
@@ -131,7 +131,7 @@ class DefaultServiceOutputParserTest {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
         Response<AiMessage> responseStub = Response.from(aiMessage);
-        sut = new DefaultServiceOutputParser();
+        sut = new ServiceOutputParser();
         
         // When / Then
         assertThatExceptionOfType(JsonSyntaxException.class).isThrownBy(() -> sut.parse(responseStub, KeyProperty.class));
@@ -303,7 +303,7 @@ class DefaultServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: dev.langchain4j.service.output.DefaultServiceOutputParserTest$Address: {\n" +
+                        "\"address\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string)\n" +
@@ -327,7 +327,7 @@ class DefaultServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: array of dev.langchain4j.service.output.DefaultServiceOutputParserTest$Address: {\n" +
+                        "\"address\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string)\n" +
@@ -351,7 +351,7 @@ class DefaultServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: array of dev.langchain4j.service.output.DefaultServiceOutputParserTest$Address: {\n" +
+                        "\"address\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string)\n" +
@@ -397,10 +397,10 @@ class DefaultServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.output.DefaultServiceOutputParserTest$PersonWithParents: {\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.output.DefaultServiceOutputParserTest$PersonWithParents)\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents)\n" +
                         "})\n" +
                         "}");
     }
@@ -423,10 +423,10 @@ class DefaultServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.output.DefaultServiceOutputParserTest$PersonWithParentArray: {\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.output.DefaultServiceOutputParserTest$PersonWithParentArray)\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray)\n" +
                         "})\n" +
                         "}");
     }
@@ -455,13 +455,13 @@ class DefaultServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"mother\": (type: dev.langchain4j.service.output.DefaultServiceOutputParserTest$PersonWithMotherAndFather: {\n" +
+                        "\"mother\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"mother\": (type: dev.langchain4j.service.output.DefaultServiceOutputParserTest$PersonWithMotherAndFather),\n" +
-                        "\"father\": (type: dev.langchain4j.service.output.DefaultServiceOutputParserTest$PersonWithMotherAndFather)\n" +
+                        "\"mother\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
+                        "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
                         "}),\n" +
-                        "\"father\": (type: dev.langchain4j.service.output.DefaultServiceOutputParserTest$PersonWithMotherAndFather)\n" +
+                        "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
                         "}");
     }
 }

@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -427,17 +426,6 @@ public abstract class AiServices<T> {
         }
         retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
-        return this;
-    }
-
-    /**
-     * Configures a service output parser to be invoked on every method call.
-     * 
-     * @param serviceOutputParser The service output parser to be used by the AI Service.
-     * @return builder
-     */
-    public AiServices<T> serviceOutputParser(ServiceOutputParser serviceOutputParser) {
-        context.serviceOutputParser = serviceOutputParser;
         return this;
     }
 
