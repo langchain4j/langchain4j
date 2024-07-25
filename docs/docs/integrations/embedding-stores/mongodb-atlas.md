@@ -16,7 +16,7 @@ You must have an Atlas cluster that runs one of the following MongoDB versions:
 - 7.0.2
 - Later versions (including Release Candidates).
 
-You will also need an Atlas cluster deployed. MongoDB offers a free forever cluster that you can use to try out [MongoDB Atlas](https://www.mongodb.com/docs/atlas/getting-started/). Once you have a cluster, you can create a vector search index via the JSON Editor.
+To use Atlas Vector search, you need to have an Atlas deployment. MongoDB offers a free forever cluster that you can use for testing. See the [Get Started with Atlas](https://www.mongodb.com/docs/atlas/getting-started/) tutorial to learn more. Once you deploy a cluster, you can create a vector search index by using the index JSON editor.
 
 ## Maven Dependency
 
