@@ -87,19 +87,27 @@ final class CommonTestOperations {
     }
 
     /**
-     * Drops any table previously created by this method, and returns an embedding stored configured to use a new table.
-     * Tests should make use of {@link #dropTable()} to clean up after they're finished.
+     * Returns an embedding store configured to use a table with the common {@link #TABLE_NAME}. Any existing table
+     * with this name is dropped and recreated. Tests should make use of {@link #dropTable()} to clean up after they're
+     * finished.
      *
      * @return An embedding store configured to use a new table. Not null.
      */
     static OracleEmbeddingStore newEmbeddingStore() {
+        return newEmbeddingStoreBuilder().build();
+    }
+
+    /**
+     * Returns a builder configured to use a table with the common {@link #TABLE_NAME}. Any existing table
+     * with this name is dropped and recreated when build() is called. Tests should make use of {@link #dropTable()} to
+     * clean up after they're finished.
+     *
+     * @return A builder configured to use a new table. Not null.
+     */
+    static OracleEmbeddingStore.Builder newEmbeddingStoreBuilder() {
         return OracleEmbeddingStore.builder()
                 .dataSource(getDataSource())
-                .embeddingTable(EmbeddingTable.builder()
-                        .name(TABLE_NAME)
-                        .createOption(CreateOption.CREATE_OR_REPLACE)
-                        .build())
-                .build();
+                .embeddingTable(TABLE_NAME, CreateOption.CREATE_OR_REPLACE);
     }
 
     /**
