@@ -12,6 +12,42 @@ import java.util.UUID;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+
+/**
+ * <p>
+ * Represents the database table where embeddings, text, and metadata are stored.
+ * </p><p>
+ * The table uses a VARCHAR(36) column as a primary key. This data type is chosen for consistency with other
+ * embedding store implementations which accept {@link UUID#toString()} as an id.
+ * </p><p>
+ * Embeddings are stored as VECTOR having any length of FLOAT32 dimensions. The FLOAT32 type can store any number
+ * represented in the <code>float[]</code> returned by {@link Embedding#vector()}. A NOT NULL constraint conforms
+ * with the behavior other embedding store implementations which do not accept NULL embeddings for "add" operations.
+ * </p><p>
+ * The text is stored as CLOB, allowing text of any length to be stored (versus VARCHAR which is limited to 32k
+ * characters). A string returned by {@link TextSegment#text()} can be up to 2G characters.
+ * </p><p>
+ * The metadata is stored as JSON. The unstructured JSON type can store the unstructured metadata returned by
+ * {@link TextSegment#metadata()}.
+ * </p><p>
+ * A vector index is created on the embedding column to speed up similarity search queries. The vector
+ * index uses a cosine distance, which is the same metric used by the {@link #search(EmbeddingSearchRequest)}
+ * method.
+ * </p><p>
+ * The vector index type is an inverted flat file (IVF), rather than hierarchical navigable small world (HNSW),
+ * because DML operations are not possible after creating an HNSW index. Methods like {@link #add(Embedding)}
+ * require the use of DML operations.
+ * </p><p>
+ * There are many parameters which can tune the index, but none are set for now. Later work may tune the index for
+ * operations of a an embedding store.
+ * </p><p>
+ * The vector index uses a cosine distance.
+ * </p>
+ *
+ * @param dataSource DataSource which connects to a database. Not null.
+ *
+ * @throws SQLException If a database error prevents this table from being created.
+ */
 public final class EmbeddingTable {
 
     /** Option which configures how the {@link #create(DataSource)} method creates this table */
@@ -41,42 +77,6 @@ public final class EmbeddingTable {
         metadataColumn = ensureNotNull(builder.metadataColumn, "metadataColumn");
     }
 
-    /**
-     * <p>
-     * Creates database tables, indexes, and any other schema objects needed to store embeddings. Any existing schema
-     * objects are reused.
-     * </p><p>
-     * The table uses a VARCHAR(36) column as a primary key. This data type is chosen for consistency with other
-     * embedding store implementations which accept {@link UUID#toString()} as an id.
-     * </p><p>
-     * Embeddings are stored as VECTOR having any length of FLOAT32 dimensions. The FLOAT32 type can store any number
-     * represented in the <code>float[]</code> returned by {@link Embedding#vector()}. A NOT NULL constraint conforms
-     * with the behavior other embedding store implementations which do not accept NULL embeddings for "add" operations.
-     * </p><p>
-     * The text is stored as CLOB, allowing text of any length to be stored (versus VARCHAR which is limited to 32k
-     * characters). A string returned by {@link TextSegment#text()} can be up to 2G characters.
-     * </p><p>
-     * The metadata is stored as JSON. The unstructured JSON type can store the unstructured metadata returned by
-     * {@link TextSegment#metadata()}.
-     * </p><p>
-     * A vector index is created on the embedding column to speed up similarity search queries. The vector
-     * index uses a cosine distance, which is the same metric used by the {@link #search(EmbeddingSearchRequest)}
-     * method.
-     * </p><p>
-     * The vector index type is an inverted flat file (IVF), rather than hierarchical navigable small world (HNSW),
-     * because DML operations are not possible after creating an HNSW index. Methods like {@link #add(Embedding)}
-     * require the use of DML operations.
-     * </p><p>
-     * There are many parameters which can tune the index, but none are set for now. Later work may tune the index for
-     * operations of a an embedding store.
-     * </p><p>
-     * The vector index uses a cosine distance.
-     * </p>
-     *
-     * @param dataSource DataSource which connects to a database. Not null.
-     *
-     * @throws SQLException If a database error prevents this table from being created.
-     */
     void create(DataSource dataSource) throws SQLException {
         if (createOption == CreateOption.CREATE_NONE)
             return;

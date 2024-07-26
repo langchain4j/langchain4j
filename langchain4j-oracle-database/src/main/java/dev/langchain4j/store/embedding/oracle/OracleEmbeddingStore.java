@@ -34,7 +34,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * EmbeddingStore<TextSegment> example(DataSource dataSource) {
  *   return OracleEmbeddingStore.builder()
  *     .dataSource(dataSource)
- *     .tableName("example")
+ *     .embeddingTable("example")
  *     .build();
  * }
  * }</pre><p>
