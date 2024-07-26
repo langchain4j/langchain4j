@@ -137,11 +137,6 @@ public class CoherenceChatMemoryStore
         private Session session;
     
         /**
-         * The {@link VectorIndexExtractor} to use to create a vector index used to query the {@link NamedMap}.
-         */
-        private VectorIndexExtractor<DocumentChunk, Vector<float[]>> extractor;
-    
-        /**
          * Create a {@link Builder}.
          */
         protected Builder() {
@@ -190,18 +185,6 @@ public class CoherenceChatMemoryStore
         }
     
         /**
-         * Set the vector index to add to the underlying {@link NamedMap}.
-         *
-         * @param extractor  the {@link VectorIndexExtractor} to use to create the index
-         *
-         * @return this builder for fluent method calls
-         */
-        public Builder index(VectorIndexExtractor<DocumentChunk, Vector<float[]>> extractor) {
-            this.extractor = extractor;
-            return this;
-        }
-    
-        /**
          * Build a {@link CoherenceChatMemoryStore} from the state in this builder.
          *
          * @return a new instance of a {@link CoherenceChatMemoryStore}
@@ -217,9 +200,6 @@ public class CoherenceChatMemoryStore
                 }
             }
             NamedMap<Object, String> map = session.getMap(name);
-            if (extractor != null) {
-                map.addIndex(extractor);
-            }
             return new CoherenceChatMemoryStore(map);
         }
     }
