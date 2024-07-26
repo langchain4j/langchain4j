@@ -7,10 +7,13 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.dropTable;
+import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.newEmbeddingStoreBuilder;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -19,40 +22,33 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class DistanceMetricTest {
 
-    private static final String SEED_PROPERTY = DistanceMetric.class.getSimpleName() + ".SEED";
-    private static final long SEED = Long.getLong(SEED_PROPERTY, System.currentTimeMillis());
-
     /** Verifies all distance metrics with approximate search */
     @ParameterizedTest
     @EnumSource(DistanceMetric.class)
-    public void testDistanceMetricApproximate(DistanceMetric distanceMetric)  {
+    public void testDistanceMetricApproximate(DistanceMetric distanceMetric) throws SQLException {
         verifyDistanceMetric(distanceMetric, false);
     }
 
     /** Verifies all distance metrics with approximate search */
     @ParameterizedTest
     @EnumSource(DistanceMetric.class)
-    public void testDistanceMetricExact(DistanceMetric distanceMetric)  {
+    public void testDistanceMetricExact(DistanceMetric distanceMetric) throws SQLException {
         verifyDistanceMetric(distanceMetric, true);
     }
 
-    private void verifyDistanceMetric(DistanceMetric distanceMetric, boolean isExactSearch)  {
+    private void verifyDistanceMetric(DistanceMetric distanceMetric, boolean isExactSearch) throws SQLException  {
 
         OracleEmbeddingStore oracleEmbeddingStore =
-           OracleEmbeddingStore.builder()
-                   .dataSource(CommonTestOperations.getDataSource())
+                newEmbeddingStoreBuilder()
                    .distanceMetric(distanceMetric)
                    .exactSearch(isExactSearch)
-                   .tableName(getClass().getSimpleName() + "_" + distanceMetric.name())
                    .build();
+
         try {
-            Random random = new Random(SEED);
-
-            float[] vector0 = new float[1024];
-            for (int i = 0; i < vector0.length; i++)
-                vector0[i] = random.nextFloat();
-
+            float[] vector0 = CommonTestOperations.randomFloats(512);
             float[] vector1 = vector0.clone();
+
+            // Only higher indexes are increased in order to effect the cosine angle, and not just magnitude
             for (int i = 0; i < vector1.length / 2; i++)
                 vector1[i] += 0.1f;
 
@@ -76,16 +72,8 @@ public class DistanceMetricTest {
             assertEquals(ids.get(1), match.embeddingId());
             assertArrayEquals(vector1, match.embedding().vector());
         }
-        catch (Exception exception) {
-            throw new AssertionError(
-                    "Test failed with random seed of " + SEED
-                            + ". Run again with \"-D" + SEED_PROPERTY + "=" + SEED +
-                            "\" to reproduce the failure.",
-                    exception);
-        }
         finally {
-            // Clean up data
-            oracleEmbeddingStore.removeAll();
+            dropTable();
         }
     }
 
