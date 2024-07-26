@@ -1,6 +1,8 @@
 package dev.langchain4j.agent.tool;
 
 import static dev.langchain4j.agent.tool.ToolExecutionRequestUtil.argumentsAsMap;
+
+import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.internal.Json;
 import lombok.SneakyThrows;
 import org.slf4j.Logger;
@@ -106,7 +108,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             if (argumentsMap.containsKey(parameterName)) {
                 Object argument = argumentsMap.get(parameterName);
                 Class<?> parameterType = parameters[i].getType();
-                if( parameterType == List.class || parameterType == Set.class || parameterType == Map.class)  {
+                if( Collection.class.isAssignableFrom(parameterType) || Map.class.isAssignableFrom(parameterType))  {
                     ParameterizedType parameterizedType = (ParameterizedType) parameters[i].getParameterizedType();
                     arguments[i] = coerceCollectionArgument(argument, parameterName, parameterType, parameterizedType);
                 } else if(parameterType.isArray() && argument instanceof Collection) {
@@ -120,7 +122,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         return arguments;
     }
 
-    @SneakyThrows
+
     static Object coerceCollectionArgument(
             Object argument,
             String parameterName,
@@ -128,41 +130,12 @@ public class DefaultToolExecutor implements ToolExecutor {
             Object parameterizedType
     )  {
         String json = Json.toJson(argument);
-        if (parameterType == List.class) {
-            List objects = Json.fromJson(json , List.class);
-            Class<?> elementType  = Class.forName( ((ParameterizedType)parameterizedType).getActualTypeArguments()[0].getTypeName());
-            List finalObject = new ArrayList();
-            if(objects!=null && !objects.isEmpty()) {
-                for(Object a : objects) {
-                    finalObject.add( coerceArgument(a, parameterName, elementType));
-                }
-            }
-            return finalObject;
+        if(Collection.class.isAssignableFrom(parameterType)) {
+            return Json.fromJson(json, TypeToken.get((Type) parameterizedType));
         }
 
-        if(parameterType == Set.class){
-            List objects = Json.fromJson(json , List.class);
-            Class<?> elementType  = Class.forName(((ParameterizedType)parameterizedType).getActualTypeArguments()[0].getTypeName());
-            Set finalObject = new HashSet();
-            if(objects!=null && !objects.isEmpty()) {
-                for(Object a : objects) {
-                    finalObject.add( coerceArgument(a, parameterName, elementType));
-                }
-            }
-            return finalObject;
-        }
-
-        if(parameterType == Map.class){
-            Map<Object, Object> objects = Json.fromJson(json , Map.class);
-            Class<?> keyType  = Class.forName(((ParameterizedType)parameterizedType).getActualTypeArguments()[0].getTypeName());
-            Class valueType  = Class.forName(((ParameterizedType)parameterizedType).getActualTypeArguments()[1].getTypeName());
-            Map finalObject = new HashMap();
-            if(objects!=null && !objects.isEmpty()) {
-                for(Map.Entry<Object, Object> entry : objects.entrySet()) {
-                    finalObject.put(coerceArgument(entry.getKey(), parameterName, keyType), coerceArgument(entry.getValue(), parameterName, valueType));
-                }
-            }
-            return finalObject;
+        if(Map.class.isAssignableFrom(parameterType)) {
+            return Json.fromJson(json, TypeToken.get((Type) parameterizedType));
         }
 
         if(parameterType.isArray() && argument instanceof Collection) {

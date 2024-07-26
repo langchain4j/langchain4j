@@ -1,5 +1,6 @@
 package dev.langchain4j.internal;
 
+import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.spi.json.JsonCodecFactory;
 
 import java.io.IOException;
@@ -46,6 +47,16 @@ public class Json {
          * @throws IOException if an I/O error occurs.
          */
         InputStream toInputStream(Object o, Class<?> type) throws IOException;
+
+        /**
+         * Convert the given JSON string to an object of the given type.
+         * @param json
+         * @param type
+         * @return the object.
+         * @param <T>
+         */
+
+         <T> T fromJson(String json, TypeToken<T> type);
     }
 
     private static final JsonCodec CODEC = loadCodec();
@@ -89,5 +100,17 @@ public class Json {
      */
     public static InputStream toInputStream(Object o, Class<?> type) throws IOException {
         return CODEC.toInputStream(o, type);
+    }
+
+    /**
+     * Convert the given JSON string to an object of the given type.
+     * @param json
+     * @param type
+     * @return the object.
+     * @param <T>
+     */
+
+    public static <T> T fromJson(String json, TypeToken<T> type) {
+        return CODEC.fromJson(json, type);
     }
 }

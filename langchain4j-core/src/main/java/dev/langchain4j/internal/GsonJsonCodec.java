@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
 import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonWriter;
 
 import java.io.*;
@@ -72,5 +73,10 @@ class GsonJsonCodec implements Json.JsonCodec {
 
             return new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
         }
+    }
+
+    @Override
+    public <T> T fromJson(String json, TypeToken<T> type) {
+        return GSON.fromJson(json, type.getType());
     }
 }
