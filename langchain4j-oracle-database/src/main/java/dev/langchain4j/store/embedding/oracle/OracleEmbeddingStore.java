@@ -88,8 +88,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * An inverted flat file (IVF) vector index is created on the embedding column. The index is named
  * "{tableName}_vector_index", where {tableName} is the name configured using the {@link Builder}.
  * </p><p>
- * All methods of this embedding store will throw an {@link IllegalStateException} with a {@link SQLException} as its
- * {@link IllegalStateException#getCause()} when a database operation results in an error.
+ * All methods of this embedding store will throw an {@link RuntimeException} with a {@link SQLException} as its
+ * {@link RuntimeException#getCause()} when a database operation results in an error.
  * </p>
  */
 public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
@@ -97,20 +97,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     /** DataSource configured to connect with an Oracle Database. */
     private final DataSource dataSource;
 
-    /** Name of a database table accessed by this embedding store */
-    private final String tableName;
-
-    /** Name of a column which stores an id. */
-    private final String idColumn;
-
-    /** Name of a column which stores an embedding. */
-    private final String embeddingColumn;
-
-    /** Name of a column which stores text. */
-    private final String textColumn;
-
-    /** Name of a column which stores metadata. */
-    private final String metadataColumn;
+    /** Table where embeddings are stored */
+    private final EmbeddingTable table;
 
     /**
      * The mapping function for use with {@link SQLFilters#create(Filter, UnaryOperator)}. The function maps a
@@ -122,83 +110,21 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Constructs embedding store configured by a builder.
      *
-     * @param builder Builder that configures the emebedding store. Not null.
+     * @param builder Builder that configures the embedding store. Not null.
      *
      * @throws IllegalArgumentException If the configuration is not valid.
      */
     private OracleEmbeddingStore(Builder builder) {
         dataSource = ensureNotNull(builder.dataSource, "dataSource");
-        tableName = ensureNotNull(builder.tableName, "tableName");
-        idColumn = ensureNotNull(builder.idColumn, "idColumn");
-        embeddingColumn = ensureNotNull(builder.embeddingColumn, "embeddingColumn");
-        textColumn = ensureNotNull(builder.textColumn, "textColumn");
-        metadataColumn = ensureNotNull(builder.metadataColumn, "metadataColumn");
-        metadataKeyMapper = key -> "JSON_VALUE(" + metadataColumn + ", '$." + key + "')";
+        table = ensureNotNull(builder.embeddingTable, "embeddingTable");
+        metadataKeyMapper = key -> "JSON_VALUE(" + table.metadataColumn() + ", '$." + key + "')";
 
-        createSchema(builder);
-    }
-
-    /**
-     * <p>
-     * Creates database tables, indexes, and any other schema objects needed to store embeddings. Any existing schema
-     * objects are reused.
-     * </p><p>
-     * The table uses a VARCHAR(36) column as a primary key. This data type is chosen for consistency with other
-     * embedding store implementations which accept {@link UUID#toString()} as an id.
-     * </p><p>
-     * Embeddings are stored as VECTOR having any length of FLOAT32 dimensions. The FLOAT32 type can store any number
-     * represented in the <code>float[]</code> returned by {@link Embedding#vector()}. A NOT NULL constraint conforms
-     * with the behavior other embedding store implementations which do not accept NULL embeddings for "add" operations.
-     * </p><p>
-     * The text is stored as CLOB, allowing text of any length to be stored (versus VARCHAR which is limited to 32k
-     * characters). A string returned by {@link TextSegment#text()} can be up to 2G characters.
-     * </p><p>
-     * The metadata is stored as JSON. The unstructured JSON type can store the unstructured metadata returned by
-     * {@link TextSegment#metadata()}.
-     * </p><p>
-     * A vector index is created on the embedding column to speed up similarity search queries. The vector
-     * index uses a cosine distance, which is the same metric used by the {@link #search(EmbeddingSearchRequest)}
-     * method.
-     * </p><p>
-     * The vector index type is an inverted flat file (IVF), rather than hierarchical navigable small world (HNSW),
-     * because DML operations are not possible after creating an HNSW index. Methods like {@link #add(Embedding)}
-     * require the use of DML operations.
-     * </p><p>
-     * There are many parameters which can tune the index, but none are set for now. Later work may tune the index for
-     * operations of a an embedding store.
-     * </p><p>
-     * The vector index uses a cosine distance.
-     * </p>
-     *
-     * @param builder Builder configured to create an OracleEmbeddingStore. Not null.
-     *
-     * @throws IllegalStateException If connection to the database fails, or an error occurs when creating the schema
-     * objects.
-     */
-    private static void createSchema(Builder builder) {
-        try (Connection connection = builder.dataSource.getConnection();
-             Statement statement = connection.createStatement()
-        ) {
-            String tableName = builder.tableName;
-            String embeddingColumn = builder.embeddingColumn;
-
-            statement.addBatch("CREATE TABLE IF NOT EXISTS " + tableName
-                    + "(" + builder.idColumn + " VARCHAR(36) NOT NULL, "
-                    + embeddingColumn + " VECTOR(*, FLOAT32) NOT NULL, "
-                    + builder.textColumn + " CLOB, "
-                    + builder.metadataColumn + " JSON, "
-                    + "PRIMARY KEY (" + builder.idColumn + "))");
-
-            statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + tableName + "_embedding_index" +
-                    " ON " + tableName + "(" + embeddingColumn + ")" +
-                    " ORGANIZATION NEIGHBOR PARTITIONS");
-
-            statement.executeBatch();
+        try {
+            table.create(dataSource);
         }
         catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
-
     }
 
     @Override
@@ -215,7 +141,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         String[] ids = new String[embeddings.size()];
         try (Connection connection = dataSource.getConnection();
              PreparedStatement insert = connection.prepareStatement(
-                     "INSERT INTO " + tableName + "(" + idColumn + ", " + embeddingColumn + ") VALUES (?, ?)")
+                     "INSERT INTO " + table.name() + "(" +
+                             table.idColumn() + ", " + table.embeddingColumn() + ") VALUES (?, ?)")
         ) {
            for (int i = 0; i < embeddings.size(); i++) {
                String id = randomUUID();
@@ -260,9 +187,11 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement insert = connection.prepareStatement(
-                     "INSERT INTO " + tableName + "(" +
-                             idColumn + ", " + embeddingColumn + ",  " + textColumn + ", " + metadataColumn +
-                             ") VALUES (?, ?, ?, ?)")
+                     "INSERT INTO " + table.name() + "(" +
+                         String.join(", ",
+                                 table.idColumn(), table.embeddingColumn(), table.textColumn(),
+                                 table.metadataColumn()) +
+                         ") VALUES (?, ?, ?, ?)")
         ) {
 
             for (int i = 0; i < embeddings.size(); i++) {
@@ -295,12 +224,12 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         // implementations.
         try (Connection connection = dataSource.getConnection();
              PreparedStatement merge = connection.prepareStatement(
-                     "MERGE INTO " + tableName + " existing" +
+                     "MERGE INTO " + table.name() + " existing" +
                              " USING (SELECT ? as id, ? as embedding) new" +
-                             " ON (new.id = existing." + idColumn + ")" +
-                             " WHEN MATCHED THEN UPDATE SET existing." + embeddingColumn + " = new.embedding" +
+                             " ON (new.id = existing." + table.idColumn() + ")" +
+                             " WHEN MATCHED THEN UPDATE SET existing." + table.embeddingColumn() + " = new.embedding" +
                              " WHEN NOT MATCHED THEN INSERT (" +
-                             idColumn + ", " + embeddingColumn +
+                             table.idColumn() + ", " + table.embeddingColumn() +
                              ") VALUES (new.id, new.embedding)");
         ) {
             merge.setString(1, id);
@@ -318,7 +247,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement delete = connection.prepareStatement(
-                     "DELETE FROM " + tableName + " WHERE " + idColumn + " = ?")
+                     "DELETE FROM " + table.name() + " WHERE " + table.idColumn() + " = ?")
         ) {
             for (String id : ids) {
                 ensureNotNull(id, "id");
@@ -340,7 +269,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement delete = connection.prepareStatement(
-                     "DELETE FROM " + tableName + sqlFilter.asWhereClause())
+                     "DELETE FROM " + table.name() + sqlFilter.asWhereClause())
         ) {
             sqlFilter.setParameters(delete, 1);
             delete.executeUpdate();
@@ -354,7 +283,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll() {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
-            statement.execute("TRUNCATE TABLE " + tableName);
+            statement.execute("TRUNCATE TABLE " + table.name());
         }
         catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
@@ -374,9 +303,10 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         // performance improvement.
         try (Connection connection = dataSource.getConnection();
              PreparedStatement query = connection.prepareStatement(
-                     "SELECT " + embeddingColumn + " <=> ? distance, " +
-                             idColumn + ", " + embeddingColumn + ", " + textColumn + ", " + metadataColumn +
-                         " FROM " + tableName +
+                     "SELECT " + String.join(", ",
+                             table.embeddingColumn() + " <=> ? distance, " +
+                             table.idColumn(), table.embeddingColumn(), table.textColumn(),table.metadataColumn()) +
+                         " FROM " + table.name() +
                          sqlFilter.asWhereClause() +
                          " ORDER BY distance" +
                          " FETCH FIRST " + maxResults + " ROWS ONLY")
@@ -408,10 +338,10 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                     if (score < request.minScore())
                         break; // Break, because results are ordered by ascending distances.
 
-                    String id = resultSet.getString(idColumn);
-                    float[] embedding = resultSet.getObject(embeddingColumn, float[].class);
-                    String content = resultSet.getString(textColumn);
-                    OracleJsonObject metadata = resultSet.getObject(metadataColumn, OracleJsonObject.class);
+                    String id = resultSet.getString(table.idColumn());
+                    float[] embedding = resultSet.getObject(table.embeddingColumn(), float[].class);
+                    String content = resultSet.getString(table.textColumn());
+                    OracleJsonObject metadata = resultSet.getObject(table.metadataColumn(), OracleJsonObject.class);
 
                     EmbeddingMatch<TextSegment> match = new EmbeddingMatch<>(
                             score,
@@ -430,9 +360,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * Converts text metadata into an Oracle JSON Object (OSON).
-     * <p>
-     * Instances of <code>Metadata</code> stored in <code></code>
-     * </p>
+     *
      * @param metadata Metadata to convert. May be null.
      *
      * @return OSON with field names and values as the metadata
@@ -476,15 +404,17 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
-     * Creates <code>Metadata</code> from OSON. This method will only handle OSON values that are created by
-     * {@link #getOsonFromMetadata(Metadata)}.
+     * Creates <code>Metadata</code> from OSON. Each value of the OSON is converted to the closest object type supported
+     * by {@link Metadata}. In many cases, this will be a {@link String}. If the OSON is {@link OracleJsonObject#NULL},
+     * then an empty {@link Metadata} is returned. Mapping NULL to empty is consistent with how {@link TextSegment}
+     * represents metadata when it has no metadata; The {@link TextSegment#metadata()} method returns an empty MetaData.
      */
     private static Metadata getMetadataFromOson(OracleJsonObject oson) {
+        Metadata metadata = new Metadata();
 
         if (oson == null)
-            return null;
+            return metadata;
 
-        Metadata metadata = new Metadata();
         for (Entry<String, OracleJsonValue> entry : oson.entrySet()) {
             String key = entry.getKey();
             OracleJsonValue value = entry.getValue();
@@ -492,14 +422,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             OracleJsonType type = value.getOracleJsonType();
             switch (type) {
                 case STRING:
-                    String string = value.asJsonString().getString();
-                    try {
-                        UUID uuid = UUID.fromString(string);
-                        metadata.put(key, uuid);
-                    }
-                    catch (IllegalArgumentException notUUID) {
-                        metadata.put(key, string);
-                    }
+                    // The string may have originally been a java.util.UUID. Metadata.getUUID(...) can convert it back.
+                    metadata.put(key, value.asJsonString().getString());
                     break;
                 case DECIMAL:
                     OracleJsonDecimal decimal = value.asJsonDecimal();
@@ -511,7 +435,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                             metadata.put(key, decimal.longValue());
                             break;
                         default:
-                            throw new IllegalStateException("Unexpected type: " + decimal.getTargetType());
+                            // There may be up to 38 digits of precision. String is used to avoid a lossy conversion.
+                            metadata.put(key, decimal.toString());
                     }
                     break;
                 case FLOAT:
@@ -521,7 +446,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                     metadata.put(key, value.asJsonDouble().doubleValue());
                     break;
                 default:
-                    throw new IllegalStateException("Unexpected type: " + type);
+                    metadata.put(key, value.toString());
             }
         }
 
@@ -535,7 +460,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return
      */
     private static RuntimeException uncheckSQLException(SQLException sqlException) {
-        return new IllegalStateException(sqlException);
+        return new RuntimeException(sqlException);
     }
 
     /**
@@ -579,15 +504,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         private DataSource dataSource;
 
-        private String tableName;
-
-        private String idColumn = "id";
-
-        private String embeddingColumn = "embedding";
-
-        private String textColumn = "text";
-
-        private String metadataColumn = "metadata";
+        private EmbeddingTable embeddingTable;
 
         private Builder() {}
 
@@ -604,62 +521,36 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * Configures the name of a table where embeddings are stored and retrieved from.
+         * Configures the name of a table used to store embeddings. The table must already exist and have the default
+         * column names.
          *
-         * @param tableName Name of database table. Not null.
+         * @param tableName The name of an existing table. Not null.
          *
-         * @return This builder. Not null.
+         * @return The named embedding table. Not null;
          */
-        public Builder tableName(String tableName) {
-            this.tableName = tableName;
-            return this;
+        public Builder embeddingTable(String tableName) {
+            return embeddingTable(tableName, CreateOption.CREATE_NONE);
         }
 
         /**
-         * Configures the name of a column which stores an id. The default name is "id".
+         * Configures the name of table used to store embeddings, and an option for creating it.
          *
-         * @param idColumn Name of the id column. Not null.
+         * @param tableName The name of an existing table. Not null.
+         *
+         * @param createOption Option for creating the table. Not null.
          *
          * @return This builder. Not null.
          */
-        public Builder idColumn(String idColumn) {
-            this.idColumn = idColumn;
-            return this;
+        public Builder embeddingTable(String tableName, CreateOption createOption) {
+            return embeddingTable(
+                    EmbeddingTable.builder()
+                            .name(tableName)
+                            .createOption(createOption)
+                            .build());
         }
 
-        /**
-         * Configures the name of a column which stores an embedding. The default name is "embedding".
-         *
-         * @param embeddingColumn Name of the id column. Not null.
-         *
-         * @return This builder. Not null.
-         */
-        public Builder embeddingColumn(String embeddingColumn) {
-            this.embeddingColumn = embeddingColumn;
-            return this;
-        }
-
-        /**
-         * Configures the name of a column which stores text. The default name is "text".
-         *
-         * @param textColumn Name of the text column. Not null.
-         *
-         * @return This builder. Not null.
-         */
-        public Builder textColumn(String textColumn) {
-            this.textColumn = textColumn;
-            return this;
-        }
-
-        /**
-         * Configures the name of a column which stores metadata. The default name is "metadata".
-         *
-         * @param metadataColumn Name of the metadata column. Not null.
-         *
-         * @return This builder. Not null.
-         */
-        public Builder metadataColumn(String metadataColumn) {
-            this.metadataColumn = metadataColumn;
+        public Builder embeddingTable(EmbeddingTable embeddingTable) {
+            this.embeddingTable = embeddingTable;
             return this;
         }
 
@@ -667,6 +558,9 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
          * Builds an embedding store with the configuration applied to this builder.
          *
          * @return A new embedding store. Not null.
+         *
+         * @throws RuntimeException If connection to the database fails, or an error occurs when creating the schema
+         * objects.
          */
         public OracleEmbeddingStore build() {
             return new OracleEmbeddingStore(this);

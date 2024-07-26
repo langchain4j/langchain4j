@@ -11,13 +11,7 @@ import java.sql.SQLException;
 
 public class OracleEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
 
-    private static final String TABLE_NAME = "oracle_embedding_store_with_removal_it";
-
-    private static final OracleEmbeddingStore EMBEDDING_STORE =
-            OracleEmbeddingStore.builder()
-                    .tableName(TABLE_NAME)
-                    .dataSource(CommonTestOperations.getDataSource())
-                    .build();
+    private static final OracleEmbeddingStore EMBEDDING_STORE = CommonTestOperations.newEmbeddingStore();
 
     @BeforeEach
     public void clearTable() {
@@ -38,6 +32,6 @@ public class OracleEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemoval
 
     @AfterAll
     public static void cleanUp() throws SQLException {
-        CommonTestOperations.dropTable(TABLE_NAME);
+        CommonTestOperations.dropTable();
     }
 }

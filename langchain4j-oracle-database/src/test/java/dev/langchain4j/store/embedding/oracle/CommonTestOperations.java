@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Random;
+import java.util.logging.Logger;
 
 /**
  * A collection of operations which are shared by tests in this package.
@@ -25,12 +26,19 @@ final class CommonTestOperations {
      */
     private static final EmbeddingModel EMBEDDING_MODEL = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
+    /** Name of a database table used by tests */
+    public static final String TABLE_NAME = "langchain4j_embedding_store";
+
     /**
      * Seed for random numbers. When a test fails, "-Ddev.langchain4j.store.embedding.oracle.SEED=..." can be used to
      * re-execute it with the same random numbers.
      */
     private static final long SEED = Long.getLong(
             "dev.langchain4j.store.embedding.oracle.SEED", System.currentTimeMillis());
+    static {
+        Logger.getLogger(CommonTestOperations.class.getName())
+                .info("dev.langchain4j.store.embedding.oracle.SEED=" + SEED);
+    }
 
     /**
      * Used to generate random numbers, such as those for an embedding vector.
@@ -79,8 +87,34 @@ final class CommonTestOperations {
     }
 
     /**
-     * Drops the table and index created by an embedding store. Tests can call this method in an
-     * {@link org.junit.jupiter.api.AfterAll} method to clean up.
+     * Drops any table previously created by this method, and returns an embedding stored configured to use a new table.
+     * Tests should make use of {@link #dropTable()} to clean up after they're finished.
+     *
+     * @return An embedding store configured to use a new table. Not null.
+     */
+    static OracleEmbeddingStore newEmbeddingStore() {
+        return OracleEmbeddingStore.builder()
+                .dataSource(getDataSource())
+                .embeddingTable(EmbeddingTable.builder()
+                        .name(TABLE_NAME)
+                        .createOption(CreateOption.CREATE_OR_REPLACE)
+                        .build())
+                .build();
+    }
+
+    /**
+     * Drops the table and index created by {@link #newEmbeddingStore()}. Tests can call this method in
+     * {@link org.junit.jupiter.api.AfterAll} or {@link org.junit.jupiter.api.AfterEach} methods to their tables.
+     *
+     * @throws SQLException If a database error prevents the drop.
+     */
+    static void dropTable() throws SQLException {
+        dropTable(TABLE_NAME);
+    }
+
+    /**
+     * Drops the table and index created by an embedding store. Tests can call this method in
+     * {@link org.junit.jupiter.api.AfterAll} or {@link org.junit.jupiter.api.AfterEach} methods to their tables.
      *
      * @param tableName Name of table to drop. Not null.
      *

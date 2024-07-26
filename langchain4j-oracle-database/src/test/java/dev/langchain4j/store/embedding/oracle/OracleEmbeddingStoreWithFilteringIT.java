@@ -10,14 +10,7 @@ import java.sql.SQLException;
 
 public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
 
-    private static final String TABLE_NAME = "oracle_embedding_store_with_filtering_it";
-
-    private static final OracleEmbeddingStore EMBEDDING_STORE =
-            OracleEmbeddingStore.builder()
-                .tableName(TABLE_NAME)
-                .dataSource(CommonTestOperations.getDataSource())
-                .build();
-
+    private static final OracleEmbeddingStore EMBEDDING_STORE = CommonTestOperations.newEmbeddingStore();
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
@@ -36,6 +29,6 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
 
     @AfterAll
     public static void cleanUp() throws SQLException {
-        CommonTestOperations.dropTable(TABLE_NAME);
+        CommonTestOperations.dropTable();
     }
 }
