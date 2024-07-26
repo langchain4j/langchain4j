@@ -7,6 +7,12 @@ assignees: ''
 
 ---
 
+<!--
+Please note that the maintainer of this project is on vacation until the 5th of August.
+During this period, there might be delays in responses to issues and pull requests.
+Thank you for your understanding and patience.
+-->
+
 <!-- Please provide as many details as possible, this will help us to deliver a fix as soon as possible. Thank you! -->
 
 **Describe the bug**
