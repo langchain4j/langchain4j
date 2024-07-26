@@ -17,7 +17,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import static dev.ai4j.openai4j.chat.ContentType.IMAGE_URL;
@@ -218,7 +217,7 @@ public class InternalOpenAiHelper {
                     .collect(toList());
             return isNullOrEmpty(text) ?
                     aiMessage(toolExecutionRequests) :
-                    new AiMessage(text, toolExecutionRequests);
+                    aiMessage(text, toolExecutionRequests);
         }
 
         FunctionCall functionCall = assistantMessage.functionCall();
@@ -229,7 +228,7 @@ public class InternalOpenAiHelper {
                     .build();
             return isNullOrEmpty(text) ?
                     aiMessage(toolExecutionRequest) :
-                    new AiMessage(text, singletonList(toolExecutionRequest));
+                    aiMessage(text, singletonList(toolExecutionRequest));
         }
 
         return aiMessage(text);
