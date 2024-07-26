@@ -3,7 +3,10 @@ package dev.langchain4j.store.embedding.oracle;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import oracle.jdbc.OracleStatement;
 import oracle.jdbc.OracleType;
@@ -86,7 +89,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * </tr></table>
  * <p>
  * An inverted flat file (IVF) vector index is created on the embedding column. The index is named
- * "{tableName}_vector_index", where {tableName} is the name configured using the {@link Builder}.
+ * "{tableName}_embedding_index", where {tableName} is the name configured using the {@link Builder}.
  * </p><p>
  * All methods of this embedding store will throw an {@link RuntimeException} with a {@link SQLException} as its
  * {@link RuntimeException#getCause()} when a database operation results in an error.
@@ -94,10 +97,14 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    /** DataSource configured to connect with an Oracle Database. */
+    /**
+     * DataSource configured to connect with an Oracle Database.
+     */
     private final DataSource dataSource;
 
-    /** Table where embeddings are stored */
+    /**
+     * Table where embeddings are stored
+     */
     private final EmbeddingTable table;
 
     /**
@@ -108,22 +115,62 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final UnaryOperator<String> metadataKeyMapper;
 
     /**
+     * Distance metric used for similarity searches
+     */
+    private final DistanceMetric distanceMetric;
+
+    /**
+     * <code>true</code> if {@link #search(EmbeddingSearchRequest)} should use an exact search, or <code>false</code> if
+     * it should use approximate search.
+     */
+    private final boolean isExactSearch;
+
+    /**
      * Constructs embedding store configured by a builder.
      *
      * @param builder Builder that configures the embedding store. Not null.
-     *
      * @throws IllegalArgumentException If the configuration is not valid.
+     * @implNote This constructor does not perform null checks. Validation should occur in {@link Builder#build()},
+     * before calling this constructor.
      */
     private OracleEmbeddingStore(Builder builder) {
-        dataSource = ensureNotNull(builder.dataSource, "dataSource");
-        table = ensureNotNull(builder.embeddingTable, "embeddingTable");
+        dataSource = builder.dataSource;
+        table = builder.embeddingTable;
+        distanceMetric = builder.distanceMetric;
+        isExactSearch = builder.isExactSearch;
         metadataKeyMapper = key -> "JSON_VALUE(" + table.metadataColumn() + ", '$." + key + "')";
 
         try {
             table.create(dataSource);
-        }
-        catch (SQLException sqlException) {
+            createIndex(builder);
+        } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
+        }
+
+    }
+
+    private static void createIndex(Builder builder) throws SQLException {
+
+        // In 23.4, the database will only use a vector index for approximate search. This may change in a later
+        // release.
+        if (builder.isExactSearch)
+            return;
+
+        try (Connection connection = builder.dataSource.getConnection();
+             Statement statement = connection.createStatement()
+        ) {
+            String tableName = builder.embeddingTable.name();
+
+            // If the table name is a quoted identifier, then the index name must also be quoted.
+            String indexName = tableName.startsWith("\"") && tableName.endsWith("\"")
+                    ? "\"" + tableName.substring(1, tableName.length() - 1) + "_embedding_index\""
+                    : tableName + "_embedding_index";
+
+            statement.execute("CREATE VECTOR INDEX IF NOT EXISTS " + indexName +
+                        " ON " + tableName + "(" + builder.embeddingTable.embeddingColumn() + ")" +
+                        " ORGANIZATION NEIGHBOR PARTITIONS" +
+                        " WITH DISTANCE " + builder.distanceMetric.name());
+            statement.executeBatch();
         }
     }
 
@@ -299,17 +346,19 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         // In a 23.4 build of Oracle Database, ORA-06553 will result if the distance column is referenced in the WHERE
         // clause. For this reason, the minScore filtering will happen locally. There are workarounds, such as binding
-        // the VECTOR twice, or using a sub-select. These can be implemented if they are proven to offer a significant
+        // the VECTOR twice, or using a sub-select. These can be implemented if proven to offer a significant
         // performance improvement.
         try (Connection connection = dataSource.getConnection();
              PreparedStatement query = connection.prepareStatement(
-                     "SELECT " + String.join(", ",
-                             table.embeddingColumn() + " <=> ? distance, " +
-                             table.idColumn(), table.embeddingColumn(), table.textColumn(),table.metadataColumn()) +
+                     "SELECT VECTOR_DISTANCE(" +
+                             table.embeddingColumn() + ", ?, " + distanceMetric.name() + ") distance, " +
+                             String.join(", ", table.idColumn(), table.embeddingColumn(), table.textColumn(),
+                                     table.metadataColumn()) +
                          " FROM " + table.name() +
                          sqlFilter.asWhereClause() +
                          " ORDER BY distance" +
-                         " FETCH FIRST " + maxResults + " ROWS ONLY")
+                         " FETCH " + (isExactSearch ? "" : " APPROXIMATE") +
+                         " FIRST " + maxResults + " ROWS ONLY")
         ) {
             query.setObject(1, request.queryEmbedding().vector(), OracleTypes.VECTOR_FLOAT32);
             sqlFilter.setParameters(query, 2);
@@ -323,7 +372,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             OracleStatement oracleStatement = query.unwrap(OracleStatement.class);
             oracleStatement.defineColumnType(1, OracleTypes.BINARY_DOUBLE);
             oracleStatement.defineColumnType(2, OracleTypes.VARCHAR);
-            oracleStatement.defineColumnType(3, OracleTypes.VECTOR_FLOAT32, 524308);
+            oracleStatement.defineColumnType(3, OracleTypes.VECTOR_FLOAT32, 524308); // <-- Max vector size, in bytes
             oracleStatement.defineColumnType(4, OracleTypes.CLOB, Integer.MAX_VALUE);
             oracleStatement.defineColumnType(5, OracleTypes.JSON, Integer.MAX_VALUE);
 
@@ -456,11 +505,33 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Returns a runtime exception which conveys the same information as a given SQLException. Methods which can not
      * throw a checked exception use this method to convert it into an unchecked exception.
-     * @param sqlException
-     * @return
+     *
+     * @param sqlException Exception thrown from the JDBC API. Not null.
+     *
+     * @return Unchecked exception to throw from the EmbeddingStore API. Not null.
      */
     private static RuntimeException uncheckSQLException(SQLException sqlException) {
-        return new RuntimeException(sqlException);
+        return sqlException instanceof BatchUpdateException
+            ? uncheckSQLException((BatchUpdateException) sqlException)
+            : new RuntimeException(sqlException);
+    }
+
+    /**
+     * Returns a runtime exception which conveys the same information as a given BatchUpdateException. Methods which can
+     * not throw a checked exception use this method to convert it into an unchecked exception. This is a specialized
+     * form of {@link #uncheckSQLException(SQLException)} which extracts the first failure from
+     * {@link BatchUpdateException#getNextException()}. This getNextException method returns more specific information,
+     * which can help users debug. Future work on this method can handle cases where JDBC is configured to
+     * {@linkplain oracle.jdbc.OracleConnection#CONNECTION_PROPERTY_CONTINUE_BATCH_ON_ERROR continue batches on error}
+     * and can use {@link BatchUpdateException#getUpdateCounts()} to identify specific records that cause a failure.
+     *
+     * @param batchUpdateException Exception thrown from {@link PreparedStatement#executeBatch()}. Not null.
+     *
+     * @return Unchecked exception to throw from the EmbeddingStore API. Not null.
+     */
+    private static RuntimeException uncheckSQLException(BatchUpdateException batchUpdateException) {
+        SQLException firstFailure = batchUpdateException.getNextException();
+        return new RuntimeException(firstFailure == null ? batchUpdateException : firstFailure);
     }
 
     /**
@@ -502,9 +573,15 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public static class Builder {
 
+        // All fields are specified by method-level JavaDocs
+
         private DataSource dataSource;
 
         private EmbeddingTable embeddingTable;
+
+        private DistanceMetric distanceMetric = DistanceMetric.COSINE;
+
+        private boolean isExactSearch = false;
 
         private Builder() {}
 
@@ -516,7 +593,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @return This builder. Not null.
          */
         public Builder dataSource(DataSource dataSource) {
-            this.dataSource = dataSource;
+            this.dataSource = ensureNotNull(dataSource, "dataSource");
             return this;
         }
 
@@ -542,6 +619,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @return This builder. Not null.
          */
         public Builder embeddingTable(String tableName, CreateOption createOption) {
+            ensureNotNull(tableName, "tableName");
+            ensureNotNull(createOption, "createOption");
             return embeddingTable(
                     EmbeddingTable.builder()
                             .name(tableName)
@@ -550,7 +629,43 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public Builder embeddingTable(EmbeddingTable embeddingTable) {
+            ensureNotNull(embeddingTable, "embeddingTable");
             this.embeddingTable = embeddingTable;
+            return this;
+        }
+
+        /**
+         * Configures the distance metric used for similarity searches with the
+         * {@linkplain #search(EmbeddingSearchRequest)} method. The default metric is {@link DistanceMetric#COSINE}.
+         * The metric configured by this method should match the one used to train the embedding model which generates
+         * embeddings that the search method operates upon.
+         *
+         * @param distanceMetric Distance metric for similarity searches. Not null.
+         *
+         * @return This builder. Not null.
+         */
+        public Builder distanceMetric(DistanceMetric distanceMetric) {
+            this.distanceMetric = ensureNotNull(distanceMetric, "distanceMetric");
+            return this;
+        }
+
+        /**
+         * Configures the embedding store to use
+         * <a href="https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/perform-exact-similarity-search.html">
+         * exact
+         * </a> or
+         * <a href="https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/understand-approximate-similarity-search-using-vector-indexes.html">
+         * approximate
+         * </a>
+         * similarity search. Approximate search is the default.
+         *
+         *
+         * @param isExactSearch <code>true</code> to configure exact search, or <code>false</code> for approximate.
+         *
+         * @return This builder. Not null.
+         */
+        public Builder exactSearch(boolean isExactSearch) {
+            this.isExactSearch = isExactSearch;
             return this;
         }
 
@@ -563,6 +678,9 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
          * objects.
          */
         public OracleEmbeddingStore build() {
+            // Validate that required options have been set
+            ensureNotNull(dataSource, "dataSource");
+            ensureNotNull(embeddingTable, "embeddingTable");
             return new OracleEmbeddingStore(this);
         }
     }

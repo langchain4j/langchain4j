@@ -207,14 +207,14 @@ public class EmbeddingTableTest {
                     .build());
 
             // Set up the existing table to have at least one row of data
-            float[] vector = CommonTestOperations.randomFloats(64);
+            Embedding embedding = TestData.randomEmbedding();
             try (Connection connection = getDataSource().getConnection();
                  Statement statement = connection.createStatement();
                  PreparedStatement insert = connection.prepareStatement(
                          "INSERT INTO " + tableName + "(id, embedding) VALUES (?, ?)")) {
 
                 insert.setString(1, TestData.randomId());
-                insert.setObject(2, vector, OracleType.VECTOR);
+                insert.setObject(2, embedding.vector(), OracleType.VECTOR);
                 insert.executeUpdate();
             }
 
@@ -225,7 +225,7 @@ public class EmbeddingTableTest {
                             .embeddingTable(tableName, CREATE_OR_REPLACE)
                             .build()
                             .search(EmbeddingSearchRequest.builder()
-                                    .queryEmbedding(Embedding.from(vector))
+                                    .queryEmbedding(embedding)
                                     .minScore(0d)
                                     .build())
                             .matches()
