@@ -1,17 +1,13 @@
 Thank you for investing your time and effort in contributing to our project, we appreciate it a lot! 🤗
 
 
-# Current situation (25 April 2024)
-There are over 60 open PRs. Please help us by reviewing them first, before opening new ones. 🙏
-
-
 # General guidelines
 - If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will prioritize is shortly.
 - Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/)
 - Keep the code compatible with Java 8. We plan to increase the baseline to Java 17 a bit later.
-- Avoid adding new dependencies as much as possible. If absolutely necessary, try to use the same libraries which are already used in the project.
+- Avoid adding new dependencies as much as possible (new dependencies with test scope are OK). If absolutely necessary, try to use the same libraries which are already used in the project.
 - Write unit and/or integration tests for your code. This is critical: no tests, no review!
-- Avoid making breaking changes. Always keep backward compatibility in mind.
+- Avoid making breaking changes. Always keep backward compatibility in mind. For example, instead of removing fields/methods/etc, mark them `@Deprecated` and make sure they still work as before.
 - Follow existing naming conventions.
 - Add Javadoc where necessary. There's no need to duplicate Javadoc from the implemented interfaces.
 - Follow existing code style present in the project.
@@ -59,7 +55,8 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 - [Integration with Chroma](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-chroma) is a good example.
 - Use the official SDK if available.
 - If the official SDK is not available, use Retrofit and Jackson to implement the client.
-- Add a `{IntegrationName}EmbeddingStoreIT`. It should extend from `EmbeddingStoreWithFilteringIT` or `EmbeddingStoreIT` and pass all tests.
+- Add a `{IntegrationName}EmbeddingStoreIT`. It should extend from `EmbeddingStoreWithFilteringIT` (when store supports metadata filtering) or `EmbeddingStoreIT` and pass all tests.
+- Add a `{IntegrationName}EmbeddingStoreRemovalIT`. It should extend from `EmbeddingStoreWithRemovalIT` and pass all tests.
 - Document the new integration [here](https://github.com/langchain4j/langchain4j/blob/main/README.md), [here](https://github.com/langchain4j/langchain4j/tree/main/docs/docs/integrations/embedding-stores) and [here](https://github.com/langchain4j/langchain4j/blob/main/docs/docs/integrations/embedding-stores/index.md).
 - Add an example to the [examples repository](https://github.com/langchain4j/langchain4j-examples), similar to [this](https://github.com/langchain4j/langchain4j-examples/tree/main/chroma-example).
 - Add a new module to the appropriate section of the [BOM](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-bom/pom.xml).
