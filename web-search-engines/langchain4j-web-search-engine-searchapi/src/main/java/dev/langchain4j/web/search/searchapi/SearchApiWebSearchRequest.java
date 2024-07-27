@@ -5,9 +5,6 @@ import lombok.Getter;
 
 import java.util.Map;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 @Getter
 class SearchApiWebSearchRequest {
 
@@ -25,9 +22,9 @@ class SearchApiWebSearchRequest {
                               String query,
                               Map<String, Object> optionalParameters,
                               Map<String, Object> additionalRequestParameters) {
-        this.engine = ensureNotNull(engine, "engine");
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.query = ensureNotBlank(query, "query");
+        this.engine = engine;
+        this.apiKey = apiKey;
+        this.query = query;
         this.finalOptionalParameters = optionalParameters;
         if (additionalRequestParameters != null) {
             finalOptionalParameters.putAll(additionalRequestParameters);

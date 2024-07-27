@@ -34,19 +34,21 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
     private final Map<String, Object> optionalParameters;
 
     /**
-     * @param apiKey             the Search API key for accessing their API
+     * @param apiKey             Required - the Search API key for accessing their API
+     * @param baseUrl            overrides the default SearchApi base url
      * @param timeout            the timeout duration for API requests
      *                           <p>
      *                           Default value is 30 seconds.
      * @param engine             the engine used by Search API to execute the search
      *                           <p>
      *                           Default engine is Google Search.
-     * @param optionalParameters optional parameters to be passed on every request of this the engine, they can be overridden by the WebSearchRequest additional parameters for matching keys
+     * @param optionalParameters parameters to be passed on every request of this the engine, they can be overridden by the WebSearchRequest additional parameters for matching keys
      *                           <p>
      *                           Check <a href="https://www.searchapi.io">Search API</a> for more information on available parameters for each engine
      */
     @Builder
     public SearchApiWebSearchEngine(String apiKey,
+                                    String baseUrl,
                                     Duration timeout,
                                     String engine,
                                     Map<String, Object> optionalParameters) {
@@ -54,11 +56,15 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         this.engine = getOrDefault(engine, DEFAULT_ENGINE);
         this.optionalParameters = getOrDefault(optionalParameters, new HashMap<>());
         this.client = SearchApiClient.builder()
-                .baseUrl(BASE_URL)
                 .timeout(getOrDefault(timeout, ofSeconds(30)))
+                .baseUrl(getOrDefault(baseUrl, BASE_URL))
                 .build();
     }
 
+    /**
+     * @param webSearchRequest Check <a href="https://www.searchapi.io">Search API</a> for more information on available additional
+     *                         parameters for each engine that can be inside the request
+     */
     @Override
     public WebSearchResults search(WebSearchRequest webSearchRequest) {
         SearchApiWebSearchRequest request = SearchApiWebSearchRequest.builder()
@@ -74,7 +80,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 
     private WebSearchResults toWebSearchResults(SearchApiWebSearchResponse response) {
         List<OrganicResult> organicResults = response.getOrganicResults();
-        Long totalResults = ((Integer) organicResults.size()).longValue(); // not ideal, but it may not be present in the response and is required not null by WebSearchInformationResult
+        Long totalResults = getTotalResults(response.getSearchInformation());
         WebSearchInformationResult searchInformation = WebSearchInformationResult.from(
                 totalResults,
                 getCurrentPage(response.getPagination()),
@@ -89,9 +95,19 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                 toWebSearchOrganicResults(organicResults));
     }
 
+    private static long getTotalResults(Map<String, Object> searchInformation) {
+        if (searchInformation != null && searchInformation.containsKey("total_results")) {
+            Object totalResults = searchInformation.get("total_results");
+            return totalResults instanceof Integer ?
+                    ((Integer) totalResults).longValue() :
+                    (Long) totalResults;
+        }
+        return 0;
+    }
+
     private Integer getCurrentPage(Map<String, Object> pagination) {
         if (pagination != null && pagination.containsKey("current")) {
-            return ((Double) pagination.get("current")).intValue();
+            return (Integer) pagination.get("current");
         }
         return null;
     }

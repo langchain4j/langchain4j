@@ -1,32 +1,28 @@
 package dev.langchain4j.web.search.searchapi;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import retrofit2.Response;
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
 class SearchApiClient {
 
-    private static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
-            .setPrettyPrinting()
-            .create();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
 
-    private final SearchApiWebSearchApi api;
+    private final SearchApi api;
 
     @Builder
-    SearchApiClient(String baseUrl, Duration timeout) {
+    SearchApiClient(Duration timeout, String baseUrl) {
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
@@ -35,9 +31,9 @@ class SearchApiClient {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
                 .client(okHttpClientBuilder.build())
-                .addConverterFactory(GsonConverterFactory.create(GSON))
+                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();
-        this.api = retrofit.create(SearchApiWebSearchApi.class);
+        this.api = retrofit.create(SearchApi.class);
     }
 
     SearchApiWebSearchResponse search(SearchApiWebSearchRequest request) {

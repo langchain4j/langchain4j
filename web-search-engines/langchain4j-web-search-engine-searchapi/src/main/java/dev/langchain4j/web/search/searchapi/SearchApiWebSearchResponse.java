@@ -1,13 +1,18 @@
 package dev.langchain4j.web.search.searchapi;
 
-import lombok.Builder;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 import java.util.Map;
 
 @Getter
-@Builder
+@NoArgsConstructor
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 class SearchApiWebSearchResponse {
 
     private List<OrganicResult> organicResults;
@@ -30,7 +35,9 @@ class SearchApiWebSearchResponse {
 }
 
 @Getter
-@Builder
+@NoArgsConstructor
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 class OrganicResult {
 
     private String title;

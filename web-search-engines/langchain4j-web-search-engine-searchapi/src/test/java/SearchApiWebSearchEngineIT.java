@@ -1,3 +1,5 @@
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchEngineIT;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
@@ -12,10 +14,20 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".+")
-class SearchApiWebSearchEngineIT {
+class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
+
+    @Override
+    protected WebSearchEngine searchEngine() {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("num", WebSearchEngineIT.EXPECTED_MAX_RESULTS);
+        return SearchApiWebSearchEngine.builder()
+                .apiKey(System.getenv("SEARCHAPI_API_KEY"))
+                .optionalParameters(parameters)
+                .build();
+    }
 
     @Test
-    void should_search() {
+    void should_search_default() {
         // given
         SearchApiWebSearchEngine searchEngine = SearchApiWebSearchEngine.builder()
                 .apiKey(System.getenv("SEARCHAPI_API_KEY"))
@@ -108,5 +120,30 @@ class SearchApiWebSearchEngineIT {
         // then
         Long totalResults = webSearchResults.searchInformation().totalResults();
         assertThat(totalResults).isGreaterThan(1000);
+    }
+
+    @Test
+    void should_search_using_bing() {
+        // given
+        SearchApiWebSearchEngine searchEngine = SearchApiWebSearchEngine.builder()
+                .apiKey(System.getenv("SEARCHAPI_API_KEY"))
+                .engine("bing")
+                .build();
+
+        // when
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("What is Langchain4j?")
+                .build();
+        WebSearchResults webSearchResults = searchEngine.search(request);
+
+        // then
+        List<WebSearchOrganicResult> results = webSearchResults.results();
+        assertThat(results).hasSizeGreaterThan(0);
+        results.forEach(result -> {
+            assertThat(result.title()).isNotBlank();
+            assertThat(result.url()).isNotNull();
+            assertThat(result.snippet()).isNotBlank();
+            assertThat(result.content()).isNull();
+        });
     }
 }
