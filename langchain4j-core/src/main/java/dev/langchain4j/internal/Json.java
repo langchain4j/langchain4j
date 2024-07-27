@@ -97,8 +97,10 @@ public class Json {
      * Convert the given JSON string to an object of the given type.
      *
      * @param json the JSON string.
-     * @param type the type of the object.
-     * @param <T>  the type of the object.
+     * @param rawType the type of the object.
+     * @param typeArgument the generic type argument of the object.
+     * @param <T> the type of the object.
+     * @param <U> the generic type of {@code rawType}. 
      * @return the object.
      */
     public static <T, U> T fromJson(String json, Class<T> rawType, Class<U> typeArgument) {
