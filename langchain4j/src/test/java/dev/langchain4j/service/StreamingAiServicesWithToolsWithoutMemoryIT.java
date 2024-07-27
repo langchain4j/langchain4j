@@ -117,7 +117,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_0613) // this model can only call tools sequentially
+                // TODO: is is ok to use 4o-mini here? gpt-3.5-turbo-0613 deprecated, failing test
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -158,7 +158,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         verifyNoMoreInteractions(calculator);
 
         ArgumentCaptor<List<ChatMessage>> sendMessagesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(spyModel, times(3)).generate(sendMessagesCaptor.capture(), anyList(), any());
+        verify(spyModel, times(3)).generate(sendMessagesCaptor.capture(), anyList(), any()); // TODO: failing, wanted 3 was 2
         List<List<ChatMessage>> allGenerateSendMessages = sendMessagesCaptor.getAllValues();
 
         List<ChatMessage> firstGenerateSendMessages = allGenerateSendMessages.get(0);
