@@ -6,7 +6,14 @@ import com.knuddels.jtokkit.api.IntArrayList;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
 
 import java.util.List;
@@ -32,11 +39,11 @@ public class OpenAiTokenizer implements Tokenizer {
     private final Optional<Encoding> encoding;
 
     /**
-     * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-3.5-turbo" model.
+     * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-4o-mini" model.
      * It should be suitable for all current OpenAI models, as they all use the same cl100k_base encoding.
      */
     public OpenAiTokenizer() {
-        this(GPT_3_5_TURBO.toString());
+        this(GPT_4_O_MINI.toString());
     }
 
     /**
@@ -114,7 +121,7 @@ public class OpenAiTokenizer implements Tokenizer {
             }
         }
 
-        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW.toString())) {
+        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW.toString())) { // TODO: not sure why checking gpt-4-vision-preview, GPT_4_VISION_PREVIEW is deprecated
             tokenCount += extraTokensPerName();
             tokenCount += estimateTokenCountInText(userMessage.name());
         }
