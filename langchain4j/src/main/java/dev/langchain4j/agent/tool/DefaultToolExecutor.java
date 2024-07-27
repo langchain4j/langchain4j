@@ -4,7 +4,6 @@ import static dev.langchain4j.agent.tool.ToolExecutionRequestUtil.argumentsAsMap
 
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.internal.Json;
-import lombok.SneakyThrows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
