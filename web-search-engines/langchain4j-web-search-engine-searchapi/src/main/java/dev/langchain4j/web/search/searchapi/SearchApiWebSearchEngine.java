@@ -98,9 +98,9 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
     private static long getTotalResults(Map<String, Object> searchInformation) {
         if (searchInformation != null && searchInformation.containsKey("total_results")) {
             Object totalResults = searchInformation.get("total_results");
-            return totalResults instanceof Integer ?
-                    ((Integer) totalResults).longValue() :
-                    (Long) totalResults;
+            return totalResults instanceof Integer
+                    ? ((Integer) totalResults).longValue()
+                    : (Long) totalResults; // changes depending on the amount of total_results
         }
         return 0;
     }
