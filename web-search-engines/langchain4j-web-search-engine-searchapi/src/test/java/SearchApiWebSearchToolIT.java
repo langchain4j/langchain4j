@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".*")
@@ -33,7 +34,7 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
 
     ChatLanguageModel chatModel = OpenAiChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
-            .modelName(OpenAiChatModelName.GPT_3_5_TURBO)
+            .modelName(GPT_4_O_MINI)
             .logRequests(true)
             .build();
 
