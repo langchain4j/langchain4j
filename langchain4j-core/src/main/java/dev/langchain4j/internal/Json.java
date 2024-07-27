@@ -38,6 +38,20 @@ public class Json {
         <T> T fromJson(String json, Class<T> type);
 
         /**
+         * Convert the given JSON string to an object of the given type.
+         * 
+         * This method is useful if the specified object is a generic type.
+         * For non-generic objects, use {@link #fromJson(String, Class)} instead. 
+         *
+         * @param json the JSON string.
+         * @param typeToken The specific genericized type of the object.
+         * @param <T>  the type of the object.
+         * @param <U>  the argument type of the class of the object
+         * @return the object.
+         */
+        <T, U> T fromJson(String json, Class<T> rawType, Class<U> typeArgumentClass);
+
+        /**
          * Convert the given object to an {@link InputStream}.
          *
          * @param o    the object to convert.
@@ -77,6 +91,18 @@ public class Json {
      */
     public static <T> T fromJson(String json, Class<T> type) {
         return CODEC.fromJson(json, type);
+    }
+
+    /**
+     * Convert the given JSON string to an object of the given type.
+     *
+     * @param json the JSON string.
+     * @param type the type of the object.
+     * @param <T>  the type of the object.
+     * @return the object.
+     */
+    public static <T, U> T fromJson(String json, Class<T> rawType, Class<U> typeArgument) {
+        return CODEC.fromJson(json, rawType, typeArgument);
     }
 
     /**
