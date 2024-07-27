@@ -87,8 +87,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                 null
         );
         Map<String, Object> searchMetadata = getOrDefault(response.getSearchParameters(), new HashMap<>());
-        addToMetadata(searchMetadata, response.getPagination());
-        addToMetadata(searchMetadata, response.getSearchInformation());
+        addToMetadata(searchMetadata, response.getSearchMetadata());
         return WebSearchResults.from(
                 searchMetadata,
                 searchInformation,
@@ -120,13 +119,16 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 
     private List<WebSearchOrganicResult> toWebSearchOrganicResults(List<OrganicResult> organicResults) {
         return organicResults.stream()
-                .map(result -> WebSearchOrganicResult.from(
-                        result.getTitle(),
-                        URI.create(result.getLink()),
-                        getOrDefault(result.getSnippet(), ""),
-                        null,  // by default google custom search api does not return content
-                        null
-                ))
+                .map(result -> {
+                    Map<String, String> metadata = new HashMap<>(2);
+                    metadata.put("position", result.getPosition());
+                    return WebSearchOrganicResult.from(
+                            result.getTitle(),
+                            URI.create(result.getLink()),
+                            getOrDefault(result.getSnippet(), ""),
+                            null,  // by default google custom search api does not return content
+                            metadata);
+                })
                 .collect(Collectors.toList());
     }
 

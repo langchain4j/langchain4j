@@ -32,6 +32,10 @@ class SearchApiWebSearchResponse {
      */
     private Map<String, Object> searchInformation;
 
+    /**
+     * May or may not be present
+     */
+    private Map<String, Object> searchMetadata;
 }
 
 @Getter
@@ -42,6 +46,7 @@ class OrganicResult {
 
     private String title;
     private String link;
+    private String position;
 
     /**
      * May or may not be present
