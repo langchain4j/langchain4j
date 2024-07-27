@@ -106,4 +106,4 @@ public class SearchApiTool {
 | [Bing News](https://www.searchapi.io/docs/bing-news)      | ✅         |
 | [Baidu](https://www.searchapi.io/docs/baidu)              | ✅         |
 
-Other engines that return the `organic_results` array and the organic result has `title`, `link`, and `snippet` is supported by this library even if not listed above.
+Any other engine that returns the `organic_results` array and the organic result has `title`, `link`, and `snippet` is supported by this library even if not listed above.
