@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
@@ -100,7 +100,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();
-        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
+        this.modelName = getOrDefault(modelName, GPT_4_O_MINI.toString());
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.stop = stop;

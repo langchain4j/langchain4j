@@ -3,12 +3,22 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.assertj.core.data.Percentage;
@@ -26,8 +36,7 @@ import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.DICE_IMAGE_URL;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4_VISION_PREVIEW;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_1106;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -52,7 +61,6 @@ class OpenAiStreamingChatModelIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_VISION_PREVIEW)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -573,7 +581,6 @@ class OpenAiStreamingChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
