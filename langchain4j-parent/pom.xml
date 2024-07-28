@@ -22,7 +22,7 @@
         <azure-ai-openai.version>1.0.0-beta.10</azure-ai-openai.version>
         <azure-ai-search.version>11.6.6</azure-ai-search.version>
         <azure.storage-blob.version>12.26.1</azure.storage-blob.version>
-        <azure.storage-common.version>12.25.1</azure.storage-common.version>
+        <azure.storage-common.version>12.26.0</azure.storage-common.version>
         <azure.identity.version>1.13.1</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
