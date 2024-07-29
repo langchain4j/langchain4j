@@ -115,7 +115,7 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Automatic-Module-Name>dev.langchain4j.model.anthropic</Automatic-Module-Name>
+                            <Automatic-Module-Name>dev.langchain4j.anthropic</Automatic-Module-Name>
                         </manifestEntries>
                     </archive>
                 </configuration>
