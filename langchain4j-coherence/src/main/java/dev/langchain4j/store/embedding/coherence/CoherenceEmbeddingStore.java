@@ -81,7 +81,8 @@ public class CoherenceEmbeddingStore
      * are created using the builder.
      *
      * @param namedMap        the {@link NamedMap} to contain the {@link DocumentChunk document chunks}
-     * @param forceNormalize  {@code true} to force normalization of embeddings on adding and searching
+     * @param forceNormalize  {@code true} if this {@link CoherenceEmbeddingStore} should force call
+     *                        {@link Embedding#normalize()} on embeddings when adding or searching
      */
     protected CoherenceEmbeddingStore(NamedMap<DocumentChunk.Id, DocumentChunk> namedMap, boolean forceNormalize) {
         this.documentChunks = namedMap;
@@ -202,6 +203,17 @@ public class CoherenceEmbeddingStore
     }
 
     /**
+     * Returns {@code true} if this {@link CoherenceEmbeddingStore} will force
+     * call {@link Embedding#normalize()} on embeddings when adding or searching.
+     *
+     * @return {@code true} if this {@link CoherenceEmbeddingStore} will force
+     *         call {@link Embedding#normalize()} on embeddings when adding or searching
+     */
+    public boolean isForceNormalize() {
+        return forceNormalize;
+    }
+
+/**
      * Add an embedding to the repository.
      *
      * @param id         the id of the {@link Embedding}
@@ -457,7 +469,8 @@ public class CoherenceEmbeddingStore
         /**
          * Set whether to force normalization of vectors on adding and searching.
          *
-         * @param f  {@code true} to force normalization of embeddings on adding and searching
+         * @param f  {@code true} if the {@link CoherenceEmbeddingStore} should call force
+         *           {@link Embedding#normalize()} on embeddings when adding or searching
          *
          * @return this builder for fluent method calls
          */
