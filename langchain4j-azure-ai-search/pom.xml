@@ -110,7 +110,7 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Automatic-Module-Name>dev.langchain4j.azure.search</Automatic-Module-Name>
+                            <Automatic-Module-Name>dev.langchain4j.azure.aisearch</Automatic-Module-Name>
                         </manifestEntries>
                     </archive>
                 </configuration>
