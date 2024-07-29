@@ -15,6 +15,7 @@ import java.util.Map;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 class SearchApiClient {
 
@@ -24,6 +25,7 @@ class SearchApiClient {
 
     @Builder
     SearchApiClient(Duration timeout, String baseUrl) {
+        ensureNotNull(timeout, "timeout");
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
