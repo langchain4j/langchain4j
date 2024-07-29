@@ -26,9 +26,7 @@ class SearchApiContentRetrieverIT extends WebSearchContentRetrieverIT {
 
     @Override
     protected WebSearchEngine searchEngine() {
-        return SearchApiWebSearchEngine.builder()
-                .apiKey(System.getenv("SEARCHAPI_API_KEY"))
-                .build();
+        return searchEngine;
     }
 
     @Test

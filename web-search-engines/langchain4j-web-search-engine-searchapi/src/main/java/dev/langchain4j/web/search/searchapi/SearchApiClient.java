@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class SearchApiClient {
 
@@ -29,7 +30,7 @@ class SearchApiClient {
                 .readTimeout(timeout)
                 .writeTimeout(timeout);
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
                 .client(okHttpClientBuilder.build())
                 .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();
