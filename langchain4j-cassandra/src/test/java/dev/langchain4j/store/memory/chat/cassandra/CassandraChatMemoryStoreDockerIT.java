@@ -37,7 +37,7 @@ class CassandraChatMemoryStoreDockerIT extends CassandraChatMemoryStoreTestSuppo
 
     @Override
     @SuppressWarnings("resource")
-    CassandraChatMemoryStore createChatMemoryStore() {
+    CassandraCassioChatMemoryStore createChatMemoryStore() {
         final InetSocketAddress contactPoint =
                 cassandraContainer.getContactPoint();
         CqlSession.builder()
@@ -46,7 +46,7 @@ class CassandraChatMemoryStoreDockerIT extends CassandraChatMemoryStoreTestSuppo
                 .build().execute(
                 "CREATE KEYSPACE IF NOT EXISTS " + KEYSPACE +
                 " WITH replication = {'class':'SimpleStrategy', 'replication_factor':'1'};");
-        return new CassandraChatMemoryStore(CqlSession.builder()
+        return new CassandraCassioChatMemoryStore(CqlSession.builder()
                 .addContactPoint(contactPoint)
                 .withLocalDatacenter(DATACENTER)
                 .withKeyspace(KEYSPACE)

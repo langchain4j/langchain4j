@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.cassio.SimilarityMetric;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -63,14 +63,14 @@ class CassandraEmbeddingStoreDockerIT extends CassandraEmbeddingStoreIT {
     protected EmbeddingStore<TextSegment> embeddingStore() {
         final InetSocketAddress contactPoint = cassandraContainer.getContactPoint();
         if (embeddingStore == null) {
-            embeddingStore = CassandraEmbeddingStore.builder()
+            embeddingStore = CassandraCassioEmbeddingStore.builder()
                     .contactPoints(Collections.singletonList(contactPoint.getHostName()))
                     .port(contactPoint.getPort())
                     .localDataCenter(DATACENTER)
                     .keyspace(KEYSPACE)
                     .table(TEST_INDEX)
                     .dimension(embeddingModelDimension())
-                    .metric(CassandraSimilarityMetric.COSINE)
+                    .metric(SimilarityMetric.COSINE)
                     .build();
         }
         return embeddingStore;

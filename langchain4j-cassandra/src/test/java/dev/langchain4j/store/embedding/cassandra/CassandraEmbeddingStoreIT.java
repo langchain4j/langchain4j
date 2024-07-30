@@ -11,6 +11,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -23,6 +24,7 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
+@Disabled("No Cassandra in the CI")
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
@@ -31,7 +33,7 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
 
     protected static final String TEST_INDEX = "test_embedding_store";
 
-    CassandraEmbeddingStore embeddingStore;
+    CassandraCassioEmbeddingStore embeddingStore;
 
     EmbeddingModel embeddingModel = OpenAiEmbeddingModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -53,7 +55,7 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
      */
     @Override
     protected void clearStore() {
-        ((CassandraEmbeddingStore) embeddingStore()).clear();
+        ((CassandraCassioEmbeddingStore) embeddingStore()).clear();
     }
 
     @Override
