@@ -2,7 +2,7 @@ package dev.langchain4j.data.document.splitter.recursive;
 
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
-import dev.langchain4j.model.embedding.HuggingFaceTokenizer;
+import dev.langchain4j.model.embedding.onnx.HuggingFaceTokenizer;
 import dev.langchain4j.spi.data.document.splitter.DocumentSplitterFactory;
 
 public class RecursiveDocumentSplitterFactory implements DocumentSplitterFactory {
