@@ -12,6 +12,8 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.time.Duration;
@@ -190,13 +192,34 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         int maxResults,
         double minScore
     ) {
-        QueryRequest queryRequest = new QueryRequest(referenceEmbedding.vectorAsList(), maxResults);
+        QueryRequest queryRequest = new QueryRequest.Builder()
+            .queryEmbeddings(referenceEmbedding.vectorAsList())
+            .nResults(maxResults)
+            .build();
 
         QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
 
         List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(queryResponse);
 
         return matches.stream().filter(match -> match.score() >= minScore).collect(toList());
+    }
+
+    @Override
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        QueryRequest queryRequest = new QueryRequest.Builder()
+            .queryEmbeddings(request.queryEmbedding().vectorAsList())
+            .nResults(request.maxResults())
+            .where(ChromaMetadataFilterMapper.map(request.filter()))
+            .build();
+
+        // TODO move 3 lines to extra method
+        QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
+
+        List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(queryResponse);
+
+        return new EmbeddingSearchResult<>(
+            matches.stream().filter(match -> match.score() >= request.minScore()).collect(toList())
+        );
     }
 
     @Override
