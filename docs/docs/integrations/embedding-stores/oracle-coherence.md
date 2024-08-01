@@ -56,4 +56,4 @@ For example, to use Community Edition (CE), add the Coherence BOM to the depende
 
 ## Examples
 
-- [CoherenceEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/elasticsearch-example/src/main/java/CoherenceEmbeddingStoreExample.java)
+- [CoherenceEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/oracle-coherence-example/src/main/java/CoherenceEmbeddingStoreExample.java)
