@@ -70,6 +70,31 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * @param password      Elasticsearch password (optional)
      * @param indexName     Elasticsearch index name (optional). Default value: "default".
      *                      Index will be created automatically if not exists.
+     * @param dimension     Embedding vector dimension (mandatory when index does not exist yet).
+     * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, String, String, String, String, String)}
+     */
+    @Deprecated
+    public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
+                                       String serverUrl,
+                                       String apiKey,
+                                       String userName,
+                                       String password,
+                                       String indexName,
+                                       Integer dimension) {
+        this(configuration, serverUrl, apiKey, userName, password, indexName);
+        log.warn("Setting the dimension is deprecated.");
+    }
+
+    /**
+     * Creates an instance of ElasticsearchEmbeddingStore.
+     *
+     * @param configuration Elasticsearch configuration to use (Knn or Script)
+     * @param serverUrl     Elasticsearch Server URL (mandatory)
+     * @param apiKey        Elasticsearch API key (optional)
+     * @param userName      Elasticsearch userName (optional)
+     * @param password      Elasticsearch password (optional)
+     * @param indexName     Elasticsearch index name (optional). Default value: "default".
+     *                      Index will be created automatically if not exists.
      */
     public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
                                        String serverUrl,
@@ -189,6 +214,17 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         /**
+         * @param dimension Embedding vector dimension (mandatory when index does not exist yet).
+         * @return builder
+         * @deprecated dimension is not used anymore
+         */
+        @Deprecated
+        public Builder dimension(Integer dimension) {
+            log.warn("Setting the dimension is deprecated. This value is ignored.");
+            return this;
+        }
+
+        /**
          * @param configuration the configuration to use
          * @return builder
          */
@@ -255,11 +291,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
-            log.error("[Elasticsearch encounter exception] {}", e.response());
             throw new ElasticsearchRequestFailedException(e.response().toString(), e);
         } catch (IOException e) {
-            log.error("[Elasticsearch encounter I/O Exception]", e);
-            throw new ElasticsearchRequestFailedException(e.getMessage());
+            throw new ElasticsearchRequestFailedException(e.getMessage(), e);
         }
     }
 
@@ -283,15 +317,15 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     @Override
     public void removeAll() {
         try {
-            deleteIndex();
+            client.indices().delete(dir -> dir.index(indexName));
         } catch (ElasticsearchException e) {
             if (e.status() == 404) {
                 log.debug("The index [{}] does not exist.", indexName);
             } else {
-                log.error("[Elasticsearch encounter exception] {}", e.response());
+                throw new ElasticsearchRequestFailedException(e.response().toString(), e);
             }
         } catch (IOException e) {
-            log.error("[Elasticsearch encounter I/O exception] {}", e.getMessage());
+            throw new ElasticsearchRequestFailedException(e.getMessage(), e);
         }
     }
 
@@ -310,8 +344,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         try {
             bulkIndex(ids, embeddings, embedded);
         } catch (IOException e) {
-            log.error("[ElasticSearch encounter I/O Exception]", e);
-            throw new ElasticsearchRequestFailedException(e.getMessage());
+            throw new ElasticsearchRequestFailedException(e.getMessage(), e);
         }
     }
 
@@ -382,10 +415,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
         BulkResponse response = client.bulk(bulkBuilder.build());
         handleBulkResponseErrors(response);
-    }
-
-    private void deleteIndex() throws IOException {
-        client.indices().delete(dir -> dir.index(indexName));
     }
 
     private List<EmbeddingMatch<TextSegment>> toMatches(SearchResponse<Document> response) {
