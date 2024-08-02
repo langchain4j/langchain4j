@@ -47,4 +47,16 @@ public class OllamaModels {
         ), maxRetries);
         return Response.from(response);
     }
+
+    public void delete(OllamaModel ollamaModel) {
+        delete(ollamaModel.getName());
+    }
+
+    public void delete(String ollamaModelName) {
+        withRetry(() -> client.deleteModel(
+                DeleteModelRequest.builder()
+                        .name(ollamaModelName)
+                        .build()
+        ), maxRetries);
+    }
 }
