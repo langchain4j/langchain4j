@@ -71,7 +71,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * @param indexName     Elasticsearch index name (optional). Default value: "default".
      *                      Index will be created automatically if not exists.
      * @param dimension     Embedding vector dimension (mandatory when index does not exist yet).
-     * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, String, String, String, String, String)}
+     * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
      */
     @Deprecated
     public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
@@ -95,7 +95,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * @param password      Elasticsearch password (optional)
      * @param indexName     Elasticsearch index name (optional). Default value: "default".
      *                      Index will be created automatically if not exists.
+     * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
      */
+    @Deprecated
     public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
                                        String serverUrl,
                                        String apiKey,
@@ -127,7 +129,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     }
 
     /**
-     * Constructor
+     * Constructor using a RestClient
      *
      * @param configuration Elasticsearch configuration to use (Knn or Script)
      * @param restClient    Elasticsearch Rest Client (mandatory)
@@ -160,7 +162,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         /**
          * @param serverUrl Elasticsearch Server URL
          * @return builder
+         * @deprecated call {@link #restClient(RestClient)} instead
          */
+        @Deprecated
         public Builder serverUrl(String serverUrl) {
             this.serverUrl = serverUrl;
             return this;
@@ -169,7 +173,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         /**
          * @param apiKey Elasticsearch API key (optional)
          * @return builder
+         * @deprecated call {@link #restClient(RestClient)} instead
          */
+        @Deprecated
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
@@ -178,7 +184,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         /**
          * @param userName Elasticsearch userName (optional)
          * @return builder
+         * @deprecated call {@link #restClient(RestClient)} instead
          */
+        @Deprecated
         public Builder userName(String userName) {
             this.userName = userName;
             return this;
@@ -187,7 +195,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         /**
          * @param password Elasticsearch password (optional)
          * @return builder
+         * @deprecated call {@link #restClient(RestClient)} instead
          */
+        @Deprecated
         public Builder password(String password) {
             this.password = password;
             return this;
@@ -205,7 +215,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
         /**
          * @param indexName Elasticsearch index name (optional). Default value: "default".
-         *                  Index will be created automatically if not exists.
          * @return builder
          */
         public Builder indexName(String indexName) {
@@ -214,9 +223,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         /**
-         * @param dimension Embedding vector dimension (mandatory when index does not exist yet).
+         * @param dimension Embedding vector dimension.
          * @return builder
-         * @deprecated dimension is not used anymore
+         * @deprecated dimension is not used anymore.
          */
         @Deprecated
         public Builder dimension(Integer dimension) {
@@ -237,6 +246,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             if (restClient != null) {
                 return new ElasticsearchEmbeddingStore(configuration, restClient, indexName);
             } else {
+                log.warn("This is deprecated. You should provide a restClient instead and call ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)");
                 return new ElasticsearchEmbeddingStore(configuration, serverUrl, apiKey, userName, password, indexName);
             }
         }
