@@ -96,7 +96,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 
@@ -742,6 +742,20 @@ More details are coming soon.
 `DefaultContentInjector`
 
 More details are coming soon.
+
+### Parallelization
+
+When there is only a single `Query` and a single `ContentRetriever`,
+`DefaultRetrievalAugmentor` performs query routing and content retrieval in the same thread.
+Otherwise, an `Executor` is used to parallelize the processing.
+By default, a modified (`keepAliveTime` is 1 second instead of 60 seconds) `Executors.newCachedThreadPool()`
+is used, but you can provide a custom `Executor` instance when creating the `DefaultRetrievalAugmentor`:
+```java
+DefaultRetrievalAugmentor.builder()
+        ...
+        .executor(executor)
+        .build;
+```
 
 ## Examples
 

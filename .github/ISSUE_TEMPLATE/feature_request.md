@@ -7,6 +7,12 @@ assignees: ''
 
 ---
 
+<!--
+Please note that the maintainer of this project is on vacation until the 5th of August.
+During this period, there might be delays in responses to issues and pull requests.
+Thank you for your understanding and patience.
+-->
+
 **Is your feature request related to a problem? Please describe.**
 <!-- A clear and concise description of what the problem is. Ex. I'm always frustrated when [...] -->
 

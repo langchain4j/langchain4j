@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.33.0-SNAPSHOT</version>
+    <version>0.34.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -26,7 +26,7 @@
         <azure.identity.version>1.13.1</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
-        <jtokkit.version>1.0.0</jtokkit.version>
+        <jtokkit.version>1.1.0</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
         <jsoup.veresion>1.16.1</jsoup.veresion>
         <slf4j-api.version>2.0.7</slf4j-api.version>
@@ -48,7 +48,7 @@
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <milvus-sdk-java.version>2.3.6</milvus-sdk-java.version>
-        <netty.version>4.1.104.Final</netty.version>
+        <netty.version>4.1.111.Final</netty.version>
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
