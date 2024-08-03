@@ -22,9 +22,11 @@ class ChromaMetadataFilterMapper {
         // no instance possible
     }
 
-    // TODO add support of null and add the tests
+    // TODO add the tests
     static Map<String, Object> map(Filter filter) {
-        if (filter instanceof IsEqualTo) {
+        if (filter == null) {
+            return null;
+        } else if (filter instanceof IsEqualTo) {
             return mapEqual((IsEqualTo) filter);
         } else if (filter instanceof IsNotEqualTo) {
             return mapNotEqual((IsNotEqualTo) filter);
