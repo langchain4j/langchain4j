@@ -50,12 +50,11 @@ public class Json {
 
         /**
          * Convert the given JSON string to an object of the given type.
-         * @param json
-         * @param type
+         * @param json the JSON string.
+         * @param type the type of the object represented by {@link TypeToken}.
          * @return the object.
-         * @param <T>
+         * @param <T> the type of the object.
          */
-
          <T> T fromJson(String json, TypeToken<T> type);
     }
 
@@ -104,12 +103,11 @@ public class Json {
 
     /**
      * Convert the given JSON string to an object of the given type.
-     * @param json
-     * @param type
+     * @param json the JSON string.
+     * @param type the type of the object represented by {@link TypeToken}.
      * @return the object.
-     * @param <T>
+     * @param <T> the type of the object.
      */
-
     public static <T> T fromJson(String json, TypeToken<T> type) {
         return CODEC.fromJson(json, type);
     }
