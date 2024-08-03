@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Represents a store for embeddings using the Chroma backend.
@@ -197,11 +198,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             .nResults(maxResults)
             .build();
 
-        QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
-
-        List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(queryResponse);
-
-        return matches.stream().filter(match -> match.score() >= minScore).collect(toList());
+        return queryAndFilter(queryRequest, minScore);
     }
 
     @Override
@@ -212,14 +209,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             .where(ChromaMetadataFilterMapper.map(request.filter()))
             .build();
 
-        // TODO move 3 lines to extra method
-        QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
-
-        List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(queryResponse);
-
-        return new EmbeddingSearchResult<>(
-            matches.stream().filter(match -> match.score() >= request.minScore()).collect(toList())
-        );
+        return new EmbeddingSearchResult<>(queryAndFilter(queryRequest, request.minScore()));
     }
 
     @Override
@@ -244,6 +234,12 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll() {
         chromaClient.deleteCollection(collectionName);
         createCollection();
+    }
+
+    private @NotNull List<EmbeddingMatch<TextSegment>> queryAndFilter(QueryRequest queryRequest, double minScore) {
+        QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
+        List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(queryResponse);
+        return matches.stream().filter(match -> match.score() >= minScore).collect(toList());
     }
 
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
