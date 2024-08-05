@@ -22,7 +22,7 @@ https://www.elastic.co/
 
 The `ElasticsearchEmbeddingStore` comes with 2 implementations:
 
-* Using [kNN queries](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html) 
+* Using approximate [kNN queries](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html) 
 with the `ElasticsearchConfigurationKnn` configuration class (default).
 * Using [scriptScore queries](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html) 
 with the `ElasticsearchConfigurationScript` configuration class. Note that this implementation is using cosine similarity.
@@ -46,7 +46,7 @@ RestClient restClient = RestClient
 
 > See the [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/connecting.html) on how to create a RestClient instance.
 
-Then you can create the embedding store. It uses the kNN query implementation by default.
+Then you can create the embedding store. It uses the approximate kNN query implementation by default.
 
 ```java
 ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
