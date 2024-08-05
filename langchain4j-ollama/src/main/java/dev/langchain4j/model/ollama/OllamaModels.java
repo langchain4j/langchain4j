@@ -48,11 +48,11 @@ public class OllamaModels {
         return Response.from(response);
     }
 
-    public void delete(OllamaModel ollamaModel) {
-        delete(ollamaModel.getName());
+    public void deleteModel(OllamaModel ollamaModel) {
+        deleteModel(ollamaModel.getName());
     }
 
-    public void delete(String ollamaModelName) {
+    public void deleteModel(String ollamaModelName) {
         withRetry(() -> client.deleteModel(
                 DeleteModelRequest.builder()
                         .name(ollamaModelName)
