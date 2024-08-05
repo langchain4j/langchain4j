@@ -1,6 +1,7 @@
 package dev.langchain4j.model.ollama;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
@@ -33,6 +34,7 @@ import static java.lang.Boolean.TRUE;
 class OllamaClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
             .enable(INDENT_OUTPUT);
 
     private final OllamaApi ollamaApi;
@@ -219,6 +221,19 @@ class OllamaClient {
     public OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
         try {
             retrofit2.Response<OllamaModelCard> retrofitResponse = ollamaApi.showInformation(showInformationRequest).execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public RunningModelsListResponse listRunningModels() {
+        try {
+            retrofit2.Response<RunningModelsListResponse> retrofitResponse = ollamaApi.listRunningModels().execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
