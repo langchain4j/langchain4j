@@ -229,6 +229,19 @@ class OllamaClient {
         }
     }
 
+    public Void deleteModel(DeleteModelRequest deleteModelRequest) {
+        try {
+            retrofit2.Response<Void> retrofitResponse = ollamaApi.deleteModel(deleteModelRequest).execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private RuntimeException toException(retrofit2.Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();
