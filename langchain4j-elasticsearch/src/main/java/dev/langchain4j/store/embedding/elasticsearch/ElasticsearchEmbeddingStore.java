@@ -300,10 +300,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             List<EmbeddingMatch<TextSegment>> results = toMatches(response);
             results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
             return new EmbeddingSearchResult<>(results);
-        } catch (ElasticsearchException e) {
-            throw new ElasticsearchRequestFailedException(e.response().toString(), e);
-        } catch (IOException e) {
-            throw new ElasticsearchRequestFailedException(e.getMessage(), e);
+        } catch (ElasticsearchException | IOException e) {
+            throw new ElasticsearchRequestFailedException(e);
         }
     }
 
@@ -332,10 +330,10 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             if (e.status() == 404) {
                 log.debug("The index [{}] does not exist.", indexName);
             } else {
-                throw new ElasticsearchRequestFailedException(e.response().toString(), e);
+                throw new ElasticsearchRequestFailedException(e);
             }
         } catch (IOException e) {
-            throw new ElasticsearchRequestFailedException(e.getMessage(), e);
+            throw new ElasticsearchRequestFailedException(e);
         }
     }
 
@@ -354,7 +352,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         try {
             bulkIndex(ids, embeddings, embedded);
         } catch (IOException e) {
-            throw new ElasticsearchRequestFailedException(e.getMessage(), e);
+            throw new ElasticsearchRequestFailedException(e);
         }
     }
 
@@ -404,7 +402,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 }
             }
         } catch (IOException e) {
-            throw new ElasticsearchRequestFailedException(e.getMessage());
+            throw new ElasticsearchRequestFailedException(e);
         }
     }
 
@@ -412,7 +410,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         try {
             bulkRemove(ids);
         } catch (IOException e) {
-            throw new ElasticsearchRequestFailedException(e.getMessage());
+            throw new ElasticsearchRequestFailedException(e);
         }
     }
 
