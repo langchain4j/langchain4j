@@ -4,13 +4,16 @@ sidebar_position: 10
 
 # MongoDB Atlas
 
+https://www.mongodb.com/atlas
+
+
 ## Maven Dependency
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mongodb-atlas</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 

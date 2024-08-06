@@ -48,7 +48,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build with JDK ${{ matrix.java_version }}
-        run: mvn --batch-mode install -DskipITs ${{ matrix.included_modules }}
+        run: mvn -B -U install -DskipITs ${{ matrix.included_modules }}
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
   compliance:

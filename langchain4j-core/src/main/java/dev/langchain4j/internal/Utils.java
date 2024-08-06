@@ -1,19 +1,22 @@
 package dev.langchain4j.internal;
 
-import static java.net.HttpURLConnection.HTTP_OK;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Collections.unmodifiableList;
-
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
+
+import static java.net.HttpURLConnection.HTTP_OK;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.unmodifiableList;
 
 /**
  * Utility methods.
@@ -176,6 +179,16 @@ public class Utils {
   }
 
   /**
+   * Appends a trailing '/' if the provided URL does not end with '/'
+   * 
+   * @param url URL to check for trailing '/'
+   * @return Same URL if it already ends with '/' or a new URL with '/' appended
+   */
+  public static String ensureTrailingForwardSlash(String url) {
+      return url.endsWith("/") ? url : url + "/";
+  }
+
+  /**
    * Returns the given object's {@code toString()} surrounded by quotes.
    *
    * <p>If the given object is {@code null}, the string {@code "null"} is returned.
@@ -206,31 +219,39 @@ public class Utils {
   }
 
   /**
-   * Reads the content as bytes from the given URL as a GET request.
+   * Reads the content as bytes from the given URL as a GET request for HTTP/HTTPS resources,
+   * and from files stored on the local filesystem.
+   *
    * @param url The URL to read from.
    * @return The content as bytes.
    * @throws RuntimeException if the request fails.
    */
   public static byte[] readBytes(String url) {
     try {
-      HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-      connection.setRequestMethod("GET");
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        // Handle URLs
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        connection.setRequestMethod("GET");
 
-      int responseCode = connection.getResponseCode();
+        int responseCode = connection.getResponseCode();
 
-      if (responseCode == HTTP_OK) {
-        InputStream inputStream = connection.getInputStream();
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        if (responseCode == HTTP_OK) {
+          InputStream inputStream = connection.getInputStream();
+          ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
-        byte[] buffer = new byte[1024];
-        int bytesRead;
-        while ((bytesRead = inputStream.read(buffer)) != -1) {
-          outputStream.write(buffer, 0, bytesRead);
+          byte[] buffer = new byte[1024];
+          int bytesRead;
+          while ((bytesRead = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, bytesRead);
+          }
+
+          return outputStream.toByteArray();
+        } else {
+          throw new RuntimeException("Error while reading: " + responseCode);
         }
-
-        return outputStream.toByteArray();
       } else {
-        throw new RuntimeException("Error while reading: " + responseCode);
+        // Handle files
+        return Files.readAllBytes(Paths.get(new URI(url)));
       }
     } catch (Exception e) {
       throw new RuntimeException(e);
