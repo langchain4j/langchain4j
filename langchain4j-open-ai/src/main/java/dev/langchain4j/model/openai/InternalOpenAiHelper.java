@@ -22,8 +22,8 @@ import java.util.List;
 import static dev.ai4j.openai4j.chat.ContentType.IMAGE_URL;
 import static dev.ai4j.openai4j.chat.ContentType.TEXT;
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.lang.String.format;
@@ -215,9 +215,9 @@ public class InternalOpenAiHelper {
                     .filter(toolCall -> toolCall.type() == FUNCTION)
                     .map(InternalOpenAiHelper::toToolExecutionRequest)
                     .collect(toList());
-            return isNullOrEmpty(text) ?
-                    aiMessage(toolExecutionRequests) :
-                    aiMessage(text, toolExecutionRequests);
+            return isNullOrBlank(text) ?
+                    AiMessage.from(toolExecutionRequests) :
+                    AiMessage.from(text, toolExecutionRequests);
         }
 
         FunctionCall functionCall = assistantMessage.functionCall();
@@ -226,12 +226,12 @@ public class InternalOpenAiHelper {
                     .name(functionCall.name())
                     .arguments(functionCall.arguments())
                     .build();
-            return isNullOrEmpty(text) ?
-                    aiMessage(toolExecutionRequest) :
-                    aiMessage(text, singletonList(toolExecutionRequest));
+            return isNullOrBlank(text) ?
+                    AiMessage.from(toolExecutionRequest) :
+                    AiMessage.from(text, singletonList(toolExecutionRequest));
         }
 
-        return aiMessage(text);
+        return AiMessage.from(text);
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ToolCall toolCall) {
