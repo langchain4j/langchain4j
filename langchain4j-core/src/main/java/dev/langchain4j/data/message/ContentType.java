@@ -14,6 +14,11 @@ public enum ContentType {
      */
     IMAGE(ImageContent.class);
 
+    /**
+     * Audio content.
+     */
+    AUDIO(AudioContent.class);
+
     private final Class<? extends Content> contentClass;
 
     ContentType(Class<? extends Content> contentClass) {
