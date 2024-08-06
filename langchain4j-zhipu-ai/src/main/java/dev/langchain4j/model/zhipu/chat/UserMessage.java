@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static dev.langchain4j.model.zhipu.chat.Role.USER;
 
@@ -17,13 +20,26 @@ import static dev.langchain4j.model.zhipu.chat.Role.USER;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public final class UserMessage implements Message {
 
-    private final Role role = USER;
-    private String content;
+    @Builder.Default
+    private Role role = USER;
+    private Object content;
     private String name;
 
     public static UserMessage from(String text) {
         return UserMessage.builder()
                 .content(text)
+                .build();
+    }
+
+    public static UserMessage from(List<Content> contents) {
+        return UserMessage.builder()
+                .content(contents)
+                .build();
+    }
+
+    public static UserMessage from(Content ...contents) {
+        return UserMessage.builder()
+                .content(Arrays.asList(contents))
                 .build();
     }
 }

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.qianfan.client;
 
 
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.client.chat.ChatTokenResponse;
@@ -68,7 +69,7 @@ public class QianfanClient {
             this.apiKey = serviceBuilder.apiKey;
             this.secretKey = serviceBuilder.secretKey;
             this.okHttpClient = okHttpClientBuilder.build();
-            Retrofit retrofit = (new Retrofit.Builder()).baseUrl(serviceBuilder.baseUrl).client(this.okHttpClient)
+            Retrofit retrofit = (new Retrofit.Builder()).baseUrl(Utils.ensureTrailingForwardSlash(serviceBuilder.baseUrl)).client(this.okHttpClient)
                     .addConverterFactory(GsonConverterFactory.create(Json.GSON)).build();
             this.qianfanApi = retrofit.create(QianfanApi.class);
         }

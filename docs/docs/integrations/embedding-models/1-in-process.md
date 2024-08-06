@@ -15,7 +15,7 @@ For example:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 ```java
@@ -29,7 +29,7 @@ Or quantized:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 ```java
@@ -40,6 +40,24 @@ Embedding embedding = response.content();
 
 The complete list of all embedding models can be found [here](https://github.com/langchain4j/langchain4j-embeddings).
 
+
+## Parallelization
+
+By default, the embedding process is parallelized using all available CPU cores,
+so each `TextSegment` is embedded in a separate thread.
+
+The parallelization is done by using an `Executor`.
+By default, in-process embedding models use a cached thread pool
+with the number of threads equal to the number of available processors.
+Threads are cached for 1 second.
+
+You can provide a custom instance of the `Executor` when creating a model:
+```java
+Executor = ...;
+EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel(executor);
+```
+
+Embedding using GPU is not supported yet.
 
 ## Custom models
 
@@ -55,7 +73,7 @@ Example of using custom embedding model:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 ```java

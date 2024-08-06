@@ -12,7 +12,19 @@ public enum ContentType {
     /**
      * Image content.
      */
-    IMAGE(ImageContent.class);
+    IMAGE(ImageContent.class),
+    /**
+     * Audio content.
+     */
+    AUDIO(AudioContent.class),
+    /**
+     * Video content.
+     */
+    VIDEO(VideoContent.class),
+    /**
+     * PDF file content.
+     */
+    PDF(PdfFileContent.class);
 
     /**
      * Audio content.
