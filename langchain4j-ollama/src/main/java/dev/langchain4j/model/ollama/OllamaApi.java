@@ -15,7 +15,7 @@ interface OllamaApi {
     @Streaming
     Call<ResponseBody> streamingCompletion(@Body CompletionRequest completionRequest);
 
-    @POST("api/embeddings")
+    @POST("api/embed")
     @Headers({"Content-Type: application/json"})
     Call<EmbeddingResponse> embedd(@Body EmbeddingRequest embeddingRequest);
 
