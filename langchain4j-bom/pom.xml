@@ -259,7 +259,7 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-oracle-database</artifactId>
+                <artifactId>langchain4j-oracle</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
