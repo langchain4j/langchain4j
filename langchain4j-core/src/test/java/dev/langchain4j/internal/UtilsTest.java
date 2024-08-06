@@ -221,4 +221,13 @@ class UtilsTest {
         assertThat(Utils.copyIfNotNull(singletonList("one"))).containsExactly("one");
         assertThat(Utils.copyIfNotNull(asList("one", "two"))).containsExactly("one", "two");
     }
+
+    @Test
+    void test_ensureTrailingForwardSlash() {
+        assertThat(Utils.ensureTrailingForwardSlash("https://example.com")).isEqualTo("https://example.com/");
+        assertThat(Utils.ensureTrailingForwardSlash("https://example.com/")).isEqualTo("https://example.com/");
+        assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a")).isEqualTo("https://example.com/a/");
+        assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a/")).isEqualTo("https://example.com/a/");
+        assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a/b")).isEqualTo("https://example.com/a/b/");
+    }
 }

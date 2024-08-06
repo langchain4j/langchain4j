@@ -18,14 +18,15 @@ import dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchFilterMap
 import dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchQueryType;
 import dev.langchain4j.rag.content.retriever.azure.search.DefaultAzureAiSearchFilterMapper;
 import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -261,6 +262,48 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
         addAllInternal(ids, embeddings, embedded);
         return ids;
+    }
+
+    @Override
+    public void remove(String id) {
+        ensureNotBlank(id, "id");
+        this.removeAll(singletonList(id));
+    }
+
+    @Override
+    public void removeAll(Collection<String> ids){
+        ensureNotEmpty(ids, "ids");
+        List<Map<String, String>> documentsToDelete = new ArrayList<>();
+        for (String id : ids) {
+            ensureNotBlank(id, "id");
+            Map<String, String> documents = new HashMap<>();
+            documents.put(DEFAULT_FIELD_ID, id);
+            documentsToDelete.add(documents);
+        }
+        searchClient.deleteDocuments(documentsToDelete);
+    }
+
+    @Override
+    public void removeAll(){
+        SearchOptions searchOptions = new SearchOptions().setSelect(DEFAULT_FIELD_ID);
+        SearchPagedIterable searchResults = searchClient.search("*", searchOptions, Context.NONE);
+        List<String> ids = searchResults.stream()
+                .map(searchResult -> searchResult.getDocument(SearchDocument.class))
+                .map(doc -> (String) doc.get(DEFAULT_FIELD_ID))
+                .collect(Collectors.toList());
+        removeAll(ids);
+    }
+
+    @Override
+    public void removeAll(Filter filter){
+        ensureNotNull(filter, "filter");
+        SearchOptions searchOptions = new SearchOptions().setSelect(DEFAULT_FIELD_ID).setFilter(filterMapper.map(filter));
+        SearchPagedIterable searchResults = searchClient.search("*", searchOptions, Context.NONE);
+        List<String> ids = searchResults.stream()
+                .map(searchResult -> searchResult.getDocument(SearchDocument.class))
+                .map(doc -> (String) doc.get(DEFAULT_FIELD_ID))
+                .collect(Collectors.toList());
+        removeAll(ids);
     }
 
     @Override
