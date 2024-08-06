@@ -5,6 +5,8 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import oracle.jdbc.datasource.OracleDataSource;
 import oracle.sql.CHAR;
 import oracle.sql.CharacterSet;
+import oracle.ucp.jdbc.PoolDataSource;
+import oracle.ucp.jdbc.PoolDataSourceFactory;
 import org.testcontainers.oracle.OracleContainer;
 
 import javax.sql.DataSource;
@@ -47,10 +49,11 @@ final class CommonTestOperations {
 
     private CommonTestOperations() {}
 
-    private static final DataSource DATA_SOURCE;
+    private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
+
     static {
         try {
-            OracleDataSource oracleDataSource = new oracle.jdbc.datasource.impl.OracleDataSource();
+            DATA_SOURCE.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
             String urlFromEnv = System.getenv("ORACLE_JDBC_URL");
 
             if (urlFromEnv == null) {
@@ -61,17 +64,16 @@ final class CommonTestOperations {
                     .withPassword("testpwd");
                 oracleContainer.start();
 
-                oracleDataSource.setURL(oracleContainer.getJdbcUrl());
-                oracleDataSource.setUser(oracleContainer.getUsername());
-                oracleDataSource.setPassword(oracleContainer.getPassword());
+                DATA_SOURCE.setURL(oracleContainer.getJdbcUrl());
+                DATA_SOURCE.setUser(oracleContainer.getUsername());
+                DATA_SOURCE.setPassword(oracleContainer.getPassword());
             }
             else {
-                oracleDataSource.setURL(urlFromEnv);
-                oracleDataSource.setUser(System.getenv("ORACLE_JDBC_USER"));
-                oracleDataSource.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
+                DATA_SOURCE.setURL(urlFromEnv);
+                DATA_SOURCE.setUser(System.getenv("ORACLE_JDBC_USER"));
+                DATA_SOURCE.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
             }
 
-            DATA_SOURCE = new TestDataSource(oracleDataSource);
         } catch (
                 SQLException sqlException) {
             throw new AssertionError(sqlException);
