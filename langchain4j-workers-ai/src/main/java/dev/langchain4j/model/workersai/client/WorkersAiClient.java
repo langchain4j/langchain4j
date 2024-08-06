@@ -1,6 +1,5 @@
 package dev.langchain4j.model.workersai.client;
 
-import dev.langchain4j.internal.Utils;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -41,7 +40,7 @@ public class WorkersAiClient {
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Utils.ensureTrailingForwardSlash(BASE_URL))
+                .baseUrl(BASE_URL)
                 .client(okHttpClient)
                 .addConverterFactory(JacksonConverterFactory.create())
                 .build();

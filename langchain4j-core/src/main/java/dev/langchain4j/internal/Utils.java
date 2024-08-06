@@ -179,13 +179,13 @@ public class Utils {
   }
 
   /**
-   * Creates a new string with a trailing '/' if the provided path does not end with '/'
+   * Appends a trailing '/' if the provided URL does not end with '/'
    * 
-   * @param str String to check for trailing '/'
-   * @return Same string if it already ends with '/' or a new string that ends with '/'
+   * @param url URL to check for trailing '/'
+   * @return Same URL if it already ends with '/' or a new URL with '/' appended
    */
-  public static String ensureTrailingForwardSlash(String str) {
-      return str.endsWith("/") ? str : str + "/";
+  public static String ensureTrailingForwardSlash(String url) {
+      return url.endsWith("/") ? url : url + "/";
   }
 
   /**

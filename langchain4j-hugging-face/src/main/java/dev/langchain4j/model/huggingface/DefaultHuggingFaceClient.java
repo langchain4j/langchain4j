@@ -2,7 +2,6 @@ package dev.langchain4j.model.huggingface;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
@@ -20,6 +19,8 @@ import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class DefaultHuggingFaceClient implements HuggingFaceClient {
+
+    private static final String BASE_URL = "https://api-inference.huggingface.co/";
 
     private final HuggingFaceApi huggingFaceApi;
     private final String modelId;
@@ -39,7 +40,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                 .create();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Utils.ensureTrailingForwardSlash("https://api-inference.huggingface.co/"))
+                .baseUrl(BASE_URL)
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build();
