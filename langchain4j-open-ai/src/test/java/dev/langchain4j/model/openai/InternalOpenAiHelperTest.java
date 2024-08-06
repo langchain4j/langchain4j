@@ -47,7 +47,6 @@ class InternalOpenAiHelperTest {
         ChatCompletionResponse response = ChatCompletionResponse.builder()
                 .choices(singletonList(ChatCompletionChoice.builder()
                         .message(AssistantMessage.builder()
-                                .content("unexpected text")
                                 .functionCall(FunctionCall.builder()
                                         .name(functionName)
                                         .arguments(functionArguments)
@@ -60,7 +59,6 @@ class InternalOpenAiHelperTest {
         AiMessage aiMessage = aiMessageFrom(response);
 
         // then
-        assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).containsExactly(ToolExecutionRequest
                 .builder()
                 .name(functionName)
@@ -79,7 +77,6 @@ class InternalOpenAiHelperTest {
         ChatCompletionResponse response = ChatCompletionResponse.builder()
                 .choices(singletonList(ChatCompletionChoice.builder()
                         .message(AssistantMessage.builder()
-                                .content("unexpected text")
                                 .toolCalls(ToolCall.builder()
                                         .type(FUNCTION)
                                         .function(FunctionCall.builder()
@@ -95,7 +92,41 @@ class InternalOpenAiHelperTest {
         AiMessage aiMessage = aiMessageFrom(response);
 
         // then
-        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).containsExactly(ToolExecutionRequest
+                .builder()
+                .name(functionName)
+                .arguments(functionArguments)
+                .build()
+        );
+    }
+
+    @Test
+    void should_return_ai_message_with_toolExecutionRequests_and_text_when_tool_calls_and_content_are_both_present() {
+
+        // given
+        String functionName = "current_time";
+        String functionArguments = "{}";
+
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(singletonList(ChatCompletionChoice.builder()
+                        .message(AssistantMessage.builder()
+                                .content("Hello")
+                                .toolCalls(ToolCall.builder()
+                                        .type(FUNCTION)
+                                        .function(FunctionCall.builder()
+                                                .name(functionName)
+                                                .arguments(functionArguments)
+                                                .build())
+                                        .build())
+                                .build())
+                        .build()))
+                .build();
+
+        // when
+        AiMessage aiMessage = aiMessageFrom(response);
+
+        // then
+        assertThat(aiMessage.text()).isEqualTo("Hello");
         assertThat(aiMessage.toolExecutionRequests()).containsExactly(ToolExecutionRequest
                 .builder()
                 .name(functionName)
