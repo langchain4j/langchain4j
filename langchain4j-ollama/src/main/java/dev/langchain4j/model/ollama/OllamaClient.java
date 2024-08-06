@@ -192,7 +192,7 @@ class OllamaClient {
 
     public EmbeddingResponse embed(EmbeddingRequest request) {
         try {
-            retrofit2.Response<EmbeddingResponse> retrofitResponse = ollamaApi.embedd(request).execute();
+            retrofit2.Response<EmbeddingResponse> retrofitResponse = ollamaApi.embed(request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
