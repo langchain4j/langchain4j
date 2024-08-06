@@ -9,7 +9,8 @@ import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.graph.neo4j.Neo4jGraph;
 import lombok.Builder;
 import org.neo4j.driver.Record;
-import org.neo4j.driver.internal.value.NodeValue;
+import org.neo4j.driver.types.Type;
+import org.neo4j.driver.types.TypeSystem;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ public class Neo4jContentRetriever implements ContentRetriever {
             """);
 
     private static final Pattern BACKTICKS_PATTERN = Pattern.compile("```(.*?)```", Pattern.MULTILINE | Pattern.DOTALL);
+    private static final Type NODE = TypeSystem.getDefault().NODE();
 
     private final Neo4jGraph graph;
 
@@ -75,7 +77,7 @@ public class Neo4jContentRetriever implements ContentRetriever {
         List<Record> records = graph.executeRead(cypherQuery);
         return records.stream()
                 .flatMap(r -> r.values().stream())
-                .map(value -> value instanceof NodeValue ? value.asMap().toString() : value.toString())
+                .map(value -> NODE.isTypeOf(value) ? value.asMap().toString() : value.toString())
                 .toList();
     }
 }

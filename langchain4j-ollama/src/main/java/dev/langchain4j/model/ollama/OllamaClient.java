@@ -192,7 +192,7 @@ class OllamaClient {
 
     public EmbeddingResponse embed(EmbeddingRequest request) {
         try {
-            retrofit2.Response<EmbeddingResponse> retrofitResponse = ollamaApi.embedd(request).execute();
+            retrofit2.Response<EmbeddingResponse> retrofitResponse = ollamaApi.embed(request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -219,6 +219,19 @@ class OllamaClient {
     public OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
         try {
             retrofit2.Response<OllamaModelCard> retrofitResponse = ollamaApi.showInformation(showInformationRequest).execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Void deleteModel(DeleteModelRequest deleteModelRequest) {
+        try {
+            retrofit2.Response<Void> retrofitResponse = ollamaApi.deleteModel(deleteModelRequest).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
