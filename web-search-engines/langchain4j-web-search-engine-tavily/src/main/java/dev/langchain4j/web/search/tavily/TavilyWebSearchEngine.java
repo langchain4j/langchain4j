@@ -28,7 +28,7 @@ import static java.util.stream.Collectors.toList;
  */
 public class TavilyWebSearchEngine implements WebSearchEngine {
 
-    private static final String DEFAULT_BASE_URL = "https://api.tavily.com";
+    private static final String DEFAULT_BASE_URL = "https://api.tavily.com/";
 
     private final String apiKey;
     private final TavilyClient tavilyClient;
