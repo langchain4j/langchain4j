@@ -31,6 +31,11 @@ public enum ContentType {
      */
     PDF(PdfFileContent.class);
 
+    /**
+     * Audio content.
+     */
+    AUDIO(AudioContent.class);
+
     private final Class<? extends Content> contentClass;
 
     ContentType(Class<? extends Content> contentClass) {
