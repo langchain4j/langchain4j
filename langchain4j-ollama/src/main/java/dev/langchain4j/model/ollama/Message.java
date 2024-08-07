@@ -25,4 +25,5 @@ class Message {
     private Role role;
     private String content;
     private List<String> images;
+    private List<ToolCall> toolCalls;
 }
