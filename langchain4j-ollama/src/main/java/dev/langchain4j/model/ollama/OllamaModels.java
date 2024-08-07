@@ -59,4 +59,9 @@ public class OllamaModels {
                         .build()
         ), maxRetries);
     }
+
+    public Response<List<RunningOllamaModel>> listRunningModels() {
+        RunningModelsListResponse response = withRetry(client::listRunningModels, maxRetries);
+        return Response.from(response.getModels());
+    }
 }
