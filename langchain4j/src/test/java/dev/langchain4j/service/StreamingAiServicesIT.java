@@ -24,7 +24,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -245,7 +244,6 @@ public class StreamingAiServicesIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_0613) // this model can only call tools sequentially
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -297,6 +295,8 @@ public class StreamingAiServicesIT {
 
 
         List<ChatMessage> messages = chatMemory.messages();
+
+        // TODO failing: was 5
         assertThat(messages).hasSize(6);
 
         assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
