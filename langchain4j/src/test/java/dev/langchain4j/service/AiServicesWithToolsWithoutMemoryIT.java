@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
@@ -81,7 +80,6 @@ class AiServicesWithToolsWithoutMemoryIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_4_O) // is it ok to use gpt 4o here?
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -101,6 +99,8 @@ class AiServicesWithToolsWithoutMemoryIT {
         assertThat(response.content().text()).contains("6.97", "9.89");
 
         TokenUsage tokenUsage = response.tokenUsage();
+
+        // TODO failing: was 239
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(79 + 117 + 152);
         assertThat(tokenUsage.outputTokenCount()).isCloseTo(21 + 20 + 53, withPercentage(5));
         assertThat(tokenUsage.totalTokenCount())
