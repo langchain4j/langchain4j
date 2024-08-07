@@ -69,7 +69,7 @@ public class AiServicesIT {
 
     interface EggCounter {
 
-        @UserMessage("Count how many eggs exist:\n|||{{it}}|||")
+        @UserMessage("Count number of 'egg' mentions in this sentence:\n|||{{it}}|||")
         int count(String sentence);
     }
 
@@ -82,7 +82,7 @@ public class AiServicesIT {
         int count = eggCounter.count(sentence);
         assertThat(count).isEqualTo(13);
 
-        verify(chatLanguageModel).generate(singletonList(userMessage("Count how many eggs exist:\n" +
+        verify(chatLanguageModel).generate(singletonList(userMessage("Count number of 'egg' mentions in this sentence:\n" +
                 "|||I have ten eggs in my basket and three in my pocket.|||\n" +
                 "You must answer strictly in the following format: integer number")));
     }

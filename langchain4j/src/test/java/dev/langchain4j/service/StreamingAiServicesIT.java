@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -245,7 +246,7 @@ public class StreamingAiServicesIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                // TODO: is is ok to use 4o-mini here? gpt-3.5-turbo-0613 deprecated, failing test
+                .modelName(GPT_4_O) // is it ok to use gpt 4o here?
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -297,7 +298,7 @@ public class StreamingAiServicesIT {
 
 
         List<ChatMessage> messages = chatMemory.messages();
-        assertThat(messages).hasSize(6); // TODO: failing, was 5
+        assertThat(messages).hasSize(6);
 
         assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
         assertThat(messages.get(0).text()).isEqualTo(userMessage);

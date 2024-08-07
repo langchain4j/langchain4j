@@ -19,7 +19,7 @@ This API is now becoming obsolete in favor of chat API (second API type).
 - `ChatLanguageModel`s. These accept either a single or multiple `ChatMessage`s as input
 and return an `AiMessage` as output.
 `ChatMessage` usually contains text, but some LLMs also support a mix of text and `Image`s.
-Examples of such chat models include OpenAI's `gpt-4o-mini` and Google's `gemini-pro`.
+Examples of such chat models include OpenAI's `gpt-3.5-turbo` and Google's `gemini-pro`.
 
 Support for `LanguageModel`s will no longer be expanded in LangChain4j,
 so in all new features, we will use a `ChatLanguageModel` API.

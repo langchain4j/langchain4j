@@ -21,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -117,7 +118,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                // TODO: is is ok to use 4o-mini here? gpt-3.5-turbo-0613 deprecated, failing test
+                .modelName(GPT_4_O) // is it ok to use gpt 4o here?
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -158,7 +159,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         verifyNoMoreInteractions(calculator);
 
         ArgumentCaptor<List<ChatMessage>> sendMessagesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(spyModel, times(3)).generate(sendMessagesCaptor.capture(), anyList(), any()); // TODO: failing, wanted 3 was 2
+        verify(spyModel, times(3)).generate(sendMessagesCaptor.capture(), anyList(), any());
         List<List<ChatMessage>> allGenerateSendMessages = sendMessagesCaptor.getAllValues();
 
         List<ChatMessage> firstGenerateSendMessages = allGenerateSendMessages.get(0);

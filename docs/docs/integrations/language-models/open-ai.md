@@ -62,7 +62,7 @@ ChatLanguageModel model = OpenAiChatModel.builder()
         ...
         .build();
 ```
-This will create an instance of `OpenAiChatModel` with default model parameters (e.g. `gpt-4o-mini` model name, `0.7` temperature, etc.).
+This will create an instance of `OpenAiChatModel` with default model parameters (e.g. `gpt-3.5-turbo` model name, `0.7` temperature, etc.).
 Default model parameters can be customized by providing values in the builder.
 
 ### Spring Boot

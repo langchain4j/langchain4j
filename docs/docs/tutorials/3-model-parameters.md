@@ -38,7 +38,7 @@ In this case of an OpenAI Chat Model for example, some of the defaults are
 
 | Parameter      | Default Value | 
 |----------------|---------------|
-| `modelName`    | gpt-4o-mini   |
+| `modelName`    | gpt-3.5-turbo |
 | `temperature`  | 0.7           |
 | `timeout`      | 60s           |
 | `logRequests`  | false         |

@@ -6,14 +6,7 @@ import com.knuddels.jtokkit.api.IntArrayList;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.Tokenizer;
 
 import java.util.List;
@@ -39,11 +32,11 @@ public class OpenAiTokenizer implements Tokenizer {
     private final Optional<Encoding> encoding;
 
     /**
-     * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-4o-mini" model.
+     * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-3.5-turbo" model.
      * It should be suitable for all current OpenAI models, as they all use the same cl100k_base encoding.
      */
     public OpenAiTokenizer() {
-        this(GPT_4_O_MINI.toString());
+        this(GPT_3_5_TURBO.toString());
     }
 
     /**
