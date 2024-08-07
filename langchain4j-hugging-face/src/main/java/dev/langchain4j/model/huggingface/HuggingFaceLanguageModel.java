@@ -6,6 +6,7 @@ import dev.langchain4j.model.huggingface.spi.HuggingFaceLanguageModelBuilderFact
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 
+import java.net.Proxy;
 import java.time.Duration;
 
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
@@ -53,6 +54,11 @@ public class HuggingFaceLanguageModel implements LanguageModel {
             public Duration timeout() {
                 return builder.timeout;
             }
+
+            @Override
+            public Proxy proxy() {
+                return builder.proxy;
+            }
         });
         this.temperature = builder.temperature;
         this.maxNewTokens = builder.maxNewTokens;
@@ -96,6 +102,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
         private Integer maxNewTokens;
         private Boolean returnFullText = false;
         private Boolean waitForModel = true;
+        private Proxy proxy;
 
         public Builder accessToken(String accessToken) {
             this.accessToken = accessToken;
@@ -136,6 +143,13 @@ public class HuggingFaceLanguageModel implements LanguageModel {
         public Builder waitForModel(Boolean waitForModel) {
             if (waitForModel != null) {
                 this.waitForModel = waitForModel;
+            }
+            return this;
+        }
+
+        public Builder proxy(Proxy proxy) {
+            if (waitForModel != null) {
+                this.proxy = proxy;
             }
             return this;
         }
