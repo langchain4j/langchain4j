@@ -265,8 +265,10 @@ class InternalAzureOpenAiHelper {
     }
 
     public static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage) {
+        String text = chatResponseMessage.getContent();
+
         if (isNullOrEmpty(chatResponseMessage.getToolCalls())) {
-            return aiMessage(chatResponseMessage.getContent());
+            return aiMessage(text);
         } else {
             List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls()
                     .stream()
@@ -280,7 +282,9 @@ class InternalAzureOpenAiHelper {
                                     .build())
                     .collect(toList());
 
-            return aiMessage(toolExecutionRequests);
+            return isNullOrEmpty(text) ?
+                    aiMessage(toolExecutionRequests) :
+                    aiMessage(text, toolExecutionRequests);
         }
     }
 
