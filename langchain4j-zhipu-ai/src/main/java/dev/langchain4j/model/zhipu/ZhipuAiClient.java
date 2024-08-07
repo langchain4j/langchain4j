@@ -62,16 +62,11 @@ public class ZhipuAiClient {
 
         this.okHttpClient = okHttpClientBuilder.build();
         Retrofit retrofit = (new Retrofit.Builder())
-                .baseUrl(formattedUrlForRetrofit(builder.baseUrl))
+                .baseUrl(Utils.ensureTrailingForwardSlash(builder.baseUrl))
                 .client(this.okHttpClient)
                 .addConverterFactory(create(OBJECT_MAPPER))
                 .build();
         this.zhipuAiApi = retrofit.create(ZhipuAiApi.class);
-    }
-
-
-    private static String formattedUrlForRetrofit(String baseUrl) {
-        return baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
     }
 
     public static Builder builder() {

@@ -137,6 +137,17 @@ public class AiMessage implements ChatMessage {
     }
 
     /**
+     * Create a new {@link AiMessage} with the given text and tool execution requests.
+     *
+     * @param text the text of the message.
+     * @param toolExecutionRequests the tool execution requests of the message.
+     * @return the new {@link AiMessage}.
+     */
+    public static AiMessage from(String text, List<ToolExecutionRequest> toolExecutionRequests) {
+        return new AiMessage(text, toolExecutionRequests);
+    }
+
+    /**
      * Create a new {@link AiMessage} with the given text.
      *
      * @param text the text of the message.
@@ -164,5 +175,16 @@ public class AiMessage implements ChatMessage {
      */
     public static AiMessage aiMessage(List<ToolExecutionRequest> toolExecutionRequests) {
         return from(toolExecutionRequests);
+    }
+
+    /**
+     * Create a new {@link AiMessage} with the given text and tool execution requests.
+     *
+     * @param text the text of the message.
+     * @param toolExecutionRequests the tool execution requests of the message.
+     * @return the new {@link AiMessage}.
+     */
+    public static AiMessage aiMessage(String text, List<ToolExecutionRequest> toolExecutionRequests) {
+        return from(text, toolExecutionRequests);
     }
 }

@@ -1,14 +1,9 @@
 <!--
 Thank you so much for your contribution!
 
-Please note that the maintainer of this project is on vacation until the 5th of August.
-During this period, there might be delays in responses to issues and pull requests.
-Thank you for your understanding and patience.
-
 Please fill in all the sections below.
 Please open the PR as a draft initially. Once it is reviewed and approved, we will ask you to add documentation and examples.
-Please note that PRs with breaking changes will be rejected.
-Please note that PRs without tests will be rejected.
+Please note that PRs with breaking changes or without tests will be rejected.
 
 Please note that PRs will be reviewed based on the priority of the issues they address.
 We ask for your patience. We are doing our best to review your PR as quickly as possible.

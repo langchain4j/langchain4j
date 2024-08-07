@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.Tool;
 
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 public class WebSearchTool {
@@ -28,6 +29,9 @@ public class WebSearchTool {
     }
 
     private String format(WebSearchResults results) {
+        if (isNullOrEmpty(results.results()))
+            return "No results found.";
+
         return results.results()
                 .stream()
                 .map(organicResult -> "Title: " + organicResult.title() + "\n"
