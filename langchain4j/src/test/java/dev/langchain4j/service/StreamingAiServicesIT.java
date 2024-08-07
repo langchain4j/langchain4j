@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -43,7 +44,7 @@ public class StreamingAiServicesIT {
                         .build(),
                 AzureOpenAiStreamingChatModel.builder()
                         .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                        .tokenCredential(new DefaultAzureCredentialBuilder().build())
                         .deploymentName("gpt-4o")
                         .logRequestsAndResponses(true)
                         .build(),

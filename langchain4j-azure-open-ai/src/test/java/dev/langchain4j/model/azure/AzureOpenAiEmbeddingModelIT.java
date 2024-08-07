@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -24,7 +25,7 @@ class AzureOpenAiEmbeddingModelIT {
 
     EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+            .tokenCredential(new DefaultAzureCredentialBuilder().build())
             .deploymentName("text-embedding-ada-002-2")
             .tokenizer(new AzureOpenAiTokenizer(TEXT_EMBEDDING_ADA_002))
             .logRequestsAndResponses(true)
@@ -81,7 +82,7 @@ class AzureOpenAiEmbeddingModelIT {
 
         EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelNameString)
                 .logRequestsAndResponses(true)
                 .build();
