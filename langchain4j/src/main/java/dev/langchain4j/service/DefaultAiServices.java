@@ -1,9 +1,11 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -14,6 +16,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -137,7 +140,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         if (returnType == TokenStream.class) {
-                            return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
+                            List<Content> contents = augmentationResult != null ? augmentationResult.contents() : null;
+                            return new AiServiceTokenStream(messages, contents, context, memoryId); // TODO moderation
                         }
 
                         Response<AiMessage> response = context.toolSpecifications == null

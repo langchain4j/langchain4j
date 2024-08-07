@@ -1,5 +1,18 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -15,20 +28,17 @@ import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
 
 public class StreamingAiServicesIT {
 
@@ -96,6 +106,32 @@ public class StreamingAiServicesIT {
         }
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_callback_with_content(StreamingChatLanguageModel model) throws Exception {
+
+        List<Content> contents = new ArrayList<>();
+        RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
+
+        when(retrievalAugmentor.augment(any())).thenReturn(AugmentationResult.builder().contents(contents).build());
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatLanguageModel(model)
+                .retrievalAugmentor(retrievalAugmentor)
+                .build();
+
+        StringBuilder answerBuilder = new StringBuilder();
+        CompletableFuture<List<Content>> futureContent = new CompletableFuture<>();
+
+        assistant.chat("What is the capital of Germany?")
+                .onNext(answerBuilder::append)
+                .onRetrieved(futureContent::complete)
+                .start();
+
+        List<Content> returnedContents = futureContent.get(30, SECONDS);
+
+        assertThat(returnedContents).isSameAs(contents);
     }
 
     @ParameterizedTest
