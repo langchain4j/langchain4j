@@ -101,5 +101,13 @@ class InternalAzureOpenAiHelperTest {
         CompletionsFinishReason completionsFinishReason = CompletionsFinishReason.STOPPED;
         FinishReason finishReason = InternalAzureOpenAiHelper.finishReasonFrom(completionsFinishReason);
         assertThat(finishReason).isEqualTo(FinishReason.STOP);
+
+        completionsFinishReason = CompletionsFinishReason.FUNCTION_CALL;
+        finishReason = InternalAzureOpenAiHelper.finishReasonFrom(completionsFinishReason);
+        assertThat(finishReason).isEqualTo(FinishReason.TOOL_EXECUTION);
+
+        completionsFinishReason = CompletionsFinishReason.TOOL_CALLS;
+        finishReason = InternalAzureOpenAiHelper.finishReasonFrom(completionsFinishReason);
+        assertThat(finishReason).isEqualTo(FinishReason.TOOL_EXECUTION);
     }
 }
