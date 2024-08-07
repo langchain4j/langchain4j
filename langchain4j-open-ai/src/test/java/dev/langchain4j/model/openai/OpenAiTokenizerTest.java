@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.chat.ChatCompletionModel;
 import dev.ai4j.openai4j.completion.CompletionModel;
 import dev.ai4j.openai4j.embedding.EmbeddingModel;
+import dev.langchain4j.model.ExampleTestTokenizer;
 import dev.langchain4j.model.Tokenizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.openai.OpenAiTokenizer.countArguments;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -187,5 +189,72 @@ class OpenAiTokenizerTest {
             result.add(strings);
         }
         return result;
+    }
+
+    @Test
+    void should_get_tokenizer_preferring_supplied_tokenizer() {
+
+        // given
+        final Tokenizer suppliedTokenizer = new ExampleTestTokenizer();
+        final String modelName = GPT_3_5_TURBO.toString();
+
+        // when
+        Tokenizer retrieved = OpenAiTokenizer.getTokenizerOrDefault(suppliedTokenizer, modelName);
+
+        // then
+        assertThat(retrieved).isEqualTo(suppliedTokenizer);
+    }
+
+    @Test
+    void should_get_tokenizer_preferring_model_default() {
+
+        // given
+        final String modelName = GPT_4_O.toString();
+
+        // when
+        Tokenizer retrievedTokenizer = OpenAiTokenizer.getTokenizerOrDefault(null, modelName);
+
+        // then
+        assertIsGpt4oTokenizer(retrievedTokenizer);
+    }
+
+    @Test
+    void should_get_tokenizer_fallback_if_not_specified() {
+
+        // given
+        final String modelName = null;
+
+        // when
+        Tokenizer retrievedTokenizer = OpenAiTokenizer.getTokenizerOrDefault(null, modelName);
+
+        // then
+        assertIsGpt35TurboTokenizer(retrievedTokenizer);
+    }
+
+    @Test
+    void should_get_tokenizer_fallback_if_not_known() {
+
+        // given
+        final String modelName = "an unknown model";
+
+        // when
+        Tokenizer retrievedTokenizer = OpenAiTokenizer.getTokenizerOrDefault(null, modelName);
+
+        // then
+        assertIsGpt35TurboTokenizer(retrievedTokenizer);
+    }
+
+    private void assertIsGpt4oTokenizer(Tokenizer tokenizerToAssert) {
+        // GPT 4o's tokenizer (o200k_base) uses fewer tokens for some languages than GPT 3.5's (cl100k_base)
+        final String testText = "ਟੱਬਰ";
+        final int expectedTokens = 4;
+        assertThat(tokenizerToAssert.estimateTokenCountInText(testText)).isEqualTo(expectedTokens);
+    }
+
+    private void assertIsGpt35TurboTokenizer(Tokenizer tokenizerToAssert) {
+        // GPT 3.5 Turbo uses cl100k_base as its tokenizer
+        final String testText = "ਟੱਬਰ";
+        final int expectedTokens = 8;
+        assertThat(tokenizerToAssert.estimateTokenCountInText(testText)).isEqualTo(expectedTokens);
     }
 }

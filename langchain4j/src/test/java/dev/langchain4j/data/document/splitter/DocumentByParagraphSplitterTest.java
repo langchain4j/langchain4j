@@ -5,6 +5,7 @@ import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -476,7 +477,8 @@ class DocumentByParagraphSplitterTest {
         // given
         Document document = Document.from("Title\r\n\r\nHeader 1\r\nText 1\r\n\r\nHeader 2\r\nText 2");
 
-        DocumentSplitter splitter = new DocumentByParagraphSplitter(7, 0, new OpenAiTokenizer());
+        DocumentSplitter splitter = new DocumentByParagraphSplitter(7, 0,
+                new OpenAiTokenizer(OpenAiChatModelName.GPT_3_5_TURBO));
 
         // when
         List<TextSegment> segments = splitter.split(document);

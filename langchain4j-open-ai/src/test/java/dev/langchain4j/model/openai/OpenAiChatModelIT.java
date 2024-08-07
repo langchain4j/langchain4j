@@ -472,6 +472,28 @@ class OpenAiChatModelIT {
     }
 
     @Test
+    void should_use_model_specific_tokenizer_by_default() {
+        // given a model is specified (without the
+        OpenAiChatModel model35 = OpenAiChatModel.builder()
+                .apiKey("ignored")
+                .modelName(GPT_3_5_TURBO)
+                .build();
+        OpenAiChatModel model4o = OpenAiChatModel.builder()
+                .apiKey("ignored")
+                .modelName(GPT_4_O)
+                .build();
+
+        // when the tokenizer is called
+        final String testString = "ਰਾਸ਼ਟਰਪਤੀ"; // GPT-4o's tokenizer uses fewer tokens for some languages
+        int tokenCount35 = model35.estimateTokenCount(testString);
+        int tokenCount4o = model4o.estimateTokenCount(testString);
+
+        // then the model-specific tokenizer is used, since it was selected by default
+        assertThat(tokenCount35).isEqualTo(18);
+        assertThat(tokenCount4o).isEqualTo(6);
+    }
+
+    @Test
     void should_listen_request_and_response() {
 
         // given

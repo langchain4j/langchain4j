@@ -32,14 +32,6 @@ public class OpenAiTokenizer implements Tokenizer {
     private final Optional<Encoding> encoding;
 
     /**
-     * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-3.5-turbo" model.
-     * It should be suitable for all current OpenAI models, as they all use the same cl100k_base encoding.
-     */
-    public OpenAiTokenizer() {
-        this(GPT_3_5_TURBO.toString());
-    }
-
-    /**
      * Creates an instance of the {@code OpenAiTokenizer} for a given {@link OpenAiChatModelName}.
      */
     public OpenAiTokenizer(OpenAiChatModelName modelName) {
@@ -70,6 +62,23 @@ public class OpenAiTokenizer implements Tokenizer {
         // This is done to account for situations when a new OpenAI model is available,
         // but JTokkit does not yet support it.
         this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
+    }
+
+    public static Tokenizer getTokenizerOrDefault(Tokenizer specifiedTokenizer, String modelName) {
+        if (specifiedTokenizer != null) {
+            // Use the tokenizer provided by the consumer, if present
+            return specifiedTokenizer;
+        }
+        if (modelName != null && !modelName.trim().isEmpty()) {
+            // Attempt to retrieve the model's associated tokenizer
+            OpenAiTokenizer candidate = new OpenAiTokenizer(modelName);
+            if (candidate.encoding.isPresent()) {
+                return candidate;
+            }
+        }
+        // Failing the other options, default to GPT 3.5's tokenizer, since it is the most prevalent, and is used by
+        // other (non-OpenAI) models
+        return new OpenAiTokenizer(GPT_3_5_TURBO);
     }
 
     public int estimateTokenCountInText(String text) {

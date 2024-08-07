@@ -77,7 +77,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         this.dimensions = dimensions;
         this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.tokenizer = OpenAiTokenizer.getTokenizerOrDefault(tokenizer, this.modelName);
     }
 
     @Override
