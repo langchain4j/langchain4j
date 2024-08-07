@@ -14,6 +14,7 @@ import dev.langchain4j.model.zhipu.spi.ZhipuAiChatModelBuilderFactory;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +60,11 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
             Integer maxToken,
             Boolean logRequests,
             Boolean logResponses,
-            List<ChatModelListener> listeners
+            List<ChatModelListener> listeners,
+            Duration callTimeout,
+            Duration connectTimeout,
+            Duration readTimeout,
+            Duration writeTimeout
     ) {
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -71,6 +76,10 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
         this.client = ZhipuAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://open.bigmodel.cn/"))
                 .apiKey(apiKey)
+                .callTimeout(callTimeout)
+                .connectTimeout(connectTimeout)
+                .writeTimeout(writeTimeout)
+                .readTimeout(readTimeout)
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
