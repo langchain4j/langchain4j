@@ -273,7 +273,7 @@ class AiServicesWithRagIT {
         // then
         assertThat(answer).isNotBlank();
 
-        verifyNoInteractions(contentRetriever); // TODO: Failing, check if it was this branch. "But found these interactions on mock 'contentRetriever': at dev.langchain4j.rag.DefaultRetrievalAugmentor.process(DefaultRetrievalAugmentor.java:174)"
+        verifyNoInteractions(contentRetriever);
     }
 
     @ParameterizedTest
