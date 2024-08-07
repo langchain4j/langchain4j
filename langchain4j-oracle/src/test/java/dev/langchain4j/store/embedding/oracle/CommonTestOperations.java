@@ -53,7 +53,7 @@ final class CommonTestOperations {
 
     static {
         try {
-            DATA_SOURCE.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
+            DATA_SOURCE.setConnectionFactoryClassName("oracle.jdbc.datasource.impl.OracleDataSource");
             String urlFromEnv = System.getenv("ORACLE_JDBC_URL");
 
             if (urlFromEnv == null) {
