@@ -165,7 +165,7 @@ public class AzureOpenAiImageModel implements ImageModel {
             return Response.from(image);
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating image, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_policy_violation");
+            FinishReason exceptionFinishReason = exceptionFinishReasonManagement(httpResponseException);
             return Response.from(
                     Image.builder().build(),
                     null,

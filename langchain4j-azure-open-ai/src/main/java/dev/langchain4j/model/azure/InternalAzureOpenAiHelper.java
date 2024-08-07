@@ -331,10 +331,32 @@ class InternalAzureOpenAiHelper {
         }
     }
 
+    // declare and init a map that links FinishReason to list of code strings
+    private static final Map<FinishReason, List<String>> finishReasonToCodeMap = new HashMap<>();
+    static {
+        finishReasonToCodeMap.put(STOP, Arrays.asList("stop"));
+        // The content reached the maximum token limit.
+        finishReasonToCodeMap.put(LENGTH, Arrays.asList("context_length_exceeded", "length"));
+        // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
+        finishReasonToCodeMap.put(CONTENT_FILTER, Arrays.asList("content_filter", "content_policy_violation"));
+        finishReasonToCodeMap.put(TOOL_EXECUTION, Arrays.asList("function_call, tool_call"));
+    }
+
+    public static FinishReason finishReasonFrom(String code) {
+        for (Map.Entry<FinishReason, List<String>> entry : finishReasonToCodeMap.entrySet()) {
+            if (entry.getValue().contains(code)) {
+                return entry.getKey();
+            }
+        }
+        return OTHER;
+    }
+
     /**
-     * Support for Responsible AI (content filtered by Azure OpenAI for violence, self harm, or hate).
+     * Extracts the finish reason from an exception thrown by Azure OpenAI.
+     * @param httpResponseException The exception thrown by Azure OpenAI.
+     * @return The finish reason extracted from the exception.
      */
-    public static FinishReason contentFilterManagement(HttpResponseException httpResponseException, String contentFilterCode) {
+    public static FinishReason exceptionFinishReasonManagement(HttpResponseException httpResponseException) {
         FinishReason exceptionFinishReason = FinishReason.OTHER;
         if (httpResponseException.getValue() instanceof Map) {
             try {
@@ -344,17 +366,18 @@ class InternalAzureOpenAiHelper {
                     Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
                     Object errorCode = errorDetails.get("code");
                     if (errorCode instanceof String) {
-                        String code = (String) errorCode;
-                        if (contentFilterCode.equals(code)) {
-                            // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
-                            exceptionFinishReason = FinishReason.CONTENT_FILTER;
-                        }
+                        exceptionFinishReason = finishReasonFrom((String) errorCode);
                     }
                 }
             } catch (ClassCastException classCastException) {
                 logger.error("Error parsing error response from Azure OpenAI", classCastException);
             }
         }
+
+        if (exceptionFinishReason == FinishReason.LENGTH) {
+            throw new AzureOpenAiRuntimeException("Request content length exceeded", httpResponseException);
+        }
+
         return exceptionFinishReason;
     }
 
