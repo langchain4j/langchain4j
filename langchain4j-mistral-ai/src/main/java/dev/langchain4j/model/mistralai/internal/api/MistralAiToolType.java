@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public enum MistralAiToolType {
 
     @JsonProperty("function") FUNCTION;
-
     MistralAiToolType() {
     }
 }

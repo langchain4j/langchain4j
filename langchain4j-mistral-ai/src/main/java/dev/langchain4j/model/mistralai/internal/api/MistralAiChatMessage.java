@@ -25,4 +25,5 @@ public class MistralAiChatMessage {
     private String content;
     private String name;
     private List<MistralAiToolCall> toolCalls;
+    private String toolCallId;
 }

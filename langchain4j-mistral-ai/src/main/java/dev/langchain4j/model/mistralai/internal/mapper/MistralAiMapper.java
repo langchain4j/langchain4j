@@ -75,6 +75,7 @@ public class MistralAiMapper {
         if (message instanceof ToolExecutionResultMessage){
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.TOOL)
+                    .toolCallId((((ToolExecutionResultMessage) message).id()))
                     .name(((ToolExecutionResultMessage) message).toolName())
                     .content(((ToolExecutionResultMessage) message).text())
                     .build();

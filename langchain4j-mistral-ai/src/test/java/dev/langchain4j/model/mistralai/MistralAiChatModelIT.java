@@ -13,6 +13,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
@@ -48,6 +49,21 @@ class MistralAiChatModelIT {
     ChatLanguageModel openMixtral8x22BModel = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(MistralAiChatModelName.OPEN_MIXTRAL_8X22B)
+            .temperature(0.1)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+    ChatLanguageModel openCodestralMamba = MistralAiChatModel.builder()
+            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(MistralAiCodeModelName.OPEN_CODESTRAL_MAMBA)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+    ChatLanguageModel openMistralNemo = MistralAiChatModel.builder()
+            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(MistralAiChatModelName.OPEN_MISTRAL_NEMO)
             .temperature(0.1)
             .logRequests(true)
             .logResponses(true)
@@ -367,7 +383,9 @@ class MistralAiChatModelIT {
         // then
         AiMessage aiMessage2 = response2.content();
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
-        assertThat(aiMessage2.text()).containsIgnoringWhitespaces("March 11, 2024");
+        assertThat(Arrays.asList("March 11, 2024","2024-03-11"))
+                .anySatisfy(date -> assertThat(aiMessage2.text())
+                        .containsIgnoringWhitespaces(date));
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
@@ -451,7 +469,92 @@ class MistralAiChatModelIT {
         AiMessage aiMessage2 = response2.content();
         assertThat(aiMessage2.text()).contains("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-        assertThat(aiMessage2.text()).containsIgnoringWhitespaces("March 11, 2024");
+        assertThat(Arrays.asList("March 11, 2024","2024-03-11"))
+                .anySatisfy(date -> assertThat(aiMessage2.text())
+                        .containsIgnoringWhitespaces(date));
+        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage2 = response2.tokenUsage();
+        assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage2.totalTokenCount())
+                .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
+
+        assertThat(response2.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_code_generation_using_model_openCodestralMamba_and_return_finishReason(){
+        // given
+        UserMessage userMessage = userMessage("Write a java code for fibonacci");
+
+        // when
+        Response<AiMessage> response = openCodestralMamba.generate(userMessage);
+        System.out.println(response.content().text());
+
+        // then
+        assertThat(response.content().text()).isNotBlank();
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_execute_multiple_tools_using_model_openMistralNemo_then_answer() {
+        // given
+        ToolSpecification retrievePaymentDate = ToolSpecification.builder()
+                .name("retrieve-payment-date")
+                .description("Retrieve Payment Date")
+                .addParameter("transactionId", STRING)
+                .build();
+
+        List<ChatMessage> chatMessages = new ArrayList<>();
+        UserMessage userMessage = userMessage("What is the status and the payment date of transaction T123?");
+
+        chatMessages.add(userMessage);
+        List<ToolSpecification> toolSpecifications = asList(retrievePaymentStatus, retrievePaymentDate);
+
+        // when
+        Response<AiMessage> response = openMistralNemo.generate(chatMessages, toolSpecifications);
+
+        // then
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
+
+        ToolExecutionRequest toolExecutionRequest1 = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest1.name()).isEqualTo("retrieve-payment-status");
+        assertThat(toolExecutionRequest1.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
+
+        ToolExecutionRequest toolExecutionRequest2 = aiMessage.toolExecutionRequests().get(1);
+        assertThat(toolExecutionRequest2.name()).isEqualTo("retrieve-payment-date");
+        assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
+
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        chatMessages.add(aiMessage);
+
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage1 = ToolExecutionResultMessage.from(toolExecutionRequest1, "{\"status\": \"PAID\"}");
+        chatMessages.add(toolExecutionResultMessage1);
+        ToolExecutionResultMessage toolExecutionResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "{\"date\": \"2024-03-11\"}");
+        chatMessages.add(toolExecutionResultMessage2);
+
+        // when
+        Response<AiMessage> response2 = openMistralNemo.generate(chatMessages);
+
+        // then
+        AiMessage aiMessage2 = response2.content();
+        assertThat(aiMessage2.text()).contains("T123");
+        assertThat(aiMessage2.text()).containsIgnoringCase("paid");
+        assertThat(Arrays.asList("March 11, 2024","2024-03-11"))
+                .anySatisfy(date -> assertThat(aiMessage2.text())
+                        .containsIgnoringWhitespaces(date));
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();

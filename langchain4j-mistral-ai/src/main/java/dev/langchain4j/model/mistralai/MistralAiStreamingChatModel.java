@@ -183,6 +183,11 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
+        public MistralAiStreamingChatModelBuilder modelName(MistralAiCodeModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
+
         public MistralAiStreamingChatModelBuilder responseFormat(String responseFormat) {
             this.responseFormat = responseFormat;
             return this;
