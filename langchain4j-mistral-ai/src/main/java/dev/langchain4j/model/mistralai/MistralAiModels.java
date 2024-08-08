@@ -26,21 +26,23 @@ public class MistralAiModels {
     /**
      * Constructs a new instance of MistralAiModels.
      *
-     * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified
-     * @param apiKey       the API key for authentication
-     * @param timeout      the timeout duration for API requests. It uses the default value of 60 seconds if not specified
-     * @param logRequests  a flag whether to log raw HTTP requests
-     * @param logResponses a flag whether to log raw HTTP responses
-     * @param maxRetries   the maximum number of retries for API requests. It uses the default value of 3 if not specified
+     * @param mistralAiClient   the client to interact with Mistral AI.
+     * @param baseUrl           the base URL of the Mistral AI API. It uses the default value if not specified
+     * @param apiKey            the API key for authentication
+     * @param timeout           the timeout duration for API requests. It uses the default value of 60 seconds if not specified
+     * @param logRequests       a flag whether to log raw HTTP requests
+     * @param logResponses      a flag whether to log raw HTTP responses
+     * @param maxRetries        the maximum number of retries for API requests. It uses the default value of 3 if not specified
      */
     @Builder
-    public MistralAiModels(String baseUrl,
-                           String apiKey,
-                           Duration timeout,
-                           Boolean logRequests,
-                           Boolean logResponses,
+    public MistralAiModels(MistralAiClient mistralAiClient,
+                           @Deprecated String baseUrl,
+                           @Deprecated String apiKey,
+                           @Deprecated Duration timeout,
+                           @Deprecated Boolean logRequests,
+                           @Deprecated Boolean logResponses,
                            Integer maxRetries) {
-        this.client = MistralAiClient.builder()
+        this.client = mistralAiClient != null ? mistralAiClient : MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
@@ -51,11 +53,23 @@ public class MistralAiModels {
     }
 
     /**
+     * Creates a MistralAiModels with the specified Client.
+     *
+     * @param mistralAiClient the client to interact with Mistral AI.
+     * @return a MistralAiModels instance
+     */
+    public static MistralAiModels withClient(MistralAiClient mistralAiClient) {
+        return builder().mistralAiClient(mistralAiClient).build();
+    }
+
+    /**
      * Creates a new instance of MistralAiModels with the specified API key.
      *
      * @param apiKey the API key for authentication
      * @return a new instance of MistralAiModels
+     * @deprecated pass a MistralAiClient object using withClient()
      */
+    @Deprecated // Use withClient() instead.
     public static MistralAiModels withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
