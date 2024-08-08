@@ -2,6 +2,7 @@ package dev.langchain4j.model.cohere;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.internal.Utils;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
@@ -40,7 +41,7 @@ class CohereClient {
         }
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClientBuilder.build())
                 .addConverterFactory(GsonConverterFactory.create(GSON))
                 .build();
