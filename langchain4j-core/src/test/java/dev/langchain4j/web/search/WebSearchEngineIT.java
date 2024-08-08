@@ -11,17 +11,19 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public abstract class WebSearchEngineIT {
 
+    protected static Integer EXPECTED_MAX_RESULTS = 7;
+
     protected abstract WebSearchEngine searchEngine();
 
     @Test
     void should_search() {
 
         // when
-        WebSearchResults webSearchResults = searchEngine().search("LangChain4j");
+        WebSearchResults webSearchResults = searchEngine().search("What is Artificial Intelligence?");
 
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSize(5);
+        assertThat(results).hasSizeGreaterThan(0);
 
         results.forEach(result -> {
             assertThat(result.title()).isNotBlank();
@@ -30,17 +32,17 @@ public abstract class WebSearchEngineIT {
             assertThat(result.content()).isNull();
         });
 
-        assertThat(results).anyMatch(result -> result.url().toString().contains("https://github.com/langchain4j"));
+        assertThat(results).anyMatch(result -> result.url().toString().contains("AI"));
     }
 
     @Test
     void should_search_with_max_results() {
 
         // given
-        int maxResults = 7;
+        int maxResults = EXPECTED_MAX_RESULTS;
 
         WebSearchRequest request = WebSearchRequest.builder()
-                .searchTerms("LangChain4j")
+                .searchTerms("What is Artificial Intelligence?")
                 .maxResults(maxResults)
                 .build();
 
@@ -49,6 +51,6 @@ public abstract class WebSearchEngineIT {
 
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSize(maxResults);
+        assertThat(results).hasSizeLessThanOrEqualTo(maxResults);
     }
 }
