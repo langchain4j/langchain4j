@@ -515,7 +515,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
         assertThatThrownBy(() -> aiService.illegalChat1("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("Parameter 'arg1' of method 'illegalChat1' should be annotated " +
-                        "with @V or @UserMessage or @UserName or @MemoryId");
+                        "with @V or @UserMessage or @UserName or @MemoryId or be an instance of ToolProviderResult");
     }
 
     @Test
@@ -531,6 +531,6 @@ class AiServicesSystemAndUserMessageConfigsTest {
         assertThatThrownBy(() -> aiService.illegalChat2("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("Parameter 'arg1' of method 'illegalChat2' should be annotated " +
-                        "with @V or @UserMessage or @UserName or @MemoryId");
+                        "with @V or @UserMessage or @UserName or @MemoryId or be an instance of ToolProviderResult");
     }
 }

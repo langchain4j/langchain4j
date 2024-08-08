@@ -4,6 +4,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -25,6 +26,8 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.service.tool.ToolProviderResult;
 
 import java.io.InputStream;
 import java.lang.reflect.Array;
@@ -74,10 +77,11 @@ class DefaultAiServices<T> extends AiServices<T> {
             dev.langchain4j.service.UserMessage userMessage = parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
-            if (v == null && userMessage == null && memoryId == null && userName == null) {
+            boolean isToolResult = parameter.getType().equals(ToolProviderResult.class);
+            if (v == null && userMessage == null && memoryId == null && userName == null && !isToolResult) {
                 throw illegalConfiguration(
                         "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage " +
-                                "or @UserName or @MemoryId", parameter.getName(), method.getName()
+                                "or @UserName or @MemoryId or be an instance of ToolProviderResult", parameter.getName(), method.getName()
                 );
             }
         }
@@ -117,6 +121,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         validateParameters(method);
 
                         Object memoryId = findMemoryId(method, args).orElse(DEFAULT);
+
+                        Optional<ToolProviderResult> toolsFromArgs = findToolsFromArguments(method, args);
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);
@@ -165,6 +171,38 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (returnType == TokenStream.class) {
                             List<Content> contents = augmentationResult != null ? augmentationResult.contents() : null;
                             return new AiServiceTokenStream(messages, contents, context, memoryId); // TODO moderation
+                        }
+
+                        // Backup default tools
+                        List<ToolSpecification> defaultToolSpecifications = context.toolSpecifications;
+                        Map<String, ToolExecutor> defaultToolExecutors = context.toolExecutors;
+
+                        // Begin tools
+                        if (toolsFromArgs.isPresent()) {
+                            // Overriding default tools by argument
+                            context.toolSpecifications = new ArrayList<>();
+                            context.toolExecutors = new HashMap<>();
+                            Map<ToolSpecification, ToolExecutor> newTools = toolsFromArgs.get().getTools();
+                            newTools.forEach((toolSpecification, toolExecutor) -> {
+                                context.toolSpecifications.add(toolSpecification);
+                                context.toolExecutors.put(toolSpecification.name(), toolExecutor);
+                            });
+                        } else if (context.toolProvider != null) {
+                            // Use provider to decide matching tools
+                            ChatMemory chatMemory = context.hasChatMemory()
+                                    ? context.chatMemory(memoryId)
+                                    : null;
+                            context.toolSpecifications = new ArrayList<>();
+                            context.toolExecutors = new HashMap<>();
+                            ToolProviderRequest providerRequest = new ToolProviderRequest(chatMemory, userMessage);
+                            ToolProviderResult providerResult = context.toolProvider.provideTools(providerRequest);
+                            if (providerResult != null) {
+                                // Overriding default tools by provider tools
+                                providerResult.getTools().forEach((toolSpecification, toolExecutor) -> {
+                                    context.toolSpecifications.add(toolSpecification);
+                                    context.toolExecutors.put(toolSpecification.name(), toolExecutor);
+                                });
+                            }
                         }
 
                         Response<AiMessage> response;
@@ -244,6 +282,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                             tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, response.tokenUsage());
                         }
 
+                        if (toolsFromArgs.isPresent() | context.toolProvider != null) {
+                            // restore default tools / none tools for toolProvider
+                            context.toolSpecifications = defaultToolSpecifications;
+                            context.toolExecutors = defaultToolExecutors;
+                        }
+
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
 
                         Object parsedResponse = serviceOutputParser.parse(response, returnType);
@@ -290,6 +334,17 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) proxyInstance;
     }
 
+    private Optional<ToolProviderResult> findToolsFromArguments(Method method, Object[] args) {
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            Parameter parameter = parameters[i];
+            if (parameter.getType().equals(ToolProviderResult.class)) {
+                return Optional.of((ToolProviderResult) args[i]);
+            }
+        }
+        return Optional.empty();
+    }
+
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
         return findSystemMessageTemplate(memoryId, method)
                 .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
@@ -330,10 +385,10 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {
         if (parameters.length == 1) {
             Parameter parameter = parameters[0];
-            if (!parameter.isAnnotationPresent(dev.langchain4j.service.MemoryId.class)
+            if (!parameter.isAnnotationPresent(MemoryId.class)
                     && !parameter.isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
-                    && !parameter.isAnnotationPresent(dev.langchain4j.service.UserName.class)
-                    && (!parameter.isAnnotationPresent(dev.langchain4j.service.V.class) || isAnnotatedWithIt(parameter))) {
+                    && !parameter.isAnnotationPresent(UserName.class)
+                    && (!parameter.isAnnotationPresent(V.class) || isAnnotatedWithIt(parameter))) {
                 return toString(args[0]);
             }
         }
