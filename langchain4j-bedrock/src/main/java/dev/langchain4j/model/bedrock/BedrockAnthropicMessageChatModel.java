@@ -12,6 +12,9 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.model.bedrock.BedrockAnthropicCompletionChatModelResponse.BedrockAnthropicContent;
+import dev.langchain4j.model.bedrock.BedrockAnthropicCompletionChatModelResponse.BedrockAnthropicImageSource;
+import dev.langchain4j.model.bedrock.BedrockAnthropicCompletionChatModelResponse.BedrockAnthropicMessage;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.output.Response;
 import java.util.Collections;
@@ -29,9 +32,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<BedrockAnthropicMessageChatModelResponse> {
     
     private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
+    private final Integer topK;
     
-    @Builder.Default
-    private final int topK = 250;
     @Builder.Default
     private final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
     @Builder.Default
