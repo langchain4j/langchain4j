@@ -12,12 +12,15 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Represents a store for embeddings using the Chroma backend.
@@ -190,13 +193,23 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         int maxResults,
         double minScore
     ) {
-        QueryRequest queryRequest = new QueryRequest(referenceEmbedding.vectorAsList(), maxResults);
+        QueryRequest queryRequest = new QueryRequest.Builder()
+            .queryEmbeddings(referenceEmbedding.vectorAsList())
+            .nResults(maxResults)
+            .build();
 
-        QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
+        return queryAndFilter(queryRequest, minScore);
+    }
 
-        List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(queryResponse);
+    @Override
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        QueryRequest queryRequest = new QueryRequest.Builder()
+            .queryEmbeddings(request.queryEmbedding().vectorAsList())
+            .nResults(request.maxResults())
+            .where(ChromaMetadataFilterMapper.map(request.filter()))
+            .build();
 
-        return matches.stream().filter(match -> match.score() >= minScore).collect(toList());
+        return new EmbeddingSearchResult<>(queryAndFilter(queryRequest, request.minScore()));
     }
 
     @Override
@@ -221,6 +234,12 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll() {
         chromaClient.deleteCollection(collectionName);
         createCollection();
+    }
+
+    private @NotNull List<EmbeddingMatch<TextSegment>> queryAndFilter(QueryRequest queryRequest, double minScore) {
+        QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
+        List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(queryResponse);
+        return matches.stream().filter(match -> match.score() >= minScore).collect(toList());
     }
 
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {

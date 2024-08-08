@@ -1,27 +1,25 @@
 package dev.langchain4j.store.embedding;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.data.Percentage.withPercentage;
+import org.junit.jupiter.api.Test;
 
 /**
  * A minimum set of tests that each implementation of {@link EmbeddingStore} must pass.
  */
 public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
-    static final UUID TEST_UUID = UUID.randomUUID();
+    protected static final UUID TEST_UUID = UUID.randomUUID();
     static final UUID TEST_UUID2 = UUID.randomUUID();
 
     @Test
     void should_add_embedding_with_segment_with_metadata() {
-
         Metadata metadata = createMetadata();
 
         TextSegment segment = TextSegment.from("hello", metadata);
@@ -80,14 +78,15 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         assertThat(match.embedded().metadata().getDouble("double_123")).isEqualTo(1.23456789d);
 
         // new API
-        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
-                .queryEmbedding(embedding)
-                .maxResults(1)
-                .build()).matches()).isEqualTo(relevant);
+        assertThat(
+            embeddingStore()
+                .search(EmbeddingSearchRequest.builder().queryEmbedding(embedding).maxResults(1).build())
+                .matches()
+        )
+            .isEqualTo(relevant);
     }
 
     protected Metadata createMetadata() {
-
         Metadata metadata = new Metadata();
 
         metadata.put("string_empty", "");
