@@ -282,7 +282,7 @@ class InternalAzureOpenAiHelper {
                                     .build())
                     .collect(toList());
 
-            return isNullOrEmpty(text) ?
+            return isNullOrBlank(text) ?
                     aiMessage(toolExecutionRequests) :
                     aiMessage(text, toolExecutionRequests);
         }
