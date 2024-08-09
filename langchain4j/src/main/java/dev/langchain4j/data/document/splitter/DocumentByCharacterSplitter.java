@@ -21,26 +21,43 @@ public class DocumentByCharacterSplitter extends HierarchicalDocumentSplitter {
 
     public DocumentByCharacterSplitter(int maxSegmentSizeInChars,
                                        int maxOverlapSizeInChars) {
-        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null, false);
     }
 
     public DocumentByCharacterSplitter(int maxSegmentSizeInChars,
                                        int maxOverlapSizeInChars,
                                        DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter, false);
     }
 
     public DocumentByCharacterSplitter(int maxSegmentSizeInTokens,
                                        int maxOverlapSizeInTokens,
                                        Tokenizer tokenizer) {
-        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null, false);
     }
 
     public DocumentByCharacterSplitter(int maxSegmentSizeInTokens,
                                        int maxOverlapSizeInTokens,
                                        Tokenizer tokenizer,
                                        DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter, false);
+    }
+
+
+    public DocumentByCharacterSplitter(int maxSegmentSizeInTokens,
+                                       int maxOverlapSizeInTokens,
+                                       Tokenizer tokenizer,
+                                       Boolean addCharacterStartIndex) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null, addCharacterStartIndex);
+    }
+
+
+    public DocumentByCharacterSplitter(int maxSegmentSizeInTokens,
+                                       int maxOverlapSizeInTokens,
+                                       Tokenizer tokenizer,
+                                       DocumentSplitter subSplitter,
+                                       Boolean addCharacterStartIndex) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter, addCharacterStartIndex);
     }
 
     @Override

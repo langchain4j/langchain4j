@@ -6,9 +6,15 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.ExampleTestTokenizer;
 import dev.langchain4j.model.Tokenizer;
 import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
+
+import static dev.langchain4j.data.document.Metadata.metadata;
+import static dev.langchain4j.data.segment.TextSegment.textSegment;
+import static java.lang.String.format;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class HierarchicalDocumentSplitterTest implements WithAssertions {
     public static class ExampleImpl extends HierarchicalDocumentSplitter {
@@ -25,7 +31,7 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
         }
 
         public ExampleImpl(int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, Tokenizer tokenizer, HierarchicalDocumentSplitter subSplitter) {
-            super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
+            super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter, false);
         }
 
         @Override
@@ -52,6 +58,7 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             assertThat(splitter.maxOverlapSize).isEqualTo(1);
             assertThat(splitter.tokenizer).isNull();
             assertThat(splitter.subSplitter).isNull();
+            assertThat(splitter.addCharacterStartIndex).isFalse();
 
             assertThat(splitter.estimateSize("abc def")).isEqualTo(7);
         }
@@ -62,6 +69,7 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             assertThat(splitter.maxOverlapSize).isEqualTo(1);
             assertThat(splitter.tokenizer).isNull();
             assertThat(splitter.subSplitter).isSameAs(subSplitter);
+            assertThat(splitter.addCharacterStartIndex).isFalse();
 
             assertThat(splitter.estimateSize("abc def")).isEqualTo(7);
         }
@@ -72,6 +80,7 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             assertThat(splitter.maxOverlapSize).isEqualTo(1);
             assertThat(splitter.tokenizer).isSameAs(tokenizer);
             assertThat(splitter.subSplitter).isNull();
+            assertThat(splitter.addCharacterStartIndex).isFalse();
 
             assertThat(splitter.estimateSize("abc def")).isEqualTo(2);
         }
@@ -83,6 +92,7 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             assertThat(splitter.maxOverlapSize).isEqualTo(1);
             assertThat(splitter.tokenizer).isSameAs(tokenizer);
             assertThat(splitter.subSplitter).isSameAs(subSplitter);
+            assertThat(splitter.addCharacterStartIndex).isFalse();
 
             assertThat(splitter.estimateSize("abc def")).isEqualTo(2);
         }
@@ -103,22 +113,46 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
         List<TextSegment> textSegments = splitter.split(Document.from(text));
         for (TextSegment textSegment : textSegments) {
             String firstWord = textSegment.text().split("\\s+")[0];
-            Integer startIndex = textSegment.metadata().getInteger("start_index");
+            Integer startIndex = textSegment.metadata().getInteger("character_start_index");
             Integer mapIndex = wordMap.get(firstWord);
             assertThat(startIndex).isEqualTo(mapIndex);
         }
     }
 
-    @Test
+    @RepeatedTest(1)
     public void test_start_indexes() {
         {
-            DocumentSplitter splitter = DocumentSplitters.recursive(500, 250);
+            DocumentSplitter splitter = DocumentSplitters.recursive(250, 10, true);
+
 
             String langchain = "LangChain is a framework designed to simplify the creation of applications using large language models (LLMs). As a language model integration framework, LangChain's use-cases largely overlap with those of language models in general, including document analysis and summarization, chatbots, and code analysis.[2] History\n LangChain was launched in October 2022 as an open source project by Harrison Chase, while working at machine learning startup Robust Intelligence. The project quickly garnered popularity,[3] with improvements from hundreds of contributors on GitHub, trending discussions on Twitter, lively activity on the project's Discord server, many YouTube tutorials, and meetups in San Francisco and London. In April 2023, LangChain had incorporated and the new startup raised over $20 million in funding at a valuation of at least $200 million from venture firm Sequoia Capital, a week after announcing a $10 million seed investment from Benchmark.[4][5] In the third quarter of 2023, the LangChain Expression Language (LCEL) was introduced, which provides a declarative way to define chains of actions.[6][7] In October 2023 LangChain introduced LangServe, a deployment tool to host LCEL code as a production-ready API.[8] Capabilities\n LangChain's developers highlight the framework's applicability to use-cases including chatbots,[9] retrieval-augmented generation,[10] document summarization,[11] and synthetic data generation.[12] As of March 2023, LangChain included integrations with systems including Amazon, Google, and Microsoft Azure cloud storage; API wrappers for news, movie information, and weather; Bash for summarization, syntax and semantics checking, and execution of shell scripts; multiple web scraping subsystems and templates; few-shot learning prompt generation support; finding and summarizing \"todo\" tasks in code; Google Drive documents, spreadsheets, and presentations summarization, extraction, and creation; Google Search and Microsoft Bing web search; OpenAI, Anthropic, and Hugging Face language models; iFixit repair guides and wikis search and summarization; MapReduce for question answering, combining documents, and question generation; N-gram overlap scoring; PyPDF, pdfminer, fitz, and pymupdf for PDF file text extraction and manipulation; Python and JavaScript code generation, analysis, and debugging; Milvus vector database[13] to store and retrieve vector embeddings; Weaviate vector database[14] to cache embedding and data objects; Redis cache database storage; Python RequestsWrapper and other methods for API requests; SQL and NoSQL databases including JSON support; Streamlit, including for logging; text mapping for k-nearest neighbors search; time zone conversion and calendar operations; tracing and recording stack symbols in threaded and asynchronous subprocess runs; and the Wolfram Alpha website and SDK.[15] As of April 2023, it can read from more than 50 document types and data sources.[16]";
             String repeated = new String(new char[50]).replace("\0", langchain);
 
             performStartIndexTest(langchain, splitter);
             performStartIndexTest(repeated, splitter);
+
+        }
+    }
+
+    @Test
+    public void test_start_indexes_with_lots_of_whitespace() {
+        /* This text exists to demonstrate the behaviour of the document splitter. Whitespace characters are not wholly
+         * respected from the original text, to the segmented text.
+         *
+         * Ultimately, this is why the characterStartIndex is not enabled by default as it can become 'wrong' when
+         * compared to the original inputted text.
+         * */
+        {
+            DocumentSplitter splitter = DocumentSplitters.recursive(15, 10, true);
+
+            List<TextSegment> textSegments = splitter.split(Document.from("aaaa aaaa aaaa\t\r\r\r\t\taaaa\r\r\rbbbb aaaa"));
+            assertThat(textSegments).containsExactly(
+                    textSegment("aaaa aaaa aaaa", metadata("index", "0").put("character_start_index", "0")),
+                    textSegment("aaaa\n\nbbbb aaaa", metadata("index", "1").put("character_start_index", "15")) // This 20 comes from manually counting `aaaa aaaa aaaa\t\r\r\r\t\t`. 5 + 5 + 4 + 6.
+            );
+            for (TextSegment textSegment : textSegments) {
+                assertThat(textSegment.metadata().getInteger("character_start_index")).isNotEqualTo(-1);
+            }
 
         }
     }

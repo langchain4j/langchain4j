@@ -53,8 +53,8 @@ class DocumentByParagraphSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(firstParagraph, metadata("index", "0").put("document", "0").put("start_index", "0")),
-                textSegment(secondParagraph, metadata("index", "1").put("document", "0").put("start_index", "27"))
+                textSegment(firstParagraph, metadata("index", "0").put("document", "0")),
+                textSegment(secondParagraph, metadata("index", "1").put("document", "0"))
         );
     }
 
@@ -93,8 +93,8 @@ class DocumentByParagraphSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(firstParagraph + "\n\n" + secondParagraph, metadata("index", "0").put("document", "0").put("start_index", "0")),
-                textSegment(thirdParagraph, metadata("index", "1").put("document", "0").put("start_index", "56"))
+                textSegment(firstParagraph + "\n\n" + secondParagraph, metadata("index", "0").put("document", "0")),
+                textSegment(thirdParagraph, metadata("index", "1").put("document", "0"))
         );
     }
 
@@ -138,10 +138,10 @@ class DocumentByParagraphSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(firstParagraph, metadata("index", "0").put("document", "0").put("start_index", "0")),
-                textSegment(firstSentenceOfSecondParagraph, metadata("index", "1").put("document", "0").put("start_index", "27")),
-                textSegment(secondSentenceOfSecondParagraph, metadata("index", "2").put("document", "0").put("start_index", "74")),
-                textSegment(thirdParagraph, metadata("index", "3").put("document", "0").put("start_index", "123"))
+                textSegment(firstParagraph, metadata("index", "0").put("document", "0")),
+                textSegment(firstSentenceOfSecondParagraph, metadata("index", "1").put("document", "0")),
+                textSegment(secondSentenceOfSecondParagraph, metadata("index", "2").put("document", "0")),
+                textSegment(thirdParagraph, metadata("index", "3").put("document", "0"))
         );
     }
 
@@ -210,14 +210,14 @@ class DocumentByParagraphSplitterTest {
         segments.forEach(segment ->
                 assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(p1, metadata("index", "0").put("document", "0").put("start_index", "0")),
-                textSegment(p2p1, metadata("index", "1").put("document", "0").put("start_index", "329")),
-                textSegment(p2p2, metadata("index", "2").put("document", "0").put("start_index", "603")),
-                textSegment(p3, metadata("index", "3").put("document", "0").put("start_index", "786")),
-                textSegment(p4p1, metadata("index", "4").put("document", "0").put("start_index", "985")),
-                textSegment(p4p2, metadata("index", "5").put("document", "0").put("start_index", "1234")),
-                textSegment(p5 + "\n\n" + p6, metadata("index", "6").put("document", "0").put("start_index", "1294")),
-                textSegment(p7, metadata("index", "7").put("document", "0").put("start_index", "1522"))
+                textSegment(p1, metadata("index", "0").put("document", "0")),
+                textSegment(p2p1, metadata("index", "1").put("document", "0")),
+                textSegment(p2p2, metadata("index", "2").put("document", "0")),
+                textSegment(p3, metadata("index", "3").put("document", "0")),
+                textSegment(p4p1, metadata("index", "4").put("document", "0")),
+                textSegment(p4p2, metadata("index", "5").put("document", "0")),
+                textSegment(p5 + "\n\n" + p6, metadata("index", "6").put("document", "0")),
+                textSegment(p7, metadata("index", "7").put("document", "0"))
         );
     }
 
@@ -280,14 +280,14 @@ class DocumentByParagraphSplitterTest {
         segments.forEach(segment ->
                 assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(format("%s %s %s %s", s1, s2, s3, s4), metadata("index", "0").put("document", "0").put("start_index", "0")),
-                textSegment(format("%s %s %s %s", s5, s6, s7, s8), metadata("index", "1").put("document", "0").put("start_index", "329")),
-                textSegment(format("%s %s %s %s", s8, s9, s10, s11), metadata("index", "2").put("document", "0").put("start_index", "550")),
-                textSegment(format("%s\n\n%s %s %s %s", s11, s12, s13, s14, s15), metadata("index", "3").put("document", "0").put("start_index", "743")),
-                textSegment(format("%s %s %s %s", s15, s16, s17, s18), metadata("index", "4").put("document", "0").put("start_index", "928")),
-                textSegment(format("%s %s %s %s %s %s", s19, s20, s21, s22, s23, s24), metadata("index", "5").put("document", "0").put("start_index", "1183")),
-                textSegment(format("%s %s %s %s %s %s", s22, s23, s24, s25, s26, s27), metadata("index", "6").put("document", "0").put("start_index", "1293")),
-                textSegment(format("%s %s %s", s27, s28, s29), metadata("index", "7").put("document", "0").put("start_index", "1454"))
+                textSegment(format("%s %s %s %s", s1, s2, s3, s4), metadata("index", "0").put("document", "0")),
+                textSegment(format("%s %s %s %s", s5, s6, s7, s8), metadata("index", "1").put("document", "0")),
+                textSegment(format("%s %s %s %s", s8, s9, s10, s11), metadata("index", "2").put("document", "0")),
+                textSegment(format("%s\n\n%s %s %s %s", s11, s12, s13, s14, s15), metadata("index", "3").put("document", "0")),
+                textSegment(format("%s %s %s %s", s15, s16, s17, s18), metadata("index", "4").put("document", "0")),
+                textSegment(format("%s %s %s %s %s %s", s19, s20, s21, s22, s23, s24), metadata("index", "5").put("document", "0")),
+                textSegment(format("%s %s %s %s %s %s", s22, s23, s24, s25, s26, s27), metadata("index", "6").put("document", "0")),
+                textSegment(format("%s %s %s", s27, s28, s29), metadata("index", "7").put("document", "0"))
         );
     }
 
@@ -345,10 +345,10 @@ class DocumentByParagraphSplitterTest {
         segments.forEach(segment ->
                 assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(segment1, metadata("index", "0").put("document", "0").put("start_index", "0")),
-                textSegment(segment2, metadata("index", "1").put("document", "0").put("start_index", "447")),
-                textSegment(segment3, metadata("index", "2").put("document", "0").put("start_index", "841")),
-                textSegment(segment4, metadata("index", "3").put("document", "0").put("start_index", "1234"))
+                textSegment(segment1, metadata("index", "0").put("document", "0")),
+                textSegment(segment2, metadata("index", "1").put("document", "0")),
+                textSegment(segment3, metadata("index", "2").put("document", "0")),
+                textSegment(segment4, metadata("index", "3").put("document", "0"))
         );
     }
 
@@ -371,11 +371,11 @@ class DocumentByParagraphSplitterTest {
                 assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
 
         assertThat(segments).containsExactly(
-                TextSegment.from(sentences(0, 5), Metadata.from("index", "0").put("document", "0").put("start_index", "0")),
-                TextSegment.from(sentences(5, 12), Metadata.from("index", "1").put("document", "0").put("start_index", "402")),
-                TextSegment.from(sentences(10, 16), Metadata.from("index", "2").put("document", "0").put("start_index", "743")),
-                TextSegment.from(sentences(15, 24), Metadata.from("index", "3").put("document", "0").put("start_index", "985")),
-                TextSegment.from(sentences(21, 28), Metadata.from("index", "4").put("document", "0").put("start_index", "1294"))
+                TextSegment.from(sentences(0, 5), Metadata.from("index", "0").put("document", "0")),
+                TextSegment.from(sentences(5, 12), Metadata.from("index", "1").put("document", "0")),
+                TextSegment.from(sentences(10, 16), Metadata.from("index", "2").put("document", "0")),
+                TextSegment.from(sentences(15, 24), Metadata.from("index", "3").put("document", "0")),
+                TextSegment.from(sentences(21, 28), Metadata.from("index", "4").put("document", "0"))
         );
 
         assertThat(tokenizer.estimateTokenCountInText(sentences(5, 5))).isLessThanOrEqualTo(maxOverlapSize);
@@ -403,24 +403,24 @@ class DocumentByParagraphSplitterTest {
                 assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
 
         assertThat(segments).containsExactly(
-                TextSegment.from(sentences(0, 5), Metadata.from("index", "0").put("document", "0").put("start_index", "0")),
-                TextSegment.from(sentences(1, 6), Metadata.from("index", "1").put("document", "0").put("start_index", "87")),
-                TextSegment.from(sentences(3, 8), Metadata.from("index", "2").put("document", "0").put("start_index", "233")),
+                TextSegment.from(sentences(0, 5), Metadata.from("index", "0").put("document", "0")),
+                TextSegment.from(sentences(1, 6), Metadata.from("index", "1").put("document", "0")),
+                TextSegment.from(sentences(3, 8), Metadata.from("index", "2").put("document", "0")),
                 // TODO fix chopped "Mrs."
-                TextSegment.from(sentences(4, 10) + " Mrs.", Metadata.from("index", "3").put("document", "0").put("start_index", "329")),
-                TextSegment.from(sentences(5, 12), Metadata.from("index", "4").put("document", "0").put("start_index", "402")),
-                TextSegment.from(sentences(7, 15), Metadata.from("index", "5").put("document", "0").put("start_index", "550")),
-                TextSegment.from(sentences(9, 16), Metadata.from("index", "6").put("document", "0").put("start_index", "697")),
+                TextSegment.from(sentences(4, 10) + " Mrs.", Metadata.from("index", "3").put("document", "0")),
+                TextSegment.from(sentences(5, 12), Metadata.from("index", "4").put("document", "0")),
+                TextSegment.from(sentences(7, 15), Metadata.from("index", "5").put("document", "0")),
+                TextSegment.from(sentences(9, 16), Metadata.from("index", "6").put("document", "0")),
                 // TODO fix chopped s18
                 // TODO splitter should prioritize progressing forward instead of maximizing overlap
-                TextSegment.from(sentences(10, 16) + " " + sentences[17].replace(" countless tales.", ""), Metadata.from("index", "7").put("document", "0").put("start_index", "743")),
+                TextSegment.from(sentences(10, 16) + " " + sentences[17].replace(" countless tales.", ""), Metadata.from("index", "7").put("document", "0")),
                 // TODO this segment should not be present, there is s14-s19 below
-                TextSegment.from(sentences(13, 17), Metadata.from("index", "8").put("document", "0").put("start_index", "841")),
-                TextSegment.from(sentences(13, 18), Metadata.from("index", "9").put("document", "0").put("start_index", "841")),
-                TextSegment.from(sentences(14, 23), Metadata.from("index", "10").put("document", "0").put("start_index", "927")),
-                TextSegment.from(sentences(16, 24), Metadata.from("index", "11").put("document", "0").put("start_index", "1017")),
-                TextSegment.from(sentences(17, 26), Metadata.from("index", "12").put("document", "0").put("start_index", "1071")),
-                TextSegment.from(sentences(18, 28), Metadata.from("index", "13").put("document", "0").put("start_index", "1182"))
+                TextSegment.from(sentences(13, 17), Metadata.from("index", "8").put("document", "0")),
+                TextSegment.from(sentences(13, 18), Metadata.from("index", "9").put("document", "0")),
+                TextSegment.from(sentences(14, 23), Metadata.from("index", "10").put("document", "0")),
+                TextSegment.from(sentences(16, 24), Metadata.from("index", "11").put("document", "0")),
+                TextSegment.from(sentences(17, 26), Metadata.from("index", "12").put("document", "0")),
+                TextSegment.from(sentences(18, 28), Metadata.from("index", "13").put("document", "0"))
         );
 
         assertThat(tokenizer.estimateTokenCountInText(sentences(1, 5))).isLessThanOrEqualTo(maxOverlapSize);
@@ -483,9 +483,9 @@ class DocumentByParagraphSplitterTest {
 
         // then
         assertThat(segments).containsExactly(
-                TextSegment.from("Title", Metadata.from("index", "0").put("start_index", "0")),
-                TextSegment.from("Header 1\r\nText 1", Metadata.from("index", "1").put("start_index", "6")),
-                TextSegment.from("Header 2\r\nText 2", Metadata.from("index", "2").put("start_index", "23"))
+                TextSegment.from("Title", Metadata.from("index", "0")),
+                TextSegment.from("Header 1\r\nText 1", Metadata.from("index", "1")),
+                TextSegment.from("Header 2\r\nText 2", Metadata.from("index", "2"))
         );
     }
 

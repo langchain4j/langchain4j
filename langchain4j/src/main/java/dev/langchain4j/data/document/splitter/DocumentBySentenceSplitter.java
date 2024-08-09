@@ -34,21 +34,21 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
 
     public DocumentBySentenceSplitter(int maxSegmentSizeInChars,
                                       int maxOverlapSizeInChars) {
-        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null, false);
         this.sentenceModel = createSentenceModel();
     }
 
     public DocumentBySentenceSplitter(int maxSegmentSizeInChars,
                                       int maxOverlapSizeInChars,
                                       DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter, false);
         this.sentenceModel = createSentenceModel();
     }
 
     public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
                                       int maxOverlapSizeInTokens,
                                       Tokenizer tokenizer) {
-        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null, false);
         this.sentenceModel = createSentenceModel();
     }
 
@@ -56,7 +56,24 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
                                       int maxOverlapSizeInTokens,
                                       Tokenizer tokenizer,
                                       DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter, false);
+        this.sentenceModel = createSentenceModel();
+    }
+
+    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
+                                      int maxOverlapSizeInTokens,
+                                      Tokenizer tokenizer,
+                                      Boolean addStartIndex) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null, addStartIndex);
+        this.sentenceModel = createSentenceModel();
+    }
+
+    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
+                                      int maxOverlapSizeInTokens,
+                                      Tokenizer tokenizer,
+                                      DocumentSplitter subSplitter,
+                                      Boolean addStartIndex) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter, addStartIndex);
         this.sentenceModel = createSentenceModel();
     }
 
@@ -82,6 +99,6 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
 
     @Override
     protected DocumentSplitter defaultSubSplitter() {
-        return new DocumentByWordSplitter(maxSegmentSize, maxOverlapSize, tokenizer);
+        return new DocumentByWordSplitter(maxSegmentSize, maxOverlapSize, tokenizer, addCharacterStartIndex);
     }
 }
