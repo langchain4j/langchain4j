@@ -1,7 +1,6 @@
 package dev.langchain4j.model.ollama;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
@@ -34,7 +33,6 @@ import static java.lang.Boolean.TRUE;
 class OllamaClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
             .enable(INDENT_OUTPUT);
 
     private final OllamaApi ollamaApi;
