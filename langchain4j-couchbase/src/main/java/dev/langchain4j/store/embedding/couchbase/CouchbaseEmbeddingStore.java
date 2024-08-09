@@ -42,6 +42,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param scopeName      name of a scope in the bucket in which to store the embeddings
      * @param collectionName name of a collection in the scope in which to store the embeddings
      * @param searchIndexName    name of the FTS index to be used for searching embeddings
+     * @param dimensions expected size (dimensionality) of vectors that will be stored
      */
     public CouchbaseEmbeddingStore(
             String clusterUrl,
