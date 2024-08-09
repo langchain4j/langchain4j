@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.exception.IllegalConfigurationException;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import org.junit.jupiter.api.AfterEach;
@@ -46,6 +47,10 @@ class AiServicesUserMessageConfigTest {
 
         @UserMessage("What is the {{it}} of {{country}}?")
         String chat7(@V("it") String it, @V("country") String country);
+
+        String chat8(@MemoryId String chatId, @UserMessage String userMessage);
+
+        String chat9(@MemoryId String chatId, @UserMessage String userMessage, @V("var") String country);
 
         // illegal configuration
 
@@ -163,6 +168,54 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat7("capital", "Germany"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+    }
+
+    @Test
+    void test_user_message_configuration_8() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        // when
+        aiService.chat8("12345", "What is the capital of {{it}}?");
+
+        // then
+        verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of {{it}}?")));
+    }
+
+    @Test
+    void test_user_message_configuration_9() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        // when
+        aiService.chat8("12345", "What is the {{it}} of {{var}}?");
+
+        // then
+        verify(chatLanguageModel).generate(singletonList(userMessage("What is the {{it}} of {{var}}?")));
+    }
+
+    @Test
+    void test_user_message_configuration_10() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        // when
+        aiService.chat9("12345", "What is the {{it}} of {{var}}?", "Germany");
+
+        // then
+        verify(chatLanguageModel).generate(singletonList(userMessage("What is the {{it}} of Germany?")));
     }
 
     @Test

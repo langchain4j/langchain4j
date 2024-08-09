@@ -8,7 +8,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -89,6 +91,15 @@ public class PromptTemplate {
      */
     public Prompt apply(Object value) {
         return apply(singletonMap("it", value));
+    }
+
+    /**
+     * Get all variables extracted from the template.
+     *
+     * @return A set of variable names.
+     */
+    public Set<String> allVariables() {
+        return template.getAllVariables();
     }
 
     /**
