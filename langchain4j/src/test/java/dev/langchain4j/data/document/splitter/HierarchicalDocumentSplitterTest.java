@@ -6,14 +6,12 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.ExampleTestTokenizer;
 import dev.langchain4j.model.Tokenizer;
 import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
-import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class HierarchicalDocumentSplitterTest implements WithAssertions {
@@ -119,7 +117,7 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
         }
     }
 
-    @RepeatedTest(1)
+    @Test
     public void test_start_indexes() {
         {
             DocumentSplitter splitter = DocumentSplitters.recursive(250, 10, true);
