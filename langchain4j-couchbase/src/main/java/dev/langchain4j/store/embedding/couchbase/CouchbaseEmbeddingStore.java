@@ -11,8 +11,6 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.util.annotation.NonNull;
 import reactor.util.annotation.Nullable;
 
