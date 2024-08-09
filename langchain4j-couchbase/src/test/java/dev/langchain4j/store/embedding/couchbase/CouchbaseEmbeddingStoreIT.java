@@ -18,7 +18,7 @@ import java.time.Duration;
 
 @Testcontainers
 class CouchbaseEmbeddingStoreIT extends EmbeddingStoreIT {
-    public static final Integer TEST_DIMENSIONS = 384;
+   static final Integer TEST_DIMENSIONS = 384;
     private static BucketDefinition testBucketDefinition = new BucketDefinition("test")
             .withPrimaryIndex(true)
             .withQuota(100);
