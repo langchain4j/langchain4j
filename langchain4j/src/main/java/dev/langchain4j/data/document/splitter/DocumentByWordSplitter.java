@@ -30,26 +30,33 @@ public class DocumentByWordSplitter extends HierarchicalDocumentSplitter {
 
     public DocumentByWordSplitter(int maxSegmentSizeInChars,
                                   int maxOverlapSizeInChars) {
-        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null, false);
     }
 
     public DocumentByWordSplitter(int maxSegmentSizeInChars,
                                   int maxOverlapSizeInChars,
                                   DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter, false);
     }
 
     public DocumentByWordSplitter(int maxSegmentSizeInTokens,
                                   int maxOverlapSizeInTokens,
                                   Tokenizer tokenizer) {
-        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null, false);
     }
 
     public DocumentByWordSplitter(int maxSegmentSizeInTokens,
                                   int maxOverlapSizeInTokens,
                                   Tokenizer tokenizer,
                                   DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter, false);
+    }
+
+    public DocumentByWordSplitter(int maxSegmentSizeInTokens,
+                                  int maxOverlapSizeInTokens,
+                                  Tokenizer tokenizer,
+                                  Boolean addCharacterStartIndex) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null, addCharacterStartIndex);
     }
 
     @Override
@@ -64,6 +71,6 @@ public class DocumentByWordSplitter extends HierarchicalDocumentSplitter {
 
     @Override
     protected DocumentSplitter defaultSubSplitter() {
-        return new DocumentByCharacterSplitter(maxSegmentSize, maxOverlapSize, tokenizer);
+        return new DocumentByCharacterSplitter(maxSegmentSize, maxOverlapSize, tokenizer, addCharacterStartIndex);
     }
 }
