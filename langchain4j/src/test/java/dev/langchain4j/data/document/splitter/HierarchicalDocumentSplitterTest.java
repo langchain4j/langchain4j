@@ -146,7 +146,7 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
             List<TextSegment> textSegments = splitter.split(Document.from("aaaa aaaa aaaa\t\r\r\r\t\taaaa\r\r\rbbbb aaaa"));
             assertThat(textSegments).containsExactly(
                     textSegment("aaaa aaaa aaaa", metadata("index", "0").put("character_start_index", "0")),
-                    textSegment("aaaa\n\nbbbb aaaa", metadata("index", "1").put("character_start_index", "15")) // This 20 comes from manually counting `aaaa aaaa aaaa\t\r\r\r\t\t`. 5 + 5 + 4 + 6.
+                    textSegment("aaaa\n\nbbbb aaaa", metadata("index", "1").put("character_start_index", "15"))
             );
             for (TextSegment textSegment : textSegments) {
                 assertThat(textSegment.metadata().getInteger("character_start_index")).isNotEqualTo(-1);
