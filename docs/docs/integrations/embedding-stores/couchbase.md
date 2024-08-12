@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Couchbase
 
-https://www.trychroma.com/
+https://www.couchbase.com/
 
 
 ## Maven Dependency

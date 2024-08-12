@@ -228,6 +228,9 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new IllegalArgumentException("ids cannot be null or empty");
+        }
         ids.forEach(collection::remove);
     }
 
