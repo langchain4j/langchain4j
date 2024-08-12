@@ -19,7 +19,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Represents an <a href="https://www.couchbase.com/">Couchbase</a> index as an embedding store.
+ * Represents a <a href="https://www.couchbase.com/">Couchbase</a> index as an embedding store.
  * Current implementation assumes the index uses the cosine distance metric.
  * <br>
  * Supports storing {@link Metadata}
