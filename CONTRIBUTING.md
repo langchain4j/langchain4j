@@ -2,7 +2,7 @@ Thank you for investing your time and effort in contributing to our project, we 
 
 
 # General guidelines
-- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will prioritize is shortly.
+- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will prioritize it shortly.
 - Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/)
 - Keep the code compatible with Java 8. We plan to increase the baseline to Java 17 a bit later.
 - Avoid adding new dependencies as much as possible (new dependencies with test scope are OK). If absolutely necessary, try to use the same libraries which are already used in the project.

@@ -4,6 +4,7 @@ import com.google.gson.*;
 import com.google.gson.stream.JsonWriter;
 
 import java.io.*;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -56,6 +57,11 @@ class GsonJsonCodec implements Json.JsonCodec {
      */
     @Override
     public <T> T fromJson(String json, Class<T> type) {
+        return GSON.fromJson(json, type);
+    }
+
+    @Override
+    public <T> T fromJson(final String json, final Type type) {
         return GSON.fromJson(json, type);
     }
 

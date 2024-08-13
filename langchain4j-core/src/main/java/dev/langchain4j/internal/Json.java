@@ -4,6 +4,7 @@ import dev.langchain4j.spi.json.JsonCodecFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -36,6 +37,14 @@ public class Json {
          * @return the object.
          */
         <T> T fromJson(String json, Class<T> type);
+
+        /**
+         * Convert the given JSON string to the object of the given type. Use this instead of {@link Json.JsonCodec#fromJson(String, Class)} in cases where generics are involved.
+         * @param json the json string
+         * @param type the type of object
+         * @return the converted object
+         */
+        <T> T fromJson(String json, Type type);
 
         /**
          * Convert the given object to an {@link InputStream}.
@@ -76,6 +85,16 @@ public class Json {
      * @return the object.
      */
     public static <T> T fromJson(String json, Class<T> type) {
+        return CODEC.fromJson(json, type);
+    }
+
+    /**
+     * Convert the given JSON string to the object of the given type. Use this instead of {@link Json#fromJson(String, Class)} in cases where generics are involved.
+     * @param json the json string
+     * @param type the type of object
+     * @return the converted object
+     */
+    public static <T> T fromJson(String json, Type type) {
         return CODEC.fromJson(json, type);
     }
 
