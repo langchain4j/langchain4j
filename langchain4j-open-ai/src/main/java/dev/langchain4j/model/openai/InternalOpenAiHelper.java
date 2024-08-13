@@ -1,31 +1,65 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.chat.*;
+import dev.ai4j.openai4j.chat.AssistantMessage;
+import dev.ai4j.openai4j.chat.ChatCompletionRequest;
+import dev.ai4j.openai4j.chat.ChatCompletionResponse;
+import dev.ai4j.openai4j.chat.ContentType;
+import dev.ai4j.openai4j.chat.Function;
+import dev.ai4j.openai4j.chat.FunctionCall;
+import dev.ai4j.openai4j.chat.FunctionMessage;
+import dev.ai4j.openai4j.chat.ImageDetail;
+import dev.ai4j.openai4j.chat.ImageUrl;
+import dev.ai4j.openai4j.chat.Message;
+import dev.ai4j.openai4j.chat.ResponseFormat;
+import dev.ai4j.openai4j.chat.Tool;
+import dev.ai4j.openai4j.chat.ToolCall;
+import dev.ai4j.openai4j.chat.ToolMessage;
 import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.chat.ResponseFormatSpecification;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.output.structured.json.JsonArraySchema;
+import dev.langchain4j.model.output.structured.json.JsonBooleanSchema;
+import dev.langchain4j.model.output.structured.json.JsonEnumSchema;
+import dev.langchain4j.model.output.structured.json.JsonIntegerSchema;
+import dev.langchain4j.model.output.structured.json.JsonNumberSchema;
+import dev.langchain4j.model.output.structured.json.JsonObjectSchema;
+import dev.langchain4j.model.output.structured.json.JsonSchema;
+import dev.langchain4j.model.output.structured.json.JsonSchemaElement;
+import dev.langchain4j.model.output.structured.json.JsonStringSchema;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
-import static dev.ai4j.openai4j.chat.ContentType.IMAGE_URL;
-import static dev.ai4j.openai4j.chat.ContentType.TEXT;
+import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_OBJECT;
+import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.chat.ResponseFormat.TEXT;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -129,14 +163,14 @@ public class InternalOpenAiHelper {
 
     private static dev.ai4j.openai4j.chat.Content toOpenAiContent(TextContent content) {
         return dev.ai4j.openai4j.chat.Content.builder()
-                .type(TEXT)
+                .type(ContentType.TEXT)
                 .text(content.text())
                 .build();
     }
 
     private static dev.ai4j.openai4j.chat.Content toOpenAiContent(ImageContent content) {
         return dev.ai4j.openai4j.chat.Content.builder()
-                .type(IMAGE_URL)
+                .type(ContentType.IMAGE_URL)
                 .imageUrl(ImageUrl.builder()
                         .url(toUrl(content.image()))
                         .detail(toDetail(content.detailLevel()))
@@ -158,23 +192,26 @@ public class InternalOpenAiHelper {
         return ImageDetail.valueOf(detailLevel.name());
     }
 
-    public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications) {
+    public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
         return toolSpecifications.stream()
-                .map(InternalOpenAiHelper::toTool)
+                .map((ToolSpecification toolSpecification) -> toTool(toolSpecification, strict))
                 .collect(toList());
     }
 
-    private static Tool toTool(ToolSpecification toolSpecification) {
-        Function function = Function.builder()
+    private static Tool toTool(ToolSpecification toolSpecification, boolean strict) {
+        Function.Builder functionBuilder = Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toOpenAiParameters(toolSpecification.parameters()))
-                .build();
+                .parameters(toOpenAiParameters(toolSpecification.parameters(), strict));
+        if (strict) {
+            functionBuilder.strict(true);
+        }
+        Function function = functionBuilder.build();
         return Tool.from(function);
     }
 
     /**
-     * @deprecated Functions are deprecated by OpenAI, use {@link #toTools(Collection)} instead
+     * @deprecated Functions are deprecated by OpenAI, use {@link #toTools(Collection, boolean)} instead
      */
     @Deprecated
     public static List<Function> toFunctions(Collection<ToolSpecification> toolSpecifications) {
@@ -184,25 +221,98 @@ public class InternalOpenAiHelper {
     }
 
     /**
-     * @deprecated Functions are deprecated by OpenAI, use {@link #toTool(ToolSpecification)} ()} instead
+     * @deprecated Functions are deprecated by OpenAI, use {@link #toTool(ToolSpecification, boolean)} instead
      */
     @Deprecated
     private static Function toFunction(ToolSpecification toolSpecification) {
         return Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toOpenAiParameters(toolSpecification.parameters()))
+                .parameters(toOpenAiParameters(toolSpecification.parameters(), false))
                 .build();
     }
 
-    private static dev.ai4j.openai4j.chat.Parameters toOpenAiParameters(ToolParameters toolParameters) {
+    private static dev.ai4j.openai4j.chat.JsonObjectSchema toOpenAiParameters(ToolParameters toolParameters, boolean strict) {
         if (toolParameters == null) {
-            return dev.ai4j.openai4j.chat.Parameters.builder().build();
+            dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder();
+            if (strict) {
+                // when strict, additionalProperties must be false:
+                // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects
+                builder.additionalProperties(false);
+            }
+            return builder.build();
         }
-        return dev.ai4j.openai4j.chat.Parameters.builder()
-                .properties(toolParameters.properties())
-                .required(toolParameters.required())
-                .build();
+
+        dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
+                .properties(toOpenAiProperties(toolParameters.properties(), strict))
+                .required(toolParameters.required());
+        if (strict) {
+            builder
+                    // when strict, all fields must be required:
+                    // https://platform.openai.com/docs/guides/structured-outputs/all-fields-must-be-required
+                    .required(new ArrayList<>(toolParameters.properties().keySet()))
+                    // when strict, additionalProperties must be false:
+                    // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects
+                    .additionalProperties(false);
+        }
+        return builder.build();
+    }
+
+    private static Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> toOpenAiProperties(Map<String, ?> properties, boolean strict) {
+        Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
+        properties.forEach((key, value) ->
+                openAiProperties.put(key, toOpenAiJsonSchemaElement((Map<String, ?>) value, strict)));
+        return openAiProperties;
+    }
+
+    private static dev.ai4j.openai4j.chat.JsonSchemaElement toOpenAiJsonSchemaElement(Map<String, ?> properties, boolean strict) {
+        // TODO rewrite when JsonSchemaElement will be used for ToolSpecification.properties
+        Object type = properties.get("type");
+        String description = (String) properties.get("description");
+        if ("object".equals(type)) {
+            dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
+                    .description(description)
+                    .properties(toOpenAiProperties((Map<String, ?>) properties.get("properties"), strict))
+                    .required((List<String>) properties.get("required"));
+            if (strict) {
+                builder
+                        // when strict, all fields must be required:
+                        // https://platform.openai.com/docs/guides/structured-outputs/all-fields-must-be-required
+                        .required(new ArrayList<>(((Map<String, ?>) properties.get("properties")).keySet()))
+                        // when strict, additionalProperties must be false:
+                        // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects
+                        .additionalProperties(false);
+            }
+            return builder.build();
+        } else if ("array".equals(type)) {
+            return dev.ai4j.openai4j.chat.JsonArraySchema.builder()
+                    .description(description)
+                    .items(toOpenAiJsonSchemaElement((Map<String, ?>) properties.get("items"), strict))
+                    .build();
+        } else if (properties.get("enum") != null) {
+            return dev.ai4j.openai4j.chat.JsonEnumSchema.builder()
+                    .description(description)
+                    .enumValues((List<String>) properties.get("enum"))
+                    .build();
+        } else if ("string".equals(type)) {
+            return dev.ai4j.openai4j.chat.JsonStringSchema.builder()
+                    .description(description)
+                    .build();
+        } else if ("integer".equals(type)) {
+            return dev.ai4j.openai4j.chat.JsonIntegerSchema.builder()
+                    .description(description)
+                    .build();
+        } else if ("number".equals(type)) {
+            return dev.ai4j.openai4j.chat.JsonNumberSchema.builder()
+                    .description(description)
+                    .build();
+        } else if ("boolean".equals(type)) {
+            return dev.ai4j.openai4j.chat.JsonBooleanSchema.builder()
+                    .description(description)
+                    .build();
+        } else {
+            throw new IllegalArgumentException("Unknown type " + type);
+        }
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
@@ -316,5 +426,65 @@ public class InternalOpenAiHelper {
                 .finishReason(response.finishReason())
                 .aiMessage(response.content())
                 .build();
+    }
+
+    static ResponseFormat toOpenAiResponseFormat(ResponseFormatSpecification responseFormatSpecification, Boolean strict) {
+        if (responseFormatSpecification == null || responseFormatSpecification.responseFormat() == TEXT) {
+            return null;
+        }
+
+        JsonSchema jsonSchema = responseFormatSpecification.jsonSchema();
+        if (jsonSchema == null) {
+            return new ResponseFormat(JSON_OBJECT, null);
+        } else {
+            dev.ai4j.openai4j.chat.JsonSchema openAiJsonSchema = dev.ai4j.openai4j.chat.JsonSchema.builder()
+                    .name(jsonSchema.name())
+                    .strict(strict)
+                    .schema((dev.ai4j.openai4j.chat.JsonObjectSchema) toOpenAiJsonSchemaElement(jsonSchema.schema()))
+                    .build();
+            return new ResponseFormat(JSON_SCHEMA, openAiJsonSchema);
+        }
+    }
+
+    private static dev.ai4j.openai4j.chat.JsonSchemaElement toOpenAiJsonSchemaElement(JsonSchemaElement jsonSchemaElement) {
+        if (jsonSchemaElement instanceof JsonStringSchema) {
+            return dev.ai4j.openai4j.chat.JsonStringSchema.builder()
+                    .description(((JsonStringSchema) jsonSchemaElement).description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
+            return dev.ai4j.openai4j.chat.JsonIntegerSchema.builder()
+                    .description(((JsonIntegerSchema) jsonSchemaElement).description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
+            return dev.ai4j.openai4j.chat.JsonNumberSchema.builder()
+                    .description(((JsonNumberSchema) jsonSchemaElement).description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
+            return dev.ai4j.openai4j.chat.JsonBooleanSchema.builder()
+                    .description(((JsonBooleanSchema) jsonSchemaElement).description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
+            return dev.ai4j.openai4j.chat.JsonEnumSchema.builder()
+                    .description(((JsonEnumSchema) jsonSchemaElement).description())
+                    .enumValues(((JsonEnumSchema) jsonSchemaElement).enumValues())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonArraySchema) {
+            return dev.ai4j.openai4j.chat.JsonArraySchema.builder()
+                    .description(((JsonArraySchema) jsonSchemaElement).description())
+                    .items(toOpenAiJsonSchemaElement(((JsonArraySchema) jsonSchemaElement).items()))
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonObjectSchema) {
+            Map<String, JsonSchemaElement> properties = ((JsonObjectSchema) jsonSchemaElement).properties();
+            Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
+            properties.forEach((key, value) -> openAiProperties.put(key, toOpenAiJsonSchemaElement(value)));
+            return dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
+                    .description(((JsonObjectSchema) jsonSchemaElement).description())
+                    .properties(openAiProperties)
+                    .required(((JsonObjectSchema) jsonSchemaElement).required())
+                    .additionalProperties(((JsonObjectSchema) jsonSchemaElement).additionalProperties())
+                    .build();
+        } else {
+            throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement);
+        }
     }
 }

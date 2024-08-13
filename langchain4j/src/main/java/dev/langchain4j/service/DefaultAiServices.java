@@ -5,6 +5,9 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.ChatRequest;
+import dev.langchain4j.model.chat.ChatResult;
+import dev.langchain4j.model.chat.ResponseFormatSpecification;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -12,9 +15,11 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.output.structured.json.JsonSchema;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.service.output.JsonSchemas;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutor;
 
@@ -29,6 +34,7 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.model.chat.ResponseFormat.JSON;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
 class DefaultAiServices<T> extends AiServices<T> {
@@ -111,12 +117,16 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
-                        String outputFormatInstructions = serviceOutputParser.outputFormatInstructions(returnType);
-                        String text = userMessage.singleText() + outputFormatInstructions;
-                        if (isNotNullOrBlank(userMessage.name())) {
-                            userMessage = UserMessage.from(userMessage.name(), text);
-                        } else {
-                            userMessage = UserMessage.from(text);
+
+                        boolean supportsJsonSchema = supportsJsonSchema();
+                        Optional<JsonSchema> jsonSchema = Optional.empty();
+                        if (supportsJsonSchema) {
+                            jsonSchema = JsonSchemas.from(returnType);
+                        }
+
+                        if (!supportsJsonSchema || !jsonSchema.isPresent()) {
+                            // TODO append after storing in the memory?
+                            userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
                         if (context.hasChatMemory()) {
@@ -140,9 +150,31 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
-                        Response<AiMessage> response = context.toolSpecifications == null
-                                ? context.chatModel.generate(messages)
-                                : context.chatModel.generate(messages, context.toolSpecifications);
+                        Response<AiMessage> response;
+                        if (supportsJsonSchema && jsonSchema.isPresent()) {
+                            ChatRequest chatRequest = ChatRequest.builder()
+                                    .messages(messages)
+                                    .toolSpecifications(context.toolSpecifications)
+                                    .responseFormatSpecification(ResponseFormatSpecification.builder()
+                                            .responseFormat(JSON)
+                                            .jsonSchema(jsonSchema.get())
+                                            .build())
+                                    .build();
+
+                            ChatResult chatResult = context.chatModel.chat(chatRequest);
+
+                            response = new Response<>(
+                                    chatResult.aiMessage(),
+                                    chatResult.tokenUsage(),
+                                    chatResult.finishReason()
+                            );
+                        } else {
+                            // TODO migrate to new API
+                            response = context.toolSpecifications == null
+                                    ? context.chatModel.generate(messages)
+                                    : context.chatModel.generate(messages, context.toolSpecifications);
+                        }
+
                         TokenUsage tokenUsageAccumulator = response.tokenUsage();
 
                         verifyModerationIfNeeded(moderationFuture);
@@ -204,6 +236,21 @@ class DefaultAiServices<T> extends AiServices<T> {
                         } else {
                             return parsedResponse;
                         }
+                    }
+
+                    private boolean supportsJsonSchema() {
+                        return context.chatModel != null && context.chatModel.supportsJsonSchema();
+                    }
+
+                    private UserMessage appendOutputFormatInstructions(Type returnType, UserMessage userMessage) {
+                        String outputFormatInstructions = serviceOutputParser.outputFormatInstructions(returnType);
+                        String text = userMessage.singleText() + outputFormatInstructions;
+                        if (isNotNullOrBlank(userMessage.name())) {
+                            userMessage = UserMessage.from(userMessage.name(), text);
+                        } else {
+                            userMessage = UserMessage.from(text);
+                        }
+                        return userMessage;
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {

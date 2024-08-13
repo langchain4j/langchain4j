@@ -27,6 +27,7 @@ import java.util.List;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.*;
 import static dev.langchain4j.service.AiServicesIT.IssueCategory.*;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
@@ -45,6 +46,7 @@ public class AiServicesIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_4_O_MINI)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -85,6 +87,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(singletonList(userMessage("Count number of 'egg' mentions in this sentence:\n" +
                 "|||I have ten eggs in my basket and three in my pocket.|||\n" +
                 "You must answer strictly in the following format: integer number")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
 
@@ -105,6 +108,7 @@ public class AiServicesIT {
         assertThat(joke).isNotBlank();
 
         verify(chatLanguageModel).generate(singletonList(userMessage("Tell me a joke about AI")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
 
@@ -135,6 +139,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date from " + text + "\n" +
                         "You must answer strictly in the following format: yyyy-MM-dd")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     @Test
@@ -152,6 +157,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract time from " + text + "\n" +
                         "You must answer strictly in the following format: HH:mm:ss")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     @Test
@@ -169,6 +175,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date and time from " + text + "\n" +
                         "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
 
@@ -201,6 +208,7 @@ public class AiServicesIT {
                         "POSITIVE\n" +
                         "NEUTRAL\n" +
                         "NEGATIVE")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     public enum Weather {
@@ -239,6 +247,7 @@ public class AiServicesIT {
                 "CLOUDY - The sky is covered with clouds with no rain, often creating a gray and overcast appearance\n" +
                 "RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions\n" +
                 "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     public enum Ingredient {
@@ -270,6 +279,7 @@ public class AiServicesIT {
                 "PEPPER\n" +
                 "VINEGAR\n" +
                 "OIL")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     public enum IssueCategory {
@@ -320,6 +330,7 @@ public class AiServicesIT {
                 "CONNECTIVITY_ISSUE - The feedback mentions issues with internet connectivity, such as unreliable Wi-Fi\n" +
                 "CHECK_IN_ISSUE - The feedback mentions issues with the check-in process, such as it being tedious and time-consuming\n" +
                 "OVERALL_EXPERIENCE_ISSUE - The feedback mentions a general dissatisfaction with the overall hotel experience due to multiple issues")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     @ToString
@@ -377,6 +388,7 @@ public class AiServicesIT {
                         "\"city\": (type: string)\n" +
                         "})\n" +
                         "}")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     @Test
@@ -424,6 +436,7 @@ public class AiServicesIT {
                         "\"city\": (type: string)\n" +
                         "})\n" +
                         "}")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
 
@@ -481,6 +494,7 @@ public class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     @Test
@@ -504,6 +518,7 @@ public class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     @Test
@@ -527,6 +542,7 @@ public class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     @Test
@@ -550,6 +566,7 @@ public class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     interface BadChef {
@@ -626,6 +643,7 @@ public class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     @Test
@@ -657,6 +675,7 @@ public class AiServicesIT {
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")
         ));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     @Test
@@ -688,6 +707,7 @@ public class AiServicesIT {
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")
         ));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     interface ProfessionalChef {
@@ -712,6 +732,7 @@ public class AiServicesIT {
                 systemMessage("You are a professional chef. You are friendly, polite and concise."),
                 userMessage(question)
         ));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
 
@@ -738,6 +759,7 @@ public class AiServicesIT {
                 systemMessage("You are a professional translator into german"),
                 userMessage("Translate the following text: Hello, how are you?")
         ));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
     interface Summarizer {
@@ -764,6 +786,7 @@ public class AiServicesIT {
                 systemMessage("Summarize every message from user in 3 bullet points. Provide only bullet points."),
                 userMessage(text + "\nYou must put every item on a separate line.")
         ));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
 
@@ -788,6 +811,7 @@ public class AiServicesIT {
                 .hasMessage("Text \"" + message + "\" violates content policy");
 
         verify(chatLanguageModel).generate(singletonList(userMessage(message)));
+        verify(chatLanguageModel).supportsJsonSchema();
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -806,6 +830,7 @@ public class AiServicesIT {
         assertThat(response).isNotBlank();
 
         verify(chatLanguageModel).generate(singletonList(userMessage(message)));
+        verify(chatLanguageModel).supportsJsonSchema();
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -839,6 +864,7 @@ public class AiServicesIT {
         assertThat(result.sources()).isNull();
 
         verify(chatLanguageModel).generate(singletonList(userMessage(userMessage)));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
 
 
@@ -877,6 +903,6 @@ public class AiServicesIT {
                         "\"bookingId\": (type: string)\n" +
                         "}")
         ));
+        verify(chatLanguageModel).supportsJsonSchema();
     }
-
 }

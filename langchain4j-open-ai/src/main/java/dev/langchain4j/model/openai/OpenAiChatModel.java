@@ -4,13 +4,21 @@ import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
+import dev.ai4j.openai4j.chat.ResponseFormat;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatRequest;
+import dev.langchain4j.model.chat.ChatResult;
 import dev.langchain4j.model.chat.TokenCountEstimator;
-import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -25,7 +33,18 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerRequest;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerResponse;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toTools;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -48,9 +67,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final Double presencePenalty;
     private final Double frequencyPenalty;
     private final Map<String, Integer> logitBias;
-    private final String responseFormat;
+    private final ResponseFormat responseFormat;
+    private final Boolean strictJsonSchema;
     private final Integer seed;
     private final String user;
+    private final Boolean strictTools;
+    private final Boolean parallelToolCalls;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
     private final List<ChatModelListener> listeners;
@@ -68,8 +90,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Double frequencyPenalty,
                            Map<String, Integer> logitBias,
                            String responseFormat,
+                           Boolean strictJsonSchema,
                            Integer seed,
                            String user,
+                           Boolean strictTools,
+                           Boolean parallelToolCalls,
                            Duration timeout,
                            Integer maxRetries,
                            Proxy proxy,
@@ -108,9 +133,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.logitBias = logitBias;
-        this.responseFormat = responseFormat;
+        this.responseFormat = responseFormat == null ? null : new ResponseFormat(responseFormat, null);
+        this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
         this.seed = seed;
         this.user = user;
+        this.strictTools = getOrDefault(strictTools, false);
+        this.parallelToolCalls = parallelToolCalls;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
@@ -121,24 +149,51 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
+    public boolean supportsJsonSchema() { // TODO how to make it work for Azure as well?
+        return responseFormat != null && responseFormat.type().equals("json_schema");
+    }
+
+    @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, null, null);
+        return chat(messages, null, null, this.responseFormat);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null);
+        return chat(messages, toolSpecifications, null, this.responseFormat);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, singletonList(toolSpecification), toolSpecification);
+        return chat(messages, singletonList(toolSpecification), toolSpecification, this.responseFormat);
     }
 
-    private Response<AiMessage> generate(List<ChatMessage> messages,
-                                         List<ToolSpecification> toolSpecifications,
-                                         ToolSpecification toolThatMustBeExecuted
-    ) {
+    @Override
+    public ChatResult chat(ChatRequest request) {
+        Response<AiMessage> response = chat(
+                request.messages(),
+                request.toolSpecifications(),
+                null,
+                getOrDefault(toOpenAiResponseFormat(request.responseFormatSpecification(), strictJsonSchema), this.responseFormat)
+        );
+        return ChatResult.builder()
+                .aiMessage(response.content())
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .build();
+    }
+
+    private Response<AiMessage> chat(List<ChatMessage> messages,
+                                     List<ToolSpecification> toolSpecifications,
+                                     ToolSpecification toolThatMustBeExecuted, // TODO is not compatible with format
+                                     ResponseFormat responseFormat) {
+
+        if (responseFormat != null
+                && "json_schema".equals(responseFormat.type())
+                && responseFormat.jsonSchema() == null) {
+            responseFormat = null;
+        }
+
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
@@ -151,10 +206,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .logitBias(logitBias)
                 .responseFormat(responseFormat)
                 .seed(seed)
-                .user(user);
+                .user(user)
+                .parallelToolCalls(parallelToolCalls);
 
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            requestBuilder.tools(toTools(toolSpecifications));
+            requestBuilder.tools(toTools(toolSpecifications, strictTools));
         }
         if (toolThatMustBeExecuted != null) {
             requestBuilder.toolChoice(toolThatMustBeExecuted.name());

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -79,5 +80,26 @@ public interface ChatLanguageModel {
      */
     default Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
+    }
+
+    /**
+     * TODO
+     *
+     * @param request
+     * @return
+     */
+    @Experimental
+    default ChatResult chat(ChatRequest request) { // TODO name?
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * TODO
+     *
+     * @return
+     */
+    @Experimental
+    default boolean supportsJsonSchema() { // TODO name
+        return false;
     }
 }
