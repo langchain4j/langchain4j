@@ -6,7 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.result.ChatResult;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 
 import java.util.List;
@@ -87,7 +87,7 @@ public interface ChatLanguageModel {
     }
 
     @Experimental
-    default ChatResult chat(ChatRequest request) {
+    default ChatResponse chat(ChatRequest request) {
         throw new UnsupportedOperationException();
     }
 

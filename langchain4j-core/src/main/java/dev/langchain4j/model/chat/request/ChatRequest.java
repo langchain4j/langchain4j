@@ -17,7 +17,7 @@ public class ChatRequest {
 
     private final List<ChatMessage> messages;
     private final List<ToolSpecification> toolSpecifications;
-    private final ResponseFormat responseFormat; // TODO name response vs result, output? OutputFormat?
+    private final ResponseFormat responseFormat;
 
     private ChatRequest(Builder builder) {
         this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));

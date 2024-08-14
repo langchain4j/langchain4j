@@ -6,7 +6,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.result.ChatResult;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -162,12 +162,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                                             .build())
                                     .build();
 
-                            ChatResult chatResult = context.chatModel.chat(chatRequest);
+                            ChatResponse chatResponse = context.chatModel.chat(chatRequest);
 
                             response = new Response<>(
-                                    chatResult.aiMessage(),
-                                    chatResult.tokenUsage(),
-                                    chatResult.finishReason()
+                                    chatResponse.aiMessage(),
+                                    chatResponse.tokenUsage(),
+                                    chatResponse.finishReason()
                             );
                         } else {
                             // TODO migrate to new API

@@ -13,7 +13,9 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.objectItems;
 import static dev.langchain4j.internal.TypeUtils.*;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.model.output.structured.Description;
+
 import static java.lang.String.format;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;

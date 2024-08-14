@@ -1,4 +1,4 @@
-package dev.langchain4j.model.chat.result;
+package dev.langchain4j.model.chat.response;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
@@ -10,13 +10,13 @@ import java.util.Objects;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Experimental
-public class ChatResult {
+public class ChatResponse {
 
     private final AiMessage aiMessage;
     private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
 
-    private ChatResult(Builder builder) {
+    private ChatResponse(Builder builder) {
         this.aiMessage = ensureNotNull(builder.aiMessage, "aiMessage");
         this.tokenUsage = builder.tokenUsage;
         this.finishReason = builder.finishReason;
@@ -38,7 +38,7 @@ public class ChatResult {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ChatResult that = (ChatResult) o;
+        ChatResponse that = (ChatResponse) o;
         return Objects.equals(this.aiMessage, that.aiMessage)
                 && Objects.equals(this.tokenUsage, that.tokenUsage)
                 && Objects.equals(this.finishReason, that.finishReason);
@@ -51,7 +51,7 @@ public class ChatResult {
 
     @Override
     public String toString() {
-        return "ChatResult {" +
+        return "ChatResponse {" +
                 " aiMessage = " + aiMessage +
                 ", tokenUsage = " + tokenUsage +
                 ", finishReason = " + finishReason +
@@ -83,8 +83,8 @@ public class ChatResult {
             return this;
         }
 
-        public ChatResult build() {
-            return new ChatResult(this);
+        public ChatResponse build() {
+            return new ChatResponse(this);
         }
     }
 }

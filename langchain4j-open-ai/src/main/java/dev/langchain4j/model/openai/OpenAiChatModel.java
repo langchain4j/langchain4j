@@ -12,7 +12,7 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.result.ChatResult;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -177,14 +177,14 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public ChatResult chat(ChatRequest request) {
+    public ChatResponse chat(ChatRequest request) {
         Response<AiMessage> response = chat(
                 request.messages(),
                 request.toolSpecifications(),
                 null,
                 getOrDefault(toOpenAiResponseFormat(request.responseFormat(), strictJsonSchema), this.responseFormat)
         );
-        return ChatResult.builder()
+        return ChatResponse.builder()
                 .aiMessage(response.content())
                 .tokenUsage(response.tokenUsage())
                 .finishReason(response.finishReason())
