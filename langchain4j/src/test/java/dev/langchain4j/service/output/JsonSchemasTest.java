@@ -32,7 +32,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
 
         // then
         JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
@@ -56,7 +56,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
 
         // then
         JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
@@ -81,7 +81,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
 
         // then
         JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
@@ -107,7 +107,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
 
         // then
         JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
@@ -131,7 +131,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
 
         // then
         JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
@@ -156,7 +156,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
 
         // then
         JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
@@ -181,7 +181,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
 
         // then
         JsonArraySchema petsSchema = (JsonArraySchema) jsonSchema.get().schema().properties().get("pets");

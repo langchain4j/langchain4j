@@ -28,15 +28,22 @@ import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.service.AiServicesIT.Ingredient.*;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.*;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.SALT;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.COMFORT_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.MAINTENANCE_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.OVERALL_EXPERIENCE_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.SERVICE_ISSUE;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 public class AiServicesIT {

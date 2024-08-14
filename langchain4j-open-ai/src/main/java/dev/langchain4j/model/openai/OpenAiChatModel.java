@@ -193,7 +193,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private Response<AiMessage> generate(List<ChatMessage> messages,
                                          List<ToolSpecification> toolSpecifications,
-                                         ToolSpecification toolThatMustBeExecuted, // TODO is not compatible with format
+                                         ToolSpecification toolThatMustBeExecuted,
                                          ResponseFormat responseFormat) {
 
         if (responseFormat != null

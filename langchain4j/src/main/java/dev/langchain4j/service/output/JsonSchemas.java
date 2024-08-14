@@ -20,17 +20,26 @@ import dev.langchain4j.service.TypeUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.internal.TypeUtils.*;
-import static dev.langchain4j.service.TypeUtils.*;
+import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
+import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
+import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
+import static dev.langchain4j.service.TypeUtils.getRawClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static java.lang.reflect.Modifier.isStatic;
 
 @Experimental
-public class JsonSchemas { // TODO name, refactor
+public class JsonSchemas {
 
-    public static Optional<JsonSchema> from(Type returnType) {
+    public static Optional<JsonSchema> jsonSchemaFrom(Type returnType) {
 
         if (typeHasRawClass(returnType, Result.class)) {
             returnType = resolveFirstGenericParameterClass(returnType);
