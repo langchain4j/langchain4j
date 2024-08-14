@@ -11,8 +11,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -20,6 +18,8 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -163,22 +163,22 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return chat(messages, null, null, this.responseFormat);
+        return generate(messages, null, null, this.responseFormat);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return chat(messages, toolSpecifications, null, this.responseFormat);
+        return generate(messages, toolSpecifications, null, this.responseFormat);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return chat(messages, singletonList(toolSpecification), toolSpecification, this.responseFormat);
+        return generate(messages, singletonList(toolSpecification), toolSpecification, this.responseFormat);
     }
 
     @Override
     public ChatResponse chat(ChatRequest request) {
-        Response<AiMessage> response = chat(
+        Response<AiMessage> response = generate(
                 request.messages(),
                 request.toolSpecifications(),
                 null,
@@ -191,10 +191,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .build();
     }
 
-    private Response<AiMessage> chat(List<ChatMessage> messages,
-                                     List<ToolSpecification> toolSpecifications,
-                                     ToolSpecification toolThatMustBeExecuted, // TODO is not compatible with format
-                                     ResponseFormat responseFormat) {
+    private Response<AiMessage> generate(List<ChatMessage> messages,
+                                         List<ToolSpecification> toolSpecifications,
+                                         ToolSpecification toolThatMustBeExecuted, // TODO is not compatible with format
+                                         ResponseFormat responseFormat) {
 
         if (responseFormat != null
                 && "json_schema".equals(responseFormat.type())
