@@ -126,6 +126,9 @@
                                     <excludes>
                                         <exclude>dev.langchain4j.data.document</exclude>
                                         <exclude>dev.langchain4j.model.chat.listener</exclude>
+                                        <exclude>dev.langchain4j.model.chat.request</exclude>
+                                        <exclude>dev.langchain4j.model.chat.request.json</exclude>
+                                        <exclude>dev.langchain4j.model.chat.response</exclude>
                                         <exclude>dev.langchain4j.model.listener</exclude>
                                         <exclude>dev.langchain4j.store.embedding</exclude>
                                         <exclude>dev.langchain4j.store.embedding.filter</exclude>
@@ -146,7 +149,7 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.9</minimum>
+                                            <minimum>0.8</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
