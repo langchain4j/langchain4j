@@ -1,17 +1,47 @@
 package dev.langchain4j.service.output;
 
+import com.google.gson.reflect.TypeToken;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
+import dev.langchain4j.service.Result;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
+import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JsonSchemasTest {
+
+    class Pojo {
+
+        String field;
+    }
+
+    @Test
+    void should_return_json_schema_for_pojos() {
+        assertThat(jsonSchemaFrom(Pojo.class)).isPresent();
+        assertThat(jsonSchemaFrom(new TypeToken<Result<Pojo>>() {
+        }.getType())).isPresent();
+    }
+
+    @Test
+    void should_return_empty_for_not_pojos() {
+        assertThat(jsonSchemaFrom(String.class)).isEmpty();
+        assertThat(jsonSchemaFrom(AiMessage.class)).isEmpty();
+        assertThat(jsonSchemaFrom(Response.class)).isEmpty();
+        assertThat(jsonSchemaFrom(Integer.class)).isEmpty();
+        assertThat(jsonSchemaFrom(LocalDate.class)).isEmpty();
+        assertThat(jsonSchemaFrom(new TypeToken<Result<String>>() {
+        }.getType())).isEmpty();
+    }
+
 
     // POJO
 
@@ -32,7 +62,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
+        Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
         JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
@@ -56,7 +86,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
+        Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
         JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
@@ -81,7 +111,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
+        Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
         JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
@@ -107,7 +137,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
+        Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
         JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
@@ -131,7 +161,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
+        Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
         JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
@@ -156,7 +186,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
+        Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
         JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
@@ -181,7 +211,7 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> jsonSchema = JsonSchemas.jsonSchemaFrom(Person.class);
+        Optional<JsonSchema> jsonSchema = jsonSchemaFrom(Person.class);
 
         // then
         JsonArraySchema petsSchema = (JsonArraySchema) jsonSchema.get().schema().properties().get("pets");

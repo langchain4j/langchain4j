@@ -45,29 +45,16 @@ public class JsonSchemas {
             returnType = resolveFirstGenericParameterClass(returnType);
         }
 
-        // Explanation (which will make this a lot easier to understand):
-        // In the case of List<String> these two would be set like:
-        // rawClass: List.class
-        // typeArgumentClass: String.class
-        Class<?> rawClass = getRawClass(returnType);
-        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
-
-        if (rawClass == String.class
-                || rawClass == AiMessage.class
-                || rawClass == TokenStream.class
-                || rawClass == Response.class) {
-            return Optional.empty();
-        }
-
         // TODO validate this earlier
         if (returnType == void.class) {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
 
-        Optional<OutputParser<?>> outputParser = new DefaultOutputParserFactory().get(rawClass, typeArgumentClass);
-        if (outputParser.isPresent()) {
+        if (!isPojo(returnType)) {
             return Optional.empty();
         }
+
+        Class<?> rawClass = getRawClass(returnType);
 
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(rawClass.getSimpleName())
@@ -75,6 +62,30 @@ public class JsonSchemas {
                 .build();
 
         return Optional.of(jsonSchema);
+    }
+
+    private static boolean isPojo(Type returnType) {
+
+        if (returnType == String.class
+                || returnType == AiMessage.class
+                || returnType == TokenStream.class
+                || returnType == Response.class) {
+            return false;
+        }
+
+        // Explanation (which will make this a lot easier to understand):
+        // In the case of List<String> these two would be set like:
+        // rawClass: List.class
+        // typeArgumentClass: String.class
+        Class<?> rawClass = getRawClass(returnType);
+        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
+
+        Optional<OutputParser<?>> outputParser = new DefaultOutputParserFactory().get(rawClass, typeArgumentClass);
+        if (outputParser.isPresent()) {
+            return false;
+        }
+
+        return true;
     }
 
     private static JsonObjectSchema toJsonObjectSchema(Class<?> type, String description) {
