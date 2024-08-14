@@ -18,7 +18,7 @@ public class ResponseFormat {
         this.type = ensureNotNull(builder.type, "type");
         this.jsonSchema = builder.jsonSchema;
         if (jsonSchema != null && type != JSON) {
-            throw new IllegalStateException("JsonSchema can be specified only for JSON type");
+            throw new IllegalStateException("JsonSchema can be specified only when type=JSON");
         }
     }
 
