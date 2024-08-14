@@ -79,6 +79,7 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat1("What is the capital of Germany?"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -93,6 +94,7 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat2("What is the capital of Germany?"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -107,6 +109,7 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat3("What is the capital of {{country}}?", "Germany"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -121,6 +124,7 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat4())
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -135,6 +139,7 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat5("Germany"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -149,6 +154,7 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat6("Germany"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -163,6 +169,7 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat7("capital", "Germany"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test

@@ -54,6 +54,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final String responseFormat;
     private final Integer seed;
     private final String user;
+    private final Boolean strictTools;
+    private final Boolean parallelToolCalls;
     private final Tokenizer tokenizer;
     private final boolean isOpenAiModel;
     private final List<ChatModelListener> listeners;
@@ -73,6 +75,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     String responseFormat,
                                     Integer seed,
                                     String user,
+                                    Boolean strictTools,
+                                    Boolean parallelToolCalls,
                                     Duration timeout,
                                     Proxy proxy,
                                     Boolean logRequests,
@@ -108,6 +112,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.responseFormat = responseFormat;
         this.seed = seed;
         this.user = user;
+        this.strictTools = getOrDefault(strictTools, false);
+        this.parallelToolCalls = parallelToolCalls;
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
         this.isOpenAiModel = isOpenAiModel(this.modelName);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
@@ -150,13 +156,14 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .logitBias(logitBias)
                 .responseFormat(responseFormat)
                 .seed(seed)
-                .user(user);
+                .user(user)
+                .parallelToolCalls(parallelToolCalls);
 
         if (toolThatMustBeExecuted != null) {
-            requestBuilder.tools(toTools(singletonList(toolThatMustBeExecuted)));
+            requestBuilder.tools(toTools(singletonList(toolThatMustBeExecuted), strictTools));
             requestBuilder.toolChoice(toolThatMustBeExecuted.name());
         } else if (!isNullOrEmpty(toolSpecifications)) {
-            requestBuilder.tools(toTools(toolSpecifications));
+            requestBuilder.tools(toTools(toolSpecifications, strictTools));
         }
 
         ChatCompletionRequest request = requestBuilder.build();
