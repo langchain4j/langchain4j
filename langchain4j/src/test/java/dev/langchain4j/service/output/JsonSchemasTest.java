@@ -1,10 +1,10 @@
 package dev.langchain4j.service.output;
 
-import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -32,10 +32,10 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> responseFormat = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
 
         // then
-        JsonObjectSchema addressSchema = (JsonObjectSchema) responseFormat.get().schema().properties().get("address");
+        JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address");
     }
 
@@ -56,10 +56,10 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> responseFormat = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
 
         // then
-        JsonObjectSchema addressSchema = (JsonObjectSchema) responseFormat.get().schema().properties().get("address");
+        JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address");
     }
 
@@ -81,10 +81,10 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> responseFormat = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
 
         // then
-        JsonObjectSchema addressSchema = (JsonObjectSchema) responseFormat.get().schema().properties().get("address");
+        JsonObjectSchema addressSchema = (JsonObjectSchema) jsonSchema.get().schema().properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address 2");
     }
 
@@ -107,10 +107,10 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> responseFormat = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
 
         // then
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) responseFormat.get().schema().properties().get("maritalStatus");
+        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status");
     }
 
@@ -131,10 +131,10 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> responseFormat = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
 
         // then
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) responseFormat.get().schema().properties().get("maritalStatus");
+        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status");
     }
 
@@ -156,10 +156,10 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> responseFormat = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
 
         // then
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) responseFormat.get().schema().properties().get("maritalStatus");
+        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) jsonSchema.get().schema().properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status 2");
     }
 
@@ -181,34 +181,10 @@ class JsonSchemasTest {
         }
 
         // when
-        Optional<JsonSchema> responseFormat = JsonSchemas.from(Person.class);
+        Optional<JsonSchema> jsonSchema = JsonSchemas.from(Person.class);
 
         // then
-        JsonArraySchema petsSchema = (JsonArraySchema) responseFormat.get().schema().properties().get("pets");
+        JsonArraySchema petsSchema = (JsonArraySchema) jsonSchema.get().schema().properties().get("pets");
         assertThat(petsSchema.description()).isEqualTo("pets of a person");
-    }
-
-    @Test
-    void should_take_array_description_from_the_class() {
-
-        // given
-        @Description("an address")
-        class Address {
-
-            String street;
-            String city;
-        }
-
-        class Person {
-
-            Address address;
-        }
-
-        // when
-        Optional<JsonSchema> responseFormat = JsonSchemas.from(Person.class);
-
-        // then
-        JsonObjectSchema addressSchema = (JsonObjectSchema) responseFormat.get().schema().properties().get("address");
-        assertThat(addressSchema.description()).isEqualTo("an address");
     }
 }

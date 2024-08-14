@@ -26,12 +26,9 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
-import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -41,6 +38,9 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -269,10 +269,13 @@ public class InternalOpenAiHelper {
         Object type = properties.get("type");
         String description = (String) properties.get("description");
         if ("object".equals(type)) {
+            List<String> required = (List<String>) properties.get("required");
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
                     .description(description)
-                    .properties(toOpenAiProperties((Map<String, ?>) properties.get("properties"), strict))
-                    .required((List<String>) properties.get("required"));
+                    .properties(toOpenAiProperties((Map<String, ?>) properties.get("properties"), strict));
+            if (required != null) {
+                builder.required(required);
+            }
             if (strict) {
                 builder
                         // when strict, all fields must be required:
