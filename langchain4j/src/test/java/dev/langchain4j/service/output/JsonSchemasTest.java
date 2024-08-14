@@ -1,10 +1,10 @@
 package dev.langchain4j.service.output;
 
 import dev.langchain4j.model.output.structured.Description;
-import dev.langchain4j.model.output.structured.json.JsonArraySchema;
-import dev.langchain4j.model.output.structured.json.JsonEnumSchema;
-import dev.langchain4j.model.output.structured.json.JsonObjectSchema;
-import dev.langchain4j.model.output.structured.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;

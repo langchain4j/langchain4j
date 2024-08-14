@@ -1,21 +1,19 @@
-package dev.langchain4j.model.output.structured.json;
+package dev.langchain4j.model.chat.request.json;
 
 import dev.langchain4j.Experimental;
 
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.model.output.structured.json.JsonType.INTEGER;
 
 @Experimental
-public class JsonIntegerSchema extends JsonSchemaElement {
+public class JsonBooleanSchema implements JsonSchemaElement {
 
-    public static final JsonIntegerSchema INTEGER_SCHEMA = JsonIntegerSchema.builder().build();
+    public static final JsonBooleanSchema JSON_BOOLEAN_SCHEMA = JsonBooleanSchema.builder().build();
 
     private final String description;
 
-    public JsonIntegerSchema(Builder builder) {
-        super(INTEGER);
+    public JsonBooleanSchema(Builder builder) {
         this.description = builder.description;
     }
 
@@ -36,8 +34,8 @@ public class JsonIntegerSchema extends JsonSchemaElement {
             return this;
         }
 
-        public JsonIntegerSchema build() {
-            return new JsonIntegerSchema(this);
+        public JsonBooleanSchema build() {
+            return new JsonBooleanSchema(this);
         }
     }
 
@@ -45,7 +43,7 @@ public class JsonIntegerSchema extends JsonSchemaElement {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        JsonIntegerSchema that = (JsonIntegerSchema) o;
+        JsonBooleanSchema that = (JsonBooleanSchema) o;
         return Objects.equals(this.description, that.description);
     }
 
@@ -56,7 +54,7 @@ public class JsonIntegerSchema extends JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonIntegerSchema {" +
+        return "JsonBooleanSchema {" +
                 "description = " + quoted(description) +
                 " }";
     }

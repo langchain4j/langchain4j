@@ -5,9 +5,9 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.ChatRequest;
-import dev.langchain4j.model.chat.ChatResult;
-import dev.langchain4j.model.chat.ResponseFormatSpecification;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.result.ChatResult;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -15,7 +15,7 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.output.structured.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
@@ -34,7 +34,8 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.model.chat.ResponseFormat.JSON;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 
 class DefaultAiServices<T> extends AiServices<T> {
@@ -155,8 +156,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             ChatRequest chatRequest = ChatRequest.builder()
                                     .messages(messages)
                                     .toolSpecifications(context.toolSpecifications)
-                                    .responseFormatSpecification(ResponseFormatSpecification.builder()
-                                            .responseFormat(JSON)
+                                    .responseFormat(ResponseFormat.builder()
+                                            .type(JSON)
                                             .jsonSchema(jsonSchema.get())
                                             .build())
                                     .build();
@@ -239,7 +240,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private boolean supportsJsonSchema() {
-                        return context.chatModel != null && context.chatModel.supportsJsonSchema();
+                        return context.chatModel != null
+                                && context.chatModel.supportedCapabilities().contains(RESPONSE_FORMAT_JSON_SCHEMA);
                     }
 
                     private UserMessage appendOutputFormatInstructions(Type returnType, UserMessage userMessage) {

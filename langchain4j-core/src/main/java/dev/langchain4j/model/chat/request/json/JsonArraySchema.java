@@ -1,4 +1,4 @@
-package dev.langchain4j.model.output.structured.json;
+package dev.langchain4j.model.chat.request.json;
 
 import dev.langchain4j.Experimental;
 
@@ -6,16 +6,14 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.output.structured.json.JsonType.ARRAY;
 
 @Experimental
-public class JsonArraySchema extends JsonSchemaElement {
+public class JsonArraySchema implements JsonSchemaElement {
 
     private final String description;
     private final JsonSchemaElement items;
 
     public JsonArraySchema(Builder builder) {
-        super(ARRAY);
         this.description = builder.description;
         this.items = ensureNotNull(builder.items, "items");
     }

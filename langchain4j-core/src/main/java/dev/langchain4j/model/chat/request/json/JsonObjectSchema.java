@@ -1,17 +1,21 @@
-package dev.langchain4j.model.output.structured.json;
+package dev.langchain4j.model.chat.request.json;
 
 import com.google.gson.annotations.SerializedName;
 import dev.langchain4j.Experimental;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.output.structured.json.JsonType.OBJECT;
 import static java.util.Arrays.asList;
 
 @Experimental
-public class JsonObjectSchema extends JsonSchemaElement {
+public class JsonObjectSchema implements JsonSchemaElement {
 
     private final String description;
     private final Map<String, JsonSchemaElement> properties;
@@ -20,10 +24,9 @@ public class JsonObjectSchema extends JsonSchemaElement {
     private final Boolean additionalProperties;
 
     public JsonObjectSchema(Builder builder) {
-        super(OBJECT);
         this.description = builder.description;
         this.properties = new LinkedHashMap<>(ensureNotEmpty(builder.properties, "properties"));
-        this.required = new ArrayList<>(builder.required);
+        this.required = copyIfNotNull(builder.required);
         this.additionalProperties = builder.additionalProperties;
     }
 

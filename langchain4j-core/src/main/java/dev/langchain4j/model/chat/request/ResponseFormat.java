@@ -1,25 +1,29 @@
-package dev.langchain4j.model.chat;
+package dev.langchain4j.model.chat.request;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.output.structured.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 
 @Experimental
-public class ResponseFormatSpecification {
+public class ResponseFormat {
 
-    private final ResponseFormat responseFormat;
+    private final ResponseFormatType type;
     private final JsonSchema jsonSchema;
 
-    private ResponseFormatSpecification(Builder builder) {
-        this.responseFormat = ensureNotNull(builder.responseFormat, "responseFormat");
+    private ResponseFormat(Builder builder) {
+        this.type = ensureNotNull(builder.type, "type");
         this.jsonSchema = builder.jsonSchema;
+        if (jsonSchema != null && type != JSON) {
+            throw new IllegalStateException("JsonSchema can be specified only for JSON type");
+        }
     }
 
-    public ResponseFormat responseFormat() {
-        return responseFormat;
+    public ResponseFormatType type() {
+        return type;
     }
 
     public JsonSchema jsonSchema() {
@@ -30,20 +34,20 @@ public class ResponseFormatSpecification {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ResponseFormatSpecification that = (ResponseFormatSpecification) o;
-        return Objects.equals(this.responseFormat, that.responseFormat)
+        ResponseFormat that = (ResponseFormat) o;
+        return Objects.equals(this.type, that.type)
                 && Objects.equals(this.jsonSchema, that.jsonSchema);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(responseFormat, jsonSchema);
+        return Objects.hash(type, jsonSchema);
     }
 
     @Override
     public String toString() {
-        return "ResponseFormatSpecification {" +
-                " responseFormat = " + responseFormat +
+        return "ResponseFormat {" +
+                " type = " + type +
                 ", jsonSchema = " + jsonSchema +
                 " }";
     }
@@ -54,11 +58,11 @@ public class ResponseFormatSpecification {
 
     public static class Builder {
 
-        private ResponseFormat responseFormat;
+        private ResponseFormatType type;
         private JsonSchema jsonSchema;
 
-        public Builder responseFormat(ResponseFormat responseFormat) {
-            this.responseFormat = responseFormat;
+        public Builder type(ResponseFormatType type) {
+            this.type = type;
             return this;
         }
 
@@ -67,8 +71,8 @@ public class ResponseFormatSpecification {
             return this;
         }
 
-        public ResponseFormatSpecification build() {
-            return new ResponseFormatSpecification(this);
+        public ResponseFormat build() {
+            return new ResponseFormat(this);
         }
     }
 }

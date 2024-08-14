@@ -1,11 +1,19 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.ChatRequest;
-import dev.langchain4j.model.chat.ResponseFormatSpecification;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.structured.Description;
-import dev.langchain4j.model.output.structured.json.*;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,10 +29,10 @@ import java.util.List;
 import java.util.Set;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.chat.ResponseFormat.JSON;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.output.structured.json.JsonIntegerSchema.INTEGER_SCHEMA;
-import static dev.langchain4j.model.output.structured.json.JsonStringSchema.STRING_SCHEMA;
+import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
+import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.service.AiServicesJsonSchemaWithDescriptionsIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -93,8 +101,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -119,7 +127,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -162,8 +170,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -189,7 +197,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -231,8 +239,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -252,7 +260,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -288,8 +296,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -299,7 +307,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .description("a name")
                                                     .build());
                                             put("favouriteColors", JsonArraySchema.builder()
-                                                    .items(STRING_SCHEMA)
+                                                    .items(JSON_STRING_SCHEMA)
                                                     .description("favourite colors")
                                                     .build());
                                         }})
@@ -309,7 +317,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -345,8 +353,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -356,7 +364,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .description("a name")
                                                     .build());
                                             put("favouriteColors", JsonArraySchema.builder()
-                                                    .items(STRING_SCHEMA)
+                                                    .items(JSON_STRING_SCHEMA)
                                                     .description("favourite colors")
                                                     .build());
                                         }})
@@ -366,7 +374,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -402,8 +410,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -413,7 +421,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .description("a name")
                                                     .build());
                                             put("favouriteColors", JsonArraySchema.builder()
-                                                    .items(STRING_SCHEMA)
+                                                    .items(JSON_STRING_SCHEMA)
                                                     .description("favourite colors")
                                                     .build());
                                         }})
@@ -423,7 +431,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -468,8 +476,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -498,7 +506,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -543,8 +551,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -573,7 +581,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -619,8 +627,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -649,7 +657,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -691,8 +699,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -715,7 +723,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -757,8 +765,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -781,7 +789,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -823,8 +831,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -847,7 +855,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 
 
@@ -892,8 +900,8 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
 
         verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
-                .responseFormatSpecification(ResponseFormatSpecification.builder()
-                        .responseFormat(JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
                         .jsonSchema(JsonSchema.builder()
                                 .name("Person")
                                 .schema(JsonObjectSchema.builder()
@@ -905,9 +913,9 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                             put("birthDate", JsonObjectSchema.builder()
                                                     .description("a birth date")
                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                        put("year", INTEGER_SCHEMA);
-                                                        put("month", INTEGER_SCHEMA);
-                                                        put("day", INTEGER_SCHEMA);
+                                                        put("year", JSON_INTEGER_SCHEMA);
+                                                        put("month", JSON_INTEGER_SCHEMA);
+                                                        put("day", JSON_INTEGER_SCHEMA);
                                                     }})
                                                     .required("year", "month", "day")
                                                     .additionalProperties(false)
@@ -915,10 +923,10 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                             put("birthTime", JsonObjectSchema.builder()
                                                     .description("a birth time")
                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                        put("hour", INTEGER_SCHEMA);
-                                                        put("minute", INTEGER_SCHEMA);
-                                                        put("second", INTEGER_SCHEMA);
-                                                        put("nano", INTEGER_SCHEMA);
+                                                        put("hour", JSON_INTEGER_SCHEMA);
+                                                        put("minute", JSON_INTEGER_SCHEMA);
+                                                        put("second", JSON_INTEGER_SCHEMA);
+                                                        put("nano", JSON_INTEGER_SCHEMA);
                                                     }})
                                                     .required("hour", "minute", "second", "nano")
                                                     .additionalProperties(false)
@@ -928,19 +936,19 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                                         put("date", JsonObjectSchema.builder()
                                                                 .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("year", INTEGER_SCHEMA);
-                                                                    put("month", INTEGER_SCHEMA);
-                                                                    put("day", INTEGER_SCHEMA);
+                                                                    put("year", JSON_INTEGER_SCHEMA);
+                                                                    put("month", JSON_INTEGER_SCHEMA);
+                                                                    put("day", JSON_INTEGER_SCHEMA);
                                                                 }})
                                                                 .required("year", "month", "day")
                                                                 .additionalProperties(false)
                                                                 .build());
                                                         put("time", JsonObjectSchema.builder()
                                                                 .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("hour", INTEGER_SCHEMA);
-                                                                    put("minute", INTEGER_SCHEMA);
-                                                                    put("second", INTEGER_SCHEMA);
-                                                                    put("nano", INTEGER_SCHEMA);
+                                                                    put("hour", JSON_INTEGER_SCHEMA);
+                                                                    put("minute", JSON_INTEGER_SCHEMA);
+                                                                    put("second", JSON_INTEGER_SCHEMA);
+                                                                    put("nano", JSON_INTEGER_SCHEMA);
                                                                 }})
                                                                 .required("hour", "minute", "second", "nano")
                                                                 .additionalProperties(false)
@@ -956,6 +964,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportsJsonSchema();
+        verify(model).supportedCapabilities();
     }
 }

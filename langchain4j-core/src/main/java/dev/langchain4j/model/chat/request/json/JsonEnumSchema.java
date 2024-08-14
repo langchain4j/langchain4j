@@ -1,4 +1,4 @@
-package dev.langchain4j.model.output.structured.json;
+package dev.langchain4j.model.chat.request.json;
 
 import com.google.gson.annotations.SerializedName;
 import dev.langchain4j.Experimental;
@@ -9,20 +9,18 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.output.structured.json.JsonType.STRING;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
 @Experimental
-public class JsonEnumSchema extends JsonSchemaElement {
+public class JsonEnumSchema implements JsonSchemaElement {
 
     private final String description;
     @SerializedName("enum")
     private final List<String> enumValues;
 
     public JsonEnumSchema(Builder builder) {
-        super(STRING);
         this.description = builder.description;
         this.enumValues = new ArrayList<>(ensureNotEmpty(builder.enumValues, "enumValues"));
     }

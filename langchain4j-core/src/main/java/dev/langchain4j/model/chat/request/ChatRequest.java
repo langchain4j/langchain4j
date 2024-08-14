@@ -1,4 +1,4 @@
-package dev.langchain4j.model.chat;
+package dev.langchain4j.model.chat.request;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -17,12 +17,12 @@ public class ChatRequest {
 
     private final List<ChatMessage> messages;
     private final List<ToolSpecification> toolSpecifications;
-    private final ResponseFormatSpecification responseFormatSpecification; // TODO name response vs result, output? OutputFormat?
+    private final ResponseFormat responseFormat; // TODO name response vs result, output? OutputFormat?
 
     private ChatRequest(Builder builder) {
         this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));
         this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
-        this.responseFormatSpecification = builder.responseFormatSpecification;
+        this.responseFormat = builder.responseFormat;
     }
 
     public List<ChatMessage> messages() {
@@ -33,8 +33,8 @@ public class ChatRequest {
         return toolSpecifications;
     }
 
-    public ResponseFormatSpecification responseFormatSpecification() {
-        return responseFormatSpecification;
+    public ResponseFormat responseFormat() {
+        return responseFormat;
     }
 
     @Override
@@ -44,12 +44,12 @@ public class ChatRequest {
         ChatRequest that = (ChatRequest) o;
         return Objects.equals(this.messages, that.messages)
                 && Objects.equals(this.toolSpecifications, that.toolSpecifications)
-                && Objects.equals(this.responseFormatSpecification, that.responseFormatSpecification);
+                && Objects.equals(this.responseFormat, that.responseFormat);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(messages, toolSpecifications, responseFormatSpecification);
+        return Objects.hash(messages, toolSpecifications, responseFormat);
     }
 
     @Override
@@ -57,7 +57,7 @@ public class ChatRequest {
         return "ChatRequest {" +
                 " messages = " + messages +
                 ", toolSpecifications = " + toolSpecifications +
-                ", responseFormatSpecification = " + responseFormatSpecification +
+                ", responseFormat = " + responseFormat +
                 " }";
     }
 
@@ -69,7 +69,7 @@ public class ChatRequest {
 
         private List<ChatMessage> messages;
         private List<ToolSpecification> toolSpecifications;
-        private ResponseFormatSpecification responseFormatSpecification;
+        private ResponseFormat responseFormat;
 
         public Builder messages(List<ChatMessage> messages) {
             this.messages = messages;
@@ -89,8 +89,8 @@ public class ChatRequest {
             return toolSpecifications(asList(toolSpecifications));
         }
 
-        public Builder responseFormatSpecification(ResponseFormatSpecification responseFormatSpecification) {
-            this.responseFormatSpecification = responseFormatSpecification;
+        public Builder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 

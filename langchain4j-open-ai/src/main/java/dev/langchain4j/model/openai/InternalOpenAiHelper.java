@@ -10,7 +10,6 @@ import dev.ai4j.openai4j.chat.FunctionMessage;
 import dev.ai4j.openai4j.chat.ImageDetail;
 import dev.ai4j.openai4j.chat.ImageUrl;
 import dev.ai4j.openai4j.chat.Message;
-import dev.ai4j.openai4j.chat.ResponseFormat;
 import dev.ai4j.openai4j.chat.Tool;
 import dev.ai4j.openai4j.chat.ToolCall;
 import dev.ai4j.openai4j.chat.ToolMessage;
@@ -27,21 +26,21 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ResponseFormatSpecification;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.output.structured.json.JsonArraySchema;
-import dev.langchain4j.model.output.structured.json.JsonBooleanSchema;
-import dev.langchain4j.model.output.structured.json.JsonEnumSchema;
-import dev.langchain4j.model.output.structured.json.JsonIntegerSchema;
-import dev.langchain4j.model.output.structured.json.JsonNumberSchema;
-import dev.langchain4j.model.output.structured.json.JsonObjectSchema;
-import dev.langchain4j.model.output.structured.json.JsonSchema;
-import dev.langchain4j.model.output.structured.json.JsonSchemaElement;
-import dev.langchain4j.model.output.structured.json.JsonStringSchema;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -55,7 +54,7 @@ import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.ResponseFormat.TEXT;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -428,21 +427,21 @@ public class InternalOpenAiHelper {
                 .build();
     }
 
-    static ResponseFormat toOpenAiResponseFormat(ResponseFormatSpecification responseFormatSpecification, Boolean strict) {
-        if (responseFormatSpecification == null || responseFormatSpecification.responseFormat() == TEXT) {
+    static dev.ai4j.openai4j.chat.ResponseFormat toOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
+        if (responseFormat == null || responseFormat.type() == TEXT) {
             return null;
         }
 
-        JsonSchema jsonSchema = responseFormatSpecification.jsonSchema();
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
         if (jsonSchema == null) {
-            return new ResponseFormat(JSON_OBJECT, null);
+            return new dev.ai4j.openai4j.chat.ResponseFormat(JSON_OBJECT, null);
         } else {
             dev.ai4j.openai4j.chat.JsonSchema openAiJsonSchema = dev.ai4j.openai4j.chat.JsonSchema.builder()
                     .name(jsonSchema.name())
                     .strict(strict)
                     .schema((dev.ai4j.openai4j.chat.JsonObjectSchema) toOpenAiJsonSchemaElement(jsonSchema.schema()))
                     .build();
-            return new ResponseFormat(JSON_SCHEMA, openAiJsonSchema);
+            return new dev.ai4j.openai4j.chat.ResponseFormat(JSON_SCHEMA, openAiJsonSchema);
         }
     }
 

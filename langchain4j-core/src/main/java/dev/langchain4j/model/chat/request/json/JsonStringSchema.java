@@ -1,21 +1,19 @@
-package dev.langchain4j.model.output.structured.json;
+package dev.langchain4j.model.chat.request.json;
 
 import dev.langchain4j.Experimental;
 
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.model.output.structured.json.JsonType.STRING;
 
 @Experimental
-public class JsonStringSchema extends JsonSchemaElement {
+public class JsonStringSchema implements JsonSchemaElement {
 
-    public static final JsonStringSchema STRING_SCHEMA = JsonStringSchema.builder().build();
+    public static final JsonStringSchema JSON_STRING_SCHEMA = JsonStringSchema.builder().build();
 
     private final String description;
 
     public JsonStringSchema(Builder builder) {
-        super(STRING);
         this.description = builder.description;
     }
 

@@ -1,4 +1,4 @@
-package dev.langchain4j.model.chat;
+package dev.langchain4j.model.chat.result;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;

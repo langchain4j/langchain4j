@@ -1,4 +1,4 @@
-package dev.langchain4j.model.output.structured.json;
+package dev.langchain4j.model.chat.request.json;
 
 import dev.langchain4j.Experimental;
 
@@ -11,7 +11,6 @@ public class JsonSchema {
 
     private final String name;
     private final JsonObjectSchema schema;
-    // TODO schema as a string?
 
     public JsonSchema(Builder builder) {
         this.name = builder.name;

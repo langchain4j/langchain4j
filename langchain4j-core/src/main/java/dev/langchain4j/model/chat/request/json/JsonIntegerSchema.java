@@ -1,21 +1,19 @@
-package dev.langchain4j.model.output.structured.json;
+package dev.langchain4j.model.chat.request.json;
 
 import dev.langchain4j.Experimental;
 
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.model.output.structured.json.JsonType.NUMBER;
 
 @Experimental
-public class JsonNumberSchema extends JsonSchemaElement {
+public class JsonIntegerSchema implements JsonSchemaElement {
 
-    public static final JsonNumberSchema NUMBER_SCHEMA = JsonNumberSchema.builder().build();
+    public static final JsonIntegerSchema JSON_INTEGER_SCHEMA = JsonIntegerSchema.builder().build();
 
     private final String description;
 
-    public JsonNumberSchema(Builder builder) {
-        super(NUMBER);
+    public JsonIntegerSchema(Builder builder) {
         this.description = builder.description;
     }
 
@@ -36,8 +34,8 @@ public class JsonNumberSchema extends JsonSchemaElement {
             return this;
         }
 
-        public JsonNumberSchema build() {
-            return new JsonNumberSchema(this);
+        public JsonIntegerSchema build() {
+            return new JsonIntegerSchema(this);
         }
     }
 
@@ -45,7 +43,7 @@ public class JsonNumberSchema extends JsonSchemaElement {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        JsonNumberSchema that = (JsonNumberSchema) o;
+        JsonIntegerSchema that = (JsonIntegerSchema) o;
         return Objects.equals(this.description, that.description);
     }
 
@@ -56,7 +54,7 @@ public class JsonNumberSchema extends JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonNumberSchema {" +
+        return "JsonIntegerSchema {" +
                 "description = " + quoted(description) +
                 " }";
     }

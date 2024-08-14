@@ -5,11 +5,15 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.result.ChatResult;
 import dev.langchain4j.model.output.Response;
 
 import java.util.List;
+import java.util.Set;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptySet;
 
 /**
  * Represents a language model that has a chat interface.
@@ -82,24 +86,13 @@ public interface ChatLanguageModel {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
     }
 
-    /**
-     * TODO
-     *
-     * @param request
-     * @return
-     */
     @Experimental
-    default ChatResult chat(ChatRequest request) { // TODO name?
+    default ChatResult chat(ChatRequest request) {
         throw new UnsupportedOperationException();
     }
 
-    /**
-     * TODO
-     *
-     * @return
-     */
     @Experimental
-    default boolean supportsJsonSchema() { // TODO name
-        return false;
+    default Set<Capability> supportedCapabilities() {
+        return emptySet();
     }
 }

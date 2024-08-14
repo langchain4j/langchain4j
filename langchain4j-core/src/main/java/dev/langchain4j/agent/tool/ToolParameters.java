@@ -7,7 +7,7 @@ import static dev.langchain4j.internal.Utils.quoted;
 /**
  * Represents the parameters of a tool.
  */
-public class ToolParameters { // TODO deprecate in favour of JsonObjectSchema?
+public class ToolParameters {
 
     private final String type;
     private final Map<String, Map<String, Object>> properties;
