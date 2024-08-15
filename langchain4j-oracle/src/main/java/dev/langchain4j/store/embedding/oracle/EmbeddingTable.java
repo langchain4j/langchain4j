@@ -171,6 +171,9 @@ public final class EmbeddingTable {
         return new Builder();
     }
 
+    /**
+     * A builder that configures and builds an {@link EmbeddingTable}.
+     */
     public static class Builder {
 
         // These fields are specified by method level JavaDocs
@@ -180,6 +183,8 @@ public final class EmbeddingTable {
         private String embeddingColumn = "embedding";
         private String textColumn = "text";
         private String metadataColumn = "metadata";
+
+        private Builder() {}
 
         /**
          * Configures the option to create (or not create) a table. The default is {@link CreateOption#CREATE_NONE},
