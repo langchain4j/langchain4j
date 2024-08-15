@@ -101,7 +101,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         try {
             table.create(dataSource);
-            createIndex(builder);
+            builder.vectorIndex.create(dataSource, table);
         } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
@@ -549,6 +549,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         private boolean isExactSearch = false;
 
+        private VectorIndex vectorIndex = VectorIndex.builder().build();
+
         private Builder() {}
 
         /**
@@ -620,6 +622,20 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
+         * Configures the creation of an index on the embedding column of the {@link EmbeddingTable} used by the
+         * embedding store. Depending on which CreateOption is provided, an index may be created when {@link #build()}
+         * is called. The default createOption is {@link CreateOption#CREATE_NONE}.
+         *
+         * @param createOption
+         * @return
+         */
+        public Builder vectorIndex(CreateOption createOption) {
+            ensureNotNull(createOption, "createOption");
+            vectorIndex = VectorIndex.builder().createOption(createOption).build();
+            return this;
+        }
+
+        /**
          * Configures the distance metric used for similarity searches with the
          * {@linkplain #search(EmbeddingSearchRequest)} method. The default metric is {@link DistanceMetric#COSINE}.
          * The metric configured by this method should match the one used to train the embedding model which generates
@@ -629,7 +645,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
          *
          * @return This builder. Not null.
          *
-         * @throws IllegalArgumentException If the embeddingTable is null.
+         * @throws IllegalArgumentException If the distanceMetric is null.
          */
         public Builder distanceMetric(DistanceMetric distanceMetric) {
             this.distanceMetric = ensureNotNull(distanceMetric, "distanceMetric");

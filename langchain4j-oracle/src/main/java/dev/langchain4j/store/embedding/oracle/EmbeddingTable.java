@@ -88,14 +88,23 @@ public final class EmbeddingTable {
     private final String metadataColumn;
 
     private EmbeddingTable(Builder builder) {
-        createOption = ensureNotNull(builder.createOption, "createOption");
-        name = ensureNotNull(builder.name, "name");
-        idColumn = ensureNotNull(builder.idColumn, "idColumn");
-        embeddingColumn = ensureNotNull(builder.embeddingColumn, "embeddingColumn");
-        textColumn = ensureNotNull(builder.textColumn, "textColumn");
-        metadataColumn = ensureNotNull(builder.metadataColumn, "metadataColumn");
+        createOption = builder.createOption;
+        name = builder.name;
+        idColumn = builder.idColumn;
+        embeddingColumn = builder.embeddingColumn;
+        textColumn = builder.textColumn;
+        metadataColumn = builder.metadataColumn;
     }
 
+    /**
+     * Creates a table configured by the {@link Builder} of this EmbeddingTable, which may have configured
+     * {@link CreateOption#CREATE_NONE}. No table is created if the Builder was configured with
+     * {@link CreateOption#CREATE_NONE}.
+     *
+     * @param dataSource Data source that connects to an Oracle Database where the table is (possibly) created.
+     *
+     * @throws SQLException If an error prevents the table from being created.
+     */
     void create(DataSource dataSource) throws SQLException {
         if (createOption == CreateOption.CREATE_NONE)
             return;
@@ -190,11 +199,12 @@ public final class EmbeddingTable {
          * Configures the option to create (or not create) a table. The default is {@link CreateOption#CREATE_NONE},
          * which means that no attempt is made to create a table.
          *
-         * @param createOption Name of the metadata column. Not null.
+         * @param createOption Option for creating the index. Not null.
          *
          * @return This builder. Not null.
          */
         public Builder createOption(CreateOption createOption) {
+            ensureNotNull(createOption, "createOption");
             this.createOption = createOption;
             return this;
         }
@@ -208,6 +218,7 @@ public final class EmbeddingTable {
          * @return This builder. Not null.
          */
         public Builder name(String name) {
+            ensureNotNull(name, "name");
             this.name = name;
             return this;
         }
@@ -220,6 +231,7 @@ public final class EmbeddingTable {
          * @return This builder. Not null.
          */
         public Builder idColumn(String idColumn) {
+            ensureNotNull(idColumn, "idColumn");
             this.idColumn = idColumn;
             return this;
         }
@@ -232,6 +244,7 @@ public final class EmbeddingTable {
          * @return This builder. Not null.
          */
         public Builder embeddingColumn(String embeddingColumn) {
+            ensureNotNull(embeddingColumn, "embeddingColumn");
             this.embeddingColumn = embeddingColumn;
             return this;
         }
@@ -244,6 +257,7 @@ public final class EmbeddingTable {
          * @return This builder. Not null.
          */
         public Builder textColumn(String textColumn) {
+            ensureNotNull(textColumn, "textColumn");
             this.textColumn = textColumn;
             return this;
         }
@@ -256,6 +270,7 @@ public final class EmbeddingTable {
          * @return This builder. Not null.
          */
         public Builder metadataColumn(String metadataColumn) {
+            ensureNotNull(metadataColumn, "metadataColumn");
             this.metadataColumn = metadataColumn;
             return this;
         }
@@ -268,6 +283,9 @@ public final class EmbeddingTable {
          * @throws IllegalArgumentException If this builder is missing any required configuration.
          */
         public EmbeddingTable build() {
+            // Check required parameters
+            ensureNotNull(name, "name");
+
             return new EmbeddingTable(this);
         }
 
