@@ -46,7 +46,7 @@ import java.util.function.UnaryOperator;
  * }
  * }</pre>
  */
-public interface SQLFilter {
+interface SQLFilter {
 
     /**
      * <p>
@@ -84,6 +84,5 @@ public interface SQLFilter {
      * @throws SQLException If one is thrown from the PreparedStatement.
      */
     int setParameters(PreparedStatement preparedStatement, int parameterIndex) throws SQLException;
-
 
 }
