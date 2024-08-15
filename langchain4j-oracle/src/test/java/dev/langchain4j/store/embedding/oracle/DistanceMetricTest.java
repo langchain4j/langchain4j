@@ -45,32 +45,7 @@ public class DistanceMetricTest {
                    .build();
 
         try {
-            float[] vector0 = CommonTestOperations.randomFloats(512);
-            float[] vector1 = vector0.clone();
-
-            // Only higher indexes are increased in order to effect the cosine angle, and not just magnitude
-            for (int i = 0; i < vector1.length / 2; i++)
-                vector1[i] += 0.1f;
-
-            List<Embedding> embeddings = new ArrayList<>(2);
-            embeddings.add(Embedding.from(vector0));
-            embeddings.add(Embedding.from(vector1));
-
-            // Add the two vectors
-            List<String> ids = oracleEmbeddingStore.addAll(embeddings);
-
-            // Search for the first vector
-            EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                    .queryEmbedding(Embedding.from(vector1))
-                    .build();
-
-            // Verify the first vector is matched
-            EmbeddingMatch<TextSegment> match =
-                oracleEmbeddingStore.search(request)
-                        .matches()
-                        .get(0);
-            assertEquals(ids.get(1), match.embeddingId());
-            assertArrayEquals(vector1, match.embedding().vector());
+            CommonTestOperations.verifySearch(oracleEmbeddingStore);
         }
         finally {
             dropTable();

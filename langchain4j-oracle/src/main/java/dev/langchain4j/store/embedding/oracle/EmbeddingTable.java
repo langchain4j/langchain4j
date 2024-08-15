@@ -97,9 +97,8 @@ public final class EmbeddingTable {
     }
 
     /**
-     * Creates a table configured by the {@link Builder} of this EmbeddingTable, which may have configured
-     * {@link CreateOption#CREATE_NONE}. No table is created if the Builder was configured with
-     * {@link CreateOption#CREATE_NONE}.
+     * Creates a table configured by the {@link Builder} of this EmbeddingTable. No table is created if the Builder was
+     * configured with {@link CreateOption#CREATE_NONE}.
      *
      * @param dataSource Data source that connects to an Oracle Database where the table is (possibly) created.
      *

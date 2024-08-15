@@ -52,6 +52,8 @@ public class EmbeddingTableTest {
                                 .textColumn(textColumn)
                                 .metadataColumn(metadataColumn)
                                 .build())
+                        // Verify interactions with the CREATE INDEX command
+                        .vectorIndex(CREATE_OR_REPLACE)
                         .build();
 
             assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
@@ -88,6 +90,8 @@ public class EmbeddingTableTest {
                                 .textColumn("\"" + textColumn + "\"")
                                 .metadataColumn("\"" + metadataColumn + "\"")
                                 .build())
+                        // Verify interactions with the CREATE INDEX command
+                        .vectorIndex(CREATE_OR_REPLACE)
                         .build();
 
             assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
@@ -134,6 +138,8 @@ public class EmbeddingTableTest {
             verifyAddSearchAndRemove(OracleEmbeddingStore.builder()
                     .dataSource(getDataSource())
                     .embeddingTable(tableName)
+                    // Verify interactions with the CREATE INDEX command
+                    .vectorIndex(CREATE_OR_REPLACE)
                     .build());
         }
         finally {
