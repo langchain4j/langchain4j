@@ -8,7 +8,9 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
+import java.net.Proxy;
 import java.time.Duration;
+import java.util.Objects;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -24,7 +26,7 @@ class CohereClient {
     private final String authorizationHeader;
 
     @Builder
-    CohereClient(String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses) {
+    CohereClient(String baseUrl, String apiKey, Duration timeout, Proxy proxy, Boolean logRequests, Boolean logResponses) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -37,6 +39,11 @@ class CohereClient {
         }
         if (logResponses) {
             okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
+        }
+
+        // connection using proxy
+        if (Objects.nonNull(proxy)) {
+            okHttpClientBuilder.proxy(proxy);
         }
 
         Retrofit retrofit = new Retrofit.Builder()
