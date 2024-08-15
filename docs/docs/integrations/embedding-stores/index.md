@@ -19,6 +19,7 @@ sidebar_position: 0
 | [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                |                       |                     |
 | [Neo4j](/integrations/embedding-stores/neo4j)                                         |                  |                       |                     |
 | [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                |                       |                     |
+| [Oracle](/integrations/embedding-stores/oracle)                                       | ✅                | ✅                     | ✅                   |
 | [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                | ✅                     | ✅                   |
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   |                  |                       |                     |
 | [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                |                       |                     |
