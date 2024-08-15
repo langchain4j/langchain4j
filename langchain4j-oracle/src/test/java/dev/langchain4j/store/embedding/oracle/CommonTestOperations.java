@@ -1,7 +1,12 @@
 package dev.langchain4j.store.embedding.oracle;
 
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import oracle.jdbc.datasource.OracleDataSource;
 import oracle.sql.CHAR;
 import oracle.sql.CharacterSet;
@@ -14,8 +19,13 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.logging.Logger;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * A collection of operations which are shared by tests in this package.
@@ -29,7 +39,7 @@ final class CommonTestOperations {
     private static final EmbeddingModel EMBEDDING_MODEL = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     /** Name of a database table used by tests */
-    public static final String TABLE_NAME = "langchain4j_embedding_store";
+    public static final String TABLE_NAME = "LANGCHAIN4J_EMBEDDING_STORE";
 
     /**
      * Seed for random numbers. When a test fails, "-Ddev.langchain4j.store.embedding.oracle.SEED=..." can be used to
@@ -133,7 +143,7 @@ final class CommonTestOperations {
     static void dropTable(String tableName) throws SQLException {
         try (Connection connection = DATA_SOURCE.getConnection();
              Statement statement = connection.createStatement()) {
-            statement.addBatch("DROP INDEX IF EXISTS " + tableName + "_embedding_index");
+            statement.addBatch("DROP INDEX IF EXISTS " + tableName + "_EMBEDDING_INDEX");
             statement.addBatch("DROP TABLE IF EXISTS " + tableName);
             statement.executeBatch();
         }
@@ -165,5 +175,43 @@ final class CommonTestOperations {
             floats[i] = RANDOM.nextFloat();
 
         return floats;
+    }
+
+    /**
+     * Verifies that {@link EmbeddingStore#search(EmbeddingSearchRequest)} returns the correct result when
+     * searching a table of just two vectors. This method can be used to verify basic functionality for various
+     * {@link OracleEmbeddingStore.Builder} configurations. Callers of this method should ensure that the table contains
+     * no rows before this method is called.
+     *
+     * @param embeddingStore Embedding store to verify. Not null.
+     */
+    static void verifySearch(EmbeddingStore<TextSegment> embeddingStore) {
+
+        float[] vector0 = CommonTestOperations.randomFloats(512);
+        float[] vector1 = vector0.clone();
+
+        // Only higher indexes are increased in order to effect the cosine angle, and not just magnitude
+        for (int i = 0; i < vector1.length / 2; i++)
+            vector1[i] += 0.1f;
+
+        List<Embedding> embeddings = new ArrayList<>(2);
+        embeddings.add(Embedding.from(vector0));
+        embeddings.add(Embedding.from(vector1));
+
+        // Add the two vectors
+        List<String> ids = embeddingStore.addAll(embeddings);
+
+        // Search for the first vector
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(Embedding.from(vector1))
+                .build();
+
+        // Verify the first vector is matched
+        EmbeddingMatch<TextSegment> match =
+                embeddingStore.search(request)
+                        .matches()
+                        .get(0);
+        assertEquals(ids.get(1), match.embeddingId());
+        assertArrayEquals(vector1, match.embedding().vector());
     }
 }

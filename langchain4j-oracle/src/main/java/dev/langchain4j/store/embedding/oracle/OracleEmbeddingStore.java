@@ -49,7 +49,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * {@link Builder#embeddingTable(String, CreateOption)} or to {@link EmbeddingTable.Builder#createOption(CreateOption)}.
  * </p><p>
  * An inverted flat file (IVF) vector index is created on the embedding column. The index is named
- * "{tableName}_embedding_index", where {tableName} is the name configured using the {@link Builder}.
+ * "{tableName}_EMBEDDING_INDEX", where {tableName} is the name configured using the {@link Builder}.
  * </p><p>
  * Instances of this embedding store are safe for use by multiple threads.
  * </p>
@@ -109,7 +109,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
-     * Creates an index on the {@link EmbeddingTable#embeddingColumn()}.
+     * Creates an index on the {@link EmbeddingTable#embeddingColumn()}, if configured to do so by
+     * {@link Builder#vectorIndex(CreateOption)}.
      *
      * @param builder Builder that configures an embedding store. Not null.
      *
@@ -117,9 +118,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private static void createIndex(Builder builder) throws SQLException {
 
-        // In 23.4, the database will only use a vector index for approximate search. This may change in a later
-        // release.
-        if (builder.isExactSearch)
+        if (builder.vectorIndexCreateOption == CreateOption.CREATE_NONE)
             return;
 
         try (Connection connection = builder.dataSource.getConnection();
@@ -132,10 +131,14 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                     ? "\"" + tableName.substring(1, tableName.length() - 1) + "_embedding_index\""
                     : tableName + "_embedding_index";
 
-            statement.execute("CREATE VECTOR INDEX IF NOT EXISTS " + indexName +
+            if (builder.vectorIndexCreateOption == CreateOption.CREATE_OR_REPLACE)
+                statement.addBatch("DROP INDEX IF EXISTS " + indexName);
+
+            statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + indexName +
                         " ON " + tableName + "(" + builder.embeddingTable.embeddingColumn() + ")" +
                         " ORGANIZATION NEIGHBOR PARTITIONS" +
                         " WITH DISTANCE " + builder.distanceMetric.name());
+
             statement.executeBatch();
         }
     }
@@ -549,6 +552,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         private boolean isExactSearch = false;
 
+        private CreateOption vectorIndexCreateOption = CreateOption.CREATE_NONE;
+
         private Builder() {}
 
         /**
@@ -620,6 +625,20 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
+         * Configures the creation of an index on the embedding column of the {@link EmbeddingTable} used by the
+         * embedding store. Depending on which CreateOption is provided, an index may be created when {@link #build()}
+         * is called. The default createOption is {@link CreateOption#CREATE_NONE}.
+         *
+         * @param createOption Option for creating the index. Not null.
+         * @return This builder. Not null.
+         */
+        public Builder vectorIndex(CreateOption createOption) {
+            ensureNotNull(createOption, "createOption");
+            vectorIndexCreateOption = createOption;
+            return this;
+        }
+
+        /**
          * Configures the distance metric used for similarity searches with the
          * {@linkplain #search(EmbeddingSearchRequest)} method. The default metric is {@link DistanceMetric#COSINE}.
          * The metric configured by this method should match the one used to train the embedding model which generates
@@ -629,7 +648,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
          *
          * @return This builder. Not null.
          *
-         * @throws IllegalArgumentException If the embeddingTable is null.
+         * @throws IllegalArgumentException If the distanceMetric is null.
          */
         public Builder distanceMetric(DistanceMetric distanceMetric) {
             this.distanceMetric = ensureNotNull(distanceMetric, "distanceMetric");
