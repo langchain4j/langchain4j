@@ -18,7 +18,7 @@ sidebar_position: 0
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                |                       |                     |
 | [Milvus](/integrations/embedding-stores/milvus)                                       | ✅                | ✅                     | ✅                   |
 | [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                |                       |                     |
-| [Neo4j](/integrations/embedding-stores/neo4j)                                         |                  |                       |                     |
+| [Neo4j](/integrations/embedding-stores/neo4j)                                         | ✅                |                       |                     |
 | [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                |                       |                     |
 | [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                | ✅                     | ✅                   |
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   | ✅                |                       | ✅                   |
