@@ -41,7 +41,6 @@ class CohereClient {
             okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
         }
 
-        // connection using proxy
         if (Objects.nonNull(proxy)) {
             okHttpClientBuilder.proxy(proxy);
         }
