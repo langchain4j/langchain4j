@@ -22,7 +22,6 @@ class ChromaMetadataFilterMapper {
         // no instance possible
     }
 
-    // TODO add the tests
     static Map<String, Object> map(Filter filter) {
         if (filter == null) {
             return null;
