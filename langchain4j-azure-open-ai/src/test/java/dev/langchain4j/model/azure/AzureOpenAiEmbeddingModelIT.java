@@ -95,6 +95,33 @@ class AzureOpenAiEmbeddingModelIT {
     }
 
     @Test
+    void should_embed_text_with_embedding_shortening() {
+
+        // given
+        int dimension = 1536;
+
+        EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName("text-embedding-ada-002")
+                .tokenizer(new AzureOpenAiTokenizer("text-embedding-ada-002"))
+                .logRequestsAndResponses(true)
+                .dimensions(dimension)
+                .build();
+
+        String text = "hello world";
+
+        // when
+        Response<Embedding> response = model.embed(text);
+        System.out.println(response);
+
+        // then
+        assertThat(response.content().dimension()).isEqualTo(dimension);
+
+        assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
     void should_return_correct_dimension() {
         assertThat(model.dimension()).isEqualTo(1536);
     }
