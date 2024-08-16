@@ -4,7 +4,10 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
@@ -12,6 +15,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.zhipu.chat.Content;
 import dev.langchain4j.model.zhipu.chat.*;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
 import dev.langchain4j.model.zhipu.shared.ErrorResponse;
@@ -82,9 +86,27 @@ class DefaultZhipuAiHelper {
 
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
-            return dev.langchain4j.model.zhipu.chat.UserMessage.builder()
-                    .content(userMessage.singleText())
-                    .build();
+            if (userMessage.hasSingleText()) {
+                return dev.langchain4j.model.zhipu.chat.UserMessage.from(userMessage.singleText());
+            }
+            List<Content> contents = new ArrayList<>(userMessage.contents().size());
+            userMessage.contents().forEach(content -> {
+                if (content instanceof TextContent) {
+                    TextContent textContent = (TextContent) content;
+                    contents.add(dev.langchain4j.model.zhipu.chat.TextContent.builder()
+                            .text(textContent.text())
+                            .build());
+                }
+                if (content instanceof ImageContent) {
+                    Image image = ((ImageContent) content).image();
+                    contents.add(dev.langchain4j.model.zhipu.chat.ImageContent.builder()
+                            .imageUrl(dev.langchain4j.model.zhipu.chat.Image.builder()
+                                    .url(image.url() != null ? image.url().toString() : image.base64Data())
+                                    .build())
+                            .build());
+                }
+            });
+            return dev.langchain4j.model.zhipu.chat.UserMessage.from(contents);
         }
 
         if (message instanceof AiMessage) {

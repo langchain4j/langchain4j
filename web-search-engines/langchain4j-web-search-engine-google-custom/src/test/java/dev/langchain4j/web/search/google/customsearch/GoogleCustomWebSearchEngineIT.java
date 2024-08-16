@@ -5,10 +5,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.web.search.google.customsearch.GoogleCustomWebSearchEngine.ImageSearchResult;
 import static java.util.Collections.singletonMap;
@@ -227,6 +225,22 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
                 .as("At least one result should be contains 'Emmanuel Macro' ignoring case")
                 .anySatisfy(result -> assertThat(result.title())
                         .containsIgnoringCase("Emmanuel Macro"));
+    }
+
+    @Test
+    void bugfix_1458_allow_empty_web_search_results() {
+        // given a user query that will not generate any search results
+        Random random = new Random();
+        String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        String randomQuery = random.ints(10, 0, alphabet.length()).mapToObj(alphabet::charAt).map(Object::toString).collect(Collectors.joining());
+
+        // when
+        WebSearchResults results = googleSearchEngine.search(randomQuery);
+
+        // then
+        assertThat(results.searchMetadata()).isNotNull();
+        assertThat(results.searchInformation().totalResults()).isEqualTo(0);
+        assertThat(results.results()).isEmpty();
     }
 
     @Override

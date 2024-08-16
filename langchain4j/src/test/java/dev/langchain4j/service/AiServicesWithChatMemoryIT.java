@@ -27,7 +27,9 @@ import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesWithChatMemoryIT {
@@ -142,6 +144,7 @@ class AiServicesWithChatMemoryIT {
         ));
         verify(chatMemory).add(aiMessage(fourthAiMessage));
 
+        verify(chatLanguageModel, times(4)).supportedCapabilities();
         verify(chatMemory, times(12)).messages();
     }
 
@@ -171,6 +174,7 @@ class AiServicesWithChatMemoryIT {
                 aiMessage(firstAiMessage),
                 userMessage(secondUserMessage)
         ));
+        verify(chatLanguageModel, times(2)).supportedCapabilities();
 
         verify(chatMemory, times(2)).add(systemMessage(SYSTEM_MESSAGE));
         verify(chatMemory).add(userMessage(firstUserMessage));
@@ -207,6 +211,7 @@ class AiServicesWithChatMemoryIT {
                 systemMessage(ANOTHER_SYSTEM_MESSAGE),
                 userMessage(secondUserMessage)
         ));
+        verify(chatLanguageModel, times(2)).supportedCapabilities();
 
         verify(chatMemory).add(systemMessage(SYSTEM_MESSAGE));
         verify(chatMemory).add(userMessage(firstUserMessage));
@@ -304,5 +309,7 @@ class AiServicesWithChatMemoryIT {
                 userMessage(secondMessageFromSecondUser),
                 aiMessage(secondAiResponseToSecondUser)
         );
+
+        verify(chatLanguageModel, times(4)).supportedCapabilities();
     }
 }

@@ -57,7 +57,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build with JDK ${{ matrix.java_version }}
-        run: mvn --batch-mode install ${{ matrix.included_modules }} -Dgib.disable=false -Dgib.referenceBranch=__branch_before
+        run: mvn -B -U install ${{ matrix.included_modules }} -Dgib.disable=false -Dgib.referenceBranch=__branch_before
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
   compliance:
