@@ -15,13 +15,13 @@ import java.time.Duration;
 import java.util.function.Supplier;
 
 @Testcontainers
-public final class Utils {
-    private Utils() {
+final class CouchbaseTestUtils {
+    private CouchbaseTestUtils() {
 
     }
-    public static final Integer TEST_DIMENSIONS = 384;
+    static final Integer TEST_DIMENSIONS = 384;
 
-    public final static Supplier<CouchbaseEmbeddingStore> cloudStore = Suppliers.memoize(() -> new CouchbaseEmbeddingStore.Builder(System.getenv("COUCHBASE_CLUSTER_URL"))
+    final static Supplier<CouchbaseEmbeddingStore> cloudStore = Suppliers.memoize(() -> new CouchbaseEmbeddingStore.Builder(System.getenv("COUCHBASE_CLUSTER_URL"))
                 .username(System.getenv("COUCHBASE_USERNAME"))
                 .password(System.getenv("COUCHBASE_PASSWORD"))
                 .bucketName(System.getenv("COUCHBASE_BUCKET"))
@@ -32,18 +32,18 @@ public final class Utils {
                 .build());
 
 
-    private static BucketDefinition testBucketDefinition = new BucketDefinition("test")
+    static BucketDefinition testBucketDefinition = new BucketDefinition("test")
             .withPrimaryIndex(true)
             .withQuota(100);
 
     @Container
-    private static final CouchbaseContainer couchbaseContainer =
+    static final CouchbaseContainer couchbaseContainer =
             new CouchbaseContainer(DockerImageName.parse("couchbase:enterprise").asCompatibleSubstituteFor("couchbase/server"))
                     .withCredentials("Administrator", "password")
                     .withBucket(testBucketDefinition)
                     .withStartupTimeout(Duration.ofMinutes(1));
 
-    public final static Supplier<CouchbaseEmbeddingStore> containerStore = Suppliers.memoize(() -> {
+    final static Supplier<CouchbaseEmbeddingStore> containerStore = Suppliers.memoize(() -> {
         couchbaseContainer.start();
 
         Cluster cluster = Cluster.connect(
@@ -66,5 +66,5 @@ public final class Utils {
                 .build();
     });
 
-    public static final Supplier<EmbeddingModel> embeddingModel = Suppliers.memoize(AllMiniLmL6V2QuantizedEmbeddingModel::new);
+    static final Supplier<EmbeddingModel> embeddingModel = Suppliers.memoize(AllMiniLmL6V2QuantizedEmbeddingModel::new);
 }

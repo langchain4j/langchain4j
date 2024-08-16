@@ -14,12 +14,12 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 public class CouchbaseEmbeddingStoreWithRemovalCloudIT extends EmbeddingStoreWithRemovalIT {
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return Utils.cloudStore.get();
+        return CouchbaseTestUtils.cloudStore.get();
     }
 
     @Override
     protected EmbeddingModel embeddingModel() {
-        return Utils.embeddingModel.get();
+        return CouchbaseTestUtils.embeddingModel.get();
     }
 
     @Test

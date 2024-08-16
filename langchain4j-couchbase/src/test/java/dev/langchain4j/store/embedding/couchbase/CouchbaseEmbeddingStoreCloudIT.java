@@ -12,17 +12,17 @@ class CouchbaseEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return Utils.cloudStore.get();
+        return CouchbaseTestUtils.cloudStore.get();
     }
 
     @Override
     protected EmbeddingModel embeddingModel() {
-        return Utils.embeddingModel.get();
+        return CouchbaseTestUtils.embeddingModel.get();
     }
 
     @Override
     protected void ensureStoreIsEmpty() {
-        Utils.cloudStore.get().removeAll();
+        CouchbaseTestUtils.cloudStore.get().removeAll();
     }
 
     @Override

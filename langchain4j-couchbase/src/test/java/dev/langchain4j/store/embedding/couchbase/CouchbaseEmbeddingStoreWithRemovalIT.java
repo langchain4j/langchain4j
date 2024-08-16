@@ -12,12 +12,12 @@ import org.junit.jupiter.api.Test;
 public class CouchbaseEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return Utils.containerStore.get();
+        return CouchbaseTestUtils.containerStore.get();
     }
 
     @Override
     protected EmbeddingModel embeddingModel() {
-        return Utils.embeddingModel.get();
+        return CouchbaseTestUtils.embeddingModel.get();
     }
 
     @Test

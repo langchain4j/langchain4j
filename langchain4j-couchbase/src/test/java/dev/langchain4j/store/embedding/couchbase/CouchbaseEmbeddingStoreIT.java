@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.couchbase;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import lombok.SneakyThrows;
@@ -13,17 +12,17 @@ class CouchbaseEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        Utils.containerStore.get().removeAll();
+        CouchbaseTestUtils.containerStore.get().removeAll();
     }
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return Utils.containerStore.get();
+        return CouchbaseTestUtils.containerStore.get();
     }
 
     @Override
     protected EmbeddingModel embeddingModel() {
-        return Utils.embeddingModel.get();
+        return CouchbaseTestUtils.embeddingModel.get();
     }
 
     @Override
