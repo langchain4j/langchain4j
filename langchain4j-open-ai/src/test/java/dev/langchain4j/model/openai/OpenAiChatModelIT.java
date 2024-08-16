@@ -70,7 +70,7 @@ class OpenAiChatModelIT {
         Response<AiMessage> response = model.generate(userMessage);
 
         // then
-        assertThat(response.content().text()).contains("Berlin");
+        assertThat(response.content().text()).contains("Madrid");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
