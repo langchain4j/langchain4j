@@ -41,6 +41,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create branch from commit by event name
+        run: |
+          if [[ '${{ github.event_name }}' == 'push' ]]; then
+            git branch __branch_before ${{ github.event.before }}
+          elif [[ "${{ github.event_name }}" == 'pull_request' ]]; then
+            git branch __branch_before ${{ github.event.pull_request.base.sha }}
+          fi
       - name: Set up JDK ${{ matrix.java_version }}
         uses: actions/setup-java@v4
         with:
@@ -48,7 +57,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build with JDK ${{ matrix.java_version }}
-        run: mvn -B -U install -DskipITs ${{ matrix.included_modules }}
+        run: mvn -B -U install ${{ matrix.included_modules }} -Dgib.disable=false -Dgib.referenceBranch=__branch_before
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
   compliance:
