@@ -1,6 +1,7 @@
 package dev.langchain4j.model.jina.internal.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.jina.internal.api.*;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
@@ -37,7 +38,7 @@ public class JinaClient {
         }
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClientBuilder.build())
                 .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();

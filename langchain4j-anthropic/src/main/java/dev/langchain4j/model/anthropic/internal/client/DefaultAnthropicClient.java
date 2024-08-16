@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic.internal.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.*;
 import dev.langchain4j.model.output.Response;
@@ -82,7 +83,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(ensureNotBlank(builder.baseUrl, "baseUrl"))
+                .baseUrl(Utils.ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl")))
                 .client(okHttpClient)
                 .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();

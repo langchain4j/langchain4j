@@ -8,9 +8,9 @@ import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -48,18 +48,19 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<Embedding> embeddings = new ArrayList<>();
+        List<String> input = textSegments.stream()
+                .map(TextSegment::text)
+                .collect(Collectors.toList());
 
-        textSegments.forEach(textSegment -> {
-            EmbeddingRequest request = EmbeddingRequest.builder()
-                    .model(modelName)
-                    .prompt(textSegment.text())
-                    .build();
-
-            EmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
-
-            embeddings.add(Embedding.from(response.getEmbedding()));
-        });
+        EmbeddingRequest request = EmbeddingRequest.builder()
+                .model(modelName)
+                .input(input)
+                .build();
+        EmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
+        List<Embedding> embeddings = response.getEmbeddings()
+                .stream()
+                .map(Embedding::from)
+                .collect(Collectors.toList());
 
         return Response.from(embeddings);
     }

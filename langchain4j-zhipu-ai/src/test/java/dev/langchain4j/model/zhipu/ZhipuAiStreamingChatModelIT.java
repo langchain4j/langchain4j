@@ -16,6 +16,7 @@ import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,6 +40,10 @@ public class ZhipuAiStreamingChatModelIT {
             .apiKey(apiKey)
             .logRequests(true)
             .logResponses(true)
+            .callTimeout(Duration.ofSeconds(60))
+            .connectTimeout(Duration.ofSeconds(60))
+            .writeTimeout(Duration.ofSeconds(60))
+            .readTimeout(Duration.ofSeconds(60))
             .build();
 
     ToolSpecification calculator = ToolSpecification.builder()
@@ -91,6 +96,10 @@ public class ZhipuAiStreamingChatModelIT {
                 .apiKey(apiKey + 1)
                 .logRequests(true)
                 .logResponses(true)
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
                 .build();
         model.generate("this message will fail", handler);
 
@@ -248,6 +257,10 @@ public class ZhipuAiStreamingChatModelIT {
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
                 .build();
 
         UserMessage userMessage = UserMessage.from("hello");
@@ -314,6 +327,10 @@ public class ZhipuAiStreamingChatModelIT {
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
                 .build();
 
         String userMessage = "this message will fail";
@@ -352,6 +369,10 @@ public class ZhipuAiStreamingChatModelIT {
         StreamingChatLanguageModel model = ZhipuAiStreamingChatModel.builder()
                 .apiKey(apiKey)
                 .model(ChatCompletionModel.GLM_4V)
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
                 .build();
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         model.generate(multimodalChatMessagesWithImageData(), handler);
