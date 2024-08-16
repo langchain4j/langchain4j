@@ -8,25 +8,19 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.model.azure.AzureOpenAiEmbeddingModelName.TEXT_EMBEDDING_ADA_002;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 class AzureOpenAiEmbeddingModelIT {
 
-    Logger logger = LoggerFactory.getLogger(AzureOpenAiEmbeddingModelIT.class);
-
     EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("text-embedding-ada-002-2")
-            .tokenizer(new AzureOpenAiTokenizer(TEXT_EMBEDDING_ADA_002))
+            .deploymentName("text-embedding-3-small")
             .logRequestsAndResponses(true)
             .build();
 
@@ -34,7 +28,6 @@ class AzureOpenAiEmbeddingModelIT {
     void should_embed_and_return_token_usage() {
 
         Response<Embedding> response = model.embed("hello world");
-        logger.info(response.toString());
 
         assertThat(response.content().vector()).hasSize(1536);
 
@@ -58,7 +51,6 @@ class AzureOpenAiEmbeddingModelIT {
         }
 
         Response<List<Embedding>> response = model.embedAll(segments);
-        System.out.println(response);
 
         assertThat(response.content()).hasSize(numberOfSegments);
         assertThat(response.content().get(0).dimension()).isEqualTo(1536);
@@ -88,7 +80,6 @@ class AzureOpenAiEmbeddingModelIT {
 
         // when
         Response<Embedding> response = model.embed("hello world");
-        System.out.println(response.toString());
 
         // then
         assertThat(response.content().vector()).isNotEmpty();
@@ -98,27 +89,21 @@ class AzureOpenAiEmbeddingModelIT {
     void should_embed_text_with_embedding_shortening() {
 
         // given
-        int dimension = 1536;
+        int dimensions = 100;
 
         EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("text-embedding-ada-002")
-                .tokenizer(new AzureOpenAiTokenizer("text-embedding-ada-002"))
+                .deploymentName("text-embedding-3-small")
+                .dimensions(dimensions)
                 .logRequestsAndResponses(true)
-                .dimensions(dimension)
                 .build();
 
-        String text = "hello world";
-
         // when
-        Response<Embedding> response = model.embed(text);
-        System.out.println(response);
+        Response<Embedding> response = model.embed("hello world");
 
         // then
-        assertThat(response.content().dimension()).isEqualTo(dimension);
-
-        assertThat(response.finishReason()).isNull();
+        assertThat(response.content().dimension()).isEqualTo(dimensions);
     }
 
     @Test
