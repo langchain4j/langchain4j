@@ -6,6 +6,7 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.pinecone.clients.Index;
 import io.pinecone.clients.Pinecone;
 import io.pinecone.unsigned_indices_model.QueryResponseWithUnsignedIndices;
@@ -131,10 +132,14 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
 
         Embedding embedding = request.queryEmbedding();
-        Struct metadataFilter = PineconeMetadataFilterMapper.map(request.filter());
 
-        QueryResponseWithUnsignedIndices response =
-                index.queryByVector(request.maxResults(), embedding.vectorAsList(), nameSpace, metadataFilter, true, true);
+        QueryResponseWithUnsignedIndices response;
+        if (Objects.isNull(request.filter())) {
+            response = index.queryByVector(request.maxResults(), embedding.vectorAsList(), nameSpace, true, true);
+        } else {
+            Struct metadataFilter = PineconeMetadataFilterMapper.map(request.filter());
+            response = index.queryByVector(request.maxResults(), embedding.vectorAsList(), nameSpace, metadataFilter, true, true);
+        }
         List<ScoredVectorWithUnsignedIndices> matchesList = response.getMatchesList();
 
         List<EmbeddingMatch<TextSegment>> matches = matchesList.stream()
@@ -172,27 +177,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         index.upsert(vectors, nameSpace);
-    }
-
-    @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-
-        QueryResponseWithUnsignedIndices response = index.queryByVector(maxResults, referenceEmbedding.vectorAsList(), nameSpace, true, true);
-        List<ScoredVectorWithUnsignedIndices> matchesList = response.getMatchesList();
-
-        if (matchesList.isEmpty()) {
-            return emptyList();
-        }
-
-        List<EmbeddingMatch<TextSegment>> matches = matchesList.stream()
-                .map(indices -> toEmbeddingMatch(indices, referenceEmbedding))
-                .filter(match -> match.score() >= minScore)
-                .sorted(comparingDouble(EmbeddingMatch::score))
-                .collect(toList());
-
-        Collections.reverse(matches);
-
-        return matches;
     }
 
     private boolean isIndexExist(Pinecone client, String index) {

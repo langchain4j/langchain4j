@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.pinecone;
 
 
+import com.google.protobuf.BoolValue;
 import com.google.protobuf.ListValue;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
@@ -108,28 +109,13 @@ public class PineconeMetadataFilterMapper {
     }
 
     private static Struct mapAtomicPredict(Class<? extends Filter> clazz, String key, Object comparisonValue) {
-        Value.Builder valueBuilder = Value.newBuilder();
         // for In and NotIn
-        if (comparisonValue instanceof Collection) {
-            valueBuilder.setListValue(
-                    ListValue.newBuilder()
-                            .addAllValues(
-                                    ((Collection<?>) comparisonValue).stream()
-                                            .map(Object::toString)
-                                            .map(Value.newBuilder()::setStringValue)
-                                            .map(Value.Builder::build)
-                                            .collect(toList())
-                            ).build()
-            );
-        } else {
-            valueBuilder.setStringValue(comparisonValue.toString());
-        }
         return Struct.newBuilder().putFields(
                 key,
                 Value.newBuilder().setStructValue(
                         Struct.newBuilder().putFields(
                                 ATOMIC_PREDICT_MAP.get(clazz),
-                                valueBuilder.build()
+                                getValueBuilder(comparisonValue).build()
                         ).build()
                 ).build()
         ).build();
@@ -176,6 +162,27 @@ public class PineconeMetadataFilterMapper {
             throw new UnsupportedOperationException("Unsupported filter type: " + expression.getClass().getName());
         }
         return map(expression);
+    }
+
+    private static Value.Builder getValueBuilder(Object value) {
+        if (value instanceof Number) {
+            return Value.newBuilder().setNumberValue(((Number) value).doubleValue());
+        } else if (value instanceof String || value instanceof UUID) {
+            return Value.newBuilder().setStringValue(value.toString());
+        } else if (value instanceof Boolean) {
+            return Value.newBuilder().setBoolValue((Boolean) value);
+        } else if (value instanceof Collection) {
+            return Value.newBuilder().setListValue(
+                    ListValue.newBuilder().addAllValues(
+                            ((Collection<?>) value).stream()
+                                    .map(PineconeMetadataFilterMapper::getValueBuilder)
+                                    .map(Value.Builder::build)
+                                    .collect(toList())
+                    ).build()
+            );
+        } else {
+            throw new UnsupportedOperationException("Unsupported value type: " + value.getClass().getName());
+        }
     }
 
 }
