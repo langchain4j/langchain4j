@@ -16,9 +16,12 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
+/**
+ * <a href="https://docs.pinecone.io/guides/data/filter-with-metadata#more-example-filter-expressions">Pinecone Filter doc</a>
+ */
 public class PineconeFilterMapper {
 
-    static final Map<Class<? extends Filter>, String> FILTER_MAP = Stream.of(
+    private static final Map<Class<? extends Filter>, String> ATOMIC_PREDICT_MAP = Stream.of(
                     new AbstractMap.SimpleEntry<>(IsEqualTo.class, "$eq"),
                     new AbstractMap.SimpleEntry<>(IsNotEqualTo.class, "$ne"),
                     new AbstractMap.SimpleEntry<>(IsGreaterThan.class, "$gt"),
@@ -26,9 +29,11 @@ public class PineconeFilterMapper {
                     new AbstractMap.SimpleEntry<>(IsLessThan.class, "$lt"),
                     new AbstractMap.SimpleEntry<>(IsLessThanOrEqualTo.class, "$lte"),
                     new AbstractMap.SimpleEntry<>(IsIn.class, "$in"),
-                    new AbstractMap.SimpleEntry<>(IsNotIn.class, "$nin"),
+                    new AbstractMap.SimpleEntry<>(IsNotIn.class, "$nin"))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    private static final Map<Class<? extends Filter>, String> COMBINE_PREDICT_MAP = Stream.of(
                     new AbstractMap.SimpleEntry<>(And.class, "$and"),
-                    new AbstractMap.SimpleEntry<>(Not.class, "$not"),
                     new AbstractMap.SimpleEntry<>(Or.class, "$or"))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
@@ -62,14 +67,47 @@ public class PineconeFilterMapper {
     }
 
     private static Struct mapEqual(IsEqualTo isEqualTo) {
-        return mapPredict(IsEqualTo.class, isEqualTo.key(), isEqualTo.comparisonValue());
+        return mapAtomicPredict(IsEqualTo.class, isEqualTo.key(), isEqualTo.comparisonValue());
     }
 
     private static Struct mapNotEqual(IsNotEqualTo isNotEqualTo) {
-        return mapPredict(IsNotEqualTo.class, isNotEqualTo.key(), isNotEqualTo.comparisonValue());
+        return mapAtomicPredict(IsNotEqualTo.class, isNotEqualTo.key(), isNotEqualTo.comparisonValue());
     }
 
-    private static Struct mapPredict(Class<? extends Filter> clazz, String key, Object comparisonValue) {
+
+    private static Struct mapGreaterThan(IsGreaterThan isGreaterThan) {
+        return mapAtomicPredict(IsGreaterThan.class, isGreaterThan.key(), isGreaterThan.comparisonValue());
+    }
+
+    private static Struct mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
+        return mapAtomicPredict(IsGreaterThanOrEqualTo.class, isGreaterThanOrEqualTo.key(), isGreaterThanOrEqualTo.comparisonValue());
+    }
+
+    private static Struct mapLessThan(IsLessThan isLessThan) {
+        return mapAtomicPredict(IsLessThan.class, isLessThan.key(), isLessThan.comparisonValue());
+    }
+
+    private static Struct mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
+        return mapAtomicPredict(IsLessThanOrEqualTo.class, isLessThanOrEqualTo.key(), isLessThanOrEqualTo.comparisonValue());
+    }
+
+    public static Struct mapIn(IsIn isIn) {
+        return mapAtomicPredict(IsIn.class, isIn.key(), isIn.comparisonValues());
+    }
+
+    public static Struct mapNotIn(IsNotIn isNotIn) {
+        return mapAtomicPredict(IsNotIn.class, isNotIn.key(), isNotIn.comparisonValues());
+    }
+
+    private static Struct mapAnd(And and) {
+        return mapCombinePredict(And.class, and.left(), and.right());
+    }
+
+    private static Struct mapOr(Or or) {
+        return mapCombinePredict(Or.class, or.left(), or.right());
+    }
+
+    private static Struct mapAtomicPredict(Class<? extends Filter> clazz, String key, Object comparisonValue) {
         Value.Builder valueBuilder = Value.newBuilder();
         // for In and NotIn
         if (comparisonValue instanceof Collection) {
@@ -90,17 +128,16 @@ public class PineconeFilterMapper {
                 key,
                 Value.newBuilder().setStructValue(
                         Struct.newBuilder().putFields(
-                                FILTER_MAP.get(clazz),
+                                ATOMIC_PREDICT_MAP.get(clazz),
                                 valueBuilder.build()
                         ).build()
                 ).build()
         ).build();
     }
 
-
-    private static Struct mapLogical(Class<? extends Filter> clazz, Filter left, Filter right) {
+    private static Struct mapCombinePredict(Class<? extends Filter> clazz, Filter left, Filter right) {
         return Struct.newBuilder().putFields(
-                FILTER_MAP.get(clazz),
+                COMBINE_PREDICT_MAP.get(clazz),
                 Value.newBuilder().setListValue(
                         ListValue.newBuilder()
                                 .addValues(Value.newBuilder().setStructValue(map(left)).build())
@@ -108,36 +145,6 @@ public class PineconeFilterMapper {
                                 .build()
                 ).build()
         ).build();
-    }
-
-
-
-    private static Struct mapGreaterThan(IsGreaterThan isGreaterThan) {
-        return mapPredict(IsGreaterThan.class, isGreaterThan.key(), isGreaterThan.comparisonValue());
-    }
-
-    private static Struct mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
-        return mapPredict(IsGreaterThanOrEqualTo.class, isGreaterThanOrEqualTo.key(), isGreaterThanOrEqualTo.comparisonValue());
-    }
-
-    private static Struct mapLessThan(IsLessThan isLessThan) {
-        return mapPredict(IsLessThan.class, isLessThan.key(), isLessThan.comparisonValue());
-    }
-
-    private static Struct mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
-        return mapPredict(IsLessThanOrEqualTo.class, isLessThanOrEqualTo.key(), isLessThanOrEqualTo.comparisonValue());
-    }
-
-    public static Struct mapIn(IsIn isIn) {
-        return mapPredict(IsIn.class, isIn.key(), isIn.comparisonValues());
-    }
-
-    public static Struct mapNotIn(IsNotIn isNotIn) {
-        return mapPredict(IsNotIn.class, isNotIn.key(), isNotIn.comparisonValues());
-    }
-
-    private static Struct mapAnd(And and) {
-        return mapLogical(And.class, and.left(), and.right());
     }
 
     /**
@@ -165,13 +172,10 @@ public class PineconeFilterMapper {
             expression = new Or(Filter.not(((And) expression).left()), Filter.not(((And) expression).right()));
         } else if (expression instanceof Or) {
             expression = new And(Filter.not(((Or) expression).left()), Filter.not(((Or) expression).right()));
+        } else {
+            throw new UnsupportedOperationException("Unsupported filter type: " + expression.getClass().getName());
         }
         return map(expression);
     }
-
-    private static Struct mapOr(Or or) {
-        return mapLogical(Or.class, or.left(), or.right());
-    }
-
 
 }
