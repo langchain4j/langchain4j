@@ -19,7 +19,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * <a href="https://docs.pinecone.io/guides/data/filter-with-metadata#more-example-filter-expressions">Pinecone Filter doc</a>
  */
-public class PineconeFilterMapper {
+public class PineconeMetadataFilterMapper {
 
     private static final Map<Class<? extends Filter>, String> ATOMIC_PREDICT_MAP = Stream.of(
                     new AbstractMap.SimpleEntry<>(IsEqualTo.class, "$eq"),

@@ -6,7 +6,6 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.*;
-import dev.langchain4j.store.embedding.filter.Filter;
 import io.pinecone.clients.Index;
 import io.pinecone.clients.Pinecone;
 import io.pinecone.unsigned_indices_model.QueryResponseWithUnsignedIndices;
@@ -132,7 +131,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
 
         Embedding embedding = request.queryEmbedding();
-        Struct metadataFilter = PineconeFilterMapper.map(request.filter());
+        Struct metadataFilter = PineconeMetadataFilterMapper.map(request.filter());
 
         QueryResponseWithUnsignedIndices response =
                 index.queryByVector(request.maxResults(), embedding.vectorAsList(), nameSpace, metadataFilter, true, true);
