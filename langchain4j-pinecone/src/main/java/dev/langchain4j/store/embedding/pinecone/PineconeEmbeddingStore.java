@@ -5,10 +5,8 @@ import com.google.protobuf.Value;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.CosineSimilarity;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.pinecone.clients.Index;
 import io.pinecone.clients.Pinecone;
 import io.pinecone.unsigned_indices_model.QueryResponseWithUnsignedIndices;
@@ -128,6 +126,33 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll() {
         index.deleteAll(nameSpace);
+    }
+
+    @Override
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        Embedding embedding = request.queryEmbedding();
+        int maxResults = request.maxResults();
+        double minScore = request.minScore();
+        Filter filter = request.filter();
+//        Struct struct = PineconeHelper.metadataToStruct(filter);
+//        QueryResponseWithUnsignedIndices response =
+//                index.queryByVector(maxResults, embedding.vectorAsList(), nameSpace, struct,true, true);
+//        List<ScoredVectorWithUnsignedIndices> matchesList = response.getMatchesList();
+//
+//        if (matchesList.isEmpty()) {
+//            return null;
+//        }
+//
+//        List<EmbeddingMatch<TextSegment>> matches = matchesList.stream()
+//                .map(indices -> toEmbeddingMatch(indices, referenceEmbedding))
+//                .filter(match -> match.score() >= minScore)
+//                .sorted(comparingDouble(EmbeddingMatch::score))
+//                .collect(toList());
+//
+//        Collections.reverse(matches);
+//
+//        return matches;
+        return null;
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
