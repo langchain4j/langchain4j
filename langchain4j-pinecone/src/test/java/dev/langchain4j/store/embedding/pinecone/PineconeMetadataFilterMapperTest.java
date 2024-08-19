@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * @author xiaoyang
  **/
-class PineconeMetadataFilterMapperT {
+class PineconeMetadataFilterMapperTest {
 
     JsonFormat.Printer printer = JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace();
 

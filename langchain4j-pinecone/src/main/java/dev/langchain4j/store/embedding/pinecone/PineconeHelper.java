@@ -1,20 +1,12 @@
 package dev.langchain4j.store.embedding.pinecone;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.filter.comparison.*;
-import dev.langchain4j.store.embedding.filter.logical.And;
-import dev.langchain4j.store.embedding.filter.logical.Not;
-import dev.langchain4j.store.embedding.filter.logical.Or;
 
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Helper for Pinecone Struct conversion
