@@ -9,6 +9,7 @@ public enum QianfanChatModelNameEnum {
     ERNIE_BOT_4("ERNIE-Bot 4.0", "completions_pro"),
     ERNIE_BOT_8("ERNIE-Bot-8K", "ernie_bot_8k"),
     ERNIE_BOT_TURBO("ERNIE-Bot-turbo", "eb-instant"),
+    ERNIE_SPEED_128K("ERNIE-Speed-128K", "ernie-speed-128k"),
     EB_TURBO_APPBUILDER("EB-turbo-AppBuilder", "ai_apaas"),
     YI_34B_CHAT("Yi-34B-Chat", "yi_34b_chat"),
     BLOOMZ_7B("BLOOMZ-7B","bloomz_7b1"),

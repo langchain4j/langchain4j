@@ -1,8 +1,8 @@
 ---
-sidebar_position: 9
+sidebar_position: 6
 ---
 
-# Google Vertex AI Embedding Models
+# Google Vertex AI
 
 ## Get started
 
@@ -17,14 +17,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai</artifactId>
-  <version>{your-version}</version> <!-- Specify langchain4j version here -->
+  <version>0.33.0</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai:{your-version}'
+implementation 'dev.langchain4j:langchain4j-vertex-ai:0.33.0'
 ```
 
 ### Try out an example code:
@@ -47,9 +47,9 @@ public class VertexAiEmbeddingModelExample {
     public static void main(String[] args) {
 
         EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
-                .endpoint("us-central1-aiplatform.googleapis.com:443")
                 .project(PROJECT_ID)
                 .location("us-central1")
+                .endpoint("us-central1-aiplatform.googleapis.com:443")
                 .publisher("google")
                 .modelName(MODEL_NAME)
                 .build();
@@ -69,10 +69,11 @@ public class VertexAiEmbeddingModelExample {
 
 ### Available Embedding models
 
-| Model name                              | Description                                                |
-|-----------------------------------------|------------------------------------------------------------|
-| textembedding-gecko@latest              | the newest stable embedding model with enhanced AI quality |
-| textembedding-gecko-multilingual@latest | optimized for a wide range of non-English languages.       |
+|English models|Multilingual models| Multimodal embeddings |
+|---|---|-----------------------|
+|`textembedding-gecko@001`|`textembedding-gecko-multilingual@001`|`multimodalembedding`|
+|`textembedding-gecko@003`|`text-multilingual-embedding-002`|                       |
+|`text-embedding-004`|   |                       |
 
 [List of supported languages for multi lingual model](https://cloud.google.com/vertex-ai/generative-ai/docs/embeddings/get-text-embeddings#language_coverage_for_textembedding-gecko-multilingual_models)
 

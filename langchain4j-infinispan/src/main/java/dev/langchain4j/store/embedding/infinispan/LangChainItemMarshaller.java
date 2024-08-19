@@ -3,18 +3,22 @@ package dev.langchain4j.store.embedding.infinispan;
 import org.infinispan.protostream.MessageMarshaller;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Marshaller to read and write embeddings to Infinispan
  */
-class LangChainItemMarshaller implements MessageMarshaller<LangChainInfinispanItem> {
+public class LangChainItemMarshaller implements MessageMarshaller<LangChainInfinispanItem> {
 
     private final String typeName;
 
-    public LangChainItemMarshaller(Integer dimension) {
-        this.typeName = "LangChainItem" + dimension.toString();
+    /**
+     * Constructor for the LangChainItemMarshaller Marshaller
+     * @param typeName, the full type of the protobuf entity
+     */
+    public LangChainItemMarshaller(String typeName) {
+        this.typeName = typeName;
     }
 
     @Override
@@ -22,19 +26,17 @@ class LangChainItemMarshaller implements MessageMarshaller<LangChainInfinispanIt
         String id = reader.readString("id");
         float[] embedding = reader.readFloats("embedding");
         String text = reader.readString("text");
-        List<String> metadataKeys = reader.readCollection("metadataKeys", new ArrayList<>(), String.class);
-        List<String> metadataValues = reader.readCollection("metadataValues", new ArrayList<>(), String.class);
-        return new LangChainInfinispanItem(id, embedding, text, metadataKeys, metadataValues);
+        Set<LangChainMetadata> metadata = reader.readCollection("metadata", new HashSet<>(), LangChainMetadata.class);
+        return new LangChainInfinispanItem(id, embedding, text, metadata);
     }
 
     @Override
     public void writeTo(ProtoStreamWriter writer, LangChainInfinispanItem item)
             throws IOException {
-        writer.writeString("id", item.getId());
-        writer.writeFloats("embedding", item.getEmbedding());
-        writer.writeString("text", item.getText());
-        writer.writeCollection("metadataKeys", item.getMetadataKeys(), String.class);
-        writer.writeCollection("metadataValues", item.getMetadataValues(), String.class);
+        writer.writeString("id", item.id());
+        writer.writeFloats("embedding", item.embedding());
+        writer.writeString("text", item.text());
+        writer.writeCollection("metadata", item.metadata(), LangChainMetadata.class);
     }
 
     @Override

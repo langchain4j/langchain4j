@@ -9,13 +9,14 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
 import dev.langchain4j.rag.content.aggregator.ReRankingContentAggregator;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -536,10 +537,10 @@ class AiServicesWithRagIT {
                 .build();
 
         // when
-        String answer1 = assistant.answer("Which animal?");
+        String answer = assistant.answer("Which animal is mentioned?");
 
         // then
-        assertThat(answer1).containsIgnoringCase("dog");
+        assertThat(answer).containsIgnoringCase("dog");
     }
 
     @ParameterizedTest
@@ -560,6 +561,47 @@ class AiServicesWithRagIT {
 
         // then
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
+    }
+
+
+    interface AssistantReturningResult {
+
+        Result<String> answer(String query);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_content_retriever_and_return_sources_inside_result(ChatLanguageModel model) {
+
+        // given
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(1)
+                .build();
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatLanguageModel(model)
+                .contentRetriever(contentRetriever)
+                .build();
+
+        // when
+        Result<String> result = assistant.answer("Can I cancel my booking?");
+
+        // then
+        assertThat(result.content()).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
+
+        assertThat(result.tokenUsage()).isNotNull();
+
+        assertThat(result.sources()).hasSize(1);
+        Content content = result.sources().get(0);
+        assertThat(content.textSegment().text()).isEqualToIgnoringWhitespace(
+                "4. Cancellation Policy" +
+                        "4.1 Reservations can be cancelled up to 61 days prior to the start of the booking period." +
+                        "4.2 If the booking period is less than 17 days, cancellations are not permitted."
+        );
+        assertThat(content.textSegment().metadata("index")).isEqualTo("3");
+        assertThat(content.textSegment().metadata("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
     }
 
     private void ingest(String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {

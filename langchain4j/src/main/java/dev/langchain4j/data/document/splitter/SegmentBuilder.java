@@ -26,7 +26,7 @@ class SegmentBuilder {
         this.maxSegmentSize = ensureGreaterThanZero(maxSegmentSize, "maxSegmentSize");
         this.sizeFunction = ensureNotNull(sizeFunction, "sizeFunction");
         this.joinSeparator = ensureNotNull(joinSeparator, "joinSeparator");
-        joinSeparatorSize = sizeOf(joinSeparator);
+        this.joinSeparatorSize = sizeOf(joinSeparator);
     }
 
     /**

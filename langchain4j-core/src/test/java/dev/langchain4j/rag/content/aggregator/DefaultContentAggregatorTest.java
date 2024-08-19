@@ -3,15 +3,18 @@ package dev.langchain4j.rag.content.aggregator;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DefaultContentAggregatorTest {
@@ -171,5 +174,37 @@ class DefaultContentAggregatorTest {
         assertThat(aggregated)
                 // content7 was fused with content1
                 .containsExactly(content1, content5, content3, content2, content6, content4, content8);
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_return_empty_list_when_there_is_no_content_to_rerank(
+            Map<Query, Collection<List<Content>>> queryToContents
+    ) {
+        // given
+        ContentAggregator aggregator = new DefaultContentAggregator();
+
+        // when
+        List<Content> aggregated = aggregator.aggregate(queryToContents);
+
+        // then
+        assertThat(aggregated).isEmpty();
+    }
+
+    private static Stream<Arguments> should_return_empty_list_when_there_is_no_content_to_rerank() {
+        return Stream.<Arguments>builder()
+                .add(Arguments.of(
+                        emptyMap()
+                ))
+                .add(Arguments.of(
+                        singletonMap(Query.from("query"), emptyList())
+                ))
+                .add(Arguments.of(
+                        singletonMap(Query.from("query"), singletonList(emptyList()))
+                ))
+                .add(Arguments.of(
+                        singletonMap(Query.from("query"), asList(emptyList(), emptyList()))
+                ))
+                .build();
     }
 }

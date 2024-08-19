@@ -6,7 +6,7 @@ import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -15,6 +15,7 @@ import lombok.Builder;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -27,7 +28,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
  */
-public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
+public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -48,7 +49,8 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                                 Proxy proxy,
                                 Boolean logRequests,
                                 Boolean logResponses,
-                                Tokenizer tokenizer) {
+                                Tokenizer tokenizer,
+                                Map<String, String> customHeaders) {
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
@@ -69,12 +71,26 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
         this.dimensions = dimensions;
         this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+    }
+
+    @Override
+    protected Integer knownDimension() {
+        if (dimensions != null) {
+            return dimensions;
+        }
+
+        return OpenAiEmbeddingModelName.knownDimension(modelName());
+    }
+
+    public String modelName() {
+        return modelName;
     }
 
     @Override

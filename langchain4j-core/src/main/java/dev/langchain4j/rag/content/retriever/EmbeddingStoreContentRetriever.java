@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -12,11 +13,13 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Builder;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -27,6 +30,8 @@ import static java.util.stream.Collectors.toList;
  * <br>
  * <br>
  * Configurable parameters (optional):
+ * <br>
+ * - {@code displayName}: Display name for logging purposes, e.g. when multiple instances are used.
  * <br>
  * - {@code maxResults}: The maximum number of {@link Content}s to retrieve.
  * <br>
@@ -54,6 +59,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     public static final Function<Query, Double> DEFAULT_MIN_SCORE = (query) -> 0.0;
     public static final Function<Query, Filter> DEFAULT_FILTER = (query) -> null;
 
+    public static final String DEFAULT_DISPLAY_NAME = "Default";
+
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final EmbeddingModel embeddingModel;
 
@@ -61,9 +68,12 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     private final Function<Query, Double> minScoreProvider;
     private final Function<Query, Filter> filterProvider;
 
+    private final String displayName;
+
     public EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
                                           EmbeddingModel embeddingModel) {
         this(
+                DEFAULT_DISPLAY_NAME,
                 embeddingStore,
                 embeddingModel,
                 DEFAULT_MAX_RESULTS,
@@ -76,6 +86,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                                           EmbeddingModel embeddingModel,
                                           int maxResults) {
         this(
+                DEFAULT_DISPLAY_NAME,
                 embeddingStore,
                 embeddingModel,
                 (query) -> maxResults,
@@ -89,6 +100,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                                           Integer maxResults,
                                           Double minScore) {
         this(
+                DEFAULT_DISPLAY_NAME,
                 embeddingStore,
                 embeddingModel,
                 (query) -> maxResults,
@@ -98,16 +110,35 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     }
 
     @Builder
-    private EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
+    private EmbeddingStoreContentRetriever(String displayName,
+                                           EmbeddingStore<TextSegment> embeddingStore,
                                            EmbeddingModel embeddingModel,
                                            Function<Query, Integer> dynamicMaxResults,
                                            Function<Query, Double> dynamicMinScore,
                                            Function<Query, Filter> dynamicFilter) {
+        this.displayName = getOrDefault(displayName, DEFAULT_DISPLAY_NAME);
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
-        this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
+        this.embeddingModel = ensureNotNull(
+                getOrDefault(embeddingModel, EmbeddingStoreContentRetriever::loadEmbeddingModel),
+                "embeddingModel"
+        );
         this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS);
         this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE);
         this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
+    }
+
+    private static EmbeddingModel loadEmbeddingModel() {
+        Collection<EmbeddingModelFactory> factories = loadFactories(EmbeddingModelFactory.class);
+        if (factories.size() > 1) {
+            throw new RuntimeException("Conflict: multiple embedding models have been found in the classpath. " +
+                    "Please explicitly specify the one you wish to use.");
+        }
+
+        for (EmbeddingModelFactory factory : factories) {
+            return factory.create();
+        }
+
+        return null;
     }
 
     public static class EmbeddingStoreContentRetrieverBuilder {
@@ -134,6 +165,14 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         }
     }
 
+    /**
+     * Creates an instance of an {@code EmbeddingStoreContentRetriever} from the specified {@link EmbeddingStore}
+     * and {@link EmbeddingModel} found through SPI (see {@link EmbeddingModelFactory}).
+     */
+    public static EmbeddingStoreContentRetriever from(EmbeddingStore<TextSegment> embeddingStore) {
+        return builder().embeddingStore(embeddingStore).build();
+    }
+
     @Override
     public List<Content> retrieve(Query query) {
 
@@ -152,5 +191,12 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 .map(EmbeddingMatch::embedded)
                 .map(Content::from)
                 .collect(toList());
+    }
+
+    @Override
+    public String toString() {
+        return "EmbeddingStoreContentRetriever{" +
+                "displayName='" + displayName + '\'' +
+                '}';
     }
 }

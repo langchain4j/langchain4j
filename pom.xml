@@ -6,9 +6,13 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.29.0-SNAPSHOT</version>
+    <version>0.34.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
+
+    <properties>
+        <gib.disable>true</gib.disable>
+    </properties>
 
     <modules>
 
@@ -18,6 +22,8 @@
         <module>langchain4j-core</module>
         <module>langchain4j</module>
 
+        <module>langchain4j-easy-rag</module>
+
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
@@ -25,20 +31,26 @@
         <module>langchain4j-chatglm</module>
         <module>langchain4j-cohere</module>
         <module>langchain4j-dashscope</module>
-        <module>langchain4j-qianfan</module>
         <module>langchain4j-hugging-face</module>
+        <module>langchain4j-jlama</module>
+        <module>langchain4j-jina</module>
         <module>langchain4j-local-ai</module>
         <module>langchain4j-mistral-ai</module>
         <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
+        <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
+        <module>langchain4j-qianfan</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
+        <module>langchain4j-workers-ai</module>
         <module>langchain4j-zhipu-ai</module>
         <module>langchain4j-tei</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
+        <module>langchain4j-azure-cosmos-mongo-vcore</module>
+        <module>langchain4j-azure-cosmos-nosql</module>
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
         <module>langchain4j-elasticsearch</module>
@@ -59,21 +71,38 @@
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
         <module>document-loaders/langchain4j-document-loader-azure-storage-blob</module>
         <module>document-loaders/langchain4j-document-loader-github</module>
+        <module>document-loaders/langchain4j-document-loader-selenium</module>
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
 
         <!-- document parsers -->
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
+        <module>document-parsers/langchain4j-document-parser-apache-tika</module>
 
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
+        <module>code-execution-engines/langchain4j-code-execution-engine-judge0</module>
+
+        <!-- web search engines -->
+        <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
+        <module>web-search-engines/langchain4j-web-search-engine-tavily</module>
 
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
 
+        <!-- experimental -->
+        <module>experimental/langchain4j-experimental-sql</module>
+
     </modules>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
+                <artifactId>gitflow-incremental-builder</artifactId>
+                <version>3.15.0</version>
+            </extension>
+        </extensions>
         <plugins>
             <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>

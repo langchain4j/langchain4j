@@ -3,7 +3,6 @@ package dev.langchain4j.store.embedding.cassandra;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiModelName;
@@ -88,8 +87,8 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
         String sourceSentence         = "In GOD we trust, everything else we test!";
         Embedding sourceEmbedding     = embeddingModel().embed(sourceSentence).content();
         TextSegment sourceTextSegment = TextSegment.from(sourceSentence, new Metadata()
-                .add("user", "GOD")
-                .add("test", "false"));
+                .put("user", "GOD")
+                .put("test", "false"));
         String id =  embeddingStore().add(sourceEmbedding, sourceTextSegment);
         assertThat(id != null && !id.isEmpty()).isTrue();
 

@@ -7,6 +7,7 @@ import io.milvus.param.collection.DropCollectionParam;
 import io.milvus.param.collection.FlushParam;
 import io.milvus.param.collection.HasCollectionParam;
 import io.milvus.param.collection.LoadCollectionParam;
+import io.milvus.param.dml.DeleteParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
@@ -82,6 +83,14 @@ class CollectionRequestBuilder {
                 .withExpr(buildQueryExpression(rowIds))
                 .withConsistencyLevel(consistencyLevel)
                 .withOutFields(singletonList(VECTOR_FIELD_NAME))
+                .build();
+    }
+
+    static DeleteParam buildDeleteRequest(String collectionName,
+                                          String expr) {
+        return DeleteParam.newBuilder()
+                .withCollectionName(collectionName)
+                .withExpr(expr)
                 .build();
     }
 

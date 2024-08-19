@@ -2,7 +2,7 @@ package dev.langchain4j.model.nomic;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
@@ -20,7 +20,7 @@ import static java.util.stream.Collectors.toList;
  * An integration with Nomic Atlas's Text Embeddings API.
  * See more details <a href="https://docs.nomic.ai/reference/endpoints/nomic-embed-text">here</a>.
  */
-public class NomicEmbeddingModel implements EmbeddingModel {
+public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final String DEFAULT_BASE_URL = "https://api-atlas.nomic.ai/v1/";
 

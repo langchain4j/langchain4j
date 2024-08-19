@@ -10,6 +10,9 @@ class GsonChatMessageAdapter implements JsonDeserializer<ChatMessage>, JsonSeria
             .registerTypeAdapter(Content.class, new GsonContentAdapter())
             .registerTypeAdapter(TextContent.class, new GsonContentAdapter())
             .registerTypeAdapter(ImageContent.class, new GsonContentAdapter())
+            .registerTypeAdapter(AudioContent.class, new GsonContentAdapter())
+            .registerTypeAdapter(VideoContent.class, new GsonContentAdapter())
+            .registerTypeAdapter(PdfFileContent.class, new GsonContentAdapter())
             .create();
 
     private static final String CHAT_MESSAGE_TYPE = "type"; // do not change, will break backward compatibility!
@@ -22,7 +25,7 @@ class GsonChatMessageAdapter implements JsonDeserializer<ChatMessage>, JsonSeria
     }
 
     @Override
-    public ChatMessage deserialize(JsonElement messageJsonElement, Type ignored, JsonDeserializationContext context) throws JsonParseException {
+    public ChatMessage deserialize(JsonElement messageJsonElement, Type ignored, JsonDeserializationContext context) {
         String chatMessageTypeString = messageJsonElement.getAsJsonObject().get(CHAT_MESSAGE_TYPE).getAsString();
         ChatMessageType chatMessageType = ChatMessageType.valueOf(chatMessageTypeString);
         ChatMessage chatMessage = GSON.fromJson(messageJsonElement, chatMessageType.messageClass());

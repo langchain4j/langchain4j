@@ -18,4 +18,11 @@ public @interface P {
      * @return the description of a parameter
      */
     String value();
+
+    /**
+     * Whether the parameter is required
+     * @return true if the parameter is required, false otherwise
+     * Default is true.
+     */
+    boolean required() default true;
 }

@@ -1,10 +1,28 @@
 ---
-sidebar_position: 21
+sidebar_position: 16
 ---
 
 # Redis
 
-[Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/redis-example/src/main/java/RedisEmbeddingStoreExample.java)
-with [Redis](https://redis.io/)
+https://redis.io/
 
-Tutorial coming soon
+
+## Maven Dependency
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-redis</artifactId>
+    <version>0.33.0</version>
+</dependency>
+```
+
+
+## APIs
+
+- `RedisEmbeddingStore`
+
+
+## Examples
+
+- [RedisEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/redis-example/src/main/java/RedisEmbeddingStoreExample.java)

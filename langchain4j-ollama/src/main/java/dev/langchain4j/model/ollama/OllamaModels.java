@@ -17,10 +17,15 @@ public class OllamaModels {
     @Builder
     public OllamaModels(String baseUrl,
                         Duration timeout,
-                        Integer maxRetries) {
+                        Integer maxRetries,
+                        Boolean logRequests,
+                        Boolean logResponses
+                        ) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout((getOrDefault(timeout, Duration.ofSeconds(60))))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
@@ -41,5 +46,17 @@ public class OllamaModels {
                         .build()
         ), maxRetries);
         return Response.from(response);
+    }
+
+    public void deleteModel(OllamaModel ollamaModel) {
+        deleteModel(ollamaModel.getName());
+    }
+
+    public void deleteModel(String ollamaModelName) {
+        withRetry(() -> client.deleteModel(
+                DeleteModelRequest.builder()
+                        .name(ollamaModelName)
+                        .build()
+        ), maxRetries);
     }
 }

@@ -1,22 +1,25 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Data;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 
-@ToString
-@EqualsAndHashCode
+@Data
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class Parameters {
 
-    private final String type;
-    private final Map<String, Map<String, Object>> properties;
-    private final List<String> required;
+    private String type;
+    private Map<String, Map<String, Object>> properties;
+    private List<String> required;
 
     private Parameters(Builder builder) {
         this.type = "object";
@@ -26,18 +29,6 @@ public final class Parameters {
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public String type() {
-        return "object";
-    }
-
-    public Map<String, Map<String, Object>> properties() {
-        return this.properties;
-    }
-
-    public List<String> required() {
-        return this.required;
     }
 
     public static final class Builder {

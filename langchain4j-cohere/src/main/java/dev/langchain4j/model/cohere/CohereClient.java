@@ -2,13 +2,16 @@ package dev.langchain4j.model.cohere;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.internal.Utils;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
+import java.net.Proxy;
 import java.time.Duration;
+import java.util.Objects;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -24,7 +27,7 @@ class CohereClient {
     private final String authorizationHeader;
 
     @Builder
-    CohereClient(String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses) {
+    CohereClient(String baseUrl, String apiKey, Duration timeout, Proxy proxy, Boolean logRequests, Boolean logResponses) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -39,8 +42,12 @@ class CohereClient {
             okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
         }
 
+        if (Objects.nonNull(proxy)) {
+            okHttpClientBuilder.proxy(proxy);
+        }
+
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClientBuilder.build())
                 .addConverterFactory(GsonConverterFactory.create(GSON))
                 .build();
@@ -49,7 +56,22 @@ class CohereClient {
         this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
     }
 
-    public RerankResponse rerank(RerankRequest request) {
+    EmbedResponse embed(EmbedRequest request) {
+        try {
+            retrofit2.Response<EmbedResponse> retrofitResponse
+                    = cohereApi.embed(request, authorizationHeader).execute();
+
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    RerankResponse rerank(RerankRequest request) {
         try {
             retrofit2.Response<RerankResponse> retrofitResponse
                     = cohereApi.rerank(request, authorizationHeader).execute();

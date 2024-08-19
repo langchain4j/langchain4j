@@ -1,19 +1,15 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
-import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import lombok.Builder;
 import lombok.ToString;
 import org.junit.jupiter.api.AfterEach;
@@ -25,26 +21,29 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.NUMBER;
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.ChatMessageDeserializer.messagesFromJson;
-import static dev.langchain4j.data.message.ChatMessageSerializer.messagesToJson;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.service.AiServicesIT.ChatWithMemory.ANOTHER_SYSTEM_MESSAGE;
-import static dev.langchain4j.service.AiServicesIT.ChatWithMemory.SYSTEM_MESSAGE;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.SALT;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.COMFORT_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.MAINTENANCE_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.OVERALL_EXPERIENCE_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.SERVICE_ISSUE;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 public class AiServicesIT {
@@ -54,6 +53,7 @@ public class AiServicesIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_4_O_MINI)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -69,17 +69,32 @@ public class AiServicesIT {
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .build();
 
-    ToolSpecification calculatorSpecification = ToolSpecification.builder()
-            .name("squareRoot")
-            .description("calculates the square root of the provided number")
-            .addParameter("arg0", NUMBER, JsonSchemaProperty.description("number to operate on"))
-            .build();
-
     @AfterEach
     void afterEach() {
         verifyNoMoreInteractions(chatLanguageModel);
         verifyNoMoreInteractions(chatMemory);
         verifyNoMoreInteractions(moderationModel);
+    }
+
+    interface EggCounter {
+
+        @UserMessage("Count number of 'egg' mentions in this sentence:\n|||{{it}}|||")
+        int count(String sentence);
+    }
+
+    @Test
+    void test_simple_instruction_with_primitive_return_type() {
+        EggCounter eggCounter = AiServices.create(EggCounter.class, chatLanguageModel);
+
+        String sentence = "I have ten eggs in my basket and three in my pocket.";
+
+        int count = eggCounter.count(sentence);
+        assertThat(count).isEqualTo(13);
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Count number of 'egg' mentions in this sentence:\n" +
+                "|||I have ten eggs in my basket and three in my pocket.|||\n" +
+                "You must answer strictly in the following format: integer number")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -100,6 +115,7 @@ public class AiServicesIT {
         assertThat(joke).isNotBlank();
 
         verify(chatLanguageModel).generate(singletonList(userMessage("Tell me a joke about AI")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -130,6 +146,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date from " + text + "\n" +
                         "You must answer strictly in the following format: yyyy-MM-dd")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -147,6 +164,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract time from " + text + "\n" +
                         "You must answer strictly in the following format: HH:mm:ss")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -164,6 +182,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date and time from " + text + "\n" +
                         "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -171,9 +190,10 @@ public class AiServicesIT {
         POSITIVE, NEUTRAL, NEGATIVE
     }
 
+
     interface SentimentAnalyzer {
 
-        @UserMessage("Analyze sentiment of {{it}}")
+        @UserMessage("Analyze sentiment of:\n|||{{it}}|||")
         Sentiment analyzeSentimentOf(String text);
     }
 
@@ -190,10 +210,135 @@ public class AiServicesIT {
         assertThat(sentiment).isEqualTo(POSITIVE);
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
-                "Analyze sentiment of " + customerReview + "\n" +
-                        "You must answer strictly in the following format: one of [POSITIVE, NEUTRAL, NEGATIVE]")));
+                "Analyze sentiment of:\n|||" + customerReview + "|||\n" +
+                        "You must answer strictly with one of these enums:\n" +
+                        "POSITIVE\n" +
+                        "NEUTRAL\n" +
+                        "NEGATIVE")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
+    public enum Weather {
+        @Description("A clear day with bright sunlight and few or no clouds")
+        SUNNY,
+        @Description("The sky is covered with clouds with no rain, often creating a gray and overcast appearance")
+        CLOUDY,
+        @Description("Precipitation in the form of rain, with cloudy skies and wet conditions")
+        RAINY,
+        @Description("Snowfall occurs, covering the ground in white and creating cold, wintry conditions")
+        SNOWY
+    }
+
+    interface WeatherForecastAnalyzer {
+
+        @UserMessage("Analyze weather forecast for:\n|||{{it}}|||")
+        Weather analyzeWeatherForecast(String forecast);
+    }
+
+    @Test
+    void test_extract_single_enum_with_description() {
+
+        WeatherForecastAnalyzer weatherForecastAnalyzer = AiServices.create(WeatherForecastAnalyzer.class, chatLanguageModel);
+
+        String weatherForecast = "It will be cloudy and mostly rainy. No more rain early in the day but the sky remains overcast. Afternoon it is mostly cloudy. The sun will not be visible. The forecast has a moderate, 40% chance of Precipitation. Temperatures peaking at 17 °C.";
+
+        Weather weather = weatherForecastAnalyzer.analyzeWeatherForecast(weatherForecast);
+        System.out.println(weather);
+
+        assertThat(weather).isEqualTo(Weather.RAINY);
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Analyze weather forecast for:\n" +
+                "|||" + weatherForecast + "|||\n" +
+                "You must answer strictly with one of these enums:\n" +
+                "SUNNY - A clear day with bright sunlight and few or no clouds\n" +
+                "CLOUDY - The sky is covered with clouds with no rain, often creating a gray and overcast appearance\n" +
+                "RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions\n" +
+                "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions")));
+        verify(chatLanguageModel).supportedCapabilities();
+    }
+
+    public enum Ingredient {
+        SALT,
+        PEPPER,
+        VINEGAR,
+        OIL
+    }
+
+    interface IngredientsExtractor {
+
+        @UserMessage("Analyze the following recipe:\n|||{{it}}|||")
+        List<Ingredient> extractIngredients(String recipe);
+    }
+
+    @Test
+    void test_extract_list_of_enums() {
+        IngredientsExtractor ingredientsExtractor = AiServices.create(IngredientsExtractor.class, chatLanguageModel);
+
+        String recipe = "Just mix some salt, pepper and oil in the bowl. That will be a basis for...";
+
+        List<Ingredient> ingredients = ingredientsExtractor.extractIngredients(recipe);
+        assertThat(ingredients).isEqualTo(Arrays.asList(SALT, PEPPER, OIL));
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Analyze the following recipe:\n" +
+                "|||" + recipe + "|||\n" +
+                "You must answer strictly with zero or more of these enums on a separate line:\n" +
+                "SALT\n" +
+                "PEPPER\n" +
+                "VINEGAR\n" +
+                "OIL")));
+        verify(chatLanguageModel).supportedCapabilities();
+    }
+
+    public enum IssueCategory {
+        @Description("The feedback mentions issues with the hotel's maintenance, such as air conditioning and plumbing problems")
+        MAINTENANCE_ISSUE,
+        @Description("The feedback mentions issues with the service provided, such as slow room service")
+        SERVICE_ISSUE,
+        @Description("The feedback mentions issues affecting the comfort of the stay, such as uncomfortable room conditions")
+        COMFORT_ISSUE,
+        @Description("The feedback mentions issues with hotel facilities, such as problems with the bathroom plumbing")
+        FACILITY_ISSUE,
+        @Description("The feedback mentions issues with the cleanliness of the hotel, such as dust and stains")
+        CLEANLINESS_ISSUE,
+        @Description("The feedback mentions issues with internet connectivity, such as unreliable Wi-Fi")
+        CONNECTIVITY_ISSUE,
+        @Description("The feedback mentions issues with the check-in process, such as it being tedious and time-consuming")
+        CHECK_IN_ISSUE,
+        @Description("The feedback mentions a general dissatisfaction with the overall hotel experience due to multiple issues")
+        OVERALL_EXPERIENCE_ISSUE
+    }
+
+    interface HotelReviewIssueAnalyzer {
+        @UserMessage("Please analyse the following review: |||{{it}}|||")
+        List<IssueCategory> analyzeReview(String review);
+    }
+
+    @Test
+    void test_extract_list_of_enums_with_descriptions() {
+        HotelReviewIssueAnalyzer hotelReviewIssueAnalyzer = AiServices.create(HotelReviewIssueAnalyzer.class, chatLanguageModel);
+
+        String review = "Our stay at hotel was a mixed experience. The location was perfect, just a stone's throw away " +
+                "from the beach, which made our daily outings very convenient. The rooms were spacious and well-decorated, " +
+                "providing a comfortable and pleasant environment. However, we encountered several issues during our " +
+                "stay. The air conditioning in our room was not functioning properly, making the nights quite uncomfortable. " +
+                "Additionally, the room service was slow, and we had to call multiple times to get extra towels. Despite the " +
+                "friendly staff and enjoyable breakfast buffet, these issues significantly impacted our stay.";
+
+        List<IssueCategory> issueCategories = hotelReviewIssueAnalyzer.analyzeReview(review);
+        assertThat(issueCategories).isEqualTo(Arrays.asList(MAINTENANCE_ISSUE, SERVICE_ISSUE, COMFORT_ISSUE, OVERALL_EXPERIENCE_ISSUE));
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Please analyse the following review: |||" + review + "|||\n" +
+                "You must answer strictly with zero or more of these enums on a separate line:\n" +
+                "MAINTENANCE_ISSUE - The feedback mentions issues with the hotel's maintenance, such as air conditioning and plumbing problems\n" +
+                "SERVICE_ISSUE - The feedback mentions issues with the service provided, such as slow room service\n" +
+                "COMFORT_ISSUE - The feedback mentions issues affecting the comfort of the stay, such as uncomfortable room conditions\n" +
+                "FACILITY_ISSUE - The feedback mentions issues with hotel facilities, such as problems with the bathroom plumbing\n" +
+                "CLEANLINESS_ISSUE - The feedback mentions issues with the cleanliness of the hotel, such as dust and stains\n" +
+                "CONNECTIVITY_ISSUE - The feedback mentions issues with internet connectivity, such as unreliable Wi-Fi\n" +
+                "CHECK_IN_ISSUE - The feedback mentions issues with the check-in process, such as it being tedious and time-consuming\n" +
+                "OVERALL_EXPERIENCE_ISSUE - The feedback mentions a general dissatisfaction with the overall hotel experience due to multiple issues")));
+        verify(chatLanguageModel).supportedCapabilities();
+    }
 
     @ToString
     static class Address {
@@ -240,16 +385,17 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract information about a person from " + text + "\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Person: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
                         "\"address\": (type: dev.langchain4j.service.AiServicesIT$Address: {\n" +
-                            "\"streetNumber\": (type: integer),\n" +
-                            "\"street\": (type: string),\n" +
-                            "\"city\": (type: string),\n" +
-                        "}),\n" +
+                        "\"streetNumber\": (type: integer),\n" +
+                        "\"street\": (type: string),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
                         "}")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -259,7 +405,7 @@ public class AiServicesIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
+                .modelName(GPT_3_5_TURBO) // supports response_format = 'json_object'
                 .responseFormat("json_object")
                 .temperature(0.0)
                 .logRequests(true)
@@ -287,16 +433,17 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract information about a person from " + text + "\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Person: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
                         "\"address\": (type: dev.langchain4j.service.AiServicesIT$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
-                        "\"city\": (type: string),\n" +
-                        "}),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
                         "}")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -317,6 +464,12 @@ public class AiServicesIT {
 
         @UserMessage(fromResource = "chefs-prompt-based-on-ingredients.txt")
         Recipe createRecipeFromUsingResource(String... ingredients);
+
+        @UserMessage(fromResource = "chefs-prompt-based-on-ingredients-in-root.txt")
+        Recipe createRecipeFromUsingResourceInRoot(String... ingredients);
+
+        @UserMessage(fromResource = "subdirectory/chefs-prompt-based-on-ingredients-in-subdirectory.txt")
+        Recipe createRecipeFromUsingResourceInSubdirectory(String... ingredients);
 
         Recipe createRecipeFrom(CreateRecipePrompt prompt);
 
@@ -342,12 +495,13 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -365,39 +519,99 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
-    }
-
-    interface BadChef {
-        public static final String CHEFS_PROMPT_DOES_NOT_EXIST_TXT = "chefs-prompt-does-not-exist.txt";
-        public static final String CHEFS_PROMPT_IS_EMPTY_TXT = "chefs-prompt-is-empty.txt";
-
-        @UserMessage(fromResource = CHEFS_PROMPT_DOES_NOT_EXIST_TXT)
-        Recipe createRecipeFromNonExistingResource(String... ingredients);
-
-        @UserMessage(fromResource = CHEFS_PROMPT_IS_EMPTY_TXT)
-        Recipe createRecipeFromEmptyResource(String... ingredients);
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
-    void test_call_model_with_missing_resource() {
+    void test_create_recipe_from_list_of_ingredients_using_resource_in_root() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        Recipe recipe = chef.createRecipeFromUsingResourceInRoot("cucumber", "tomato", "feta", "onion", "olives");
+        System.out.println(recipe);
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
+                        "}")));
+        verify(chatLanguageModel).supportedCapabilities();
+    }
+
+    @Test
+    void test_create_recipe_from_list_of_ingredients_using_resource_in_subdirectory() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        Recipe recipe = chef.createRecipeFromUsingResourceInSubdirectory("cucumber", "tomato", "feta", "onion", "olives");
+        System.out.println(recipe);
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
+                        "}")));
+        verify(chatLanguageModel).supportedCapabilities();
+    }
+
+    interface BadChef {
+        String CHEFS_PROMPT_DOES_NOT_EXIST_TXT = "chefs-prompt-does-not-exist.txt";
+
+        @UserMessage(fromResource = "chefs-prompt-does-not-exist.txt")
+        Recipe createRecipeWithNonExistingResource(String... ingredients);
+
+        @UserMessage(fromResource = "chefs-prompt-is-empty.txt")
+        Recipe createRecipeWithEmptyResource(String... ingredients);
+
+        @UserMessage(fromResource = "chefs-prompt-is-blank.txt")
+        Recipe createRecipeWithBlankResource(String... ingredients);
+    }
+
+    @Test
+    void should_fail_when_user_message_resource_is_not_found() {
         BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
 
-        assertThatThrownBy(() -> badChef.createRecipeFromNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
+        assertThatThrownBy(() -> badChef.createRecipeWithNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("@UserMessage's resource '" + BadChef.CHEFS_PROMPT_DOES_NOT_EXIST_TXT + "' not found");
     }
 
     @Test
-    void test_call_model_with_empty_resource() {
+    void should_fail_when_user_message_resource_is_empty() {
         BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
 
-        assertThatThrownBy(() -> badChef.createRecipeFromEmptyResource("cucumber", "tomato", "feta", "onion", "olives"))
+        assertThatThrownBy(() -> badChef.createRecipeWithEmptyResource("cucumber", "tomato", "feta", "onion", "olives"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("@UserMessage's template cannot be empty");
+    }
+
+    @Test
+    void should_fail_when_user_message_resource_is_blank() {
+        BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
+
+        assertThatThrownBy(() -> badChef.createRecipeWithBlankResource("cucumber", "tomato", "feta", "onion", "olives"))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("@UserMessage's template cannot be empty");
     }
@@ -430,12 +644,13 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -460,13 +675,14 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(asList(
                 systemMessage("You are very funny chef"),
                 userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -491,13 +707,14 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(asList(
                 systemMessage("You are very funny chef"),
                 userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     interface ProfessionalChef {
@@ -522,6 +739,7 @@ public class AiServicesIT {
                 systemMessage("You are a professional chef. You are friendly, polite and concise."),
                 userMessage(question)
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -548,6 +766,7 @@ public class AiServicesIT {
                 systemMessage("You are a professional translator into german"),
                 userMessage("Translate the following text: Hello, how are you?")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     interface Summarizer {
@@ -574,6 +793,7 @@ public class AiServicesIT {
                 systemMessage("Summarize every message from user in 3 bullet points. Provide only bullet points."),
                 userMessage(text + "\nYou must put every item on a separate line.")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -598,6 +818,7 @@ public class AiServicesIT {
                 .hasMessage("Text \"" + message + "\" violates content policy");
 
         verify(chatLanguageModel).generate(singletonList(userMessage(message)));
+        verify(chatLanguageModel).supportedCapabilities();
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -616,211 +837,79 @@ public class AiServicesIT {
         assertThat(response).isNotBlank();
 
         verify(chatLanguageModel).generate(singletonList(userMessage(message)));
+        verify(chatLanguageModel).supportedCapabilities();
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
 
-    interface ChatWithMemory {
+    interface AssistantReturningResult {
 
-        String SYSTEM_MESSAGE = "You are helpful assistant";
-        String ANOTHER_SYSTEM_MESSAGE = "You are funny assistant";
-
-        String chat(String userMessage);
-
-        @SystemMessage(SYSTEM_MESSAGE)
-        String chatWithSystemMessage(String userMessage);
-
-        @SystemMessage(ANOTHER_SYSTEM_MESSAGE)
-        String chatWithAnotherSystemMessage(String userMessage);
+        Result<String> chat(String userMessage);
     }
 
     @Test
-    void should_keep_chat_memory() {
+    void should_return_result() {
 
-        ChatWithMemory chatWithMemory = AiServices.builder(ChatWithMemory.class)
-                .chatLanguageModel(chatLanguageModel)
-                .chatMemory(chatMemory)
-                .build();
+        // given
+        AssistantReturningResult assistant = AiServices.create(AssistantReturningResult.class, chatLanguageModel);
 
-        String firstUserMessage = "Hello, my name is Klaus";
-        String firstAiMessage = chatWithMemory.chat(firstUserMessage);
+        String userMessage = "What is the capital of Germany?";
 
-        verify(chatMemory).add(userMessage(firstUserMessage));
-        verify(chatLanguageModel).generate(singletonList(userMessage(firstUserMessage)));
-        verify(chatMemory).add(aiMessage(firstAiMessage));
+        // when
+        Result<String> result = assistant.chat(userMessage);
 
-        String secondUserMessage = "What is my name?";
-        String secondAiMessage = chatWithMemory.chat(secondUserMessage);
-        assertThat(secondAiMessage).contains("Klaus");
+        // then
+        assertThat(result.content()).containsIgnoringCase("Berlin");
 
-        verify(chatMemory).add(userMessage(secondUserMessage));
-        verify(chatLanguageModel).generate(asList(
-                userMessage(firstUserMessage),
-                aiMessage(firstAiMessage),
-                userMessage(secondUserMessage)
-        ));
-        verify(chatMemory).add(aiMessage(secondAiMessage));
-        verify(chatMemory, times(6)).messages();
+        TokenUsage tokenUsage = result.tokenUsage();
+        assertThat(tokenUsage).isNotNull();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(result.sources()).isNull();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(userMessage)));
+        verify(chatLanguageModel).supportedCapabilities();
+    }
+
+
+    interface AssistantReturningResultWithPojo {
+
+        Result<Booking> answer(String query);
+    }
+
+    static class Booking {
+
+        String userId;
+        String bookingId;
     }
 
     @Test
-    void should_keep_chat_memory_and_not_duplicate_system_message() {
+    void should_use_content_retriever_and_return_sources_inside_result_with_pojo() {
 
-        ChatWithMemory chatWithMemory = AiServices.builder(ChatWithMemory.class)
-                .chatLanguageModel(chatLanguageModel)
-                .chatMemory(chatMemory)
-                .build();
+        // given
+        AssistantReturningResultWithPojo assistant = AiServices.create(AssistantReturningResultWithPojo.class, chatLanguageModel);
 
-        String firstUserMessage = "Hello, my name is Klaus";
-        String firstAiMessage = chatWithMemory.chatWithSystemMessage(firstUserMessage);
+        // when
+        Result<Booking> result = assistant.answer("Give me an example of a booking");
 
-        verify(chatLanguageModel).generate(asList(
-                systemMessage(SYSTEM_MESSAGE),
-                userMessage(firstUserMessage)
+        // then
+        Booking booking = result.content();
+        assertThat(booking.userId).isNotBlank();
+        assertThat(booking.bookingId).isNotBlank();
+
+        assertThat(result.tokenUsage()).isNotNull();
+        assertThat(result.sources()).isNull();
+
+        verify(chatLanguageModel).generate(singletonList(
+                userMessage("Give me an example of a booking\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"userId\": (type: string),\n" +
+                        "\"bookingId\": (type: string)\n" +
+                        "}")
         ));
-
-        String secondUserMessage = "What is my name?";
-        String secondAiMessage = chatWithMemory.chatWithSystemMessage(secondUserMessage);
-        assertThat(secondAiMessage).contains("Klaus");
-
-        verify(chatLanguageModel).generate(asList(
-                systemMessage(SYSTEM_MESSAGE),
-                userMessage(firstUserMessage),
-                aiMessage(firstAiMessage),
-                userMessage(secondUserMessage)
-        ));
-
-        verify(chatMemory, times(2)).add(systemMessage(SYSTEM_MESSAGE));
-        verify(chatMemory).add(userMessage(firstUserMessage));
-        verify(chatMemory).add(aiMessage(firstAiMessage));
-        verify(chatMemory).add(userMessage(secondUserMessage));
-        verify(chatMemory).add(aiMessage(secondAiMessage));
-        verify(chatMemory, times(8)).messages();
-    }
-
-    @Test
-    void should_keep_chat_memory_and_add_new_system_message() {
-
-        ChatWithMemory chatWithMemory = AiServices.builder(ChatWithMemory.class)
-                .chatLanguageModel(chatLanguageModel)
-                .chatMemory(chatMemory)
-                .build();
-
-        String firstUserMessage = "Hello, my name is Klaus";
-        String firstAiMessage = chatWithMemory.chatWithSystemMessage(firstUserMessage);
-
-        verify(chatLanguageModel).generate(asList(
-                systemMessage(SYSTEM_MESSAGE),
-                userMessage(firstUserMessage)
-        ));
-
-
-        String secondUserMessage = "What is my name?";
-        String secondAiMessage = chatWithMemory.chatWithAnotherSystemMessage(secondUserMessage);
-        assertThat(secondAiMessage).contains("Klaus");
-
-        verify(chatLanguageModel).generate(asList(
-                userMessage(firstUserMessage),
-                aiMessage(firstAiMessage),
-                systemMessage(ANOTHER_SYSTEM_MESSAGE),
-                userMessage(secondUserMessage)
-        ));
-
-        verify(chatMemory).add(systemMessage(SYSTEM_MESSAGE));
-        verify(chatMemory).add(userMessage(firstUserMessage));
-        verify(chatMemory).add(aiMessage(firstAiMessage));
-        verify(chatMemory).add(aiMessage(secondAiMessage));
-        verify(chatMemory).add(systemMessage(ANOTHER_SYSTEM_MESSAGE));
-        verify(chatMemory).add(userMessage(secondUserMessage));
-        verify(chatMemory, times(8)).messages();
-    }
-
-
-    interface ChatWithSeparateMemoryForEachUser {
-
-        String chat(@MemoryId int memoryId, @UserMessage String userMessage);
-    }
-
-    @Test
-    void should_keep_separate_chat_memory_for_each_user_in_store() {
-
-        // emulating persistent storage
-        Map</* memoryId */ Object, String> persistentStorage = new HashMap<>();
-
-        ChatMemoryStore store = new ChatMemoryStore() {
-
-            @Override
-            public List<ChatMessage> getMessages(Object memoryId) {
-                return messagesFromJson(persistentStorage.get(memoryId));
-            }
-
-            @Override
-            public void updateMessages(Object memoryId, List<ChatMessage> messages) {
-                persistentStorage.put(memoryId, messagesToJson(messages));
-            }
-
-            @Override
-            public void deleteMessages(Object memoryId) {
-                persistentStorage.remove(memoryId);
-            }
-        };
-
-        ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
-                .id(memoryId)
-                .maxMessages(10)
-                .chatMemoryStore(store)
-                .build();
-
-        int firstMemoryId = 1;
-        int secondMemoryId = 2;
-
-        ChatWithSeparateMemoryForEachUser chatWithMemory = AiServices.builder(ChatWithSeparateMemoryForEachUser.class)
-                .chatLanguageModel(chatLanguageModel)
-                .chatMemoryProvider(chatMemoryProvider)
-                .build();
-
-        String firstMessageFromFirstUser = "Hello, my name is Klaus";
-        String firstAiResponseToFirstUser = chatWithMemory.chat(firstMemoryId, firstMessageFromFirstUser);
-        verify(chatLanguageModel).generate(singletonList(userMessage(firstMessageFromFirstUser)));
-
-        String firstMessageFromSecondUser = "Hello, my name is Francine";
-        String firstAiResponseToSecondUser = chatWithMemory.chat(secondMemoryId, firstMessageFromSecondUser);
-        verify(chatLanguageModel).generate(singletonList(userMessage(firstMessageFromSecondUser)));
-
-        String secondMessageFromFirstUser = "What is my name?";
-        String secondAiResponseToFirstUser = chatWithMemory.chat(firstMemoryId, secondMessageFromFirstUser);
-        assertThat(secondAiResponseToFirstUser).contains("Klaus");
-        verify(chatLanguageModel).generate(asList(
-                userMessage(firstMessageFromFirstUser),
-                aiMessage(firstAiResponseToFirstUser),
-                userMessage(secondMessageFromFirstUser)
-        ));
-
-        String secondMessageFromSecondUser = "What is my name?";
-        String secondAiResponseToSecondUser = chatWithMemory.chat(secondMemoryId, secondMessageFromSecondUser);
-        assertThat(secondAiResponseToSecondUser).contains("Francine");
-        verify(chatLanguageModel).generate(asList(
-                userMessage(firstMessageFromSecondUser),
-                aiMessage(firstAiResponseToSecondUser),
-                userMessage(secondMessageFromSecondUser)
-        ));
-
-        assertThat(persistentStorage).containsOnlyKeys(firstMemoryId, secondMemoryId);
-
-        List<ChatMessage> persistedMessagesOfFirstUser = messagesFromJson(persistentStorage.get(firstMemoryId));
-        assertThat(persistedMessagesOfFirstUser).containsExactly(
-                userMessage(firstMessageFromFirstUser),
-                aiMessage(firstAiResponseToFirstUser),
-                userMessage(secondMessageFromFirstUser),
-                aiMessage(secondAiResponseToFirstUser)
-        );
-
-        List<ChatMessage> persistedMessagesOfSecondUser = messagesFromJson(persistentStorage.get(secondMemoryId));
-        assertThat(persistedMessagesOfSecondUser).containsExactly(
-                userMessage(firstMessageFromSecondUser),
-                aiMessage(firstAiResponseToSecondUser),
-                userMessage(secondMessageFromSecondUser),
-                aiMessage(secondAiResponseToSecondUser)
-        );
+        verify(chatLanguageModel).supportedCapabilities();
     }
 }

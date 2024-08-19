@@ -70,9 +70,9 @@ class DocumentLoaderTest implements WithAssertions {
 
     @Test
     public void test_load() {
-        StringSource source = new StringSource("Hello, world!", new Metadata().add("foo", "bar"));
+        StringSource source = new StringSource("Hello, world!", new Metadata().put("foo", "bar"));
         Document document = DocumentLoader.load(source, new TrivialParser());
-        assertThat(document).isEqualTo(Document.from("Hello, world!", new Metadata().add("foo", "bar")));
+        assertThat(document).isEqualTo(Document.from("Hello, world!", new Metadata().put("foo", "bar")));
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> DocumentLoader.load(new DocumentSource() {

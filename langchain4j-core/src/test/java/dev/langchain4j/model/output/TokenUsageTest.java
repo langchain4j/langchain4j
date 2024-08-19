@@ -3,6 +3,8 @@ package dev.langchain4j.model.output;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
+import static dev.langchain4j.model.output.TokenUsage.sum;
+
 class TokenUsageTest implements WithAssertions {
     @Test
     public void test_constructors() {
@@ -70,25 +72,33 @@ class TokenUsageTest implements WithAssertions {
 
     @Test
     public void test_sum() {
-        assertThat(
-                new TokenUsage(1, 2, 3)
-                        .add(new TokenUsage(4, 5, 6)))
-                .isEqualTo(new TokenUsage(5, 7, 9));
+        assertThat(sum(
+                new TokenUsage(1, 2, 3),
+                new TokenUsage(4, 5, 6)
+        )).isEqualTo(new TokenUsage(5, 7, 9));
 
-        assertThat(
-                new TokenUsage(1, 2, 3)
-                        .add(new TokenUsage(null, null, null)))
-                .isEqualTo(new TokenUsage(1, 2, 3));
-
-        assertThat(
+        assertThat(sum(
+                new TokenUsage(1, 2, 3),
                 new TokenUsage(null, null, null)
-                        .add(new TokenUsage(4, 5, 6)))
-                .isEqualTo(new TokenUsage(4, 5, 6));
+        )).isEqualTo(new TokenUsage(1, 2, 3));
 
-        assertThat(
+        assertThat(sum(new TokenUsage(null, null, null),
+                new TokenUsage(4, 5, 6)
+        )).isEqualTo(new TokenUsage(4, 5, 6));
+
+        assertThat(sum(
+                new TokenUsage(null, null, null),
                 new TokenUsage(null, null, null)
-                        .add(new TokenUsage(null, null, null)))
-                .isEqualTo(new TokenUsage(null, null, null));
+        )).isEqualTo(new TokenUsage(null, null, null));
+
+        assertThat(sum(
+                new TokenUsage(1, 2, 3),
+                null
+        )).isEqualTo(new TokenUsage(1, 2, 3));
+
+        assertThat(sum(
+                null,
+                new TokenUsage(4, 5, 6)
+        )).isEqualTo(new TokenUsage(4, 5, 6));
     }
-
 }
