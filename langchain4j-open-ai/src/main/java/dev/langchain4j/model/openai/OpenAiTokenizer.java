@@ -114,7 +114,7 @@ public class OpenAiTokenizer implements Tokenizer {
             }
         }
 
-        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW.toString())) { // TODO: not sure why checking gpt-4-vision-preview, GPT_4_VISION_PREVIEW is deprecated
+        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW.toString())) {
             tokenCount += extraTokensPerName();
             tokenCount += estimateTokenCountInText(userMessage.name());
         }
