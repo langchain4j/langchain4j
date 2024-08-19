@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.pinecone;
 
 
-import com.google.protobuf.BoolValue;
 import com.google.protobuf.ListValue;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
@@ -11,14 +10,17 @@ import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
 /**
- * <a href="https://docs.pinecone.io/guides/data/filter-with-metadata#more-example-filter-expressions">Pinecone Filter doc</a>
+ * <a href="https://docs.pinecone.io/guides/data/filter-with-metadata#querying-an-index-with-metadata-filters">Pinecone Filter doc</a>
  */
 public class PineconeMetadataFilterMapper {
 
