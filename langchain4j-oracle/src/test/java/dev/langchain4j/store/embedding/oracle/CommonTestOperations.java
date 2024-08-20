@@ -2,12 +2,11 @@ package dev.langchain4j.store.embedding.oracle;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import oracle.jdbc.datasource.OracleDataSource;
 import oracle.sql.CHAR;
 import oracle.sql.CharacterSet;
 import oracle.ucp.jdbc.PoolDataSource;
