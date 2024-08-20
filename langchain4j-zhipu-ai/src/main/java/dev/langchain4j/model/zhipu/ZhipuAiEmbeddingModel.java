@@ -21,7 +21,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents an ZhipuAI embedding model, such as embedding-2.
+ * Represents an ZhipuAI embedding model, such as embedding-2 and embedding-3.
  */
 public class ZhipuAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
