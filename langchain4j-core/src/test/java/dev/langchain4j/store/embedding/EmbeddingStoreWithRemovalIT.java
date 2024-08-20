@@ -165,7 +165,7 @@ public abstract class EmbeddingStoreWithRemovalIT {
         return searchResult.matches();
     }
 
-    private static void awaitUntilAsserted(ThrowingRunnable assertion) {
+    protected static void awaitUntilAsserted(ThrowingRunnable assertion) {
         Awaitility.await()
                 .pollInterval(Duration.ofMillis(500))
                 .atMost(Duration.ofSeconds(15))
