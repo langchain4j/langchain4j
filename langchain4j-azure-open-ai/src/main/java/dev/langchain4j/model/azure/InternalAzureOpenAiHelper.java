@@ -38,7 +38,7 @@ import java.time.Duration;
 import java.util.*;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
@@ -264,8 +264,10 @@ class InternalAzureOpenAiHelper {
     }
 
     public static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage) {
-        if (chatResponseMessage.getContent() != null) {
-            return aiMessage(chatResponseMessage.getContent());
+        String text = chatResponseMessage.getContent();
+
+        if (isNullOrEmpty(chatResponseMessage.getToolCalls())) {
+            return aiMessage(text);
         } else {
             List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls()
                     .stream()
@@ -279,7 +281,9 @@ class InternalAzureOpenAiHelper {
                                     .build())
                     .collect(toList());
 
-            return aiMessage(toolExecutionRequests);
+            return isNullOrBlank(text) ?
+                    aiMessage(toolExecutionRequests) :
+                    aiMessage(text, toolExecutionRequests);
         }
     }
 

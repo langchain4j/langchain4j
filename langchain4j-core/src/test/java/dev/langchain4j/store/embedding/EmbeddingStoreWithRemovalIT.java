@@ -27,7 +27,6 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
     @Test
     void should_remove_by_id() {
-
         // given
         Embedding embedding1 = embeddingModel().embed("test1").content();
         String id1 = embeddingStore().add(embedding1);
@@ -35,10 +34,14 @@ public abstract class EmbeddingStoreWithRemovalIT {
         Embedding embedding2 = embeddingModel().embed("test2").content();
         String id2 = embeddingStore().add(embedding2);
 
+        awaitUntilPersisted();
+
         assertThat(getAllEmbeddings()).hasSize(2);
 
         // when
         embeddingStore().remove(id1);
+
+        awaitUntilPersisted();
 
         // then
         List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
@@ -50,7 +53,6 @@ public abstract class EmbeddingStoreWithRemovalIT {
     @NullAndEmptySource
     @ValueSource(strings = " ")
     void should_fail_to_remove_by_id(String id) {
-
         assertThatThrownBy(() -> embeddingStore().remove(id))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("id cannot be null or blank");
@@ -58,7 +60,6 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
     @Test
     void should_remove_all_by_ids() {
-
         // given
         Embedding embedding1 = embeddingModel().embed("test1").content();
         String id1 = embeddingStore().add(embedding1);
@@ -69,10 +70,13 @@ public abstract class EmbeddingStoreWithRemovalIT {
         Embedding embedding3 = embeddingModel().embed("test3").content();
         String id3 = embeddingStore().add(embedding3);
 
+        awaitUntilPersisted();
+
         assertThat(getAllEmbeddings()).hasSize(3);
 
         // when
         embeddingStore().removeAll(asList(id1, id2));
+        awaitUntilPersisted();
 
         // then
         List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
@@ -82,7 +86,6 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
     @Test
     void should_fail_to_remove_all_by_ids_null() {
-
         assertThatThrownBy(() -> embeddingStore().removeAll((Collection<String>) null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("ids cannot be null or empty");
@@ -90,7 +93,6 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
     @Test
     void should_fail_to_remove_all_by_ids_empty() {
-
         assertThatThrownBy(() -> embeddingStore().removeAll(emptyList()))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("ids cannot be null or empty");
@@ -98,7 +100,6 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
     @Test
     void should_remove_all_by_filter() {
-
         // given
         TextSegment segment1 = TextSegment.from("matching", metadata("type", "a"));
         Embedding embedding1 = embeddingModel().embed(segment1).content();
@@ -111,10 +112,13 @@ public abstract class EmbeddingStoreWithRemovalIT {
         Embedding embedding3 = embeddingModel().embed("not matching").content();
         String id3 = embeddingStore().add(embedding3);
 
+        awaitUntilPersisted();
+
         assertThat(getAllEmbeddings()).hasSize(3);
 
         // when
         embeddingStore().removeAll(metadataKey("type").isEqualTo("a"));
+        awaitUntilPersisted();
 
         // then
         List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
@@ -124,7 +128,6 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
     @Test
     void should_fail_to_remove_all_by_filter_null() {
-
         assertThatThrownBy(() -> embeddingStore().removeAll((Filter) null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("filter cannot be null");
@@ -132,7 +135,6 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
     @Test
     void should_remove_all() {
-
         // given
         Embedding embedding1 = embeddingModel().embed("test1").content();
         embeddingStore().add(embedding1);
@@ -140,18 +142,22 @@ public abstract class EmbeddingStoreWithRemovalIT {
         Embedding embedding2 = embeddingModel().embed("test2").content();
         embeddingStore().add(embedding2);
 
+        awaitUntilPersisted();
+
         assertThat(getAllEmbeddings()).hasSize(2);
 
         // when
         embeddingStore().removeAll();
 
+        awaitUntilPersisted();
+
         // then
         assertThat(getAllEmbeddings()).isEmpty();
     }
 
-    private List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
-
-        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+    protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest
+                .builder()
                 .queryEmbedding(embeddingModel().embed("test").content())
                 .maxResults(1000)
                 .build();
@@ -159,5 +165,9 @@ public abstract class EmbeddingStoreWithRemovalIT {
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(embeddingSearchRequest);
 
         return searchResult.matches();
+    }
+
+    protected void awaitUntilPersisted() {
+
     }
 }

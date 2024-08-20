@@ -11,11 +11,16 @@ sidebar_position: 4
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-chatglm</artifactId>
-    <version>0.31.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 
 
-## ChatGLM Models
+## APIs
 
 - `ChatGlmChatModel`
+
+
+## Examples
+
+- [ChatGlmChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-chatglm/src/test/java/dev/langchain4j/model/chatglm/ChatGlmChatModelIT.java)

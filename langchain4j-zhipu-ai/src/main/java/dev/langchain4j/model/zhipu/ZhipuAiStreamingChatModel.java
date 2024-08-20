@@ -9,12 +9,14 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
 import dev.langchain4j.model.zhipu.chat.ChatCompletionRequest;
 import dev.langchain4j.model.zhipu.chat.ToolChoiceMode;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiStreamingChatModelBuilderFactory;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 import static dev.langchain4j.model.zhipu.chat.ChatCompletionModel.GLM_4;
@@ -51,7 +54,11 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
             Integer maxToken,
             Boolean logRequests,
             Boolean logResponses,
-            List<ChatModelListener> listeners
+            List<ChatModelListener> listeners,
+            Duration callTimeout,
+            Duration connectTimeout,
+            Duration readTimeout,
+            Duration writeTimeout
     ) {
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -62,6 +69,10 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
         this.client = ZhipuAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://open.bigmodel.cn/"))
                 .apiKey(apiKey)
+                .callTimeout(callTimeout)
+                .connectTimeout(connectTimeout)
+                .writeTimeout(writeTimeout)
+                .readTimeout(readTimeout)
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
@@ -125,6 +136,17 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
     public static class ZhipuAiStreamingChatModelBuilder {
         public ZhipuAiStreamingChatModelBuilder() {
 
+        }
+
+        public ZhipuAiStreamingChatModelBuilder model(ChatCompletionModel model) {
+            this.model = model.toString();
+            return this;
+        }
+
+        public ZhipuAiStreamingChatModelBuilder model(String model) {
+            ensureNotBlank(model, "model");
+            this.model = model;
+            return this;
         }
     }
 }

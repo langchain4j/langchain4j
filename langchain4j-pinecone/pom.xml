@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.32.0-SNAPSHOT</version>
+        <version>0.34.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -24,28 +24,17 @@
         <dependency>
             <groupId>io.pinecone</groupId>
             <artifactId>pinecone-client</artifactId>
-            <version>0.6.0</version>
+            <version>1.2.2</version>
             <exclusions>
-                <!-- CVE-2023-44487 -->
                 <exclusion>
                     <groupId>io.netty</groupId>
-                    <artifactId>netty-codec-http2</artifactId>
-                </exclusion>
-                <!-- CVE-2023-3635 -->
-                <exclusion>
-                    <groupId>com.squareup.okio</groupId>
-                    <artifactId>okio-jvm</artifactId>
-                </exclusion>
-                <!-- CVE-2020-29582 -->
-                <exclusion>
-                    <groupId>org.jetbrains.kotlin</groupId>
-                    <artifactId>kotlin-stdlib</artifactId>
+                    <artifactId>netty-codec-http</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty-codec-http2</artifactId>
+            <artifactId>netty-codec-http</artifactId>
             <version>${netty.version}</version>
         </dependency>
 

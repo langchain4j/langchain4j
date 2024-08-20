@@ -6,9 +6,13 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.32.0-SNAPSHOT</version>
+    <version>0.34.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
+
+    <properties>
+        <gib.disable>true</gib.disable>
+    </properties>
 
     <modules>
 
@@ -28,11 +32,13 @@
         <module>langchain4j-cohere</module>
         <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
+        <module>langchain4j-jlama</module>
         <module>langchain4j-jina</module>
         <module>langchain4j-local-ai</module>
         <module>langchain4j-mistral-ai</module>
         <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
+        <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-qianfan</module>
         <module>langchain4j-vertex-ai</module>
@@ -90,6 +96,13 @@
     </modules>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
+                <artifactId>gitflow-incremental-builder</artifactId>
+                <version>3.15.0</version>
+            </extension>
+        </extensions>
         <plugins>
             <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>

@@ -4,13 +4,16 @@ sidebar_position: 12
 
 # OpenSearch
 
+https://opensearch.org/
+
+
 ## Maven Dependency
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-opensearch</artifactId>
-    <version>0.31.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 

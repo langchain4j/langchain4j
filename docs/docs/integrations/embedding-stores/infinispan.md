@@ -13,7 +13,7 @@ https://infinispan.org/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-infinispan</artifactId>
-    <version>0.31.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 

@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 public class AzureOpenAiImageModelIT {
 
@@ -26,7 +27,7 @@ public class AzureOpenAiImageModelIT {
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("dall-e-3")
+                .deploymentName("dall-e-3-30")
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -50,7 +51,7 @@ public class AzureOpenAiImageModelIT {
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("dall-e-3")
+                .deploymentName("dall-e-3-30")
                 .logRequestsAndResponses(false) // The image is big, so we don't want to log it by default
                 .responseFormat(ImageGenerationResponseFormat.BASE64.toString())
                 .build();
@@ -75,7 +76,7 @@ public class AzureOpenAiImageModelIT {
     }
 
     @ParameterizedTest(name = "Testing model {0}")
-    @EnumSource(AzureOpenAiImageModelName.class)
+    @EnumSource(value = AzureOpenAiImageModelName.class, mode = EXCLUDE, names = "DALL_E_3")
     void should_support_all_string_model_names(AzureOpenAiImageModelName modelName) {
 
         // given

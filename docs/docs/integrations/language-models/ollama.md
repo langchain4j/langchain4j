@@ -1,5 +1,5 @@
 ---
-sidebar_position: 11
+sidebar_position: 12
 ---
 
 # Ollama
@@ -36,7 +36,7 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>0.31.0</version>
+    <version>0.33.0</version>
 </dependency>
 
 <dependency>
@@ -147,27 +147,35 @@ public class OllamaStreamingChatExample {
 `OllamaChatModel` and `OllamaStreamingChatModel` classes can be instantiated with the following
 params with the builder pattern:
 
-| Parameter       | Description                                                                                                                                                                       | Type           |
-|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|
-| `baseUrl`       | The base URL of Ollama server.                                                                                                                                                    | `String`       |
-| `modelName`     | The name of the model to use from Ollama server.                                                                                                                                  | `String`       |
-| `temperature`   | Controls the randomness of the generated responses. Higher values (e.g., 1.0) result in more diverse output, while lower values (e.g., 0.2) produce more deterministic responses. | `Double`       |
-| `topK`          | Specifies the number of highest probability tokens to consider for each step during generation.                                                                                   | `Integer`      |
-| `topP`          | Controls the diversity of the generated responses by setting a threshold for the cumulative probability of top tokens.                                                            | `Double`       |
-| `repeatPenalty` | Penalizes the model for repeating similar tokens in the generated output.                                                                                                         | `Double`       |
-| `seed`          | Sets the random seed for reproducibility of generated responses.                                                                                                                  | `Integer`      |
-| `numPredict`    | The number of predictions to generate for each input prompt.                                                                                                                      | `Integer`      |
-| `stop`          | A list of strings that, if generated, will mark the end of the response.                                                                                                          | `List<String>` |
-| `format`        | The desired format for the generated output.                                                                                                                                      | `String`       |
-| `timeout`       | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`     |
-| `maxRetries`    | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`      |
+| Parameter       | Description                                                                                                                                                                       | Type           | Example                |
+|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|------------------------|
+| `baseUrl`       | The base URL of Ollama server.                                                                                                                                                    | `String`       | http://localhost:11434 |
+| `modelName`     | The name of the model to use from Ollama server.                                                                                                                                  | `String`       |                        |
+| `temperature`   | Controls the randomness of the generated responses. Higher values (e.g., 1.0) result in more diverse output, while lower values (e.g., 0.2) produce more deterministic responses. | `Double`       |                        |
+| `topK`          | Specifies the number of highest probability tokens to consider for each step during generation.                                                                                   | `Integer`      |                        |
+| `topP`          | Controls the diversity of the generated responses by setting a threshold for the cumulative probability of top tokens.                                                            | `Double`       |                        |
+| `repeatPenalty` | Penalizes the model for repeating similar tokens in the generated output.                                                                                                         | `Double`       |                        |
+| `seed`          | Sets the random seed for reproducibility of generated responses.                                                                                                                  | `Integer`      |                        |
+| `numPredict`    | The number of predictions to generate for each input prompt.                                                                                                                      | `Integer`      |                        |
+| `stop`          | A list of strings that, if generated, will mark the end of the response.                                                                                                          | `List<String>` |                        |
+| `format`        | The desired format for the generated output.                                                                                                                                      | `String`       |                        |
+| `timeout`       | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`     | PT60S                  |
+| `maxRetries`    | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`      |                        |
 
-#### Usage Example:
-
+#### Usage Example
 ```java
 OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
-    .baseUrl("http://your-ollama-host:your-ollama-port")
-    .modelName("llama2")
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
     .temperature(0.8)
+    .timeout(Duration.ofSeconds(60))
     .build();
+```
+
+#### Usage Example with Spring Boot
+```properties
+langchain4j.ollama.chat-model.base-url=http://localhost:11434
+langchain4j.ollama.chat-model.model-name=llama3.1
+langchain4j.ollama.chat-model.temperature=0.8
+langchain4j.ollama.chat-model.timeout=PT60S
 ```

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -16,7 +17,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
@@ -88,6 +89,29 @@ public class OllamaChatModel implements ChatLanguageModel {
 
         return Response.from(
                 AiMessage.from(response.getMessage().getContent()),
+                new TokenUsage(response.getPromptEvalCount(), response.getEvalCount())
+        );
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        ensureNotEmpty(messages, "messages");
+
+        ChatRequest request = ChatRequest.builder()
+                .model(modelName)
+                .messages(toOllamaMessages(messages))
+                .options(options)
+                .format(format)
+                .stream(false)
+                .tools(toOllamaTools(toolSpecifications))
+                .build();
+
+        ChatResponse response = withRetry(() -> client.chat(request), maxRetries);
+
+        return Response.from(
+                response.getMessage().getToolCalls() != null ?
+                        AiMessage.from(toToolExecutionRequest(response.getMessage().getToolCalls())) :
+                        AiMessage.from(response.getMessage().getContent()),
                 new TokenUsage(response.getPromptEvalCount(), response.getEvalCount())
         );
     }

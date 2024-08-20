@@ -13,11 +13,11 @@ jobs:
         java_version: [ 8, 11, 17, 21 ]
         include:
           - java_version: '8'
-            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-cassandra,!langchain4j-infinispan,!langchain4j-neo4j,!langchain4j-opensearch,!langchain4j-azure-ai-search'
+            included_modules: '-pl !langchain4j-jlama,!langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-cassandra,!langchain4j-infinispan,!langchain4j-neo4j,!langchain4j-opensearch,!langchain4j-azure-ai-search'
           - java_version: '11'
-            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-infinispan,!langchain4j-neo4j'
+            included_modules: '-pl !langchain4j-jlama,!langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-infinispan,!langchain4j-neo4j'
           - java_version: '17'
-            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
+            included_modules: '-pl !langchain4j-jlama,!langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
           - java_version: '21'
             included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus'
     runs-on: ubuntu-latest
@@ -37,12 +37,6 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
-
-      - name: Setup Testcontainers Cloud Client
-        # Needed for langchain4j-ollama and other modules using testcontainers
-        uses: atomicjar/testcontainers-cloud-setup-action@v1
-        with:
-          token: ${{ secrets.TC_CLOUD_TOKEN }}
 
       - name: Build with JDK ${{ matrix.java_version }}
         run: mvn -B -U --fail-at-end ${{ matrix.included_modules }} verify

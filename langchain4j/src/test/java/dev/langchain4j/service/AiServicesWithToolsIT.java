@@ -1,5 +1,8 @@
 package dev.langchain4j.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -16,6 +19,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
+import dev.langchain4j.service.tool.ToolExecutor;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.junit.jupiter.api.Disabled;
@@ -26,19 +30,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.*;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +57,17 @@ class AiServicesWithToolsIT {
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                        .modelName(GPT_4_O)
+                        .temperature(0.0)
+                        .logRequests(true)
+                        .logResponses(true)
+                        .build(),
+                OpenAiChatModel.builder()
+                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                        .apiKey(System.getenv("OPENAI_API_KEY"))
+                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                        .modelName(GPT_4_O_MINI)
+                        .strictTools(true)
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
@@ -475,8 +493,6 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    @Disabled
-        // TODO fix: should automatically convert List<String> into String[]
     void should_use_tool_with_Array_of_Strings_parameter(ChatLanguageModel chatLanguageModel) {
 
         StringArrayProcessor stringArrayProcessor = spy(new StringArrayProcessor());
@@ -614,7 +630,7 @@ class AiServicesWithToolsIT {
         Operator operator;
 
         @Description("Value to compare with")
-        Object value;
+        String value;
     }
 
     enum Operator {
@@ -645,5 +661,70 @@ class AiServicesWithToolsIT {
         Response<AiMessage> response = assistant.chat("List names of 3 users where country is India");
 
         assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_programmatically_configured_tools(ChatLanguageModel chatLanguageModel) {
+
+        // given
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("get_booking_details")
+                .description("Returns booking details")
+                .addParameter("bookingNumber", type("string"))
+                .build();
+
+        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
+            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+            assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
+            return "Booking period: from 1 July 2027 to 10 July 2027";
+        };
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .tools(singletonMap(toolSpecification, toolExecutor))
+                .build();
+
+        // when
+        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
+
+        // then
+        assertThat(response.content().text()).contains("2027");
+    }
+
+    static class Clock {
+
+        @Tool
+        String currentTime() {
+            return "16:37:43";
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_execute_tool_without_parameters(ChatLanguageModel chatLanguageModel) {
+
+        // given
+        Clock clock = spy(new Clock());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .tools(clock)
+                .build();
+
+        // when
+        Response<AiMessage> response = assistant.chat("What is the time now?");
+
+        // then
+        assertThat(response.content().text()).contains("16:37:43");
+    }
+
+    private static Map<String, Object> toMap(String arguments) {
+        try {
+            return new ObjectMapper().readValue(arguments, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

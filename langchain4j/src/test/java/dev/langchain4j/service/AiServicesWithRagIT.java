@@ -9,7 +9,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
@@ -537,10 +537,10 @@ class AiServicesWithRagIT {
                 .build();
 
         // when
-        String answer1 = assistant.answer("Which animal?");
+        String answer = assistant.answer("Which animal is mentioned?");
 
         // then
-        assertThat(answer1).containsIgnoringCase("dog");
+        assertThat(answer).containsIgnoringCase("dog");
     }
 
     @ParameterizedTest

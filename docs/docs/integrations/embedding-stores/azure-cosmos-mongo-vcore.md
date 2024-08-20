@@ -4,13 +4,16 @@ sidebar_position: 4
 
 # Azure CosmosDB Mongo vCore
 
+https://azure.microsoft.com/en-us/products/cosmos-db/
+
+
 ## Maven Dependency
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-cosmos-mongo-vcore</artifactId>
-    <version>0.31.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 

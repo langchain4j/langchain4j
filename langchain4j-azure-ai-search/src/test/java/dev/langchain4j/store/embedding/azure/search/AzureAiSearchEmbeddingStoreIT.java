@@ -8,11 +8,11 @@ import com.azure.search.documents.indexes.models.SearchFieldDataType;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
-public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
+public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchEmbeddingStoreIT.class);
 
@@ -83,13 +83,13 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
         SearchIndex providedIndex = new SearchIndex(providedIndexName).setFields(fields);
         AzureAiSearchEmbeddingStore store =
                 new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
-                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, null);
+                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, null, null);
 
         assertEquals(providedIndexName, store.searchClient.getIndexName());
 
         try {
             new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
-                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, "ANOTHER_INDEX_NAME");
+                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, "ANOTHER_INDEX_NAME", null);
 
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
@@ -103,7 +103,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
     @Test
     public void when_an_index_is_not_provided_the_default_name_is_used() {
         AzureAiSearchEmbeddingStore store =new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
-            new AzureKeyCredential(AZURE_SEARCH_KEY), false, null, null);
+            new AzureKeyCredential(AZURE_SEARCH_KEY), false, null, null, null);
 
         assertEquals(DEFAULT_INDEX_NAME, store.searchClient.getIndexName());
     }
