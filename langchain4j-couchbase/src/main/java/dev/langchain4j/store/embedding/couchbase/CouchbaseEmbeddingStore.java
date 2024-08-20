@@ -93,8 +93,8 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
         mapping.put("default_mapping", defaultMapping);
         mapping.put("default_type", "_default");
         mapping.put("docvalues_dynamic", false);
-        mapping.put("index_dynamic", true);
-        mapping.put("store_dynamic", true);
+        mapping.put("index_dynamic", false);
+        mapping.put("store_dynamic", false);
         mapping.put("type_field", "_type");
         mapping.put("types", types(dimensions));
         return mapping;
