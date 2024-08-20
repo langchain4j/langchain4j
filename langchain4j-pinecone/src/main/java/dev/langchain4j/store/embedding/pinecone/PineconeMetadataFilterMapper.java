@@ -22,7 +22,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * <a href="https://docs.pinecone.io/guides/data/filter-with-metadata#querying-an-index-with-metadata-filters">Pinecone Filter doc</a>
  */
-public class PineconeMetadataFilterMapper {
+class PineconeMetadataFilterMapper {
 
     private static final Map<Class<? extends Filter>, String> ATOMIC_PREDICT_MAP = Stream.of(
                     new AbstractMap.SimpleEntry<>(IsEqualTo.class, "$eq"),
