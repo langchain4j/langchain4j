@@ -7,9 +7,11 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+import static dev.langchain4j.model.zhipu.embedding.EmbeddingModel.EMBEDDING_3;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "ZHIPU_API_KEY", matches = ".+")
@@ -21,6 +23,10 @@ public class ZhipuAiEmbeddingModelIT {
             .logRequests(true)
             .logResponses(true)
             .maxRetries(1)
+            .callTimeout(Duration.ofSeconds(60))
+            .connectTimeout(Duration.ofSeconds(60))
+            .writeTimeout(Duration.ofSeconds(60))
+            .readTimeout(Duration.ofSeconds(60))
             .build();
 
     @Test
@@ -66,5 +72,25 @@ public class ZhipuAiEmbeddingModelIT {
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(33);
 
         assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void should_embed_in_batches_by_dimensions() {
+        ZhipuAiEmbeddingModel model_v3 = ZhipuAiEmbeddingModel.builder()
+                .apiKey(apiKey)
+                .logRequests(true)
+                .logResponses(true)
+                .maxRetries(1)
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
+                .model(EMBEDDING_3.toString())
+                .dimensions(512)
+                .build();
+
+        String text = "hello world";
+        Response<Embedding> response = model_v3.embed(text);
+        assertThat(response.content().dimension()).isEqualTo(512);
     }
 }

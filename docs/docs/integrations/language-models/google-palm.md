@@ -17,14 +17,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai</artifactId>
-  <version>0.32.0</version>
+  <version>0.33.0</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai:0.32.0'
+implementation 'dev.langchain4j:langchain4j-vertex-ai:0.33.0'
 ```
 
 ### Try out an example code:
@@ -106,3 +106,9 @@ Use the `VertexAiLanguageModel` [class](https://github.com/langchain4j/langchain
 [Model naming explanation](https://cloud.google.com/vertex-ai/generative-ai/docs/language-model-overview#model_naming_scheme)
 
 [Available PalM stable versions](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versioning#palm-stable-versions-available)
+
+
+## Examples
+
+- [VertexAiChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-vertex-ai/src/test/java/dev/langchain4j/model/vertexai/VertexAiChatModelIT.java)
+- [VertexAiLanguageModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-vertex-ai/src/test/java/dev/langchain4j/model/vertexai/VertexAiLanguageModelIT.java)

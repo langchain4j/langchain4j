@@ -1,6 +1,9 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.internal.Json;
 
 import java.util.List;
 import java.util.Map;
@@ -12,9 +15,9 @@ import static dev.langchain4j.data.message.ContentType.TEXT;
 
 class OllamaMessagesUtils {
 
-    private final static Predicate<ChatMessage> isUserMessage =
-            chatMessage -> chatMessage instanceof UserMessage;
-    private final static Predicate<UserMessage> hasImages =
+    private static final Predicate<ChatMessage> isUserMessage =
+            UserMessage.class::isInstance;
+    private static final Predicate<UserMessage> hasImages =
             userMessage -> userMessage.contents().stream()
                     .anyMatch(content -> IMAGE.equals(content.type()));
 
@@ -24,6 +27,30 @@ class OllamaMessagesUtils {
                         messagesWithImageSupport((UserMessage) message)
                         : otherMessages(message)
                 ).collect(Collectors.toList());
+    }
+
+    static List<Tool> toOllamaTools(List<ToolSpecification> toolSpecifications) {
+        return toolSpecifications.stream().map(toolSpecification ->
+                        Tool.builder()
+                                .function(Function.builder()
+                                        .name(toolSpecification.name())
+                                        .description(toolSpecification.description())
+                                        .parameters(Parameters.builder()
+                                                .properties(toolSpecification.parameters().properties())
+                                                .required(toolSpecification.parameters().required())
+                                                .build())
+                                        .build())
+                                .build())
+                .collect(Collectors.toList());
+    }
+
+    static List<ToolExecutionRequest> toToolExecutionRequest(List<ToolCall> toolCalls) {
+        return toolCalls.stream().map(toolCall ->
+                        ToolExecutionRequest.builder()
+                                .name(toolCall.getFunction().getName())
+                                .arguments(Json.toJson(toolCall.getFunction().getArguments()))
+                                .build())
+                .collect(Collectors.toList());
     }
 
     private static Message messagesWithImageSupport(UserMessage userMessage) {
@@ -62,6 +89,8 @@ class OllamaMessagesUtils {
                 return Role.USER;
             case AI:
                 return Role.ASSISTANT;
+            case TOOL_EXECUTION_RESULT:
+                return Role.TOOL;
             default:
                 throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
         }

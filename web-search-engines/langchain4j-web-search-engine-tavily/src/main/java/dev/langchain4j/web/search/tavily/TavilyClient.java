@@ -2,6 +2,7 @@ package dev.langchain4j.web.search.tavily;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.internal.Utils;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
@@ -32,7 +33,7 @@ class TavilyClient {
                 .writeTimeout(timeout);
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClientBuilder.build())
                 .addConverterFactory(GsonConverterFactory.create(GSON))
                 .build();

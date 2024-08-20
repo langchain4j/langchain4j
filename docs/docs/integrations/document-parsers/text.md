@@ -4,11 +4,23 @@ sidebar_position: 1
 
 # Text
 
-`TextDocumentParser` can be found in the main module:
+
+## Maven Dependency
+
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
+
+
+## APIs
+
+- `TextDocumentParser`
+
+
+## Examples
+
+- [TextDocumentParserTest](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/data/document/parser/TextDocumentParserTest.java)

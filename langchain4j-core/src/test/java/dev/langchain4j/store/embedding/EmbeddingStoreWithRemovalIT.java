@@ -4,11 +4,14 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.filter.Filter;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
@@ -35,15 +38,15 @@ public abstract class EmbeddingStoreWithRemovalIT {
         Embedding embedding2 = embeddingModel().embed("test2").content();
         String id2 = embeddingStore().add(embedding2);
 
-        assertThat(getAllEmbeddings()).hasSize(2);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
         // when
         embeddingStore().remove(id1);
 
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
         // then
-        List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
-        assertThat(relevant).hasSize(1);
-        assertThat(relevant.get(0).embeddingId()).isEqualTo(id2);
+        assertThat(getAllEmbeddings().get(0).embeddingId()).isEqualTo(id2);
     }
 
     @ParameterizedTest
@@ -69,15 +72,15 @@ public abstract class EmbeddingStoreWithRemovalIT {
         Embedding embedding3 = embeddingModel().embed("test3").content();
         String id3 = embeddingStore().add(embedding3);
 
-        assertThat(getAllEmbeddings()).hasSize(3);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(3));
 
         // when
         embeddingStore().removeAll(asList(id1, id2));
 
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
         // then
-        List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
-        assertThat(relevant).hasSize(1);
-        assertThat(relevant.get(0).embeddingId()).isEqualTo(id3);
+        assertThat(getAllEmbeddings().get(0).embeddingId()).isEqualTo(id3);
     }
 
     @Test
@@ -111,15 +114,15 @@ public abstract class EmbeddingStoreWithRemovalIT {
         Embedding embedding3 = embeddingModel().embed("not matching").content();
         String id3 = embeddingStore().add(embedding3);
 
-        assertThat(getAllEmbeddings()).hasSize(3);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(3));
 
         // when
         embeddingStore().removeAll(metadataKey("type").isEqualTo("a"));
 
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
         // then
-        List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
-        assertThat(relevant).hasSize(1);
-        assertThat(relevant.get(0).embeddingId()).isEqualTo(id3);
+        assertThat(getAllEmbeddings().get(0).embeddingId()).isEqualTo(id3);
     }
 
     @Test
@@ -140,18 +143,19 @@ public abstract class EmbeddingStoreWithRemovalIT {
         Embedding embedding2 = embeddingModel().embed("test2").content();
         embeddingStore().add(embedding2);
 
-        assertThat(getAllEmbeddings()).hasSize(2);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
         // when
         embeddingStore().removeAll();
 
         // then
-        assertThat(getAllEmbeddings()).isEmpty();
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).isEmpty());
     }
 
-    private List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
+    protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
 
-        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest
+                .builder()
                 .queryEmbedding(embeddingModel().embed("test").content())
                 .maxResults(1000)
                 .build();
@@ -159,5 +163,12 @@ public abstract class EmbeddingStoreWithRemovalIT {
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(embeddingSearchRequest);
 
         return searchResult.matches();
+    }
+
+    protected static void awaitUntilAsserted(ThrowingRunnable assertion) {
+        Awaitility.await()
+                .pollInterval(Duration.ofMillis(500))
+                .atMost(Duration.ofSeconds(15))
+                .untilAsserted(assertion);
     }
 }

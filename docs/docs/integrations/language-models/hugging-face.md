@@ -16,11 +16,17 @@ sidebar_position: 8
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hugging-face</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 
-## Hugging Face Models
+## APIs
 
 - `HuggingFaceChatModel`
 - `HuggingFaceLanguageModel`
+
+
+## Examples
+
+- [HuggingFaceChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-hugging-face/src/test/java/dev/langchain4j/model/huggingface/HuggingFaceChatModelIT.java)
+- [HuggingFaceLanguageModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-hugging-face/src/test/java/dev/langchain4j/model/huggingface/HuggingFaceLanguageModelIT.java)

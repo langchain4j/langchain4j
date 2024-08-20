@@ -10,7 +10,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 
@@ -46,3 +46,9 @@ ChatLanguageModel model = BedrockAnthropicMessageChatModel.builder()
 ## Titan Models
 - `BedrockTitanChatModel`
 - `BedrockTitanEmbeddingModel`
+
+
+## Examples
+
+- [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/BedrockChatModelExample.java)
+- [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/BedrockStreamingChatModelExample.java)

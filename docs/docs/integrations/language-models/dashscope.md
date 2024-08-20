@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # DashScope (Qwen)
 
-[DashScope](https://dashscope.aliyun.com/) 
+https://dashscope.aliyun.com/
 
 
 ## Maven Dependency
@@ -13,13 +13,18 @@ sidebar_position: 5
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-dashscope</artifactId>
-    <version>0.32.0</version>
+    <version>0.33.0</version>
 </dependency>
 ```
 
-## DashScope Models
+## APIs
 
 - `QwenChatModel`
 - `QwenStreamingChatModel`
 - `QwenLanguageModel`
 - `QwenStreamingLanguageModel`
+
+
+## Examples
+
+- [DashScope Examples](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-dashscope/src/test/java/dev/langchain4j/model/dashscope)
