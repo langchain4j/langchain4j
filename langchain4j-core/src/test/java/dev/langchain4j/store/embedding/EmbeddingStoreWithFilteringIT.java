@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.store.embedding.filter.Filter.*;
+import static dev.langchain4j.store.embedding.filter.Filter.and;
+import static dev.langchain4j.store.embedding.filter.Filter.not;
+import static dev.langchain4j.store.embedding.filter.Filter.or;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -55,20 +57,10 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         embeddingStore().addAll(embeddings, segments);
 
-        awaitUntilPersisted();
-
-        Embedding queryEmbedding = embeddingModel().embed("matching").content();
-
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                .queryEmbedding(queryEmbedding)
-                .maxResults(100)
-                .build();
-        assertThat(embeddingStore().search(request).matches())
-                // +1 for notMatchingSegmentWithoutMetadata
-                .hasSize(matchingMetadatas.size() + notMatchingMetadatas.size() + 1);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(embeddings.size()));
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
-                .queryEmbedding(queryEmbedding)
+                .queryEmbedding(embeddingModel().embed("matching").content())
                 .filter(metadataFilter)
                 .maxResults(100)
                 .build();
@@ -1233,16 +1225,10 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         embeddingStore().addAll(embeddings, segments);
 
-        awaitUntilPersisted();
-
-        Embedding queryEmbedding = embeddingModel().embed("matching").content();
-
-        assertThat(embeddingStore().findRelevant(queryEmbedding, 100))
-                // +1 for notMatchingSegmentWithoutMetadata
-                .hasSize(matchingMetadatas.size() + notMatchingMetadatas.size() + 1);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(embeddings.size()));
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
-                .queryEmbedding(queryEmbedding)
+                .queryEmbedding(embeddingModel().embed("matching").content())
                 .filter(metadataFilter)
                 .maxResults(100)
                 .build();

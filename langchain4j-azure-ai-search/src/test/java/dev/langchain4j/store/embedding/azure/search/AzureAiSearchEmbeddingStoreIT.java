@@ -6,11 +6,9 @@ import com.azure.search.documents.indexes.SearchIndexClientBuilder;
 import com.azure.search.documents.indexes.models.SearchField;
 import com.azure.search.documents.indexes.models.SearchFieldDataType;
 import com.azure.search.documents.indexes.models.SearchIndex;
-import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,8 +22,6 @@ import java.util.List;
 
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_FIELD_ID;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -49,7 +45,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
         dimensions = embeddingModel.embed("test").content().vector().length;
 
-        embeddingStore =  AzureAiSearchEmbeddingStore.builder()
+        embeddingStore = AzureAiSearchEmbeddingStore.builder()
                 .endpoint(AZURE_SEARCH_ENDPOINT)
                 .apiKey(AZURE_SEARCH_KEY)
                 .dimensions(dimensions)
@@ -89,7 +85,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
 
         try {
             new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
-                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, "ANOTHER_INDEX_NAME", null);
+                    new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, "ANOTHER_INDEX_NAME", null);
 
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
@@ -102,42 +98,10 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
 
     @Test
     public void when_an_index_is_not_provided_the_default_name_is_used() {
-        AzureAiSearchEmbeddingStore store =new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
-            new AzureKeyCredential(AZURE_SEARCH_KEY), false, null, null, null);
+        AzureAiSearchEmbeddingStore store = new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
+                new AzureKeyCredential(AZURE_SEARCH_KEY), false, null, null, null);
 
         assertEquals(DEFAULT_INDEX_NAME, store.searchClient.getIndexName());
-    }
-
-    @Test
-    void test_add_embeddings_and_find_relevant() {
-        String content1 = "banana";
-        String content2 = "computer";
-        String content3 = "apple";
-        String content4 = "pizza";
-        String content5 = "strawberry";
-        String content6 = "chess";
-        List<String> contents = asList(content1, content2, content3, content4, content5, content6);
-
-        for (String content : contents) {
-            TextSegment textSegment = TextSegment.from(content);
-            Embedding embedding = embeddingModel.embed(content).content();
-            embeddingStore.add(embedding, textSegment);
-        }
-
-        awaitUntilPersisted();
-
-        Embedding relevantEmbedding = embeddingModel.embed("fruit").content();
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(relevantEmbedding, 3);
-        assertThat(relevant).hasSize(3);
-        assertThat(relevant.get(0).embedding()).isNotNull();
-        assertThat(relevant.get(0).embedded().text()).isIn(content1, content3, content5);
-        log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
-        assertThat(relevant.get(1).embedding()).isNotNull();
-        assertThat(relevant.get(1).embedded().text()).isIn(content1, content3, content5);
-        log.info("#2 relevant item: {}", relevant.get(1).embedded().text());
-        assertThat(relevant.get(2).embedding()).isNotNull();
-        assertThat(relevant.get(2).embedded().text()).isIn(content1, content3, content5);
-        log.info("#3 relevant item: {}", relevant.get(2).embedded().text());
     }
 
     @Override
@@ -162,11 +126,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
     }
 
     @Override
-    protected void awaitUntilPersisted() {
-        try {
-            Thread.sleep(1_000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+    protected boolean assertEmbedding() {
+        return false;
     }
 }

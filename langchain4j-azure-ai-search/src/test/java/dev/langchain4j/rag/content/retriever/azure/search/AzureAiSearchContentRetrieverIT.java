@@ -105,7 +105,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             contentRetrieverWithVector.add(embedding, textSegment);
         }
 
-        awaitUntilPersisted();
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         String content = "fruit";
         Query query = Query.from(content);
@@ -140,7 +140,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             contentRetrieverWithVector.add(embedding, textSegment);
         }
 
-        awaitUntilPersisted();
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         String content = "house";
         Query query = Query.from(content);
@@ -189,7 +189,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             contentRetrieverWithFullText.add(content);
         }
 
-        awaitUntilPersisted();
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         Query query = Query.from("Alain");
         List<Content> relevant = contentRetrieverWithFullText.retrieve(query);
@@ -247,7 +247,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             contentRetrieverWithHybrid.add(embedding, textSegment);
         }
 
-        awaitUntilPersisted();
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         Query query = Query.from("Algeria");
         List<Content> relevant = contentRetrieverWithHybrid.retrieve(query);
@@ -287,7 +287,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             contentRetrieverWithHybridAndReranking.add(embedding, textSegment);
         }
 
-        awaitUntilPersisted();
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         Query query = Query.from("A philosopher who was in the French Resistance");
         List<Content> relevant = contentRetrieverWithHybridAndReranking.retrieve(query);
@@ -321,15 +321,6 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             azureAiSearchContentRetriever.createOrUpdateIndex(dimensions);
         } catch (RuntimeException e) {
             log.error("Failed to clean up the index. You should look at deleting it manually.", e);
-        }
-    }
-
-    @Override
-    protected void awaitUntilPersisted() {
-        try {
-            Thread.sleep(1_000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
     }
 }

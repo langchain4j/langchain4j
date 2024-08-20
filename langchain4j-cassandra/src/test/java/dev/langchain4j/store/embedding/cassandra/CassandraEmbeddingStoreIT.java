@@ -56,14 +56,6 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
         ((CassandraEmbeddingStore) embeddingStore()).clear();
     }
 
-    @Override
-    public void awaitUntilPersisted() {
-        try {
-            Thread.sleep(1000);
-        } catch(Exception e) {
-        }
-    }
-
     @Test
     void should_retrieve_inserted_vector_by_ann() {
         String sourceSentence         = "Testing is doubting !";
