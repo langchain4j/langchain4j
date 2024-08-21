@@ -24,10 +24,8 @@ public class ServiceOutputParser {
      * JSON Pattern:<br />
      * 
      * <i>\\{(?:[^{}]|\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\})*\\}</i>: Matches JSON objects, accounting for nested objects.
-     * <i>|\\[(?:[^\\[\\]]|\\[(?:[^\\[\\]]|\\[(?:[^\\[\\]]|\\[[^\\[\\]]*\\])*\\])*\\])*\\]</i>: Matches JSON arrays, including arrays of objects.
      */
-    private static final String JSON_PATTERN_REGEX = "\\{(?:[^{}]|\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\})*\\}" +
-            "|\\[(?:[^\\[\\]]|\\[(?:[^\\[\\]]|\\[(?:[^\\[\\]]|\\[[^\\[\\]]*\\])*\\])*\\])*\\]";
+    private static final String JSON_PATTERN_REGEX = "\\{(?:[^{}]|\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\})*\\}";
 
     /**
      * Pattern.DOTALL: This flag makes the dot . match all characters, including newline characters.
@@ -77,9 +75,7 @@ public class ServiceOutputParser {
         }
 
         String extractedJsonBlock = extractJsonBlock(text);
-        return typeArgumentClass != null 
-                ? Json.fromJson(extractedJsonBlock, rawReturnClass, typeArgumentClass)
-                : Json.fromJson(extractedJsonBlock, rawReturnClass);
+        return Json.fromJson(extractedJsonBlock, rawReturnClass);
     }
 
     public String outputFormatInstructions(Type returnType) {
