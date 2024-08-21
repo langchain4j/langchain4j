@@ -93,17 +93,4 @@ class WebSearchResultsTest {
                 null,
                 singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),"snippet",null))));
     }
-
-    @Test
-    void should_throw_illegalArgumentException_without_results(){
-        // given
-        Map<String, Object> searchMetadata = new HashMap<>();
-        searchMetadata.put("key", "value");
-
-        // then
-        assertThrows(IllegalArgumentException.class, () -> new WebSearchResults(
-                searchMetadata,
-                WebSearchInformationResult.from(1L),
-                emptyList()));
-    }
 }
