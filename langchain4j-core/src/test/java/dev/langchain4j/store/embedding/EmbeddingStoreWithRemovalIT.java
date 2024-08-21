@@ -41,6 +41,8 @@ public abstract class EmbeddingStoreWithRemovalIT {
         // when
         embeddingStore().remove(id1);
 
+        awaitUntilPersisted();
+
         // then
         List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
         assertThat(relevant).hasSize(1);
@@ -74,6 +76,7 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
         // when
         embeddingStore().removeAll(asList(id1, id2));
+        awaitUntilPersisted();
 
         // then
         List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
@@ -115,6 +118,7 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
         // when
         embeddingStore().removeAll(metadataKey("type").isEqualTo("a"));
+        awaitUntilPersisted();
 
         // then
         List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
