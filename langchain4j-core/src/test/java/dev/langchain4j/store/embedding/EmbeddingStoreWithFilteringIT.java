@@ -1211,7 +1211,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         new Metadata().put("key", TEST_UUID),
                         new Metadata().put("key", TEST_UUID).put("key2", UUID.randomUUID())
                     ),
-                    false
+                    true
                 )
             )
             .add(
