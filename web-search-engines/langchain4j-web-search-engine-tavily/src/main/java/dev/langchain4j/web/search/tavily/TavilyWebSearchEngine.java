@@ -28,7 +28,7 @@ import static java.util.stream.Collectors.toList;
  */
 public class TavilyWebSearchEngine implements WebSearchEngine {
 
-    private static final String DEFAULT_BASE_URL = "https://api.tavily.com";
+    private static final String DEFAULT_BASE_URL = "https://api.tavily.com/";
 
     private final String apiKey;
     private final TavilyClient tavilyClient;
@@ -98,7 +98,7 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
 
     private static WebSearchOrganicResult toWebSearchOrganicResult(TavilySearchResult tavilySearchResult) {
         return WebSearchOrganicResult.from(tavilySearchResult.getTitle(),
-                URI.create(tavilySearchResult.getUrl()),
+                URI.create(tavilySearchResult.getUrl().replaceAll(" ", "%20")),
                 tavilySearchResult.getContent(),
                 tavilySearchResult.getRawContent(),
                 Collections.singletonMap("score", String.valueOf(tavilySearchResult.getScore())));

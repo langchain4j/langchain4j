@@ -4,6 +4,8 @@ import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.internal.Utils;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
@@ -33,7 +35,7 @@ class ChromaClient {
         Gson gson = new GsonBuilder().setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES).create();
 
         Retrofit retrofit = new Retrofit.Builder()
-            .baseUrl(builder.baseUrl)
+            .baseUrl(Utils.ensureTrailingForwardSlash(builder.baseUrl))
             .client(httpClientBuilder.build())
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build();
