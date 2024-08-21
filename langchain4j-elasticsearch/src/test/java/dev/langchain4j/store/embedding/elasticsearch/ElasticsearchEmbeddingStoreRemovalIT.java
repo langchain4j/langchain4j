@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.EmbeddingStoreWithoutMetadataIT.awaitUntilAsserted;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {

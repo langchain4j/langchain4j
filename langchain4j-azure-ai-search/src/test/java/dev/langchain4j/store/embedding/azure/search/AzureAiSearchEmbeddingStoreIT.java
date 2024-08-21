@@ -127,6 +127,6 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
 
     @Override
     protected boolean assertEmbedding() {
-        return false;
+        return true;
     }
 }
