@@ -20,6 +20,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class DefaultHuggingFaceClient implements HuggingFaceClient {
 
+    private static final String BASE_URL = "https://api-inference.huggingface.co/";
+
     private final HuggingFaceApi huggingFaceApi;
     private final String modelId;
 
@@ -38,7 +40,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                 .create();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://api-inference.huggingface.co")
+                .baseUrl(BASE_URL)
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build();

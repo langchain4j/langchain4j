@@ -38,12 +38,6 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
-      - name: Setup Testcontainers Cloud Client
-        # Needed for langchain4j-ollama and other modules using testcontainers
-        uses: atomicjar/testcontainers-cloud-setup-action@v1
-        with:
-          token: ${{ secrets.TC_CLOUD_TOKEN }}
-
       - name: Build with JDK ${{ matrix.java_version }}
         run: mvn -B -U --fail-at-end ${{ matrix.included_modules }} verify
         env:

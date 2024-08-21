@@ -13,4 +13,8 @@ public class ElasticsearchRequestFailedException extends RuntimeException {
     public ElasticsearchRequestFailedException(String message, Throwable cause) {
         super(message, cause);
     }
+
+    public ElasticsearchRequestFailedException(Throwable cause) {
+        super(cause);
+    }
 }

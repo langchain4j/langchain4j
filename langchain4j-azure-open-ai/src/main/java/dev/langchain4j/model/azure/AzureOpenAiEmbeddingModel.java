@@ -59,11 +59,13 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
     private OpenAIClient client;
     private final String deploymentName;
     private final Tokenizer tokenizer;
+    private final Integer dimensions;
 
     private AzureOpenAiEmbeddingModel(OpenAIClient client,
                                       String deploymentName,
-                                      Tokenizer tokenizer) {
-        this(deploymentName, tokenizer);
+                                      Tokenizer tokenizer,
+                                      Integer dimensions) {
+        this(deploymentName, tokenizer, dimensions);
         this.client = client;
     }
 
@@ -76,9 +78,10 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
                                      boolean logRequestsAndResponses,
-                                     String userAgentSuffix) {
+                                     String userAgentSuffix,
+                                     Integer dimensions) {
 
-        this(deploymentName, tokenizer);
+        this(deploymentName, tokenizer, dimensions);
         this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
@@ -91,9 +94,10 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
                                      boolean logRequestsAndResponses,
-                                     String userAgentSuffix) {
+                                     String userAgentSuffix,
+                                     Integer dimensions) {
 
-        this(deploymentName, tokenizer);
+        this(deploymentName, tokenizer, dimensions);
         this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
@@ -106,17 +110,20 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
                                      boolean logRequestsAndResponses,
-                                     String userAgentSuffix) {
+                                     String userAgentSuffix,
+                                     Integer dimensions) {
 
-        this(deploymentName, tokenizer);
+        this(deploymentName, tokenizer, dimensions);
         this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     private AzureOpenAiEmbeddingModel(String deploymentName,
-                                      Tokenizer tokenizer) {
+                                      Tokenizer tokenizer,
+                                      Integer dimensions) {
 
         this.deploymentName = getOrDefault(deploymentName, TEXT_EMBEDDING_ADA_002.modelName());
         this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
+        this.dimensions = dimensions;
     }
 
     /**
@@ -145,7 +152,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
 
             List<String> batch = texts.subList(i, Math.min(i + BATCH_SIZE, texts.size()));
 
-            EmbeddingsOptions options = new EmbeddingsOptions(batch);
+            EmbeddingsOptions options = new EmbeddingsOptions(batch).setDimensions(dimensions);
             Embeddings response = client.getEmbeddings(deploymentName, options);
 
             for (EmbeddingItem embeddingItem : response.getData()) {
@@ -176,6 +183,8 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
 
     @Override
     protected Integer knownDimension() {
+        if(dimensions != null)
+            return dimensions;
         return AzureOpenAiEmbeddingModelName.knownDimension(deploymentName);
     }
 
@@ -194,6 +203,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
         private String userAgentSuffix;
+        private Integer dimensions;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -304,6 +314,11 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
             return this;
         }
 
+        public Builder dimensions(Integer dimensions){
+            this.dimensions = dimensions;
+            return this;
+        }
+
         public AzureOpenAiEmbeddingModel build() {
             if (openAIClient == null) {
                 if (tokenCredential != null) {
@@ -317,7 +332,8 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            userAgentSuffix
+                            userAgentSuffix,
+                            dimensions
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiEmbeddingModel(
@@ -330,7 +346,8 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            userAgentSuffix
+                            userAgentSuffix,
+                            dimensions
                     );
                 }
                 return new AzureOpenAiEmbeddingModel(
@@ -343,13 +360,15 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                         maxRetries,
                         proxyOptions,
                         logRequestsAndResponses,
-                        userAgentSuffix
+                        userAgentSuffix,
+                        dimensions
                 );
             } else {
                 return new AzureOpenAiEmbeddingModel(
                         openAIClient,
                         deploymentName,
-                        tokenizer
+                        tokenizer,
+                        dimensions
                 );
             }
         }

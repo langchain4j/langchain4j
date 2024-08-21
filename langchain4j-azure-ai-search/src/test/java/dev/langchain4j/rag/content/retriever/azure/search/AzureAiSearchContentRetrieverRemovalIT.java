@@ -34,7 +34,7 @@ public class AzureAiSearchContentRetrieverRemovalIT extends EmbeddingStoreWithRe
 
         searchIndexClient.deleteIndex(DEFAULT_INDEX_NAME);
 
-        contentRetrieverWithVector =  createContentRetriever(AzureAiSearchQueryType.VECTOR);
+        contentRetrieverWithVector = createContentRetriever(AzureAiSearchQueryType.VECTOR);
     }
 
     private AzureAiSearchContentRetriever createContentRetriever(AzureAiSearchQueryType azureAiSearchQueryType) {
@@ -72,15 +72,6 @@ public class AzureAiSearchContentRetrieverRemovalIT extends EmbeddingStoreWithRe
             azureAiSearchContentRetriever.createOrUpdateIndex(embeddingModel.dimension());
         } catch (RuntimeException e) {
             log.error("Failed to clean up the index. You should look at deleting it manually.", e);
-        }
-    }
-
-    @Override
-    protected void awaitUntilPersisted() {
-        try {
-            Thread.sleep(1_000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
     }
 }

@@ -179,6 +179,16 @@ public class Utils {
   }
 
   /**
+   * Appends a trailing '/' if the provided URL does not end with '/'
+   * 
+   * @param url URL to check for trailing '/'
+   * @return Same URL if it already ends with '/' or a new URL with '/' appended
+   */
+  public static String ensureTrailingForwardSlash(String url) {
+      return url.endsWith("/") ? url : url + "/";
+  }
+
+  /**
    * Returns the given object's {@code toString()} surrounded by quotes.
    *
    * <p>If the given object is {@code null}, the string {@code "null"} is returned.

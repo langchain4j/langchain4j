@@ -98,6 +98,7 @@ public class ServiceOutputParser {
             return "";
         }
 
+        // TODO validate this earlier
         if (returnType == void.class) {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
