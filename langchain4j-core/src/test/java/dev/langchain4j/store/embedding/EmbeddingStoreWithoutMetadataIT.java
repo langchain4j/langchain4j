@@ -362,7 +362,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         return searchResult.matches();
     }
 
-    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
+    static void awaitUntilAsserted(ThrowingRunnable assertion) {
         Awaitility.await()
                 .atMost(Duration.ofSeconds(60))
                 .pollDelay(Duration.ofSeconds(0))

@@ -4,18 +4,16 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.filter.Filter;
-import org.awaitility.Awaitility;
-import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
+import static dev.langchain4j.store.embedding.EmbeddingStoreWithoutMetadataIT.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -162,12 +160,5 @@ public abstract class EmbeddingStoreWithRemovalIT {
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(embeddingSearchRequest);
 
         return searchResult.matches();
-    }
-
-    protected static void awaitUntilAsserted(ThrowingRunnable assertion) {
-        Awaitility.await()
-                .pollInterval(Duration.ofMillis(500))
-                .atMost(Duration.ofSeconds(15))
-                .untilAsserted(assertion);
     }
 }
