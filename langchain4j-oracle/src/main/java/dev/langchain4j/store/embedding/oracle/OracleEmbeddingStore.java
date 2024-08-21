@@ -16,6 +16,8 @@ import oracle.sql.json.OracleJsonFactory;
 import oracle.sql.json.OracleJsonObject;
 import oracle.sql.json.OracleJsonValue;
 import oracle.sql.json.OracleJsonValue.OracleJsonType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -56,6 +58,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
+    private static final Logger log = LoggerFactory.getLogger(OracleEmbeddingStore.class);
     /**
      * DataSource configured to connect with an Oracle Database.
      */
@@ -135,11 +138,14 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                 statement.addBatch("DROP INDEX IF EXISTS " + indexName);
 
             statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + indexName +
-                        " ON " + tableName + "(" + builder.embeddingTable.embeddingColumn() + ")" +
-                        " ORGANIZATION NEIGHBOR PARTITIONS" +
+                " ON " + tableName + "(" + builder.embeddingTable.embeddingColumn() + ")" +
+                " ORGANIZATION NEIGHBOR PARTITIONS" +
                         " WITH DISTANCE " + builder.distanceMetric.name());
 
             statement.executeBatch();
+        } catch (SQLException sqlException) {
+            System.out.println("Error creating index: " + sqlException.getMessage());
+            log.warn("Error creating index: " + sqlException.getMessage(), sqlException);
         }
     }
 
