@@ -127,6 +127,7 @@ public class StreamingAiServicesIT {
         assistant.chat("What is the capital of Germany?")
                 .onNext(answerBuilder::append)
                 .onRetrieved(futureContent::complete)
+                .ignoreErrors()
                 .start();
 
         List<Content> returnedContents = futureContent.get(30, SECONDS);
