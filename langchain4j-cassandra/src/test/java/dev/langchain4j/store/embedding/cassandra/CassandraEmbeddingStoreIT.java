@@ -56,6 +56,13 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
         ((CassandraEmbeddingStore) embeddingStore()).clear();
     }
 
+    public void awaitUntilPersisted() {
+        try {
+            Thread.sleep(1000);
+        } catch(Exception e) {
+        }
+    }
+
     @Test
     void should_retrieve_inserted_vector_by_ann() {
         String sourceSentence         = "Testing is doubting !";
@@ -181,6 +188,8 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
         assertThat(ids.get(1)).isNotBlank();
         assertThat(ids.get(0)).isNotEqualTo(ids.get(1));
 
+        awaitUntilPersisted();
+
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
 
@@ -213,6 +222,8 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
         assertThat(ids.get(0)).isNotBlank();
         assertThat(ids.get(1)).isNotBlank();
         assertThat(ids.get(0)).isNotEqualTo(ids.get(1));
+
+        awaitUntilPersisted();
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
