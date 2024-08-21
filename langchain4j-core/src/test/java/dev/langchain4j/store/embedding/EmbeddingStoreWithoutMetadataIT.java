@@ -350,10 +350,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .build()).matches()).isEqualTo(relevant);
     }
 
-    protected void awaitUntilPersisted() {
-        // TODO remove
-    }
-
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest
@@ -369,8 +365,9 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
     protected void awaitUntilAsserted(ThrowingRunnable assertion) {
         Awaitility.await()
-                .pollInterval(Duration.ofMillis(500))
                 .atMost(Duration.ofSeconds(60))
+                .pollDelay(Duration.ofSeconds(0))
+                .pollInterval(Duration.ofMillis(300))
                 .untilAsserted(assertion);
     }
 

@@ -195,8 +195,6 @@ class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
             embeddingStore().add(altEmbedding, altSegment);
         }
 
-        awaitUntilPersisted();
-
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 1);
         assertThat(relevant).hasSize(1);
 

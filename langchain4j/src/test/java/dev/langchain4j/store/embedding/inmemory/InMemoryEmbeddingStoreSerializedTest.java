@@ -8,8 +8,8 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.awaitility.core.ThrowingRunnable;
 
 /**
- * Tests if InMemoryEmbeddingStore works correctly after being serialized and deserialized back.
- * See awaitUntilPersisted()
+ * Tests if {@link InMemoryEmbeddingStore} works correctly after being serialized and deserialized back.
+ * See {@link #awaitUntilAsserted}, serialization and deserialization happen there.
  */
 class InMemoryEmbeddingStoreSerializedTest extends EmbeddingStoreWithFilteringIT {
 

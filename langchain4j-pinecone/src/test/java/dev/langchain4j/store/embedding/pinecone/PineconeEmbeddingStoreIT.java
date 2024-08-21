@@ -61,23 +61,23 @@ class PineconeEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         super.should_filter_by_metadata(metadataFilter, matchingMetadatas, notMatchingMetadatas);
     }
 
-    // in pinecone, compare filter only works with numbers
+    // in pinecone compare filter only works with numbers
     protected static Stream<Arguments> should_filter_by_metadata() {
-        return EmbeddingStoreWithFilteringIT.should_filter_by_metadata().filter(
-                arguments -> {
-                    Object o = arguments.get()[0];
-                    if (o instanceof IsLessThan) {
-                        return ((IsLessThan) o).comparisonValue() instanceof Number;
-                    } else if (o instanceof IsLessThanOrEqualTo) {
-                        return ((IsLessThanOrEqualTo) o).comparisonValue() instanceof Number;
-                    } else if (o instanceof IsGreaterThan) {
-                        return ((IsGreaterThan) o).comparisonValue() instanceof Number;
-                    } else if (o instanceof IsGreaterThanOrEqualTo) {
-                        return ((IsGreaterThanOrEqualTo) o).comparisonValue() instanceof Number;
-                    } else {
-                        return true;
-                    }
-                }
-        );
+        return EmbeddingStoreWithFilteringIT.should_filter_by_metadata()
+                .filter(arguments -> {
+                            Filter filter = (Filter) arguments.get()[0];
+                            if (filter instanceof IsLessThan) {
+                                return ((IsLessThan) filter).comparisonValue() instanceof Number;
+                            } else if (filter instanceof IsLessThanOrEqualTo) {
+                                return ((IsLessThanOrEqualTo) filter).comparisonValue() instanceof Number;
+                            } else if (filter instanceof IsGreaterThan) {
+                                return ((IsGreaterThan) filter).comparisonValue() instanceof Number;
+                            } else if (filter instanceof IsGreaterThanOrEqualTo) {
+                                return ((IsGreaterThanOrEqualTo) filter).comparisonValue() instanceof Number;
+                            } else {
+                                return true;
+                            }
+                        }
+                );
     }
 }
