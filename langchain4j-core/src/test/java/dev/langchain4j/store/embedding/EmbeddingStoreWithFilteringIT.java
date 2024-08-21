@@ -27,9 +27,9 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_filter_by_metadata(Filter metadataFilter,
-                                   List<Metadata> matchingMetadatas,
-                                   List<Metadata> notMatchingMetadatas) {
+    protected void should_filter_by_metadata(Filter metadataFilter,
+                                             List<Metadata> matchingMetadatas,
+                                             List<Metadata> notMatchingMetadatas) {
         // given
         List<Embedding> embeddings = new ArrayList<>();
         List<TextSegment> segments = new ArrayList<>();
@@ -82,7 +82,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
         matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
     }
 
-    static Stream<Arguments> should_filter_by_metadata() {
+    protected static Stream<Arguments> should_filter_by_metadata() {
         return Stream.<Arguments>builder()
 
 

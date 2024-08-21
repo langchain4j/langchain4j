@@ -27,4 +27,5 @@ class ChatRequest {
     private Options options;
     private String format;
     private Boolean stream;
+    private List<Tool> tools;
 }

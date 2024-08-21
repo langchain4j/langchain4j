@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import java.io.IOException;
 import java.util.Arrays;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingRequest;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingResponse;
 import dev.langchain4j.model.ovhai.internal.api.OvhAiApi;
@@ -61,7 +62,7 @@ public class DefaultOvhAiClient extends OvhAiClient {
         this.okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
-            .baseUrl(ensureNotBlank(builder.baseUrl, "baseUrl"))
+            .baseUrl(Utils.ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl")))
             .client(okHttpClient)
             .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
             .build();
