@@ -67,10 +67,13 @@ final class CommonTestOperations {
 
             if (urlFromEnv == null) {
                 // The Ryuk component is relied upon to stop this container.
-                OracleContainer oracleContainer = new OracleContainer("gvenzl/oracle-free:23.4-slim-faststart")
-                    .withDatabaseName("pdb1")
-                    .withUsername("testuser")
-                    .withPassword("testpwd");
+                OracleContainer oracleContainer =
+                    new OracleContainerWithTimeout("gvenzl/oracle-free:23.4-slim-faststart")
+                        .withStartupTimeoutSeconds(300)
+                        .withConnectTimeoutSeconds(300)
+                        .withDatabaseName("pdb1")
+                        .withUsername("testuser")
+                        .withPassword("testpwd");
                 oracleContainer.start();
 
                 DATA_SOURCE.setURL(oracleContainer.getJdbcUrl());
