@@ -138,8 +138,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                 statement.addBatch("DROP INDEX IF EXISTS " + indexName);
 
             statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + indexName +
-                " ON " + tableName + "(" + builder.embeddingTable.embeddingColumn() + ")" +
-                " ORGANIZATION NEIGHBOR PARTITIONS" +
+                        " ON " + tableName + "(" + builder.embeddingTable.embeddingColumn() + ")" +
+                        " ORGANIZATION NEIGHBOR PARTITIONS" +
                         " WITH DISTANCE " + builder.distanceMetric.name());
 
             statement.executeBatch();
