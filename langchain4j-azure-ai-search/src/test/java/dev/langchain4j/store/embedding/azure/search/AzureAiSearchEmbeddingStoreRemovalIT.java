@@ -27,7 +27,7 @@ public class AzureAiSearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemo
 
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-        embeddingStore =  AzureAiSearchEmbeddingStore.builder()
+        embeddingStore = AzureAiSearchEmbeddingStore.builder()
                 .endpoint(AZURE_SEARCH_ENDPOINT)
                 .apiKey(AZURE_SEARCH_KEY)
                 .dimensions(embeddingModel.dimension())
@@ -57,14 +57,5 @@ public class AzureAiSearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemo
     @Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
-    }
-
-    @Override
-    protected void awaitUntilPersisted() {
-        try {
-            Thread.sleep(1_000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 }
