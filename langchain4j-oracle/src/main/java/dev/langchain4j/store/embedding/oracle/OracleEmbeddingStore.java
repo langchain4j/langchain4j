@@ -144,7 +144,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
             statement.executeBatch();
         } catch (SQLException sqlException) {
-            System.out.println("Error creating index: " + sqlException.getMessage());
             log.warn("Error creating index: " + sqlException.getMessage(), sqlException);
         }
     }
