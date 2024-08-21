@@ -23,7 +23,9 @@ class ChromaMetadataFilterMapper {
     }
 
     static Map<String, Object> map(Filter filter) {
-        if (filter instanceof IsEqualTo) {
+        if (filter == null) {
+            return null;
+        } else if (filter instanceof IsEqualTo) {
             return mapEqual((IsEqualTo) filter);
         } else if (filter instanceof IsNotEqualTo) {
             return mapNotEqual((IsNotEqualTo) filter);
