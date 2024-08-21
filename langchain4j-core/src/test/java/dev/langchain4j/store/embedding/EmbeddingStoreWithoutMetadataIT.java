@@ -352,8 +352,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
 
-        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest
-                .builder()
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("test").content())
                 .maxResults(1000)
                 .build();
