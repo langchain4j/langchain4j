@@ -81,17 +81,7 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                     Object[] arguments = args.get();
                     Filter filter = (Filter) arguments[0];
 
-                    String key;
-                    try {
-                        Filter f = filter;
-                        if (f instanceof Not) {
-                            f = ((Not) filter).expression();
-                        }
-                        Method method = f.getClass().getMethod("key");
-                        key = (String) method.invoke(f);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
+                    String key = getMetadataKey(filter);
 
                     List<Metadata> matchingMetadatas = (List<Metadata>) arguments[1];
                     List<Metadata> newMatchingMetadatas = matchingMetadatas.stream()
@@ -109,5 +99,17 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
                     return Arguments.of(filter, newMatchingMetadatas, newNotMatchingMetadatas);
                 });
+    }
+
+    private static String getMetadataKey(Filter filter) {
+        try {
+            if (filter instanceof Not) {
+                filter = ((Not) filter).expression();
+            }
+            Method method = filter.getClass().getMethod("key");
+            return (String) method.invoke(filter);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
