@@ -56,7 +56,7 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
         ((CassandraEmbeddingStore) embeddingStore()).clear();
     }
 
-    public void awaitUntilPersisted() {
+    private void awaitUntilPersisted() {
         try {
             Thread.sleep(1000);
         } catch(Exception e) {

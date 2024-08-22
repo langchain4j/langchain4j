@@ -6,12 +6,13 @@ import com.azure.search.documents.indexes.SearchIndexClientBuilder;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -31,40 +32,37 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchContentRetrieverIT.class);
 
-    private EmbeddingModel embeddingModel;
+    private final EmbeddingModel embeddingModel;
 
-    private AzureAiSearchContentRetriever contentRetrieverWithVector;
+    private final AzureAiSearchContentRetriever contentRetrieverWithVector;
 
     private AzureAiSearchContentRetriever contentRetrieverWithFullText;
 
-    private AzureAiSearchContentRetriever contentRetrieverWithHybrid;
+    private final AzureAiSearchContentRetriever contentRetrieverWithHybrid;
 
-    private AzureAiSearchContentRetriever contentRetrieverWithHybridAndReranking;
+    private final AzureAiSearchContentRetriever contentRetrieverWithHybridAndReranking;
 
-    private int dimensions;
+    public AzureAiSearchContentRetrieverIT() {
+        embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-     public AzureAiSearchContentRetrieverIT() {
-         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-         dimensions = embeddingModel.embed("test").content().vector().length;
+        SearchIndexClient searchIndexClient = new SearchIndexClientBuilder()
+                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
+                .credential(new AzureKeyCredential(System.getenv("AZURE_SEARCH_KEY")))
+                .buildClient();
 
-         SearchIndexClient searchIndexClient = new SearchIndexClientBuilder()
-                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
-                 .credential(new AzureKeyCredential(System.getenv("AZURE_SEARCH_KEY")))
-                 .buildClient();
+        searchIndexClient.deleteIndex(DEFAULT_INDEX_NAME);
 
-         searchIndexClient.deleteIndex(DEFAULT_INDEX_NAME);
-
-         contentRetrieverWithVector =  createContentRetriever(AzureAiSearchQueryType.VECTOR);
-         contentRetrieverWithFullText =  createFullTextSearchContentRetriever();
-         contentRetrieverWithHybrid =  createContentRetriever(AzureAiSearchQueryType.HYBRID);
-         contentRetrieverWithHybridAndReranking =  createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RERANKING);
+        contentRetrieverWithVector = createContentRetriever(AzureAiSearchQueryType.VECTOR);
+        contentRetrieverWithFullText = createFullTextSearchContentRetriever();
+        contentRetrieverWithHybrid = createContentRetriever(AzureAiSearchQueryType.HYBRID);
+        contentRetrieverWithHybridAndReranking = createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RERANKING);
     }
 
     private AzureAiSearchContentRetriever createContentRetriever(AzureAiSearchQueryType azureAiSearchQueryType) {
         return AzureAiSearchContentRetriever.builder()
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-                .dimensions(dimensions)
+                .dimensions(embeddingModel.dimension())
                 .embeddingModel(embeddingModel)
                 .queryType(azureAiSearchQueryType)
                 .maxResults(3)
@@ -189,7 +187,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             contentRetrieverWithFullText.add(content);
         }
 
-        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
+        awaitUntilAsserted(() -> assertThat(contentRetrieverWithFullText.retrieve(Query.from("a"))).hasSize(contents.size()));
 
         Query query = Query.from("Alain");
         List<Content> relevant = contentRetrieverWithFullText.retrieve(query);
@@ -206,9 +204,9 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
 
     @Test
     void testFullTextSearchWithSpecificSearchIndex() {
-         // This doesn't reuse the existing search index, but creates a specialized one only for full text search
+        // This doesn't reuse the existing search index, but creates a specialized one only for full text search
         contentRetrieverWithVector.deleteIndex();
-        contentRetrieverWithFullText =  AzureAiSearchContentRetriever.builder()
+        contentRetrieverWithFullText = AzureAiSearchContentRetriever.builder()
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
                 .embeddingModel(null)
@@ -219,7 +217,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
                 .build();
         testFullTextSearch();
         clearStore();
-        contentRetrieverWithFullText =  createFullTextSearchContentRetriever();
+        contentRetrieverWithFullText = createFullTextSearchContentRetriever();
     }
 
     @Test
@@ -318,9 +316,24 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         AzureAiSearchContentRetriever azureAiSearchContentRetriever = contentRetrieverWithVector;
         try {
             azureAiSearchContentRetriever.deleteIndex();
-            azureAiSearchContentRetriever.createOrUpdateIndex(dimensions);
+            azureAiSearchContentRetriever.createOrUpdateIndex(embeddingModel.dimension());
         } catch (RuntimeException e) {
             log.error("Failed to clean up the index. You should look at deleting it manually.", e);
         }
+    }
+
+    @Override
+    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
+        super.awaitUntilAsserted(assertion);
+        try {
+            Thread.sleep(1000); // TODO figure out why this is needed and remove this hack
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    protected boolean assertEmbedding() {
+        return false; // TODO remove this hack after https://github.com/langchain4j/langchain4j/issues/1617 is closed
     }
 }

@@ -350,6 +350,14 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .build()).matches()).isEqualTo(relevant);
     }
 
+    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(60))
+                .pollDelay(Duration.ofSeconds(0))
+                .pollInterval(Duration.ofMillis(300))
+                .untilAsserted(assertion);
+    }
+
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
@@ -360,14 +368,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(embeddingSearchRequest);
 
         return searchResult.matches();
-    }
-
-    public static void awaitUntilAsserted(ThrowingRunnable assertion) {
-        Awaitility.await()
-                .atMost(Duration.ofSeconds(60))
-                .pollDelay(Duration.ofSeconds(0))
-                .pollInterval(Duration.ofMillis(300))
-                .untilAsserted(assertion);
     }
 
     protected boolean assertEmbedding() {
