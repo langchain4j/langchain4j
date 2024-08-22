@@ -93,4 +93,17 @@
 
     </dependencies>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <!-- protobuf-java-util has a BSD-3-Clause license -->
+                    <skipCompliance>true</skipCompliance>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>
