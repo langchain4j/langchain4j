@@ -77,11 +77,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final BiFunction<String, SQLType, String> metadataKeyMapper;
 
     /**
-     * Distance metric used for similarity searches
-     */
-    private final DistanceMetric distanceMetric;
-
-    /**
      * <code>true</code> if {@link #search(EmbeddingSearchRequest)} should use an exact search, or <code>false</code> if
      * it should use approximate search.
      */
@@ -98,7 +93,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     private OracleEmbeddingStore(Builder builder) {
         dataSource = builder.dataSource;
         table = builder.embeddingTable;
-        distanceMetric = builder.distanceMetric;
         isExactSearch = builder.isExactSearch;
         metadataKeyMapper = (key, type) ->
                 "JSON_VALUE(" + table.metadataColumn() + ", '$." + key + "' RETURNING " + type.getName() + ")";
@@ -139,10 +133,11 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             if (builder.vectorIndexCreateOption == CreateOption.CREATE_OR_REPLACE)
                 statement.addBatch("DROP INDEX IF EXISTS " + indexName);
 
+            // The COSINE metric used here should match the VECTOR_DISTANCE metric of the search method.
             statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + indexName +
                         " ON " + tableName + "(" + builder.embeddingTable.embeddingColumn() + ")" +
                         " ORGANIZATION NEIGHBOR PARTITIONS" +
-                        " WITH DISTANCE " + builder.distanceMetric.name());
+                        " WITH DISTANCE COSINE");
 
             statement.executeBatch();
         } catch (SQLException sqlException) {
@@ -324,10 +319,11 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         // clause. For this reason, the minScore filtering will happen locally. There are workarounds, such as binding
         // the VECTOR twice, or using a sub-select. These can be implemented if proven to offer a significant
         // performance improvement.
+        // The COSINE metric used here should match the VECTOR INDEX metric of the createIndex method.
         try (Connection connection = dataSource.getConnection();
              PreparedStatement query = connection.prepareStatement(
                      "SELECT VECTOR_DISTANCE(" +
-                             table.embeddingColumn() + ", ?, " + distanceMetric.name() + ") distance, " +
+                             table.embeddingColumn() + ", ?, COSINE) distance, " +
                              String.join(", ", table.idColumn(), table.embeddingColumn(), table.textColumn(),
                                      table.metadataColumn()) +
                          " FROM " + table.name() +
@@ -553,13 +549,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         // All fields are specified by method-level JavaDocs
 
         private DataSource dataSource;
-
         private EmbeddingTable embeddingTable;
-
-        private DistanceMetric distanceMetric = DistanceMetric.COSINE;
-
         private boolean isExactSearch = false;
-
         private CreateOption vectorIndexCreateOption = CreateOption.CREATE_NONE;
 
         private Builder() {}
@@ -643,23 +634,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         public Builder vectorIndex(CreateOption createOption) {
             ensureNotNull(createOption, "createOption");
             vectorIndexCreateOption = createOption;
-            return this;
-        }
-
-        /**
-         * Configures the distance metric used for similarity searches with the
-         * {@linkplain #search(EmbeddingSearchRequest)} method. The default metric is {@link DistanceMetric#COSINE}.
-         * The metric configured by this method should match the one used to train the embedding model which generates
-         * embeddings that the search method operates upon.
-         *
-         * @param distanceMetric Distance metric for similarity searches. Not null.
-         *
-         * @return This builder. Not null.
-         *
-         * @throws IllegalArgumentException If the distanceMetric is null.
-         */
-        public Builder distanceMetric(DistanceMetric distanceMetric) {
-            this.distanceMetric = ensureNotNull(distanceMetric, "distanceMetric");
             return this;
         }
 

@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.oracle;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
