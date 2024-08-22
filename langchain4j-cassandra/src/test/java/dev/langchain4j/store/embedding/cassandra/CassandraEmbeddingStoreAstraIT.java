@@ -9,6 +9,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.UUID;
 
+import static com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric.COSINE;
 import static com.dtsx.astra.sdk.utils.TestUtils.TEST_REGION;
 import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
 
@@ -36,12 +37,10 @@ class CassandraEmbeddingStoreAstraIT extends CassandraEmbeddingStoreIT {
                     .databaseRegion(TEST_REGION)
                     .keyspace(KEYSPACE)
                     .table(TEST_INDEX)
-                    .dimension(embeddingModelDimension()) // openai model
-                    .metric(CassandraSimilarityMetric.COSINE)
+                    .dimension(embeddingModel().dimension())
+                    .metric(COSINE)
                     .build();
         }
         return embeddingStore;
     }
-
-
 }
