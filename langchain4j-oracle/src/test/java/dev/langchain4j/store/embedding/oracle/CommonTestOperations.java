@@ -20,6 +20,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.logging.Logger;
 
@@ -86,8 +87,7 @@ final class CommonTestOperations {
                 DATA_SOURCE.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
             }
 
-        } catch (
-                SQLException sqlException) {
+        } catch (SQLException sqlException) {
             throw new AssertionError(sqlException);
         }
     }
