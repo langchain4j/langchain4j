@@ -5,7 +5,6 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
-import lombok.SneakyThrows;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -42,6 +41,7 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
     }
 
     abstract ElasticsearchConfiguration withConfiguration();
+
     void optionallyCreateIndex(String indexName) throws IOException {
     }
 
@@ -79,11 +79,5 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
     @Override
     protected void ensureStoreIsEmpty() {
         // TODO fix
-    }
-
-    @Override
-    @SneakyThrows
-    protected void awaitUntilPersisted() {
-        elasticsearchClientHelper.client.indices().refresh(rr -> rr.index(indexName).ignoreUnavailable(true));
     }
 }

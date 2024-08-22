@@ -4,7 +4,7 @@ import co.elastic.clients.transport.endpoints.BooleanResponse;
 
 import java.io.IOException;
 
-class ElasticsearchKnnEmbeddingStoreIT extends AbstractElasticsearchEmbeddingStoreIT {
+class ElasticsearchEmbeddingStoreKnnIT extends AbstractElasticsearchEmbeddingStoreIT {
 
     @Override
     ElasticsearchConfiguration withConfiguration() {

@@ -152,10 +152,17 @@ public abstract class EmbeddingStoreWithRemovalIT {
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).isEmpty());
     }
 
+    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(60))
+                .pollDelay(Duration.ofSeconds(0))
+                .pollInterval(Duration.ofMillis(300))
+                .untilAsserted(assertion);
+    }
+
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
 
-        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest
-                .builder()
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("test").content())
                 .maxResults(1000)
                 .build();
@@ -163,12 +170,5 @@ public abstract class EmbeddingStoreWithRemovalIT {
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore().search(embeddingSearchRequest);
 
         return searchResult.matches();
-    }
-
-    protected static void awaitUntilAsserted(ThrowingRunnable assertion) {
-        Awaitility.await()
-                .pollInterval(Duration.ofMillis(500))
-                .atMost(Duration.ofSeconds(15))
-                .untilAsserted(assertion);
     }
 }

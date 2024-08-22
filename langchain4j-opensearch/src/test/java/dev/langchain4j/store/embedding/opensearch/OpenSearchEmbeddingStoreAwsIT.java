@@ -2,11 +2,10 @@ package dev.langchain4j.store.embedding.opensearch;
 
 import com.jayway.jsonpath.JsonPath;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import lombok.SneakyThrows;
 import net.minidev.json.JSONArray;
 import org.junit.jupiter.api.BeforeAll;
 import org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
@@ -74,11 +73,4 @@ class OpenSearchEmbeddingStoreAwsIT extends EmbeddingStoreIT {
     protected void ensureStoreIsEmpty() {
         // TODO fix
     }
-
-    @Override
-    @SneakyThrows
-    protected void awaitUntilPersisted() {
-        Thread.sleep(1000);
-    }
-
 }
