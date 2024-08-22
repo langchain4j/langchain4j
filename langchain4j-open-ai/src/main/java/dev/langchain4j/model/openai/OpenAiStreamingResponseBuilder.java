@@ -1,8 +1,13 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.chat.*;
+import dev.ai4j.openai4j.chat.ChatCompletionChoice;
+import dev.ai4j.openai4j.chat.ChatCompletionResponse;
+import dev.ai4j.openai4j.chat.Delta;
+import dev.ai4j.openai4j.chat.FunctionCall;
+import dev.ai4j.openai4j.chat.ToolCall;
 import dev.ai4j.openai4j.completion.CompletionChoice;
 import dev.ai4j.openai4j.completion.CompletionResponse;
+import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.Tokenizer;
@@ -14,6 +19,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -34,6 +40,7 @@ public class OpenAiStreamingResponseBuilder {
     private volatile String finishReason;
 
     private final Integer inputTokenCount;
+    private volatile TokenUsage tokenUsage;
 
     public OpenAiStreamingResponseBuilder(Integer inputTokenCount) {
         this.inputTokenCount = inputTokenCount;
@@ -42,6 +49,11 @@ public class OpenAiStreamingResponseBuilder {
     public void append(ChatCompletionResponse partialResponse) {
         if (partialResponse == null) {
             return;
+        }
+
+        Usage usage = partialResponse.usage();
+        if (usage != null) {
+            tokenUsage = tokenUsageFrom(usage);
         }
 
         List<ChatCompletionChoice> choices = partialResponse.choices();
@@ -173,14 +185,23 @@ public class OpenAiStreamingResponseBuilder {
     }
 
     private TokenUsage tokenUsage(String content, Tokenizer tokenizer) {
+        if (tokenUsage != null) {
+            return tokenUsage;
+        }
+
         if (tokenizer == null) {
             return null;
         }
+
         int outputTokenCount = tokenizer.estimateTokenCountInText(content);
         return new TokenUsage(inputTokenCount, outputTokenCount);
     }
 
     private TokenUsage tokenUsage(List<ToolExecutionRequest> toolExecutionRequests, Tokenizer tokenizer, boolean forcefulToolExecution) {
+        if (tokenUsage != null) {
+            return tokenUsage;
+        }
+
         if (tokenizer == null) {
             return null;
         }
