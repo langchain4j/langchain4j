@@ -23,7 +23,7 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.function.UnaryOperator;
+import java.util.function.BiFunction;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -70,11 +70,11 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final EmbeddingTable table;
 
     /**
-     * The mapping function for use with {@link SQLFilters#create(Filter, UnaryOperator)}. The function maps a
+     * The mapping function for use with {@link SQLFilters#create(Filter, BiFunction)}. The function maps a
      * {@link Metadata} key to a field of the JSON "metadata" column. The builtin JSON_VALUE function is used to
      * evaluate a JSON path expression.
      */
-    private final UnaryOperator<String> metadataKeyMapper;
+    private final BiFunction<String, SQLType, String> metadataKeyMapper;
 
     /**
      * Distance metric used for similarity searches
@@ -100,7 +100,9 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         table = builder.embeddingTable;
         distanceMetric = builder.distanceMetric;
         isExactSearch = builder.isExactSearch;
-        metadataKeyMapper = key -> "JSON_VALUE(" + table.metadataColumn() + ", '$." + key + "')";
+        metadataKeyMapper = (key, type) ->
+                "JSON_VALUE(" + table.metadataColumn() + ", '$." + key + "' RETURNING " + type.getName() + ")";
+
 
         try {
             table.create(dataSource);
@@ -417,8 +419,9 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                     throw unrecognizedMetadata(key, value);
             }
             else {
-                // This branch is taken for both String and UUID objects. The getMetadataFromOson method will attempt to
-                // parse the string back out as a UUID.
+                // This branch is taken for both String, UUID, and any object that Metadata supports in the future. The
+                // getMetadataFromOson method will attempt to parse the string back out as a UUID. The toJdbcType method
+                // of SQLFilters assumes these objects are stored as a String in the OSON.
                 object.put(key, value.toString());
             }
         }
