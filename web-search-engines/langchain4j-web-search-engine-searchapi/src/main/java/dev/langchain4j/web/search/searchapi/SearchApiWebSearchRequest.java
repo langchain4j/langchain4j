@@ -3,6 +3,7 @@ package dev.langchain4j.web.search.searchapi;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Getter
@@ -25,7 +26,7 @@ class SearchApiWebSearchRequest {
         this.engine = engine;
         this.apiKey = apiKey;
         this.query = query;
-        this.finalOptionalParameters = optionalParameters;
+        this.finalOptionalParameters = new HashMap<>(optionalParameters);
         if (additionalRequestParameters != null) {
             finalOptionalParameters.putAll(additionalRequestParameters);
         }

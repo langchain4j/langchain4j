@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
@@ -25,7 +26,7 @@ import static java.time.Duration.ofSeconds;
  */
 public class SearchApiWebSearchEngine implements WebSearchEngine {
 
-    private static final String BASE_URL = "https://www.searchapi.io";
+    private static final String DEFAULT_BASE_URL = "https://www.searchapi.io";
     private static final String DEFAULT_ENGINE = "google";
 
     private final String apiKey;
@@ -54,10 +55,10 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                                     Map<String, Object> optionalParameters) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.engine = getOrDefault(engine, DEFAULT_ENGINE);
-        this.optionalParameters = getOrDefault(optionalParameters, new HashMap<>());
+        this.optionalParameters = getOrDefault(copyIfNotNull(optionalParameters), new HashMap<>());
         this.client = SearchApiClient.builder()
                 .timeout(getOrDefault(timeout, ofSeconds(30)))
-                .baseUrl(getOrDefault(baseUrl, BASE_URL))
+                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .build();
     }
 

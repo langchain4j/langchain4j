@@ -9,7 +9,7 @@ import java.util.Map;
 
 interface SearchApi {
 
-    @GET("/api/v1/search")
+    @GET("api/v1/search")
     Call<SearchApiWebSearchResponse> search(@QueryMap Map<String, Object> params,
                                             @Header("Authorization") String bearerToken);
 }
