@@ -16,7 +16,11 @@ This module implements `EmbeddingStore` using Oracle Database.
 ## Usage
 
 Instances of this store can be created by configuring a builder. The builder 
-requires that a DataSource and an embedding table be provided.
+requires that a DataSource and an embedding table be provided. The distance 
+between two vectors is calculated using [Cosine Similarity](https://
+docs.oracle.com/en/database/oracle/oracle-database/23/vecse/
+cosine-similarity.html) which measures the cosine of the angle between two 
+vectors.
 
 It is recommended to configure a DataSource which pools connections, such as the
 Universal Connection Pool or Hikari. A connection pool will avoid the latency of
@@ -71,6 +75,8 @@ OracleEmbeddingStore.builder()
 
 The builder provides two other methods that allow to create an index on the 
 embedding column and configure the use of exact or approximate search. 
+
+For more information about Oracle AI Vector Search refer to the [documentation](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/overview-ai-vector-search.html).
 
 ## Running the Test Suite
 By default, integration tests will
