@@ -4,6 +4,7 @@ import com.pgvector.PGvector;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -56,6 +57,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param table                 The database table
      * @param dimension             The vector dimension
      * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param useFullTextIndex      Should use gin index for supporting full-text search and hybrid search
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
@@ -66,6 +68,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                      String table,
                                      Integer dimension,
                                      Boolean useIndex,
+                                     Boolean useFullTextIndex,
+                                     String regConfig,
                                      Integer indexListSize,
                                      Boolean createTable,
                                      Boolean dropTableFirst,
@@ -78,7 +82,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
 
-        initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
+        initTable(dropTableFirst, createTable, useIndex, useFullTextIndex, regConfig, dimension, indexListSize);
     }
 
     /**
@@ -109,13 +113,15 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             String table,
             Integer dimension,
             Boolean useIndex,
+            Boolean useFullTextIndex,
+            String regConfig,
             Integer indexListSize,
             Boolean createTable,
             Boolean dropTableFirst,
             MetadataStorageConfig metadataStorageConfig
     ) {
         this(createDataSource(host, port, user, password, database),
-                table, dimension, useIndex, indexListSize, createTable, dropTableFirst, metadataStorageConfig);
+                table, dimension, useIndex, useFullTextIndex, regConfig, indexListSize, createTable, dropTableFirst, metadataStorageConfig);
     }
 
     private static DataSource createDataSource(String host, Integer port, String user, String password, String database) {
@@ -139,13 +145,14 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Initialize metadata table following configuration
      *
-     * @param dropTableFirst Should drop table first, usually for testing
-     * @param createTable    Should create table automatically
-     * @param useIndex       Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param dimension      The vector dimension
-     * @param indexListSize  The IVFFlat number of lists
+     * @param dropTableFirst   Should drop table first, usually for testing
+     * @param createTable      Should create table automatically
+     * @param useIndex         Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param useFullTextIndex
+     * @param dimension        The vector dimension
+     * @param indexListSize    The IVFFlat number of lists
      */
-    protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension,
+    protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Boolean useFullTextIndex, String regConfig, Integer dimension,
                              Integer indexListSize) {
         String query = "init";
         try (Connection connection = getConnection(); Statement statement = connection.createStatement()) {
@@ -168,6 +175,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 "WITH (lists = %s)",
                         indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
                 statement.executeUpdate(query);
+            }
+            if (useFullTextIndex) {
+                // create gin
+                query = String.format("CREATE INDEX IF NOT EXISTS %s_text_gin_idx ON %s USING gin (to_tsvector('english', text))",
+                        table, table);
             }
         } catch (SQLException e) {
             throw new RuntimeException(String.format("Failed to execute '%s'", query), e);
@@ -400,5 +412,14 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
         PGvector.addVectorType(connection);
         return connection;
+    }
+    public List<Content> findRelevantWithFullText(String content, int maxResults, double minScore) {
+        // todo
+        return null;
+    }
+
+    public List<Content> findRelevantWithHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
+        // todo
+        return null;
     }
 }
