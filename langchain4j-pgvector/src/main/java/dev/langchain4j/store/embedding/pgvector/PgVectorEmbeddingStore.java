@@ -49,6 +49,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Metadata handler
      */
     final MetadataHandler metadataHandler;
+    /**
+     * todo QueryMode
+     */
 
     /**
      * Constructor for PgVectorEmbeddingStore Class
@@ -57,7 +60,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param table                 The database table
      * @param dimension             The vector dimension
      * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param useFullTextIndex      Should use gin index for supporting full-text search and hybrid search
+     * @param useFullTextIndex      Should use <a href="https://www.postgresql.org/docs/current/gin-intro.html">GIN</a> for supporting full-text search and hybrid search
+     * @param regConfig             The text search configuration <a href="https://www.postgresql.org/docs/9.4/functions-textsearch.html">Text Search Functions and Operators</a>
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
@@ -79,6 +83,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         MetadataStorageConfig config = getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
         this.metadataHandler = MetadataHandlerFactory.get(config);
         useIndex = getOrDefault(useIndex, false);
+        useFullTextIndex = getOrDefault(useFullTextIndex, false);
+        regConfig = getOrDefault(regConfig, "english");
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
 
@@ -97,6 +103,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param table                 The database table
      * @param dimension             The vector dimension
      * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param useFullTextIndex      Should use <a href="https://www.postgresql.org/docs/current/gin-intro.html">GIN</a> for supporting full-text search and hybrid search
+     * @param regConfig             The text search configuration <a href="https://www.postgresql.org/docs/9.4/functions-textsearch.html">Text Search Functions and Operators</a>
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
@@ -148,7 +156,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param dropTableFirst   Should drop table first, usually for testing
      * @param createTable      Should create table automatically
      * @param useIndex         Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param useFullTextIndex
+     * @param useFullTextIndex      Should use <a href="https://www.postgresql.org/docs/current/gin-intro.html">GIN</a> for supporting full-text search and hybrid search
+     * @param regConfig             The text search configuration <a href="https://www.postgresql.org/docs/9.4/functions-textsearch.html">Text Search Functions and Operators</a>
      * @param dimension        The vector dimension
      * @param indexListSize    The IVFFlat number of lists
      */
@@ -177,9 +186,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 statement.executeUpdate(query);
             }
             if (useFullTextIndex) {
-                // create gin
-                query = String.format("CREATE INDEX IF NOT EXISTS %s_text_gin_idx ON %s USING gin (to_tsvector('english', text))",
-                        table, table);
+                final String indexName = table + "_gin_idx";
+                query = String.format("CREATE INDEX IF NOT EXISTS %s ON %s " +
+                                "USING gin (to_tsvector('%s', text))",
+                        indexName,  table, regConfig);
             }
         } catch (SQLException e) {
             throw new RuntimeException(String.format("Failed to execute '%s'", query), e);
