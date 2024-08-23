@@ -440,8 +440,7 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    @Disabled
-        // TODO fix: should automatically convert List<Double> into List<Integer>
+    @Disabled("should be enabled once List<Double> is automatically converted into List<Integer>")
     void should_use_tool_with_List_of_Integers_parameter(ChatLanguageModel chatLanguageModel) {
 
         IntegerListProcessor integerListProcessor = spy(new IntegerListProcessor());
