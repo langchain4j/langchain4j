@@ -35,8 +35,10 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     static MongoClient client;
 
+    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
     IndexMapping indexMapping = IndexMapping.builder()
-            .dimension(384)
+            .dimension(embeddingModel.dimension())
             .metadataFieldNames(Sets.newHashSet("test-key"))
             .build();
 
@@ -49,7 +51,6 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
             .createIndex(true)
             .build();
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeAll
     @SneakyThrows
