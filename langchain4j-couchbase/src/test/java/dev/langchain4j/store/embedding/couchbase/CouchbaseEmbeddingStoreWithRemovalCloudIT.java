@@ -32,12 +32,6 @@ public class CouchbaseEmbeddingStoreWithRemovalCloudIT extends EmbeddingStoreWit
     void should_fail_to_remove_all_by_filter_null() {
     }
 
-    @Override
-    @SneakyThrows
-    protected void awaitUntilPersisted() {
-        Thread.sleep(1000);
-    }
-
     @BeforeEach
     protected void ensureStoreIsEmpty() {
         embeddingStore().removeAll();
