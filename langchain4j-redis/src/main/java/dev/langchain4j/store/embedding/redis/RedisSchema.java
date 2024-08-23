@@ -35,6 +35,8 @@ class RedisSchema {
     private String scalarFieldName = "text";
     @Builder.Default
     private Collection<String> metadataKeys = new ArrayList<>();
+    @Builder.Default
+    private Map<String, SchemaField> schemaFieldMap = new HashMap<>();
 
     /* Vector field settings */
 
@@ -64,8 +66,14 @@ class RedisSchema {
                 .build());
 
         if (metadataKeys != null) {
+            metadataKeys.forEach(metadataKey -> {
+                if (!schemaFieldMap.containsKey(metadataKey)) {
+                    throw new RuntimeException("Schema field " + metadataKey + " not found");
+                }
+            });
             for (String metadataKey : metadataKeys) {
-                fields.add(TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0));
+                SchemaField schemaField = schemaFieldMap.get(metadataKey);
+                fields.add(schemaField);
             }
         }
         return fields.toArray(new SchemaField[0]);

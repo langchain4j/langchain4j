@@ -12,6 +12,7 @@ import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.json.Path2;
 import redis.clients.jedis.search.*;
+import redis.clients.jedis.search.schemafields.SchemaField;
 
 import java.util.*;
 
@@ -55,19 +56,21 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                                String password,
                                String indexName,
                                Integer dimension,
-                               Collection<String> metadataKeys) {
+                               Collection<String> metadataKeys,
+                               Map<String, SchemaField> schemaFieldMap) {
         ensureNotBlank(host, "host");
         ensureNotNull(port, "port");
-        ensureNotNull(dimension, "dimension");
 
         this.client = user == null ? new JedisPooled(host, port) : new JedisPooled(host, port, user, password);
         this.schema = RedisSchema.builder()
                 .indexName(getOrDefault(indexName, "embedding-index"))
                 .dimension(dimension)
                 .metadataKeys(metadataKeys)
+                .schemaFieldMap(schemaFieldMap)
                 .build();
 
         if (!isIndexExist(schema.indexName())) {
+            ensureNotNull(dimension, "dimension");
             createIndex(schema.indexName());
         }
     }
@@ -226,6 +229,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String indexName;
         private Integer dimension;
         private Collection<String> metadataKeys = new ArrayList<>();
+        private Map<String, SchemaField> schemaFieldMap = new HashMap<>();
 
         /**
          * @param host Redis Stack host
@@ -269,7 +273,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param dimension embedding vector dimension
+         * @param dimension embedding vector dimension (optional)
          * @return builder
          */
         public Builder dimension(Integer dimension) {
@@ -295,8 +299,16 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * @param schemaFieldMap Metadata schemaField, the key set must be the same as {@link Builder#metadataKeys(Collection)} (optional)
+         */
+        public Builder schemaFiledMap(Map<String, SchemaField> schemaFieldMap) {
+            this.schemaFieldMap = schemaFieldMap;
+            return this;
+        }
+
         public RedisEmbeddingStore build() {
-            return new RedisEmbeddingStore(host, port, user, password, indexName, dimension, metadataKeys);
+            return new RedisEmbeddingStore(host, port, user, password, indexName, dimension, metadataKeys, schemaFieldMap);
         }
     }
 }
