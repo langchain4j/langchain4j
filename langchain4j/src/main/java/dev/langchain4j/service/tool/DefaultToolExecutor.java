@@ -2,18 +2,18 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
+import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.internal.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
+import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
