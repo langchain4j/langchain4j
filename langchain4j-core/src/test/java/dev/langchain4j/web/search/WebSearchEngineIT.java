@@ -19,11 +19,11 @@ public abstract class WebSearchEngineIT {
     void should_search() {
 
         // when
-        WebSearchResults webSearchResults = searchEngine().search("What is Artificial Intelligence?");
+        WebSearchResults webSearchResults = searchEngine().search("What is LangChain4j?");
 
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSizeGreaterThan(0);
+        assertThat(results).isNotEmpty();
 
         results.forEach(result -> {
             assertThat(result.title()).isNotBlank();
@@ -32,7 +32,7 @@ public abstract class WebSearchEngineIT {
             assertThat(result.content()).isNull();
         });
 
-        assertThat(results).anyMatch(result -> result.url().toString().contains("AI"));
+        assertThat(results).anyMatch(result -> result.url().toString().contains("langchain4j"));
     }
 
     @Test
