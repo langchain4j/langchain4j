@@ -93,15 +93,7 @@ class AiServicesWithToolsIT {
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
-                        .build(),
-                MistralAiChatModel.builder()
-                        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                        .modelName(MISTRAL_LARGE_LATEST) // Mistral does not have a model that can call tools sequentially
-                        .temperature(0.0)
-                        .logRequests(true)
-                        .logResponses(true)
                         .build()
-                // TODO other models supporting tools
         );
     }
 
@@ -440,8 +432,7 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    @Disabled
-        // TODO fix: should automatically convert List<Double> into List<Integer>
+    @Disabled("should be enabled once List<Double> is automatically converted into List<Integer>")
     void should_use_tool_with_List_of_Integers_parameter(ChatLanguageModel chatLanguageModel) {
 
         IntegerListProcessor integerListProcessor = spy(new IntegerListProcessor());

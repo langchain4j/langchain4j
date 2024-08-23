@@ -26,24 +26,16 @@ import java.util.List;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
-import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
-import static dev.langchain4j.service.AiServicesIT.Ingredient.SALT;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.COMFORT_ISSUE;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.MAINTENANCE_ISSUE;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.OVERALL_EXPERIENCE_ISSUE;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.SERVICE_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.*;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.*;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class AiServicesIT {
@@ -78,7 +70,7 @@ public class AiServicesIT {
 
     interface EggCounter {
 
-        @UserMessage("Count number of 'egg' mentions in this sentence:\n|||{{it}}|||")
+        @UserMessage("Count the number of eggs mentioned in this sentence:\n|||{{it}}|||")
         int count(String sentence);
     }
 
@@ -91,7 +83,7 @@ public class AiServicesIT {
         int count = eggCounter.count(sentence);
         assertThat(count).isEqualTo(13);
 
-        verify(chatLanguageModel).generate(singletonList(userMessage("Count number of 'egg' mentions in this sentence:\n" +
+        verify(chatLanguageModel).generate(singletonList(userMessage("Count the number of eggs mentioned in this sentence:\n" +
                 "|||I have ten eggs in my basket and three in my pocket.|||\n" +
                 "You must answer strictly in the following format: integer number")));
         verify(chatLanguageModel).supportedCapabilities();
@@ -405,7 +397,7 @@ public class AiServicesIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO) // supports response_format = 'json_object'
+                .modelName(GPT_4_O_MINI)
                 .responseFormat("json_object")
                 .temperature(0.0)
                 .logRequests(true)

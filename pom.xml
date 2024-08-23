@@ -85,6 +85,7 @@
         <!-- web search engines -->
         <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
         <module>web-search-engines/langchain4j-web-search-engine-tavily</module>
+        <module>web-search-engines/langchain4j-web-search-engine-searchapi</module>
 
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
