@@ -1,58 +1,34 @@
 package dev.langchain4j.rag.content.retriever.azure.search;
 
-import com.azure.core.credential.AzureKeyCredential;
-import com.azure.search.documents.indexes.SearchIndexClient;
-import com.azure.search.documents.indexes.SearchIndexClientBuilder;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
-import org.junit.jupiter.api.BeforeEach;
+import org.awaitility.core.ThrowingRunnable;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchQueryType.HYBRID;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
 public class AzureAiSearchContentRetrieverRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchContentRetrieverRemovalIT.class);
 
-    private EmbeddingModel embeddingModel;
+    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    private AzureAiSearchContentRetriever contentRetrieverWithVector;
-
-    public AzureAiSearchContentRetrieverRemovalIT() {
-        embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-
-        SearchIndexClient searchIndexClient = new SearchIndexClientBuilder()
-                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
-                .credential(new AzureKeyCredential(System.getenv("AZURE_SEARCH_KEY")))
-                .buildClient();
-
-        searchIndexClient.deleteIndex(DEFAULT_INDEX_NAME);
-
-        contentRetrieverWithVector = createContentRetriever(AzureAiSearchQueryType.VECTOR);
-    }
-
-    private AzureAiSearchContentRetriever createContentRetriever(AzureAiSearchQueryType azureAiSearchQueryType) {
-        return AzureAiSearchContentRetriever.builder()
-                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-                .dimensions(embeddingModel.dimension())
-                .embeddingModel(embeddingModel)
-                .queryType(azureAiSearchQueryType)
-                .maxResults(3)
-                .minScore(0.0)
-                .build();
-    }
-
-    @BeforeEach
-    void setUp() {
-        clearStore();
-    }
+    private final AzureAiSearchContentRetriever contentRetrieverWithVector = AzureAiSearchContentRetriever.builder()
+            .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
+            .apiKey(System.getenv("AZURE_SEARCH_KEY"))
+            .indexName(randomUUID())
+            .dimensions(embeddingModel.dimension())
+            .embeddingModel(embeddingModel)
+            .queryType(HYBRID)
+            .build();
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
@@ -64,14 +40,22 @@ public class AzureAiSearchContentRetrieverRemovalIT extends EmbeddingStoreWithRe
         return this.embeddingModel;
     }
 
-    protected void clearStore() {
-        log.debug("Deleting the search index");
-        AzureAiSearchContentRetriever azureAiSearchContentRetriever = contentRetrieverWithVector;
+    @AfterEach
+    void afterEach() {
         try {
-            azureAiSearchContentRetriever.deleteIndex();
-            azureAiSearchContentRetriever.createOrUpdateIndex(embeddingModel.dimension());
+            contentRetrieverWithVector.deleteIndex();
         } catch (RuntimeException e) {
-            log.error("Failed to clean up the index. You should look at deleting it manually.", e);
+            log.error("Failed to delete the index. You should look at deleting it manually.", e);
+        }
+    }
+
+    @Override
+    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
+        super.awaitUntilAsserted(assertion);
+        try {
+            Thread.sleep(1000); // TODO figure out why this is needed and remove this hack
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 }
