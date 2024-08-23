@@ -113,9 +113,17 @@ public class StreamingAiServicesIT {
     void should_callback_with_content(StreamingChatLanguageModel model) throws Exception {
 
         List<Content> contents = new ArrayList<>();
-        RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
+        contents.add(Content.from("This is additional content"));
 
-        when(retrievalAugmentor.augment(any())).thenReturn(AugmentationResult.builder().contents(contents).build());
+        RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
+        ChatMessage message = UserMessage.from("What is the capital of Germany?");
+
+        AugmentationResult result = AugmentationResult.builder()
+                .chatMessage(message)
+                .contents(contents)
+                .build();
+        when(retrievalAugmentor.augment(any())).thenReturn(result);
+
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatLanguageModel(model)
                 .retrievalAugmentor(retrievalAugmentor)
@@ -132,7 +140,9 @@ public class StreamingAiServicesIT {
 
         List<Content> returnedContents = futureContent.get(30, SECONDS);
 
-        assertThat(returnedContents).isSameAs(contents);
+        assertThat(returnedContents)
+        .hasSize(1)
+        .anySatisfy(c -> assertThat(c.textSegment().text()).isEqualTo("This is additional content"));
     }
 
     @ParameterizedTest
