@@ -1,17 +1,17 @@
-<!-- Thank you so much for your contribution! -->
-<!-- Please fill in all the sections below. -->
+<!--
+Thank you so much for your contribution!
 
-<!-- Please open the PR as a draft initially. Once it is reviewed and approved, we will ask you to add documentation and examples. -->
-<!-- Please note that PRs with breaking changes will be rejected. -->
-<!-- Please note that PRs without tests will be rejected. -->
+Please fill in all the sections below.
+Please open the PR as a draft initially. Once it is reviewed and approved, we will ask you to add documentation and examples.
+Please note that PRs with breaking changes or without tests will be rejected.
 
-<!-- Please note that PRs will be reviewed based on the priority of the issues they address. -->
-<!-- We ask for your patience. We are doing our best to review your PR as quickly as possible. -->
-<!-- Please refrain from pinging and asking when it will be reviewed. Thank you for understanding! -->
-
+Please note that PRs will be reviewed based on the priority of the issues they address.
+We ask for your patience. We are doing our best to review your PR as quickly as possible.
+Please refrain from pinging and asking when it will be reviewed. Thank you for understanding!
+-->
 
 ## Issue
-<!-- Please specify the ID of the issue this PR is addressing. For example: "Closes #1234" -->
+<!-- Please specify the ID of the issue this PR is addressing. For example: "Closes #1234" or "Fixes #1234" -->
 Closes #
 
 ## Change

@@ -4,7 +4,7 @@ sidebar_position: 6
 
 # Google Vertex AI Gemini
 
-Vertex AI is a product built on top of the Google Cloud Platform that provides access to Google's large generative models, including the older generation (PaLM2) and the newer generation (Gemini).
+Vertex AI is Google Cloud's fully-managed AI development platform that provides access to Google's large generative models, including the older generation (PaLM2) and the newer generation (Gemini).
 
 To utilize Vertex AI, one must first create a Google Cloud Platform account.
 
@@ -22,7 +22,7 @@ Within your Google Cloud Account create a new project and enable the Vertex AI A
 
 [Create a new project](https://cloud.google.com/vertex-ai/docs/start/cloud-environment#set_up_a_project)
 
-Note your `PROJECT_ID` as it will be required for future API calls..
+Note your `PROJECT_ID` as it will be required for future API calls.
 
 ### Select the Google Cloud authentication strategy
 
@@ -68,14 +68,14 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai-gemini</artifactId>
-  <version>0.32.0</version>
+  <version>0.33.0</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:0.32.0'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:0.33.0'
 ```
 
 ### Try out an example code:
@@ -99,7 +99,7 @@ public class GeminiProVisionWithImageInput {
 
     private static final String PROJECT_ID = "YOUR-PROJECT-ID";
     private static final String LOCATION = "us-central1";
-    private static final String MODEL_NAME = "gemini-pro-vision";
+    private static final String MODEL_NAME = "gemini-1.5-flash";
     private static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/" +
         "wikipedia/commons/e/e9/" +
         "Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
@@ -125,12 +125,16 @@ public class GeminiProVisionWithImageInput {
 
 ### Available models
 
-|Model name| Description    |Properties|
-|----------|----------------|----------|
-|gemini-pro| Designed to handle natural language tasks, multiturn text and code chat, and code generation.|Max total tokens (input and output): 32,760. Max output tokens: 8,192|
-|gemini-pro-vision|Supports multimodal prompts. You can include text, images, and video in your prompt requests and get text or code responses.|Max total tokens (input and output): 16,384. Max output tokens: 2,048|
-|gemini-ultra|Google's most capable multimodal model, optimized for complex tasks including instruction, code, and reasoning, with support for multiple languages.|Max tokens input: 8,192. Max tokens output: 2,048|
-|gemini-ultra-vision|Google's most capable multimodal vision model, optimized to support text, images, videos, and multi-turn chat. |Max tokens input: 8,192. Max tokens output: 2,048|
+| Model name                | Description                                                                                                                         | Inputs                                                  | Properties                                            |
+|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|-------------------------------------------------------|
+| `gemini-1.5-flash`        | Provides speed and efficiency for high-volume, quality, cost-effective apps.                                                        | Text, code, images, audio, video, video with audio, PDF | Max input tokens: 1,048,576, Max output tokens: 8,192 |
+| `gemini-1.5-pro`          | Supports text or chat prompts for a text or code response. Supports long-context understanding up to the maximum input token limit. | Text, code, images, audio, video, video with audio, PDF | Max input tokens: 2,097,152, Max output tokens: 8,192 |
+| `gemini-1.0-pro`          | The best performing model for a wide range of text-only tasks.                                                                      | Text                                                    | Max input tokens: 32,760, Max output tokens: 8,192    |
+| `gemini-1.0-pro-vision`   | The best performing image and video understanding model to handle a broad range of applications.                                    | Text, images, audio, video, video with audio, PDF       | Max input tokens: 16,384, Max output tokens: 2,048    |
+| `gemini-1.0-ultra`        | The most capable text model, optimized for complex tasks, including instruction, code, and reasoning.                               | Text                                                    | Max tokens input: 8,192, Max tokens output: 2,048     |
+| `gemini-1.0-ultra-vision` | The most capable multimodal vision model. Optimized to support joint text, images, and video inputs.                                | Text, code, images, audio, video, video with audio, PDF | Max tokens input: 8,192, Max tokens output: 2,048     |
+
+You can learn more about the models in the [Gemini model documentation page](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models)
 
 Note that in March 2024, the Ultra version has private access with an allow list. Therefore, you may receive an exception similar to this:
 
@@ -139,18 +143,6 @@ Caused by: io.grpc.StatusRuntimeException:
  FAILED_PRECONDITION: Project `1234567890` is not allowed to use Publisher Model
   `projects/{YOUR_PROJECT_ID}/locations/us-central1/publishers/google/models/gemini-ultra`
 ```
-
-## Warning
-
-Please note that Gemini does not support `SystemMessage`s.
-If there are `SystemMessage`s provided to the `generate()` methods, they will be merged into the first
-`UserMessage` (before the content of the `UserMessage`).
-
-## Apply for early access
-
-[Early access for Gemma](https://docs.google.com/forms/d/e/1FAIpQLSe0grG6mRFW6dNF3Rb1h_YvKqUp2GaXiglZBgA2Os5iTLWlcg/viewform)
-
-[Early access for Gemini 1.5 Pro](https://aistudio.google.com/app/waitlist/97445851)
 
 ## References
 

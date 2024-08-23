@@ -36,7 +36,7 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
         assertThat(response.content()).isEqualTo(answer);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(31);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());

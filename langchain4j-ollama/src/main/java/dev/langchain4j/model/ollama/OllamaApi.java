@@ -15,9 +15,9 @@ interface OllamaApi {
     @Streaming
     Call<ResponseBody> streamingCompletion(@Body CompletionRequest completionRequest);
 
-    @POST("api/embeddings")
+    @POST("api/embed")
     @Headers({"Content-Type: application/json"})
-    Call<EmbeddingResponse> embedd(@Body EmbeddingRequest embeddingRequest);
+    Call<EmbeddingResponse> embed(@Body EmbeddingRequest embeddingRequest);
 
     @POST("api/chat")
     @Headers({"Content-Type: application/json"})
@@ -35,4 +35,8 @@ interface OllamaApi {
     @POST("api/show")
     @Headers({"Content-Type: application/json"})
     Call<OllamaModelCard> showInformation(@Body ShowModelInformationRequest modelDetailsRequest);
+
+    @HTTP(method = "DELETE", path = "/api/delete", hasBody = true)
+    @Headers({"Content-Type: application/json"})
+    Call<Void> deleteModel(@Body DeleteModelRequest deleteModelRequest);
 }

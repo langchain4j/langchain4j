@@ -6,7 +6,7 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import com.azure.search.documents.models.SearchResult;
 import com.azure.search.documents.models.SemanticSearchResult;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import org.junit.jupiter.api.Test;
 

@@ -3,6 +3,7 @@ package dev.langchain4j.model.mistralai.internal.client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.model.output.FinishReason;
@@ -66,16 +67,12 @@ public class DefaultMistralAiClient extends MistralAiClient {
         this.okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(formattedUrlForRetrofit(builder.baseUrl))
+                .baseUrl(Utils.ensureTrailingForwardSlash(builder.baseUrl))
                 .client(okHttpClient)
                 .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();
 
         mistralAiApi = retrofit.create(MistralAiApi.class);
-    }
-
-    private static String formattedUrlForRetrofit(String baseUrl) {
-        return baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
     }
 
     @Override

@@ -1,11 +1,10 @@
 package dev.langchain4j.store.embedding.opensearch;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeAll;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -50,11 +49,5 @@ class OpenSearchEmbeddingStoreLocalIT extends EmbeddingStoreIT {
     @Override
     protected void ensureStoreIsEmpty() {
         // TODO fix
-    }
-
-    @Override
-    @SneakyThrows
-    protected void awaitUntilPersisted() {
-        Thread.sleep(1000);
     }
 }

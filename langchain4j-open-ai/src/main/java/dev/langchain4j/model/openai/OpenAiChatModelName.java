@@ -24,7 +24,8 @@ public enum OpenAiChatModelName {
 
     GPT_4_VISION_PREVIEW("gpt-4-vision-preview"),
 
-    GPT_4_O("gpt-4o");
+    GPT_4_O("gpt-4o"),
+    GPT_4_O_MINI("gpt-4o-mini");
 
     private final String stringValue;
 
