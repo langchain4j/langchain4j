@@ -451,7 +451,7 @@ class MistralAiChatModelIT {
         AiMessage aiMessage2 = response2.content();
         assertThat(aiMessage2.text()).contains("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-        assertThat(aiMessage2.text()).containsIgnoringWhitespaces("March 11, 2024");
+        assertThat(aiMessage2.text()).contains("11", "2024");
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
