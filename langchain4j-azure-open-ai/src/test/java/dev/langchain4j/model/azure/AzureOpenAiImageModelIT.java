@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.models.ImageGenerationResponseFormat;
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Disabled;
@@ -28,7 +29,7 @@ public class AzureOpenAiImageModelIT {
 
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName("dall-e-3-30")
                 .logRequestsAndResponses(true)
                 .build();
@@ -52,7 +53,7 @@ public class AzureOpenAiImageModelIT {
     void should_generate_image_in_base64() throws IOException {
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName("dall-e-3-30")
                 .logRequestsAndResponses(false) // The image is big, so we don't want to log it by default
                 .responseFormat(ImageGenerationResponseFormat.BASE64.toString())
@@ -86,7 +87,7 @@ public class AzureOpenAiImageModelIT {
 
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelNameString)
                 .logRequestsAndResponses(true)
                 .build();
