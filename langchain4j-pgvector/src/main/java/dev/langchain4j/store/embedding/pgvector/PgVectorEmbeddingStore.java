@@ -53,11 +53,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     final MetadataHandler metadataHandler;
     /**
-     * todo QueryMode
+     * Text search configuration
      */
     private final String regconfig;
     /**
-     *
+     * Should use Gin on text column for full-text search
      */
     private final Boolean useFullTextIndex;
 
