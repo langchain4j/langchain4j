@@ -336,8 +336,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
         whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause;
         String query =
-                "WITH" + embeddingCTESQL(referenceVector, whereClause, false) +
-                        String.format("SELECT * FROM embedding_result WHERE score >= %s ORDER BY score desc LIMIT %s;", minScore, maxResults);
+                "WITH " + embeddingCTESQL(referenceVector, whereClause, false) +
+                        String.format("SELECT * FROM embedding_result\n\tWHERE score >= %s ORDER BY score desc LIMIT %s;", minScore, maxResults);
 
         return searchInternal(query, i->{});
     }
@@ -347,7 +347,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         String filterClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
         String query =
                 "WITH " + fullTextCTESQL(filterClause, false) +
-                        "SELECT * FROM full_text_result WHERE  score >= ? ORDER BY score desc LIMIT ?;";
+                        "SELECT * FROM full_text_result\n\tWHERE score >= ? ORDER BY score desc LIMIT ?;";
 
         return searchInternal(query, preparedStatement -> {
             try {
@@ -373,12 +373,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         ).collect(Collectors.joining(","));
         String rrf = "coalesce(1.0 / (? + full_text_result.score), 0.0) + coalesce(1.0 / (? + embedding_result.score), 0.0)";
         String queryTemplate = "WITH \n%s,\n%s\n" +
-                "SELECT %s as score, " +
-                "coalesce(full_text_result.embedding_id, embedding_result.embedding_id) as embedding_id, " +
-                "coalesce(full_text_result.embedding, embedding_result.embedding) as embedding," +
-                "coalesce(full_text_result.text, embedding_result.text) as text, " +
+                "SELECT %s as score, coalesce(full_text_result.embedding_id, embedding_result.embedding_id) as embedding_id, " +
+                "coalesce(full_text_result.embedding, embedding_result.embedding) as embedding, coalesce(full_text_result.text, embedding_result.text) as text, " +
                 metadataColumns +
-                "FROM full_text_result FULL OUTER JOIN embedding_result USING (embedding_id) WHERE %s >= ? ORDER BY score desc LIMIT ?;";
+                "\n\tFROM full_text_result FULL OUTER JOIN embedding_result USING (embedding_id)\n\tWHERE %s >= ? ORDER BY score desc LIMIT ?;";
         String query = String.format(
                 queryTemplate,
                 fullTextCTESQL(filterCondition, true), embeddingCTESQL(referenceVector, filterCondition, true),
@@ -405,7 +403,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         String scoreColumn = rankAsScore ? "row_number() over (order by embedding <=> '%s')" :
                 "(2 - (embedding <=> '%s')) / 2";
         return String.format(
-                "embedding_result AS (SELECT " + scoreColumn +" AS score, embedding_id, embedding, text, %s FROM %s %s)\n",
+                "embedding_result AS (\n\tSELECT " + scoreColumn +" AS score, embedding_id, embedding, text, %s FROM %s %s\n)\n",
                 referenceVector, join(",", metadataHandler.columnsNames()), table, filterCondition);
     }
 
@@ -416,8 +414,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         String fullTextColumn = useFullTextIndex ? "text_tsv" : String.format("plainto_tsquery('%s', text)", regconfig);
         // 32 is normalization factor to make the score between 0 and 1. The score is calculated by rank / (rank + 1).
         return String.format(
-                "full_text_result AS (SELECT " +scoreColumn+" AS score, embedding_id, embedding, text, %s FROM %s " +
-                        "WHERE %s @@ %s %s)\n",
+                "full_text_result AS (\n\tSELECT " +scoreColumn+" AS score, embedding_id, embedding, text, %s FROM %s " +
+                        "\n\t\tWHERE %s @@ %s %s\n)\n",
                 fullTextColumn, toQuery, join(",", metadataHandler.columnsNames()), table,
                 fullTextColumn, toQuery, filterCondition);
     }
