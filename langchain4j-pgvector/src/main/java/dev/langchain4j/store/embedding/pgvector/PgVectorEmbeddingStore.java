@@ -408,11 +408,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private String fullTextCTESQL(String filterCondition, Boolean rankAsScore) {
+        // 32 is normalization factor to make the score between 0 and 1. The score is calculated by rank / (rank + 1).
         String scoreColumn = rankAsScore ? "row_number() over (order by ts_rank_cd(%s, %s, 32) desc)" :
                 "ts_rank_cd(%s, %s, 32)";
         String toQuery = String.format("to_tsquery('%s', ?)", regconfig);
         String fullTextColumn = useFullTextIndex ? "text_tsv" : String.format("plainto_tsquery('%s', text)", regconfig);
-        // 32 is normalization factor to make the score between 0 and 1. The score is calculated by rank / (rank + 1).
         return String.format(
                 "full_text_result AS (\n\tSELECT " +scoreColumn+" AS score, embedding_id, embedding, text, %s FROM %s " +
                         "\n\t\tWHERE %s @@ %s %s\n)\n",
