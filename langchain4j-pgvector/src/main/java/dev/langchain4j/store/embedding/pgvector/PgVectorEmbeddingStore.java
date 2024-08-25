@@ -1,10 +1,12 @@
 package dev.langchain4j.store.embedding.pgvector;
 
 import com.pgvector.PGvector;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.aggregator.ReciprocalRankFuser;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -20,6 +22,7 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
@@ -52,6 +55,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * todo QueryMode
      */
+    private final String regConfig;
 
     /**
      * Constructor for PgVectorEmbeddingStore Class
@@ -84,11 +88,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.metadataHandler = MetadataHandlerFactory.get(config);
         useIndex = getOrDefault(useIndex, false);
         useFullTextIndex = getOrDefault(useFullTextIndex, false);
-        regConfig = getOrDefault(regConfig, "english");
+        this.regConfig = getOrDefault(regConfig, "english");
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
 
-        initTable(dropTableFirst, createTable, useIndex, useFullTextIndex, regConfig, dimension, indexListSize);
+        initTable(dropTableFirst, createTable, useIndex, useFullTextIndex, dimension, indexListSize);
     }
 
     /**
@@ -157,11 +161,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param createTable      Should create table automatically
      * @param useIndex         Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
      * @param useFullTextIndex      Should use <a href="https://www.postgresql.org/docs/current/gin-intro.html">GIN</a> for supporting full-text search and hybrid search
-     * @param regConfig             The text search configuration <a href="https://www.postgresql.org/docs/9.4/functions-textsearch.html">Text Search Functions and Operators</a>
      * @param dimension        The vector dimension
      * @param indexListSize    The IVFFlat number of lists
      */
-    protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Boolean useFullTextIndex, String regConfig, Integer dimension,
+    protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Boolean useFullTextIndex, Integer dimension,
                              Integer indexListSize) {
         String query = "init";
         try (Connection connection = getConnection(); Statement statement = connection.createStatement()) {
@@ -169,10 +172,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
             }
             if (createTable) {
-                query = String.format("CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, " +
-                                "embedding vector(%s), text TEXT NULL, %s )",
-                        table, ensureGreaterThanZero(dimension, "dimension"),
-                        metadataHandler.columnDefinitionsString());
+                query = buildCreateTableSQL(dimension, useFullTextIndex);
                 statement.executeUpdate(query);
                 metadataHandler.createMetadataIndexes(statement, table);
             }
@@ -186,14 +186,28 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 statement.executeUpdate(query);
             }
             if (useFullTextIndex) {
-                final String indexName = table + "_gin_idx";
-                query = String.format("CREATE INDEX IF NOT EXISTS %s ON %s " +
-                                "USING gin (to_tsvector('%s', text))",
-                        indexName,  table, regConfig);
+                query = String.format("CREATE INDEX IF NOT EXISTS %s_text_search_idx ON %s USING GIN (text_tsv)",
+                        table, table);
+                statement.executeUpdate(query);
             }
         } catch (SQLException e) {
             throw new RuntimeException(String.format("Failed to execute '%s'", query), e);
         }
+    }
+
+    private String buildCreateTableSQL(Integer dimension, Boolean useFullTextIndex) {
+        if (useFullTextIndex) {
+            return String.format(
+                    "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, " +
+                            "embedding vector(%s), text TEXT NULL, %s , " +
+                            "text_tsv TSVECTOR GENERATED ALWAYS AS (to_tsvector('%s', text)) STORED)",
+                    table, ensureGreaterThanZero(dimension, "dimension"),
+                    metadataHandler.columnDefinitionsString(), regConfig);
+        }
+        return String.format("CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, " +
+                        "embedding vector(%s), text TEXT NULL, %s)",
+                table, ensureGreaterThanZero(dimension, "dimension"),
+                metadataHandler.columnDefinitionsString());
     }
 
     /**
@@ -316,38 +330,90 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         Filter filter = request.filter();
 
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
-        try (Connection connection = getConnection()) {
-            String referenceVector = Arrays.toString(referenceEmbedding.vector());
-            String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
-            whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause;
-            String query = String.format(
-                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, " +
-                            "%s FROM %s %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
-                    referenceVector, join(",", metadataHandler.columnsNames()), table, whereClause, minScore, maxResults);
-            try (PreparedStatement selectStmt = connection.prepareStatement(query)) {
-                try (ResultSet resultSet = selectStmt.executeQuery()) {
-                    while (resultSet.next()) {
-                        double score = resultSet.getDouble("score");
-                        String embeddingId = resultSet.getString("embedding_id");
+        String referenceVector = Arrays.toString(referenceEmbedding.vector());
+        String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
+        whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause;
+        String query = String.format(
+                "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, " +
+                        "%s FROM %s %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
+                referenceVector, join(",", metadataHandler.columnsNames()), table, whereClause, minScore, maxResults);
 
-                        PGvector vector = (PGvector) resultSet.getObject("embedding");
-                        Embedding embedding = new Embedding(vector.toArray());
+        return queryInternal(query);
+    }
 
-                        String text = resultSet.getString("text");
-                        TextSegment textSegment = null;
-                        if (isNotNullOrBlank(text)) {
-                            Metadata metadata = metadataHandler.fromResultSet(resultSet);
-                            textSegment = TextSegment.from(text, metadata);
-                        }
-                        result.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
+    @Experimental
+    public EmbeddingSearchResult<TextSegment> findRelevantWithFullText(String content, Filter filter, int maxResults, double minScore) {
+        String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
+        String toQuery = String.format("to_tsquery(%s, %s)", regConfig, content);
+        whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause + " AND text_tsv @@ " + toQuery;
+        String query = String.format(
+                "WITH temp AS (" +
+                        "ts_rank(text_tsv, %s) AS score, embedding_id, embedding, text, " +
+                        "%s FROM %s %s) SELECT * FROM temp WHERE  score >= %s ORDER BY score desc LIMIT %s;",
+                toQuery, join(",", metadataHandler.columnsNames()), table, whereClause, minScore, maxResults);
+
+        return queryInternal(query);
+    }
+
+    @Experimental
+    public EmbeddingSearchResult<TextSegment> findRelevantWithHybrid(
+            Embedding embedding, String content,
+            Filter filter, int maxResults, double minScore, int rrfK) {
+        EmbeddingSearchResult<TextSegment> relevantWithFullText = findRelevantWithFullText(content, filter, maxResults, Double.MAX_VALUE);
+        EmbeddingSearchResult<TextSegment> search =
+                search(EmbeddingSearchRequest.builder().queryEmbedding(embedding).filter(filter).maxResults(maxResults).minScore(Double.MAX_VALUE).build());
+        List<EmbeddingMatch<TextSegment>> fullTextMatches = relevantWithFullText.matches();
+        List<EmbeddingMatch<TextSegment>> embeddingMatches = search.matches();
+        List<EmbeddingMatch<TextSegment>> rrf =
+                rrf(Stream.of(embeddingMatches, fullTextMatches).collect(toList()), rrfK)
+                        .stream().limit(maxResults).filter(i->i.score()>=minScore).collect(toList());
+        return new EmbeddingSearchResult<>(rrf);
+    }
+
+
+    private List<EmbeddingMatch<TextSegment>> rrf(List<List<EmbeddingMatch<TextSegment>>> listsOfMatches, int k) {
+        Map<EmbeddingMatch<TextSegment>, Double> scores = new LinkedHashMap<>();
+        for (List<EmbeddingMatch<TextSegment>> singleListOfContent : listsOfMatches) {
+            for (int i = 0; i < singleListOfContent.size(); i++) {
+                EmbeddingMatch<TextSegment> content = singleListOfContent.get(i);
+                double currentScore = scores.getOrDefault(content, 0.0);
+                int rank = i + 1;
+                double newScore = currentScore + 1.0 / (k + rank);
+                scores.put(content, newScore);
+            }
+        }
+        return scores.keySet().stream().sorted(Comparator.comparingDouble(scores::get).reversed()).collect(toList());
+    }
+
+
+    EmbeddingSearchResult<TextSegment> queryInternal(String query) {
+        List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
+        try (Connection connection = getConnection();
+             PreparedStatement selectStmt = connection.prepareStatement(query)) {
+            try (ResultSet resultSet = selectStmt.executeQuery()) {
+                while (resultSet.next()) {
+                    double score = resultSet.getDouble("score");
+                    String embeddingId = resultSet.getString("embedding_id");
+
+                    PGvector vector = (PGvector) resultSet.getObject("embedding");
+                    Embedding embedding = new Embedding(vector.toArray());
+
+                    String text = resultSet.getString("text");
+                    TextSegment textSegment = null;
+                    if (isNotNullOrBlank(text)) {
+                        Metadata metadata = metadataHandler.fromResultSet(resultSet);
+                        textSegment = TextSegment.from(text, metadata);
                     }
+                    result.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
                 }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
         return new EmbeddingSearchResult<>(result);
+
     }
+
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
         addAllInternal(
@@ -423,13 +489,5 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         PGvector.addVectorType(connection);
         return connection;
     }
-    public List<Content> findRelevantWithFullText(String content, int maxResults, double minScore) {
-        // todo
-        return null;
-    }
 
-    public List<Content> findRelevantWithHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
-        // todo
-        return null;
-    }
 }
