@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 
 import java.util.List;
@@ -16,10 +17,10 @@ public interface TokenStream {
 
     /**
      * The provided consumer will be invoked when/if contents have been retrieved using {@link RetrievalAugmentor}.
-     * 
-     * This method is invoked before any call is made to the language model.
+     * <p>
+     * The invocation happens before any call is made to the language model.
      *
-     * @param contentHandler lambda that consumes all matching contents
+     * @param contentHandler lambda that consumes all retrieved contents
      * @return token stream instance used to configure or start stream processing
      */
     TokenStream onRetrieved(Consumer<List<Content>> contentHandler);
@@ -58,7 +59,7 @@ public interface TokenStream {
 
     /**
      * Completes the current token stream building and starts processing.
-     * 
+     * <p>
      * Will send a request to LLM and start response streaming.
      */
     void start();
