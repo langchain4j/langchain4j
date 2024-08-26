@@ -8,7 +8,7 @@ import java.time.Duration;
 public class MongoDBAtlasContainer extends GenericContainer<MongoDBAtlasContainer> {
 
     public MongoDBAtlasContainer() {
-        super("mongodb/atlas:v1.15.1");
+        super("mongodb/atlas:latest");
         withPrivilegedMode(true);
         withCommand("/bin/bash", "-c", "atlas deployments setup local-test --type local --port 27778 --bindIpAll --username root --password root --force && tail -f /dev/null");
         withExposedPorts(27778);

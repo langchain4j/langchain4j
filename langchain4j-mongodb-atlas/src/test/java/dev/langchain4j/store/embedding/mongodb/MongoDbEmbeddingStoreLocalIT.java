@@ -1,10 +1,6 @@
 package dev.langchain4j.store.embedding.mongodb;
 
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoClientSettings;
-import com.mongodb.MongoCredential;
-import com.mongodb.ServerApi;
-import com.mongodb.ServerApiVersion;
+import com.mongodb.*;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -22,6 +18,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.shaded.com.google.common.collect.Sets;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
@@ -35,8 +32,10 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     static MongoClient client;
 
+    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
     IndexMapping indexMapping = IndexMapping.builder()
-            .dimension(384)
+            .dimension(embeddingModel.dimension())
             .metadataFieldNames(Sets.newHashSet("test-key"))
             .build();
 
@@ -48,8 +47,6 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
             .indexMapping(indexMapping)
             .createIndex(true)
             .build();
-
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeAll
     @SneakyThrows
@@ -79,6 +76,12 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
     @Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
+    }
+
+    @Override
+    protected void ensureStoreIsReady() {
+        // to avoid "cannot query search index while in state INITIAL_SYNC" error
+        awaitUntilAsserted(() -> assertThatNoException().isThrownBy(this::getAllEmbeddings));
     }
 
     @Override

@@ -3,27 +3,16 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.Base64;
 import java.util.List;
@@ -36,7 +25,9 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.DICE_IMAGE_URL;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4_VISION_PREVIEW;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -44,7 +35,7 @@ import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+import static org.assertj.core.data.Percentage.withPercentage;
 
 class OpenAiStreamingChatModelIT {
 
@@ -77,13 +68,11 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 answerBuilder.append(token);
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureAnswer.complete(answerBuilder.toString());
                 futureResponse.complete(response);
             }
@@ -120,14 +109,12 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureResponse.complete(response);
             }
 
@@ -166,12 +153,10 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 secondFutureResponse.complete(response);
             }
 
@@ -206,14 +191,12 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureResponse.complete(response);
             }
 
@@ -252,12 +235,10 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 secondFutureResponse.complete(response);
             }
 
@@ -303,14 +284,12 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureResponse.complete(response);
             }
 
@@ -352,12 +331,10 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 secondFutureResponse.complete(response);
             }
 
@@ -408,13 +385,11 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 answerBuilder.append(token);
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureAnswer.complete(answerBuilder.toString());
                 futureResponse.complete(response);
             }
@@ -525,6 +500,8 @@ class OpenAiStreamingChatModelIT {
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
                 .containsIgnoringCase("dice");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
     }
 
     @ParameterizedTest

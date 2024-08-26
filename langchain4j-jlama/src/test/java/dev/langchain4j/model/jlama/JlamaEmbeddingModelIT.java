@@ -38,7 +38,6 @@ public class JlamaEmbeddingModelIT {
 
         // when
         Response<Embedding> response = model.embed(text);
-        System.out.println(response);
 
         // then
         assertThat(response.content().vector()).isNotEmpty();
