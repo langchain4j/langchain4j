@@ -174,7 +174,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                 if (textSegment != null) {
                     // do not check metadata key is included in RedisSchema#metadataKeys
                     fields.put(schema.scalarFieldName(), textSegment.text());
-                    fields.putAll(textSegment.metadata().asMap());
+                    fields.putAll(textSegment.metadata().toMap());
                 }
                 String key = schema.prefix() + id;
                 pipeline.jsonSetWithEscape(key, Path2.of("$"), fields);

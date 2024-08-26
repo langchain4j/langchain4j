@@ -9,6 +9,7 @@ import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import redis.clients.jedis.JedisPooled;
+import redis.clients.jedis.search.schemafields.NumericField;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TextField;
 
@@ -46,7 +47,13 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
         Map<String, SchemaField> schemaFieldMap = new HashMap<>();
         Map<String, Object> metadataMap = createMetadata().toMap();
 
-        metadataMap.forEach((key, value) -> schemaFieldMap.put(key, TextField.of("$." + key).as(key).weight(1.0)));
+        metadataMap.forEach((key, value) -> {
+            if (key.startsWith("integer") || key.startsWith("long") || key.startsWith("float") || key.startsWith("double")) {
+                schemaFieldMap.put(key, NumericField.of("$." + key).as(key));
+            } else {
+                schemaFieldMap.put(key, TextField.of("$." + key).as(key).weight(1.0));
+            }
+        });
 
         embeddingStore = RedisEmbeddingStore.builder()
                 .host(redis.getHost())
@@ -66,5 +73,10 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
+    }
+
+    @Override
+    protected void ensureStoreIsReady() {
+        // do nothing here
     }
 }
