@@ -1,6 +1,8 @@
 package dev.langchain4j.store.embedding.milvus;
 
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -13,6 +15,7 @@ import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.QueryResultsWrapper.RowRecord;
 import io.milvus.response.SearchResultsWrapper;
 
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,9 +42,10 @@ class Mapper {
         return isNullOrEmpty(textSegments) ? generateEmptyScalars(size) : textSegmentsToScalars(textSegments);
     }
 
-    static List<JSONObject> toMetadataJsons(List<TextSegment> textSegments, int size) {
+   static List<JsonObject> toMetadataJsons(List<TextSegment> textSegments, int size) {
+        Gson gson = new Gson();
         return isNullOrEmpty(textSegments) ? generateEmptyJsons(size) : textSegments.stream()
-                .map(segment -> new JSONObject(segment.metadata().toMap()))
+                .map(segment -> gson.toJsonTree(segment.metadata().toMap()).getAsJsonObject())
                 .collect(toList());
     }
 
@@ -97,12 +101,14 @@ class Mapper {
             return TextSegment.from(text);
         }
 
-        JSONObject metadata = (JSONObject) rowRecord.get(METADATA_FIELD_NAME);
+        JsonObject metadata = (JsonObject) rowRecord.get(METADATA_FIELD_NAME);
         return TextSegment.from(text, toMetadata(metadata));
     }
 
-    private static Metadata toMetadata(JSONObject metadata) {
-        Map<String, Object> metadataMap = metadata.getInnerMap();
+    private static Metadata toMetadata(JsonObject metadata) {
+        Gson gson = new Gson();
+        Type type = new TypeToken<Map<String, Object>>() {}.getType();
+        Map<String, Object> metadataMap = gson.fromJson(metadata, type);
         metadataMap.forEach((key, value) -> {
             if (value instanceof BigDecimal) {
                 // It is safe to convert. No information is lost, the "biggest" type allowed in Metadata is double.
