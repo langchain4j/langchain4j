@@ -206,6 +206,20 @@ String answer = result.content();
 List<Content> sources = result.sources();
 ```
 
+When streaming, a `Consumer<List<Content>>` can be specified using the `onRetrieved()` method:
+```java
+interface Assistant {
+
+    TokenStream chat(String userMessage);
+}
+
+assistant.chat("How to do Easy RAG with LangChain4j?")
+    .onRetrieved(sources -> ...)
+    .onNext(token -> ...)
+    .onError(error -> ...)
+    .start();
+```
+
 ## RAG APIs
 LangChain4j offers a rich set of APIs to make it easy for you to build custom RAG pipelines,
 ranging from simple ones to advanced ones.

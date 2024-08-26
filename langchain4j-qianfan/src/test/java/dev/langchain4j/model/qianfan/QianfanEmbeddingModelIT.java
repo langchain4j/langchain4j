@@ -32,7 +32,6 @@ class QianfanEmbeddingModelIT {
 
         // when
         Response<Embedding> response = model.embed(text);
-        System.out.println(response);
 
         assertThat(response.content().vector()).hasSize(384);
         // then
@@ -56,7 +55,6 @@ class QianfanEmbeddingModelIT {
         }
 
         Response<List<Embedding>> response = model.embedAll(segments);
-        System.out.println(response);
 
         assertThat(response.content()).hasSize(numberOfSegments);
         assertThat(response.content().get(0).dimension()).isEqualTo(384);

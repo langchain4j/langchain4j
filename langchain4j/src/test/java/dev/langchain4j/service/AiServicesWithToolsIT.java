@@ -584,8 +584,6 @@ class AiServicesWithToolsIT {
         @Tool("Execute the query and return the result")
         String executeQuery(@P("query to execute") Query query) {
             assertThat(query).isNotNull();
-            System.out.println("query to execute: " + Json.toJson(query));
-
             assertThat(query.select).containsExactly("name");
             assertThat(query.where).containsExactly(new Condition("country", EQUALS, "India"));
             assertThat(query.limit).isEqualTo(3);
