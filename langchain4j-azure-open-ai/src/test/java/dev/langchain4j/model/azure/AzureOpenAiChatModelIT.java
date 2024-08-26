@@ -330,7 +330,6 @@ public class AzureOpenAiChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();

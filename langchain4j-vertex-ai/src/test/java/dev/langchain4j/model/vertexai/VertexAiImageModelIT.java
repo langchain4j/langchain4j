@@ -52,7 +52,6 @@ public class VertexAiImageModelIT {
                 .build();
 
         Response<Image> imageResponse = imagenModel.generate("watercolor of a colorful parrot drinking a cup of coffee");
-        System.out.println(imageResponse.content().url());
 
         // has a URL because the generated image is persisted into a file
         assertThat(imageResponse.content().url()).isNotNull();
@@ -80,7 +79,6 @@ public class VertexAiImageModelIT {
         imageListResponse.content().forEach(img -> {
             assertThat(img.url()).isNotNull();
             assertThat(img.base64Data()).isNotNull();
-            System.out.println(img.url());
         });
     }
 
@@ -100,7 +98,6 @@ public class VertexAiImageModelIT {
                 .build();
 
         Response<Image> forestResp = model.generate("lush forest");
-        System.out.println(forestResp.content().url());
 
         assertThat(forestResp.content().base64Data()).isNotNull();
 
@@ -109,7 +106,6 @@ public class VertexAiImageModelIT {
         Response<Image> compositeResp = model.edit(
                 forestResp.content(), fromPath(Paths.get(maskFileUri)), "red trees"
         );
-        System.out.println(compositeResp.content().url());
 
         assertThat(compositeResp.content().base64Data()).isNotNull();
     }
@@ -132,7 +128,6 @@ public class VertexAiImageModelIT {
 
         Response<Image> imageResponse =
                 imagenModel.generate("A black bird looking itself in an antique mirror");
-        System.out.println(imageResponse.content().url());
 
         assertThat(imageResponse.content().url()).isNotNull();
         assertThat(new File(imageResponse.content().url())).exists();
@@ -152,7 +147,6 @@ public class VertexAiImageModelIT {
 
         Response<Image> upscaledImageResponse =
                 imagenModelForUpscaling.edit(imageResponse.content(), "");
-        System.out.println(upscaledImageResponse.content().url());
 
         assertThat(upscaledImageResponse.content().url()).isNotNull();
         assertThat(new File(upscaledImageResponse.content().url())).exists();
@@ -174,7 +168,6 @@ public class VertexAiImageModelIT {
                 .build();
 
         Response<Image> imageResponse = imagenModel.generate("ピザ"); // pizza
-        System.out.println(imageResponse.content().url());
 
         assertThat(imageResponse.content().url()).isNotNull();
         assertThat(imageResponse.content().base64Data()).isNotNull();
@@ -218,7 +211,6 @@ public class VertexAiImageModelIT {
         String prompt = "A cubist oil painting close-up, with heavy brush strokes full of paint, of an imaginary three mast boat flying in the clouds";
 
         Response<Image> imageResponse = imagenModel.generate(prompt);
-        System.out.println(imageResponse.content().url());
 
         // has a URL because the generated image is persisted into a file
         assertThat(imageResponse.content().url()).isNotNull();

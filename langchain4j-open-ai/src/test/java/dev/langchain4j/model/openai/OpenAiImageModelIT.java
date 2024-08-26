@@ -111,7 +111,6 @@ class OpenAiImageModelIT {
 
         // when
         Response<Image> response = model.generate(prompt);
-        System.out.println(response);
 
         // then
         URI remoteImage = response.content().url();

@@ -38,7 +38,6 @@ public class JlamaLanguageModelIT {
 
         // when
         Response<String> response = model.generate(prompt);
-        System.out.println(response);
 
         // then
         assertThat(response.content()).isNotBlank();

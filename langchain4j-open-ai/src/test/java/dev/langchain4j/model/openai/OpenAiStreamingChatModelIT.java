@@ -78,13 +78,11 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 answerBuilder.append(token);
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureAnswer.complete(answerBuilder.toString());
                 futureResponse.complete(response);
             }
@@ -125,14 +123,12 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureResponse.complete(response);
             }
 
@@ -175,12 +171,10 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 secondFutureResponse.complete(response);
             }
 
@@ -219,14 +213,12 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureResponse.complete(response);
             }
 
@@ -269,12 +261,10 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 secondFutureResponse.complete(response);
             }
 
@@ -324,14 +314,12 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
                 futureResponse.completeExceptionally(e);
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureResponse.complete(response);
             }
 
@@ -377,12 +365,10 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 secondFutureResponse.complete(response);
             }
 
@@ -435,13 +421,11 @@ class OpenAiStreamingChatModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 answerBuilder.append(token);
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureAnswer.complete(answerBuilder.toString());
                 futureResponse.complete(response);
             }
