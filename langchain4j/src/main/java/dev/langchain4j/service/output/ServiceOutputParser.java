@@ -4,7 +4,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
-import dev.langchain4j.service.*;
+import dev.langchain4j.service.Result;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.TypeUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -20,17 +22,7 @@ import static java.lang.String.format;
 
 public class ServiceOutputParser {
 
-    /**
-     * JSON Pattern:<br />
-     * 
-     * <i>\\{(?:[^{}]|\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\})*\\}</i>: Matches JSON objects, accounting for nested objects.
-     */
-    private static final String JSON_PATTERN_REGEX = "\\{(?:[^{}]|\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\})*\\}";
-
-    /**
-     * Pattern.DOTALL: This flag makes the dot . match all characters, including newline characters.
-     */
-    private static final Pattern JSON_BLOCK_PATTERN = Pattern.compile(JSON_PATTERN_REGEX, Pattern.DOTALL);
+    private static final Pattern JSON_BLOCK_PATTERN = Pattern.compile("(?s)\\{.*\\}|\\[.*\\]");
 
     private final OutputParserFactory outputParserFactory;
 
@@ -74,8 +66,12 @@ public class ServiceOutputParser {
             return optionalOutputParser.get().parse(text);
         }
 
-        String extractedJsonBlock = extractJsonBlock(text);
-        return Json.fromJson(extractedJsonBlock, rawReturnClass);
+        try {
+            return Json.fromJson(text, rawReturnClass);
+        } catch (Exception e) {
+            String jsonBlock = extractJsonBlock(text);
+            return Json.fromJson(jsonBlock, rawReturnClass);
+        }
     }
 
     public String outputFormatInstructions(Type returnType) {
@@ -213,11 +209,9 @@ public class ServiceOutputParser {
 
     private String extractJsonBlock(String text) {
         Matcher matcher = JSON_BLOCK_PATTERN.matcher(text);
-
         if (matcher.find()) {
             return matcher.group();
         }
-
         return text;
     }
 }
