@@ -10,6 +10,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -17,6 +19,18 @@ import static dev.langchain4j.service.TypeUtils.*;
 import static java.lang.String.format;
 
 public class ServiceOutputParser {
+
+    /**
+     * JSON Pattern:<br />
+     * 
+     * <i>\\{(?:[^{}]|\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\})*\\}</i>: Matches JSON objects, accounting for nested objects.
+     */
+    private static final String JSON_PATTERN_REGEX = "\\{(?:[^{}]|\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\})*\\}";
+
+    /**
+     * Pattern.DOTALL: This flag makes the dot . match all characters, including newline characters.
+     */
+    private static final Pattern JSON_BLOCK_PATTERN = Pattern.compile(JSON_PATTERN_REGEX, Pattern.DOTALL);
 
     private final OutputParserFactory outputParserFactory;
 
@@ -60,7 +74,8 @@ public class ServiceOutputParser {
             return optionalOutputParser.get().parse(text);
         }
 
-        return Json.fromJson(text, rawReturnClass);
+        String extractedJsonBlock = extractJsonBlock(text);
+        return Json.fromJson(extractedJsonBlock, rawReturnClass);
     }
 
     public String outputFormatInstructions(Type returnType) {
@@ -106,7 +121,7 @@ public class ServiceOutputParser {
         return "\nYou must answer strictly in the following JSON format: " + jsonStructure((rawClass), new HashSet<>());
     }
 
-    public static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
+    private static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
         StringBuilder jsonSchema = new StringBuilder();
 
         jsonSchema.append("{\n");
@@ -194,5 +209,15 @@ public class ServiceOutputParser {
             default:
                 return type.getTypeName();
         }
+    }
+
+    private String extractJsonBlock(String text) {
+        Matcher matcher = JSON_BLOCK_PATTERN.matcher(text);
+
+        if (matcher.find()) {
+            return matcher.group();
+        }
+
+        return text;
     }
 }
