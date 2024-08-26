@@ -8,11 +8,9 @@ import org.testcontainers.couchbase.BucketDefinition;
 import org.testcontainers.couchbase.CouchbaseContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.shaded.com.google.common.base.Suppliers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
-import java.util.function.Supplier;
 
 @Testcontainers
 final class CouchbaseTestUtils {
@@ -21,16 +19,23 @@ final class CouchbaseTestUtils {
     }
     static final Integer TEST_DIMENSIONS = 384;
 
-    final static Supplier<CouchbaseEmbeddingStore> cloudStore = Suppliers.memoize(() -> new CouchbaseEmbeddingStore.Builder(System.getenv("COUCHBASE_CLUSTER_URL"))
-                .username(System.getenv("COUCHBASE_USERNAME"))
-                .password(System.getenv("COUCHBASE_PASSWORD"))
-                .bucketName(System.getenv("COUCHBASE_BUCKET"))
-                .scopeName(System.getenv("COUCHBASE_SCOPE"))
-                .collectionName(System.getenv("COUCHBASE_COLLECTION"))
-                .searchIndexName(System.getenv("COUCHBASE_FTS_INDEX"))
-                .dimensions(TEST_DIMENSIONS)
-                .build());
+    private static CouchbaseEmbeddingStore cloudStoreInstance;
 
+    public static CouchbaseEmbeddingStore cloudStore() {
+        if (cloudStoreInstance == null) {
+            cloudStoreInstance = new CouchbaseEmbeddingStore.Builder(System.getenv("COUCHBASE_CLUSTER_URL"))
+                    .username(System.getenv("COUCHBASE_USERNAME"))
+                    .password(System.getenv("COUCHBASE_PASSWORD"))
+                    .bucketName(System.getenv("COUCHBASE_BUCKET"))
+                    .scopeName(System.getenv("COUCHBASE_SCOPE"))
+                    .collectionName(System.getenv("COUCHBASE_COLLECTION"))
+                    .searchIndexName(System.getenv("COUCHBASE_FTS_INDEX"))
+                    .dimensions(TEST_DIMENSIONS)
+                    .build();
+        }
+
+        return cloudStoreInstance;
+    }
 
     static BucketDefinition testBucketDefinition = new BucketDefinition("test")
             .withPrimaryIndex(true)
@@ -43,28 +48,37 @@ final class CouchbaseTestUtils {
                     .withBucket(testBucketDefinition)
                     .withStartupTimeout(Duration.ofMinutes(1));
 
-    final static Supplier<CouchbaseEmbeddingStore> containerStore = Suppliers.memoize(() -> {
-        couchbaseContainer.start();
+    private static CouchbaseEmbeddingStore containerStoreInstance;
 
-        Cluster cluster = Cluster.connect(
-                couchbaseContainer.getConnectionString(),
-                couchbaseContainer.getUsername(),
-                couchbaseContainer.getPassword()
-        );
+    public static CouchbaseEmbeddingStore containerStore() {
+        if (containerStoreInstance == null) {
+            couchbaseContainer.start();
 
-        Bucket bucket = cluster.bucket(testBucketDefinition.getName());
-        bucket.waitUntilReady(Duration.ofSeconds(30));
+            Cluster cluster = Cluster.connect(
+                    couchbaseContainer.getConnectionString(),
+                    couchbaseContainer.getUsername(),
+                    couchbaseContainer.getPassword()
+            );
 
-        return new CouchbaseEmbeddingStore.Builder(couchbaseContainer.getConnectionString())
-                .username(couchbaseContainer.getUsername())
-                .password(couchbaseContainer.getPassword())
-                .bucketName(testBucketDefinition.getName())
-                .scopeName("_default")
-                .collectionName("_default")
-                .searchIndexName("test")
-                .dimensions(TEST_DIMENSIONS)
-                .build();
-    });
+            Bucket bucket = cluster.bucket(testBucketDefinition.getName());
+            bucket.waitUntilReady(Duration.ofSeconds(30));
 
-    static final Supplier<EmbeddingModel> embeddingModel = Suppliers.memoize(AllMiniLmL6V2QuantizedEmbeddingModel::new);
+            containerStoreInstance = new CouchbaseEmbeddingStore.Builder(couchbaseContainer.getConnectionString())
+                    .username(couchbaseContainer.getUsername())
+                    .password(couchbaseContainer.getPassword())
+                    .bucketName(testBucketDefinition.getName())
+                    .scopeName("_default")
+                    .collectionName("_default")
+                    .searchIndexName("test")
+                    .dimensions(TEST_DIMENSIONS)
+                    .build();
+        }
+        return containerStoreInstance;
+    }
+
+    private static final EmbeddingModel embeddingModelInstance = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+    public static EmbeddingModel embeddingModel() {
+        return embeddingModelInstance;
+    }
 }

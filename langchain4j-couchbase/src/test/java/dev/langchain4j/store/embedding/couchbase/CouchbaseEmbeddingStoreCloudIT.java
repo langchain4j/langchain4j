@@ -12,22 +12,16 @@ class CouchbaseEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return CouchbaseTestUtils.cloudStore.get();
+        return CouchbaseTestUtils.cloudStore();
     }
 
     @Override
     protected EmbeddingModel embeddingModel() {
-        return CouchbaseTestUtils.embeddingModel.get();
+        return CouchbaseTestUtils.embeddingModel();
     }
 
     @Override
     protected void ensureStoreIsEmpty() {
-        CouchbaseTestUtils.cloudStore.get().removeAll();
-    }
-
-    @Override
-    @SneakyThrows
-    protected void awaitUntilPersisted() {
-        Thread.sleep(1000);
+        CouchbaseTestUtils.cloudStore().removeAll();
     }
 }

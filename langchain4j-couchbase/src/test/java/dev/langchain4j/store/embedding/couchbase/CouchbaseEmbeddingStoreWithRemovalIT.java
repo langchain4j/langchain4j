@@ -4,7 +4,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
-import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -12,12 +11,12 @@ import org.junit.jupiter.api.Test;
 public class CouchbaseEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return CouchbaseTestUtils.containerStore.get();
+        return CouchbaseTestUtils.containerStore();
     }
 
     @Override
     protected EmbeddingModel embeddingModel() {
-        return CouchbaseTestUtils.embeddingModel.get();
+        return CouchbaseTestUtils.embeddingModel();
     }
 
     @Test

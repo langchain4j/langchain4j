@@ -12,17 +12,17 @@ class CouchbaseEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        CouchbaseTestUtils.containerStore.get().removeAll();
+        CouchbaseTestUtils.containerStore().removeAll();
     }
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return CouchbaseTestUtils.containerStore.get();
+        return CouchbaseTestUtils.containerStore();
     }
 
     @Override
     protected EmbeddingModel embeddingModel() {
-        return CouchbaseTestUtils.embeddingModel.get();
+        return CouchbaseTestUtils.embeddingModel();
     }
 
     @Override
@@ -30,9 +30,4 @@ class CouchbaseEmbeddingStoreIT extends EmbeddingStoreIT {
         embeddingStore().removeAll();
     }
 
-    @Override
-    @SneakyThrows
-    protected void awaitUntilPersisted() {
-        Thread.sleep(1000);
-    }
 }

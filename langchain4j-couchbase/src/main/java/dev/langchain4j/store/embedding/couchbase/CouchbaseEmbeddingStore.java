@@ -252,6 +252,8 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
                         )
                 ).rows().stream()
                 .filter(Objects::nonNull)
+                // filtering out documents that appeared in the index before they were persisted onto collection
+                .filter(row -> collection.exists(row.id()).exists())
                 .map(row -> {
                     Document data = collection.get(row.id()).contentAs(Document.class);
                     if (data == null) {
