@@ -17,7 +17,6 @@ import dev.langchain4j.store.embedding.filter.comparison.IsTextMatchPhrase;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-import jdk.nashorn.internal.AssertsEnabled;
 
 import java.util.UUID;
 

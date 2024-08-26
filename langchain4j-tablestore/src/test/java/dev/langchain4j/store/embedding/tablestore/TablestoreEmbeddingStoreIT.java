@@ -151,7 +151,6 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         ensureSearchDataReady(0);
     }
 
-    @Override
     protected void awaitUntilPersisted() {
         ensureSearchDataReady(trackDocsForTest.get());
     }
