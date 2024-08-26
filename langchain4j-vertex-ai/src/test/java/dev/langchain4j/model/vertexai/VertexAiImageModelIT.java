@@ -2,6 +2,7 @@ package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -37,6 +38,11 @@ public class VertexAiImageModelIT {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @BeforeEach
+    void beforeEach() throws InterruptedException {
+        Thread.sleep(2_000); // to prevent hitting rate limits
     }
 
     @Test
@@ -187,26 +193,26 @@ public class VertexAiImageModelIT {
         assertThatExceptionOfType(Throwable.class).isThrownBy(() -> imagenModel.generate("a nude woman"));
     }
 
-//    @Test
+    //    @Test
     public void should_generate_one_imagen_v3_with_persistence() {
 //        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "DEBUG");
 
         VertexAiImageModel imagenModel = VertexAiImageModel.builder()
-            .endpoint(ENDPOINT)
-            .location(LOCATION)
-            .project(PROJECT)
-            .publisher(PUBLISHER)
-            .modelName("imagen-3.0-generate-preview-0611")
-            .aspectRatio(VertexAiImageModel.AspectRatio.LANDSCAPE)
-            .mimeType(VertexAiImageModel.MimeType.JPEG)
-            .compressionQuality(80)
+                .endpoint(ENDPOINT)
+                .location(LOCATION)
+                .project(PROJECT)
+                .publisher(PUBLISHER)
+                .modelName("imagen-3.0-generate-preview-0611")
+                .aspectRatio(VertexAiImageModel.AspectRatio.LANDSCAPE)
+                .mimeType(VertexAiImageModel.MimeType.JPEG)
+                .compressionQuality(80)
 //            .personGeneration(VertexAiImageModel.PersonGeneration.dont_allow) // TODO: extra test
-            .watermark(false) // true by default with v3 // TODO: not sure how to test a watermark is present or not
-            .maxRetries(2)
-            .withPersisting()
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+                .watermark(false) // true by default with v3 // TODO: not sure how to test a watermark is present or not
+                .maxRetries(2)
+                .withPersisting()
+                .logRequests(true)
+                .logResponses(true)
+                .build();
 
         String prompt = "A cubist oil painting close-up, with heavy brush strokes full of paint, of an imaginary three mast boat flying in the clouds";
 
