@@ -11,6 +11,7 @@ import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -37,10 +38,10 @@ public class OpenAiStreamingResponseBuilder {
 
     private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new ConcurrentHashMap<>();
 
-    private volatile String finishReason;
+    private volatile TokenUsage tokenUsage;
+    private volatile FinishReason finishReason;
 
     private final Integer inputTokenCount;
-    private volatile TokenUsage tokenUsage;
 
     public OpenAiStreamingResponseBuilder(Integer inputTokenCount) {
         this.inputTokenCount = inputTokenCount;
@@ -53,7 +54,7 @@ public class OpenAiStreamingResponseBuilder {
 
         Usage usage = partialResponse.usage();
         if (usage != null) {
-            tokenUsage = tokenUsageFrom(usage);
+            this.tokenUsage = tokenUsageFrom(usage);
         }
 
         List<ChatCompletionChoice> choices = partialResponse.choices();
@@ -68,7 +69,7 @@ public class OpenAiStreamingResponseBuilder {
 
         String finishReason = chatCompletionChoice.finishReason();
         if (finishReason != null) {
-            this.finishReason = finishReason;
+            this.finishReason = finishReasonFrom(finishReason);
         }
 
         Delta delta = chatCompletionChoice.delta();
@@ -133,7 +134,7 @@ public class OpenAiStreamingResponseBuilder {
 
         String finishReason = completionChoice.finishReason();
         if (finishReason != null) {
-            this.finishReason = finishReason;
+            this.finishReason = finishReasonFrom(finishReason);
         }
 
         String token = completionChoice.text();
@@ -149,7 +150,7 @@ public class OpenAiStreamingResponseBuilder {
             return Response.from(
                     AiMessage.from(content),
                     tokenUsage(content, tokenizer),
-                    finishReasonFrom(finishReason)
+                    finishReason
             );
         }
 
@@ -162,7 +163,7 @@ public class OpenAiStreamingResponseBuilder {
             return Response.from(
                     AiMessage.from(toolExecutionRequest),
                     tokenUsage(singletonList(toolExecutionRequest), tokenizer, forcefulToolExecution),
-                    finishReasonFrom(finishReason)
+                    finishReason
             );
         }
 
@@ -177,7 +178,7 @@ public class OpenAiStreamingResponseBuilder {
             return Response.from(
                     AiMessage.from(toolExecutionRequests),
                     tokenUsage(toolExecutionRequests, tokenizer, forcefulToolExecution),
-                    finishReasonFrom(finishReason)
+                    finishReason
             );
         }
 
