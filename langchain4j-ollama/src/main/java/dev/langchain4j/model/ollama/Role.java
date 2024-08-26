@@ -8,7 +8,8 @@ enum Role {
 
     SYSTEM,
     USER,
-    ASSISTANT;
+    ASSISTANT,
+    TOOL;
 
     @JsonValue
     public String serialize() {

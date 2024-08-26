@@ -23,4 +23,5 @@ public final class EmbeddingRequest {
     private String input;
     @Builder.Default
     private String model = EMBEDDING_2.toString();
+    private Integer dimensions;
 }

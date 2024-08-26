@@ -14,6 +14,24 @@
     <artifactId>langchain4j-elasticsearch</artifactId>
     <name>LangChain4j :: Integration :: Elasticsearch</name>
 
+    <properties>
+        <!-- For tests only -->
+        <!-- You can run the tests using
+        # Elasticsearch Cloud
+        mvn verify -DELASTICSEARCH_CLOUD_URL=https://URL.elastic-cloud.com -DELASTICSEARCH_CLOUD_API_KEY=THE_KEY
+        # Elasticsearch running already Locally
+        mvn verify -DELASTICSEARCH_LOCAL_URL=https://localhost:9200 -DELASTICSEARCH_LOCAL_PASSWORD=changeme
+        # Elasticsearch started by Testcontainers
+        mvn verify
+        # Elasticsearch started by Testcontainers with a specific password
+        mvn verify -DELASTICSEARCH_LOCAL_PASSWORD=changeme
+        -->
+        <ELASTICSEARCH_CLOUD_URL />
+        <ELASTICSEARCH_CLOUD_API_KEY />
+        <ELASTICSEARCH_LOCAL_URL />
+        <ELASTICSEARCH_LOCAL_PASSWORD>changeme</ELASTICSEARCH_LOCAL_PASSWORD>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -23,6 +41,17 @@
         <dependency>
             <groupId>co.elastic.clients</groupId>
             <artifactId>elasticsearch-java</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>jakarta.json</groupId>
+                    <artifactId>jakarta.json-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.json</groupId>
+            <artifactId>jakarta.json-api</artifactId>
+            <version>2.0.2</version>
         </dependency>
 
         <dependency>
@@ -87,10 +116,43 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
+            <version>2.22.1</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>true</filtering>
+            </testResource>
+        </testResources>
+
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <environmentVariables>
+                        <ELASTICSEARCH_CLOUD_URL>${ELASTICSEARCH_CLOUD_URL}</ELASTICSEARCH_CLOUD_URL>
+                        <ELASTICSEARCH_CLOUD_API_KEY>${ELASTICSEARCH_CLOUD_API_KEY}</ELASTICSEARCH_CLOUD_API_KEY>
+                        <ELASTICSEARCH_LOCAL_URL>${ELASTICSEARCH_LOCAL_URL}</ELASTICSEARCH_LOCAL_URL>
+                        <ELASTICSEARCH_LOCAL_PASSWORD>${ELASTICSEARCH_LOCAL_PASSWORD}</ELASTICSEARCH_LOCAL_PASSWORD>
+                    </environmentVariables>
+                </configuration>
+            </plugin>
+          
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>

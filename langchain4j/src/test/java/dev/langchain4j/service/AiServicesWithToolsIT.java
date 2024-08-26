@@ -3,7 +3,10 @@ package dev.langchain4j.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.agent.tool.*;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -33,7 +36,7 @@ import java.util.stream.Stream;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.*;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
@@ -54,6 +57,17 @@ class AiServicesWithToolsIT {
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                        .modelName(GPT_4_O)
+                        .temperature(0.0)
+                        .logRequests(true)
+                        .logResponses(true)
+                        .build(),
+                OpenAiChatModel.builder()
+                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                        .apiKey(System.getenv("OPENAI_API_KEY"))
+                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                        .modelName(GPT_4_O_MINI)
+                        .strictTools(true)
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
@@ -79,15 +93,7 @@ class AiServicesWithToolsIT {
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
-                        .build(),
-                MistralAiChatModel.builder()
-                        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                        .modelName(MISTRAL_LARGE_LATEST) // Mistral does not have a model that can call tools sequentially
-                        .temperature(0.0)
-                        .logRequests(true)
-                        .logResponses(true)
                         .build()
-                // TODO other models supporting tools
         );
     }
 
@@ -426,8 +432,7 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    @Disabled
-        // TODO fix: should automatically convert List<Double> into List<Integer>
+    @Disabled("should be enabled once List<Double> is automatically converted into List<Integer>")
     void should_use_tool_with_List_of_Integers_parameter(ChatLanguageModel chatLanguageModel) {
 
         IntegerListProcessor integerListProcessor = spy(new IntegerListProcessor());
@@ -579,8 +584,6 @@ class AiServicesWithToolsIT {
         @Tool("Execute the query and return the result")
         String executeQuery(@P("query to execute") Query query) {
             assertThat(query).isNotNull();
-            System.out.println("query to execute: " + Json.toJson(query));
-
             assertThat(query.select).containsExactly("name");
             assertThat(query.where).containsExactly(new Condition("country", EQUALS, "India"));
             assertThat(query.limit).isEqualTo(3);
@@ -616,7 +619,7 @@ class AiServicesWithToolsIT {
         Operator operator;
 
         @Description("Value to compare with")
-        Object value;
+        String value;
     }
 
     enum Operator {
@@ -676,6 +679,33 @@ class AiServicesWithToolsIT {
 
         // then
         assertThat(response.content().text()).contains("2027");
+    }
+
+    static class Clock {
+
+        @Tool
+        String currentTime() {
+            return "16:37:43";
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_execute_tool_without_parameters(ChatLanguageModel chatLanguageModel) {
+
+        // given
+        Clock clock = spy(new Clock());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .tools(clock)
+                .build();
+
+        // when
+        Response<AiMessage> response = assistant.chat("What is the time now?");
+
+        // then
+        assertThat(response.content().text()).contains("16:37:43");
     }
 
     private static Map<String, Object> toMap(String arguments) {

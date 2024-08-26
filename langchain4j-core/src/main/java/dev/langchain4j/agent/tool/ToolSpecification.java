@@ -11,6 +11,7 @@ import static java.util.Arrays.asList;
  * Describes a {@link Tool}.
  */
 public class ToolSpecification {
+
     private final String name;
     private final String description;
     private final ToolParameters parameters;

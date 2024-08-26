@@ -1,19 +1,19 @@
 package dev.langchain4j.store.embedding.weaviate;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateAuthClient;
 import io.weaviate.client.WeaviateClient;
 import io.weaviate.client.v1.auth.exception.AuthException;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.Disabled;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-@EnabledIfEnvironmentVariable(named = "WEAVIATE_API_KEY", matches = ".+")
+@Disabled("Free sandbox expires every 14 days. Run manually before release.")
 class CloudWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
 
     String objectClass = "Test" + randomUUID().replace("-", "");

@@ -21,19 +21,21 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents an ZhipuAI embedding model, such as embedding-2.
+ * Represents an ZhipuAI embedding model, such as embedding-2 and embedding-3.
  */
 public class ZhipuAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final Integer maxRetries;
     private final String model;
     private final ZhipuAiClient client;
+    private final Integer dimensions;
 
     @Builder
     public ZhipuAiEmbeddingModel(
             String baseUrl,
             String apiKey,
             String model,
+            Integer dimensions,
             Integer maxRetries,
             Boolean logRequests,
             Boolean logResponses,
@@ -43,6 +45,7 @@ public class ZhipuAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             Duration writeTimeout
     ) {
         this.model = getOrDefault(model, EMBEDDING_2.toString());
+        this.dimensions = dimensions;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.client = ZhipuAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://open.bigmodel.cn/"))
@@ -70,6 +73,7 @@ public class ZhipuAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .map(item -> EmbeddingRequest.builder()
                         .input(item.text())
                         .model(this.model)
+                        .dimensions(this.dimensions)
                         .build()
                 )
                 .map(request -> withRetry(() -> client.embedAll(request), maxRetries))
