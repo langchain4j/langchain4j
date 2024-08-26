@@ -240,8 +240,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
 
-                        Object parsedResponse;
-                        parsedResponse = serviceOutputParser.parse(response, returnType);
+                        Object parsedResponse = serviceOutputParser.parse(response, returnType);
                         if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()
                                     .content(parsedResponse)
