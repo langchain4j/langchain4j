@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -25,6 +26,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * WARNING: this class has on purpose some violent and self harm test cases, this is why they are in a specific class.
  */
 public class AzureOpenAIResponsibleAIIT {
+
+    @BeforeEach
+    void beforeEach() throws InterruptedException {
+        Thread.sleep(2_000); // to prevent hitting rate limits
+    }
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
