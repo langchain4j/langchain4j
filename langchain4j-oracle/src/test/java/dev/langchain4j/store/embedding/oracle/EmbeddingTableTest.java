@@ -90,9 +90,47 @@ public class EmbeddingTableTest {
                                 .textColumn("\"" + textColumn + "\"")
                                 .metadataColumn("\"" + metadataColumn + "\"")
                                 .build())
-                        // Verify interactions with the CREATE INDEX command
-                        .vectorIndex(CREATE_OR_REPLACE)
+                        // CREATE INDEX fails with lower case Unicode names
+                        .vectorIndex(CREATE_NONE)
                         .build();
+
+            assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
+            verifyAddSearchAndRemove(embeddingStore);
+        }
+        finally {
+            dropTable(tableName);
+        }
+    }
+
+    /**
+     *  Verifies that {@link dev.langchain4j.store.embedding.oracle.OracleEmbeddingStore.Builder#build()} creates a
+     *  table with non-default names that include unicode upper case characters.
+     */
+    @Test
+    public void testUnicodeNamesUpperCase() throws SQLException {
+        assumeTrue(CommonTestOperations.getCharacterSet().isUnicode());
+
+        String tableName = "δεδομένα".toUpperCase();
+        String idColumn = "ідентичність".toUpperCase();
+        String embeddingColumn = "埋め込み".toUpperCase();
+        String textColumn = "טֶקסט".toUpperCase();
+        String metadataColumn = "البيانات الوصفية".toUpperCase();
+        try {
+            // Oracle Database supports non-ascii identifiers wrapped in double quotes.
+            OracleEmbeddingStore embeddingStore =
+                OracleEmbeddingStore.builder()
+                    .dataSource(getDataSource())
+                    .embeddingTable(EmbeddingTable.builder()
+                        .createOption(CREATE_OR_REPLACE)
+                        .name("\"" + tableName +"\"")
+                        .idColumn("\"" + idColumn + "\"")
+                        .embeddingColumn("\"" + embeddingColumn + "\"")
+                        .textColumn("\"" + textColumn + "\"")
+                        .metadataColumn("\"" + metadataColumn + "\"")
+                        .build())
+                    // Verify interactions with the CREATE INDEX command
+                    .vectorIndex(CREATE_OR_REPLACE)
+                    .build();
 
             assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
             verifyAddSearchAndRemove(embeddingStore);

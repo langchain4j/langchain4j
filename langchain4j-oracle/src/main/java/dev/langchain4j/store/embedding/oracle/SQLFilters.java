@@ -525,8 +525,10 @@ final class SQLFilters {
                 return JDBCType.FLOAT; // FLOAT with default precision is a 64-bit floating point number
             else if (object instanceof Integer)
                 return JDBCType.INTEGER;
-            else
+            else if (object instanceof Long)
                 return JDBCType.NUMERIC; // NUMERIC is an integer with 38 decimal digits
+            else
+                throw new RuntimeException("Unsupported numeric type.");
         }
         else {
             // Compare null, String, UUID, and any other object that Metadata supports in the future as VARCHAR objects.
