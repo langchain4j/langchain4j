@@ -68,7 +68,6 @@ class VertexAiGeminiChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).contains("Berlin");
@@ -158,7 +157,6 @@ class VertexAiGeminiChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();
@@ -186,7 +184,6 @@ class VertexAiGeminiChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).contains("Berlin");
@@ -341,7 +338,6 @@ class VertexAiGeminiChatModelIT {
         List<ChatMessage> allMessages = new ArrayList<>();
 
         UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
-        System.out.println("Question: " + weatherQuestion.text());
         allMessages.add(weatherQuestion);
 
         // when
@@ -364,7 +360,6 @@ class VertexAiGeminiChatModelIT {
         Response<AiMessage> weatherResponse = model.generate(allMessages);
 
         // then
-        System.out.println("Answer: " + weatherResponse.content().text());
         assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
     }
 
@@ -391,13 +386,10 @@ class VertexAiGeminiChatModelIT {
         List<ChatMessage> allMessages = new ArrayList<>();
 
         UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789?");
-        System.out.println("Question: " + inventoryQuestion.text());
         allMessages.add(inventoryQuestion);
 
         // when
         Response<AiMessage> messageResponse = model.generate(allMessages, stockInventoryToolSpec);
-
-        System.out.println("inventory response = " + messageResponse.content().text());
 
         // then
         assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
@@ -408,8 +400,6 @@ class VertexAiGeminiChatModelIT {
         String inventoryStock = executionRequests.stream()
             .map(ToolExecutionRequest::arguments)
             .collect(Collectors.joining(","));
-
-        System.out.println("inventoryStock = " + inventoryStock);
 
         assertThat(inventoryStock).containsIgnoringCase("ABC123");
         assertThat(inventoryStock).containsIgnoringCase("XYZ789");
@@ -423,8 +413,6 @@ class VertexAiGeminiChatModelIT {
             "{\"product_id\":\"XYZ789\", \"stock\": 5}"));
 
         messageResponse = model.generate(allMessages, stockInventoryToolSpec);
-
-        System.out.println("Final response = " + messageResponse.content().text());
 
         // then
         String text = messageResponse.content().text();
@@ -556,7 +544,6 @@ class VertexAiGeminiChatModelIT {
 
         @Tool("Get the status of a payment transaction identified by its transaction ID.")
         public String paymentStatus(@P("The ID of the payment transaction") String transactionId) {
-            System.out.println("PAYMENT STATUS FOR TRANSACTION " + transactionId + " CALLED");
             return "Transaction " + transactionId + " is " + DATASET.get(new Transaction(transactionId));
         }
     }
@@ -590,7 +577,6 @@ class VertexAiGeminiChatModelIT {
 
         // when
         String response = assistant.chat("What is the status of my payment transactions 001 and 002?");
-        System.out.println(response);
 
         // then
         assertThat(response).contains("001");
@@ -602,7 +588,6 @@ class VertexAiGeminiChatModelIT {
 
         // when
         response = assistant.chat("What is the status of transactions 003?");
-        System.out.println(response);
 
         // then
         assertThat(response).doesNotContain("001");
@@ -629,7 +614,6 @@ class VertexAiGeminiChatModelIT {
             "Why is the sky blue?");
 
         // then
-        System.out.println("Google Search powered response = " + resp);
         assertThat(resp).contains("scatter");
     }
 
@@ -719,7 +703,6 @@ class VertexAiGeminiChatModelIT {
         messages.add(UserMessage.from("Anna is a 23 year old artist from New York City. She's got a dog and a cat."));
 
         Response<AiMessage> response = model.generate(messages);
-        System.out.println("response = " + response.content().text());
 
         // then
         Artist artist = new Gson().fromJson(response.content().text(), Artist.class);

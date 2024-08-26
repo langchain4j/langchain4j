@@ -14,6 +14,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
@@ -83,8 +84,9 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
     }
 
     @BeforeEach
-    void setUp() {
+    void beforeEach() throws InterruptedException {
         clearStore();
+        Thread.sleep(2_000);
     }
 
     @Test
@@ -122,6 +124,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
     }
 
     @Test
+    @Disabled("no semantic ranker in a free Azure tier")
     void testAllTypesOfSearch() {
         String content1 = "This book is about politics";
         String content2 = "Cats sleeps a lot.";
@@ -261,6 +264,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
     }
 
     @Test
+    @Disabled("no semantic ranker in a free Azure tier")
     void testAddEmbeddingsAndRetrieveRelevantWithHybridAndReranking() {
         String content1 = "Albert Camus (7 November 1913 – 4 January 1960) was a French philosopher, author, dramatist, journalist, world federalist, and political activist. He was the recipient of the 1957 Nobel Prize in Literature at the age of 44, the second-youngest recipient in history. His works include The Stranger, The Plague, The Myth of Sisyphus, The Fall, and The Rebel.\n" +
                 "\n" +

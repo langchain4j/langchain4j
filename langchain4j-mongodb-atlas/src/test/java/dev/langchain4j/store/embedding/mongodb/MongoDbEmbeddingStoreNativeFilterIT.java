@@ -1,10 +1,6 @@
 package dev.langchain4j.store.embedding.mongodb;
 
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoClientSettings;
-import com.mongodb.MongoCredential;
-import com.mongodb.ServerApi;
-import com.mongodb.ServerApiVersion;
+import com.mongodb.*;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.model.Filters;
@@ -14,17 +10,22 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.SneakyThrows;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.google.common.collect.Sets;
 
+import java.time.Duration;
 import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 class MongoDbEmbeddingStoreNativeFilterIT {
@@ -62,6 +63,20 @@ class MongoDbEmbeddingStoreNativeFilterIT {
                         .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
                         .applyConnectionString(new ConnectionString(mongodb.getConnectionString()))
                         .build());
+    }
+
+    @BeforeEach
+    void beforeEach() {
+        // to avoid "cannot query search index while in state INITIAL_SYNC" error
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel.embed("dummy").content())
+                .maxResults(1)
+                .build();
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(60))
+                .pollDelay(Duration.ofSeconds(0))
+                .pollInterval(Duration.ofMillis(300))
+                .untilAsserted(() -> assertThatNoException().isThrownBy(() -> embeddingStore.search(embeddingSearchRequest)));
     }
 
     @AfterAll

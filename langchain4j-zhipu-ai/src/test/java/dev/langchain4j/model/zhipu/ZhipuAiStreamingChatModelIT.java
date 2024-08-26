@@ -377,7 +377,6 @@ public class ZhipuAiStreamingChatModelIT {
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         model.generate(multimodalChatMessagesWithImageData(), handler);
         Response<AiMessage> response = handler.get();
-        System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("parrot");
         assertThat(response.content().text()).endsWith("That's all!");

@@ -362,7 +362,6 @@ class VertexAiGeminiStreamingChatModelIT {
         List<ChatMessage> allMessages = new ArrayList<>();
 
         UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
-        System.out.println("Question: " + weatherQuestion.text());
         allMessages.add(weatherQuestion);
 
         // when
@@ -389,7 +388,6 @@ class VertexAiGeminiStreamingChatModelIT {
         Response<AiMessage> weatherResponse = handler.get();
 
         // then
-        System.out.println("Answer: " + weatherResponse.content().text());
         assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
     }
 
@@ -579,7 +577,6 @@ class VertexAiGeminiStreamingChatModelIT {
         StringBuilder accumulatedResponse = new StringBuilder();
         model.generate(messages, onNext(accumulatedResponse::append));
         String response = accumulatedResponse.toString();
-        System.out.println("response = " + response);
 
         // then
         Artist artist = new Gson().fromJson(response, Artist.class);

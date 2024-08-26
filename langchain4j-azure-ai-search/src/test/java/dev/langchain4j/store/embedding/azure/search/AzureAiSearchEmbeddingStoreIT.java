@@ -13,6 +13,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
@@ -52,6 +53,11 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
     @Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
+    }
+
+    @BeforeEach
+    void beforeEach() throws InterruptedException {
+        Thread.sleep(2_000);
     }
 
     @AfterEach

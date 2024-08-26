@@ -268,7 +268,6 @@ class AiServicesWithRagIT {
 
         // when
         String answer = assistant.answer(query);
-        System.out.println(answer);
 
         // then
         assertThat(answer).isNotBlank();
@@ -308,7 +307,6 @@ class AiServicesWithRagIT {
 
         // when
         String answer = assistant.answer(query);
-        System.out.println(answer);
 
         // then
         assertThat(answer).isNotBlank();

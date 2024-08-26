@@ -15,10 +15,14 @@ import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
@@ -96,6 +100,43 @@ public class StreamingAiServicesIT {
         }
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_callback_with_content(StreamingChatLanguageModel model) throws Exception {
+
+        List<Content> contents = new ArrayList<>();
+        contents.add(Content.from("This is additional content"));
+
+        RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
+        ChatMessage message = UserMessage.from("What is the capital of Germany?");
+
+        AugmentationResult result = AugmentationResult.builder()
+                .chatMessage(message)
+                .contents(contents)
+                .build();
+        when(retrievalAugmentor.augment(any())).thenReturn(result);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatLanguageModel(model)
+                .retrievalAugmentor(retrievalAugmentor)
+                .build();
+
+        StringBuilder answerBuilder = new StringBuilder();
+        CompletableFuture<List<Content>> futureContent = new CompletableFuture<>();
+
+        assistant.chat("What is the capital of Germany?")
+                .onNext(answerBuilder::append)
+                .onRetrieved(futureContent::complete)
+                .ignoreErrors()
+                .start();
+
+        List<Content> returnedContents = futureContent.get(30, SECONDS);
+
+        assertThat(returnedContents)
+        .hasSize(1)
+        .anySatisfy(c -> assertThat(c.textSegment().text()).isEqualTo("This is additional content"));
     }
 
     @ParameterizedTest

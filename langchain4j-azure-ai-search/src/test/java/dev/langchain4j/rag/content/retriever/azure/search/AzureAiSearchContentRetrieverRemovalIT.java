@@ -7,6 +7,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,11 @@ public class AzureAiSearchContentRetrieverRemovalIT extends EmbeddingStoreWithRe
     @Override
     protected EmbeddingModel embeddingModel() {
         return this.embeddingModel;
+    }
+
+    @BeforeEach
+    void beforeEach() throws InterruptedException {
+        Thread.sleep(2_000);
     }
 
     @AfterEach
