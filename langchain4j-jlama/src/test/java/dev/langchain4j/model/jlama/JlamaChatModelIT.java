@@ -41,7 +41,6 @@ public class JlamaChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(messages);
-        System.out.println(response);
 
         // then
         AiMessage aiMessage = response.content();

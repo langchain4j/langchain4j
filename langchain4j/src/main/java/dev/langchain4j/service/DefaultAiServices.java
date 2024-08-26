@@ -20,6 +20,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -161,7 +162,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         if (returnType == TokenStream.class) {
-                            return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
+                            List<Content> contents = augmentationResult != null ? augmentationResult.contents() : null;
+                            return new AiServiceTokenStream(messages, contents, context, memoryId); // TODO moderation
                         }
 
                         Response<AiMessage> response;

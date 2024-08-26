@@ -4,6 +4,7 @@ import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
@@ -265,16 +266,18 @@ class OpenAiChatModelIT {
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
+    static class Person {
+
+        String name;
+        String surname;
+    }
+
     @Test
     void should_generate_valid_json() {
 
-        //given
+        // given
         String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
                 "Before returning, tell me a joke."; // nudging it to say something additionally to json
-
-        String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
-
-        assertThat(model.generate(userMessage)).isNotEqualToIgnoringWhitespace(expectedJson);
 
         ChatLanguageModel modelGeneratingJson = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -282,6 +285,7 @@ class OpenAiChatModelIT {
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
                 .responseFormat("json_object")
+                .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -290,7 +294,9 @@ class OpenAiChatModelIT {
         String json = modelGeneratingJson.generate(userMessage);
 
         // then
-        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
+        Person person = Json.fromJson(json, Person.class);
+        assertThat(person.name).isEqualTo("Klaus");
+        assertThat(person.surname).isEqualTo("Heisler");
     }
 
     @Test
