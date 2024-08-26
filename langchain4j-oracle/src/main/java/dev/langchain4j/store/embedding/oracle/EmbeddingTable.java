@@ -97,14 +97,14 @@ public final class EmbeddingTable {
 
     /**
      * Creates a table configured by the {@link Builder} of this EmbeddingTable. No table is created if the Builder was
-     * configured with {@link CreateOption#CREATE_NONE}.
+     * configured with {@link CreateOption#DO_NOT_CREATE}.
      *
      * @param dataSource Data source that connects to an Oracle Database where the table is (possibly) created.
      *
      * @throws SQLException If an error prevents the table from being created.
      */
     void create(DataSource dataSource) throws SQLException {
-        if (createOption == CreateOption.CREATE_NONE)
+        if (createOption == CreateOption.DO_NOT_CREATE)
             return;
 
         try (Connection connection = dataSource.getConnection();
@@ -184,7 +184,7 @@ public final class EmbeddingTable {
     public static class Builder {
 
         // These fields are specified by method level JavaDocs
-        private CreateOption createOption = CreateOption.CREATE_NONE;
+        private CreateOption createOption = CreateOption.DO_NOT_CREATE;
         private String name;
         private String idColumn = "id";
         private String embeddingColumn = "embedding";
@@ -194,7 +194,7 @@ public final class EmbeddingTable {
         private Builder() {}
 
         /**
-         * Configures the option to create (or not create) a table. The default is {@link CreateOption#CREATE_NONE},
+         * Configures the option to create (or not create) a table. The default is {@link CreateOption#DO_NOT_CREATE},
          * which means that no attempt is made to create a table.
          *
          * @param createOption Option for creating the index. Not null.

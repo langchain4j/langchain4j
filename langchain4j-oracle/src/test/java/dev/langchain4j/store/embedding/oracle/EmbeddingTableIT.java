@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.oracle;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
@@ -26,7 +25,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 /**
  * Verifies {@link OracleEmbeddingStore.Builder} methods which configure the names of columns.
  */
-public class EmbeddingTableTest {
+public class EmbeddingTableIT {
 
     /**
      *  Verifies that {@link dev.langchain4j.store.embedding.oracle.OracleEmbeddingStore.Builder#build()} creates a
@@ -91,7 +90,7 @@ public class EmbeddingTableTest {
                                 .metadataColumn("\"" + metadataColumn + "\"")
                                 .build())
                         // CREATE INDEX fails with lower case Unicode names
-                        .vectorIndex(CREATE_NONE)
+                        .vectorIndex(DO_NOT_CREATE)
                         .build();
 
             assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
@@ -163,7 +162,7 @@ public class EmbeddingTableTest {
                 OracleEmbeddingStore.builder()
                         .dataSource(getDataSource())
                         .embeddingTable(EmbeddingTable.builder()
-                                .createOption(CREATE_NONE)
+                                .createOption(DO_NOT_CREATE)
                                 .name(tableName)
                                 .build())
                         .build()
