@@ -32,7 +32,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
     }
 
     protected void ensureStoreIsReady() {
-        awaitUntilAsserted(() -> assertThatNoException().isThrownBy(this::getAllEmbeddings));
     }
 
     protected void clearStore() {
