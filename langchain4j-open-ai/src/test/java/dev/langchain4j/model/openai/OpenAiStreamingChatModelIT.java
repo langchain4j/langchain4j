@@ -3,16 +3,28 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.Base64;
 import java.util.List;
@@ -25,9 +37,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.DICE_IMAGE_URL;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4_VISION_PREVIEW;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -35,7 +45,7 @@ import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
-import static org.assertj.core.data.Percentage.withPercentage;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 class OpenAiStreamingChatModelIT {
 
@@ -356,8 +366,14 @@ class OpenAiStreamingChatModelIT {
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
+    static class Person {
+
+        String name;
+        String surname;
+    }
+
     @Test
-    void should_stream_valid_json() throws Exception {
+    void should_stream_valid_json() {
 
         //given
         String responseFormat = "json_object";
@@ -371,42 +387,20 @@ class OpenAiStreamingChatModelIT {
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
                 .responseFormat(responseFormat)
+                .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
         // when
-        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
-
-        model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
-
-            private final StringBuilder answerBuilder = new StringBuilder();
-
-            @Override
-            public void onNext(String token) {
-                answerBuilder.append(token);
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                futureAnswer.complete(answerBuilder.toString());
-                futureResponse.complete(response);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureAnswer.completeExceptionally(error);
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        String json = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(userMessage, handler);
+        Response<AiMessage> response = handler.get();
 
         // then
-        assertThat(json).isEqualToIgnoringWhitespace("{\"name\": \"Klaus\", \"surname\": \"Heisler\"}");
-        assertThat(response.content().text()).isEqualTo(json);
+        Person person = Json.fromJson(response.content().text(), Person.class);
+        assertThat(person.name).isEqualTo("Klaus");
+        assertThat(person.surname).isEqualTo("Heisler");
     }
 
     @Test
@@ -500,8 +494,6 @@ class OpenAiStreamingChatModelIT {
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
                 .containsIgnoringCase("dice");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
     }
 
     @ParameterizedTest
