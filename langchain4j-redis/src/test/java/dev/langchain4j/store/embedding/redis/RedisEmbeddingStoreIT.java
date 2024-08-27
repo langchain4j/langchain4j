@@ -59,7 +59,7 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
                 .host(redis.getHost())
                 .port(redis.getFirstMappedPort())
                 .indexName(randomUUID())
-                .dimension(384)
+                .dimension(embeddingModel.dimension())
                 .metadataKeys(metadataMap.keySet())
                 .schemaFiledMap(schemaFieldMap)
                 .build();

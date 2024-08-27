@@ -42,7 +42,7 @@ class RedisSchema {
 
     @Builder.Default
     private VectorAlgorithm vectorAlgorithm = DEFAULT_VECTOR_ALGORITHM;
-    private int dimension;
+    private Integer dimension;
     @Builder.Default
     private MetricType metricType = DEFAULT_METRIC_TYPE;
 
@@ -66,14 +66,10 @@ class RedisSchema {
                 .build());
 
         if (metadataKeys != null) {
-            metadataKeys.forEach(metadataKey -> {
-                if (!schemaFieldMap.containsKey(metadataKey)) {
-                    throw new RuntimeException("Schema field " + metadataKey + " not found");
-                }
-            });
             for (String metadataKey : metadataKeys) {
                 SchemaField schemaField = schemaFieldMap.get(metadataKey);
-                fields.add(schemaField);
+                fields.add(Optional.ofNullable(schemaField)
+                        .orElse(TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0)));
             }
         }
         return fields.toArray(new SchemaField[0]);
