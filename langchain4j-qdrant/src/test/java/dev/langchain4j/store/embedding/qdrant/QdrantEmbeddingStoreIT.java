@@ -4,7 +4,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
 import io.qdrant.client.grpc.Collections.Distance;
@@ -20,7 +20,7 @@ import java.util.concurrent.ExecutionException;
 import static dev.langchain4j.internal.Utils.randomUUID;
 
 @Testcontainers
-class QdrantEmbeddingStoreIT extends EmbeddingStoreIT {
+class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
   private static String collectionName = "langchain4j-" + randomUUID();
   private static int dimension = 384;
@@ -29,7 +29,7 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreIT {
   private static QdrantEmbeddingStore embeddingStore;
 
   @Container
-  private static final QdrantContainer qdrant = new QdrantContainer("qdrant/qdrant:latest");
+  private static final QdrantContainer qdrant = new QdrantContainer("qdrant/qdrant:v1.11.1");
 
   EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
