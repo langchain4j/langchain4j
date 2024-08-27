@@ -75,7 +75,6 @@ class AzureOpenAiLanguageModelIT {
         // when
         String prompt = "Describe the capital of France in 100 words: ";
         Response<String> response = model.generate(prompt);
-        System.out.println(response.toString());
 
         // then
         assertThat(response.finishReason()).isEqualTo(LENGTH);

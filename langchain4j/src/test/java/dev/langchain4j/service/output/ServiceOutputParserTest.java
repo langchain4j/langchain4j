@@ -1,10 +1,13 @@
 package dev.langchain4j.service.output;
 
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.stubbing.Answer;
 
 import java.io.Serializable;
@@ -18,6 +21,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -89,6 +93,79 @@ class ServiceOutputParserTest {
         // Then
         Object capturedOutputParser = capturedParserReference.get().get();
         assertInstanceOf(expectedOutputParserType, capturedOutputParser);
+    }
+
+    /********************************************************************************************
+     * Json output parse tests
+     ********************************************************************************************/
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "{\"key\":\"value\"}",
+        "```\n{\"key\":\"value\"}\n```",
+        "```json\n{\"key\":\"value\"}\n```",
+        "Sure, here is your JSON:\n```\n{\"key\":\"value\"}\n```\nLet me know if you need more help."
+    })
+    void makeSureJsonBlockIsExtractedBeforeParse(String json) {
+        // Given
+        AiMessage aiMessage = AiMessage.aiMessage(json);
+        Response<AiMessage> responseStub = Response.from(aiMessage);
+        sut = new ServiceOutputParser();
+
+        // When
+        Object result = sut.parse(responseStub, KeyProperty.class);
+
+        // Then
+        assertInstanceOf(KeyProperty.class, result);
+
+        KeyProperty keyProperty = (KeyProperty) result;
+        assertThat(keyProperty.key).isEqualTo("value");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "{\"keyProperty\" : {\"key\" : \"value\"}}",
+        "```\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```",
+        "```json\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```",
+        "Sure, here is your JSON:\n```\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```\nLet me know if you need more help."
+    })
+    void makeSureNestedJsonBlockIsExtractedBeforeParse(String json) {
+        // Given
+        AiMessage aiMessage = AiMessage.aiMessage(json);
+        Response<AiMessage> responseStub = Response.from(aiMessage);
+        sut = new ServiceOutputParser();
+
+        // When
+        Object result = sut.parse(responseStub, KeyPropertyWrapper.class);
+
+        // Then
+        assertInstanceOf(KeyPropertyWrapper.class, result);
+
+        KeyPropertyWrapper keyProperty = (KeyPropertyWrapper) result;
+        assertThat(keyProperty.keyProperty.key).isEqualTo("value");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "\"key\":\"value\"}",
+        "{\"key\":\"value\""
+    })
+    void illegalJsonBlockNotExtractedAndFailsParse(String json) {
+        // Given
+        AiMessage aiMessage = AiMessage.aiMessage(json);
+        Response<AiMessage> responseStub = Response.from(aiMessage);
+        sut = new ServiceOutputParser();
+        
+        // When / Then
+        assertThatExceptionOfType(JsonSyntaxException.class).isThrownBy(() -> sut.parse(responseStub, KeyProperty.class));
+    }
+
+    static class KeyPropertyWrapper {
+        KeyProperty keyProperty;
+    }
+
+    static class KeyProperty {
+        String key;
     }
 
     /********************************************************************************************

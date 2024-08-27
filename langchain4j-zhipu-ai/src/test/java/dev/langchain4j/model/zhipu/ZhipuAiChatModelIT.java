@@ -321,7 +321,6 @@ class ZhipuAiChatModelIT {
                 .build();
 
         Response<AiMessage> response = model.generate(multimodalChatMessagesWithImageData());
-        System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("parrot");
         assertThat(response.content().text()).endsWith("That's all!");

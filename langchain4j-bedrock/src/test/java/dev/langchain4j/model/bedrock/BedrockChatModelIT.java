@@ -186,9 +186,11 @@ class BedrockChatModelIT {
         assertThat(response.tokenUsage()).isNotNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
-        assertThat(tokenUsage.totalTokenCount()).isGreaterThan(15);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
         assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
 

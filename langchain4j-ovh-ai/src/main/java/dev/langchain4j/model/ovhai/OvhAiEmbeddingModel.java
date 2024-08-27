@@ -1,12 +1,5 @@
 package dev.langchain4j.model.ovhai;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static java.util.stream.Collectors.toList;
-
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -15,6 +8,13 @@ import dev.langchain4j.model.ovhai.internal.api.EmbeddingRequest;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingResponse;
 import dev.langchain4j.model.ovhai.internal.client.DefaultOvhAiClient;
 import lombok.Builder;
+
+import java.time.Duration;
+import java.util.List;
+
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an OVHcloud embedding model. See models documentation here:
@@ -70,18 +70,18 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        return Response.from(textSegments
+        EmbeddingRequest request = EmbeddingRequest
+                .builder()
+                .input(textSegments.stream().map(TextSegment::text).collect(toList()))
+                .build();
+
+        EmbeddingResponse response = withRetry(() -> client.embed((request)), maxRetries);
+
+        List<Embedding> embeddings = response.getEmbeddings()
                 .stream()
-                .map(segment ->  withRetry(() -> client.embed(
-                        EmbeddingRequest
-                                .builder()
-                                .input(Collections.singletonList(segment.text()))
-                                .build()), maxRetries))
-                .map(EmbeddingResponse::getEmbeddings)
-                // Until the endpoint supports multi segments the first element is the only
-                // response.
-                .map(em -> em.get(0))
-                .map(Embedding::new)
-                .collect(toList()));
+                .map(Embedding::from)
+                .collect(toList());
+
+        return Response.from(embeddings);
     }
 }
