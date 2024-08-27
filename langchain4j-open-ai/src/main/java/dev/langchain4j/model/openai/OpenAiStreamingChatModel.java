@@ -5,6 +5,7 @@ import dev.ai4j.openai4j.chat.ChatCompletionChoice;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.ai4j.openai4j.chat.Delta;
+import dev.ai4j.openai4j.chat.StreamOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -145,6 +146,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .stream(true)
+                .streamOptions(new StreamOptions(true))
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
                 .temperature(temperature)
