@@ -528,7 +528,7 @@ final class SQLFilters {
             else if (object instanceof Long)
                 return JDBCType.NUMERIC; // NUMERIC is an integer with 38 decimal digits
             else
-                throw new RuntimeException("Unsupported numeric type.");
+                throw new RuntimeException("Unsupported type: " + object.getClass());
         }
         else {
             // Compare null, String, UUID, and any other object that Metadata supports in the future as VARCHAR objects.
