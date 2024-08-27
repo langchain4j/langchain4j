@@ -112,12 +112,7 @@ Some models can even call multiple tools at once, for example,
 
 :::note
 Please note that not all models support tools.
-Currently, the following models have tool support:
-- `OpenAiChatModel`
-- `AzureOpenAiChatModel`
-- `MistralAiChatModel`
-- `LocalAiChatModel`
-- `QianfanChatModel`
+To see which models support tools, refer to the "Tools" column on [this](https://docs.langchain4j.dev/integrations/language-models/) page.
 :::
 
 :::note
