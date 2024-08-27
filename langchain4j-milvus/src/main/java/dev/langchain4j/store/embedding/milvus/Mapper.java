@@ -32,6 +32,10 @@ import static java.util.stream.Collectors.toList;
 
 class Mapper {
 
+    private static final Gson GSON = new Gson();
+    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
+    }.getType();
+
     static List<List<Float>> toVectors(List<Embedding> embeddings) {
         return embeddings.stream()
                 .map(Embedding::vectorAsList)
@@ -42,10 +46,9 @@ class Mapper {
         return isNullOrEmpty(textSegments) ? generateEmptyScalars(size) : textSegmentsToScalars(textSegments);
     }
 
-   static List<JsonObject> toMetadataJsons(List<TextSegment> textSegments, int size) {
-        Gson gson = new Gson();
+    static List<JsonObject> toMetadataJsons(List<TextSegment> textSegments, int size) {
         return isNullOrEmpty(textSegments) ? generateEmptyJsons(size) : textSegments.stream()
-                .map(segment -> gson.toJsonTree(segment.metadata().toMap()).getAsJsonObject())
+                .map(segment -> GSON.toJsonTree(segment.metadata().toMap()).getAsJsonObject())
                 .collect(toList());
     }
 
@@ -106,9 +109,7 @@ class Mapper {
     }
 
     private static Metadata toMetadata(JsonObject metadata) {
-        Gson gson = new Gson();
-        Type type = new TypeToken<Map<String, Object>>() {}.getType();
-        Map<String, Object> metadataMap = gson.fromJson(metadata, type);
+        Map<String, Object> metadataMap = GSON.fromJson(metadata, MAP_TYPE);
         metadataMap.forEach((key, value) -> {
             if (value instanceof BigDecimal) {
                 // It is safe to convert. No information is lost, the "biggest" type allowed in Metadata is double.
