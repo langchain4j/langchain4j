@@ -37,7 +37,7 @@ public class InternalQianfanHelper {
         return Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toOpenAiParameters(toolSpecification.parameters()))
+                .parameters(toOpenAiParameters(toolSpecification.toolParameters()))
                 .build();
     }
 

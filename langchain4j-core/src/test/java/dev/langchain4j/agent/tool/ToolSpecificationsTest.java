@@ -228,7 +228,7 @@ class ToolSpecificationsTest implements WithAssertions {
 
         assertThat(ts.name()).isEqualTo("func_name");
         assertThat(ts.description()).isEmpty();
-        assertThat(ts.parameters()).isNull();
+        assertThat(ts.toolParameters()).isNull();
     }
 
     @Test
@@ -239,9 +239,9 @@ class ToolSpecificationsTest implements WithAssertions {
 
         assertThat(ts.name()).isEqualTo("f");
         assertThat(ts.description()).isEqualTo("line1\nline2");
-        assertThat(ts.parameters().type()).isEqualTo("object");
+        assertThat(ts.toolParameters().type()).isEqualTo("object");
 
-        Map<String, Map<String, Object>> properties = ts.parameters().properties();
+        Map<String, Map<String, Object>> properties = ts.toolParameters().properties();
 
         assertThat(properties).hasSize(32);
         assertThat(properties)
@@ -289,7 +289,7 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(properties.get("arg28")).containsEntry("type", "string");
         assertThat(properties.get("arg28").get("enum")).isEqualTo(asList("A", "B", "C"));
 
-        assertThat(ts.parameters().required())
+        assertThat(ts.toolParameters().required())
                 .containsExactly("arg0",
                         "arg1",
                         "arg2",

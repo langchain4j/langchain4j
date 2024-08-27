@@ -331,7 +331,7 @@ class QwenHelper {
         FunctionDefinition functionDefinition = FunctionDefinition.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toParameters(toolSpecification.parameters()))
+                .parameters(toParameters(toolSpecification.toolParameters()))
                 .build();
         return ToolFunction.builder().function(functionDefinition).build();
     }

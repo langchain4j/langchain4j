@@ -114,7 +114,7 @@ class FunctionCallHelper {
 
             Schema.Builder schema = Schema.newBuilder().setType(Type.OBJECT);
 
-            ToolParameters parameters = toolSpecification.parameters();
+            ToolParameters parameters = toolSpecification.toolParameters();
             if (parameters != null) {
                 for (String paramName : parameters.required()) {
                     schema.addRequired(paramName);

@@ -10,10 +10,12 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
@@ -29,14 +31,23 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.type;
+import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.*;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
@@ -46,7 +57,9 @@ import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesWithToolsIT {
@@ -96,6 +109,8 @@ class AiServicesWithToolsIT {
                         .build()
         );
     }
+
+    // TODO cover all cases similar to AiServicesJsonSchemaIT and AiServicesJsonSchemaWithDescriptionsIT
 
     interface Assistant {
 
@@ -523,15 +538,23 @@ class AiServicesWithToolsIT {
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("currentTemperature")
-                .description("") // TODO should be null?
                 .addParameter("arg0", STRING)
                 .addParameter("arg1", STRING, from("enum", asList("CELSIUS", "fahrenheit", "Kelvin")))
+                .parameters(JsonObjectSchema.builder()
+                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                            put("arg0", JSON_STRING_SCHEMA);
+                            put("arg1", JsonEnumSchema.builder()
+                                    .enumValues("CELSIUS", "fahrenheit", "Kelvin")
+                                    .build());
+                        }})
+                        .required("arg0", "arg1")
+                        .build())
                 .build();
 
         @Tool
         int currentTemperature(String city, TemperatureUnit unit) {
             System.out.printf("called currentTemperature(%s, %s)%n", city, unit);
-            return 42;
+            return 37;
         }
     }
 
@@ -560,7 +583,7 @@ class AiServicesWithToolsIT {
         Response<AiMessage> response = assistant.chat("What is the temperature in Munich now, in kelvin?");
 
         // then
-        assertThat(response.content().text()).contains("42");
+        assertThat(response.content().text()).contains("37");
 
         verify(weatherService).currentTemperature("Munich", Kelvin);
         verifyNoMoreInteractions(weatherService);

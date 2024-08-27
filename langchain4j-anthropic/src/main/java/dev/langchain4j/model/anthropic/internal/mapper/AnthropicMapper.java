@@ -178,7 +178,7 @@ public class AnthropicMapper {
     }
 
     public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification) {
-        ToolParameters parameters = toolSpecification.parameters();
+        ToolParameters parameters = toolSpecification.toolParameters();
         return AnthropicTool.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())

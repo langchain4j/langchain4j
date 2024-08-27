@@ -7,13 +7,8 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import okhttp3.Headers;
 
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -157,7 +152,7 @@ public class MistralAiMapper {
         MistralAiFunction function = MistralAiFunction.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toMistralAiParameters(toolSpecification.parameters()))
+                .parameters(toMistralAiParameters(toolSpecification.toolParameters()))
                 .build();
         return MistralAiTool.from(function);
     }

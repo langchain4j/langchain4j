@@ -201,7 +201,7 @@ public class InternalOpenAiHelper {
         Function.Builder functionBuilder = Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toOpenAiParameters(toolSpecification.parameters(), strict));
+                .parameters(toOpenAiParameters(toolSpecification, strict));
         if (strict) {
             functionBuilder.strict(true);
         }
@@ -227,12 +227,32 @@ public class InternalOpenAiHelper {
         return Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toOpenAiParameters(toolSpecification.parameters(), false))
+                .parameters(toOpenAiParameters(toolSpecification, false))
                 .build();
     }
 
-    private static dev.ai4j.openai4j.chat.JsonObjectSchema toOpenAiParameters(ToolParameters toolParameters, boolean strict) {
-        if (toolParameters == null) {
+    private static dev.ai4j.openai4j.chat.JsonObjectSchema toOpenAiParameters(ToolSpecification toolSpecification, boolean strict) {
+
+        JsonObjectSchema parameters = toolSpecification.parameters(); // TODO TODO TODO TODO TODO TODO TODO TODO
+        if (parameters != null) {
+            dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
+                    .properties(toOpenAiProperties2(parameters.properties(), strict))
+                    .required(parameters.required());
+            if (strict) {
+                builder
+                        // when strict, all fields must be required:
+                        // https://platform.openai.com/docs/guides/structured-outputs/all-fields-must-be-required
+                        .required(new ArrayList<>(parameters.properties().keySet()))
+                        // when strict, additionalProperties must be false:
+                        // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects
+                        .additionalProperties(false);
+            }
+            return builder.build();
+        }
+
+        ToolParameters toolParameters = toolSpecification.toolParameters();
+        if (toolParameters == null) { // TODO
+            // TODO
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder();
             if (strict) {
                 // when strict, additionalProperties must be false:
@@ -255,6 +275,75 @@ public class InternalOpenAiHelper {
                     .additionalProperties(false);
         }
         return builder.build();
+    }
+
+    private static Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> toOpenAiProperties2( // TODO name
+                                                                                              Map<String, JsonSchemaElement> properties,
+                                                                                              boolean strict) {
+        Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
+        properties.forEach((key, value) ->
+                openAiProperties.put(key, toOpenAiJsonSchemaElement(value, strict)));
+        return openAiProperties;
+    }
+
+    private static dev.ai4j.openai4j.chat.JsonSchemaElement toOpenAiJsonSchemaElement(
+            JsonSchemaElement jsonSchemaElement,
+            boolean strict) {
+
+        if (jsonSchemaElement instanceof JsonObjectSchema) {
+            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
+            dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
+                    .description(jsonObjectSchema.description())
+                    .properties(toOpenAiProperties2(jsonObjectSchema.properties(), strict))
+                    .additionalProperties(jsonObjectSchema.additionalProperties());
+            if (jsonObjectSchema.required() != null) {
+                builder.required(jsonObjectSchema.required());
+            }
+            if (strict) {
+                builder
+                        // when strict, all fields must be required:
+                        // https://platform.openai.com/docs/guides/structured-outputs/all-fields-must-be-required
+                        .required(new ArrayList<>(jsonObjectSchema.properties().keySet()))
+                        // when strict, additionalProperties must be false:
+                        // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects
+                        .additionalProperties(false);
+            }
+            return builder.build();
+        } else if (jsonSchemaElement instanceof JsonArraySchema) {
+            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchemaElement;
+            return dev.ai4j.openai4j.chat.JsonArraySchema.builder()
+                    .description(jsonArraySchema.description())
+                    .items(toOpenAiJsonSchemaElement(jsonArraySchema.items(), strict))
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
+            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchemaElement;
+            return dev.ai4j.openai4j.chat.JsonEnumSchema.builder()
+                    .description(jsonEnumSchema.description())
+                    .enumValues(jsonEnumSchema.enumValues())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonStringSchema) {
+            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchemaElement;
+            return dev.ai4j.openai4j.chat.JsonStringSchema.builder()
+                    .description(jsonStringSchema.description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
+            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchemaElement;
+            return dev.ai4j.openai4j.chat.JsonIntegerSchema.builder()
+                    .description(jsonIntegerSchema.description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
+            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
+            return dev.ai4j.openai4j.chat.JsonNumberSchema.builder()
+                    .description(jsonNumberSchema.description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
+            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
+            return dev.ai4j.openai4j.chat.JsonBooleanSchema.builder()
+                    .description(jsonBooleanSchema.description())
+                    .build();
+        } else {
+            throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
+        }
     }
 
     private static Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> toOpenAiProperties(Map<String, ?> properties, boolean strict) {

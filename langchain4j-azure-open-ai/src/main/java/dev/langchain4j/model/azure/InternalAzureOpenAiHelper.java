@@ -207,12 +207,12 @@ class InternalAzureOpenAiHelper {
     private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
-        functionDefinition.setParameters(toOpenAiParameters(toolSpecification.parameters()));
+        functionDefinition.setParameters(toOpenAiParameters(toolSpecification.toolParameters()));
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
     public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toOpenAiParameters(toolThatMustBeExecuted.parameters()).toString());
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toOpenAiParameters(toolThatMustBeExecuted.toolParameters()).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
         return BinaryData.fromObject(toolToCall);
     }

@@ -20,7 +20,7 @@ class ToolSpecificationTest implements WithAssertions {
 
         assertThat(ts.name()).isEqualTo("name");
         assertThat(ts.description()).isEqualTo("description");
-        assertThat(ts.parameters().type()).isEqualTo("type");
+        assertThat(ts.toolParameters().type()).isEqualTo("type");
     }
 
     @Test
@@ -35,15 +35,15 @@ class ToolSpecificationTest implements WithAssertions {
 
         assertThat(ts.name()).isEqualTo("name");
         assertThat(ts.description()).isEqualTo("description");
-        assertThat(ts.parameters().type()).isEqualTo("object");
-        assertThat(ts.parameters().properties().get("req"))
+        assertThat(ts.toolParameters().type()).isEqualTo("object");
+        assertThat(ts.toolParameters().properties().get("req"))
                 .containsEntry("type", "boolean");
-        assertThat(ts.parameters().properties().get("foo"))
+        assertThat(ts.toolParameters().properties().get("foo"))
                 .containsEntry("type", "string")
                 .containsEntry("description", "description");
-        assertThat(ts.parameters().properties().get("bar"))
+        assertThat(ts.toolParameters().properties().get("bar"))
                 .containsEntry("type", "integer");
-        assertThat(ts.parameters().required()).containsOnly("req");
+        assertThat(ts.toolParameters().required()).containsOnly("req");
     }
 
     @Test

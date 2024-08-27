@@ -11,7 +11,6 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
 @Experimental
@@ -19,13 +18,13 @@ public class JsonObjectSchema implements JsonSchemaElement {
 
     private final String description;
     private final Map<String, JsonSchemaElement> properties;
-    private final List<String> required;
+    private final List<String> required; // TODO Collection?
     @SerializedName("additionalProperties")
     private final Boolean additionalProperties;
 
     public JsonObjectSchema(Builder builder) {
         this.description = builder.description;
-        this.properties = new LinkedHashMap<>(ensureNotEmpty(builder.properties, "properties"));
+        this.properties = copyIfNotNull(builder.properties);
         this.required = copyIfNotNull(builder.required);
         this.additionalProperties = builder.additionalProperties;
     }

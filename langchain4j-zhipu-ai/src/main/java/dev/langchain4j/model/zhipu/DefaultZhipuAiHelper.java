@@ -54,7 +54,7 @@ class DefaultZhipuAiHelper {
         return Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toFunctionParameters(toolSpecification.parameters()))
+                .parameters(toFunctionParameters(toolSpecification.toolParameters()))
                 .build();
     }
 

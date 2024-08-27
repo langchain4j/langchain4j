@@ -1,5 +1,25 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.output.structured.Description;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.BOOLEAN;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
@@ -11,28 +31,14 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.objectItems;
-import static dev.langchain4j.internal.TypeUtils.*;
+import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
+import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
+import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-
-import dev.langchain4j.model.output.structured.Description;
-
+import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.jsonSchemaElement;
 import static java.lang.String.format;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
 
 /**
  * Utility methods for {@link ToolSpecification}s.
@@ -95,29 +101,55 @@ public class ToolSpecifications {
         Tool annotation = method.getAnnotation(Tool.class);
 
         String name = isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-        String description = String.join("\n", annotation.value()); // TODO provide null instead of "" ?
+
+        String description = String.join("\n", annotation.value());
+        if (description.isEmpty()) {
+            description = null;
+        }
 
         ToolSpecification.Builder builder = ToolSpecification.builder()
                 .name(name)
                 .description(description);
+
+        Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
+        List<String> required = new ArrayList<>();
 
         for (Parameter parameter : method.getParameters()) {
             if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
                 continue;
             }
 
-            boolean required = Optional.ofNullable(parameter.getAnnotation(P.class))
+            boolean isRequired = Optional.ofNullable(parameter.getAnnotation(P.class))
                     .map(P::required)
                     .orElse(true);
 
-            if (required) {
+            if (isRequired) {
+                required.add(parameter.getName());
+            }
+            properties.put(parameter.getName(), toJsonSchemaElement(parameter));
+
+            if (isRequired) {
                 builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
             } else {
                 builder.addOptionalParameter(parameter.getName(), toJsonSchemaProperties(parameter));
             }
         }
 
-        return builder.build();
+        JsonObjectSchema parameters = JsonObjectSchema.builder()
+                .properties(properties)
+                .required(required)
+                .build();
+
+        return builder
+                .parameters(parameters)
+                .build();
+    }
+
+    private static JsonSchemaElement toJsonSchemaElement(Parameter parameter) {
+        P annotation = parameter.getAnnotation(P.class);
+        String description = annotation == null ? null : annotation.value();
+        return jsonSchemaElement(parameter.getType(), parameter.getParameterizedType(), description);
+        // TODO review all current logic below
     }
 
     /**
