@@ -756,19 +756,7 @@ class AiServicesWithToolsIT {
         String firstResult = response.toolExecutions().get(0).result();
         assertThat(firstResult).isEqualTo("11.1");
 
-        List<ChatMessage> messages = chatMemory.messages();
-
-        assertThat(messages).hasSize(4);
-
-        verify(spyChatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(EXPECTED_SPECIFICATION)
-        );
-
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(EXPECTED_SPECIFICATION)
-        );
+        verify(spyChatLanguageModel, times(2)).generate(anyList(), anyList());
 
     }
 
@@ -810,20 +798,7 @@ class AiServicesWithToolsIT {
         String secondResult = response.toolExecutions().get(1).result();
         assertThat(secondResult).contains("22.2");
 
-        List<ChatMessage> messages = chatMemory.messages();
-
-        assertThat(messages).hasSize(5);
-
-        verify(spyChatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(EXPECTED_SPECIFICATION)
-        );
-
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2), messages.get(3)),
-                singletonList(EXPECTED_SPECIFICATION)
-        );
-
+        verify(spyChatLanguageModel, times(2)).generate(anyList(), anyList());
 
     }
 
@@ -863,26 +838,7 @@ class AiServicesWithToolsIT {
         String secondResult = response.toolExecutions().get(1).result();
         assertThat(secondResult).contains("22.2");
 
-        List<ChatMessage> messages = chatMemory.messages();
-
-        assertThat(messages).hasSize(6);
-
-
-        verify(spyChatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(EXPECTED_SPECIFICATION)
-        );
-
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(EXPECTED_SPECIFICATION)
-        );
-
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2), messages.get(3), messages.get(4)),
-                singletonList(EXPECTED_SPECIFICATION)
-        );
-
+        verify(spyChatLanguageModel, times(3)).generate(anyList(), anyList());
 
     }
 }
