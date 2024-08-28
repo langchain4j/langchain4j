@@ -7,6 +7,8 @@ import static dev.langchain4j.internal.Utils.quoted;
 /**
  * Represents the parameters of a tool.
  */
+// TODO can be deprecated only when all models support JsonObjectSchema mapping
+@Deprecated // TODO what to use instead?
 public class ToolParameters {
 
     private final String type;
@@ -87,6 +89,7 @@ public class ToolParameters {
      * ToolParameters builder static inner class.
      * @return a {@link Builder}.
      */
+    @Deprecated // TODO what to use instead?
     public static Builder builder() {
         return new Builder();
     }
@@ -110,6 +113,7 @@ public class ToolParameters {
          * @param type the {@code type}
          * @return the {@code Builder}.
          */
+        @Deprecated // TODO what to use instead?
         public Builder type(String type) {
             this.type = type;
             return this;
@@ -120,6 +124,7 @@ public class ToolParameters {
          * @param properties the {@code properties}
          * @return the {@code Builder}.
          */
+        @Deprecated // TODO what to use instead?
         public Builder properties(Map<String, Map<String, Object>> properties) {
             this.properties = properties;
             return this;
@@ -130,6 +135,7 @@ public class ToolParameters {
          * @param required the {@code required}
          * @return the {@code Builder}.
          */
+        @Deprecated // TODO what to use instead?
         public Builder required(List<String> required) {
             this.required = required;
             return this;
@@ -139,6 +145,7 @@ public class ToolParameters {
          * Returns a {@code ToolParameters} built from the parameters previously set.
          * @return a {@code ToolParameters} built with parameters of this {@code ToolParameters.Builder}
          */
+        @Deprecated // TODO what to use instead?
         public ToolParameters build() {
             return new ToolParameters(this);
         }

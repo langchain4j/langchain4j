@@ -233,10 +233,10 @@ public class InternalOpenAiHelper {
 
     private static dev.ai4j.openai4j.chat.JsonObjectSchema toOpenAiParameters(ToolSpecification toolSpecification, boolean strict) {
 
-        JsonObjectSchema parameters = toolSpecification.parameters(); // TODO TODO TODO TODO TODO TODO TODO TODO
+        JsonObjectSchema parameters = toolSpecification.parameters();
         if (parameters != null) {
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
-                    .properties(toOpenAiProperties2(parameters.properties(), strict))
+                    .properties(toOpenAiProperties(parameters.properties(), strict))
                     .required(parameters.required());
             if (strict) {
                 builder
@@ -250,9 +250,10 @@ public class InternalOpenAiHelper {
             return builder.build();
         }
 
+        // keeping old logic with ToolParameters for backward compatibility
+
         ToolParameters toolParameters = toolSpecification.toolParameters();
         if (toolParameters == null) { // TODO
-            // TODO
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder();
             if (strict) {
                 // when strict, additionalProperties must be false:
@@ -263,7 +264,7 @@ public class InternalOpenAiHelper {
         }
 
         dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
-                .properties(toOpenAiProperties(toolParameters.properties(), strict))
+                .properties(toOpenAiPropertiesOld(toolParameters.properties(), strict))
                 .required(toolParameters.required());
         if (strict) {
             builder
@@ -277,9 +278,9 @@ public class InternalOpenAiHelper {
         return builder.build();
     }
 
-    private static Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> toOpenAiProperties2( // TODO name
-                                                                                              Map<String, JsonSchemaElement> properties,
-                                                                                              boolean strict) {
+    private static Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> toOpenAiProperties(
+            Map<String, JsonSchemaElement> properties,
+            boolean strict) {
         Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
         properties.forEach((key, value) ->
                 openAiProperties.put(key, toOpenAiJsonSchemaElement(value, strict)));
@@ -294,7 +295,7 @@ public class InternalOpenAiHelper {
             JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
                     .description(jsonObjectSchema.description())
-                    .properties(toOpenAiProperties2(jsonObjectSchema.properties(), strict))
+                    .properties(toOpenAiProperties(jsonObjectSchema.properties(), strict))
                     .additionalProperties(jsonObjectSchema.additionalProperties());
             if (jsonObjectSchema.required() != null) {
                 builder.required(jsonObjectSchema.required());
@@ -346,7 +347,7 @@ public class InternalOpenAiHelper {
         }
     }
 
-    private static Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> toOpenAiProperties(Map<String, ?> properties, boolean strict) {
+    private static Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> toOpenAiPropertiesOld(Map<String, ?> properties, boolean strict) {
         Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
         properties.forEach((key, value) ->
                 openAiProperties.put(key, toOpenAiJsonSchemaElement((Map<String, ?>) value, strict)));
@@ -354,14 +355,14 @@ public class InternalOpenAiHelper {
     }
 
     private static dev.ai4j.openai4j.chat.JsonSchemaElement toOpenAiJsonSchemaElement(Map<String, ?> properties, boolean strict) {
-        // TODO rewrite when JsonSchemaElement will be used for ToolSpecification.properties
         Object type = properties.get("type");
         String description = (String) properties.get("description");
+        // TODO is this needed now?
         if ("object".equals(type)) {
             List<String> required = (List<String>) properties.get("required");
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
                     .description(description)
-                    .properties(toOpenAiProperties((Map<String, ?>) properties.get("properties"), strict));
+                    .properties(toOpenAiPropertiesOld((Map<String, ?>) properties.get("properties"), strict));
             if (required != null) {
                 builder.required(required);
             }

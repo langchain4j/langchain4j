@@ -18,8 +18,9 @@ public class ToolSpecification { // TODO new type?
 
     private final String name;
     private final String description;
-    private final ToolParameters toolParameters;
     private final JsonObjectSchema parameters;
+    @Deprecated
+    private final ToolParameters toolParameters;
 
     /**
      * Creates a {@link ToolSpecification} from a {@link Builder}.
@@ -29,8 +30,8 @@ public class ToolSpecification { // TODO new type?
     private ToolSpecification(Builder builder) {
         this.name = builder.name;
         this.description = builder.description;
-        this.toolParameters = builder.toolParameters;
         this.parameters = builder.parameters;
+        this.toolParameters = builder.toolParameters;
     }
 
     /**
@@ -51,17 +52,18 @@ public class ToolSpecification { // TODO new type?
         return description;
     }
 
+    public JsonObjectSchema parameters() { // TODO
+        return parameters;
+    }
+
     /**
      * Returns the parameters of the tool.
      *
      * @return the parameters of the tool.
      */
+    @Deprecated
     public ToolParameters toolParameters() {
         return toolParameters;
-    }
-
-    public JsonObjectSchema parameters() { // TODO
-        return parameters;
     }
 
     @Override
@@ -74,8 +76,8 @@ public class ToolSpecification { // TODO new type?
     private boolean equalTo(ToolSpecification another) {
         return Objects.equals(name, another.name)
                 && Objects.equals(description, another.description)
-                && Objects.equals(toolParameters, another.toolParameters)
-                && Objects.equals(parameters, another.parameters);
+                && Objects.equals(parameters, another.parameters)
+                && Objects.equals(toolParameters, another.toolParameters);
     }
 
     @Override
@@ -83,8 +85,8 @@ public class ToolSpecification { // TODO new type?
         int h = 5381;
         h += (h << 5) + Objects.hashCode(name);
         h += (h << 5) + Objects.hashCode(description);
-        h += (h << 5) + Objects.hashCode(toolParameters);
         h += (h << 5) + Objects.hashCode(parameters);
+        h += (h << 5) + Objects.hashCode(toolParameters);
         return h;
     }
 
@@ -93,8 +95,8 @@ public class ToolSpecification { // TODO new type?
         return "ToolSpecification {"
                 + " name = " + quoted(name)
                 + ", description = " + quoted(description)
-                + ", toolParameters = " + toolParameters
                 + ", parameters = " + parameters
+                + ", toolParameters = " + toolParameters
                 + " }";
     }
 
@@ -114,8 +116,9 @@ public class ToolSpecification { // TODO new type?
 
         private String name;
         private String description;
-        private ToolParameters toolParameters;
         private JsonObjectSchema parameters;
+        @Deprecated
+        private ToolParameters toolParameters;
 
         /**
          * Creates a {@link Builder}.

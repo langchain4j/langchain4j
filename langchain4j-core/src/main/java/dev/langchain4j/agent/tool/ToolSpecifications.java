@@ -35,7 +35,7 @@ import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
 import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
 import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.jsonSchemaElement;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.jsonSchemaElementFrom;
 import static java.lang.String.format;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
@@ -123,10 +123,10 @@ public class ToolSpecifications {
                     .map(P::required)
                     .orElse(true);
 
+            properties.put(parameter.getName(), toJsonSchemaElement(parameter));
             if (isRequired) {
                 required.add(parameter.getName());
             }
-            properties.put(parameter.getName(), toJsonSchemaElement(parameter));
 
             if (isRequired) {
                 builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
@@ -148,8 +148,7 @@ public class ToolSpecifications {
     private static JsonSchemaElement toJsonSchemaElement(Parameter parameter) {
         P annotation = parameter.getAnnotation(P.class);
         String description = annotation == null ? null : annotation.value();
-        return jsonSchemaElement(parameter.getType(), parameter.getParameterizedType(), description);
-        // TODO review all current logic below
+        return jsonSchemaElementFrom(parameter.getType(), parameter.getParameterizedType(), description);
     }
 
     /**

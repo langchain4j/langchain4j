@@ -13,9 +13,11 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
@@ -43,6 +45,10 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.type;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.chat.request.json.JsonBooleanSchema.JSON_BOOLEAN_SCHEMA;
+import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
+import static dev.langchain4j.model.chat.request.json.JsonNumberSchema.JSON_NUMBER_SCHEMA;
 import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
@@ -57,6 +63,7 @@ import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -110,18 +117,91 @@ class AiServicesWithToolsIT {
         );
     }
 
-    // TODO cover all cases similar to AiServicesJsonSchemaIT and AiServicesJsonSchemaWithDescriptionsIT
-
     interface Assistant {
 
         Response<AiMessage> chat(String userMessage);
     }
+
+    // TODO cover all cases similar to AiServicesJsonSchemaIT and AiServicesJsonSchemaWithDescriptionsIT
+    // TODO no arguments
+    // TODO single argument: primitives, enum, pojo with primitives, pojo with pojos, map?
+    // TODO single argument: List/Set/Array of primitives, List/Set/Array of enums, List/Set/Array of POJOs, map?
+    // TODO multiple arguments
+    // TODO with descriptions, including @Description
+
+    static class Tools1 { // TODO name
+
+        static class Person {
+
+            String name;
+            int age;
+            Double height;
+            boolean married;
+        }
+
+        @Tool
+        void process(Person person) {
+            assertThat(person.name).isEqualTo("Klaus");
+            assertThat(person.age).isEqualTo(37);
+            assertThat(person.height).isEqualTo(1.78);
+            assertThat(person.married).isFalse();
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_pojo_with_primitives(ChatLanguageModel model) {
+
+        // given
+        model = spy(model);
+
+        Tools1 tools = spy(new Tools1());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(model)
+                .tools(tools)
+                .build();
+
+        String text = " Klaus is 37 years old, 1.78m height and single";
+
+        // when
+        assistant.chat(text);
+
+        // then
+        verify(tools).process(any());
+        verifyNoMoreInteractions(tools);
+
+        verify(model).supportedCapabilities();
+        verify(model).generate(singletonList(userMessage(text)), singletonList(ToolSpecification.builder()
+                .name("process")
+                .parameters(JsonObjectSchema.builder()
+                        .properties(singletonMap("arg0", JsonObjectSchema.builder()
+                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                    put("name", JSON_STRING_SCHEMA);
+                                    put("age", JSON_INTEGER_SCHEMA);
+                                    put("height", JSON_NUMBER_SCHEMA);
+                                    put("married", JSON_BOOLEAN_SCHEMA);
+                                }})
+                                .required("name", "age", "height", "married")
+                                .additionalProperties(false)
+                                .build()))
+                        .required("arg0")
+                        .additionalProperties(false)
+                        .build())
+                .build()));
+        verifyNoMoreInteractions(model);
+    }
+
 
     static class TransactionService {
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("getTransactionAmount")
                 .description("returns amount of a given transaction")
+                .parameters(JsonObjectSchema.builder()
+                        .properties(singletonMap("arg0", JsonStringSchema.withDescription("ID of a transaction")))
+                        .required("arg0")
+                        .build())
                 .addParameter("arg0", STRING, description("ID of a transaction"))
                 .build();
 
@@ -162,7 +242,7 @@ class AiServicesWithToolsIT {
         assertThat(response.content().text()).contains("11.1");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0); // TODO test token count
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -232,7 +312,7 @@ class AiServicesWithToolsIT {
         assertThat(response.content().text()).contains("11.1", "22.2");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0); // TODO
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -320,7 +400,7 @@ class AiServicesWithToolsIT {
         assertThat(response.content().text()).contains("11.1", "22.2");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0); // TODO
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -384,6 +464,13 @@ class AiServicesWithToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processStrings")
                 .description("Processes list of strings")
+                .parameters(JsonObjectSchema.builder()
+                        .properties(singletonMap("arg0", JsonArraySchema.builder()
+                                .description("List of strings to process")
+                                .items(JSON_STRING_SCHEMA)
+                                .build()))
+                        .required("arg0")
+                        .build())
                 .addParameter("arg0", ARRAY, items(STRING), description("List of strings to process"))
                 .build();
 
@@ -436,6 +523,12 @@ class AiServicesWithToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processIntegers")
                 .description("Processes list of integers")
+                .parameters(JsonObjectSchema.builder()
+                        .properties(singletonMap("arg0", JsonArraySchema.builder()
+                                .description("List of integers to process")
+                                .items(JSON_INTEGER_SCHEMA)
+                                .build()))
+                        .build())
                 .addParameter("arg0", ARRAY, items(INTEGER), description("List of integers to process"))
                 .build();
 
@@ -488,6 +581,13 @@ class AiServicesWithToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processStrings")
                 .description("Processes array of strings")
+                .parameters(JsonObjectSchema.builder()
+                        .properties(singletonMap("arg0", JsonArraySchema.builder()
+                                .description("Array of strings to process")
+                                .items(JSON_STRING_SCHEMA)
+                                .build()))
+                        .required("arg0")
+                        .build())
                 .addParameter("arg0", ARRAY, items(STRING), description("Array of strings to process"))
                 .build();
 
@@ -538,8 +638,6 @@ class AiServicesWithToolsIT {
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("currentTemperature")
-                .addParameter("arg0", STRING)
-                .addParameter("arg1", STRING, from("enum", asList("CELSIUS", "fahrenheit", "Kelvin")))
                 .parameters(JsonObjectSchema.builder()
                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                             put("arg0", JSON_STRING_SCHEMA);
@@ -549,6 +647,8 @@ class AiServicesWithToolsIT {
                         }})
                         .required("arg0", "arg1")
                         .build())
+                .addParameter("arg0", STRING)
+                .addParameter("arg1", STRING, from("enum", asList("CELSIUS", "fahrenheit", "Kelvin")))
                 .build();
 
         @Tool
@@ -683,7 +783,38 @@ class AiServicesWithToolsIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("get_booking_details")
                 .description("Returns booking details")
-                .addParameter("bookingNumber", type("string"))
+                .parameters(JsonObjectSchema.builder()
+                        .properties(singletonMap("bookingNumber", JSON_STRING_SCHEMA))
+                        .build())
+                .build();
+
+        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
+            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+            assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
+            return "Booking period: from 1 July 2027 to 10 July 2027";
+        };
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .tools(singletonMap(toolSpecification, toolExecutor))
+                .build();
+
+        // when
+        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
+
+        // then
+        assertThat(response.content().text()).contains("2027");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_programmatically_configured_tools_old(ChatLanguageModel chatLanguageModel) {
+
+        // given
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("get_booking_details")
+                .description("Returns booking details")
+                .addParameter("bookingNumber", type("string")) // old
                 .build();
 
         ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {

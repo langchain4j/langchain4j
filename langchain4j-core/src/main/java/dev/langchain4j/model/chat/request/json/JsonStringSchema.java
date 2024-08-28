@@ -58,4 +58,9 @@ public class JsonStringSchema implements JsonSchemaElement {
                 "description = " + quoted(description) +
                 " }";
     }
+
+    // TODO
+    public static JsonStringSchema withDescription(String description) {
+        return builder().description(description).build();
+    }
 }

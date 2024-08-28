@@ -2,8 +2,8 @@ package dev.langchain4j.agent.tool;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -13,41 +13,49 @@ import static java.util.Collections.singletonMap;
 /**
  * Represents a property in a JSON schema.
  */
+@Deprecated // TODO what to use instead
 public class JsonSchemaProperty {
 
     /**
      * A property with key "type" and value "string".
      */
+    @Deprecated // TODO what to use instead
     public static final JsonSchemaProperty STRING = type("string");
 
     /**
      * A property with key "type" and value "integer".
      */
+    @Deprecated // TODO what to use instead
     public static final JsonSchemaProperty INTEGER = type("integer");
 
     /**
      * A property with key "type" and value "number".
      */
+    @Deprecated // TODO what to use instead
     public static final JsonSchemaProperty NUMBER = type("number");
 
     /**
      * A property with key "type" and value "object".
      */
+    @Deprecated // TODO what to use instead
     public static final JsonSchemaProperty OBJECT = type("object");
 
     /**
      * A property with key "type" and value "array".
      */
+    @Deprecated // TODO what to use instead
     public static final JsonSchemaProperty ARRAY = type("array");
 
     /**
      * A property with key "type" and value "boolean".
      */
+    @Deprecated // TODO what to use instead
     public static final JsonSchemaProperty BOOLEAN = type("boolean");
 
     /**
      * A property with key "type" and value "null".
      */
+    @Deprecated // TODO what to use instead
     public static final JsonSchemaProperty NULL = type("null");
 
     private final String key;
@@ -59,6 +67,7 @@ public class JsonSchemaProperty {
      * @param key   the key.
      * @param value the value.
      */
+    @Deprecated // TODO what to use instead?
     public JsonSchemaProperty(String key, Object value) {
         this.key = key;
         this.value = value;
@@ -132,6 +141,7 @@ public class JsonSchemaProperty {
      * @param value the value.
      * @return a property with key and value.
      */
+    @Deprecated // TODO what to use instead
     public static JsonSchemaProperty from(String key, Object value) {
         return new JsonSchemaProperty(key, value);
     }
@@ -145,6 +155,7 @@ public class JsonSchemaProperty {
      * @param value the value.
      * @return a property with key and value.
      */
+    @Deprecated // TODO what to use instead
     public static JsonSchemaProperty property(String key, Object value) {
         return from(key, value);
     }
@@ -157,6 +168,7 @@ public class JsonSchemaProperty {
      * @param value the value.
      * @return a property with key and value.
      */
+    @Deprecated // TODO what to use instead
     public static JsonSchemaProperty type(String value) {
         return from("type", value);
     }
@@ -169,6 +181,7 @@ public class JsonSchemaProperty {
      * @param value the value.
      * @return a property with key and value.
      */
+    @Deprecated // TODO what to use instead
     public static JsonSchemaProperty description(String value) {
         return from("description", value);
     }
@@ -179,6 +192,7 @@ public class JsonSchemaProperty {
      * @param enumValues enum values as strings. For example: {@code enums("CELSIUS", "FAHRENHEIT")}
      * @return a property with key "enum" and value enumValues
      */
+    @Deprecated // TODO what to use instead
     public static JsonSchemaProperty enums(String... enumValues) {
         return from("enum", enumValues);
     }
@@ -191,6 +205,7 @@ public class JsonSchemaProperty {
      * @param enumValues enum values. For example: {@code enums(TemperatureUnit.CELSIUS, TemperatureUnit.FAHRENHEIT)}
      * @return a property with key "enum" and value enumValues
      */
+    @Deprecated // TODO what to use instead
     public static JsonSchemaProperty enums(Object... enumValues) {
         List<String> enumNames = new ArrayList<>();
         for (Object enumValue : enumValues) {
@@ -208,6 +223,7 @@ public class JsonSchemaProperty {
      * @param enumClass enum class. For example: {@code enums(TemperatureUnit.class)}
      * @return a property with key "enum" and values taken from enumClass
      */
+    @Deprecated // TODO what to use instead
     public static JsonSchemaProperty enums(Class<?> enumClass) {
         if (!enumClass.isEnum()) {
             throw new RuntimeException("Class " + enumClass.getName() + " should be enum");
@@ -221,12 +237,14 @@ public class JsonSchemaProperty {
      * @param type the type
      * @return a property with key "items" and value type.
      */
+    @Deprecated // TODO what to use instead
     public static JsonSchemaProperty items(JsonSchemaProperty type) {
         return from("items", singletonMap(type.key, type.value));
     }
 
+    @Deprecated // TODO what to use instead
     public static JsonSchemaProperty objectItems(JsonSchemaProperty type) {
-        Map<String,Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("type", "object");
         map.put(type.key, type.value);
         return from("items", map);

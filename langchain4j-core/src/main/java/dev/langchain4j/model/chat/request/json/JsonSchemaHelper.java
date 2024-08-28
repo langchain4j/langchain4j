@@ -19,7 +19,7 @@ import static java.lang.reflect.Modifier.isStatic;
 
 public class JsonSchemaHelper { // TODO name, place
 
-    public static JsonSchemaElement jsonSchemaElement(Class<?> clazz, Type type, String fieldDescription) {
+    public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz, Type type, String fieldDescription) {
 
         if (clazz == String.class) {
             return JsonStringSchema.builder()
@@ -48,28 +48,28 @@ public class JsonSchemaHelper { // TODO name, place
         if (clazz.isEnum()) {
             return JsonEnumSchema.builder()
                     .enumValues(clazz)
-                    .description(Optional.ofNullable(fieldDescription).orElse(getDescription(clazz)))
+                    .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
                     .build();
         }
 
         if (clazz.isArray()) {
             return JsonArraySchema.builder()
-                    .items(jsonSchemaElement(clazz.getComponentType(), null, null))
+                    .items(jsonSchemaElementFrom(clazz.getComponentType(), null, null))
                     .description(fieldDescription)
                     .build();
         }
 
         if (clazz.equals(List.class) || clazz.equals(Set.class)) {
             return JsonArraySchema.builder()
-                    .items(jsonSchemaElement(getActualType(type), null, null))
+                    .items(jsonSchemaElementFrom(getActualType(type), null, null))
                     .description(fieldDescription)
                     .build();
         }
 
-        return jsonObjectSchema(clazz, fieldDescription);
+        return jsonObjectSchemaFrom(clazz, fieldDescription);
     }
 
-    public static JsonObjectSchema jsonObjectSchema(Class<?> type, String description) {
+    public static JsonObjectSchema jsonObjectSchemaFrom(Class<?> type, String description) {
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         for (Field field : type.getDeclaredFields()) {
@@ -77,30 +77,30 @@ public class JsonSchemaHelper { // TODO name, place
             if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
                 continue;
             }
-            String fieldDescription = getDescription(field);
-            JsonSchemaElement jsonSchemaElement = jsonSchemaElement(field.getType(), field.getGenericType(), fieldDescription);
+            String fieldDescription = descriptionFrom(field);
+            JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(field.getType(), field.getGenericType(), fieldDescription);
             properties.put(fieldName, jsonSchemaElement);
         }
 
         return JsonObjectSchema.builder()
-                .description(Optional.ofNullable(description).orElse(getDescription(type)))
+                .description(Optional.ofNullable(description).orElse(descriptionFrom(type)))
                 .properties(properties)
                 .required(new ArrayList<>(properties.keySet()))
                 .additionalProperties(false)
                 .build();
     }
 
-    private static String getDescription(Field field) {
+    private static String descriptionFrom(Field field) {
         // TODO check if works for tool params
-        return getDescription(field.getAnnotation(Description.class));
+        return descriptionFrom(field.getAnnotation(Description.class));
     }
 
-    private static String getDescription(Class<?> type) {
+    private static String descriptionFrom(Class<?> type) {
         // TODO check if works for tool params
-        return getDescription(type.getAnnotation(Description.class));
+        return descriptionFrom(type.getAnnotation(Description.class));
     }
 
-    private static String getDescription(Description description) {
+    private static String descriptionFrom(Description description) {
         if (description == null) {
             return null;
         }

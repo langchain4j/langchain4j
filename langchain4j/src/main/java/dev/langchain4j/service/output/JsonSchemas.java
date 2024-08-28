@@ -12,7 +12,7 @@ import java.lang.reflect.Type;
 import java.util.Optional;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.jsonObjectSchema;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.jsonObjectSchemaFrom;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
@@ -39,7 +39,7 @@ public class JsonSchemas {
 
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(rawClass.getSimpleName())
-                .schema(jsonObjectSchema(rawClass, null))
+                .schema(jsonObjectSchemaFrom(rawClass, null))
                 .build();
 
         return Optional.of(jsonSchema);
