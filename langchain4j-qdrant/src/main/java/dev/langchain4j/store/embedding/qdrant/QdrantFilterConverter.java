@@ -74,13 +74,13 @@ class QdrantFilterConverter {
             return ConditionFactory.matchKeyword(key, value.toString());
         } else if (value instanceof Boolean) {
             return ConditionFactory.match(key, (Boolean) value);
-        } else if (value instanceof Number) {
+        } else if (value instanceof Integer || value instanceof Long) {
             long lValue = Long.parseLong(value.toString());
             return ConditionFactory.match(key, lValue);
         }
 
         throw new IllegalArgumentException(
-                "Invalid value type for IsEqualTo. Can either be a String or Boolean or Number");
+                "Invalid value type for IsEqualTo. Can either be a String or Boolean or Integer or Long");
 
     }
 
@@ -93,14 +93,14 @@ class QdrantFilterConverter {
         } else if (value instanceof Boolean) {
             Condition condition = ConditionFactory.match(key, (Boolean) value);
             return ConditionFactory.filter(Points.Filter.newBuilder().addMustNot(condition).build());
-        } else if (value instanceof Number) {
+        } else if (value instanceof Integer || value instanceof Long) {
             long lValue = Long.parseLong(value.toString());
             Condition condition = ConditionFactory.match(key, lValue);
             return ConditionFactory.filter(Points.Filter.newBuilder().addMustNot(condition).build());
         }
 
         throw new IllegalArgumentException(
-                "Invalid value type for IsNotEqualto. Can either be a String or Boolean or Number");
+                "Invalid value type for IsNotEqualto. Can either be a String or Boolean or Integer or Long");
 
     }
 
