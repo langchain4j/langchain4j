@@ -748,12 +748,12 @@ class AiServicesWithToolsIT {
 
         Result<AiMessage> response = assistant.chat(userMessage);
 
-        ToolExecutionRequest firstToolExecutionRequest = response.toolExecutions().get(0).request();
+        ToolExecutionRequest firstToolExecutionRequest = response.toolExecutions().get(0).toolExecutionRequest();
         assertThat(firstToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
         assertThat(firstToolExecutionRequest.arguments())
                 .isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
 
-        String firstResult = response.toolExecutions().get(0).result();
+        String firstResult = response.toolExecutions().get(0).toolExecutionResult();
         assertThat(firstResult).isEqualTo("11.1");
 
     }
@@ -780,20 +780,20 @@ class AiServicesWithToolsIT {
 
         Result<AiMessage> response = assistant.chat(userMessage);
 
-        ToolExecutionRequest firstToolExecutionRequest = response.toolExecutions().get(0).request();
+        ToolExecutionRequest firstToolExecutionRequest = response.toolExecutions().get(0).toolExecutionRequest();
         assertThat(firstToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
         assertThat(firstToolExecutionRequest.arguments())
                 .isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
 
-        ToolExecutionRequest secondToolExecutionRequest = response.toolExecutions().get(1).request();
+        ToolExecutionRequest secondToolExecutionRequest = response.toolExecutions().get(1).toolExecutionRequest();
         assertThat(secondToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
         assertThat(secondToolExecutionRequest.arguments())
                 .isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
 
-        String firstResult = response.toolExecutions().get(0).result();
+        String firstResult = response.toolExecutions().get(0).toolExecutionResult();
         assertThat(firstResult).isEqualTo("11.1");
 
-        String secondResult = response.toolExecutions().get(1).result();
+        String secondResult = response.toolExecutions().get(1).toolExecutionResult();
         assertThat(secondResult).contains("22.2");
 
     }
@@ -818,20 +818,20 @@ class AiServicesWithToolsIT {
 
         Result<AiMessage> response = assistant.chat(userMessage);
 
-        ToolExecutionRequest firstToolExecutionRequest = response.toolExecutions().get(0).request();
+        ToolExecutionRequest firstToolExecutionRequest = response.toolExecutions().get(0).toolExecutionRequest();
         assertThat(firstToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
         assertThat(firstToolExecutionRequest.arguments())
                 .isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
 
-        ToolExecutionRequest secondToolExecutionRequest = response.toolExecutions().get(1).request();
+        ToolExecutionRequest secondToolExecutionRequest = response.toolExecutions().get(1).toolExecutionRequest();
         assertThat(secondToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
         assertThat(secondToolExecutionRequest.arguments())
                 .isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
 
-        String firstResult = response.toolExecutions().get(0).result();
+        String firstResult = response.toolExecutions().get(0).toolExecutionResult();
         assertThat(firstResult).isEqualTo("11.1");
 
-        String secondResult = response.toolExecutions().get(1).result();
+        String secondResult = response.toolExecutions().get(1).toolExecutionResult();
         assertThat(secondResult).contains("22.2");
 
     }

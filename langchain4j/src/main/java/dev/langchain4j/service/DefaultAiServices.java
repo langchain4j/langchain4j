@@ -220,8 +220,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
                                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                                 toolExecutions.add(ToolExecution.builder()
-                                        .request(toolExecutionRequest)
-                                        .result(toolExecutionResult)
+                                        .toolExecutionRequest(toolExecutionRequest)
+                                        .toolExecutionResult(toolExecutionResult)
                                         .build());
                                 ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
                                         toolExecutionRequest,
