@@ -34,6 +34,9 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.Nullable;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.protobuf.InvalidProtocolBufferException;
+
 /**
  * Represents a <a href="https://qdrant.tech/">Qdrant</a> collection as an
  * embedding store. With
@@ -132,34 +135,36 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
   }
 
   private void addAllInternal(
-      List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-
-    List<PointStruct> points = new ArrayList<>(embeddings.size());
-
-    for (int i = 0; i < embeddings.size(); i++) {
-
-      String id = ids.get(i);
-      UUID uuid = UUID.fromString(id);
-      Embedding embedding = embeddings.get(i);
-
-      PointStruct.Builder pointBuilder = PointStruct.newBuilder().setId(id(uuid))
-          .setVectors(vectors(embedding.vector()));
-
-      if (textSegments != null) {
-        pointBuilder.putPayload(payloadTextKey, value(textSegments.get(i).text()));
-        textSegments
-            .get(i)
-            .metadata()
-            .asMap()
-            .forEach((key, value) -> pointBuilder.putPayload(key, value(value)));
-      }
-
-      points.add(pointBuilder.build());
-    }
+      List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) throws RuntimeException {
 
     try {
+      List<PointStruct> points = new ArrayList<>(embeddings.size());
+
+      for (int i = 0; i < embeddings.size(); i++) {
+
+        String id = ids.get(i);
+        UUID uuid = UUID.fromString(id);
+        Embedding embedding = embeddings.get(i);
+
+        PointStruct.Builder pointBuilder = PointStruct.newBuilder().setId(id(uuid))
+            .setVectors(vectors(embedding.vector()));
+
+        if (textSegments != null) {
+          Map<String, Object> metadata = textSegments
+              .get(i)
+              .metadata()
+              .toMap();
+
+          Map<String, Value> payload = ValueMapFactory.valueMap(metadata);
+          payload.put(payloadTextKey, value(textSegments.get(i).text()));
+          pointBuilder.putAllPayload(payload);
+        }
+
+        points.add(pointBuilder.build());
+      }
+
       client.upsertAsync(collectionName, points).get();
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException | ExecutionException | InvalidProtocolBufferException | JsonProcessingException e) {
       throw new RuntimeException(e);
     }
   }
@@ -173,7 +178,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
         .setWithPayload(enable(true))
         .setLimit(request.maxResults());
 
-    if(request.filter() != null) {
+    if (request.filter() != null) {
       Filter filter = QdrantFilterConverter.convertExpression(request.filter());
       searchBuilder.setFilter(filter);
     }
@@ -266,9 +271,9 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     Value textSegmentValue = payload.getOrDefault(payloadTextKey, null);
 
-    Map<String, String> metadata = payload.entrySet().stream()
+    Map<String, Object> metadata = payload.entrySet().stream()
         .filter(entry -> !entry.getKey().equals(payloadTextKey))
-        .collect(toMap(Map.Entry::getKey, entry -> entry.getValue().getStringValue()));
+        .collect(toMap(Map.Entry::getKey, entry -> QdrantObjectFactory.object(entry.getValue())));
 
     Embedding embedding = Embedding.from(scoredPoint.getVectors().getVector().getDataList());
     double cosineSimilarity = CosineSimilarity.between(embedding, referenceEmbedding);
