@@ -34,9 +34,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.Nullable;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.protobuf.InvalidProtocolBufferException;
-
 /**
  * Represents a <a href="https://qdrant.tech/">Qdrant</a> collection as an
  * embedding store. With
@@ -164,7 +161,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
       }
 
       client.upsertAsync(collectionName, points).get();
-    } catch (InterruptedException | ExecutionException | InvalidProtocolBufferException | JsonProcessingException e) {
+    } catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException(e);
     }
   }
@@ -273,7 +270,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     Map<String, Object> metadata = payload.entrySet().stream()
         .filter(entry -> !entry.getKey().equals(payloadTextKey))
-        .collect(toMap(Map.Entry::getKey, entry -> QdrantObjectFactory.object(entry.getValue())));
+        .collect(toMap(Map.Entry::getKey, entry -> ObjectFactory.object(entry.getValue())));
 
     Embedding embedding = Embedding.from(scoredPoint.getVectors().getVector().getDataList());
     double cosineSimilarity = CosineSimilarity.between(embedding, referenceEmbedding);

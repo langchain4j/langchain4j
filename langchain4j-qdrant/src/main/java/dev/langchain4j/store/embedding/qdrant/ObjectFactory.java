@@ -11,9 +11,9 @@ import io.qdrant.client.grpc.JsonWithInt.Value;
  * @author Anush Shetty
  * @since 0.8.1
  */
-class QdrantObjectFactory {
+class ObjectFactory {
 
-	private QdrantObjectFactory() {
+	private ObjectFactory() {
 	}
 
     public static Object object(Value value) {
@@ -43,7 +43,7 @@ class QdrantObjectFactory {
 	}
 
 	private static Object object(ListValue listValue) {
-		return listValue.getValuesList().stream().map(QdrantObjectFactory::object).collect(Collectors.toList());
+		return listValue.getValuesList().stream().map(ObjectFactory::object).collect(Collectors.toList());
 	}
 
 }
