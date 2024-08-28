@@ -24,7 +24,7 @@ public class ToolExecution {
      * Returns the request of the tool execution.
      * @return the request of the tool execution.
      */
-    public ToolExecutionRequest toolExecutionRequest() {
+    public ToolExecutionRequest request() {
         return toolExecutionRequest;
     }
 
