@@ -89,7 +89,8 @@ class QdrantFilterConverter {
         Object value = notEqual.comparisonValue();
         if (value instanceof String || value instanceof UUID) {
             return ConditionFactory.filter(
-                    Points.Filter.newBuilder().addMustNot(ConditionFactory.matchKeyword(key, value.toString())).build());
+                    Points.Filter.newBuilder().addMustNot(ConditionFactory.matchKeyword(key, value.toString()))
+                            .build());
         } else if (value instanceof Boolean) {
             Condition condition = ConditionFactory.match(key, (Boolean) value);
             return ConditionFactory.filter(Points.Filter.newBuilder().addMustNot(condition).build());
@@ -160,7 +161,7 @@ class QdrantFilterConverter {
                 stringValues.add(valueObj.toString());
             }
             return ConditionFactory.matchKeywords(key, stringValues);
-        } else if (firstValue instanceof Number) {
+        } else if (firstValue instanceof Integer || firstValue instanceof Long) {
             // If the first value is a number, then all values should be numbers
             List<Long> longValues = new ArrayList<Long>();
             for (Object valueObj : valueList) {
@@ -170,7 +171,7 @@ class QdrantFilterConverter {
             return ConditionFactory.matchValues(key, longValues);
         } else {
             throw new RuntimeException(
-                    "Unsupported value in IsIn value list. Only supports String or Number");
+                    "Unsupported value in IsIn value list. Only supports String or Integer or Long");
         }
 
     }
@@ -187,7 +188,7 @@ class QdrantFilterConverter {
                 stringValues.add(valueObj.toString());
             }
             return ConditionFactory.matchExceptKeywords(key, stringValues);
-        } else if (firstValue instanceof Number) {
+        } else if (firstValue instanceof Integer || firstValue instanceof Long) {
             // If the first value is a number, then all values should be numbers
             List<Long> longValues = new ArrayList<Long>();
             for (Object valueObj : valueList) {
@@ -197,7 +198,7 @@ class QdrantFilterConverter {
             return ConditionFactory.matchExceptValues(key, longValues);
         } else {
             throw new RuntimeException(
-                    "Unsupported value in IsNotIn value list. Only supports String or Number");
+                    "Unsupported value in IsNotIn value list. Only supports String or Integer or Long");
         }
     }
 
