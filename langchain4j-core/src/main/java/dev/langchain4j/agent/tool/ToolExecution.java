@@ -100,7 +100,7 @@ public class ToolExecution {
          * @param toolExecutionResult the {@code toolExecutionResult}
          * @return the {@code Builder}
          */
-        public Builder toolExecutionResult(String toolExecutionResult) {
+        public Builder result(String result) {
             this.toolExecutionResult = toolExecutionResult;
             return this;
         }
