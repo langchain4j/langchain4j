@@ -32,7 +32,7 @@ public class ToolExecution {
      * Returns the result of the tool execution.
      * @return the result of the tool execution.
      */
-    public String toolExecutionResult() {
+    public String result() {
         return toolExecutionResult;
     }
 
