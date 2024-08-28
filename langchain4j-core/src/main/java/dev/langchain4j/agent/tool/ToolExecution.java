@@ -90,7 +90,7 @@ public class ToolExecution {
          * @param toolExecutionRequest the {@code toolExecutionRequest}
          * @return the {@code Builder}
          */
-        public Builder toolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
+        public Builder request(ToolExecutionRequest request) {
             this.toolExecutionRequest = toolExecutionRequest;
             return this;
         }
