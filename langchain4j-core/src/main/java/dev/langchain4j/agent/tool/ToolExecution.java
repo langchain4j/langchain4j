@@ -86,8 +86,8 @@ public class ToolExecution {
         }
 
         /**
-         * Sets the {@code request}.
-         * @param toolExecutionRequest the {@code request}
+         * Sets the {@code toolExecutionRequest}.
+         * @param toolExecutionRequest the {@code toolExecutionRequest}
          * @return the {@code Builder}
          */
         public Builder toolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
@@ -96,8 +96,8 @@ public class ToolExecution {
         }
 
         /**
-         * Sets the {@code result}.
-         * @param toolExecutionResult the {@code result}
+         * Sets the {@code toolExecutionResult}.
+         * @param toolExecutionResult the {@code toolExecutionResult}
          * @return the {@code Builder}
          */
         public Builder toolExecutionResult(String toolExecutionResult) {
