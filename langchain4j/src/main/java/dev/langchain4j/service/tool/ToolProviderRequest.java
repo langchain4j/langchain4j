@@ -2,9 +2,6 @@ package dev.langchain4j.service.tool;
 
 import dev.langchain4j.data.message.UserMessage;
 
-/**
- * A wrapper mostly used for the {@link ToolProvider}
- */
 public class ToolProviderRequest {
     private final Object chatMemoryId;
     private final UserMessage userMessage;
@@ -14,11 +11,11 @@ public class ToolProviderRequest {
         this.userMessage = userMessage;
     }
 
-    public Object getChatMemoryId() {
+    public Object chatMemoryId() {
         return chatMemoryId;
     }
 
-    public UserMessage getUserMessage() {
+    public UserMessage userMessage() {
         return userMessage;
     }
 }

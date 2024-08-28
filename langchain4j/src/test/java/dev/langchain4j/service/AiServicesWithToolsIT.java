@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
@@ -104,8 +105,6 @@ class AiServicesWithToolsIT {
     interface Assistant {
 
         Response<AiMessage> chat(String userMessage);
-
-        Response<AiMessage> chat(@UserMessage String userMessage, ToolProviderResult tools);
     }
 
     static class TransactionService {
@@ -699,41 +698,7 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_tool_argument(ChatLanguageModel chatLanguageModel) {
-        // given
-        ToolProviderResult tools = new ToolProviderResult();
-        ToolExecutor executor = spy(new BookingExecutor());
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("get_booking_details")
-                .description("Returns booking details")
-                .addParameter("bookingNumber", type("string"))
-                .build();
-
-        tools.add(toolSpecification, executor);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .build();
-
-        // Tool shouldn't be used
-        assistant.chat("When does my booking 123-456 starts?");
-        verifyNoInteractions(executor);
-
-        // Verify tool has been used
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?", tools);
-        verify(executor, times(1)).execute(any(), any());
-        assertThat(response.content().text()).contains("2027");
-
-        // Tool shouldn't be used again. -> Normal again.
-        Response<AiMessage> responseNoTools2 = assistant.chat("When does my booking 123-456 starts?");
-        verify(executor, times(1)).execute(any(), any());
-        assertThat(responseNoTools2.content().text()).doesNotContain("2027");
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
     void should_use_tool_provider(ChatLanguageModel chatLanguageModel) {
-        ToolProviderResult bookingResult = new ToolProviderResult();
         ToolExecutor executor = spy(new BookingExecutor());
         ToolSpecification specification = ToolSpecification.builder()
                 .name("get_booking_details")
@@ -741,12 +706,14 @@ class AiServicesWithToolsIT {
                 .addParameter("bookingNumber", type("string"))
                 .build();
 
-        bookingResult.add(specification, executor);
+        ToolProviderResult bookingResult = ToolProviderResult.builder()
+                .add(specification, executor)
+                .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(chatLanguageModel)
-                .toolsToolProvider((ToolProviderRequest request) -> {
-                    if (request.getUserMessage().singleText().contains("booking")) {
+                .toolProvider((ToolProviderRequest request) -> {
+                    if (request.userMessage().singleText().contains("booking")) {
                         return bookingResult;
                     }
                     return null;
@@ -769,12 +736,13 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void only_static_or_tool_provider(ChatLanguageModel chatLanguageModel) {
+    void only_static_or_tool_provider() {
+        ChatLanguageModel chatLanguageModel = new ChatModelMock("mocked");
         // First provider then tools
         Assertions.assertThrows(IllegalArgumentException.class, () ->
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
-                        .toolsToolProvider((ToolProviderRequest request) -> null)
+                        .toolProvider((ToolProviderRequest request) -> null)
                         .tools(new HashMap<>())
                         .build()
         );
@@ -783,7 +751,7 @@ class AiServicesWithToolsIT {
         Assertions.assertThrows(IllegalArgumentException.class, () ->
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
-                        .toolsToolProvider((ToolProviderRequest request) -> null)
+                        .toolProvider((ToolProviderRequest request) -> null)
                         .tools(new StringArrayProcessor())
                         .build()
         );
@@ -793,7 +761,7 @@ class AiServicesWithToolsIT {
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
                         .tools(new HashMap<>())
-                        .toolsToolProvider((ToolProviderRequest request) -> null)
+                        .toolProvider((ToolProviderRequest request) -> null)
                         .build()
         );
 
@@ -802,7 +770,7 @@ class AiServicesWithToolsIT {
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
                         .tools(new StringArrayProcessor())
-                        .toolsToolProvider((ToolProviderRequest request) -> null)
+                        .toolProvider((ToolProviderRequest request) -> null)
                         .build()
         );
     }

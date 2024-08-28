@@ -303,8 +303,7 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> tools(Object... objectsWithTools) {
         if (context.toolProvider != null) {
-            throw new IllegalArgumentException("You can either use static and this tools method or a tool provider via the " +
-                    "method ToolProvider. But not both!");
+            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
         }
         return tools(asList(objectsWithTools));
     }
@@ -348,13 +347,12 @@ public abstract class AiServices<T> {
     /**
      * Configures the tool provider that the LLM can use
      *
-     * @param toolProvider Decides which tool or tools should be used to handle the user message
+     * @param toolProvider Decides which tools the LLM could use to handle the request
      * @return builder
      */
-    public AiServices<T> toolsToolProvider(ToolProvider toolProvider) {
+    public AiServices<T> toolProvider(ToolProvider toolProvider) {
         if (context.toolSpecifications != null | context.toolExecutors != null) {
-            throw new IllegalArgumentException("You can either use static and this tools method or a tool provider via the " +
-                    "method ToolProvider. But not both!");
+            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
         }
         context.toolProvider = toolProvider;
         return this;
@@ -371,8 +369,7 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools) {
         if (context.toolProvider != null) {
-            throw new IllegalArgumentException("You can either use static and this tools method or a tool provider via the " +
-                    "method ToolProvider. But not both!");
+            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
         }
         if (context.toolSpecifications == null) {
             context.toolSpecifications = new ArrayList<>();

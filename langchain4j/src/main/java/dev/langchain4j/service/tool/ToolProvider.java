@@ -1,12 +1,14 @@
 package dev.langchain4j.service.tool;
 
 /**
- * A low-level provider of a {@link ToolProviderRequest}.
- */
+ * A tool provider. It is called each time the AI service is called and supplies tools for that specific call.
+ * <p>
+ * Tools returned in {@link ToolProviderResult} will be included in the request to the LLM.
+ **/
 @FunctionalInterface
 public interface ToolProvider {
     /**
-     * Receives a request based on a user message and sends relevant tools back. Use can use AI for example.
+     * Provides tools for the request to the LLM.
      *
      * @param request Wraps the UserMessage and ChatMemory
      * @return A wrapper with relevant tools

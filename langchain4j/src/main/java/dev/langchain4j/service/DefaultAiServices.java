@@ -2,9 +2,9 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -77,11 +77,10 @@ class DefaultAiServices<T> extends AiServices<T> {
             dev.langchain4j.service.UserMessage userMessage = parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
-            boolean isToolResult = parameter.getType().equals(ToolProviderResult.class);
-            if (v == null && userMessage == null && memoryId == null && userName == null && !isToolResult) {
+            if (v == null && userMessage == null && memoryId == null && userName == null) {
                 throw illegalConfiguration(
                         "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage " +
-                                "or @UserName or @MemoryId or be an instance of ToolProviderResult", parameter.getName(), method.getName()
+                                "or @UserName or @MemoryId", parameter.getName(), method.getName()
                 );
             }
         }
@@ -121,8 +120,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         validateParameters(method);
 
                         Object memoryId = findMemoryId(method, args).orElse(DEFAULT);
-
-                        Optional<ToolProviderResult> toolsFromArgs = findToolsFromArguments(method, args);
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);
@@ -168,48 +165,36 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        if (returnType == TokenStream.class) {
-                            List<Content> contents = augmentationResult != null ? augmentationResult.contents() : null;
-                            return new AiServiceTokenStream(messages, contents, context, memoryId); // TODO moderation
-                        }
-
-                        // Backup default tools
-                        List<ToolSpecification> defaultToolSpecifications = context.toolSpecifications;
-                        Map<String, ToolExecutor> defaultToolExecutors = context.toolExecutors;
-
                         // Begin tools
-                        if (toolsFromArgs.isPresent()) {
-                            // Overriding default tools by argument
-                            context.toolSpecifications = new ArrayList<>();
-                            context.toolExecutors = new HashMap<>();
-                            Map<ToolSpecification, ToolExecutor> newTools = toolsFromArgs.get().getTools();
-                            newTools.forEach((toolSpecification, toolExecutor) -> {
-                                context.toolSpecifications.add(toolSpecification);
-                                context.toolExecutors.put(toolSpecification.name(), toolExecutor);
-                            });
-                        } else if (context.toolProvider != null) {
+                        List<ToolSpecification> toolSpecifications = context.toolSpecifications;
+                        Map<String, ToolExecutor> toolExecutors = context.toolExecutors;
+
+                        if (context.toolProvider != null) {
                             // Use provider to decide matching tools
-                            ChatMemory chatMemory = context.hasChatMemory()
-                                    ? context.chatMemory(memoryId)
-                                    : null;
-                            context.toolSpecifications = new ArrayList<>();
-                            context.toolExecutors = new HashMap<>();
-                            ToolProviderRequest providerRequest = new ToolProviderRequest(chatMemory, userMessage);
+                            toolSpecifications = new ArrayList<>();
+                            toolExecutors = new HashMap<>();
+                            ToolProviderRequest providerRequest = new ToolProviderRequest(memoryId, userMessage);
                             ToolProviderResult providerResult = context.toolProvider.provideTools(providerRequest);
                             if (providerResult != null) {
-                                // Overriding default tools by provider tools
-                                providerResult.getTools().forEach((toolSpecification, toolExecutor) -> {
-                                    context.toolSpecifications.add(toolSpecification);
-                                    context.toolExecutors.put(toolSpecification.name(), toolExecutor);
-                                });
+                                for (ToolSpecification specification : providerResult.tools().keySet()) {
+                                    toolSpecifications.add(specification);
+                                    toolExecutors.put(specification.name(), providerResult.tools().get(specification));
+                                }
                             }
+                        }
+
+                        if (returnType == TokenStream.class) {
+                            List<Content> contents = augmentationResult != null ? augmentationResult.contents() : null;
+                            context.toolSpecifications = toolSpecifications;
+                            context.toolExecutors = toolExecutors;
+                            return new AiServiceTokenStream(messages, contents, context, memoryId); // TODO moderation
                         }
 
                         Response<AiMessage> response;
                         if (supportsJsonSchema && jsonSchema.isPresent()) {
                             ChatRequest chatRequest = ChatRequest.builder()
                                     .messages(messages)
-                                    .toolSpecifications(context.toolSpecifications)
+                                    .toolSpecifications(toolSpecifications)
                                     .responseFormat(ResponseFormat.builder()
                                             .type(JSON)
                                             .jsonSchema(jsonSchema.get())
@@ -225,9 +210,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                             );
                         } else {
                             // TODO migrate to new API
-                            response = context.toolSpecifications == null
+                            response = toolSpecifications == null
                                     ? context.chatModel.generate(messages)
-                                    : context.chatModel.generate(messages, context.toolSpecifications);
+                                    : context.chatModel.generate(messages, toolSpecifications);
                         }
 
                         TokenUsage tokenUsageAccumulator = response.tokenUsage();
@@ -257,7 +242,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
 
                             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                                ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
+                                ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
                                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                                 toolExecutions.add(ToolExecution.builder()
                                         .request(toolExecutionRequest)
@@ -278,14 +263,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages = context.chatMemory(memoryId).messages();
                             }
 
-                            response = context.chatModel.generate(messages, context.toolSpecifications);
+                            response = context.chatModel.generate(messages, toolSpecifications);
                             tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, response.tokenUsage());
-                        }
-
-                        if (toolsFromArgs.isPresent() | context.toolProvider != null) {
-                            // restore default tools / none tools for toolProvider
-                            context.toolSpecifications = defaultToolSpecifications;
-                            context.toolExecutors = defaultToolExecutors;
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
@@ -332,17 +311,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                 });
 
         return (T) proxyInstance;
-    }
-
-    private Optional<ToolProviderResult> findToolsFromArguments(Method method, Object[] args) {
-        Parameter[] parameters = method.getParameters();
-        for (int i = 0; i < parameters.length; i++) {
-            Parameter parameter = parameters[i];
-            if (parameter.getType().equals(ToolProviderResult.class)) {
-                return Optional.of((ToolProviderResult) args[i]);
-            }
-        }
-        return Optional.empty();
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {

@@ -2,21 +2,41 @@ package dev.langchain4j.service.tool;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * A wrapper mostly used by the {@link ToolProvider}
- */
-public class ToolProviderResult {
-    private final Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
-    public Map<ToolSpecification, ToolExecutor> getTools() {
-        return Collections.unmodifiableMap(tools);
+public class ToolProviderResult {
+    private final Map<ToolSpecification, ToolExecutor> tools;
+
+    public ToolProviderResult(Map<ToolSpecification, ToolExecutor> tools) {
+        this.tools = copyIfNotNull(tools);
     }
 
-    public void add(ToolSpecification specification, ToolExecutor toolExecutor) {
-        this.tools.put(specification, toolExecutor);
+    public Map<ToolSpecification, ToolExecutor> tools() {
+        return tools;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private final Map<ToolSpecification, ToolExecutor> tools = new LinkedHashMap<>();
+
+        public Builder add(ToolSpecification tool, ToolExecutor executor) {
+            tools.put(tool, executor);
+            return this;
+        }
+
+        public Builder addAll(Map<ToolSpecification, ToolExecutor> tools) {
+            this.tools.putAll(tools);
+            return this;
+        }
+
+        public ToolProviderResult build() {
+            return new ToolProviderResult(tools);
+        }
     }
 }
