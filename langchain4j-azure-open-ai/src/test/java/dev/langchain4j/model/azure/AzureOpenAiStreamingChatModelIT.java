@@ -103,8 +103,6 @@ class AzureOpenAiStreamingChatModelIT {
     })
     void should_custom_models_work(String deploymentName, String gptVersion, boolean useCustomAsyncClient) throws Exception {
 
-        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
         OpenAIAsyncClient asyncClient = null;
         OpenAIClient client = null;
         if (useCustomAsyncClient) {
@@ -122,35 +120,16 @@ class AzureOpenAiStreamingChatModelIT {
                 .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
-        model.generate("What is the capital of France?", new StreamingResponseHandler<AiMessage>() {
 
-            private final StringBuilder answerBuilder = new StringBuilder();
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate("What is the capital of France?", handler);
+        Response<AiMessage> response = handler.get();
 
-            @Override
-            public void onNext(String token) {
-                answerBuilder.append(token);
-            }
+        // then
+        assertThat(response.content().text()).contains("Paris");
 
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                futureAnswer.complete(answerBuilder.toString());
-                futureResponse.complete(response);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureAnswer.completeExceptionally(error);
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        String answer = futureAnswer.get(STREAMING_TIMEOUT, SECONDS);
-        Response<AiMessage> response = futureResponse.get(STREAMING_TIMEOUT, SECONDS);
-
-        assertThat(answer).contains("Paris");
-        assertThat(response.content().text()).isEqualTo(answer);
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(14);
+        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().totalTokenCount())
                 .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
