@@ -1,6 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;

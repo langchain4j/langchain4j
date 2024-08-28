@@ -1,6 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -220,8 +220,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
                                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                                 toolExecutions.add(ToolExecution.builder()
-                                        .toolExecutionRequest(toolExecutionRequest)
-                                        .toolExecutionResult(toolExecutionResult)
+                                        .request(toolExecutionRequest)
+                                        .result(toolExecutionResult)
                                         .build());
                                 ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
                                         toolExecutionRequest,
