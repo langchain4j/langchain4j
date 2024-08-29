@@ -37,7 +37,6 @@ public class QwenChatModelIT {
                 .build();
 
         Response<AiMessage> response = model.generate(QwenTestHelper.chatMessages());
-        System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("rain");
     }
@@ -217,7 +216,6 @@ public class QwenChatModelIT {
                 .build();
 
         Response<AiMessage> response = model.generate(multimodalChatMessagesWithImageUrl());
-        System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("dog");
     }
@@ -231,7 +229,6 @@ public class QwenChatModelIT {
                 .build();
 
         Response<AiMessage> response = model.generate(multimodalChatMessagesWithImageData());
-        System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("parrot");
     }

@@ -89,12 +89,11 @@ class AiServicesWithToolsIT {
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .modelName(GPT_3_5_TURBO_16K) // this model can only call tools sequentially
+                        .modelName(GPT_3_5_TURBO_0613) // this model can only call tools sequentially
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
                         .build()
-                // TODO other models supporting tools
         );
     }
 
@@ -433,8 +432,7 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    @Disabled
-        // TODO fix: should automatically convert List<Double> into List<Integer>
+    @Disabled("should be enabled once List<Double> is automatically converted into List<Integer>")
     void should_use_tool_with_List_of_Integers_parameter(ChatLanguageModel chatLanguageModel) {
 
         IntegerListProcessor integerListProcessor = spy(new IntegerListProcessor());
@@ -586,8 +584,6 @@ class AiServicesWithToolsIT {
         @Tool("Execute the query and return the result")
         String executeQuery(@P("query to execute") Query query) {
             assertThat(query).isNotNull();
-            System.out.println("query to execute: " + Json.toJson(query));
-
             assertThat(query.select).containsExactly("name");
             assertThat(query.where).containsExactly(new Condition("country", EQUALS, "India"));
             assertThat(query.limit).isEqualTo(3);

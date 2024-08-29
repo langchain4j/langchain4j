@@ -23,7 +23,6 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<String> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content()).contains("Berlin");
@@ -46,7 +45,6 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<String> response = model.generate(prompt);
-        System.out.println(response);
 
         // then
         assertThat(response.content()).doesNotContain("Berlin");

@@ -25,7 +25,6 @@ class OpenAiLanguageModelIT {
         String prompt = "What is the capital of Germany?";
 
         Response<String> response = model.generate(prompt);
-        System.out.println(response);
 
         assertThat(response.content()).contains("Berlin");
 
