@@ -20,7 +20,7 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
     private final int numCandidates;
 
     public static class Builder {
-        private int numCandidates = 0;
+        private Integer numCandidates;
 
         public ElasticsearchConfigurationKnn build() {
             return new ElasticsearchConfigurationKnn(numCandidates);
@@ -34,7 +34,7 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
          * @param numCandidates The number of nearest neighbor candidates to consider per shard
          * @return the builder instance
          */
-        public Builder withNumCandidates(int numCandidates) {
+        public Builder numCandidates(Integer numCandidates) {
             this.numCandidates = numCandidates;
             return this;
         }
