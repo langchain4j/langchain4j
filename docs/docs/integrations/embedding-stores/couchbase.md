@@ -49,7 +49,7 @@ The following sample code illustrates how to initialize an embedding store that 
 server:
 
 ```java
-CouchbaseEmbeddingStore embeddingStore = new CouchbaseEmbeddingStore.Builder("localhost:8091")
+CouchbaseEmbeddingStore embeddingStore = CouchbaseEmbeddingStore.builder().clusterUrl("localhost:8091")
         .username("Administrator")
         .password("password")
         .bucketName("langchain4j")
