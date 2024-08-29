@@ -25,9 +25,4 @@ class CouchbaseEmbeddingStoreIT extends EmbeddingStoreIT {
         return CouchbaseTestUtils.embeddingModel();
     }
 
-    @Override
-    protected void ensureStoreIsEmpty() {
-        embeddingStore().removeAll();
-    }
-
 }

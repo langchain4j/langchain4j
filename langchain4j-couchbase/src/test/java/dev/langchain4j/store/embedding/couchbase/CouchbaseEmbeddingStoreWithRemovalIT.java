@@ -30,7 +30,7 @@ public class CouchbaseEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemo
     }
 
     @BeforeEach
-    protected void ensureStoreIsEmpty() {
+    protected void clearStore() {
         embeddingStore().removeAll();
     }
 }

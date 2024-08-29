@@ -16,5 +16,4 @@ class Document {
     private float[] vector;
     private String text;
     private Map<String, Object> metadata;
-    private double score;
 }

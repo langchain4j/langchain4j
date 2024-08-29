@@ -33,7 +33,7 @@ public class CouchbaseEmbeddingStoreWithRemovalCloudIT extends EmbeddingStoreWit
     }
 
     @BeforeEach
-    protected void ensureStoreIsEmpty() {
+    protected void clearStore() {
         embeddingStore().removeAll();
     }
 }

@@ -24,4 +24,10 @@ class CouchbaseEmbeddingStoreCloudIT extends EmbeddingStoreIT {
     protected void ensureStoreIsEmpty() {
         CouchbaseTestUtils.cloudStore().removeAll();
     }
+
+    @Override
+    protected void clearStore() {
+        CouchbaseTestUtils.cloudStore().removeAll();
+    }
 }
+

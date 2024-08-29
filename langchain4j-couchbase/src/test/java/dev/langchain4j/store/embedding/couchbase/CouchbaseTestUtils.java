@@ -23,7 +23,8 @@ final class CouchbaseTestUtils {
 
     public static CouchbaseEmbeddingStore cloudStore() {
         if (cloudStoreInstance == null) {
-            cloudStoreInstance = new CouchbaseEmbeddingStore.Builder(System.getenv("COUCHBASE_CLUSTER_URL"))
+            cloudStoreInstance = new CouchbaseEmbeddingStore.Builder()
+                    .clusterUrl(System.getenv("COUCHBASE_CLUSTER_URL"))
                     .username(System.getenv("COUCHBASE_USERNAME"))
                     .password(System.getenv("COUCHBASE_PASSWORD"))
                     .bucketName(System.getenv("COUCHBASE_BUCKET"))
@@ -63,7 +64,8 @@ final class CouchbaseTestUtils {
             Bucket bucket = cluster.bucket(testBucketDefinition.getName());
             bucket.waitUntilReady(Duration.ofSeconds(30));
 
-            containerStoreInstance = new CouchbaseEmbeddingStore.Builder(couchbaseContainer.getConnectionString())
+            containerStoreInstance = new CouchbaseEmbeddingStore.Builder()
+                    .clusterUrl(couchbaseContainer.getConnectionString())
                     .username(couchbaseContainer.getUsername())
                     .password(couchbaseContainer.getPassword())
                     .bucketName(testBucketDefinition.getName())
