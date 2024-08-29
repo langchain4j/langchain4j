@@ -1,7 +1,6 @@
 package dev.langchain4j.web.search.google.customsearch;
 
 import dev.langchain4j.web.search.*;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -38,7 +37,6 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
     }
 
     @Test
-    @Disabled("fails")
     void should_return_google_safe_web_results_in_spanish_language() {
         // given
         String query = "Who won the FIFA World Cup 2022?";

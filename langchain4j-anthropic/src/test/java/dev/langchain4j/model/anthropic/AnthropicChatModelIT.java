@@ -70,7 +70,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).contains("Berlin");
@@ -146,7 +145,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();
@@ -166,7 +164,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(systemMessage, userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("liebe");
@@ -189,7 +186,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("hello");
@@ -222,7 +218,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();
@@ -245,7 +240,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();
@@ -270,7 +264,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();

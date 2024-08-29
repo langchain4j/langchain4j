@@ -35,7 +35,6 @@ class OllamaOpenAiChatModelIT extends AbstractOllamaLanguageModelInfrastructure 
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         AiMessage aiMessage = response.content();

@@ -16,9 +16,9 @@ public class PgVectorEmbeddingIndexedStoreIT extends EmbeddingStoreWithFiltering
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
 
-    EmbeddingStore<TextSegment> embeddingStore;
-
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+    EmbeddingStore<TextSegment> embeddingStore;
 
     @BeforeEach
     void beforeEach() {
@@ -29,7 +29,7 @@ public class PgVectorEmbeddingIndexedStoreIT extends EmbeddingStoreWithFiltering
                 .password("test")
                 .database("test")
                 .table("test")
-                .dimension(384)
+                .dimension(embeddingModel.dimension())
                 .useIndex(true)
                 .indexListSize(1)
                 .dropTableFirst(true)

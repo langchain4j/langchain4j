@@ -43,7 +43,6 @@ class VertexAiEmbeddingModelIT {
 
         Embedding embedding = embeddings.get(0);
         assertThat(embedding.vector()).hasSize(768);
-        System.out.println(Arrays.toString(embedding.vector()));
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(6);
@@ -75,7 +74,6 @@ class VertexAiEmbeddingModelIT {
     @Test
     void testRandomSegments() {
         List<TextSegment> segments = createRandomSegments(10, 100);
-        System.out.println(segments);
 
         assertThat(segments.size()).isEqualTo(10);
         for (TextSegment segment : segments) {
