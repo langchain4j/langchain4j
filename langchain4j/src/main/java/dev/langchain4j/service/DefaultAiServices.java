@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -196,6 +197,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         verifyModerationIfNeeded(moderationFuture);
 
                         int executionsLeft = MAX_SEQUENTIAL_TOOL_EXECUTIONS;
+                        List<ToolExecution> toolExecutions = new ArrayList<>();
                         while (true) {
 
                             if (executionsLeft-- == 0) {
@@ -219,6 +221,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                                 ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
                                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+                                toolExecutions.add(ToolExecution.builder()
+                                        .request(toolExecutionRequest)
+                                        .result(toolExecutionResult)
+                                        .build());
                                 ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
                                         toolExecutionRequest,
                                         toolExecutionResult
@@ -247,6 +253,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .tokenUsage(tokenUsageAccumulator)
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
                                     .finishReason(response.finishReason())
+                                    .toolExecutions(toolExecutions)
                                     .build();
                         } else {
                             return parsedResponse;
