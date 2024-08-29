@@ -110,7 +110,7 @@ an example embedding document (with vector field values truncated for readabilit
 These embeddings are generated with a selected by developers embedding model and resulting vector values are model-specific.
 
 ## Storing Embeddings in Couchbase
-Generated with a language model embeddings can be stored in couchbase using the `add` method an instance of `CouchbaseEmbeddingStore`
+Embeddings generated with an embedding model can be stored in couchbase using `add` and `addAll` methods of the `CouchbaseEmbeddingStore`
 class:
 ```java
 EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
