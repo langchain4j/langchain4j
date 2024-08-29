@@ -716,4 +716,125 @@ class AiServicesWithToolsIT {
             throw new RuntimeException(e);
         }
     }
+
+
+    interface AssistantReturningResult {
+
+        Result<AiMessage> chat(String userMessage);
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("models")
+    public void should_execute_a_tool_and_context_included_in_result(ChatLanguageModel chatLanguageModel) {
+
+        AiServicesWithToolsIT.TransactionService transactionService = spy(new TransactionService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatLanguageModel(spyChatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(transactionService)
+                .build();
+
+        String userMessage = "What are the amount of transactions T001?";
+
+        Result<AiMessage> response = assistant.chat(userMessage);
+
+        ToolExecutionRequest firstToolExecutionRequest = response.toolExecutions().get(0).request();
+        assertThat(firstToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
+        assertThat(firstToolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
+
+        String firstResult = response.toolExecutions().get(0).result();
+        assertThat(firstResult).isEqualTo("11.1");
+
+        verify(spyChatLanguageModel, times(2)).generate(anyList(), anyList());
+
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("models")
+    public void should_execute_multi_tool_in_parallel_and_context_included_in_result(ChatLanguageModel chatLanguageModel) {
+
+        TransactionService transactionService = spy(new TransactionService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatLanguageModel(spyChatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(transactionService)
+                .build();
+
+        String userMessage = "What are the amounts of transactions T001 and T002? " +
+                "First call getTransactionAmount for T001, then for T002. Do not answer before you know all amounts!";
+
+        Result<AiMessage> response = assistant.chat(userMessage);
+
+        ToolExecutionRequest firstToolExecutionRequest = response.toolExecutions().get(0).request();
+        assertThat(firstToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
+        assertThat(firstToolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
+
+        ToolExecutionRequest secondToolExecutionRequest = response.toolExecutions().get(1).request();
+        assertThat(secondToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
+        assertThat(secondToolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
+
+        String firstResult = response.toolExecutions().get(0).result();
+        assertThat(firstResult).isEqualTo("11.1");
+
+        String secondResult = response.toolExecutions().get(1).result();
+        assertThat(secondResult).contains("22.2");
+
+        verify(spyChatLanguageModel, times(2)).generate(anyList(), anyList());
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsWithoutParallelToolCalling")
+    public void should_execute_multiple_tools_sequentially_and_context_included_in_result(ChatLanguageModel chatLanguageModel) {
+
+        TransactionService transactionService = spy(new TransactionService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatLanguageModel(spyChatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(transactionService)
+                .build();
+
+        String userMessage = "What are the amounts of transactions T001 and T002?";
+
+        Result<AiMessage> response = assistant.chat(userMessage);
+
+        ToolExecutionRequest firstToolExecutionRequest = response.toolExecutions().get(0).request();
+        assertThat(firstToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
+        assertThat(firstToolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
+
+        ToolExecutionRequest secondToolExecutionRequest = response.toolExecutions().get(1).request();
+        assertThat(secondToolExecutionRequest.name()).isEqualTo("getTransactionAmount");
+        assertThat(secondToolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
+
+        String firstResult = response.toolExecutions().get(0).result();
+        assertThat(firstResult).isEqualTo("11.1");
+
+        String secondResult = response.toolExecutions().get(1).result();
+        assertThat(secondResult).contains("22.2");
+
+        verify(spyChatLanguageModel, times(3)).generate(anyList(), anyList());
+
+    }
 }
