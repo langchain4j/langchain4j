@@ -17,7 +17,7 @@ import java.io.IOException;
  */
 public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationKnn.class);
-    private final int numCandidates;
+    private final Integer numCandidates;
 
     public static class Builder {
         private Integer numCandidates;
@@ -45,7 +45,7 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
     }
 
 
-    private ElasticsearchConfigurationKnn(int numCandidates) {
+    private ElasticsearchConfigurationKnn(Integer numCandidates) {
         this.numCandidates = numCandidates;
     }
 
@@ -61,7 +61,7 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
             krb.filter(ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter()));
         }
 
-        if (numCandidates > 0) {
+        if (numCandidates != null) {
             krb.numCandidates(numCandidates);
         }
 

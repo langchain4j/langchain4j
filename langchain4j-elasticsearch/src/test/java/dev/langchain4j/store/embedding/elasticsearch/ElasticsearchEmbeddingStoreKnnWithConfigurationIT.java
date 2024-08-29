@@ -33,9 +33,8 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
     }
 
     @BeforeEach
-    void createEmbeddingStore() throws IOException {
+    void createEmbeddingStore() {
         indexName = randomUUID();
-        elasticsearchClientHelper.removeDataStore(indexName);
     }
 
     @AfterEach
@@ -59,7 +58,7 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
         {
             EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
                     .configuration(ElasticsearchConfigurationKnn.builder()
-                            .withNumCandidates(10)
+                            .numCandidates(10)
                             .build())
                     .restClient(elasticsearchClientHelper.restClient)
                     .indexName(indexName)
@@ -84,7 +83,7 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
         {
             EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
                     .configuration(ElasticsearchConfigurationKnn.builder()
-                            .withNumCandidates(1)
+                            .numCandidates(1)
                             .build())
                     .restClient(elasticsearchClientHelper.restClient)
                     .indexName(indexName)
