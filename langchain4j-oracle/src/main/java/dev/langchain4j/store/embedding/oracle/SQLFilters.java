@@ -133,7 +133,7 @@ final class SQLFilters {
 
     /**
      * <p>
-     * A SQL filter that compares a key to a value. Calls to {@link ##toSQL()} return a SQL
+     * A SQL filter that compares a key to a value. Calls to {@link #toSQL()} return a SQL
      * expression of the following form:
      * </p><pre>
      * {key} {operator} ?

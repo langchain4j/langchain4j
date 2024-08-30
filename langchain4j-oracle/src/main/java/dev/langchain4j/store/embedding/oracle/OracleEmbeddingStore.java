@@ -106,7 +106,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private static void createIndex(Builder builder) throws SQLException {
 
-        if (builder.vectorIndexCreateOption == CreateOption.CREATE_NONE)
+        if (builder.vectorIndexCreateOption == CreateOption.DO_NOT_CREATE)
             return;
 
         try (Connection connection = builder.dataSource.getConnection();
@@ -568,7 +568,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         private DataSource dataSource;
         private EmbeddingTable embeddingTable;
         private boolean isExactSearch = false;
-        private CreateOption vectorIndexCreateOption = CreateOption.CREATE_NONE;
+        private CreateOption vectorIndexCreateOption = CreateOption.DO_NOT_CREATE;
 
         private Builder() {}
 
@@ -597,7 +597,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @throws IllegalArgumentException If the tableName is null.
          */
         public Builder embeddingTable(String tableName) {
-            return embeddingTable(tableName, CreateOption.CREATE_NONE);
+            return embeddingTable(tableName, CreateOption.DO_NOT_CREATE);
         }
 
         /**
@@ -643,7 +643,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         /**
          * Configures the creation of an index on the embedding column of the {@link EmbeddingTable} used by the
          * embedding store. Depending on which CreateOption is provided, an index may be created when {@link #build()}
-         * is called. The default createOption is {@link CreateOption#CREATE_NONE}.
+         * is called. The default createOption is {@link CreateOption#DO_NOT_CREATE}.
          *
          * @param createOption Option for creating the index. Not null.
          * @return This builder. Not null.

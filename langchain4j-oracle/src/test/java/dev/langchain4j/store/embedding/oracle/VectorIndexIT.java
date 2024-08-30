@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Tests which verify all possible configurations of {@link OracleEmbeddingStore.Builder#vectorIndex(CreateOption)}
  */
-public class VectorIndexTest {
+public class VectorIndexIT {
 
     @ParameterizedTest
     @EnumSource(CreateOption.class)
@@ -52,7 +52,7 @@ public class VectorIndexTest {
                              " AND index_type='VECTOR'"
              )) {
 
-            if (createOption == CreateOption.CREATE_NONE)
+            if (createOption == CreateOption.DO_NOT_CREATE)
                 assertFalse(resultSet.next());
             else
                 assertTrue(resultSet.next());
