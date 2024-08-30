@@ -176,21 +176,13 @@ Currently, AI Services support the following return types:
 - `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
 - Any `Enum`, `List<Enum>` and `Set<Enum>`, if you want to classify text, e.g. sentiment, user intent, etc.
 - Any custom POJO
-- `Result<T>`, if you need to access `TokenUsage` or sources (`Content`s retrieved during RAG), aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
+- `Result<T>`, if you need to access `TokenUsage`, `FinishReason`, sources (`Content`s retrieved during RAG) and executed tools, aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
 
-Unless the return type is `String`, `AiMessage`, or `Response<AiMessage>`,
-the AI Service will automatically append instructions to the end of `UserMessage` indicating the format
-in which the LLM should respond.
+Unless the return type is `String` or `AiMessage`, the AI Service will automatically append instructions
+to the end of the `UserMessage` indicating the format in which the LLM should respond.
 Before the method returns, the AI Service will parse the output of the LLM into the desired type.
 
-You can see the specific instructions by enabling logging for the model, for example:
-```java
-ChatLanguageModel model = OpenAiChatModel.builder()
-    .apiKey(...)
-    .logRequests(true)
-    .logResponses(true)
-    .build();
-```
+You can observe appended instructions by [enabling logging](/tutorials/logging).
 
 Now let's take a look at some examples.
 
