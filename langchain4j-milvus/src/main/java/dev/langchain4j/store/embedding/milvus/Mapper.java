@@ -1,6 +1,8 @@
 package dev.langchain4j.store.embedding.milvus;
 
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -13,6 +15,7 @@ import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.QueryResultsWrapper.RowRecord;
 import io.milvus.response.SearchResultsWrapper;
 
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,6 +32,10 @@ import static java.util.stream.Collectors.toList;
 
 class Mapper {
 
+    private static final Gson GSON = new Gson();
+    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
+    }.getType();
+
     static List<List<Float>> toVectors(List<Embedding> embeddings) {
         return embeddings.stream()
                 .map(Embedding::vectorAsList)
@@ -39,9 +46,9 @@ class Mapper {
         return isNullOrEmpty(textSegments) ? generateEmptyScalars(size) : textSegmentsToScalars(textSegments);
     }
 
-    static List<JSONObject> toMetadataJsons(List<TextSegment> textSegments, int size) {
+    static List<JsonObject> toMetadataJsons(List<TextSegment> textSegments, int size) {
         return isNullOrEmpty(textSegments) ? generateEmptyJsons(size) : textSegments.stream()
-                .map(segment -> new JSONObject(segment.metadata().toMap()))
+                .map(segment -> GSON.toJsonTree(segment.metadata().toMap()).getAsJsonObject())
                 .collect(toList());
     }
 
@@ -97,12 +104,12 @@ class Mapper {
             return TextSegment.from(text);
         }
 
-        JSONObject metadata = (JSONObject) rowRecord.get(METADATA_FIELD_NAME);
+        JsonObject metadata = (JsonObject) rowRecord.get(METADATA_FIELD_NAME);
         return TextSegment.from(text, toMetadata(metadata));
     }
 
-    private static Metadata toMetadata(JSONObject metadata) {
-        Map<String, Object> metadataMap = metadata.getInnerMap();
+    private static Metadata toMetadata(JsonObject metadata) {
+        Map<String, Object> metadataMap = GSON.fromJson(metadata, MAP_TYPE);
         metadataMap.forEach((key, value) -> {
             if (value instanceof BigDecimal) {
                 // It is safe to convert. No information is lost, the "biggest" type allowed in Metadata is double.

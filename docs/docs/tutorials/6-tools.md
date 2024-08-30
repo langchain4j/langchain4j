@@ -112,12 +112,7 @@ Some models can even call multiple tools at once, for example,
 
 :::note
 Please note that not all models support tools.
-Currently, the following models have tool support:
-- `OpenAiChatModel`
-- `AzureOpenAiChatModel`
-- `MistralAiChatModel`
-- `LocalAiChatModel`
-- `QianfanChatModel`
+To see which models support tools, refer to the "Tools" column on [this](https://docs.langchain4j.dev/integrations/language-models/) page.
 :::
 
 :::note
@@ -295,6 +290,21 @@ you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`.
 The value provided to the AI Service method will be automatically passed to the `@Tool` method.
 This feature is useful if you have multiple users and/or multiple chats/memories per user
 and wish to distinguish between them inside the `@Tool` method.
+
+## Accessing Executed Tools
+If you wish to access tools executed during the invocation of an AI Service,
+you can easily do so by wrapping the return type in the `Result` class:
+```java
+interface Assistant {
+
+    Result<String> chat(String userMessage);
+}
+
+Result<String> result = assistant.chat("Cancel my booking 123-456");
+
+String answer = result.content();
+List<ToolExecution> toolExecutions = result.toolExecutions();
+```
 
 ### Configuring Tools Programmatically
 
