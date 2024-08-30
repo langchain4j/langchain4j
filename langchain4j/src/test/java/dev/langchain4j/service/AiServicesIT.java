@@ -26,24 +26,16 @@ import java.util.List;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
-import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
-import static dev.langchain4j.service.AiServicesIT.Ingredient.SALT;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.COMFORT_ISSUE;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.MAINTENANCE_ISSUE;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.OVERALL_EXPERIENCE_ISSUE;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.SERVICE_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.*;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.*;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class AiServicesIT {
@@ -78,7 +70,7 @@ public class AiServicesIT {
 
     interface EggCounter {
 
-        @UserMessage("Count number of 'egg' mentions in this sentence:\n|||{{it}}|||")
+        @UserMessage("Count the number of eggs mentioned in this sentence:\n|||{{it}}|||")
         int count(String sentence);
     }
 
@@ -91,7 +83,7 @@ public class AiServicesIT {
         int count = eggCounter.count(sentence);
         assertThat(count).isEqualTo(13);
 
-        verify(chatLanguageModel).generate(singletonList(userMessage("Count number of 'egg' mentions in this sentence:\n" +
+        verify(chatLanguageModel).generate(singletonList(userMessage("Count the number of eggs mentioned in this sentence:\n" +
                 "|||I have ten eggs in my basket and three in my pocket.|||\n" +
                 "You must answer strictly in the following format: integer number")));
         verify(chatLanguageModel).supportedCapabilities();
@@ -110,7 +102,6 @@ public class AiServicesIT {
         Humorist humorist = AiServices.create(Humorist.class, chatLanguageModel);
 
         String joke = humorist.joke("AI");
-        System.out.println(joke);
 
         assertThat(joke).isNotBlank();
 
@@ -139,7 +130,6 @@ public class AiServicesIT {
         String text = "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
 
         LocalDate date = dateTimeExtractor.extractDateFrom(text);
-        System.out.println(date);
 
         assertThat(date).isEqualTo(LocalDate.of(1968, JULY, 4));
 
@@ -157,7 +147,6 @@ public class AiServicesIT {
         String text = "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
 
         LocalTime time = dateTimeExtractor.extractTimeFrom(text);
-        System.out.println(time);
 
         assertThat(time).isEqualTo(LocalTime.of(23, 45, 0));
 
@@ -175,7 +164,6 @@ public class AiServicesIT {
         String text = "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
 
         LocalDateTime dateTime = dateTimeExtractor.extractDateTimeFrom(text);
-        System.out.println(dateTimeExtractor);
 
         assertThat(dateTime).isEqualTo(LocalDateTime.of(1968, JULY, 4, 23, 45, 0));
 
@@ -205,7 +193,6 @@ public class AiServicesIT {
         String customerReview = "This LaptopPro X15 is wicked fast and that 4K screen is a dream.";
 
         Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf(customerReview);
-        System.out.println(sentiment);
 
         assertThat(sentiment).isEqualTo(POSITIVE);
 
@@ -243,7 +230,6 @@ public class AiServicesIT {
         String weatherForecast = "It will be cloudy and mostly rainy. No more rain early in the day but the sky remains overcast. Afternoon it is mostly cloudy. The sun will not be visible. The forecast has a moderate, 40% chance of Precipitation. Temperatures peaking at 17 °C.";
 
         Weather weather = weatherForecastAnalyzer.analyzeWeatherForecast(weatherForecast);
-        System.out.println(weather);
 
         assertThat(weather).isEqualTo(Weather.RAINY);
 
@@ -374,7 +360,6 @@ public class AiServicesIT {
                 + "an abode that echoed with the gentle hum of suburban dreams and aspirations.";
 
         Person person = personExtractor.extractPersonFrom(text);
-        System.out.println(person);
 
         assertThat(person.firstName).isEqualTo("John");
         assertThat(person.lastName).isEqualTo("Doe");
@@ -405,7 +390,7 @@ public class AiServicesIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO) // supports response_format = 'json_object'
+                .modelName(GPT_4_O_MINI)
                 .responseFormat("json_object")
                 .temperature(0.0)
                 .logRequests(true)
@@ -422,7 +407,6 @@ public class AiServicesIT {
                 + "an abode that echoed with the gentle hum of suburban dreams and aspirations.";
 
         Person person = personExtractor.extractPersonFrom(text);
-        System.out.println(person);
 
         assertThat(person.firstName).isEqualTo("John");
         assertThat(person.lastName).isEqualTo("Doe");
@@ -486,7 +470,6 @@ public class AiServicesIT {
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
         Recipe recipe = chef.createRecipeFrom("cucumber", "tomato", "feta", "onion", "olives");
-        System.out.println(recipe);
 
         assertThat(recipe.title).isNotBlank();
         assertThat(recipe.description).isNotBlank();
@@ -510,7 +493,6 @@ public class AiServicesIT {
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
         Recipe recipe = chef.createRecipeFromUsingResource("cucumber", "tomato", "feta", "onion", "olives");
-        System.out.println(recipe);
 
         assertThat(recipe.title).isNotBlank();
         assertThat(recipe.description).isNotBlank();
@@ -534,7 +516,6 @@ public class AiServicesIT {
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
         Recipe recipe = chef.createRecipeFromUsingResourceInRoot("cucumber", "tomato", "feta", "onion", "olives");
-        System.out.println(recipe);
 
         assertThat(recipe.title).isNotBlank();
         assertThat(recipe.description).isNotBlank();
@@ -558,7 +539,6 @@ public class AiServicesIT {
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
         Recipe recipe = chef.createRecipeFromUsingResourceInSubdirectory("cucumber", "tomato", "feta", "onion", "olives");
-        System.out.println(recipe);
 
         assertThat(recipe.title).isNotBlank();
         assertThat(recipe.description).isNotBlank();
@@ -635,7 +615,6 @@ public class AiServicesIT {
                 .build();
 
         Recipe recipe = chef.createRecipeFrom(prompt);
-        System.out.println(recipe);
 
         assertThat(recipe.title).isNotBlank();
         assertThat(recipe.description).isNotBlank();
@@ -665,7 +644,6 @@ public class AiServicesIT {
                 .build();
 
         Recipe recipe = chef.createRecipeFrom(prompt, "funny");
-        System.out.println(recipe);
 
         assertThat(recipe.title).isNotBlank();
         assertThat(recipe.description).isNotBlank();
@@ -697,7 +675,6 @@ public class AiServicesIT {
                 .build();
 
         Recipe recipe = chef.createRecipeFromUsingResource(prompt, "funny");
-        System.out.println(recipe);
 
         assertThat(recipe.title).isNotBlank();
         assertThat(recipe.description).isNotBlank();
@@ -731,7 +708,6 @@ public class AiServicesIT {
         String question = "How long should I grill chicken?";
 
         String answer = chef.answer(question);
-        System.out.println(answer);
 
         assertThat(answer).isNotBlank();
 
@@ -758,7 +734,6 @@ public class AiServicesIT {
         String text = "Hello, how are you?";
 
         String translation = translator.translate(text, "german");
-        System.out.println(translation);
 
         assertThat(translation).isEqualTo("Hallo, wie geht es dir?");
 
@@ -785,7 +760,6 @@ public class AiServicesIT {
                 "patterns or speech to more complex tasks like making decisions or predictions.";
 
         List<String> bulletPoints = summarizer.summarize(text, 3);
-        System.out.println(bulletPoints);
 
         assertThat(bulletPoints).hasSize(3);
 

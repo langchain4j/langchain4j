@@ -19,7 +19,6 @@ public class QwenLanguageModelIT {
                 .modelName(modelName)
                 .build();
         Response<String> response = model.generate("Please say 'hello' to me");
-        System.out.println(response);
 
         assertThat(response.content()).containsIgnoringCase("hello");
     }

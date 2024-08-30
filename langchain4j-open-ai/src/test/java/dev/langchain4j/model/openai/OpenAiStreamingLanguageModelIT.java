@@ -36,13 +36,11 @@ class OpenAiStreamingLanguageModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 answerBuilder.append(token);
             }
 
             @Override
             public void onComplete(Response<String> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureAnswer.complete(answerBuilder.toString());
                 futureResponse.complete(response);
             }

@@ -20,7 +20,7 @@ requires that a DataSource and an embedding table be provided. The distance
 between two vectors is calculated using [cosine similarity](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/cosine-similarity.html)
 which measures the cosine of the angle between two vectors.
 
-It is recommended to configure a DataSource which pools connections, such as the
+It is recommended to configure a DataSource with pools connections, such as the
 Universal Connection Pool or Hikari. A connection pool will avoid the latency of
 repeatedly creating new database connections.
 

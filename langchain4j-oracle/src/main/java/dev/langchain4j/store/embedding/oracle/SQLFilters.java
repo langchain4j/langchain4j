@@ -604,6 +604,7 @@ final class SQLFilters {
             // not known. It cannot be assumed that the other character value's length is small enough to be a VARCHAR.
             // For this reason, the two character values should be compared as CLOBs.
             return OracleType.CLOB;
+
         }
         else {
             // Compare null, UUID, and any other object that Metadata supports in the future as VARCHAR objects.

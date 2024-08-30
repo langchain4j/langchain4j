@@ -26,7 +26,6 @@ class HuggingFaceLanguageModelIT {
         String answer = model.generate("What is the capital of the USA?").content();
 
         assertThat(answer).containsIgnoringCase("Washington");
-        System.out.println(answer);
     }
 
     @ParameterizedTest
