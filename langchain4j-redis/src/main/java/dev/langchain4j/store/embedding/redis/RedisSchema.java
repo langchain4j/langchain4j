@@ -68,8 +68,11 @@ class RedisSchema {
         if (metadataKeys != null) {
             for (String metadataKey : metadataKeys) {
                 SchemaField schemaField = schemaFieldMap.get(metadataKey);
-                fields.add(Optional.ofNullable(schemaField)
-                        .orElse(TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0)));
+                if (schemaField == null) {
+                    schemaField = TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0);
+                    schemaFieldMap.put(metadataKey, schemaField);
+                }
+                fields.add(schemaField);
             }
         }
         return fields.toArray(new SchemaField[0]);
@@ -93,5 +96,9 @@ class RedisSchema {
 
     Collection<String> metadataKeys() {
         return metadataKeys;
+    }
+
+    Map<String, SchemaField> schemaFieldMap() {
+        return schemaFieldMap;
     }
 }

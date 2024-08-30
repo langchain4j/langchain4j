@@ -13,6 +13,7 @@ import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.json.Path2;
 import redis.clients.jedis.search.*;
 import redis.clients.jedis.search.schemafields.SchemaField;
+import redis.clients.jedis.search.schemafields.TextField;
 
 import java.util.*;
 
@@ -172,9 +173,19 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                 Map<String, Object> fields = new HashMap<>();
                 fields.put(schema.vectorFieldName(), embedding.vector());
                 if (textSegment != null) {
-                    // do not check metadata key is included in RedisSchema#metadataKeys
+                    // NOTE: do not check metadata key is included in RedisSchema#metadataKeys
                     fields.put(schema.scalarFieldName(), textSegment.text());
-                    fields.putAll(textSegment.metadata().toMap());
+                    Map<String, Object> metadataMap = textSegment.metadata().toMap();
+
+                    // NOTE: since Java types and Redis types don't always correspond, there is a conversion to be done here.
+                    for (Map.Entry<String, SchemaField> fieldEntry : schema.schemaFieldMap().entrySet()) {
+                        String metadataKey = fieldEntry.getKey();
+                        SchemaField field = fieldEntry.getValue();
+                        if (field instanceof TextField && metadataMap.containsKey(metadataKey)) {
+                            metadataMap.put(metadataKey, String.valueOf(metadataMap.get(metadataKey)));
+                        }
+                    }
+                    fields.putAll(metadataMap);
                 }
                 String key = schema.prefix() + id;
                 pipeline.jsonSetWithEscape(key, Path2.of("$"), fields);
