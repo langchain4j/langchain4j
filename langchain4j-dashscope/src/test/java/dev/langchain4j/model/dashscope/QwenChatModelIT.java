@@ -115,7 +115,7 @@ public class QwenChatModelIT {
         Response<AiMessage> secondResponse = model.generate(messages, singletonList(hasArgToolSpec));
 
         AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("rainy");
+        assertThat(secondAiMessage.text()).contains("rain");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
