@@ -7,7 +7,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
@@ -34,7 +33,6 @@ public class OllamaChatModel implements ChatLanguageModel {
     private final String format;
     private final Integer maxRetries;
 
-    @Builder
     public OllamaChatModel(String baseUrl,
                            String modelName,
                            Double temperature,
@@ -71,6 +69,13 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .build();
         this.format = format;
         this.maxRetries = getOrDefault(maxRetries, 3);
+    }
+
+    public static OllamaChatModelBuilder builder() {
+        for (OllamaChatModelBuilderFactory factory : loadFactories(OllamaChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OllamaChatModelBuilder();
     }
 
     @Override
@@ -116,17 +121,129 @@ public class OllamaChatModel implements ChatLanguageModel {
         );
     }
 
-    public static OllamaChatModelBuilder builder() {
-        for (OllamaChatModelBuilderFactory factory : loadFactories(OllamaChatModelBuilderFactory.class)) {
-            return factory.get();
-        }
-        return new OllamaChatModelBuilder();
-    }
-
     public static class OllamaChatModelBuilder {
+
+        private String baseUrl;
+        private String modelName;
+        private Double temperature;
+        private Integer topK;
+        private Double topP;
+        private Double repeatPenalty;
+        private Integer seed;
+        private Integer numPredict;
+        private Integer numCtx;
+        private List<String> stop;
+        private String format;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Map<String, String> customHeaders;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
         public OllamaChatModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public OllamaChatModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OllamaChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OllamaChatModelBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public OllamaChatModelBuilder topK(Integer topK) {
+            this.topK = topK;
+            return this;
+        }
+
+        public OllamaChatModelBuilder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public OllamaChatModelBuilder repeatPenalty(Double repeatPenalty) {
+            this.repeatPenalty = repeatPenalty;
+            return this;
+        }
+
+        public OllamaChatModelBuilder seed(Integer seed) {
+            this.seed = seed;
+            return this;
+        }
+
+        public OllamaChatModelBuilder numPredict(Integer numPredict) {
+            this.numPredict = numPredict;
+            return this;
+        }
+
+        public OllamaChatModelBuilder numCtx(Integer numCtx) {
+            this.numCtx = numCtx;
+            return this;
+        }
+
+        public OllamaChatModelBuilder stop(List<String> stop) {
+            this.stop = stop;
+            return this;
+        }
+
+        public OllamaChatModelBuilder format(String format) {
+            this.format = format;
+            return this;
+        }
+
+        public OllamaChatModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OllamaChatModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public OllamaChatModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OllamaChatModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OllamaChatModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public OllamaChatModel build() {
+            return new OllamaChatModel(
+                    baseUrl,
+                    modelName,
+                    temperature,
+                    topK,
+                    topP,
+                    repeatPenalty,
+                    seed,
+                    numPredict,
+                    numCtx,
+                    stop,
+                    format,
+                    timeout,
+                    maxRetries,
+                    customHeaders,
+                    logRequests,
+                    logResponses
+            );
         }
     }
 
