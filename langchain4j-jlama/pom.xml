@@ -15,7 +15,7 @@
     </parent>
 
     <properties>
-        <jlama.version>0.2.1</jlama.version>
+        <jlama.version>0.3.1</jlama.version>
         <jackson.version>2.16.1</jackson.version>
         <spotless.version>2.40.0</spotless.version>
         <maven.compiler.release>21</maven.compiler.release>
