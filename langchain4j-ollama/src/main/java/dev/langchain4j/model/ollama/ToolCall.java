@@ -25,11 +25,11 @@ class ToolCall {
         return new Builder();
     }
 
-    FunctionCall getFunction() {
+    public FunctionCall getFunction() {
         return function;
     }
 
-    void setFunction(FunctionCall function) {
+    public void setFunction(FunctionCall function) {
         this.function = function;
     }
 

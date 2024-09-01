@@ -29,19 +29,19 @@ class EmbeddingRequest {
         return new Builder();
     }
 
-    String getModel() {
+    public String getModel() {
         return model;
     }
 
-    void setModel(String model) {
+    public void setModel(String model) {
         this.model = model;
     }
 
-    List<String> getInput() {
+    public List<String> getInput() {
         return input;
     }
 
-    void setInput(List<String> input) {
+    public void setInput(List<String> input) {
         this.input = input;
     }
 

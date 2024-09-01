@@ -31,35 +31,35 @@ public class OllamaModel {
         return new Builder();
     }
 
-    String getName() {
+    public String getName() {
         return name;
     }
 
-    void setName(String name) {
+    public void setName(String name) {
         this.name = name;
     }
 
-    long getSize() {
+    public long getSize() {
         return size;
     }
 
-    void setSize(long size) {
+    public void setSize(long size) {
         this.size = size;
     }
 
-    String getDigest() {
+    public String getDigest() {
         return digest;
     }
 
-    void setDigest(String digest) {
+    public void setDigest(String digest) {
         this.digest = digest;
     }
 
-    OllamaModelDetails getDetails() {
+    public OllamaModelDetails getDetails() {
         return details;
     }
 
-    void setDetails(OllamaModelDetails details) {
+    public void setDetails(OllamaModelDetails details) {
         this.details = details;
     }
 

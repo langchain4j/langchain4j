@@ -38,55 +38,55 @@ class ChatRequest {
         return new Builder();
     }
 
-    String getModel() {
+    public String getModel() {
         return model;
     }
 
-    void setModel(String model) {
+    public void setModel(String model) {
         this.model = model;
     }
 
-    List<Message> getMessages() {
+    public List<Message> getMessages() {
         return messages;
     }
 
-    void setMessages(List<Message> messages) {
+    public void setMessages(List<Message> messages) {
         this.messages = messages;
     }
 
-    String getFormat() {
-        return format;
-    }
-
-    void setFormat(String format) {
-        this.format = format;
-    }
-
-    Options getOptions() {
+    public Options getOptions() {
         return options;
     }
 
-    void setOptions(Options options) {
+    public void setOptions(Options options) {
         this.options = options;
     }
 
-    Boolean getStream() {
+    public String getFormat() {
+        return format;
+    }
+
+    public void setFormat(String format) {
+        this.format = format;
+    }
+
+    public Boolean getStream() {
         return stream;
     }
 
-    void setStream(Boolean stream) {
+    public void setStream(Boolean stream) {
         this.stream = stream;
     }
 
-    List<Tool> getTools() {
+    public List<Tool> getTools() {
         return tools;
     }
 
-    void setTools(List<Tool> tools) {
+    public void setTools(List<Tool> tools) {
         this.tools = tools;
     }
 
-    public static class Builder {
+    static class Builder {
 
         private String model;
         private List<Message> messages;

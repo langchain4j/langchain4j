@@ -29,19 +29,19 @@ class EmbeddingResponse {
         return new Builder();
     }
 
-    String getModel() {
+    public String getModel() {
         return model;
     }
 
-    void setModel(String model) {
+    public void setModel(String model) {
         this.model = model;
     }
 
-    List<float[]> getEmbeddings() {
+    public List<float[]> getEmbeddings() {
         return embeddings;
     }
 
-    void setEmbeddings(List<float[]> embeddings) {
+    public void setEmbeddings(List<float[]> embeddings) {
         this.embeddings = embeddings;
     }
 

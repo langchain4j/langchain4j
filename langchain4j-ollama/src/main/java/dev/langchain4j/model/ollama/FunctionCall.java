@@ -29,19 +29,19 @@ class FunctionCall {
         return new Builder();
     }
 
-    String getName() {
+    public String getName() {
         return name;
     }
 
-    void setName(String name) {
+    public void setName(String name) {
         this.name = name;
     }
 
-    Map<String, Object> getArguments() {
+    public Map<String, Object> getArguments() {
         return arguments;
     }
 
-    void setArguments(Map<String, Object> arguments) {
+    public void setArguments(Map<String, Object> arguments) {
         this.arguments = arguments;
     }
 

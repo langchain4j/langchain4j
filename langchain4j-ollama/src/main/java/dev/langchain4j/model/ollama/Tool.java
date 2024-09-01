@@ -27,19 +27,19 @@ class Tool {
         return new Builder();
     }
 
-    String getType() {
+    public String getType() {
         return type;
     }
 
-    void setType(String type) {
+    public void setType(String type) {
         this.type = type;
     }
 
-    Function getFunction() {
+    public Function getFunction() {
         return function;
     }
 
-    void setFunction(Function function) {
+    public void setFunction(Function function) {
         this.function = function;
     }
 

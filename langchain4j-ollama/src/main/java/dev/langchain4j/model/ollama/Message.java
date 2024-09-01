@@ -33,35 +33,35 @@ class Message {
         return new Builder();
     }
 
-    Role getRole() {
+    public Role getRole() {
         return role;
     }
 
-    void setRole(Role role) {
+    public void setRole(Role role) {
         this.role = role;
     }
 
-    String getContent() {
+    public String getContent() {
         return content;
     }
 
-    void setContent(String content) {
+    public void setContent(String content) {
         this.content = content;
     }
 
-    List<String> getImages() {
+    public List<String> getImages() {
         return images;
     }
 
-    void setImages(List<String> images) {
+    public void setImages(List<String> images) {
         this.images = images;
     }
 
-    List<ToolCall> getToolCalls() {
+    public List<ToolCall> getToolCalls() {
         return toolCalls;
     }
 
-    void setToolCalls(List<ToolCall> toolCalls) {
+    public void setToolCalls(List<ToolCall> toolCalls) {
         this.toolCalls = toolCalls;
     }
 

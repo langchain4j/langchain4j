@@ -46,67 +46,67 @@ class Options {
         return new Builder();
     }
 
-    Double getTemperature() {
+    public Double getTemperature() {
         return temperature;
     }
 
-    void setTemperature(Double temperature) {
+    public void setTemperature(Double temperature) {
         this.temperature = temperature;
     }
 
-    Integer getTopK() {
+    public Integer getTopK() {
         return topK;
     }
 
-    void setTopK(Integer topK) {
+    public void setTopK(Integer topK) {
         this.topK = topK;
     }
 
-    Double getTopP() {
+    public Double getTopP() {
         return topP;
     }
 
-    void setTopP(Double topP) {
+    public void setTopP(Double topP) {
         this.topP = topP;
     }
 
-    Integer getSeed() {
-        return seed;
-    }
-
-    void setSeed(Integer seed) {
-        this.seed = seed;
-    }
-
-    Double getRepeatPenalty() {
+    public Double getRepeatPenalty() {
         return repeatPenalty;
     }
 
-    void setRepeatPenalty(Double repeatPenalty) {
+    public void setRepeatPenalty(Double repeatPenalty) {
         this.repeatPenalty = repeatPenalty;
     }
 
-    Integer getNumPredict() {
+    public Integer getNumPredict() {
         return numPredict;
     }
 
-    void setNumPredict(Integer numPredict) {
+    public void setNumPredict(Integer numPredict) {
         this.numPredict = numPredict;
     }
 
-    Integer getNumCtx() {
+    public Integer getSeed() {
+        return seed;
+    }
+
+    public void setSeed(Integer seed) {
+        this.seed = seed;
+    }
+
+    public Integer getNumCtx() {
         return numCtx;
     }
 
-    void setNumCtx(Integer numCtx) {
+    public void setNumCtx(Integer numCtx) {
         this.numCtx = numCtx;
     }
 
-    List<String> getStop() {
+    public List<String> getStop() {
         return stop;
     }
 
-    void setStop(List<String> stop) {
+    public void setStop(List<String> stop) {
         this.stop = stop;
     }
 

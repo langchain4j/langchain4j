@@ -32,27 +32,27 @@ class Parameters {
         return new Builder();
     }
 
-    String getType() {
+    public String getType() {
         return type;
     }
 
-    void setType(String type) {
+    public void setType(String type) {
         this.type = type;
     }
 
-    Map<String, Map<String, Object>> getProperties() {
+    public Map<String, Map<String, Object>> getProperties() {
         return properties;
     }
 
-    void setProperties(Map<String, Map<String, Object>> properties) {
+    public void setProperties(Map<String, Map<String, Object>> properties) {
         this.properties = properties;
     }
 
-    List<String> getRequired() {
+    public List<String> getRequired() {
         return required;
     }
 
-    void setRequired(List<String> required) {
+    public void setRequired(List<String> required) {
         this.required = required;
     }
 

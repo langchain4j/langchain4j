@@ -35,43 +35,43 @@ public class OllamaModelDetails {
         return new Builder();
     }
 
-    String getFormat() {
+    public String getFormat() {
         return format;
     }
 
-    void setFormat(String format) {
+    public void setFormat(String format) {
         this.format = format;
     }
 
-    String getFamily() {
+    public String getFamily() {
         return family;
     }
 
-    void setFamily(String family) {
+    public void setFamily(String family) {
         this.family = family;
     }
 
-    List<String> getFamilies() {
+    public List<String> getFamilies() {
         return families;
     }
 
-    void setFamilies(List<String> families) {
+    public void setFamilies(List<String> families) {
         this.families = families;
     }
 
-    String getParameterSize() {
+    public String getParameterSize() {
         return parameterSize;
     }
 
-    void setParameterSize(String parameterSize) {
+    public void setParameterSize(String parameterSize) {
         this.parameterSize = parameterSize;
     }
 
-    String getQuantizationLevel() {
+    public String getQuantizationLevel() {
         return quantizationLevel;
     }
 
-    void setQuantizationLevel(String quantizationLevel) {
+    public void setQuantizationLevel(String quantizationLevel) {
         this.quantizationLevel = quantizationLevel;
     }
 

@@ -31,35 +31,35 @@ public class OllamaModelCard {
         return new Builder();
     }
 
-    String getModelfile() {
+    public String getModelfile() {
         return modelfile;
     }
 
-    void setModelfile(String modelfile) {
+    public void setModelfile(String modelfile) {
         this.modelfile = modelfile;
     }
 
-    String getParameters() {
+    public String getParameters() {
         return parameters;
     }
 
-    void setParameters(String parameters) {
+    public void setParameters(String parameters) {
         this.parameters = parameters;
     }
 
-    String getTemplate() {
+    public String getTemplate() {
         return template;
     }
 
-    void setTemplate(String template) {
+    public void setTemplate(String template) {
         this.template = template;
     }
 
-    OllamaModelDetails getDetails() {
+    public OllamaModelDetails getDetails() {
         return details;
     }
 
-    void setDetails(OllamaModelDetails details) {
+    public void setDetails(OllamaModelDetails details) {
         this.details = details;
     }
 

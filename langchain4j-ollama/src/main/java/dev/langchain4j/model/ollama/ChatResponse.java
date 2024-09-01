@@ -36,51 +36,51 @@ class ChatResponse {
         return new Builder();
     }
 
-    String getModel() {
+    public String getModel() {
         return model;
     }
 
-    void setModel(String model) {
+    public void setModel(String model) {
         this.model = model;
     }
 
-    String getCreatedAt() {
+    public String getCreatedAt() {
         return createdAt;
     }
 
-    void setCreatedAt(String createdAt) {
+    public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
     }
 
-    Message getMessage() {
+    public Message getMessage() {
         return message;
     }
 
-    void setMessage(Message message) {
+    public void setMessage(Message message) {
         this.message = message;
     }
 
-    Boolean getDone() {
+    public Boolean getDone() {
         return done;
     }
 
-    void setDone(Boolean done) {
+    public void setDone(Boolean done) {
         this.done = done;
     }
 
-    Integer getPromptEvalCount() {
+    public Integer getPromptEvalCount() {
         return promptEvalCount;
     }
 
-    void setPromptEvalCount(Integer promptEvalCount) {
+    public void setPromptEvalCount(Integer promptEvalCount) {
         this.promptEvalCount = promptEvalCount;
     }
 
-    Integer getEvalCount() {
+    public Integer getEvalCount() {
         return evalCount;
     }
 
-    void setEvalCount(Integer evalCount) {
+    public void setEvalCount(Integer evalCount) {
         this.evalCount = evalCount;
     }
 

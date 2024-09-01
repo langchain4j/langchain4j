@@ -15,11 +15,11 @@ class DeleteModelRequest {
         return new Builder();
     }
 
-    String getName() {
+    public String getName() {
         return name;
     }
 
-    void setName(String name) {
+    public void setName(String name) {
         this.name = name;
     }
 

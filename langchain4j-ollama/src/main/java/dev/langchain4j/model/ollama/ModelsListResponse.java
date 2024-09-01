@@ -27,11 +27,11 @@ class ModelsListResponse {
         return new Builder();
     }
 
-    List<OllamaModel> getModels() {
+    public List<OllamaModel> getModels() {
         return models;
     }
 
-    void setModels(List<OllamaModel> models) {
+    public void setModels(List<OllamaModel> models) {
         this.models = models;
     }
 

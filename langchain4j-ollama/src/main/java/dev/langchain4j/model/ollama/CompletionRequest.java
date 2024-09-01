@@ -35,51 +35,51 @@ class CompletionRequest {
         return new Builder();
     }
 
-    String getModel() {
+    public String getModel() {
         return model;
     }
 
-    void setModel(String model) {
+    public void setModel(String model) {
         this.model = model;
     }
 
-    String getSystem() {
+    public String getSystem() {
         return system;
     }
 
-    void setSystem(String system) {
+    public void setSystem(String system) {
         this.system = system;
     }
 
-    String getPrompt() {
+    public String getPrompt() {
         return prompt;
     }
 
-    void setPrompt(String prompt) {
+    public void setPrompt(String prompt) {
         this.prompt = prompt;
     }
 
-    Options getOptions() {
+    public Options getOptions() {
         return options;
     }
 
-    void setOptions(Options options) {
+    public void setOptions(Options options) {
         this.options = options;
     }
 
-    String getFormat() {
+    public String getFormat() {
         return format;
     }
 
-    void setFormat(String format) {
+    public void setFormat(String format) {
         this.format = format;
     }
 
-    Boolean getStream() {
+    public Boolean getStream() {
         return stream;
     }
 
-    void setStream(Boolean stream) {
+    public void setStream(Boolean stream) {
         this.stream = stream;
     }
 
