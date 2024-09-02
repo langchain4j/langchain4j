@@ -498,7 +498,8 @@ class OpenAiStreamingChatModelIT {
 
     @ParameterizedTest
     @EnumSource(value = OpenAiChatModelName.class, mode = EXCLUDE, names = {
-            "GPT_4_32K", "GPT_4_32K_0314", "GPT_4_32K_0613"
+            "GPT_4_32K", "GPT_4_32K_0314", "GPT_4_32K_0613", // don't have access
+            "GPT_3_5_TURBO_0613", "GPT_3_5_TURBO_16K_0613", "GPT_4_0314", "GPT_4_VISION_PREVIEW" // deprecated
     })
     void should_use_enum_as_model_name(OpenAiChatModelName modelName) {
 
