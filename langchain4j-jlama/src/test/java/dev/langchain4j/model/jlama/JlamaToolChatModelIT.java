@@ -31,7 +31,7 @@ public class JlamaToolChatModelIT {
         model = JlamaChatModel.builder()
                 .modelName("tjake/Meta-Llama-3.1-8B-Instruct-Jlama-Q4")
                 .modelCachePath(tmpDir.toPath())
-                .temperature(0.1f)
+                .temperature(0.0f)
                 .maxTokens(1024)
                 .build();
     }
