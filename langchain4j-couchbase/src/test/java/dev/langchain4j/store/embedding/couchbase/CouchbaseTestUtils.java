@@ -13,17 +13,19 @@ import org.testcontainers.utility.DockerImageName;
 import java.time.Duration;
 
 @Testcontainers
-final class CouchbaseTestUtils {
-    private CouchbaseTestUtils() {
+class CouchbaseTestUtils {
 
+    private static final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+    static EmbeddingModel embeddingModel() {
+        return embeddingModel;
     }
-    static final Integer TEST_DIMENSIONS = 384;
 
     private static CouchbaseEmbeddingStore cloudStoreInstance;
 
     public static CouchbaseEmbeddingStore cloudStore() {
         if (cloudStoreInstance == null) {
-            cloudStoreInstance = new CouchbaseEmbeddingStore.Builder()
+            cloudStoreInstance = CouchbaseEmbeddingStore.builder()
                     .clusterUrl(System.getenv("COUCHBASE_CLUSTER_URL"))
                     .username(System.getenv("COUCHBASE_USERNAME"))
                     .password(System.getenv("COUCHBASE_PASSWORD"))
@@ -31,7 +33,7 @@ final class CouchbaseTestUtils {
                     .scopeName(System.getenv("COUCHBASE_SCOPE"))
                     .collectionName(System.getenv("COUCHBASE_COLLECTION"))
                     .searchIndexName(System.getenv("COUCHBASE_FTS_INDEX"))
-                    .dimensions(TEST_DIMENSIONS)
+                    .dimensions(embeddingModel.dimension())
                     .build();
         }
 
@@ -64,7 +66,7 @@ final class CouchbaseTestUtils {
             Bucket bucket = cluster.bucket(testBucketDefinition.getName());
             bucket.waitUntilReady(Duration.ofSeconds(30));
 
-            containerStoreInstance = new CouchbaseEmbeddingStore.Builder()
+            containerStoreInstance = CouchbaseEmbeddingStore.builder()
                     .clusterUrl(couchbaseContainer.getConnectionString())
                     .username(couchbaseContainer.getUsername())
                     .password(couchbaseContainer.getPassword())
@@ -72,15 +74,9 @@ final class CouchbaseTestUtils {
                     .scopeName("_default")
                     .collectionName("_default")
                     .searchIndexName("test")
-                    .dimensions(TEST_DIMENSIONS)
+                    .dimensions(embeddingModel().dimension())
                     .build();
         }
         return containerStoreInstance;
-    }
-
-    private static final EmbeddingModel embeddingModelInstance = new AllMiniLmL6V2QuantizedEmbeddingModel();
-
-    public static EmbeddingModel embeddingModel() {
-        return embeddingModelInstance;
     }
 }

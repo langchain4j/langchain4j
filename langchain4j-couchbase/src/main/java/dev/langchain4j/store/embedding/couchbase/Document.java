@@ -12,6 +12,7 @@ import java.util.Map;
 @AllArgsConstructor
 @Builder
 class Document {
+
     private String id;
     private float[] vector;
     private String text;

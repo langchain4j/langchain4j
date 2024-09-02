@@ -49,7 +49,8 @@ The following sample code illustrates how to initialize an embedding store that 
 server:
 
 ```java
-CouchbaseEmbeddingStore embeddingStore = CouchbaseEmbeddingStore.builder().clusterUrl("localhost:8091")
+CouchbaseEmbeddingStore embeddingStore = CouchbaseEmbeddingStore.builder()
+        .clusterUrl("localhost:8091")
         .username("Administrator")
         .password("password")
         .bucketName("langchain4j")
@@ -69,7 +70,8 @@ CouchbaseContainer couchbaseContainer =
                 .withBucket(testBucketDefinition)
                 .withStartupTimeout(Duration.ofMinutes(1));
 
-CouchbaseEmbeddingStore embeddingStore = CouchbaseEmbeddingStore.builder().clusterUrl(couchbaseContainer.getConnectionString())
+CouchbaseEmbeddingStore embeddingStore = CouchbaseEmbeddingStore.builder()
+        .clusterUrl(couchbaseContainer.getConnectionString())
         .username(couchbaseContainer.getUsername())
         .password(couchbaseContainer.getPassword())
         .bucketName(testBucketDefinition.getName())
