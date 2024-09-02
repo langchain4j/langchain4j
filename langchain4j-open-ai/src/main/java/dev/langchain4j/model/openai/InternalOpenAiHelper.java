@@ -437,7 +437,9 @@ public class InternalOpenAiHelper {
 
         JsonSchema jsonSchema = responseFormat.jsonSchema();
         if (jsonSchema == null) {
-            return new dev.ai4j.openai4j.chat.ResponseFormat(JSON_OBJECT, null);
+            return dev.ai4j.openai4j.chat.ResponseFormat.builder()
+                    .type(JSON_OBJECT)
+                    .build();
         } else {
             if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
                 throw new IllegalArgumentException("For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: " + jsonSchema.rootElement().getClass());
@@ -447,7 +449,10 @@ public class InternalOpenAiHelper {
                     .strict(strict)
                     .schema((dev.ai4j.openai4j.chat.JsonObjectSchema) toOpenAiJsonSchemaElement(jsonSchema.rootElement()))
                     .build();
-            return new dev.ai4j.openai4j.chat.ResponseFormat(JSON_SCHEMA, openAiJsonSchema);
+            return dev.ai4j.openai4j.chat.ResponseFormat.builder()
+                    .type(JSON_SCHEMA)
+                    .jsonSchema(openAiJsonSchema)
+                    .build();
         }
     }
 
