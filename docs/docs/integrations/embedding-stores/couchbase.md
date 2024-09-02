@@ -69,7 +69,7 @@ CouchbaseContainer couchbaseContainer =
                 .withBucket(testBucketDefinition)
                 .withStartupTimeout(Duration.ofMinutes(1));
 
-CouchbaseEmbeddingStore embeddingStore = new CouchbaseEmbeddingStore.Builder(couchbaseContainer.getConnectionString())
+CouchbaseEmbeddingStore embeddingStore = CouchbaseEmbeddingStore.builder().clusterUrl(couchbaseContainer.getConnectionString())
         .username(couchbaseContainer.getUsername())
         .password(couchbaseContainer.getPassword())
         .bucketName(testBucketDefinition.getName())
