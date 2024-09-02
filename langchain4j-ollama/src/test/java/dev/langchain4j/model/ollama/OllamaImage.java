@@ -13,7 +13,7 @@ public class OllamaImage {
 
     static final String BAKLLAVA_MODEL = "bakllava";
 
-    static final String TINY_DOLPHIN_MODEL = "tinydolphin";
+    static final String TINY_DOLPHIN_MODEL = "llama3.1:latest";
     static final String TOOL_MODEL = "mistral";
 
     static final String ALL_MINILM_MODEL = "all-minilm";
