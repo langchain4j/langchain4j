@@ -88,7 +88,7 @@ public class QwenTestHelper {
         messages.add(SystemMessage.from("Your name is Jack." +
                 " You like to answer other people's questions briefly." +
                 " It's rainy today." +
-                " When you're done, end with \"That's all!\"."));
+                " Your reply should end with \"That's all!\"."));
         messages.add(UserMessage.from("Hello. What's your name?"));
         messages.add(AiMessage.from("Jack. That's all!"));
         messages.add(UserMessage.from("How about the weather today?"));

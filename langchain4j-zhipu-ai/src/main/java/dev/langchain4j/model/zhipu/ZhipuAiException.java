@@ -1,12 +1,10 @@
 package dev.langchain4j.model.zhipu;
 
 import dev.langchain4j.model.zhipu.shared.ErrorResponse;
-import lombok.Getter;
 import okhttp3.ResponseBody;
 
 import java.io.IOException;
 
-@Getter
 public class ZhipuAiException extends RuntimeException {
 
     /**
@@ -37,5 +35,9 @@ public class ZhipuAiException extends RuntimeException {
     public ZhipuAiException(String message) {
         super(message);
         this.message = message;
+    }
+
+    public String getCode() {
+        return code;
     }
 }

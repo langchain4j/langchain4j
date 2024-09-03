@@ -5,6 +5,7 @@ import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.ai4j.openai4j.chat.ResponseFormat;
+import dev.ai4j.openai4j.chat.ResponseFormatType;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -30,10 +31,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -137,7 +140,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.logitBias = logitBias;
-        this.responseFormat = responseFormat == null ? null : new ResponseFormat(responseFormat, null);
+        this.responseFormat = responseFormat == null ? null : ResponseFormat.builder()
+                .type(ResponseFormatType.valueOf(responseFormat.toUpperCase(Locale.ROOT)))
+                .build();
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
         this.seed = seed;
         this.user = user;
@@ -155,7 +160,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>();
-        if (responseFormat != null && "json_schema".equals(responseFormat.type())) {
+        if (responseFormat != null && responseFormat.type() == JSON_SCHEMA) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
@@ -197,7 +202,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                                          ResponseFormat responseFormat) {
 
         if (responseFormat != null
-                && "json_schema".equals(responseFormat.type())
+                && responseFormat.type() == JSON_SCHEMA
                 && responseFormat.jsonSchema() == null) {
             responseFormat = null;
         }

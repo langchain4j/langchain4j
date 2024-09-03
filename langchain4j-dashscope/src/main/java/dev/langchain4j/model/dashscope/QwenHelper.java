@@ -272,14 +272,10 @@ class QwenHelper {
 
     static FinishReason finishReasonFrom(GenerationResult result) {
         Choice choice = result.getOutput().getChoices().get(0);
-        String finishReason = choice.getFinishReason();
-        if (finishReason == null) {
-            if (isNullOrEmpty(choice.getMessage().getToolCalls())) {
-                return null;
-            }
-            // Upon observation, when tool_calls occur, the returned finish_reason may be null, not "tool_calls".
-            finishReason = "tool_calls";
-        }
+        // Upon observation, when tool_calls occur, the returned finish_reason may be null or "stop", not "tool_calls".
+        String finishReason = isNullOrEmpty(choice.getMessage().getToolCalls()) ?
+                choice.getFinishReason() :
+                "tool_calls";
 
         switch (finishReason) {
             case "stop":
@@ -370,7 +366,6 @@ class QwenHelper {
 
     static String toolCallIdFromMessage(GenerationResult result) {
         // Not sure about the difference between Message::getToolCallId() and ToolCallFunction::getId().
-        // Currently, they all return null.
         // Encapsulate a method to get the ID using Message::getToolCallId() when ToolCallFunction::getId() is null.
         return Optional.of(result)
                 .map(GenerationResult::getOutput)
