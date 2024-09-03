@@ -11,12 +11,14 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableMap;
 
 /**
  * Utility methods.
@@ -179,6 +181,16 @@ public class Utils {
   }
 
   /**
+   * Appends a trailing '/' if the provided URL does not end with '/'
+   * 
+   * @param url URL to check for trailing '/'
+   * @return Same URL if it already ends with '/' or a new URL with '/' appended
+   */
+  public static String ensureTrailingForwardSlash(String url) {
+      return url.endsWith("/") ? url : url + "/";
+  }
+
+  /**
    * Returns the given object's {@code toString()} surrounded by quotes.
    *
    * <p>If the given object is {@code null}, the string {@code "null"} is returned.
@@ -262,5 +274,21 @@ public class Utils {
     }
 
     return unmodifiableList(list);
+  }
+
+
+  /**
+   * Returns an (unmodifiable) copy of the provided map.
+   * Returns <code>null</code> if the provided map is <code>null</code>.
+   *
+   * @param map The map to copy.
+   * @return The copy of the provided map.
+   */
+  public static <K,V> Map<K,V> copyIfNotNull(Map<K,V> map) {
+    if (map == null) {
+      return null;
+    }
+
+    return unmodifiableMap(map);
   }
 }

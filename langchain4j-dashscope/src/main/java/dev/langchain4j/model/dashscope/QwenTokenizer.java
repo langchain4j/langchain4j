@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
+import lombok.Builder;
 
 import java.util.Collections;
 
@@ -21,6 +22,7 @@ public class QwenTokenizer implements Tokenizer {
     private final String modelName;
     private final Tokenization tokenizer;
 
+    @Builder
     public QwenTokenizer(String apiKey, String modelName) {
         if (isNullOrBlank(apiKey)) {
             throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");

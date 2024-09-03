@@ -32,7 +32,6 @@ class HuggingFaceChatModelIT {
         ).content();
 
         assertThat(aiMessage.text()).isNotBlank();
-        System.out.println(aiMessage.text());
     }
 
     @ParameterizedTest

@@ -11,8 +11,11 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.objectItems;
+import static dev.langchain4j.internal.TypeUtils.*;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.model.output.structured.Description;
+
 import static java.lang.String.format;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
@@ -22,8 +25,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -199,15 +200,15 @@ public class ToolSpecifications {
             return removeNulls(STRING, description);
         }
 
-        if (isBoolean(type)) {
+        if (isJsonBoolean(type)) {
             return removeNulls(BOOLEAN, description);
         }
 
-        if (isInteger(type)) {
+        if (isJsonInteger(type)) {
             return removeNulls(INTEGER, description);
         }
 
-        if (isNumber(type)) {
+        if (isJsonNumber(type)) {
             return removeNulls(NUMBER, description);
         }
 
@@ -234,36 +235,17 @@ public class ToolSpecifications {
         return items(JsonSchemaProperty.OBJECT);
     }
 
-    // TODO put constraints on min and max?
-    private static boolean isNumber(Class<?> type) {
-        return type == float.class || type == Float.class
-                || type == double.class || type == Double.class
-                || type == BigDecimal.class;
-    }
-
-    private static boolean isInteger(Class<?> type) {
-        return type == byte.class || type == Byte.class
-                || type == short.class || type == Short.class
-                || type == int.class || type == Integer.class
-                || type == long.class || type == Long.class
-                || type == BigInteger.class;
-    }
-
-    private static boolean isBoolean(Class<?> type) {
-        return type == boolean.class || type == Boolean.class;
-    }
-
     private static JsonSchemaProperty arrayTypeFrom(Class<?> clazz) {
         if (clazz == String.class) {
             return items(JsonSchemaProperty.STRING);
         }
-        if (isBoolean(clazz)) {
+        if (isJsonBoolean(clazz)) {
             return items(JsonSchemaProperty.BOOLEAN);
         }
-        if (isInteger(clazz)) {
+        if (isJsonInteger(clazz)) {
             return items(JsonSchemaProperty.INTEGER);
         }
-        if (isNumber(clazz)) {
+        if (isJsonNumber(clazz)) {
             return items(JsonSchemaProperty.NUMBER);
         }
         return objectItems(schema(clazz));

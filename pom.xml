@@ -10,6 +10,10 @@
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
+    <properties>
+        <gib.disable>true</gib.disable>
+    </properties>
+
     <modules>
 
         <module>langchain4j-parent</module>
@@ -48,11 +52,13 @@
         <module>langchain4j-azure-cosmos-nosql</module>
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
+        <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-infinispan</module>
         <module>langchain4j-milvus</module>
         <module>langchain4j-mongodb-atlas</module>
         <module>langchain4j-neo4j</module>
+        <module>langchain4j-oracle</module>
         <module>langchain4j-opensearch</module>
         <module>langchain4j-pgvector</module>
         <module>langchain4j-pinecone</module>
@@ -81,6 +87,7 @@
         <!-- web search engines -->
         <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
         <module>web-search-engines/langchain4j-web-search-engine-tavily</module>
+        <module>web-search-engines/langchain4j-web-search-engine-searchapi</module>
 
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
@@ -91,6 +98,13 @@
     </modules>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
+                <artifactId>gitflow-incremental-builder</artifactId>
+                <version>3.15.0</version>
+            </extension>
+        </extensions>
         <plugins>
             <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>

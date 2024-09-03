@@ -24,7 +24,6 @@ class LocalAiEmbeddingModelIT extends AbstractLocalAiInfrastructure {
 
         // when
         Response<Embedding> response = model.embed(text);
-        System.out.println(response);
 
         // then
         Embedding embedding = response.content();

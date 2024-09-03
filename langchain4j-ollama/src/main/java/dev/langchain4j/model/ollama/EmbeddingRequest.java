@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @Data
@@ -21,5 +23,5 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 class EmbeddingRequest {
 
     private String model;
-    private String prompt;
+    private List<String> input;
 }

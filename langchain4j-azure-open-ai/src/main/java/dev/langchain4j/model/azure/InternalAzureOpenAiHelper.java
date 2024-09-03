@@ -38,8 +38,7 @@ import java.time.Duration;
 import java.util.*;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
@@ -212,10 +211,10 @@ class InternalAzureOpenAiHelper {
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
-    public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
+    public static ChatCompletionsToolSelection toToolChoice(ToolSpecification toolThatMustBeExecuted) {
         FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toOpenAiParameters(toolThatMustBeExecuted.parameters()).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
-        return BinaryData.fromObject(toolToCall);
+        return ChatCompletionsToolSelection.fromBinaryData(BinaryData.fromObject(toolToCall));
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
@@ -265,8 +264,10 @@ class InternalAzureOpenAiHelper {
     }
 
     public static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage) {
+        String text = chatResponseMessage.getContent();
+
         if (isNullOrEmpty(chatResponseMessage.getToolCalls())) {
-            return aiMessage(chatResponseMessage.getContent());
+            return aiMessage(text);
         } else {
             List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls()
                     .stream()
@@ -280,7 +281,9 @@ class InternalAzureOpenAiHelper {
                                     .build())
                     .collect(toList());
 
-            return aiMessage(toolExecutionRequests);
+            return isNullOrBlank(text) ?
+                    aiMessage(toolExecutionRequests) :
+                    aiMessage(text, toolExecutionRequests);
         }
     }
 

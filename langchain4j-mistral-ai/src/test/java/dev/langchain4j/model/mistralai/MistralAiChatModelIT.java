@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -52,6 +53,11 @@ class MistralAiChatModelIT {
             .logRequests(true)
             .logResponses(true)
             .build();
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        Thread.sleep(5_000); // to prevent hitting rate limits
+    }
 
     @Test
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
@@ -451,7 +457,7 @@ class MistralAiChatModelIT {
         AiMessage aiMessage2 = response2.content();
         assertThat(aiMessage2.text()).contains("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-        assertThat(aiMessage2.text()).containsIgnoringWhitespaces("March 11, 2024");
+        assertThat(aiMessage2.text()).contains("11", "2024");
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();

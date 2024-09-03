@@ -2,6 +2,7 @@ package dev.langchain4j.model.jlama;
 
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
+import com.github.tjake.jlama.safetensors.prompt.PromptContext;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.jlama.spi.JlamaStreamingLanguageModelBuilderFactory;
@@ -60,11 +61,11 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
         try {
-            Generator.Response r = model.generate(id, prompt, temperature, maxTokens, false, (token, time) -> {
+            Generator.Response r = model.generate(id, PromptContext.of(prompt), temperature, maxTokens, (token, time) -> {
                 handler.onNext(token);
             });
 
-            handler.onComplete(Response.from(r.text, new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason)));
+            handler.onComplete(Response.from(r.responseText, new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason)));
         } catch (Throwable t) {
             handler.onError(t);
         }
