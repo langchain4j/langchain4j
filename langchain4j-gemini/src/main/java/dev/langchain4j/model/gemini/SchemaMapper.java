@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 class SchemaMapper {
     static GeminiSchema fromJsonSchemaToGSchema(JsonSchema jsonSchema) {
-        return fromJsonSchemaToGSchema(jsonSchema.schema());
+        return fromJsonSchemaToGSchema(jsonSchema.rootElement());
     }
 
     private static GeminiSchema fromJsonSchemaToGSchema(JsonSchemaElement jsonSchema) {

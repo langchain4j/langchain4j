@@ -420,7 +420,7 @@ public class GeminiAiChatLanguageModelIT {
             .responseFormat(ResponseFormat.builder()
                 .type(JSON)
                 .jsonSchema(JsonSchema.builder()
-                    .schema(JsonObjectSchema.builder()
+                    .rootElement(JsonObjectSchema.builder()
                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                             put("name", JSON_STRING_SCHEMA);
                             put("address", JsonObjectSchema.builder()
@@ -467,7 +467,7 @@ public class GeminiAiChatLanguageModelIT {
             .responseFormat(ResponseFormat.builder()
                 .type(JSON)
                 .jsonSchema(JsonSchema.builder()
-                    .schema(JsonObjectSchema.builder()
+                    .rootElement(JsonObjectSchema.builder()
                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                             put("sentiment", JsonEnumSchema.builder()
                                 .enumValues("POSITIVE", "NEGATIVE")
