@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -25,6 +24,7 @@ import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -185,9 +185,10 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         if (returnType == TokenStream.class) {
                             List<Content> contents = augmentationResult != null ? augmentationResult.contents() : null;
-                            context.toolSpecifications = toolSpecifications;
-                            context.toolExecutors = toolExecutors;
-                            return new AiServiceTokenStream(messages, contents, context, memoryId); // TODO moderation
+                            AiServiceTokenStream aiServiceTokenStream = new AiServiceTokenStream(messages, contents, context, memoryId);
+                            aiServiceTokenStream.setToolSpecifications(toolSpecifications);
+                            aiServiceTokenStream.setToolExecutors(toolExecutors);
+                            return aiServiceTokenStream; // TODO moderation
                         }
 
                         Response<AiMessage> response;

@@ -1,18 +1,22 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.tool.ToolExecutor;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -34,6 +38,12 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
 
     private final List<ChatMessage> temporaryMemory;
     private final TokenUsage tokenUsage;
+
+    @Setter
+    private Map<String, ToolExecutor> toolExecutors = new HashMap<>();
+
+    @Setter
+    private List<ToolSpecification> toolSpecifications = new ArrayList<>();
 
     AiServiceStreamingResponseHandler(AiServiceContext context,
                                       Object memoryId,
@@ -66,7 +76,10 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
 
         if (aiMessage.hasToolExecutionRequests()) {
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
+                String name = toolExecutionRequest.name();
+                ToolExecutor toolExecutor = this.toolExecutors.isEmpty()
+                        ? context.toolExecutors.get(name)
+                        : this.toolExecutors.get(name);
                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                 ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
                         toolExecutionRequest,
@@ -75,9 +88,13 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                 addToMemory(toolExecutionResultMessage);
             }
 
+            List<ToolSpecification> specifications = this.toolSpecifications.isEmpty()
+                    ? context.toolSpecifications
+                    : this.toolSpecifications;
+
             context.streamingChatModel.generate(
                     messagesToSend(memoryId),
-                    context.toolSpecifications,
+                    specifications,
                     new AiServiceStreamingResponseHandler(
                             context,
                             memoryId,
