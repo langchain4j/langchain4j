@@ -26,7 +26,8 @@ public class JlamaLanguageModelIT {
         model = JlamaLanguageModel.builder()
                 .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
                 .modelCachePath(tmpDir.toPath())
-                .maxTokens(10)
+                .temperature(0.0f)
+                .maxTokens(30)
                 .build();
     }
 
@@ -34,7 +35,7 @@ public class JlamaLanguageModelIT {
     void should_send_prompt_and_return_response() {
 
         // given
-        String prompt = "hello";
+        String prompt = "When is the best time of year to visit Japan?";
 
         // when
         Response<String> response = model.generate(prompt);
