@@ -8,6 +8,7 @@ import java.util.Map;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
 public class ToolProviderResult {
+
     private final Map<ToolSpecification, ToolExecutor> tools;
 
     public ToolProviderResult(Map<ToolSpecification, ToolExecutor> tools) {
@@ -23,6 +24,7 @@ public class ToolProviderResult {
     }
 
     public static class Builder {
+
         private final Map<ToolSpecification, ToolExecutor> tools = new LinkedHashMap<>();
 
         public Builder add(ToolSpecification tool, ToolExecutor executor) {

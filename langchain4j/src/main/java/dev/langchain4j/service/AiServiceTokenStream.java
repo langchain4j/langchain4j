@@ -8,19 +8,31 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecutor;
-import lombok.Setter;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyList;
 
 public class AiServiceTokenStream implements TokenStream {
+
+    private final List<ChatMessage> messages;
+    private final List<ToolSpecification> toolSpecifications;
+    private final Map<String, ToolExecutor> toolExecutors;
+    private final List<Content> retrievedContents;
+    private final AiServiceContext context;
+    private final Object memoryId;
+
+    private Consumer<String> tokenHandler;
+    private Consumer<List<Content>> contentsHandler;
+    private Consumer<Throwable> errorHandler;
+    private Consumer<Response<AiMessage>> completionHandler;
 
     private int onNextInvoked;
     private int onCompleteInvoked;
@@ -28,29 +40,16 @@ public class AiServiceTokenStream implements TokenStream {
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
 
-    private final List<ChatMessage> messagesToSend;
-    private final List<Content> content;
-    private final AiServiceContext context;
-    private final Object memoryId;
-
-    @Setter
-    private List<ToolSpecification> toolSpecifications = new ArrayList<>();
-    @Setter
-    private Map<String, ToolExecutor> toolExecutors = new HashMap<>();
-    private Consumer<String> tokenHandler;
-    private Consumer<List<Content>> contentHandler;
-    private Consumer<Throwable> errorHandler;
-    private Consumer<Response<AiMessage>> completionHandler;
-
-    public AiServiceTokenStream(List<ChatMessage> messagesToSend, List<Content> content, AiServiceContext context, Object memoryId) {
-        this.onNextInvoked = 0;
-        this.onCompleteInvoked = 0;
-        this.onRetrievedInvoked = 0;
-        this.onErrorInvoked = 0;
-        this.ignoreErrorsInvoked = 0;
-
-        this.messagesToSend = ensureNotEmpty(messagesToSend, "messagesToSend");
-        this.content = content;
+    public AiServiceTokenStream(List<ChatMessage> messages,
+                                List<ToolSpecification> toolSpecifications,
+                                Map<String, ToolExecutor> toolExecutors,
+                                List<Content> retrievedContents,
+                                AiServiceContext context,
+                                Object memoryId) {
+        this.messages = ensureNotEmpty(messages, "messages");
+        this.toolSpecifications = copyIfNotNull(toolSpecifications);
+        this.toolExecutors = copyIfNotNull(toolExecutors);
+        this.retrievedContents = retrievedContents;
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
         ensureNotNull(context.streamingChatModel, "streamingChatModel");
@@ -64,8 +63,8 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onRetrieved(Consumer<List<Content>> contentHandler) {
-        this.contentHandler = contentHandler;
+    public TokenStream onRetrieved(Consumer<List<Content>> contentsHandler) {
+        this.contentsHandler = contentsHandler;
         this.onRetrievedInvoked++;
         return this;
     }
@@ -101,23 +100,20 @@ public class AiServiceTokenStream implements TokenStream {
                 tokenHandler,
                 completionHandler,
                 errorHandler,
-                initTemporaryMemory(context, messagesToSend),
-                new TokenUsage()
+                initTemporaryMemory(context, messages),
+                new TokenUsage(),
+                toolSpecifications,
+                toolExecutors
         );
-        handler.setToolExecutors(toolExecutors);
-        handler.setToolSpecifications(toolSpecifications);
 
-        if (contentHandler != null && content != null) {
-            contentHandler.accept(content);
+        if (contentsHandler != null && retrievedContents != null) {
+            contentsHandler.accept(retrievedContents);
         }
 
-        if (context.toolSpecifications != null || toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            List<ToolSpecification> specification = context.toolSpecifications == null
-                    ? toolSpecifications
-                    : context.toolSpecifications;
-            context.streamingChatModel.generate(messagesToSend, specification, handler);
+        if (isNullOrEmpty(toolSpecifications)) {
+            context.streamingChatModel.generate(messages, handler);
         } else {
-            context.streamingChatModel.generate(messagesToSend, handler);
+            context.streamingChatModel.generate(messages, toolSpecifications, handler);
         }
     }
 

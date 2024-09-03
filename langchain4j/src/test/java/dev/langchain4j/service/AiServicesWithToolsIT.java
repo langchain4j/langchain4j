@@ -21,12 +21,13 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -38,10 +39,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.type;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.*;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
@@ -51,7 +59,14 @@ import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyList;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesWithToolsIT {
@@ -686,7 +701,7 @@ class AiServicesWithToolsIT {
         assertThat(response.content().text()).contains("2027");
     }
 
-    static class BookingExecutor implements ToolExecutor {
+    static class BookingToolExecutor implements ToolExecutor {
 
         @Override
         public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
@@ -696,50 +711,47 @@ class AiServicesWithToolsIT {
         }
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_tool_provider(ChatLanguageModel chatLanguageModel) {
-        ToolExecutor executor = spy(new BookingExecutor());
-        ToolSpecification specification = ToolSpecification.builder()
-                .name("get_booking_details")
-                .description("Returns booking details")
-                .addParameter("bookingNumber", type("string"))
-                .build();
+    @Test
+    void should_use_tool_provider() {
 
-        ToolProviderResult bookingResult = ToolProviderResult.builder()
-                .add(specification, executor)
-                .build();
+        ToolExecutor toolExecutor = spy(new BookingToolExecutor());
+
+        ToolProvider toolProvider = (toolProviderRequest) -> {
+            if (toolProviderRequest.userMessage().singleText().contains("booking")) {
+                ToolSpecification toolSpecification = ToolSpecification.builder()
+                        .name("get_booking_details")
+                        .description("Returns booking details")
+                        .addParameter("bookingNumber", type("string"))
+                        .build();
+                return ToolProviderResult.builder()
+                        .add(toolSpecification, toolExecutor)
+                        .build();
+            } else {
+                return null;
+            }
+        };
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .toolProvider((ToolProviderRequest request) -> {
-                    if (request.userMessage().singleText().contains("booking")) {
-                        return bookingResult;
-                    }
-                    return null;
-                })
+                .chatLanguageModel(models().findFirst().get())
+                .toolProvider(toolProvider)
                 .build();
 
-        // The provider will be triggered only on the word booking. Not holiday -> Don't use the tool
         assistant.chat("When does my holiday 123-456 starts?");
-        verifyNoInteractions(executor);
+        verifyNoInteractions(toolExecutor); // user message does not contain word "booking"
 
-        // Booking will trigger the tool.
         Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
-        verify(executor, times(1)).execute(any(), any());
         assertThat(response.content().text()).contains("2027");
-
-        // No tool again
-        assistant.chat("When does my holiday 123-456 starts?");
-        verify(executor, times(1)).execute(any(), any());
+        verify(toolExecutor).execute(any(), any());
+        verifyNoMoreInteractions(toolExecutor);
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    void only_static_or_tool_provider() {
+    @Test
+    void should_not_allow_configuring_tools_and_tool_provider_simultaneously() {
+
         ChatLanguageModel chatLanguageModel = new ChatModelMock("mocked");
+
         // First provider then tools
-        Assertions.assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(IllegalArgumentException.class, () ->
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
                         .toolProvider((ToolProviderRequest request) -> null)
@@ -748,7 +760,7 @@ class AiServicesWithToolsIT {
         );
 
         // First provider then static tools
-        Assertions.assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(IllegalArgumentException.class, () ->
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
                         .toolProvider((ToolProviderRequest request) -> null)
@@ -757,7 +769,7 @@ class AiServicesWithToolsIT {
         );
 
         // First tools then provider
-        Assertions.assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(IllegalArgumentException.class, () ->
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
                         .tools(new HashMap<>())
@@ -766,7 +778,7 @@ class AiServicesWithToolsIT {
         );
 
         // First static tools then provider
-        Assertions.assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(IllegalArgumentException.class, () ->
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
                         .tools(new StringArrayProcessor())

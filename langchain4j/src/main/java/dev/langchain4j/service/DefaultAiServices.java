@@ -165,30 +165,32 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        // Begin tools
                         List<ToolSpecification> toolSpecifications = context.toolSpecifications;
                         Map<String, ToolExecutor> toolExecutors = context.toolExecutors;
 
                         if (context.toolProvider != null) {
-                            // Use provider to decide matching tools
                             toolSpecifications = new ArrayList<>();
                             toolExecutors = new HashMap<>();
-                            ToolProviderRequest providerRequest = new ToolProviderRequest(memoryId, userMessage);
-                            ToolProviderResult providerResult = context.toolProvider.provideTools(providerRequest);
-                            if (providerResult != null) {
-                                for (ToolSpecification specification : providerResult.tools().keySet()) {
-                                    toolSpecifications.add(specification);
-                                    toolExecutors.put(specification.name(), providerResult.tools().get(specification));
+                            ToolProviderRequest toolProviderRequest = new ToolProviderRequest(memoryId, userMessage);
+                            ToolProviderResult toolProviderResult = context.toolProvider.provideTools(toolProviderRequest);
+                            if (toolProviderResult != null) {
+                                Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
+                                for (ToolSpecification toolSpecification : tools.keySet()) {
+                                    toolSpecifications.add(toolSpecification);
+                                    toolExecutors.put(toolSpecification.name(), tools.get(toolSpecification));
                                 }
                             }
                         }
 
                         if (returnType == TokenStream.class) {
-                            List<Content> contents = augmentationResult != null ? augmentationResult.contents() : null;
-                            AiServiceTokenStream aiServiceTokenStream = new AiServiceTokenStream(messages, contents, context, memoryId);
-                            aiServiceTokenStream.setToolSpecifications(toolSpecifications);
-                            aiServiceTokenStream.setToolExecutors(toolExecutors);
-                            return aiServiceTokenStream; // TODO moderation
+                            return new AiServiceTokenStream(
+                                    messages,
+                                    toolSpecifications,
+                                    toolExecutors,
+                                    augmentationResult != null ? augmentationResult.contents() : null,
+                                    context,
+                                    memoryId
+                            ); // TODO moderation
                         }
 
                         Response<AiMessage> response;

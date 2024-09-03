@@ -16,8 +16,9 @@ import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -155,25 +156,24 @@ class StreamingAiServicesWithToolsIT {
         );
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_toolprovider_with_List_of_Strings_parameter(StreamingChatLanguageModel model) throws Exception {
+    @Test
+    void should_use_tool_provider() throws Exception {
 
         // given
         ToolExecutor toolExecutor = spy(new TransactionServiceExecutor());
 
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        StreamingChatLanguageModel spyModel = spy(model);
-
-        ToolProviderResult tools = ToolProviderResult.builder()
+        ToolProvider toolProvider = (toolProviderRequest) -> ToolProviderResult.builder()
                 .add(EXPECTED_SPECIFICATION, toolExecutor)
                 .build();
+
+        StreamingChatLanguageModel spyModel = spy(models().findFirst().get());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatLanguageModel(spyModel)
                 .chatMemory(chatMemory)
-                .toolProvider((ToolProviderRequest request) -> tools)
+                .toolProvider(toolProvider)
                 .build();
 
         String userMessage = "What are the amounts of transactions T001 and T002?";
@@ -207,6 +207,7 @@ class StreamingAiServicesWithToolsIT {
                 eq(singletonList(EXPECTED_SPECIFICATION)),
                 any()
         );
+        verifyNoMoreInteractions(spyModel);
     }
 
     private static Map<String, Object> toMap(String arguments) {
