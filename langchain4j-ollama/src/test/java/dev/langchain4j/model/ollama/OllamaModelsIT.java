@@ -74,11 +74,12 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
                 .baseUrl(ollama.getEndpoint())
                 .modelName(TINY_DOLPHIN_MODEL)
                 .temperature(0.0)
+                .numPredict(1)
                 .build();
         model.generate("Tell a joke");
 
         // when
-        Response<List<RunningOllamaModel>> response = ollamaModels.listRunningModels();
+        Response<List<RunningOllamaModel>> response = ollamaModels.runningModels();
 
         // then
         RunningOllamaModel runningOllamaModel = response.content().get(0);

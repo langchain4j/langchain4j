@@ -25,11 +25,11 @@ public class RunningOllamaModel {
 
     private String name;
     private String model;
-    private long size;
+    private Long size;
     private String digest;
     private OllamaModelDetails details;
     @JsonDeserialize(using = OllamaDateDeserializer.class)
     private OffsetDateTime expiresAt;
-    private long sizeVram;
+    private Long sizeVram;
 
 }

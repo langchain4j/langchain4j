@@ -60,7 +60,7 @@ public class OllamaModels {
         ), maxRetries);
     }
 
-    public Response<List<RunningOllamaModel>> listRunningModels() {
+    public Response<List<RunningOllamaModel>> runningModels() {
         RunningModelsListResponse response = withRetry(client::listRunningModels, maxRetries);
         return Response.from(response.getModels());
     }
