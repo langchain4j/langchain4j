@@ -27,7 +27,8 @@ public class JlamaStreamingLanguageModelIT {
         model = JlamaStreamingLanguageModel.builder()
                 .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
                 .modelCachePath(tmpDir.toPath())
-                .maxTokens(10)
+                .maxTokens(30)
+                .temperature(0.0f)
                 .build();
     }
 
@@ -35,7 +36,7 @@ public class JlamaStreamingLanguageModelIT {
     void should_stream_answer_and_return_response() throws Exception {
 
         // given
-        String userMessage = "hello";
+        String userMessage = "When is the best time of year to visit Japan?";
 
         // when
         StringBuilder answerBuilder = new StringBuilder();

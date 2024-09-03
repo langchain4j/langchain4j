@@ -58,7 +58,7 @@ public class JsonSchemas {
 
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(rawClass.getSimpleName())
-                .schema(toJsonObjectSchema(rawClass, null))
+                .rootElement(toJsonObjectSchema(rawClass, null))
                 .build();
 
         return Optional.of(jsonSchema);

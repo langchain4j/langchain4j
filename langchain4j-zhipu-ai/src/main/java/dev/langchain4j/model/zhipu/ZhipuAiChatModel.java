@@ -3,6 +3,7 @@ package dev.langchain4j.model.zhipu;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.FinishReason;
@@ -11,8 +12,8 @@ import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
 import dev.langchain4j.model.zhipu.chat.ChatCompletionRequest;
 import dev.langchain4j.model.zhipu.chat.ChatCompletionResponse;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiChatModelBuilderFactory;
-import lombok.Builder;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -23,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 import static dev.langchain4j.model.zhipu.chat.ChatCompletionModel.GLM_4;
@@ -36,8 +36,8 @@ import static java.util.Collections.singletonList;
  * Represents an ZhipuAi language model with a chat completion interface, such as glm-3-turbo and glm-4.
  * You can find description of parameters <a href="https://open.bigmodel.cn/dev/api">here</a>.
  */
-@Slf4j
 public class ZhipuAiChatModel implements ChatLanguageModel {
+    private static final Logger log = LoggerFactory.getLogger(ZhipuAiChatModel.class);
 
     private final Double temperature;
     private final Double topP;
@@ -48,7 +48,6 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
     private final ZhipuAiClient client;
     private final List<ChatModelListener> listeners;
 
-    @Builder
     public ZhipuAiChatModel(
             String baseUrl,
             String apiKey,
@@ -166,6 +165,22 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
     }
 
     public static class ZhipuAiChatModelBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private Double temperature;
+        private Double topP;
+        private String model;
+        private List<String> stops;
+        private Integer maxRetries;
+        private Integer maxToken;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private List<ChatModelListener> listeners;
+        private Duration callTimeout;
+        private Duration connectTimeout;
+        private Duration readTimeout;
+        private Duration writeTimeout;
+
         public ZhipuAiChatModelBuilder() {
         }
 
@@ -175,9 +190,83 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
         }
 
         public ZhipuAiChatModelBuilder model(String model) {
-            ensureNotBlank(model, "model");
+            ValidationUtils.ensureNotBlank(model, "model");
             this.model = model;
             return this;
+        }
+
+        public ZhipuAiChatModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder stops(List<String> stops) {
+            this.stops = stops;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder maxToken(Integer maxToken) {
+            this.maxToken = maxToken;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder listeners(List<ChatModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder callTimeout(Duration callTimeout) {
+            this.callTimeout = callTimeout;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder connectTimeout(Duration connectTimeout) {
+            this.connectTimeout = connectTimeout;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder readTimeout(Duration readTimeout) {
+            this.readTimeout = readTimeout;
+            return this;
+        }
+
+        public ZhipuAiChatModelBuilder writeTimeout(Duration writeTimeout) {
+            this.writeTimeout = writeTimeout;
+            return this;
+        }
+
+        public ZhipuAiChatModel build() {
+            return new ZhipuAiChatModel(this.baseUrl, this.apiKey, this.temperature, this.topP, this.model, this.stops, this.maxRetries, this.maxToken, this.logRequests, this.logResponses, this.listeners, this.callTimeout, this.connectTimeout, this.readTimeout, this.writeTimeout);
         }
     }
 }

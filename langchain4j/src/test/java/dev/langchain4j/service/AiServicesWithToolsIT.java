@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
@@ -20,23 +21,35 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.service.tool.ToolProviderResult;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.type;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.*;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
@@ -46,7 +59,14 @@ import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyList;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesWithToolsIT {
@@ -679,6 +699,92 @@ class AiServicesWithToolsIT {
 
         // then
         assertThat(response.content().text()).contains("2027");
+    }
+
+    static class BookingToolExecutor implements ToolExecutor {
+
+        @Override
+        public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+            assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
+            return "Booking period: from 1 July 2027 to 10 July 2027";
+        }
+    }
+
+    @Test
+    void should_use_tool_provider() {
+
+        ToolExecutor toolExecutor = spy(new BookingToolExecutor());
+
+        ToolProvider toolProvider = (toolProviderRequest) -> {
+            if (toolProviderRequest.userMessage().singleText().contains("booking")) {
+                ToolSpecification toolSpecification = ToolSpecification.builder()
+                        .name("get_booking_details")
+                        .description("Returns booking details")
+                        .addParameter("bookingNumber", type("string"))
+                        .build();
+                return ToolProviderResult.builder()
+                        .add(toolSpecification, toolExecutor)
+                        .build();
+            } else {
+                return null;
+            }
+        };
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(models().findFirst().get())
+                .toolProvider(toolProvider)
+                .build();
+
+        assistant.chat("When does my holiday 123-456 starts?");
+        verifyNoInteractions(toolExecutor); // user message does not contain word "booking"
+
+        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
+        assertThat(response.content().text()).contains("2027");
+        verify(toolExecutor).execute(any(), any());
+        verifyNoMoreInteractions(toolExecutor);
+    }
+
+    @Test
+    void should_not_allow_configuring_tools_and_tool_provider_simultaneously() {
+
+        ChatLanguageModel chatLanguageModel = new ChatModelMock("mocked");
+
+        // First provider then tools
+        assertThrows(IllegalArgumentException.class, () ->
+                AiServices.builder(Assistant.class)
+                        .chatLanguageModel(chatLanguageModel)
+                        .toolProvider((ToolProviderRequest request) -> null)
+                        .tools(new HashMap<>())
+                        .build()
+        );
+
+        // First provider then static tools
+        assertThrows(IllegalArgumentException.class, () ->
+                AiServices.builder(Assistant.class)
+                        .chatLanguageModel(chatLanguageModel)
+                        .toolProvider((ToolProviderRequest request) -> null)
+                        .tools(new StringArrayProcessor())
+                        .build()
+        );
+
+        // First tools then provider
+        assertThrows(IllegalArgumentException.class, () ->
+                AiServices.builder(Assistant.class)
+                        .chatLanguageModel(chatLanguageModel)
+                        .tools(new HashMap<>())
+                        .toolProvider((ToolProviderRequest request) -> null)
+                        .build()
+        );
+
+        // First static tools then provider
+        assertThrows(IllegalArgumentException.class, () ->
+                AiServices.builder(Assistant.class)
+                        .chatLanguageModel(chatLanguageModel)
+                        .tools(new StringArrayProcessor())
+                        .toolProvider((ToolProviderRequest request) -> null)
+                        .build()
+        );
     }
 
     private static Map<String, Object> toMap(String arguments) {

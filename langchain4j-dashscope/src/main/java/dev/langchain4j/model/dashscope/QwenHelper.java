@@ -2,8 +2,10 @@ package dev.langchain4j.model.dashscope;
 
 import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput.Choice;
+import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationOutput;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
@@ -17,7 +19,10 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.extern.slf4j.Slf4j;
 
@@ -272,14 +277,10 @@ class QwenHelper {
 
     static FinishReason finishReasonFrom(GenerationResult result) {
         Choice choice = result.getOutput().getChoices().get(0);
-        String finishReason = choice.getFinishReason();
-        if (finishReason == null) {
-            if (isNullOrEmpty(choice.getMessage().getToolCalls())) {
-                return null;
-            }
-            // Upon observation, when tool_calls occur, the returned finish_reason may be null, not "tool_calls".
-            finishReason = "tool_calls";
-        }
+        // Upon observation, when tool_calls occur, the returned finish_reason may be null or "stop", not "tool_calls".
+        String finishReason = isNullOrEmpty(choice.getMessage().getToolCalls()) ?
+                choice.getFinishReason() :
+                "tool_calls";
 
         switch (finishReason) {
             case "stop":
@@ -370,7 +371,6 @@ class QwenHelper {
 
     static String toolCallIdFromMessage(GenerationResult result) {
         // Not sure about the difference between Message::getToolCallId() and ToolCallFunction::getId().
-        // Currently, they all return null.
         // Encapsulate a method to get the ID using Message::getToolCallId() when ToolCallFunction::getId() is null.
         return Optional.of(result)
                 .map(GenerationResult::getOutput)
@@ -470,5 +470,49 @@ class QwenHelper {
 
     private static boolean isInputMessageType(ChatMessageType messageType) {
         return messageType == USER || messageType == TOOL_EXECUTION_RESULT;
+    }
+
+    static ChatModelRequest createModelListenerRequest(GenerationParam request,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        Double temperature = request.getTemperature() != null ? request.getTemperature().doubleValue() : null;
+        return ChatModelRequest.builder()
+                .model(request.getModel())
+                .temperature(temperature)
+                .topP(request.getTopP())
+                .maxTokens(request.getMaxTokens())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
+
+    static ChatModelRequest createModelListenerRequest(MultiModalConversationParam request,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        Double temperature = request.getTemperature() != null ? request.getTemperature().doubleValue() : null;
+        return ChatModelRequest.builder()
+                .model(request.getModel())
+                .temperature(temperature)
+                .topP(request.getTopP())
+                .maxTokens(request.getMaxLength())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
+
+    static ChatModelResponse createModelListenerResponse(String responseId,
+                                                         String responseModel,
+                                                         Response<AiMessage> response) {
+        if (response == null) {
+            return null;
+        }
+
+        return ChatModelResponse.builder()
+                .id(responseId)
+                .model(responseModel)
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .aiMessage(response.content())
+                .build();
     }
 }

@@ -28,7 +28,8 @@ public class JlamaStreamingChatModelIT {
         model = JlamaStreamingChatModel.builder()
                 .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
                 .modelCachePath(tmpDir.toPath())
-                .maxTokens(25)
+                .maxTokens(30)
+                .temperature(0.0f)
                 .build();
     }
 
@@ -36,7 +37,7 @@ public class JlamaStreamingChatModelIT {
     void should_stream_answer_and_return_response() throws Exception {
 
         // given
-        String userMessage = "hello";
+        String userMessage = "When is the best time of year to visit Japan?";
 
         // when
         StringBuilder answerBuilder = new StringBuilder();
@@ -67,7 +68,7 @@ public class JlamaStreamingChatModelIT {
         assertThat(streamedAnswer).isNotBlank();
 
         AiMessage aiMessage = response.content();
-        assertThat(streamedAnswer).contains(aiMessage.text()); // Jlama bug fix needed
+        assertThat(streamedAnswer).contains(aiMessage.text());
 
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isEqualTo(LENGTH);

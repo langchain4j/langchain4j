@@ -1,20 +1,23 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.tool.ToolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -35,13 +38,18 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     private final List<ChatMessage> temporaryMemory;
     private final TokenUsage tokenUsage;
 
+    private final List<ToolSpecification> toolSpecifications;
+    private final Map<String, ToolExecutor> toolExecutors;
+
     AiServiceStreamingResponseHandler(AiServiceContext context,
                                       Object memoryId,
                                       Consumer<String> tokenHandler,
                                       Consumer<Response<AiMessage>> completionHandler,
                                       Consumer<Throwable> errorHandler,
                                       List<ChatMessage> temporaryMemory,
-                                      TokenUsage tokenUsage) {
+                                      TokenUsage tokenUsage,
+                                      List<ToolSpecification> toolSpecifications,
+                                      Map<String, ToolExecutor> toolExecutors) {
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
 
@@ -51,6 +59,9 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
 
         this.temporaryMemory = new ArrayList<>(temporaryMemory);
         this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
+
+        this.toolSpecifications = copyIfNotNull(toolSpecifications);
+        this.toolExecutors = copyIfNotNull(toolExecutors);
     }
 
     @Override
@@ -66,7 +77,8 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
 
         if (aiMessage.hasToolExecutionRequests()) {
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
+                String toolName = toolExecutionRequest.name();
+                ToolExecutor toolExecutor = toolExecutors.get(toolName);
                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                 ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
                         toolExecutionRequest,
@@ -77,7 +89,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
 
             context.streamingChatModel.generate(
                     messagesToSend(memoryId),
-                    context.toolSpecifications,
+                    toolSpecifications,
                     new AiServiceStreamingResponseHandler(
                             context,
                             memoryId,
@@ -85,7 +97,9 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                             completionHandler,
                             errorHandler,
                             temporaryMemory,
-                            TokenUsage.sum(tokenUsage, response.tokenUsage())
+                            TokenUsage.sum(tokenUsage, response.tokenUsage()),
+                            toolSpecifications,
+                            toolExecutors
                     )
             );
         } else {

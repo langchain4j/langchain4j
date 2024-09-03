@@ -144,11 +144,11 @@ Jlama has some special model parameters that you can set
  - `quantizeModelAtRuntime` parameter, which will quantize the model at runtime. The current quantization is always Q4. You can also pre-quantize the model using jlama project tools (See [Jlama Project](https://github.com/tjake/jlama) for more information).
 
 ### Function Calling
-Jlama does not support function calling (yet).
+Jlama supports function calling for models that support it (Mistral, Llama-3.1, etc). 
+See [Jlama Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/jlama-examples)
 
 ### JSON mode
 Jlama does not support JSON mode (yet). But you can always ask the model nicely to return JSON.
-
 
 ## Examples
 
