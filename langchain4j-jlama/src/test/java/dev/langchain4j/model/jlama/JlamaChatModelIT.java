@@ -29,7 +29,8 @@ public class JlamaChatModelIT {
         model = JlamaChatModel.builder()
                 .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
                 .modelCachePath(tmpDir.toPath())
-                .maxTokens(25)
+                .temperature(0.0f)
+                .maxTokens(30)
                 .build();
     }
 
@@ -37,7 +38,7 @@ public class JlamaChatModelIT {
     void should_send_messages_and_return_response() {
 
         // given
-        List<ChatMessage> messages = singletonList(UserMessage.from("hello"));
+        List<ChatMessage> messages = singletonList(UserMessage.from("When is the best time of year to visit Japan?"));
 
         // when
         Response<AiMessage> response = model.generate(messages);
