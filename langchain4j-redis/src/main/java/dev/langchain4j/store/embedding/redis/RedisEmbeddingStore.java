@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.redis;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -33,7 +33,7 @@ import static redis.clients.jedis.search.RediSearchUtil.ToByteArray;
 public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(RedisEmbeddingStore.class);
-    private static final Gson GSON = new Gson();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final JedisPooled client;
     private final RedisSchema schema;
@@ -206,7 +206,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 .collect(toMap(metadataKey -> metadataKey, document::getString));
                         embedded = new TextSegment(text, new Metadata(metadata));
                     }
-                    Embedding embedding = new Embedding(GSON.fromJson(document.getString(schema.vectorFieldName()), float[].class));
+                    Embedding embedding = new Embedding(OBJECT_MAPPER.convertValue(document.getString(schema.vectorFieldName()), float[].class));
                     return new EmbeddingMatch<>(score, id, embedding, embedded);
                 })
                 .filter(embeddingMatch -> embeddingMatch.score() >= minScore)
