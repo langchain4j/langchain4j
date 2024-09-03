@@ -76,13 +76,15 @@ public class JlamaChatModel implements ChatLanguageModel {
             switch (message.type()) {
                 case SYSTEM -> promptBuilder.addSystemMessage(((SystemMessage)message).text());
                 case USER -> {
+                    StringBuilder finalMessage = new StringBuilder();
                     UserMessage userMessage = (UserMessage)message;
                     for (Content content : userMessage.contents()) {
                         if (content.type() != ContentType.TEXT)
                             throw new UnsupportedOperationException("Unsupported content type: " + content.type());
 
-                        promptBuilder.addUserMessage(((TextContent)content).text());
+                        finalMessage.append(((TextContent)content).text());
                     }
+                    promptBuilder.addUserMessage(finalMessage.toString());
                 }
                 case AI -> {
                     AiMessage aiMessage = (AiMessage) message;
