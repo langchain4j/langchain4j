@@ -13,6 +13,7 @@ import redis.clients.jedis.JedisPooled;
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
 
