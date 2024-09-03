@@ -2,6 +2,8 @@
 package dev.langchain4j.store.embedding.vespa;
 
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.internal.Utils;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -72,7 +74,7 @@ class VespaQueryClient {
         .build();
 
       Retrofit retrofit = new Retrofit.Builder()
-        .baseUrl(baseUrl)
+        .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
         .client(client)
         .addConverterFactory(GsonConverterFactory.create(new GsonBuilder().create()))
         .build();

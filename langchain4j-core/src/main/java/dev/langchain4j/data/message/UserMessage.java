@@ -16,8 +16,8 @@ import static java.util.Collections.unmodifiableList;
  * <br>
  * Depending on the supported modalities (text, image, audio, video, etc.) of the model,
  * user messages can contain either a single text (a {@code String}) or multiple {@link Content}s,
- * which can be either {@link TextContent} or {@link ImageContent}.
- * In the future, the list of {@link Content} types will expand to allow for more modalities (e.g. audio, video, etc.).
+ * which can be either {@link TextContent}, {@link ImageContent}, {@link AudioContent},
+ * {@link VideoContent}, or {@link PdfFileContent}.
  * <br>
  * Optionally, user message can contain a {@link #name} of the user.
  * Be aware that not all models support names in {@code UserMessage}.
