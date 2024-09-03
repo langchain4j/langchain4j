@@ -12,9 +12,10 @@ class Document {
     private Map<String, Object> metadata;
 
     Document() {
+
     }
 
-    public Document(float[] vector, String text, Map<String, Object> metadata) {
+    Document(float[] vector, String text, Map<String, Object> metadata) {
         this.vector = vector;
         this.text = text;
         this.metadata = metadata;
