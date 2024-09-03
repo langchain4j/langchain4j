@@ -1,7 +1,7 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -24,7 +24,10 @@ import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.service.tool.ToolProviderResult;
 
 import java.io.InputStream;
 import java.lang.reflect.Array;
@@ -162,16 +165,37 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
+                        // Begin tools
+                        List<ToolSpecification> toolSpecifications = context.toolSpecifications;
+                        Map<String, ToolExecutor> toolExecutors = context.toolExecutors;
+
+                        if (context.toolProvider != null) {
+                            // Use provider to decide matching tools
+                            toolSpecifications = new ArrayList<>();
+                            toolExecutors = new HashMap<>();
+                            ToolProviderRequest providerRequest = new ToolProviderRequest(memoryId, userMessage);
+                            ToolProviderResult providerResult = context.toolProvider.provideTools(providerRequest);
+                            if (providerResult != null) {
+                                for (ToolSpecification specification : providerResult.tools().keySet()) {
+                                    toolSpecifications.add(specification);
+                                    toolExecutors.put(specification.name(), providerResult.tools().get(specification));
+                                }
+                            }
+                        }
+
                         if (returnType == TokenStream.class) {
                             List<Content> contents = augmentationResult != null ? augmentationResult.contents() : null;
-                            return new AiServiceTokenStream(messages, contents, context, memoryId); // TODO moderation
+                            AiServiceTokenStream aiServiceTokenStream = new AiServiceTokenStream(messages, contents, context, memoryId);
+                            aiServiceTokenStream.setToolSpecifications(toolSpecifications);
+                            aiServiceTokenStream.setToolExecutors(toolExecutors);
+                            return aiServiceTokenStream; // TODO moderation
                         }
 
                         Response<AiMessage> response;
                         if (supportsJsonSchema && jsonSchema.isPresent()) {
                             ChatRequest chatRequest = ChatRequest.builder()
                                     .messages(messages)
-                                    .toolSpecifications(context.toolSpecifications)
+                                    .toolSpecifications(toolSpecifications)
                                     .responseFormat(ResponseFormat.builder()
                                             .type(JSON)
                                             .jsonSchema(jsonSchema.get())
@@ -187,9 +211,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                             );
                         } else {
                             // TODO migrate to new API
-                            response = context.toolSpecifications == null
+                            response = toolSpecifications == null
                                     ? context.chatModel.generate(messages)
-                                    : context.chatModel.generate(messages, context.toolSpecifications);
+                                    : context.chatModel.generate(messages, toolSpecifications);
                         }
 
                         TokenUsage tokenUsageAccumulator = response.tokenUsage();
@@ -219,7 +243,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
 
                             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                                ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
+                                ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
                                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                                 toolExecutions.add(ToolExecution.builder()
                                         .request(toolExecutionRequest)
@@ -240,7 +264,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages = context.chatMemory(memoryId).messages();
                             }
 
-                            response = context.chatModel.generate(messages, context.toolSpecifications);
+                            response = context.chatModel.generate(messages, toolSpecifications);
                             tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, response.tokenUsage());
                         }
 
@@ -330,10 +354,10 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {
         if (parameters.length == 1) {
             Parameter parameter = parameters[0];
-            if (!parameter.isAnnotationPresent(dev.langchain4j.service.MemoryId.class)
+            if (!parameter.isAnnotationPresent(MemoryId.class)
                     && !parameter.isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
-                    && !parameter.isAnnotationPresent(dev.langchain4j.service.UserName.class)
-                    && (!parameter.isAnnotationPresent(dev.langchain4j.service.V.class) || isAnnotatedWithIt(parameter))) {
+                    && !parameter.isAnnotationPresent(UserName.class)
+                    && (!parameter.isAnnotationPresent(V.class) || isAnnotatedWithIt(parameter))) {
                 return toString(args[0]);
             }
         }

@@ -1,14 +1,19 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.ToolExecutor;
+import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -28,6 +33,10 @@ public class AiServiceTokenStream implements TokenStream {
     private final AiServiceContext context;
     private final Object memoryId;
 
+    @Setter
+    private List<ToolSpecification> toolSpecifications = new ArrayList<>();
+    @Setter
+    private Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private Consumer<String> tokenHandler;
     private Consumer<List<Content>> contentHandler;
     private Consumer<Throwable> errorHandler;
@@ -95,13 +104,18 @@ public class AiServiceTokenStream implements TokenStream {
                 initTemporaryMemory(context, messagesToSend),
                 new TokenUsage()
         );
+        handler.setToolExecutors(toolExecutors);
+        handler.setToolSpecifications(toolSpecifications);
 
         if (contentHandler != null && content != null) {
             contentHandler.accept(content);
         }
 
-        if (context.toolSpecifications != null) {
-            context.streamingChatModel.generate(messagesToSend, context.toolSpecifications, handler);
+        if (context.toolSpecifications != null || toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            List<ToolSpecification> specification = context.toolSpecifications == null
+                    ? toolSpecifications
+                    : context.toolSpecifications;
+            context.streamingChatModel.generate(messagesToSend, specification, handler);
         } else {
             context.streamingChatModel.generate(messagesToSend, handler);
         }
