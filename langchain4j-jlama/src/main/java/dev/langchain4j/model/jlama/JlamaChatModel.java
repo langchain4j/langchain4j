@@ -2,10 +2,7 @@ package dev.langchain4j.model.jlama;
 
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
-import com.github.tjake.jlama.safetensors.prompt.PromptSupport;
-import com.github.tjake.jlama.safetensors.prompt.Tool;
-import com.github.tjake.jlama.safetensors.prompt.ToolResult;
-import com.github.tjake.jlama.safetensors.prompt.ToolCall;
+import com.github.tjake.jlama.safetensors.prompt.*;
 import com.github.tjake.jlama.util.JsonSupport;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -109,7 +106,8 @@ public class JlamaChatModel implements ChatLanguageModel {
 
         List<Tool> tools = toolSpecifications.stream().map(JlamaModel::toTool).toList();
 
-        Generator.Response r = model.generate(UUID.randomUUID(), promptBuilder.build(tools), temperature, maxTokens, (token, time) -> {});
+        PromptContext promptContext = tools.isEmpty() ? promptBuilder.build() : promptBuilder.build(tools);
+        Generator.Response r = model.generate(UUID.randomUUID(), promptContext, temperature, maxTokens, (token, time) -> {});
 
         if (r.finishReason == Generator.FinishReason.TOOL_CALL) {
             List<ToolExecutionRequest> toolCalls = r.toolCalls.stream().map(f -> ToolExecutionRequest.builder()
