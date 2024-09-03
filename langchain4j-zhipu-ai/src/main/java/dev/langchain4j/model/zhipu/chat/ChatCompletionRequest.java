@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,22 +14,21 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
 
-@Data
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public final class ChatCompletionRequest {
-    private String model;
-    private List<Message> messages;
-    private String requestId;
-    private String doSample;
-    private Boolean stream;
-    private Double temperature;
-    private Double topP;
-    private Integer maxTokens;
-    private List<String> stop;
-    private List<Tool> tools;
-    private Object toolChoice;
+    private final String model;
+    private final List<Message> messages;
+    private final String requestId;
+    private final String doSample;
+    private final Boolean stream;
+    private final Double temperature;
+    private final Double topP;
+    private final Integer maxTokens;
+    private final List<String> stop;
+    private final List<Tool> tools;
+    private final Object toolChoice;
 
     private ChatCompletionRequest(Builder builder) {
         this.model = builder.model;
@@ -48,6 +46,50 @@ public final class ChatCompletionRequest {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public List<Message> getMessages() {
+        return messages;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public String getDoSample() {
+        return doSample;
+    }
+
+    public Boolean getStream() {
+        return stream;
+    }
+
+    public Double getTemperature() {
+        return temperature;
+    }
+
+    public Double getTopP() {
+        return topP;
+    }
+
+    public Integer getMaxTokens() {
+        return maxTokens;
+    }
+
+    public List<String> getStop() {
+        return stop;
+    }
+
+    public List<Tool> getTools() {
+        return tools;
+    }
+
+    public Object getToolChoice() {
+        return toolChoice;
     }
 
     public static final class Builder {

@@ -18,8 +18,8 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
-        <openai4j.version>0.19.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.10</azure-ai-openai.version>
+        <openai4j.version>0.20.0</openai4j.version>
+        <azure-ai-openai.version>1.0.0-beta.11</azure-ai-openai.version>
         <azure-ai-search.version>11.7.1</azure-ai-search.version>
         <azure.storage-blob.version>12.27.1</azure.storage-blob.version>
         <azure.storage-common.version>12.26.1</azure.storage-common.version>
