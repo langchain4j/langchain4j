@@ -111,7 +111,7 @@ public class AiServiceTokenStream implements TokenStream {
             contentHandler.accept(content);
         }
 
-        if (context.toolSpecifications != null || !toolSpecifications.isEmpty()) {
+        if (context.toolSpecifications != null || toolSpecifications != null && !toolSpecifications.isEmpty()) {
             List<ToolSpecification> specification = context.toolSpecifications == null
                     ? toolSpecifications
                     : context.toolSpecifications;
