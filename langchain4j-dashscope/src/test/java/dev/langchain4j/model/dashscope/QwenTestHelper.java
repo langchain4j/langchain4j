@@ -79,6 +79,13 @@ public class QwenTestHelper {
         );
     }
 
+    public static Stream<Arguments> listenableModelNameProvider() {
+        return Stream.of(
+                Arguments.of(QwenModelName.QWEN_MAX, true),  // non-multimodal, support tools
+                Arguments.of(QwenModelName.QWEN_VL_MAX, false)  // multimodal, don't support tools yet
+        );
+    }
+
     public static String apiKey() {
         return System.getenv("DASHSCOPE_API_KEY");
     }

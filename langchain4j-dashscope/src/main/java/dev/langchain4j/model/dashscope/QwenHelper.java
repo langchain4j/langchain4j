@@ -2,8 +2,10 @@ package dev.langchain4j.model.dashscope;
 
 import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput.Choice;
+import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationOutput;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
@@ -17,7 +19,10 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.extern.slf4j.Slf4j;
 
@@ -465,5 +470,49 @@ class QwenHelper {
 
     private static boolean isInputMessageType(ChatMessageType messageType) {
         return messageType == USER || messageType == TOOL_EXECUTION_RESULT;
+    }
+
+    static ChatModelRequest createModelListenerRequest(GenerationParam request,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        Double temperature = request.getTemperature() != null ? request.getTemperature().doubleValue() : null;
+        return ChatModelRequest.builder()
+                .model(request.getModel())
+                .temperature(temperature)
+                .topP(request.getTopP())
+                .maxTokens(request.getMaxTokens())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
+
+    static ChatModelRequest createModelListenerRequest(MultiModalConversationParam request,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        Double temperature = request.getTemperature() != null ? request.getTemperature().doubleValue() : null;
+        return ChatModelRequest.builder()
+                .model(request.getModel())
+                .temperature(temperature)
+                .topP(request.getTopP())
+                .maxTokens(request.getMaxLength())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
+
+    static ChatModelResponse createModelListenerResponse(String responseId,
+                                                         String responseModel,
+                                                         Response<AiMessage> response) {
+        if (response == null) {
+            return null;
+        }
+
+        return ChatModelResponse.builder()
+                .id(responseId)
+                .model(responseModel)
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .aiMessage(response.content())
+                .build();
     }
 }
