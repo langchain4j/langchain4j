@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.redis;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -13,6 +14,7 @@ import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.json.Path2;
 import redis.clients.jedis.search.*;
 
+import java.io.IOException;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
@@ -206,7 +208,14 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 .collect(toMap(metadataKey -> metadataKey, document::getString));
                         embedded = new TextSegment(text, new Metadata(metadata));
                     }
-                    Embedding embedding = new Embedding(OBJECT_MAPPER.convertValue(document.getString(schema.vectorFieldName()), float[].class));
+                    Embedding embedding;
+                    try {
+                        float[] vectors = OBJECT_MAPPER.readValue(document.getString(schema.vectorFieldName()), float[].class);
+                        embedding = new Embedding(vectors);
+                    } catch (JsonProcessingException e) {
+                        log.error("failed to parse embedding", e);
+                        throw new RedisRequestFailedException("failed to parse embedding", e);
+                    }
                     return new EmbeddingMatch<>(score, id, embedding, embedded);
                 })
                 .filter(embeddingMatch -> embeddingMatch.score() >= minScore)
