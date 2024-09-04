@@ -10,7 +10,7 @@ public enum ContentType {
      */
     TEXT(TextContent.class),
     /**
-     * Text content.
+     * Text file content.
      */
     TEXT_FILE(TextFileContent.class),
     /**
