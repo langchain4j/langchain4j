@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiGroundingPassageId {
+class GeminiGroundingPassageId {
     private String passageId;
     private String partIndex;
 }

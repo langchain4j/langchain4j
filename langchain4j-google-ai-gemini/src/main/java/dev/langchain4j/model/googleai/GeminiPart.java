@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiPart {
+class GeminiPart {
     private String text;
     private GeminiBlob inlineData;
     private GeminiFunctionCall functionCall;

@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiGroundingAttribution {
+class GeminiGroundingAttribution {
     private GeminiAttributionSourceId sourceId;
     private GeminiContent content;
 }

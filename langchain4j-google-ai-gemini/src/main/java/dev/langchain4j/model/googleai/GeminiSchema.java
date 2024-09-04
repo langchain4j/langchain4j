@@ -9,7 +9,7 @@ import java.util.Map;
 
 @Data
 @Builder
-public class GeminiSchema {
+class GeminiSchema {
     private GeminiType type;
     private String format;
     private String description;

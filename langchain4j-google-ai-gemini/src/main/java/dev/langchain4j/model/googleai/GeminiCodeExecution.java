@@ -3,5 +3,5 @@ package dev.langchain4j.model.googleai;
 import lombok.Data;
 
 @Data
-public class GeminiCodeExecution {
+class GeminiCodeExecution {
 }

@@ -6,6 +6,6 @@ import java.util.List;
 
 @Data
 @Builder
-public class GeminiCitationMetadata {
+class GeminiCitationMetadata {
     private List<GeminiCitationSource> citationSources;
 }

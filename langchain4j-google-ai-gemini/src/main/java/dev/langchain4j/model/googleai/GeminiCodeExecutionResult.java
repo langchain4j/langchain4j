@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiCodeExecutionResult {
+class GeminiCodeExecutionResult {
     private GeminiOutcome outcome; //TODO how to deal with the non-OK outcomes?
     private String output;
 }

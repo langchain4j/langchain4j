@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiExecutableCode {
+class GeminiExecutableCode {
     private GeminiLanguage programmingLanguage = GeminiLanguage.PYTHON;
     private String code;
 }

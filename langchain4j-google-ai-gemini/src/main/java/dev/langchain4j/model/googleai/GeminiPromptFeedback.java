@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @Builder
-public class GeminiPromptFeedback {
+class GeminiPromptFeedback {
     private GeminiBlockReason blockReason;
     private List<GeminiSafetyRating> safetyRatings;
 }

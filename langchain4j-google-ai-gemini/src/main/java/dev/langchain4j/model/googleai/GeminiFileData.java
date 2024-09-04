@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiFileData {
+class GeminiFileData {
     private String mimeType;
     private String fileUri;
 }

@@ -7,7 +7,7 @@ import java.util.Map;
 
 @Data
 @Builder
-public class GeminiFunctionCall {
+class GeminiFunctionCall {
     private String name;
     private Map args;
 }

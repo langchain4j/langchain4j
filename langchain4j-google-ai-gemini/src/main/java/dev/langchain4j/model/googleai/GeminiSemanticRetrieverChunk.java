@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiSemanticRetrieverChunk {
+class GeminiSemanticRetrieverChunk {
     private String source;
     private String chunk;
 }

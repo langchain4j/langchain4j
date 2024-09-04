@@ -1,6 +1,6 @@
 package dev.langchain4j.model.googleai;
 
-public enum GeminiOutcome {
+enum GeminiOutcome {
     OUTCOME_UNSPECIFIED,
     OUTCOME_OK,
     OUTCOME_FAILED,

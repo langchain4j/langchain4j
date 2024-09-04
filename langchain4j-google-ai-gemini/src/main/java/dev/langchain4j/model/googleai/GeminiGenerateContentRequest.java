@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @Builder
-public class GeminiGenerateContentRequest {
+class GeminiGenerateContentRequest {
     private List<GeminiContent> contents;
     private GeminiTool tools;
     private GeminiToolConfig toolConfig;

@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiSafetyRating {
+class GeminiSafetyRating {
     private GeminiHarmCategory category;
     private GeminiHarmBlockThreshold threshold;
     private Boolean blocked;

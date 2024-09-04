@@ -7,7 +7,7 @@ import java.util.Map;
 
 @Data
 @Builder
-public class GeminiFunctionResponse {
+class GeminiFunctionResponse {
     private String name;
     private Map response;
 }

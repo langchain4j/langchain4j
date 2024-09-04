@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiAttributionSourceId {
+class GeminiAttributionSourceId {
     private GeminiGroundingPassageId groundingPassage;
     private GeminiSemanticRetrieverChunk semanticRetrieverChunk;
 }

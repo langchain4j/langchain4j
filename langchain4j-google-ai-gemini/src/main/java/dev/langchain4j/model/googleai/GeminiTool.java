@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @Builder
-public class GeminiTool {
+class GeminiTool {
     private List<GeminiFunctionDeclaration> functionDeclarations;
     private GeminiCodeExecution codeExecution;
 }

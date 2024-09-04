@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @Builder
-public class GeminiCachedContent {
+class GeminiCachedContent {
     private List<GeminiContent> contents;
     private List<GeminiTool> tools;
     private String createTime;

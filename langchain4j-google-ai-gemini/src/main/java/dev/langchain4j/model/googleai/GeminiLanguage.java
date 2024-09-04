@@ -1,6 +1,6 @@
 package dev.langchain4j.model.googleai;
 
-public enum GeminiLanguage {
+enum GeminiLanguage {
     PYTHON,
     LANGUAGE_UNSPECIFIED;
 

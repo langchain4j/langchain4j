@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiBlob {
+class GeminiBlob {
     private String mimeType;
     private String data;
 }

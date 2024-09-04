@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @Builder
-public class GeminiGenerateContentResponse {
+class GeminiGenerateContentResponse {
     private List<GeminiCandidate> candidates;
     private GeminiPromptFeedback promptFeedback;
     private GeminiUsageMetadata usageMetadata;

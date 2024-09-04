@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiFunctionDeclaration {
+class GeminiFunctionDeclaration {
     private String name;
     private String description;
     private GeminiSchema parameters;

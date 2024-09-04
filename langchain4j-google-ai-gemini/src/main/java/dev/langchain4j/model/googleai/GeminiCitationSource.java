@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiCitationSource {
+class GeminiCitationSource {
     private Integer startIndex;
     private Integer endIndex;
     private String uri;

@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GeminiUsageMetadata {
+class GeminiUsageMetadata {
     private Integer promptTokenCount;
     private Integer cachedContentTokenCount;
     private Integer candidatesTokenCount;

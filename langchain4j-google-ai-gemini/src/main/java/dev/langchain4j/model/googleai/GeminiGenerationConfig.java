@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @Builder
-public class GeminiGenerationConfig {
+class GeminiGenerationConfig {
     private List<String> stopSequences;
     private String responseMimeType;
     private GeminiSchema responseSchema;

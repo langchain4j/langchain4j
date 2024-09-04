@@ -5,6 +5,6 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class GeminiToolConfig {
+class GeminiToolConfig {
     private GeminiFunctionCallingConfig functionCallingConfig;
 }

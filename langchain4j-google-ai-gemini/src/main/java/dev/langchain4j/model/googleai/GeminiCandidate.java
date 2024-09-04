@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @Builder
-public class GeminiCandidate {
+class GeminiCandidate {
     private GeminiContent content;
     private GeminiFinishReason finishReason;
     private List<GeminiSafetySetting> safetySettings;
