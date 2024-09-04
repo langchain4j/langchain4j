@@ -23,6 +23,10 @@ public class SpaceEngine {
         setRetrievalParam(retrievalParam);
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     public void setRetrievalParam(RetrievalParam retrievalParam) {
         // do some constraint check
         Class<? extends RetrievalParam> clazz = retrievalType.getParamClass();
@@ -32,10 +36,6 @@ public class SpaceEngine {
                             retrievalType.name(), clazz.getSimpleName()));
         }
         this.retrievalParam = retrievalParam;
-    }
-
-    public static Builder builder() {
-        return new Builder();
     }
 
     public static class Builder {
