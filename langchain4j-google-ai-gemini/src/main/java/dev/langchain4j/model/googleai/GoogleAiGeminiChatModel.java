@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import com.google.gson.Gson;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -15,6 +16,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
+import okhttp3.ResponseBody;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Retrofit;
@@ -39,6 +41,9 @@ import static java.util.Collections.emptyList;
 @Experimental
 public class GoogleAiGeminiChatModel implements ChatLanguageModel {
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/";
+
+    private static Gson GSON = new Gson();
+
     private final String apiKey;
     private final String modelName;
 
@@ -176,10 +181,18 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         GeminiGenerateContentResponse geminiResponse;
         try {
             retrofit2.Response<GeminiGenerateContentResponse> executed = responseCall.execute();
-
             geminiResponse = executed.body();
+
+            if (executed.code() >= 300) {
+                try (ResponseBody errorBody = executed.errorBody()) {
+                    GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
+
+                    throw new RuntimeException(
+                        String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
+                }
+            }
         } catch (IOException e) {
-            throw new RuntimeException("An error occurred when calling the Gemini endpoint via Retrofit", e);
+            throw new RuntimeException("An error occurred when calling the Gemini API endpoint.", e);
         }
 
         if (geminiResponse != null) {
