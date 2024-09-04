@@ -24,6 +24,7 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.output.JsonSchemas;
 import org.junit.jupiter.api.Test;
@@ -67,7 +68,7 @@ public class GoogleAiGeminiChatModelIT {
         String text = response.aiMessage().text();
         assertThat(text).containsIgnoringCase("artificial intelligence");
 
-        assertThat(response.finishReason()).isEqualTo(FinishReasonMapper.fromGFinishReasonToFinishReason(GeminiFinishReason.STOP));
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
 
     @Test
