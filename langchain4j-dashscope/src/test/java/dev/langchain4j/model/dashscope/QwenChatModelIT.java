@@ -212,7 +212,7 @@ public class QwenChatModelIT {
     }
 
     @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#multimodalChatModelNameProvider")
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#vlChatModelNameProvider")
     public void should_send_multimodal_image_url_and_receive_response(String modelName) {
         ChatLanguageModel model = QwenChatModel.builder()
                 .apiKey(apiKey())
@@ -225,7 +225,7 @@ public class QwenChatModelIT {
     }
 
     @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#multimodalChatModelNameProvider")
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#vlChatModelNameProvider")
     public void should_send_multimodal_image_data_and_receive_response(String modelName) {
         ChatLanguageModel model = QwenChatModel.builder()
                 .apiKey(apiKey())
@@ -235,6 +235,32 @@ public class QwenChatModelIT {
         Response<AiMessage> response = model.generate(multimodalChatMessagesWithImageData());
 
         assertThat(response.content().text()).containsIgnoringCase("parrot");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#audioChatModelNameProvider")
+    public void should_send_multimodal_audio_url_and_receive_response(String modelName) {
+        ChatLanguageModel model = QwenChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        Response<AiMessage> response = model.generate(multimodalChatMessagesWithAudioUrl());
+
+        assertThat(response.content().text()).containsIgnoringCase("阿里云");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#audioChatModelNameProvider")
+    public void should_send_multimodal_audio_data_and_receive_response(String modelName) {
+        ChatLanguageModel model = QwenChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        Response<AiMessage> response = model.generate(multimodalChatMessagesWithAudioData());
+
+        assertThat(response.content().text()).containsIgnoringCase("阿里云");
     }
 
     @Test
