@@ -21,8 +21,7 @@ import static dev.langchain4j.store.embedding.vearch.VearchApi.OK;
 
 class VearchClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(INDENT_OUTPUT);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final VearchApi vearchApi;
 

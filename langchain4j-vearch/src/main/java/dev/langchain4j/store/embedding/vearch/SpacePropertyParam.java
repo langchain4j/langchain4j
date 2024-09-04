@@ -15,6 +15,11 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
  *
  * @see CreateSpaceRequest
  */
+@Getter
+@Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
 public abstract class SpacePropertyParam {
 
     protected SpacePropertyType type;
