@@ -15,12 +15,9 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -61,12 +58,12 @@ public class GoogleAiGeminiChatModelIT {
 
         // when
         ChatResponse response = gemini.chat(ChatRequest.builder()
-            .messages(UserMessage.from("What is a large language model?"))
+            .messages(UserMessage.from("What is the capital of France?"))
             .build());
 
         // then
         String text = response.aiMessage().text();
-        assertThat(text).containsIgnoringCase("artificial intelligence");
+        assertThat(text).containsIgnoringCase("Paris");
 
         assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
