@@ -213,7 +213,6 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                         float[] vectors = OBJECT_MAPPER.readValue(document.getString(schema.vectorFieldName()), float[].class);
                         embedding = new Embedding(vectors);
                     } catch (JsonProcessingException e) {
-                        log.error("failed to parse embedding", e);
                         throw new RedisRequestFailedException("failed to parse embedding", e);
                     }
                     return new EmbeddingMatch<>(score, id, embedding, embedded);
