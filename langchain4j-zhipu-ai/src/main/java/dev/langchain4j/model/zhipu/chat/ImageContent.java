@@ -20,6 +20,22 @@ public class ImageContent implements Content {
         this.imageUrl = imageUrl;
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public Image getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(Image imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
     public static ImageContentBuilder builder() {
         return new ImageContentBuilder();
     }

@@ -15,6 +15,9 @@ public final class Usage {
     private Integer completionTokens;
     private Integer totalTokens;
 
+    public Usage() {
+    }
+
     private Usage(Builder builder) {
         this.promptTokens = builder.promptTokens;
         this.completionTokens = builder.completionTokens;

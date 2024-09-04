@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static dev.langchain4j.model.zhipu.chat.ChatCompletionModel.GLM_4;
+import static dev.langchain4j.model.zhipu.chat.ChatCompletionModel.GLM_4_FLASH;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
@@ -94,7 +94,7 @@ public final class ChatCompletionRequest {
 
     public static final class Builder {
 
-        private String model = GLM_4.toString();
+        private String model = GLM_4_FLASH.toString();
         private List<Message> messages;
         private Double temperature;
         private Double topP;
