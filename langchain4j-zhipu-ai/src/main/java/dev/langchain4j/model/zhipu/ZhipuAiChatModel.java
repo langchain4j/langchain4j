@@ -26,7 +26,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
-import static dev.langchain4j.model.zhipu.chat.ChatCompletionModel.GLM_4;
+import static dev.langchain4j.model.zhipu.chat.ChatCompletionModel.GLM_4_FLASH;
 import static dev.langchain4j.model.zhipu.chat.ToolChoiceMode.AUTO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
@@ -68,7 +68,7 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.stops = stops;
-        this.model = getOrDefault(model, GLM_4.toString());
+        this.model = getOrDefault(model, GLM_4_FLASH.toString());
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.maxToken = getOrDefault(maxToken, 512);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
