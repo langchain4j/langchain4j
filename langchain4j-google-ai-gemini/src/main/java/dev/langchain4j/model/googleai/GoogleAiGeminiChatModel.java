@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
@@ -79,7 +80,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         this.stopSequences = getOrDefault(stopSequences, emptyList());
         this.toolConfig = toolConfig;
 
-        this.safetySettings = safetySettings;
+        this.safetySettings = copyIfNotNull(safetySettings);
 
         this.responseFormat = responseFormat;
         if (responseFormat != null) {
