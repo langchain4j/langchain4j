@@ -81,7 +81,7 @@ public class QwenChatModel implements ChatLanguageModel {
         this.stops = stops;
         this.maxTokens = maxTokens;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        this.isMultimodalModel = QwenHelper.isMultimodalModel(modelName);
+        this.isMultimodalModel = QwenHelper.isMultimodalModel(this.modelName);
 
         if (Utils.isNullOrBlank(baseUrl)) {
             this.conv = isMultimodalModel ? new MultiModalConversation() : null;
