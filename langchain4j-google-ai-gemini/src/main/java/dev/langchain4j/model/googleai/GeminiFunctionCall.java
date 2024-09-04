@@ -9,5 +9,5 @@ import java.util.Map;
 @Builder
 class GeminiFunctionCall {
     private String name;
-    private Map args;
+    private Map<String, Object> args;
 }
