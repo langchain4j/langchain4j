@@ -26,8 +26,11 @@ import java.util.stream.Collectors;
 import static java.util.Collections.singletonList;
 
 class PartsAndContentsMapper {
+
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector =
         new CustomMimeTypesFileTypeDetector();
+
+    private static final Gson GSON = new Gson();
 
     static GeminiPart fromContentToGPart(Content content) {
         if (content.type().equals(ContentType.TEXT)) {
@@ -218,7 +221,7 @@ class PartsAndContentsMapper {
                                     .map(toolExecutionRequest -> GeminiPart.builder()
                                         .functionResponse(GeminiFunctionResponse.builder()
                                             .name(toolExecutionRequest.name())
-                                            .response(new Gson().fromJson(toolExecutionRequest.arguments(), Map.class))
+                                            .response(GSON.fromJson(toolExecutionRequest.arguments(), Map.class))
                                             .build())
                                         .build())
                                     .collect(Collectors.toList()))
