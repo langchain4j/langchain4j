@@ -122,7 +122,7 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
      */
     @Override
     public String probeContentType(Path path) {
-        String extension = extension(path);
+        String extension = extension(path).toLowerCase();
 
         if (mappings.containsKey(extension)) {
             return mappings.get(extension);
