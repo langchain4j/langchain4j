@@ -11,7 +11,7 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-gemini</artifactId>
+    <artifactId>langchain4j-google-ai-gemini</artifactId>
     <name>LangChain4j :: Integration :: Google AI Gemini</name>
 
     <properties>
