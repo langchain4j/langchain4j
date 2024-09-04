@@ -20,6 +20,15 @@ public final class TextContent implements Content {
         this.text = text;
     }
 
+    @Override
+    public String getType() {
+        return type;
+    }
+
+    public String getText() {
+        return text;
+    }
+
     public static TextContentBuilder builder() {
         return new TextContentBuilder();
     }

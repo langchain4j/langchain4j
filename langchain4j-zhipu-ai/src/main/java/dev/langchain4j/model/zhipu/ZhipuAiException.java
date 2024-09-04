@@ -40,4 +40,9 @@ public class ZhipuAiException extends RuntimeException {
     public String getCode() {
         return code;
     }
+
+    @Override
+    public String getMessage() {
+        return message;
+    }
 }
