@@ -75,7 +75,7 @@ public class CustomMimeTypesFileTypeDetectorTest {
         CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
 
         // when
-        String mimeType = detector.probeContentType("foo.xyz");
+        String mimeType = detector.probeContentType("foo.banana");
 
         // then
         assertThat(mimeType).isNull();
