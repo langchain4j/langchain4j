@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class GoogleAiGeminiChatModelIT {
 
-    private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
+    private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GEMINI_AI_KEY");
 
     private static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     private static final String MD_FILE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/docs/docs/intro.md";
