@@ -161,9 +161,11 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             ).build();
         }
 
-        this.vertexAI = new VertexAI(
-            ensureNotBlank(project, "project"),
-            ensureNotBlank(location, "location"));
+        this.vertexAI = new VertexAI.Builder()
+            .setProjectId(ensureNotBlank(project, "project"))
+            .setLocation(ensureNotBlank(location, "location"))
+            .setCustomHeaders(Collections.singletonMap("User-Agent", "LangChain4j"))
+            .build();
 
         this.generativeModel = new GenerativeModel(
             ensureNotBlank(modelName, "modelName"), vertexAI)

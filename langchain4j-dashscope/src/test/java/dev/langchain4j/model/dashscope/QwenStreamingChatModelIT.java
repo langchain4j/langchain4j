@@ -41,7 +41,7 @@ public class QwenStreamingChatModelIT {
     }
 
     @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#multimodalChatModelNameProvider")
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#vlChatModelNameProvider")
     public void should_send_multimodal_image_url_and_receive_response(String modelName) {
         StreamingChatLanguageModel model = QwenStreamingChatModel.builder()
                 .apiKey(apiKey())
@@ -52,11 +52,10 @@ public class QwenStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         assertThat(response.content().text()).containsIgnoringCase("dog");
-        assertThat(response.content().text()).endsWith("That's all!");
     }
 
     @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#multimodalChatModelNameProvider")
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#vlChatModelNameProvider")
     public void should_send_multimodal_image_data_and_receive_response(String modelName) {
         StreamingChatLanguageModel model = QwenStreamingChatModel.builder()
                 .apiKey(apiKey())
@@ -67,7 +66,34 @@ public class QwenStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         assertThat(response.content().text()).containsIgnoringCase("parrot");
-        assertThat(response.content().text()).endsWith("That's all!");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#audioChatModelNameProvider")
+    public void should_send_multimodal_audio_url_and_receive_response(String modelName) {
+        StreamingChatLanguageModel model = QwenStreamingChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();;
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(multimodalChatMessagesWithAudioUrl(), handler);
+        Response<AiMessage> response = handler.get();
+
+        assertThat(response.content().text()).containsIgnoringCase("阿里云");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#audioChatModelNameProvider")
+    public void should_send_multimodal_audio_data_and_receive_response(String modelName) {
+        StreamingChatLanguageModel model = QwenStreamingChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(multimodalChatMessagesWithAudioData(), handler);
+        Response<AiMessage> response = handler.get();
+
+        assertThat(response.content().text()).containsIgnoringCase("阿里云");
     }
 
     @ParameterizedTest

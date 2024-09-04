@@ -17,6 +17,8 @@ public final class ChatCompletionChoice {
     private Delta delta;
     private String finishReason;
 
+    public ChatCompletionChoice() {}
+
     public ChatCompletionChoice(Integer index, AssistantMessage message, Delta delta, String finishReason) {
         this.index = index;
         this.message = message;
