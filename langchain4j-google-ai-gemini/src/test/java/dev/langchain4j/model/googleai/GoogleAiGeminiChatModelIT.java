@@ -24,6 +24,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.output.JsonSchemas;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.RetryingTest;
 
@@ -43,16 +44,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class GoogleAiGeminiChatModelIT {
 
-    private static final String GEMINI_AI_KEY = System.getenv("GEMINI_AI_KEY");
+    private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
     private static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     private static final String MD_FILE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/docs/docs/intro.md";
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        Thread.sleep(2_000); // to prevent hitting rate limits
+    }
 
     @Test
     void should_answer_simple_question() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .build();
 
@@ -72,7 +78,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_configure_generation() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .temperature(2.0)
             .topP(0.5)
@@ -92,7 +98,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_answer_in_json() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-pro")
             .responseMimeType("application/json")
             .build();
@@ -116,7 +122,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_support_multiturn_chatting() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .build();
 
@@ -136,7 +142,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_support_sending_images_as_base64() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .build();
 
@@ -155,7 +161,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_support_sending_images_as_uri() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .build();
 
@@ -172,7 +178,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_support_text_file() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .build();
 
@@ -189,7 +195,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_support_audio_file() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .build();
 
@@ -211,7 +217,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_support_video_file() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .build();
 
@@ -233,7 +239,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_respect_system_instruction() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .build();
 
@@ -251,7 +257,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_execute_python_code() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .build();
 
@@ -271,7 +277,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_request_to_call_function() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
             .build();
@@ -313,7 +319,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_support_JSON_array_in_tools() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
             .build();
@@ -358,7 +364,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_support_parallel_tool_execution() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
             .build();
@@ -397,7 +403,7 @@ public class GoogleAiGeminiChatModelIT {
         mapSafetySettings.put(HARM_CATEGORY_HARASSMENT, BLOCK_LOW_AND_ABOVE);
 
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
             .safetySettings(mapSafetySettings)
@@ -416,7 +422,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_comply_to_response_schema() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
             .responseFormat(ResponseFormat.builder()
@@ -463,7 +469,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_handle_enum_type() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
             .responseFormat(ResponseFormat.builder()
@@ -504,7 +510,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_allow_array_as_response_schema() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
             .responseFormat(ResponseFormat.builder()
@@ -547,7 +553,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_deserialize_to_POJO() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
             .responseSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
@@ -596,7 +602,7 @@ public class GoogleAiGeminiChatModelIT {
     void should_support_tool_config() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
             .build();
@@ -617,7 +623,7 @@ public class GoogleAiGeminiChatModelIT {
 
         // given
         gemini = GoogleAiGeminiChatModel.builder()
-            .apiKey(GEMINI_AI_KEY)
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
             .toolConfig(GeminiMode.ANY, "toolTwo")
