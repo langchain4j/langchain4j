@@ -62,6 +62,9 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
 
     private final Boolean logRequestsAndResponses;
 
+    private final boolean allowCodeExecution;
+    private final boolean includeCodeExecutionOutput;
+
     private final List<GeminiSafetySetting> safetySettings;
 
     @Builder
@@ -70,6 +73,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
                                    Integer maxOutputTokens, Integer candidateCount,
                                    String responseMimeType, ResponseFormat responseFormat,
                                    List<String> stopSequences, GeminiFunctionCallingConfig toolConfig,
+                                   Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
                                    Boolean logRequestsAndResponses,
                                    List<GeminiSafetySetting> safetySettings
     ) {
@@ -83,7 +87,11 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         this.maxOutputTokens = getOrDefault(maxOutputTokens, 8192);
         this.candidateCount = getOrDefault(candidateCount, 1);
         this.stopSequences = getOrDefault(stopSequences, emptyList());
+
         this.toolConfig = toolConfig;
+
+        this.allowCodeExecution = allowCodeExecution != null ? allowCodeExecution : false;
+        this.includeCodeExecutionOutput = includeCodeExecutionOutput != null ? includeCodeExecutionOutput : false;
 
         this.safetySettings = copyIfNotNull(safetySettings);
 
@@ -171,7 +179,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
                 .topP(this.topP)
                 .build())
             .safetySettings(this.safetySettings)
-            .tools(FunctionMapper.fromToolSepcsToGTool(toolSpecifications))
+            .tools(FunctionMapper.fromToolSepcsToGTool(toolSpecifications, this.allowCodeExecution))
             .toolConfig(new GeminiToolConfig(this.toolConfig))
             .build();
 
@@ -206,7 +214,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
                 aiMessage = AiMessage.from("No text was returned by the model. " +
                     "The model finished generating because of the following reason: " + finishReason);
             } else {
-                aiMessage = fromGPartsToAiMessage(firstCandidate.getContent().getParts());
+                aiMessage = fromGPartsToAiMessage(firstCandidate.getContent().getParts(), this.includeCodeExecutionOutput);
             }
 
             return ChatResponse.builder()
@@ -235,12 +243,6 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         Retrofit retrofit = retrofitBuilder.build();
 
         return retrofit.create(GeminiService.class);
-    }
-
-    public static ToolSpecification pythonCodeExecution() {
-        return ToolSpecification.builder()
-            .name("code_execution")
-            .build();
     }
 
     public static class GoogleAiGeminiChatModelBuilder {

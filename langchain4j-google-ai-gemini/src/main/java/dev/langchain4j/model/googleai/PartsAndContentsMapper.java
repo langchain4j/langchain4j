@@ -144,13 +144,13 @@ class PartsAndContentsMapper {
         }
     }
 
-    static AiMessage fromGPartsToAiMessage(List<GeminiPart> parts) {
+    static AiMessage fromGPartsToAiMessage(List<GeminiPart> parts, boolean includeCodeExecutionOutput) {
         StringBuilder fullText = new StringBuilder();
         List<GeminiFunctionCall> functionCalls = new ArrayList<>();
 
         for (GeminiPart part : parts) {
             GeminiExecutableCode executableCode = part.getExecutableCode();
-            if (executableCode != null) { //TODO maybe add a flag to the model like showCodeExecution()
+            if (executableCode != null && includeCodeExecutionOutput) {
                 fullText
                     .append("Code executed:\n")
                     .append("```python")
@@ -162,7 +162,7 @@ class PartsAndContentsMapper {
             }
 
             GeminiCodeExecutionResult codeExecutionResult = part.getCodeExecutionResult();
-            if (codeExecutionResult != null) {
+            if (codeExecutionResult != null && includeCodeExecutionOutput) {
                 GeminiOutcome outcome = codeExecutionResult.getOutcome();
 
                 if (outcome != GeminiOutcome.OUTCOME_OK) {

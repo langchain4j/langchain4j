@@ -12,21 +12,26 @@ class FunctionMapper {
 
     private static final Gson GSON = new Gson();
 
-    static GeminiTool fromToolSepcsToGTool(List<ToolSpecification> specifications) {
-        if (specifications == null) {
-            return null;
-        }
+    static GeminiTool fromToolSepcsToGTool(List<ToolSpecification> specifications, boolean allowCodeExecution) {
 
         GeminiTool.GeminiToolBuilder tool = GeminiTool.builder();
 
+        if (allowCodeExecution) {
+            tool.codeExecution(new GeminiCodeExecution());
+        }
+
+        if (specifications == null || specifications.isEmpty()) {
+            if (allowCodeExecution) {
+                // if there's no tool specification, but there's Python code execution
+                return tool.build();
+            } else {
+                // if there's neither tool specification nor Python code execution
+                return null;
+            }
+        }
+
         List<GeminiFunctionDeclaration> functionDeclarations = specifications.stream()
             .map(specification -> {
-                // using Gemini's built-in hosted Python sandboxed code executor
-                if (specification.name().equals("code_execution")) {
-                    tool.codeExecution(new GeminiCodeExecution());
-                    return null;
-                }
-
                 GeminiFunctionDeclaration.GeminiFunctionDeclarationBuilder fnBuilder =
                     GeminiFunctionDeclaration.builder();
                 if (specification.name() != null) {
