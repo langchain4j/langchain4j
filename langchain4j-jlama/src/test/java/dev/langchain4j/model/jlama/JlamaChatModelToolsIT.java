@@ -18,7 +18,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JlamaToolChatModelIT {
+class JlamaChatModelToolsIT {
 
     static File tmpDir;
     static ChatLanguageModel model;

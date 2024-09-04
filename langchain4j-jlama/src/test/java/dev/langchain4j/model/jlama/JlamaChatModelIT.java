@@ -5,7 +5,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
-import org.assertj.core.util.Files;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +15,7 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JlamaChatModelIT {
+class JlamaChatModelIT {
 
     static File tmpDir;
     static ChatLanguageModel model;
@@ -27,7 +26,7 @@ public class JlamaChatModelIT {
         tmpDir.mkdirs();
 
         model = JlamaChatModel.builder()
-                .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
+                .modelName("tjake/Meta-Llama-3.1-8B-Instruct-Jlama-Q4")
                 .modelCachePath(tmpDir.toPath())
                 .temperature(0.0f)
                 .maxTokens(30)
