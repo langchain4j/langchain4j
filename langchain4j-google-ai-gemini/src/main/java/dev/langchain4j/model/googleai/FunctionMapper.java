@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 
 class FunctionMapper {
 
+    public static final Gson GSON = new Gson();
+
     static GeminiTool fromToolSepcsToGTool(List<ToolSpecification> specifications) {
         if (specifications == null) {
             return null;
@@ -73,7 +75,7 @@ class FunctionMapper {
     public static List<ToolExecutionRequest> fromToolExecReqToGFunCall(List<GeminiFunctionCall> functionCalls) {
         return functionCalls.stream().map(functionCall -> ToolExecutionRequest.builder()
             .name(functionCall.getName())
-            .arguments(new Gson().toJson(functionCall.getArgs()))
+            .arguments(GSON.toJson(functionCall.getArgs()))
             .build()).collect(Collectors.toList());
     }
 }
