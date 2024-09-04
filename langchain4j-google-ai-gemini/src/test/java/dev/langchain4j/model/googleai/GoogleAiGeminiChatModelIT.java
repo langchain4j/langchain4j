@@ -242,7 +242,7 @@ public class GoogleAiGeminiChatModelIT {
 
         // when
         Response<AiMessage> response = gemini.generate(
-            SystemMessage.from("Translate fromToolExecReqToGFunCall English into French"),
+            SystemMessage.from("Translate from English into French"),
             UserMessage.from("apple")
         );
 
