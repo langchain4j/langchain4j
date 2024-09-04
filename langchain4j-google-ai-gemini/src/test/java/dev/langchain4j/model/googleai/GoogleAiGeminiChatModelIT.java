@@ -15,10 +15,14 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.output.JsonSchemas;
@@ -30,6 +34,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
 import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.model.googleai.GoogleAiGeminiChatModel.pythonCodeExecution;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
@@ -495,6 +500,41 @@ public class GoogleAiGeminiChatModelIT {
         // then
         assertThat(response.aiMessage().text().trim())
             .isEqualTo("{\"sentiment\": \"POSITIVE\"}");
+    }
+
+    @Test
+    void should_allow_array_as_response_schema() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+            .apiKey(GEMINI_AI_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .responseFormat(ResponseFormat.builder()
+                .type(JSON)
+                .jsonSchema(JsonSchema.builder()
+                    .rootElement(JsonArraySchema.builder()
+                        .items(JSON_INTEGER_SCHEMA)
+                        .build())
+                    .build())
+                .build())
+            .build();
+
+        // when
+        ChatResponse response = gemini.chat(ChatRequest.builder()
+            .messages(
+                SystemMessage.from(
+                    "Your role is to return a list of 6-faces dice rolls"),
+                UserMessage.from(
+                    "Give me 3 dice rolls"
+                )
+            )
+            .build());
+
+        System.out.println("response = " + response);
+
+        // then
+        Integer[] diceRolls = new Gson().fromJson(response.aiMessage().text(), Integer[].class);
+        assertThat(diceRolls.length).isEqualTo(3);
     }
 
     private class Color {
