@@ -11,9 +11,9 @@ class GeminiGenerationConfig {
     private List<String> stopSequences;
     private String responseMimeType;
     private GeminiSchema responseSchema;
-    private int candidateCount = 1;
-    private int maxOutputTokens = 8192;
-    private double temperature = 1.0;
-    private int topK = 64;
-    private double topP = 0.95;
+    private Integer candidateCount = 1;
+    private Integer maxOutputTokens = 8192;
+    private Double temperature = 1.0;
+    private Integer topK = 64;
+    private Double topP = 0.95;
 }
