@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.dashscope.spi.QwenTokenizerBuilderFactory;
 import lombok.Builder;
 
 import java.util.Collections;
@@ -16,6 +17,7 @@ import java.util.Collections;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.model.dashscope.QwenHelper.toQwenMessages;
 import static dev.langchain4j.model.dashscope.QwenModelName.QWEN_PLUS;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class QwenTokenizer implements Tokenizer {
     private final String apiKey;
@@ -93,5 +95,19 @@ public class QwenTokenizer implements Tokenizer {
             }
         }
         return true;
+    }
+
+    public static QwenTokenizer.QwenTokenizerBuilder builder() {
+        for (QwenTokenizerBuilderFactory factory : loadFactories(QwenTokenizerBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QwenTokenizer.QwenTokenizerBuilder();
+    }
+
+    public static class QwenTokenizerBuilder {
+        public QwenTokenizerBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }
