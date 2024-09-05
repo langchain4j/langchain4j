@@ -67,7 +67,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.schema = RedisSchema.builder()
                 .indexName(getOrDefault(indexName, "embedding-index"))
                 .dimension(dimension)
-                .schemaFieldMap(schemaFieldMap)
+                .schemaFieldMap(copyIfNotNull(schemaFieldMap))
                 .build();
 
         if (!isIndexExist(schema.indexName())) {
