@@ -582,7 +582,7 @@ final class SQLFilters {
      * @param object Object that is converted into a SQL data type. Not null. Not empty.
      * @return The SQL data type to convert object into. Not null.
      */
-    private static OracleType toOracleType(Object object) {
+    static OracleType toOracleType(Object object) {
         if (object instanceof Number) {
             if (object instanceof Float) {
                 return OracleType.BINARY_FLOAT;

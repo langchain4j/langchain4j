@@ -52,7 +52,7 @@ public class EmbeddingTableIT {
                                 .metadataColumn(metadataColumn)
                                 .build())
                         // Verify interactions with the CREATE INDEX command
-                        .vectorIndex(CREATE_OR_REPLACE)
+                        .index(IVFIndex.builder().createOption(CREATE_OR_REPLACE))
                         .build();
 
             assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
@@ -90,7 +90,6 @@ public class EmbeddingTableIT {
                                 .metadataColumn("\"" + metadataColumn + "\"")
                                 .build())
                         // CREATE INDEX fails with lower case Unicode names
-                        .vectorIndex(DO_NOT_CREATE)
                         .build();
 
             assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
@@ -128,7 +127,7 @@ public class EmbeddingTableIT {
                         .metadataColumn("\"" + metadataColumn + "\"")
                         .build())
                     // Verify interactions with the CREATE INDEX command
-                    .vectorIndex(CREATE_OR_REPLACE)
+                    .index(IVFIndex.builder().createOption(CREATE_OR_REPLACE))
                     .build();
 
             assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
@@ -176,7 +175,7 @@ public class EmbeddingTableIT {
                     .dataSource(getDataSource())
                     .embeddingTable(tableName)
                     // Verify interactions with the CREATE INDEX command
-                    .vectorIndex(CREATE_OR_REPLACE)
+                    .index(IVFIndex.builder().createOption(CREATE_OR_REPLACE))
                     .build());
         }
         finally {

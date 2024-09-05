@@ -23,7 +23,6 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.function.BiFunction;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -69,6 +68,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private final EmbeddingTable table;
 
+
     /**
      * <code>true</code> if {@link #search(EmbeddingSearchRequest)} should use an exact search, or <code>false</code> if
      * it should use approximate search.
@@ -97,41 +97,31 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
-     * Creates an index on the {@link EmbeddingTable#embeddingColumn()}, if configured to do so by
-     * {@link Builder#vectorIndex(CreateOption)}.
-     *
-     * @param builder Builder that configures an embedding store. Not null.
-     *
-     * @throws SQLException If a database error prevents the index from being created.
+     * Creates all index described by the builder.
+     * @param builder Then builder.
+     * @throws SQLException If an error occurs during index creation.
      */
     private static void createIndex(Builder builder) throws SQLException {
-
-        if (builder.vectorIndexCreateOption == CreateOption.DO_NOT_CREATE)
-            return;
 
         try (Connection connection = builder.dataSource.getConnection();
              Statement statement = connection.createStatement()
         ) {
-            String tableName = builder.embeddingTable.name();
-
-            // If the table name is a quoted identifier, then the index name must also be quoted.
-            String indexName = tableName.startsWith("\"") && tableName.endsWith("\"")
-                    ? "\"" + tableName.substring(1, tableName.length() - 1) + "_embedding_index\""
-                    : tableName + "_embedding_index";
-
-            if (builder.vectorIndexCreateOption == CreateOption.CREATE_OR_REPLACE)
-                statement.addBatch("DROP INDEX IF EXISTS " + indexName);
-
-            // The COSINE metric used here should match the VECTOR_DISTANCE metric of the search method.
-            statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + indexName +
-                        " ON " + tableName + "(" + builder.embeddingTable.embeddingColumn() + ")" +
-                        " ORGANIZATION NEIGHBOR PARTITIONS" +
-                        " WITH DISTANCE COSINE");
-
-            statement.executeBatch();
+            if (builder.indexBuilders != null) {
+                for (IndexBuilder indexBuilder : builder.indexBuilders) {
+                    Index index = indexBuilder.build(builder.embeddingTable);
+                    if (index.dropIndex()) {
+                        statement.addBatch(index.getDropStatement());
+                    }
+                    if (index.createIndex()) {
+                        statement.addBatch(index.getCreateStatement());
+                    }
+                }
+                statement.executeBatch();
+            }
         } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
+
     }
 
     @Override
@@ -272,7 +262,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
 
-        SQLFilter sqlFilter = SQLFilters.create(filter, this::mapMetadataKey);
+        SQLFilter sqlFilter = SQLFilters.create(filter, table::mapMetadataKey);
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement delete = connection.prepareStatement(
@@ -301,7 +291,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         ensureNotNull(request, "request");
 
-        SQLFilter sqlFilter = SQLFilters.create(request.filter(), this::mapMetadataKey);
+        SQLFilter sqlFilter = SQLFilters.create(request.filter(), table::mapMetadataKey);
         final int maxResults = request.maxResults();
 
         // In a 23.4 build of Oracle Database, ORA-06553 will result if the distance column is referenced in the WHERE
@@ -464,33 +454,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         return metadata;
     }
 
-    /**
-     * <p>
-     * The mapping function for use with {@link SQLFilters#create(Filter, BiFunction)}. The function maps a
-     * {@link Metadata} key to a field of the JSON "metadata" column. The builtin JSON_VALUE function is used to
-     * evaluate a JSON path expression, which looks something like this: '$.key'
-     * </p><p>
-     * A RETURNING clause is used to return the JSON value as a particular SQL data type.
-     * </p><p>
-     * A NULL ON ERROR clause is used, explicitly, to return NULL in the case where the JSON object does not contain the
-     * key.
-     * </p>
-     *
-     * @param key Name of a metadata key. Not null.
-     * @param type SQL type to return the key as. Not null.
-     * @return A JSON_VALUE function call which returns the key as a SQL data type, or returns NULL if the key does not
-     * exist. The String returned by this method is not null.
-     */
-    private String mapMetadataKey(String key, OracleType type) {
-        // Oracle JDBC does not implement getName() correctly for BINARY_FLOAT and BINARY_DOUBLE; It puts a space where
-        // the underscore should be.
-        String typeName =
-            type == OracleType.BINARY_FLOAT ? "BINARY_FLOAT"
-                    : type == OracleType.BINARY_DOUBLE ? "BINARY_DOUBLE"
-                    : type.getName();
 
-        return "JSON_VALUE(" + table.metadataColumn() + ", '$." + key + "' RETURNING " + typeName + " NULL ON ERROR)";
-    }
 
     /**
      * Returns a runtime exception which conveys the same information as a given SQLException. Methods which can not
@@ -568,7 +532,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         private DataSource dataSource;
         private EmbeddingTable embeddingTable;
         private boolean isExactSearch = false;
-        private CreateOption vectorIndexCreateOption = CreateOption.DO_NOT_CREATE;
+        private IndexBuilder[] indexBuilders;
 
         private Builder() {}
 
@@ -641,16 +605,13 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * Configures the creation of an index on the embedding column of the {@link EmbeddingTable} used by the
-         * embedding store. Depending on which CreateOption is provided, an index may be created when {@link #build()}
-         * is called. The default createOption is {@link CreateOption#DO_NOT_CREATE}.
-         *
-         * @param createOption Option for creating the index. Not null.
-         * @return This builder. Not null.
+         * Configures the indexes that will be created on the {@link EmbeddingTable}. Two types of
+         * indexes can be created {@link IVFIndex} and {@link JSONIndex}.
+         * @param indexBuilders Indexes to create.
+         * @return This builder.
          */
-        public Builder vectorIndex(CreateOption createOption) {
-            ensureNotNull(createOption, "createOption");
-            vectorIndexCreateOption = createOption;
+        public Builder index(IndexBuilder... indexBuilders) {
+            this.indexBuilders = indexBuilders;
             return this;
         }
 
