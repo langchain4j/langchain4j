@@ -4,7 +4,7 @@ hide_title: false
 sidebar_position: 0
 ---
 
-| Provider                                                                         | [Streaming](/tutorials/response-streaming) | [Tools](/tutorials/tools) | [JSON Mode](/tutorials/ai-services#json-mode) | Supported Modalities (Input)   | Local                                                   | Native |
+| Provider                                                                         | [Streaming](/tutorials/response-streaming) | [Tools](/tutorials/tools) | [JSON mode](/tutorials/ai-services#json-mode) | Supported Modalities (Input)   | Local                                                   | Native |
 |----------------------------------------------------------------------------------|--------------------------------------------|---------------------------|-----------------------------------------------|--------------------------------|---------------------------------------------------------|--------|
 | [Amazon Bedrock](/integrations/language-models/amazon-bedrock)                   |                                            |                           |                                               | text                           |                                                         |        |
 | [Anthropic](/integrations/language-models/anthropic)                             | ✅                                          | ✅                         |                                               | text, image                    |                                                         | ✅      |
