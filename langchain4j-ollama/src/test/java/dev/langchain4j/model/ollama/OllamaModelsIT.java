@@ -26,7 +26,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // then
         assertThat(response.content().size()).isGreaterThan(0);
-        assertThat(response.content().get(0).getName()).isEqualTo("tinydolphin:latest");
+        assertThat(response.content().get(0).getName()).contains(TINY_DOLPHIN_MODEL);
     }
 
     @Test
@@ -35,7 +35,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaModel ollamaModel = OllamaModel.builder()
-                .name("tinydolphin:latest")
+                .name(TINY_DOLPHIN_MODEL)
                 .build();
 
         Response<OllamaModelCard> response = ollamaModels.modelCard(ollamaModel);
@@ -53,7 +53,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         // given AbstractOllamaInfrastructure
 
         // when
-        Response<OllamaModelCard> response = ollamaModels.modelCard("tinydolphin:latest");
+        Response<OllamaModelCard> response = ollamaModels.modelCard(TINY_DOLPHIN_MODEL);
 
         // then
         assertThat(response.content().getModelfile()).isNotBlank();
@@ -84,7 +84,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         // then
         RunningOllamaModel runningOllamaModel = response.content().get(0);
 
-        assertThat(runningOllamaModel.getName()).contains("tinydolphin");
+        assertThat(runningOllamaModel.getName()).contains(TINY_DOLPHIN_MODEL);
         assertThat(runningOllamaModel.getDigest()).isNotBlank();
         assertThat(runningOllamaModel.getExpiresAt()).isNotNull();
     }
