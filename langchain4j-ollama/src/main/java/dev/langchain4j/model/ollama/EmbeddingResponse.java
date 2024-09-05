@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @Data
@@ -20,5 +22,6 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 @JsonNaming(SnakeCaseStrategy.class)
 class EmbeddingResponse {
 
-    private float[] embedding;
+    private String model;
+    private List<float[]> embeddings;
 }
