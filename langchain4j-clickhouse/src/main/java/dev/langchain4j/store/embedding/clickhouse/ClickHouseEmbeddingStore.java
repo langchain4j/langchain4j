@@ -1,9 +1,9 @@
 package dev.langchain4j.store.embedding.clickhouse;
 
 import com.clickhouse.jdbc.ClickHouseDataSource;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -17,7 +17,6 @@ import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
@@ -32,22 +31,17 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final Logger log = LoggerFactory.getLogger(ClickHouseEmbeddingStore.class);
     private final ClickHouseDataSource dataSource;
     private final ClickHouseSettings settings;
-    private static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
-            .setPrettyPrinting()
-            .create();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public ClickHouseEmbeddingStore(ClickHouseDataSource dataSource,
                                     ClickHouseSettings settings) {
-        this.settings = ensureNotNull(settings, "setting");
+        this.settings = ensureNotNull(settings, "settings");
         checkColumnMap(settings.getColumnMap());
         // init dataSource
         try {
             this.dataSource = Optional.ofNullable(dataSource).orElse(new ClickHouseDataSource(settings.getUrl(), new Properties()));
         } catch (SQLException e) {
-            String errMsg = "encounter exception when initialize dataSource";
-            log.error(errMsg, e);
-            throw new ClickhouseOperationException(errMsg);
+            throw new ClickhouseOperationException("encounter exception when initialize dataSource");
         }
 
         // init experimental feature and table
@@ -55,9 +49,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
              Statement stmt = conn.createStatement()) {
             stmt.execute(buildCreateTableSql());
         } catch (SQLException e) {
-            String errMsg = String.format("encounter exception when creating table %s", e.getLocalizedMessage());
-            log.error(errMsg, e);
-            throw new ClickhouseOperationException(errMsg);
+            throw new ClickhouseOperationException(String.format("encounter exception when creating table %s", e.getLocalizedMessage()));
         }
     }
 
@@ -186,9 +178,9 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
                     Metadata metadata = new Metadata();
                     if (settings.getColumnMap().containsKey("metadata")) {
                         String metadataStr = resultSet.getString("metadata");
-                        TypeToken<Map<String, String>> typeToken = new TypeToken<Map<String, String>>() {
+                        TypeReference<Map<String, String>> typeToken = new TypeReference<Map<String, String>>() {
                         };
-                        Map<String, String> metadataMap = GSON.fromJson(metadataStr, typeToken);
+                        Map<String, String> metadataMap = OBJECT_MAPPER.readValue(metadataStr, typeToken);
                         metadata = Metadata.from(Optional.ofNullable(metadataMap).orElse(new HashMap<>()));
                     }
                     textSegment = TextSegment.from(text, metadata);
@@ -202,9 +194,9 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .filter(relevant -> relevant.score() >= minScore)
                     .collect(toList());
         } catch (SQLException e) {
-            String errMsg = String.format("encounter exception when query data %s", e.getLocalizedMessage());
-            log.error(errMsg, e);
-            throw new ClickhouseOperationException(errMsg);
+            throw new ClickhouseOperationException(String.format("encounter exception when query data %s", e.getLocalizedMessage()));
+        } catch (JsonProcessingException e) {
+            throw new ClickhouseOperationException(String.format("Search failed! Error message=%s", e.getLocalizedMessage()));
         }
     }
 
@@ -214,7 +206,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("do not add empty embeddings to ClickHouse");
+            log.info("ClickhouseEmbeddingStore don't add empty embeddings to ClickHouse");
             return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
@@ -234,15 +226,13 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
                 preparedStmt.setString(2, text == null ? null : text.text());
                 preparedStmt.setArray(3, conn.createArrayOf("Float32", insertEmbedding));
                 if (this.settings.getColumnMap().containsKey("metadata")) {
-                    preparedStmt.setString(4, text == null ? null : GSON.toJson(text.metadata().asMap()));
+                    preparedStmt.setString(4, text == null ? null : OBJECT_MAPPER.writeValueAsString(text.metadata().toMap()));
                 }
                 preparedStmt.addBatch();
             }
             preparedStmt.executeBatch();
-        } catch (SQLException e) {
-            String errMsg = String.format("encounter exception when inserting data %s", e.getLocalizedMessage());
-            log.error(errMsg, e);
-            throw new ClickhouseOperationException(errMsg);
+        } catch (SQLException | JsonProcessingException e) {
+            throw new ClickhouseOperationException(String.format("encounter exception when inserting data. Error message=%s", e.getLocalizedMessage()));
         }
     }
 
@@ -267,9 +257,9 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
                         "%s Array(Float32)," +
                         "%s" +
                         "CONSTRAINT cons_vec_len CHECK length(%s) = %d," +
-                        "INDEX vec_idx %s TYPE annoy('cosineDistance', 100) GRANULARITY 1000" +
+                        "INDEX vec_idx %s TYPE vector_similarity('hnsw', 'cosineDistance') GRANULARITY 1000" +
                         ") ENGINE = MergeTree ORDER BY id SETTINGS index_granularity = 8192 " +
-                        "SETTINGS allow_experimental_annoy_index = 1",
+                        "SETTINGS allow_experimental_vector_similarity_index = 1",
                 settings.getDatabase(), settings.getTable(), settings.getColumnMap().get("id"),
                 settings.getColumnMap().get("text"), settings.getColumnMap().get("embedding"),
                 metadataColumn, settings.getColumnMap().get("embedding"),
