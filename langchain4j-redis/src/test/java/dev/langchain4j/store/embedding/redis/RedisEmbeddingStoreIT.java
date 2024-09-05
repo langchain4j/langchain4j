@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeAll;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.search.schemafields.NumericField;
 import redis.clients.jedis.search.schemafields.SchemaField;
+import redis.clients.jedis.search.schemafields.TextField;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -49,6 +50,8 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
         metadataMap.forEach((key, value) -> {
             if (key.startsWith("integer") || key.startsWith("float")) {
                 schemaFieldMap.put(key, NumericField.of("$." + key).as(key));
+            } else {
+                schemaFieldMap.put(key, TextField.of("$." + key).as(key).weight(1.0));
             }
         });
 
@@ -57,7 +60,6 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
                 .port(redis.getFirstMappedPort())
                 .indexName(randomUUID())
                 .dimension(embeddingModel.dimension())
-                .metadataKeys(metadataMap.keySet())
                 .schemaFiledMap(schemaFieldMap)
                 .build();
     }
@@ -70,10 +72,5 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
-    }
-
-    @Override
-    protected void ensureStoreIsReady() {
-        // do nothing here
     }
 }
