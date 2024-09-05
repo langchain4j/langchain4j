@@ -15,7 +15,7 @@ import static dev.ai4j.openai4j.image.ImageModel.*;
 import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("expensive to run very often")
+@Disabled("Run manually before release. Expensive to run very often.")
 class OpenAiImageModelIT {
 
     Logger log = LoggerFactory.getLogger(OpenAiImageModelIT.class);

@@ -1,10 +1,19 @@
 package dev.langchain4j.store.embedding.vearch;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Getter;
 import lombok.Setter;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 @Getter
 @Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
 public class SpaceEngine {
 
     private String name;
@@ -23,6 +32,10 @@ public class SpaceEngine {
         setRetrievalParam(retrievalParam);
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     public void setRetrievalParam(RetrievalParam retrievalParam) {
         // do some constraint check
         Class<? extends RetrievalParam> clazz = retrievalType.getParamClass();
@@ -32,10 +45,6 @@ public class SpaceEngine {
                             retrievalType.name(), clazz.getSimpleName()));
         }
         this.retrievalParam = retrievalParam;
-    }
-
-    public static Builder builder() {
-        return new Builder();
     }
 
     public static class Builder {

@@ -13,15 +13,18 @@ import org.junit.jupiter.api.Disabled;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-@Disabled("Free sandbox expires every 14 days. Run manually before release.")
+@Disabled("Run manually before release. Free sandbox expires every 14 days.")
 class CloudWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
+
+    private static final String WEAVIATE_API_KEY = "";
+    private static final String WEAVIATE_HOST = "";
 
     String objectClass = "Test" + randomUUID().replace("-", "");
 
     EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
-            .apiKey(System.getenv("WEAVIATE_API_KEY"))
+            .apiKey(WEAVIATE_API_KEY)
             .scheme("https")
-            .host(System.getenv("WEAVIATE_HOST"))
+            .host(WEAVIATE_HOST)
             .objectClass(objectClass)
             .metadataKeys(LocalWeaviateEmbeddingStoreIT.METADATA_KEYS)
             .build();
@@ -41,7 +44,7 @@ class CloudWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected void clearStore() {
         try {
-            WeaviateClient client = WeaviateAuthClient.apiKey(new Config("https", System.getenv("WEAVIATE_HOST")), System.getenv("WEAVIATE_API_KEY"));
+            WeaviateClient client = WeaviateAuthClient.apiKey(new Config("https", WEAVIATE_HOST), WEAVIATE_API_KEY);
             client.batch().objectsBatchDeleter()
                     .withClassName(objectClass)
                     .run();
@@ -52,6 +55,6 @@ class CloudWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void ensureStoreIsEmpty() {
-
+        // TODO fix
     }
 }

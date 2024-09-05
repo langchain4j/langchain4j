@@ -10,19 +10,19 @@ import static dev.langchain4j.internal.Utils.quoted;
 public class JsonSchema {
 
     private final String name;
-    private final JsonObjectSchema schema;
+    private final JsonSchemaElement rootElement;
 
     public JsonSchema(Builder builder) {
         this.name = builder.name;
-        this.schema = builder.schema;
+        this.rootElement = builder.rootElement;
     }
 
     public String name() {
         return name;
     }
 
-    public JsonObjectSchema schema() {
-        return schema;
+    public JsonSchemaElement rootElement() {
+        return rootElement;
     }
 
     public static Builder builder() {
@@ -32,15 +32,15 @@ public class JsonSchema {
     public static class Builder {
 
         private String name;
-        private JsonObjectSchema schema;
+        private JsonSchemaElement rootElement;
 
         public Builder name(String name) {
             this.name = name;
             return this;
         }
 
-        public Builder schema(JsonObjectSchema schema) {
-            this.schema = schema;
+        public Builder rootElement(JsonSchemaElement rootElement) {
+            this.rootElement = rootElement;
             return this;
         }
 
@@ -55,19 +55,19 @@ public class JsonSchema {
         if (o == null || getClass() != o.getClass()) return false;
         JsonSchema that = (JsonSchema) o;
         return Objects.equals(this.name, that.name)
-                && Objects.equals(this.schema, that.schema);
+                && Objects.equals(this.rootElement, that.rootElement);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, schema);
+        return Objects.hash(name, rootElement);
     }
 
     @Override
     public String toString() {
         return "JsonSchema {" +
                 " name = " + quoted(name) +
-                ", schema = " + schema +
+                ", rootElement = " + rootElement +
                 " }";
     }
 }

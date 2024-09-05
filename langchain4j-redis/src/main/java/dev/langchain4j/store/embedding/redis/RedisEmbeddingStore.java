@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.redis;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -15,6 +16,7 @@ import redis.clients.jedis.search.*;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TextField;
 
+import java.io.IOException;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
@@ -35,7 +37,7 @@ import static redis.clients.jedis.search.RediSearchUtil.ToByteArray;
 public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(RedisEmbeddingStore.class);
-    private static final Gson GSON = new Gson();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final JedisPooled client;
     private final RedisSchema schema;
@@ -220,7 +222,13 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 .collect(toMap(metadataKey -> metadataKey, document::getString));
                         embedded = new TextSegment(text, new Metadata(metadata));
                     }
-                    Embedding embedding = new Embedding(GSON.fromJson(document.getString(schema.vectorFieldName()), float[].class));
+                    Embedding embedding;
+                    try {
+                        float[] vectors = OBJECT_MAPPER.readValue(document.getString(schema.vectorFieldName()), float[].class);
+                        embedding = new Embedding(vectors);
+                    } catch (JsonProcessingException e) {
+                        throw new RedisRequestFailedException("failed to parse embedding", e);
+                    }
                     return new EmbeddingMatch<>(score, id, embedding, embedded);
                 })
                 .filter(embeddingMatch -> embeddingMatch.score() >= minScore)

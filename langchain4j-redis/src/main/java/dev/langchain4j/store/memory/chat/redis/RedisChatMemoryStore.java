@@ -4,7 +4,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import lombok.Builder;
 import redis.clients.jedis.JedisPooled;
 
 import java.util.ArrayList;
@@ -16,7 +15,6 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
 
     private final JedisPooled client;
 
-    @Builder
     public RedisChatMemoryStore(String host,
                                 Integer port,
                                 String user,
@@ -58,5 +56,41 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
             throw new IllegalArgumentException("memoryId cannot be null or empty");
         }
         return memoryId.toString();
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String host;
+        private Integer port;
+        private String user;
+        private String password;
+
+        public Builder host(String host) {
+            this.host = host;
+            return this;
+        }
+
+        public Builder port(Integer port) {
+            this.port = port;
+            return this;
+        }
+
+        public Builder user(String user) {
+            this.user = user;
+            return this;
+        }
+
+        public Builder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        public RedisChatMemoryStore build() {
+            return new RedisChatMemoryStore(host, port, user, password);
+        }
     }
 }

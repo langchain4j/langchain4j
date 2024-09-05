@@ -211,10 +211,10 @@ class InternalAzureOpenAiHelper {
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
-    public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
+    public static ChatCompletionsToolSelection toToolChoice(ToolSpecification toolThatMustBeExecuted) {
         FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toOpenAiParameters(toolThatMustBeExecuted.parameters()).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
-        return BinaryData.fromObject(toolToCall);
+        return ChatCompletionsToolSelection.fromBinaryData(BinaryData.fromObject(toolToCall));
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
