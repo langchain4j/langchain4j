@@ -198,7 +198,7 @@ class QwenHelper {
         }
     }
 
-    private static String saveDataAsTemporaryFile(String base64Data, String mimeType) {
+    static String saveDataAsTemporaryFile(String base64Data, String mimeType) {
         String tmpDir = System.getProperty("java.io.tmpdir", "/tmp");
         String tmpFileName = UUID.randomUUID().toString();
         if (Utils.isNotNullOrBlank(mimeType)) {

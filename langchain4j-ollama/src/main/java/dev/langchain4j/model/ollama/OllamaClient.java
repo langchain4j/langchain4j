@@ -230,6 +230,19 @@ class OllamaClient {
         }
     }
 
+    public RunningModelsListResponse listRunningModels() {
+        try {
+            retrofit2.Response<RunningModelsListResponse> retrofitResponse = ollamaApi.listRunningModels().execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public Void deleteModel(DeleteModelRequest deleteModelRequest) {
         try {
             retrofit2.Response<Void> retrofitResponse = ollamaApi.deleteModel(deleteModelRequest).execute();
