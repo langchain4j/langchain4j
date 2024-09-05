@@ -5,7 +5,10 @@ import redis.clients.jedis.search.schemafields.TextField;
 import redis.clients.jedis.search.schemafields.VectorField;
 import redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.store.embedding.redis.MetricType.COSINE;
 import static redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm.HNSW;
@@ -16,7 +19,7 @@ import static redis.clients.jedis.search.schemafields.VectorField.VectorAlgorith
 class RedisSchema {
 
     public static final String SCORE_FIELD_NAME = "vector_score";
-    private static final String JSON_PATH_PREFIX = "$.";
+    public static final String JSON_PATH_PREFIX = "$.";
     private static final VectorAlgorithm DEFAULT_VECTOR_ALGORITHM = HNSW;
     private static final MetricType DEFAULT_METRIC_TYPE = COSINE;
 
@@ -26,7 +29,6 @@ class RedisSchema {
     private final String prefix;
     private final String vectorFieldName;
     private final String scalarFieldName;
-    private final Collection<String> metadataKeys;
     private final Map<String, SchemaField> schemaFieldMap;
 
     /* Vector field settings */
@@ -39,7 +41,6 @@ class RedisSchema {
                 String prefix,
                 String vectorFieldName,
                 String scalarFieldName,
-                Collection<String> metadataKeys,
                 VectorAlgorithm vectorAlgorithm,
                 int dimension,
                 MetricType metricType,
@@ -48,7 +49,6 @@ class RedisSchema {
         this.prefix = prefix;
         this.vectorFieldName = vectorFieldName;
         this.scalarFieldName = scalarFieldName;
-        this.metadataKeys = metadataKeys;
         this.vectorAlgorithm = vectorAlgorithm;
         this.dimension = dimension;
         this.metricType = metricType;
@@ -69,17 +69,9 @@ class RedisSchema {
                 .attributes(vectorAttrs)
                 .as(vectorFieldName)
                 .build());
+        // Add Metadata fields
+        fields.addAll(schemaFieldMap.values());
 
-        if (metadataKeys != null) {
-            for (String metadataKey : metadataKeys) {
-                SchemaField schemaField = schemaFieldMap.get(metadataKey);
-                if (schemaField == null) {
-                    schemaField = TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0);
-                    schemaFieldMap.put(metadataKey, schemaField);
-                }
-                fields.add(schemaField);
-            }
-        }
         return fields.toArray(new SchemaField[0]);
     }
 
@@ -99,10 +91,6 @@ class RedisSchema {
         return scalarFieldName;
     }
 
-    Collection<String> metadataKeys() {
-        return metadataKeys;
-    }
-
     Map<String, SchemaField> schemaFieldMap() {
         return schemaFieldMap;
     }
@@ -117,7 +105,6 @@ class RedisSchema {
         private String prefix = "embedding:";
         private String vectorFieldName = "vector";
         private String scalarFieldName = "text";
-        private Collection<String> metadataKeys = new ArrayList<>();
         private Map<String, SchemaField> schemaFieldMap = new HashMap<>();
 
         /* Vector field settings */
@@ -146,11 +133,6 @@ class RedisSchema {
             return this;
         }
 
-        Builder metadataKeys(Collection<String> metadataKeys) {
-            this.metadataKeys = metadataKeys;
-            return this;
-        }
-
         Builder vectorAlgorithm(VectorAlgorithm vectorAlgorithm) {
             this.vectorAlgorithm = vectorAlgorithm;
             return this;
@@ -167,7 +149,7 @@ class RedisSchema {
         }
 
         RedisSchema build() {
-            return new RedisSchema(indexName, prefix, vectorFieldName, scalarFieldName, metadataKeys, vectorAlgorithm, dimension, metricType, schemaFieldMap);
+            return new RedisSchema(indexName, prefix, vectorFieldName, scalarFieldName, vectorAlgorithm, dimension, metricType, schemaFieldMap);
         }
     }
 }

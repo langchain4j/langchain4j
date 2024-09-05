@@ -16,11 +16,11 @@ import redis.clients.jedis.search.*;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TextField;
 
-import java.io.IOException;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.store.embedding.redis.RedisSchema.JSON_PATH_PREFIX;
 import static dev.langchain4j.store.embedding.redis.RedisSchema.SCORE_FIELD_NAME;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -45,13 +45,13 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Creates an instance of RedisEmbeddingStore
      *
-     * @param host         Redis Stack Server host
-     * @param port         Redis Stack Server port
-     * @param user         Redis Stack username (optional)
-     * @param password     Redis Stack password (optional)
-     * @param indexName    The name of the index (optional). Default value: "embedding-index".
-     * @param dimension    Embedding vector dimension
-     * @param metadataKeys Metadata keys that should be persisted (optional)
+     * @param host           Redis Stack Server host
+     * @param port           Redis Stack Server port
+     * @param user           Redis Stack username (optional)
+     * @param password       Redis Stack password (optional)
+     * @param indexName      The name of the index (optional). Default value: "embedding-index".
+     * @param dimension      Embedding vector dimension
+     * @param schemaFieldMap Metadata schemaField that should be persisted (optional)
      */
     public RedisEmbeddingStore(String host,
                                Integer port,
@@ -59,7 +59,6 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                                String password,
                                String indexName,
                                Integer dimension,
-                               Collection<String> metadataKeys,
                                Map<String, SchemaField> schemaFieldMap) {
         ensureNotBlank(host, "host");
         ensureNotNull(port, "port");
@@ -68,7 +67,6 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.schema = RedisSchema.builder()
                 .indexName(getOrDefault(indexName, "embedding-index"))
                 .dimension(dimension)
-                .metadataKeys(metadataKeys)
                 .schemaFieldMap(schemaFieldMap)
                 .build();
 
@@ -119,7 +117,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         // Using KNN query on @vector field
         String queryTemplate = "*=>[ KNN %d @%s $BLOB AS %s ]";
-        List<String> returnFields = new ArrayList<>(schema.metadataKeys());
+        List<String> returnFields = new ArrayList<>(schema.schemaFieldMap().keySet());
         returnFields.addAll(asList(schema.vectorFieldName(), schema.scalarFieldName(), SCORE_FIELD_NAME));
         Query query = new Query(format(queryTemplate, maxResults, schema.vectorFieldName(), SCORE_FIELD_NAME))
                 .addParam("BLOB", ToByteArray(referenceEmbedding.vector()))
@@ -217,7 +215,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                     String text = document.hasProperty(schema.scalarFieldName()) ? document.getString(schema.scalarFieldName()) : null;
                     TextSegment embedded = null;
                     if (text != null) {
-                        Map<String, String> metadata = schema.metadataKeys().stream()
+                        Map<String, String> metadata = schema.schemaFieldMap().keySet().stream()
                                 .filter(document::hasProperty)
                                 .collect(toMap(metadataKey -> metadataKey, document::getString));
                         embedded = new TextSegment(text, new Metadata(metadata));
@@ -247,7 +245,6 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String password;
         private String indexName;
         private Integer dimension;
-        private Collection<String> metadataKeys = new ArrayList<>();
         private Map<String, SchemaField> schemaFieldMap = new HashMap<>();
 
         /**
@@ -306,20 +303,20 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
          */
         @Deprecated
         public Builder metadataFieldsName(Collection<String> metadataFieldsName) {
-            this.metadataKeys = metadataFieldsName;
-            return this;
+            return metadataKeys(metadataFieldsName);
         }
 
         /**
          * @param metadataKeys Metadata keys that should be persisted (optional)
+         * @deprecated use {@link #schemaFiledMap(Map)}} instead
          */
         public Builder metadataKeys(Collection<String> metadataKeys) {
-            this.metadataKeys = metadataKeys;
+            metadataKeys.forEach(metadataKey -> schemaFieldMap.put(metadataKey, TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0)));
             return this;
         }
 
         /**
-         * @param schemaFieldMap Metadata schemaField, the key set must be the same as {@link Builder#metadataKeys(Collection)} (optional)
+         * @param schemaFieldMap Metadata schemaField that should be persisted (optional)
          */
         public Builder schemaFiledMap(Map<String, SchemaField> schemaFieldMap) {
             this.schemaFieldMap = schemaFieldMap;
@@ -327,7 +324,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public RedisEmbeddingStore build() {
-            return new RedisEmbeddingStore(host, port, user, password, indexName, dimension, metadataKeys, schemaFieldMap);
+            return new RedisEmbeddingStore(host, port, user, password, indexName, dimension, schemaFieldMap);
         }
     }
 }
