@@ -17,6 +17,10 @@ import static dev.langchain4j.model.dashscope.WanxHelper.imageUrl;
 import static dev.langchain4j.model.dashscope.WanxHelper.imagesFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+/**
+ * Represents a Wanx models to generate artistic images.
+ * More details are available <a href="https://help.aliyun.com/zh/dashscope/developer-reference/api-details-9">here</a>.
+ */
 public class WanxImageModel implements ImageModel {
     private final String apiKey;
     private final String modelName;
