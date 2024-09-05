@@ -20,6 +20,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+import static java.util.Collections.singletonList;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -114,6 +115,11 @@ public class OllamaChatModel implements ChatLanguageModel {
                         AiMessage.from(response.getMessage().getContent()),
                 new TokenUsage(response.getPromptEvalCount(), response.getEvalCount())
         );
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return generate(messages, singletonList(toolSpecification));
     }
 
     public static OllamaChatModelBuilder builder() {

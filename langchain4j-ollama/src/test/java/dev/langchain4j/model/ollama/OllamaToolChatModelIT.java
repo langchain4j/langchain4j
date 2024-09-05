@@ -90,4 +90,22 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         assertThat(aiMessage.toolExecutionRequests()).isNull();
     }
 
+    @Test
+    void should_not_throw_unsupported() {
+
+        // given
+        ToolSpecification toolSpecifications = weatherToolSpecification;
+
+        // when
+        List<ChatMessage> chatMessages = asList(
+                systemMessage("Use tools only if needed"),
+                userMessage("Tell a joke")
+        );
+        Response<AiMessage> response = ollamaChatModel.generate(chatMessages, toolSpecifications);
+
+        // then
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNotNull();
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+    }
 }
