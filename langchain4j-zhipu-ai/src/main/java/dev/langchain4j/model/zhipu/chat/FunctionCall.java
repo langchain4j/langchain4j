@@ -20,6 +20,9 @@ public final class FunctionCall {
         this.arguments = arguments;
     }
 
+    public FunctionCall() {
+    }
+
     public static FunctionCallBuilder builder() {
         return new FunctionCallBuilder();
     }

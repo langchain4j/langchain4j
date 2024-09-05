@@ -20,6 +20,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
+import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
 
 import java.net.URI;
 import java.util.Base64;
@@ -205,14 +206,6 @@ class PartsMapper {
     }
 
     static String detectMimeType(URI url) {
-        String[] pathParts = url.getPath().split("\\.");
-        if (pathParts.length > 1) {
-            String extension = pathParts[pathParts.length - 1].toLowerCase();
-            String mimeType = EXTENSION_TO_MIME_TYPE.get(extension);
-            if (mimeType != null) {
-                return mimeType;
-            }
-        }
-        throw illegalArgument("Unable to detect the MIME type of '%s'. Please provide it explicitly.", url);
+        return new CustomMimeTypesFileTypeDetector().probeContentType(url);
     }
 }

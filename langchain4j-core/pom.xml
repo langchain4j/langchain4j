@@ -131,6 +131,7 @@
                                 <rule>
                                     <excludes>
                                         <exclude>dev.langchain4j.data.document</exclude>
+                                        <exclude>dev.langchain4j.data.text</exclude>
                                         <exclude>dev.langchain4j.model.chat.listener</exclude>
                                         <exclude>dev.langchain4j.model.chat.request</exclude>
                                         <exclude>dev.langchain4j.model.chat.request.json</exclude>

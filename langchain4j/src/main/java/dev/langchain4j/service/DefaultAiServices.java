@@ -60,7 +60,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
 
-    private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
+    private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 100;
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
