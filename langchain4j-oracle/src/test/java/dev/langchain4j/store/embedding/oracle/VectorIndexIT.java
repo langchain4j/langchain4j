@@ -76,7 +76,7 @@ public class VectorIndexIT {
                 .build();
 
 
-            try (Connection connection = CommonTestOperations.getVectorIndexDataSource().getConnection();
+            try (Connection connection = CommonTestOperations.getSysDBADataSource().getConnection();
                  PreparedStatement stmt = connection.prepareStatement("select IDX_PARAMS from vecsys.vector$index where IDX_NAME = ?")
             ) {
                 stmt.setString(1, TABLE_NAME + "_VECTOR_INDEX");

@@ -22,7 +22,6 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Random;
 import java.util.logging.Logger;
 
@@ -62,7 +61,7 @@ final class CommonTestOperations {
     private CommonTestOperations() {}
 
     private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
-    private static final PoolDataSource VECTOR_INDEX_DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
+    private static final PoolDataSource SYSDBA_DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
 
     static {
         try {
@@ -82,15 +81,15 @@ final class CommonTestOperations {
 
                 initDataSource(DATA_SOURCE,
                     oracleContainer.getJdbcUrl(), oracleContainer.getUsername(), oracleContainer.getPassword());
-                initDataSource(VECTOR_INDEX_DATA_SOURCE,
+                initDataSource(SYSDBA_DATA_SOURCE,
                     oracleContainer.getJdbcUrl(), "sys", oracleContainer.getPassword());
             } else {
                 initDataSource(DATA_SOURCE,
                     urlFromEnv, System.getenv("ORACLE_JDBC_USER"), System.getenv("ORACLE_JDBC_PASSWORD"));
-                initDataSource(VECTOR_INDEX_DATA_SOURCE,
+                initDataSource(SYSDBA_DATA_SOURCE,
                     urlFromEnv, System.getenv("ORACLE_JDBC_USER"), System.getenv("ORACLE_JDBC_PASSWORD"));
             }
-            VECTOR_INDEX_DATA_SOURCE.setConnectionProperty(OracleConnection.CONNECTION_PROPERTY_INTERNAL_LOGON,
+            SYSDBA_DATA_SOURCE.setConnectionProperty(OracleConnection.CONNECTION_PROPERTY_INTERNAL_LOGON,
                 "SYSDBA");
 
         } catch (SQLException sqlException) {
@@ -119,7 +118,7 @@ final class CommonTestOperations {
         return DATA_SOURCE;
     }
 
-    static DataSource getVectorIndexDataSource() { return VECTOR_INDEX_DATA_SOURCE; }
+    static DataSource getSysDBADataSource() { return SYSDBA_DATA_SOURCE; }
 
     /**
      * Returns an embedding store configured to use a table with the common {@link #TABLE_NAME}. Any existing table
