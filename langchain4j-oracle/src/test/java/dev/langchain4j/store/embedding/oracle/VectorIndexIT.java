@@ -25,7 +25,7 @@ public class VectorIndexIT {
     public void testCreateOption(CreateOption createOption) throws SQLException {
         OracleEmbeddingStore oracleEmbeddingStore =
                 newEmbeddingStoreBuilder()
-                        .index(IVFIndex.builder().createOption(createOption))
+                        .index(Index.ivfIndexBuilder().createOption(createOption).build())
                         .build();
 
         verifyIndexExists(createOption);
@@ -48,7 +48,7 @@ public class VectorIndexIT {
         int minVectorsPerPartition) throws Exception {
 
         try {
-            IVFIndex.Builder ivfIndexBuilder = IVFIndex.builder().createOption(CreateOption.CREATE_OR_REPLACE);
+            IVFIndexBuilder ivfIndexBuilder = Index.ivfIndexBuilder().createOption(CreateOption.CREATE_OR_REPLACE);
             if (targetAccuracy >= 0) {
                 ivfIndexBuilder.targetAccuracy(targetAccuracy);
             }
@@ -72,7 +72,7 @@ public class VectorIndexIT {
                     .createOption(CreateOption.CREATE_IF_NOT_EXISTS)
                     .name(TABLE_NAME)
                     .build())
-                .index(ivfIndexBuilder)
+                .index(ivfIndexBuilder.build())
                 .build();
 
 
@@ -100,17 +100,19 @@ public class VectorIndexIT {
     @Test
     public void testMetadataKeyAndVectorIndex() throws SQLException {
         try {
-            JSONIndex.Builder jsonIndexBuilder = JSONIndex.builder()
+            Index jsonIndex = Index.jsonIndexBuilder()
                 .createOption(CreateOption.CREATE_OR_REPLACE)
                 .name("JSON_INDEX")
-                .key("key", Integer.class, JSONIndex.Builder.Order.ASC);
+                .key("key", Integer.class, JSONIndexBuilder.Order.ASC)
+                .build();
 
-            IVFIndex.Builder ivfIndexBuilder = IVFIndex.builder()
+            Index ivfIndex =  Index.ivfIndexBuilder()
                 .createOption(CreateOption.CREATE_IF_NOT_EXISTS)
                 .minVectorsPerPartition(10)
                 .neighborPartitions(3)
                 .samplePerPartition(15)
-                .targetAccuracy(90);
+                .targetAccuracy(90)
+                .build();
 
             OracleEmbeddingStore oracleEmbeddingStore = OracleEmbeddingStore
                 .builder()
@@ -120,7 +122,7 @@ public class VectorIndexIT {
                     .createOption(CreateOption.CREATE_IF_NOT_EXISTS)
                     .name(TABLE_NAME)
                     .build())
-                .index(jsonIndexBuilder, ivfIndexBuilder)
+                .index(jsonIndex, ivfIndex)
                 .build();
 
             verifyIndexExists(CreateOption.CREATE_OR_REPLACE,
@@ -142,11 +144,12 @@ public class VectorIndexIT {
     @Test
     public void testMetadataKeysIndex() throws SQLException {
         try {
-            JSONIndex.Builder jsonIndexBuilder = JSONIndex.builder()
+            Index jsonIndex = Index.jsonIndexBuilder()
                 .name("JSON_INDEX")
-                .key("key", Integer.class, JSONIndex.Builder.Order.ASC)
-                .key("name", String.class, JSONIndex.Builder.Order.DESC)
-                .createOption(CreateOption.CREATE_OR_REPLACE);
+                .key("key", Integer.class, JSONIndexBuilder.Order.ASC)
+                .key("name", String.class, JSONIndexBuilder.Order.DESC)
+                .createOption(CreateOption.CREATE_OR_REPLACE)
+                .build();
 
             OracleEmbeddingStore oracleEmbeddingStore = OracleEmbeddingStore
                 .builder()
@@ -156,7 +159,7 @@ public class VectorIndexIT {
                     .createOption(CreateOption.CREATE_IF_NOT_EXISTS)
                     .name(TABLE_NAME)
                     .build())
-                .index(jsonIndexBuilder)
+                .index(jsonIndex)
                 .build();
 
             verifyIndexExists(CreateOption.CREATE_OR_REPLACE,

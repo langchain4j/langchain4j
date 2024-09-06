@@ -49,8 +49,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * If the table does not already exist, it can be created by passing a {@link CreateOption} to
  * {@link Builder#embeddingTable(String, CreateOption)} or to {@link EmbeddingTable.Builder#createOption(CreateOption)}.
  * </p><p>
- * An inverted flat file (IVF) vector index is created on the embedding column. The index is named
- * "{tableName}_EMBEDDING_INDEX", where {tableName} is the name configured using the {@link Builder}.
+ * By default no index is create on the {@link EmbeddingTable}. The {@link Builder#index(Index...)} allows to create
+ * indexes on the embedding and metadata columns of the embedding table. Two builders allow to configure an {@link
+ * Index}: {@link IVFIndexBuilder} to configure an IVF index on the embedding column and {@link JSONIndexBuilder} to
+ * configure function-based indexes on keys of the metadata column.
  * </p><p>
  * Instances of this embedding store are safe for use by multiple threads.
  * </p>
@@ -103,23 +105,14 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private static void createIndex(Builder builder) throws SQLException {
 
-        try (Connection connection = builder.dataSource.getConnection();
-             Statement statement = connection.createStatement()
-        ) {
-            if (builder.indexBuilders != null) {
-                for (IndexBuilder indexBuilder : builder.indexBuilders) {
-                    Index index = indexBuilder.build(builder.embeddingTable);
-                    if (index.dropIndex()) {
-                        statement.addBatch(index.getDropStatement());
-                    }
-                    if (index.createIndex()) {
-                        statement.addBatch(index.getCreateStatement());
-                    }
+        if (builder.indexes != null) {
+            try {
+                for (Index index : builder.indexes) {
+                    index.create(builder.dataSource, builder.embeddingTable);
                 }
-                statement.executeBatch();
+            } catch (SQLException sqlException) {
+                throw uncheckSQLException(sqlException);
             }
-        } catch (SQLException sqlException) {
-            throw uncheckSQLException(sqlException);
         }
 
     }
@@ -532,7 +525,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         private DataSource dataSource;
         private EmbeddingTable embeddingTable;
         private boolean isExactSearch = false;
-        private IndexBuilder[] indexBuilders;
+        private Index[] indexes;
 
         private Builder() {}
 
@@ -606,12 +599,12 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         /**
          * Configures the indexes that will be created on the {@link EmbeddingTable}. Two types of
-         * indexes can be created {@link IVFIndex} and {@link JSONIndex}.
+         * indexes can be created {@link IVFIndexBuilder} and {@link JSONIndex}.
          * @param indexBuilders Indexes to create.
          * @return This builder.
          */
-        public Builder index(IndexBuilder... indexBuilders) {
-            this.indexBuilders = indexBuilders;
+        public Builder index(Index... indexes) {
+            this.indexes = indexes;
             return this;
         }
 

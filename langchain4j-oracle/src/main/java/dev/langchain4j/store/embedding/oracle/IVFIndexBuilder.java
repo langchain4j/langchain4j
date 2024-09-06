@@ -4,47 +4,16 @@ import static dev.langchain4j.internal.ValidationUtils.*;
 
 /**
  * <p>
- *   This index type can be used to index the embedding column of the
- *   {@link EmbeddingTable}.
- * </p><p>
+ *   This index builder allows to configure an Inverted File Flat index on the
+ *   embedding column of the {@link EmbeddingTable}.
+ * </p>
+ * <p>
  *   <em>Inverted File Flat (IVF)</em>:  index is the only type of Neighbor Partition
  *   vector index supported. Inverted File Flat Index (IVF Flat or simply IVF) is a
  *   partitioned-based index which balance high search quality with reasonable speed.
- * </p><p>
- *   The {@link Builder} allows to configure the IVF index.
  * </p>
  */
-public class IVFIndex extends Index {
-
-  IVFIndex(CreateOption createOption, String createIndexStatement, String dropIndexStatement) {
-    super(createOption, createIndexStatement, dropIndexStatement);
-  }
-
-  /**
-   * Returns a builder that configures a new IVF index.
-   *
-   * @return An IVFIndex builder.
-   */
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  /**
-   * An {@Link IndexBuilder} that builds a IVFIndex.
-   */
-  public static class Builder extends IndexBuilder {
-
-    /**
-     * Suffix used when naming the index.
-     */
-    private static final String INDEX_NAME_SUFIX = "_VECTOR_INDEX";
-
-    private String indexName;
-
-    /**
-     * CreateOption for the index. By default, the index will not be created.
-     */
-    private CreateOption createOption = CreateOption.DO_NOT_CREATE;
+public class IVFIndexBuilder extends IndexBuilder<IVFIndexBuilder> {
 
     protected int targetAccuracy = -1;
 
@@ -57,38 +26,13 @@ public class IVFIndex extends Index {
     private int minVectorsPerPartition = -1;
 
     /**
-     * Configures the option to create (or not create) an index. The default is
-     * {@link CreateOption#DO_NOT_CREATE}, which means no attempt is made to create
-     *  an index.
-     *
-     * @param createOption The create option.
-     *
-     * @return This builder.
-     */
-    public Builder createOption(CreateOption createOption) {
-      ensureNotNull(createOption, "createOption");
-      this.createOption = createOption;
-      return this;
-    }
-
-    /**
-     * Sets the index name.
-     * @param indexName The name of the index.
-     * @return This builder.
-     */
-    public Builder name(String indexName) {
-      this.indexName = indexName;
-      return this;
-    }
-
-    /**
      * Configures the target accuracy.
      *
      * @param targetAccuracy Percentage value.
      * @return This builder.
      * @throws IllegalArgumentException If the target accuracy not between 1 and 100.
      */
-    public Builder targetAccuracy(int targetAccuracy) throws IllegalArgumentException {
+    public IVFIndexBuilder targetAccuracy(int targetAccuracy) throws IllegalArgumentException {
       ensureBetween(targetAccuracy, 0, 100, "targetAccuracy");
       this.targetAccuracy = targetAccuracy;
       return this;
@@ -100,7 +44,7 @@ public class IVFIndex extends Index {
      * @param degreeOfParallelism The degree of parallelism.
      * @return This builder.
      */
-    public Builder degreeOfParallelism(int degreeOfParallelism) {
+    public IVFIndexBuilder degreeOfParallelism(int degreeOfParallelism) {
       ensureGreaterThanZero(degreeOfParallelism, "degreeOfParallelism");
       this.degreeOfParallelism = degreeOfParallelism;
       return this;
@@ -118,7 +62,7 @@ public class IVFIndex extends Index {
      * @throws IllegalArgumentException If the number of neighbor partitions is not between 1 and
      *                                  10000000, or if the vector type is not IVF.
      */
-    public Builder neighborPartitions(int neighborPartitions) throws IllegalArgumentException {
+    public IVFIndexBuilder neighborPartitions(int neighborPartitions) throws IllegalArgumentException {
       ensureBetween(neighborPartitions, 1, 10000000, "neighborPartitions");
       this.neighborPartitions = neighborPartitions;
       return this;
@@ -141,7 +85,7 @@ public class IVFIndex extends Index {
      * @return This builder.
      * @throws IllegalArgumentException If the number of samples per partition is lower than 1.
      */
-    public Builder samplePerPartition(int samplePerPartition) throws IllegalArgumentException {
+    public IVFIndexBuilder samplePerPartition(int samplePerPartition) throws IllegalArgumentException {
       ensureBetween(samplePerPartition, 1, Integer.MAX_VALUE, "samplePerPartition");
       this.samplePerPartition = samplePerPartition;
       return this;
@@ -161,45 +105,64 @@ public class IVFIndex extends Index {
      * @throws IllegalArgumentException If the target minimum number of vectors per partition is lower
      *                                  than 0.
      */
-    public Builder minVectorsPerPartition(int minVectorsPerPartition) throws IllegalArgumentException {
+    public IVFIndexBuilder minVectorsPerPartition(int minVectorsPerPartition) throws IllegalArgumentException {
       ensureGreaterThanZero(minVectorsPerPartition, "minVectorsPerPartition");
       this.minVectorsPerPartition = minVectorsPerPartition;
       return this;
     }
 
-    @Override
-    public Index build(EmbeddingTable embeddingTable) {
-      if (indexName == null) {
-        indexName = buildIndexName(embeddingTable.name(), INDEX_NAME_SUFIX);
-      }
-
-      String createIndexStatement = "CREATE VECTOR INDEX " +
-          (createOption == CreateOption.CREATE_IF_NOT_EXISTS ? "IF NOT EXISTS " : "") +
-          indexName +
-          " ON " + embeddingTable.name() + "( " + embeddingTable.embeddingColumn() + " ) " +
-          " ORGANIZATION NEIGHBOR PARTITIONS " +
-          " WITH DISTANCE COSINE " +
-          (targetAccuracy > 0 ? " WITH TARGET ACCURACY " + targetAccuracy + " " : "") +
-          (degreeOfParallelism >= 0 ? " PARALLEL " + degreeOfParallelism : "") +
-          getIndexParameters();
-
-      String dropIndexStatement = "DROP INDEX IF EXISTS " + indexName;
-      return new IVFIndex(createOption, createIndexStatement, dropIndexStatement);
+  /**
+   *
+   * @return
+   */
+  @Override
+    public Index build() {
+      return new Index(this);
     }
 
-     /**
-     * Generates the PARAMETERS clause of the vector index. Implementation depends on the type of vector index.
-     * @return A string containing the PARAMETERS clause of the index.
-     */
-    String getIndexParameters() {
-      if (neighborPartitions == -1 && samplePerPartition == -1 && minVectorsPerPartition == -1) {
-        return " ";
-      }
-      return "PARAMETERS ( TYPE IVF" +
-          (neighborPartitions != -1 ? ", NEIGHBOR PARTITIONS " + neighborPartitions + " " : "") +
-          (samplePerPartition != -1 ? ", SAMPLES_PER_PARTITION " + samplePerPartition + " " : "") +
-          (minVectorsPerPartition != -1 ? ", MIN_VECTORS_PER_PARTITION " + minVectorsPerPartition + " " : "") + ")";
-    }
+  @Override
+  String getCreateIndexStatement(EmbeddingTable embeddingTable) {
 
+    return "CREATE VECTOR INDEX " +
+        (createOption == CreateOption.CREATE_IF_NOT_EXISTS ? "IF NOT EXISTS " : "") +
+        getIndexName(embeddingTable) +
+        " ON " + embeddingTable.name() + "( " + embeddingTable.embeddingColumn() + " ) " +
+        " ORGANIZATION NEIGHBOR PARTITIONS " +
+        " WITH DISTANCE COSINE " +
+        (targetAccuracy > 0 ? " WITH TARGET ACCURACY " + targetAccuracy + " " : "") +
+        (degreeOfParallelism >= 0 ? " PARALLEL " + degreeOfParallelism : "") +
+        getIndexParameters();
+  }
+
+  /**
+   * {@inheritDoc}
+   * <p>
+   *   The index name id generated by concatenating "_VECTOR_INDEX" to the embedding table
+   *   name.
+   * </p>
+   * @param embeddingTable The embedding table.
+   * @return The name of the index.
+   */
+  @Override
+  String getIndexName(EmbeddingTable embeddingTable) {
+    if (indexName == null) {
+      indexName = buildIndexName(embeddingTable.name(), "_VECTOR_INDEX");
+    }
+    return indexName;
+  }
+
+  /**
+   * Generates the PARAMETERS clause of the vector index. Implementation depends on the type of vector index.
+   * @return A string containing the PARAMETERS clause of the index.
+   */
+  String getIndexParameters() {
+    if (neighborPartitions == -1 && samplePerPartition == -1 && minVectorsPerPartition == -1) {
+      return " ";
+    }
+    return "PARAMETERS ( TYPE IVF" +
+        (neighborPartitions != -1 ? ", NEIGHBOR PARTITIONS " + neighborPartitions + " " : "") +
+        (samplePerPartition != -1 ? ", SAMPLES_PER_PARTITION " + samplePerPartition + " " : "") +
+        (minVectorsPerPartition != -1 ? ", MIN_VECTORS_PER_PARTITION " + minVectorsPerPartition + " " : "") + ")";
   }
 }
+

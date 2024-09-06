@@ -7,12 +7,14 @@ public class MetadataIndexStoreWithFilteringIT extends OracleEmbeddingStoreWithF
 
   private final OracleEmbeddingStore embeddingStore = CommonTestOperations.newEmbeddingStoreBuilder()
       .index(
-          JSONIndex.builder()
+          Index.jsonIndexBuilder()
               .createOption(CreateOption.CREATE_OR_REPLACE)
-              .key("name", String.class, JSONIndex.Builder.Order.ASC),
-          JSONIndex.builder()
+              .key("name", String.class, JSONIndexBuilder.Order.ASC)
+              .build(),
+          Index.jsonIndexBuilder()
               .createOption(CreateOption.CREATE_OR_REPLACE)
-              .key("age", Float.class, JSONIndex.Builder.Order.ASC))
+              .key("age", Float.class, JSONIndexBuilder.Order.ASC)
+              .build())
       .build();
   @Override
   protected EmbeddingStore<TextSegment> embeddingStore() {
