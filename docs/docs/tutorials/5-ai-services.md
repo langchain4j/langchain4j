@@ -235,6 +235,8 @@ Priority priority = priorityAnalyzer.analyzePriority("The main payment gateway i
 ### POJO as a return type
 ```java
 class Person {
+
+    @Description("first name of a person") // you can add an optional description to help an LLM have a better understanding
     String firstName;
     String lastName;
     LocalDate birthDate;
