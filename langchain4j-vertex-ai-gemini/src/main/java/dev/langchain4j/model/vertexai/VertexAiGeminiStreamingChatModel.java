@@ -149,7 +149,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         this.vertexAI = new VertexAI.Builder()
             .setProjectId(ensureNotBlank(project, "project"))
             .setLocation(ensureNotBlank(location, "location"))
-            .setCustomHeaders(Collections.singletonMap("User-Agent", "LangChain4j"))
+            .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
             .build();
 
         this.generativeModel = new GenerativeModel(

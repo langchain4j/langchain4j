@@ -273,69 +273,85 @@ System.out.println(person); // // Person { firstName = "John", lastName = "Doe",
 
 When extracting custom POJOs (actually JSON, which is then parsed into the POJO),
 it is recommended to enable a "JSON mode" in the model configuration.
-This way, the LLM will be forced to produce valid JSON.
+This way, the LLM will be forced to respond with a valid JSON.
 
 :::note
 Please note that JSON mode and tools/function calling are similar features
 but have different APIs and are used for distinct purposes.
 
 JSON mode is useful when you _always_ need a response from the LLM in a structured format (valid JSON).
-The schema for the expected JSON can be defined in a free form inside a `SystemMessage` or `UserMessage`.
-In this scenario, the LLM must _always_ output valid JSON.
-Additionally, there is usually no state/memory required,
-so each interaction with the LLM is independent of others.
+Additionally, there is usually no state/memory required, so each interaction with the LLM is independent of others.
 For instance, you might want to extract information from a text, such as the list of people mentioned in this text
 or convert a free-form product review into a structured form with fields like
 `String productName`, `Sentiment sentiment`, `List<String> claimedProblems`, etc.
 
-On the other hand, the use of tool/function calling is useful when enabling the LLM to call or execute tools,
-but only as necessary. In this case, a list of tools is provided to the LLM, and it autonomously decides
-whether to call the tool.
+On the other hand, tools/functions are useful when LLM should be able to perform some action(s)
+(e.g. lookup the database, search the web, cancel user's booking, etc.)
+In this case, a list of tools with their expected JSON schemas is provided to the LLM, and it autonomously decides
+whether to call any of them to satisfy user request.
 
-Function calling is often used for structured data extraction,
+Earlier, function calling was often used for structured data extraction,
 but now we have the JSON mode feature, which is more suitable for this purpose.
 :::
 
 Here is how to enable JSON mode:
 
 - For OpenAI:
-```java
-OpenAiChatModel.builder()
+  - For newer models that support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) (e.g. gpt-4o-mini, gpt-4o-2024-08-06):
+    ```java
+    OpenAiChatModel.builder()
+        ...
+        .responseFormat("json_schema")
+        .strictJsonSchema(true)
+        .build();
+    ```
+    See more details [here](/integrations/language-models/open-ai#structured-outputs).
+  - For older models (e.g. gpt-3.5-turbo, gpt-4):
+    ```java
+    OpenAiChatModel.builder()
         ...
         .responseFormat("json_object")
         .build();
-```
+    ```
 
 - For Azure OpenAI:
 ```java
 AzureOpenAiChatModel.builder()
-        ...
-        .responseFormat(new ChatCompletionsJsonResponseFormat())
-        .build();
+    ...
+    .responseFormat(new ChatCompletionsJsonResponseFormat())
+    .build();
 ```
 
 - For Vertex AI Gemini:
 ```java
 VertexAiGeminiChatModel.builder()
-        ...
-        .responseMimeType("application/json")
-        .build();
+    ...
+    .responseMimeType("application/json")
+    .build();
+```
+
+- For Google AI Gemini:
+```java
+GoogleAiGeminiChatModel.builder()
+    ...
+    .responseMimeType("application/json")
+    .build();
 ```
 
 - For Mistral AI:
 ```java
 MistralAiChatModel.builder()
-        ...
-        .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
-        .build();
+    ...
+    .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
+    .build();
 ```
 
 - For Ollama:
 ```java
 OllamaChatModel.builder()
-        ...
-        .format("json")
-        .build();
+    ...
+    .format("json")
+    .build();
 ```
 
 - For other model providers: if the underlying model provider does not support JSON mode,
