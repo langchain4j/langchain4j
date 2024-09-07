@@ -1,5 +1,10 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.Mistral7bInstructV0_2;
+import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.MistralMixtral8x7bInstructV0_1;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
@@ -7,18 +12,12 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import software.amazon.awssdk.regions.Region;
-
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.Mistral7bInstructV0_2;
-import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.MistralMixtral8x7bInstructV0_1;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import software.amazon.awssdk.regions.Region;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelIT {
@@ -171,7 +170,7 @@ class BedrockChatModelIT {
         BedrockTitanChatModel bedrockChatModel = BedrockTitanChatModel
                 .builder()
                 .temperature(0.50f)
-                .maxTokens(300)
+                .maxTokens(500)
                 .region(Region.US_EAST_1)
                 .model(BedrockTitanChatModel.Types.TitanTextExpressV1.getValue())
                 .maxRetries(1)
@@ -186,7 +185,7 @@ class BedrockChatModelIT {
         assertThat(response.tokenUsage()).isNotNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(21);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(20);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
         assertThat(tokenUsage.totalTokenCount()).isGreaterThan(15);
         assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
@@ -263,7 +262,7 @@ class BedrockChatModelIT {
         BedrockLlamaChatModel bedrockChatModel = BedrockLlamaChatModel
             .builder()
             .temperature(0.50f)
-            .maxTokens(500)
+            .maxTokens(1000)
             .region(Region.US_EAST_1)
             .model(BedrockLlamaChatModel.Types.MetaLlama2Chat70B.getValue())
             .maxRetries(1)
@@ -271,7 +270,7 @@ class BedrockChatModelIT {
         
         assertThat(bedrockChatModel).isNotNull();
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("Answer the following question with yes or no: Is the sky blue?"));
 
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();

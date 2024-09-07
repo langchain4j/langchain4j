@@ -32,7 +32,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<BedrockAnthropicMessageChatModelResponse> {
     
     private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
-    private final Integer topK;
+    private final int topK;
     
     @Builder.Default
     private final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;

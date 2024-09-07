@@ -18,8 +18,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 @Getter
 @SuperBuilder
 public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockMistralAiChatModelResponse> {
-
-    private final Integer topK;
+    
+    private final int topK;
     
     @Builder.Default
     private final String model = Types.Mistral7bInstructV0_2.getValue();
@@ -37,7 +37,9 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
         parameters.put("max_tokens", getMaxTokens());
         parameters.put("temperature", getTemperature());
         parameters.put("top_p", getTopP());
-        parameters.put("top_k", topK);
+        if (topK > 0) {
+            parameters.put("top_k", topK);
+        }
         parameters.put("stop", getStopSequences());
 
         return parameters;
