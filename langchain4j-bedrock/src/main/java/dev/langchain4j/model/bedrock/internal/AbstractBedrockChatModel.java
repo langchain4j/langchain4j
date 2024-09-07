@@ -26,6 +26,8 @@ import java.util.Map;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static java.util.stream.Collectors.joining;
 
+import java.time.Duration;
+
 /**
  * Bedrock chat model
  */
@@ -104,6 +106,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
         return BedrockRuntimeClient.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
+                .overrideConfiguration(c-> c.apiCallTimeout(timeout))
                 .build();
     }
 }

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -35,9 +36,11 @@ class BedrockChatModelIT {
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
                 .maxRetries(1)
+                .timeout(Duration.ofMinutes(2L))
                 .build();
 
         assertThat(bedrockChatModel).isNotNull();
+        assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(2L);
 
         Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
 
@@ -60,6 +63,7 @@ class BedrockChatModelIT {
                 .build();
 
         assertThat(bedrockChatModel).isNotNull();
+        assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(5L);
 
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         ImageContent imageContent = ImageContent.from(base64Data, "image/png");

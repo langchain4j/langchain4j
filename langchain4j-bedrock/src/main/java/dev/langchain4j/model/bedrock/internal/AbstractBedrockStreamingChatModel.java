@@ -78,6 +78,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
         BedrockRuntimeAsyncClient client = BedrockRuntimeAsyncClient.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
+                .overrideConfiguration(c-> c.apiCallTimeout(timeout))
                 .build();
         return client;
     }
