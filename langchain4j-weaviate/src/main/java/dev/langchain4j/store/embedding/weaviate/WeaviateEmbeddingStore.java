@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.weaviate;
+package com.redhat.composer.config.embedding.store.custom;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -40,6 +40,7 @@ import static java.util.stream.Collectors.toList;
 public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final String ADDITIONALS = "_additional";
+    private static final String METADATA = "_metadata";
     private static final String NULL_VALUE = "<null>";
 
     private final WeaviateClient client;
@@ -63,6 +64,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
      *                          provided text segment, which avoids duplicated entries in DB.
      *                          If false, then random ID will be generated.
      * @param consistencyLevel  Consistency level: ONE, QUORUM (default) or ALL. Find more details <a href="https://weaviate.io/developers/weaviate/concepts/replication-architecture/consistency#tunable-write-consistency">here</a>.
+     * @param metadataParentKey The key in metadata that contains the metadata. Default is "_metadata". If set to empty string, then metadata will be stored in the root of the object.
      * @param metadataKeys      Metadata keys that should be persisted (optional)
      * @param useGrpcForInserts Use GRPC instead of HTTP for batch inserts only. <b>You still need HTTP configured for search</b>
      * @param securedGrpc       The GRPC connection is secured
@@ -200,10 +202,10 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             for (String property : metadataKeys) {
                 metadataFields.add(Field.builder().name(property).build());
             }
-            if (metadataParentKey != null) {
-                metadataFields.add(Field.builder().name(metadataParentKey).fields(metadataFields.toArray(new Field[0])).build());
+            if (metadataParentKey != null && !metadataParentKey.isEmpty()) {
+                fields.add(Field.builder().name(metadataParentKey).fields(metadataFields.toArray(new Field[0])).build());
             } else {
-                metadataFields.add(Field.builder().name(metadataParentKey).build());
+                fields.addAll(metadataFields);
             }
         }
         Result<GraphQLResponse> result = client
@@ -299,7 +301,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     
     private void setMetadata(Map<String, Object> props, Map<String, Object> metadata) {
         if (metadata != null && !metadata.isEmpty()) {
-            if(metadataParentKey != null) {
+            if(metadataParentKey != null && !metadataParentKey.isEmpty()) {
                 props.put(metadataParentKey, metadata);
             } else {
               props.putAll(metadata);
@@ -319,8 +321,10 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
         final Metadata metadata = new Metadata();
         Map<String, ?> metadataMap = null;
-        if (metadataParentKey == null) {
+        if (metadataParentKey == null || metadataParentKey.isEmpty()) {
           metadataMap = item;
+          // Remove all keys that are not in metadataKeys
+          metadataMap.entrySet().removeIf(entry -> !metadataKeys.contains(entry.getKey()));
         } 
         else if (item.get(metadataParentKey) != null && item.get(metadataParentKey) instanceof Map) {
           metadataMap = (Map<String, ?>) item.get(metadataParentKey);
