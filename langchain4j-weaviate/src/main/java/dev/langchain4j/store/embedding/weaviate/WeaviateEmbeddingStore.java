@@ -1,4 +1,4 @@
-package com.redhat.composer.config.embedding.store.custom;
+package dev.langchain4j.store.embedding.weaviate;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -320,11 +320,11 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     private EmbeddingMatch<TextSegment> toEmbeddingMatch(Map<String, ?> item) {
         Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
         final Metadata metadata = new Metadata();
-        Map<String, ?> metadataMap = null;
+        Map<String, ?> metadataMap = new HashMap();
         if (metadataParentKey == null || metadataParentKey.isEmpty()) {
-          metadataMap = item;
-          // Remove all keys that are not in metadataKeys
-          metadataMap.entrySet().removeIf(entry -> !metadataKeys.contains(entry.getKey()));
+          metadataKeys.stream().forEach(key ->
+            metadata.add(key, item.get(key))
+          );
         } 
         else if (item.get(metadataParentKey) != null && item.get(metadataParentKey) instanceof Map) {
           metadataMap = (Map<String, ?>) item.get(metadataParentKey);
