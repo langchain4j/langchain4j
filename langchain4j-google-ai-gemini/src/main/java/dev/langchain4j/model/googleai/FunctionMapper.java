@@ -2,11 +2,12 @@ package dev.langchain4j.model.googleai;
 
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.util.Collections.emptyMap;
 
 class FunctionMapper {
 
@@ -34,6 +35,7 @@ class FunctionMapper {
             .map(specification -> {
                 GeminiFunctionDeclaration.GeminiFunctionDeclarationBuilder fnBuilder =
                     GeminiFunctionDeclaration.builder();
+
                 if (specification.name() != null) {
                     fnBuilder.name(specification.name());
                 }
@@ -41,30 +43,13 @@ class FunctionMapper {
                     fnBuilder.description(specification.description());
                 }
                 if (specification.parameters() != null) {
-                    ToolParameters parameters = specification.parameters();
+                    Map<String, Map<String, Object>> properties = specification.parameters().properties();
 
-                    final String[] propName = {""};
-                    fnBuilder.parameters(GeminiSchema.builder()
-                        .type(GeminiType.OBJECT)
-                        .properties(parameters.properties().entrySet().stream()
-                            .map(prop -> {
-                                propName[0] = prop.getKey();
-                                Map<String, Object> propAttributes = prop.getValue();
-
-                                String typeString = (String) propAttributes.getOrDefault("type", "string");
-                                GeminiType type = GeminiType.valueOf(typeString.toUpperCase());
-                                String description = (String) propAttributes.getOrDefault("description", null);
-
-                                //TODO need to deal with nested objects
-
-                                return GeminiSchema.builder()
-                                    .description(description)
-                                    .type(type)
-                                    .build();
-                            })
-                            .collect(Collectors.toMap(schema -> propName[0], schema -> schema)))
-                        .build());
+                    String type = "object";
+                    String description = specification.description();
+                    fnBuilder.parameters(fromMap(type, null, null, properties));
                 }
+
                 return fnBuilder.build();
             })
             .filter(Objects::nonNull)
@@ -77,10 +62,50 @@ class FunctionMapper {
         return tool.build();
     }
 
+    private static GeminiSchema fromMap(String type, String arrayType, String description, Map<String, Map<String, Object>> obj) {
+        GeminiSchema.GeminiSchemaBuilder schemaBuilder = GeminiSchema.builder();
+
+        schemaBuilder.type(GeminiType.valueOf(type.toUpperCase()));
+        schemaBuilder.description(description);
+
+        if (type.equals("array")) {
+            Map<String, Map<String, Object>> arrayObj = (Map<String, Map<String, Object>>) obj.values().iterator().next().get("properties");
+
+            schemaBuilder.items(fromMap(arrayType, null, description, arrayObj));
+        } else {
+            Map<String, GeminiSchema> props = new LinkedHashMap<>();
+            if (obj != null) {
+                for (Map.Entry<String, Map<String, Object>> oneProperty : obj.entrySet()) {
+                    String propName = oneProperty.getKey();
+                    Map<String, Object> propAttributes = oneProperty.getValue();
+                    String propTypeString = (String) propAttributes.getOrDefault("type", "string");
+                    String propDescription = (String) propAttributes.getOrDefault("description", null);
+                    Map<String, Map<String, Object>> childProps =
+                        (Map<String, Map<String, Object>>) propAttributes.getOrDefault("properties", emptyMap());
+                    Map<String, Object> items = (Map<String, Object>) propAttributes.get("items");
+                    Map<String, Map<String, Object>> singleProp = new HashMap<>();
+                    singleProp.put(propName, items);
+
+                    if (items != null) {
+                        String itemsType = items.get("type").toString();
+                        props.put(propName, fromMap(propTypeString, itemsType, propDescription, singleProp));
+                    } else {
+                        props.put(propName, fromMap(propTypeString, null, propDescription, childProps));
+                    }
+                }
+            }
+            schemaBuilder.properties(props);
+        }
+
+        return schemaBuilder.build();
+    }
+
     static List<ToolExecutionRequest> fromToolExecReqToGFunCall(List<GeminiFunctionCall> functionCalls) {
-        return functionCalls.stream().map(functionCall -> ToolExecutionRequest.builder()
-            .name(functionCall.getName())
-            .arguments(GSON.toJson(functionCall.getArgs()))
-            .build()).collect(Collectors.toList());
+        return functionCalls.stream()
+            .map(functionCall -> ToolExecutionRequest.builder()
+                .name(functionCall.getName())
+                .arguments(GSON.toJson(functionCall.getArgs()))
+                .build())
+            .collect(Collectors.toList());
     }
 }
