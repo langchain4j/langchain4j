@@ -40,13 +40,13 @@ import static java.util.stream.Collectors.toList;
 public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final String ADDITIONALS = "_additional";
-    private static final String METADATA = "_metadata";
     private static final String NULL_VALUE = "<null>";
 
     private final WeaviateClient client;
     private final String objectClass;
     private final boolean avoidDups;
     private final String consistencyLevel;
+    private final String metadataParentKey;
     private final Collection<String> metadataKeys;
     private final String textKey;
 
@@ -81,6 +81,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             String objectClass,
             Boolean avoidDups,
             String consistencyLevel,
+            String metadataParentKey,
             Collection<String> metadataKeys,
             String textKey
     ) {
@@ -105,6 +106,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.objectClass = getOrDefault(objectClass, "Default");
         this.avoidDups = getOrDefault(avoidDups, true);
         this.consistencyLevel = getOrDefault(consistencyLevel, QUORUM);
+        this.metadataParentKey = getOrDefault(metadataParentKey, "_metadata");
         this.metadataKeys = getOrDefault(metadataKeys, Collections.emptyList());
         this.textKey = getOrDefault(textKey, "text");
     }
@@ -198,7 +200,11 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             for (String property : metadataKeys) {
                 metadataFields.add(Field.builder().name(property).build());
             }
-            fields.add(Field.builder().name(METADATA).fields(metadataFields.toArray(new Field[0])).build());
+            if (metadataParentKey != null) {
+                metadataFields.add(Field.builder().name(metadataParentKey).fields(metadataFields.toArray(new Field[0])).build());
+            } else {
+                metadataFields.add(Field.builder().name(metadataParentKey).build());
+            }
         }
         Result<GraphQLResponse> result = client
                 .graphQL()
@@ -293,7 +299,11 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     
     private void setMetadata(Map<String, Object> props, Map<String, Object> metadata) {
         if (metadata != null && !metadata.isEmpty()) {
-            props.put(METADATA, metadata);
+            if(metadataParentKey != null) {
+                props.put(metadataParentKey, metadata);
+            } else {
+              props.putAll(metadata);
+            }
         }
     }
 
@@ -308,13 +318,19 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     private EmbeddingMatch<TextSegment> toEmbeddingMatch(Map<String, ?> item) {
         Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
         final Metadata metadata = new Metadata();
-        if (item.get(METADATA) != null && item.get(METADATA) instanceof Map) {
-            Map<String, ?> resultingMetadata = (Map<String, ?>) item.get(METADATA);
-            for (Map.Entry<String, ?> entry : resultingMetadata.entrySet()) {
-                if (entry.getValue() != null && !NULL_VALUE.equals(entry.getValue())) {
-                    metadata.add(entry.getKey(), entry.getValue());
-                }
-            }
+        Map<String, ?> metadataMap = null;
+        if (metadataParentKey == null) {
+          metadataMap = item;
+        } 
+        else if (item.get(metadataParentKey) != null && item.get(metadataParentKey) instanceof Map) {
+          metadataMap = (Map<String, ?>) item.get(metadataParentKey);
+        }
+        if(metadataMap != null) {
+          for (Map.Entry<String, ?> entry : metadataMap.entrySet()) {
+              if (entry.getValue() != null && !NULL_VALUE.equals(entry.getValue())) {
+                  metadata.add(entry.getKey(), entry.getValue());
+              }
+          }
         }
         String text = (String) item.get(textKey);
 
