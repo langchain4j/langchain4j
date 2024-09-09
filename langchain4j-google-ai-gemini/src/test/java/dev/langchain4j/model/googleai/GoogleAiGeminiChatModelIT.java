@@ -32,6 +32,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.ENUM;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
 import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
@@ -508,6 +509,42 @@ public class GoogleAiGeminiChatModelIT {
         // then
         assertThat(response.aiMessage().text().trim())
             .isEqualTo("{\"sentiment\": \"POSITIVE\"}");
+    }
+
+    @Test
+    void should_handle_enum_output_mode() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .responseMimeType("text/x.enum")
+            .responseFormat(ResponseFormat.builder()
+                .type(ENUM)
+                .jsonSchema(JsonSchema.builder()
+                    .rootElement(JsonEnumSchema.builder()
+                        .enumValues("POSITIVE", "NEUTRAL", "NEGATIVE")
+                        .build())
+                    .build())
+                .build())
+            .build();
+
+        // when
+        ChatResponse response = gemini.chat(ChatRequest.builder()
+            .messages(
+                SystemMessage.from(
+                    "Your role is to analyze the sentiment of the text you receive."),
+                UserMessage.from(
+                    "This is super exciting news, congratulations!"
+                )
+            )
+            .build());
+
+        System.out.println("response = " + response);
+
+        // then
+        assertThat(response.aiMessage().text().trim())
+            .isEqualTo("POSITIVE");
     }
 
     @Test

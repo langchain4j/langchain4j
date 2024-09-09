@@ -5,5 +5,5 @@ import dev.langchain4j.Experimental;
 @Experimental
 public enum ResponseFormatType {
 
-    TEXT, JSON
+    TEXT, JSON, ENUM
 }
