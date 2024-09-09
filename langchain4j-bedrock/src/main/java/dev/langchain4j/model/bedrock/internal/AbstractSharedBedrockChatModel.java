@@ -49,7 +49,7 @@ public abstract class AbstractSharedBedrockChatModel {
     @Builder.Default
     protected final int topK = 250;
     @Builder.Default
-    protected final Duration timeout = Duration.ofMinutes(5L);
+    protected final Duration timeout = Duration.ofMinutes(1L);
     @Builder.Default
     protected final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
 

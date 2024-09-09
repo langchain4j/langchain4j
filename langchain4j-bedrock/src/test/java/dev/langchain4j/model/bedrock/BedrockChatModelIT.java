@@ -63,7 +63,7 @@ class BedrockChatModelIT {
                 .build();
 
         assertThat(bedrockChatModel).isNotNull();
-        assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(5L);
+        assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(1L);
 
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         ImageContent imageContent = ImageContent.from(base64Data, "image/png");
