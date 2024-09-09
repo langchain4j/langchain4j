@@ -20,6 +20,8 @@ public final class ChatCompletionResponse {
     private List<ChatCompletionChoice> choices;
     private Usage usage;
 
+    public ChatCompletionResponse() {}
+
     public ChatCompletionResponse(String id, Integer created, String model, List<ChatCompletionChoice> choices, Usage usage) {
         this.id = id;
         this.created = created;

@@ -2,8 +2,10 @@ package dev.langchain4j.model.dashscope;
 
 import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput.Choice;
+import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationOutput;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
@@ -14,10 +16,14 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import com.google.gson.JsonObject;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.extern.slf4j.Slf4j;
 
@@ -156,11 +162,31 @@ class QwenHelper {
                     // Using the temporary directory for storing temporary files is a safe practice,
                     // as most operating systems will periodically clean up the contents of this directory
                     // or do so upon system reboot.
-                    imageContent = saveImageAsTemporaryFile(image.base64Data(), image.mimeType());
+                    imageContent = saveDataAsTemporaryFile(image.base64Data(), image.mimeType());
 
                     // In this case, the dashscope sdk requires a mutable map.
                     HashMap<String, Object> contentMap = new HashMap<>(1);
                     contentMap.put("image", imageContent);
+                    return contentMap;
+                } else {
+                    return Collections.emptyMap();
+                }
+            case AUDIO:
+                Audio audio = ((AudioContent) content).audio();
+                String audioContent;
+                if (audio.url() != null) {
+                    audioContent = audio.url().toString();
+                    return Collections.singletonMap("audio", audioContent);
+                } else if (Utils.isNotNullOrBlank(audio.base64Data())) {
+                    // The dashscope sdk supports local file url: file://...
+                    // Using the temporary directory for storing temporary files is a safe practice,
+                    // as most operating systems will periodically clean up the contents of this directory
+                    // or do so upon system reboot.
+                    audioContent = saveDataAsTemporaryFile(audio.base64Data(), audio.mimeType());
+
+                    // In this case, the dashscope sdk requires a mutable map.
+                    HashMap<String, Object> contentMap = new HashMap<>(1);
+                    contentMap.put("audio", audioContent);
                     return contentMap;
                 } else {
                     return Collections.emptyMap();
@@ -172,26 +198,26 @@ class QwenHelper {
         }
     }
 
-    private static String saveImageAsTemporaryFile(String base64Data, String mimeType) {
+    static String saveDataAsTemporaryFile(String base64Data, String mimeType) {
         String tmpDir = System.getProperty("java.io.tmpdir", "/tmp");
-        String tmpImageName = UUID.randomUUID().toString();
+        String tmpFileName = UUID.randomUUID().toString();
         if (Utils.isNotNullOrBlank(mimeType)) {
             // e.g. "image/png", "image/jpeg"...
             int lastSlashIndex = mimeType.lastIndexOf("/");
             if (lastSlashIndex >= 0 && lastSlashIndex < mimeType.length() - 1) {
-                String imageSuffix = mimeType.substring(lastSlashIndex + 1);
-                tmpImageName = tmpImageName + "." + imageSuffix;
+                String fileSuffix = mimeType.substring(lastSlashIndex + 1);
+                tmpFileName = tmpFileName + "." + fileSuffix;
             }
         }
 
-        Path tmpImagePath = Paths.get(tmpDir, tmpImageName);
+        Path tmpFilePath = Paths.get(tmpDir, tmpFileName);
         byte[] data = Base64.getDecoder().decode(base64Data);
         try {
-            Files.copy(new ByteArrayInputStream(data), tmpImagePath, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(new ByteArrayInputStream(data), tmpFilePath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return tmpImagePath.toAbsolutePath().toUri().toString();
+        return tmpFilePath.toAbsolutePath().toUri().toString();
     }
 
     static String roleFrom(ChatMessage message) {
@@ -226,7 +252,8 @@ class QwenHelper {
                 .orElseGet(() -> Optional.of(result)
                         .map(GenerationResult::getOutput)
                         .map(GenerationOutput::getText)
-                        .orElseThrow(NullPointerException::new));
+                        // Model may send empty content in streaming mode
+                        .orElse(""));
     }
 
     static boolean hasAnswer(MultiModalConversationResult result) {
@@ -253,7 +280,8 @@ class QwenHelper {
                 .map(contents -> contents.get(0))
                 .map(content -> content.get("text"))
                 .map(String.class::cast)
-                .orElseThrow(NullPointerException::new);
+                // Model may send empty content in streaming mode
+                .orElse("");
     }
 
     static TokenUsage tokenUsageFrom(GenerationResult result) {
@@ -309,8 +337,7 @@ class QwenHelper {
     }
 
     public static boolean isMultimodalModel(String modelName) {
-        // for now, multimodal models start with "qwen-vl"
-        return modelName.startsWith("qwen-vl");
+        return modelName.contains("-vl-") || modelName.contains("-audio-");
     }
 
     static List<ToolBase> toToolFunctions(Collection<ToolSpecification> toolSpecifications) {
@@ -465,5 +492,49 @@ class QwenHelper {
 
     private static boolean isInputMessageType(ChatMessageType messageType) {
         return messageType == USER || messageType == TOOL_EXECUTION_RESULT;
+    }
+
+    static ChatModelRequest createModelListenerRequest(GenerationParam request,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        Double temperature = request.getTemperature() != null ? request.getTemperature().doubleValue() : null;
+        return ChatModelRequest.builder()
+                .model(request.getModel())
+                .temperature(temperature)
+                .topP(request.getTopP())
+                .maxTokens(request.getMaxTokens())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
+
+    static ChatModelRequest createModelListenerRequest(MultiModalConversationParam request,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        Double temperature = request.getTemperature() != null ? request.getTemperature().doubleValue() : null;
+        return ChatModelRequest.builder()
+                .model(request.getModel())
+                .temperature(temperature)
+                .topP(request.getTopP())
+                .maxTokens(request.getMaxLength())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
+
+    static ChatModelResponse createModelListenerResponse(String responseId,
+                                                         String responseModel,
+                                                         Response<AiMessage> response) {
+        if (response == null) {
+            return null;
+        }
+
+        return ChatModelResponse.builder()
+                .id(responseId)
+                .model(responseModel)
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .aiMessage(response.content())
+                .build();
     }
 }

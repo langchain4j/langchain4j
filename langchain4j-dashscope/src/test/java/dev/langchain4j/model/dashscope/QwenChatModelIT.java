@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
@@ -24,6 +26,8 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Fail.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".+")
 public class QwenChatModelIT {
@@ -208,7 +212,7 @@ public class QwenChatModelIT {
     }
 
     @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#multimodalChatModelNameProvider")
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#vlChatModelNameProvider")
     public void should_send_multimodal_image_url_and_receive_response(String modelName) {
         ChatLanguageModel model = QwenChatModel.builder()
                 .apiKey(apiKey())
@@ -221,7 +225,7 @@ public class QwenChatModelIT {
     }
 
     @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#multimodalChatModelNameProvider")
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#vlChatModelNameProvider")
     public void should_send_multimodal_image_data_and_receive_response(String modelName) {
         ChatLanguageModel model = QwenChatModel.builder()
                 .apiKey(apiKey())
@@ -231,6 +235,32 @@ public class QwenChatModelIT {
         Response<AiMessage> response = model.generate(multimodalChatMessagesWithImageData());
 
         assertThat(response.content().text()).containsIgnoringCase("parrot");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#audioChatModelNameProvider")
+    public void should_send_multimodal_audio_url_and_receive_response(String modelName) {
+        ChatLanguageModel model = QwenChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        Response<AiMessage> response = model.generate(multimodalChatMessagesWithAudioUrl());
+
+        assertThat(response.content().text()).containsIgnoringCase("阿里云");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#audioChatModelNameProvider")
+    public void should_send_multimodal_audio_data_and_receive_response(String modelName) {
+        ChatLanguageModel model = QwenChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        Response<AiMessage> response = model.generate(multimodalChatMessagesWithAudioData());
+
+        assertThat(response.content().text()).containsIgnoringCase("阿里云");
     }
 
     @Test
@@ -293,5 +323,131 @@ public class QwenChatModelIT {
 
         assertThat(sanitizedMessages.get(5)).isInstanceOf(UserMessage.class);
         assertThat(((UserMessage) sanitizedMessages.get(5)).singleText()).isEqualTo("User message 5");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#listenableModelNameProvider")
+    void should_listen_request_and_response(String modelName, boolean supportTools) {
+
+        // given
+        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
+
+        ChatModelListener listener = new ChatModelListener() {
+
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                requestReference.set(requestContext.request());
+                requestContext.attributes().put("id", "12345");
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                responseReference.set(responseContext.response());
+                assertThat(responseContext.request()).isSameAs(requestReference.get());
+                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
+            }
+
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                fail("onError() must not be called");
+            }
+        };
+
+        float temperature = 0.7f;
+        double topP = 1.0;
+        int maxTokens = 7;
+
+        ChatLanguageModel model = QwenChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .temperature(temperature)
+                .topP(topP)
+                .maxTokens(maxTokens)
+                .listeners(singletonList(listener))
+                .build();
+
+        UserMessage userMessage = UserMessage.from("hello");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .description("adds two numbers")
+                .name("add")
+                .addParameter("a", INTEGER)
+                .addParameter("b", INTEGER)
+                .build();
+
+        // when
+        AiMessage aiMessage = supportTools ?
+                model.generate(singletonList(userMessage), singletonList(toolSpecification)).content() :
+                model.generate(singletonList(userMessage)).content();
+
+        // then
+        ChatModelRequest request = requestReference.get();
+        assertThat(request.model()).isEqualTo(modelName);
+        assertThat(request.temperature()).isEqualTo(temperature);
+        assertThat(request.topP()).isEqualTo(topP);
+        assertThat(request.maxTokens()).isEqualTo(maxTokens);
+        assertThat(request.messages()).containsExactly(userMessage);
+        if (supportTools) {
+            assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+        }
+
+        ChatModelResponse response = responseReference.get();
+        assertThat(response.id()).isNotBlank();
+        assertThat(response.model()).isNotBlank();
+        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        assertThat(response.finishReason()).isNotNull();
+        assertThat(response.aiMessage()).isEqualTo(aiMessage);
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#listenableModelNameProvider")
+    void should_listen_error(String modelName) {
+
+        // given
+        String wrongApiKey = "banana";
+
+        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<Throwable> errorReference = new AtomicReference<>();
+
+        ChatModelListener listener = new ChatModelListener() {
+
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                requestReference.set(requestContext.request());
+                requestContext.attributes().put("id", "12345");
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                fail("onResponse() must not be called");
+            }
+
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                errorReference.set(errorContext.error());
+                assertThat(errorContext.request()).isSameAs(requestReference.get());
+                assertThat(errorContext.partialResponse()).isNull();
+                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
+            }
+        };
+
+        ChatLanguageModel model = QwenChatModel.builder()
+                .apiKey(wrongApiKey)
+                .modelName(modelName)
+                .listeners(singletonList(listener))
+                .build();
+
+        String userMessage = "this message will fail";
+
+        // when
+        assertThrows(RuntimeException.class, () -> model.generate(userMessage));
+
+        // then
+        Throwable throwable = errorReference.get();
+        assertThat(throwable).isExactlyInstanceOf(com.alibaba.dashscope.exception.ApiException.class);
+        assertThat(throwable).hasMessageContaining("Invalid API-key provided");
     }
 }
