@@ -19,7 +19,7 @@ class OllamaDateDeserializer extends JsonDeserializer<OffsetDateTime> {
         String date = p.getText();
         if (date.contains(".")) {
             String[] parts = date.split("\\.");
-            if(parts[1].contains("+")) {
+            if (parts[1].contains("+")) {
                 String nanoseconds = parts[1].substring(0, parts[1].indexOf('+'));
                 date = date.replaceAll(nanoseconds, "");
             } else {

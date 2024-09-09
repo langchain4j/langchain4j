@@ -17,8 +17,7 @@ public class OllamaModels {
                         Duration timeout,
                         Integer maxRetries,
                         Boolean logRequests,
-                        Boolean logResponses
-    ) {
+                        Boolean logResponses) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout((getOrDefault(timeout, Duration.ofSeconds(60))))
