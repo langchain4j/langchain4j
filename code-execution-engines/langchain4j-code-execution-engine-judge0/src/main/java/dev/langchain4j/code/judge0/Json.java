@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
-public class Json {
+class Json {
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .enable(INDENT_OUTPUT)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
