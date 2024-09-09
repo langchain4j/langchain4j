@@ -40,6 +40,50 @@ implementation 'dev.langchain4j:langchain4j-open-ai:0.34.0'
 implementation 'dev.langchain4j:langchain4j:0.34.0'
 ```
 
+<details>
+<summary>Bill of Materials (BOM)</summary>
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-bom</artifactId>
+            <version>0.34.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+</details>
+
+<details>
+<summary>SNAPSHOT dependencies (newest features)</summary>
+
+If you'd like to test the newest features before their official release,
+you can use the most recent SNAPSHOT dependency:
+```xml
+<repositories>
+    <repository>
+        <id>snapshots-repo</id>
+        <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        <snapshots>
+            <enabled>true</enabled>
+        </snapshots>
+    </repository>
+</repositories>
+
+<dependencies>
+    <dependency>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j</artifactId>
+        <version>0.35.0-SNAPSHOT</version>
+    </dependency>
+</dependencies>
+```
+</details>
+
 Then, import your OpenAI API key.
 It's recommended to store your API keys in environment variables to reduce the risk of exposing them publicly.
 ```java
