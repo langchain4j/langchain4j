@@ -96,7 +96,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.33.0</version>
+    <version>0.34.0</version>
 </dependency>
 ```
 
@@ -691,9 +691,7 @@ ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
 #### Web Search Content Retriever
 `WebSearchContentRetriever` retrieves relevant `Content` from the web using a `WebSearchEngine`.
 
-There are currently 2 implementations of the `WebSearchEngine` interface:
-- `GoogleCustomWebSearchEngine` in the `langchain4j-web-search-engine-google-custom` module
-- `TavilyWebSearchEngine` in the `langchain4j-web-search-engine-tavily` module
+All supported `WebSearchEngine` integrations can be [found here](/category/web-search-engines).
 
 Here is an example:
 ```java

@@ -35,7 +35,6 @@ import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
 import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
-import static dev.langchain4j.model.googleai.GoogleAiGeminiChatModel.pythonCodeExecution;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
@@ -259,18 +258,23 @@ public class GoogleAiGeminiChatModelIT {
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .allowCodeExecution(true)
+            .includeCodeExecutionOutput(true)
             .build();
 
         // when
         Response<AiMessage> response = gemini.generate(
             singletonList(UserMessage.from(
                 "Calculate `fibonacci(13)`. " +
-                    "Write code in Python and execute it to get the result.")),
-            pythonCodeExecution()
+                    "Write code in Python and execute it to get the result."))
         );
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("233");
+        String text = response.content().text();
+        System.out.println("text = " + text);
+
+        assertThat(text).containsIgnoringCase("233");
     }
 
     @Test

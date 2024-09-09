@@ -206,6 +206,14 @@ class PartsMapper {
     }
 
     static String detectMimeType(URI url) {
-        return new CustomMimeTypesFileTypeDetector().probeContentType(url);
+        String[] pathParts = url.getPath().split("\\.");
+        if (pathParts.length > 1) {
+            String extension = pathParts[pathParts.length - 1].toLowerCase();
+            String mimeType = EXTENSION_TO_MIME_TYPE.get(extension);
+            if (mimeType != null) {
+                return mimeType;
+            }
+        }
+        throw illegalArgument("Unable to detect the MIME type of '%s'. Please provide it explicitly.", url);
     }
 }

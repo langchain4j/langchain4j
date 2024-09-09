@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import com.google.gson.Gson;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -15,6 +16,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
+import okhttp3.ResponseBody;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Retrofit;
@@ -39,6 +41,9 @@ import static java.util.Collections.emptyList;
 @Experimental
 public class GoogleAiGeminiChatModel implements ChatLanguageModel {
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/";
+
+    private static Gson GSON = new Gson();
+
     private final String apiKey;
     private final String modelName;
 
@@ -57,6 +62,9 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
 
     private final Boolean logRequestsAndResponses;
 
+    private final boolean allowCodeExecution;
+    private final boolean includeCodeExecutionOutput;
+
     private final List<GeminiSafetySetting> safetySettings;
 
     @Builder
@@ -65,6 +73,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
                                    Integer maxOutputTokens, Integer candidateCount,
                                    String responseMimeType, ResponseFormat responseFormat,
                                    List<String> stopSequences, GeminiFunctionCallingConfig toolConfig,
+                                   Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
                                    Boolean logRequestsAndResponses,
                                    List<GeminiSafetySetting> safetySettings
     ) {
@@ -78,7 +87,11 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         this.maxOutputTokens = getOrDefault(maxOutputTokens, 8192);
         this.candidateCount = getOrDefault(candidateCount, 1);
         this.stopSequences = getOrDefault(stopSequences, emptyList());
+
         this.toolConfig = toolConfig;
+
+        this.allowCodeExecution = allowCodeExecution != null ? allowCodeExecution : false;
+        this.includeCodeExecutionOutput = includeCodeExecutionOutput != null ? includeCodeExecutionOutput : false;
 
         this.safetySettings = copyIfNotNull(safetySettings);
 
@@ -166,7 +179,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
                 .topP(this.topP)
                 .build())
             .safetySettings(this.safetySettings)
-            .tools(FunctionMapper.fromToolSepcsToGTool(toolSpecifications))
+            .tools(FunctionMapper.fromToolSepcsToGTool(toolSpecifications, this.allowCodeExecution))
             .toolConfig(new GeminiToolConfig(this.toolConfig))
             .build();
 
@@ -176,10 +189,18 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         GeminiGenerateContentResponse geminiResponse;
         try {
             retrofit2.Response<GeminiGenerateContentResponse> executed = responseCall.execute();
-
             geminiResponse = executed.body();
+
+            if (executed.code() >= 300) {
+                try (ResponseBody errorBody = executed.errorBody()) {
+                    GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
+
+                    throw new RuntimeException(
+                        String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
+                }
+            }
         } catch (IOException e) {
-            throw new RuntimeException("An error occurred when calling the Gemini endpoint via Retrofit", e);
+            throw new RuntimeException("An error occurred when calling the Gemini API endpoint.", e);
         }
 
         if (geminiResponse != null) {
@@ -193,7 +214,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
                 aiMessage = AiMessage.from("No text was returned by the model. " +
                     "The model finished generating because of the following reason: " + finishReason);
             } else {
-                aiMessage = fromGPartsToAiMessage(firstCandidate.getContent().getParts());
+                aiMessage = fromGPartsToAiMessage(firstCandidate.getContent().getParts(), this.includeCodeExecutionOutput);
             }
 
             return ChatResponse.builder()
@@ -222,12 +243,6 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         Retrofit retrofit = retrofitBuilder.build();
 
         return retrofit.create(GeminiService.class);
-    }
-
-    public static ToolSpecification pythonCodeExecution() {
-        return ToolSpecification.builder()
-            .name("code_execution")
-            .build();
     }
 
     public static class GoogleAiGeminiChatModelBuilder {
