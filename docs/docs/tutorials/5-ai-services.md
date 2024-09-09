@@ -59,7 +59,10 @@ interface Assistant {
 Then, we create our low-level components. These components will be used under the hood of our AI Service.
 In this case, we just need the `ChatLanguageModel`:
 ```java
-ChatLanguageModel model = OpenAiChatModel.withApiKey("demo");
+ChatLanguageModel model = OpenAiChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 ```
 
 Finally, we can use the `AiServices` class to create an instance of our AI Service:
