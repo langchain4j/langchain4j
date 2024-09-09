@@ -13,7 +13,7 @@ https://azure.microsoft.com/en-us/products/cosmos-db/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-cosmos-nosql</artifactId>
-    <version>0.33.0</version>
+    <version>0.34.0</version>
 </dependency>
 ```
 

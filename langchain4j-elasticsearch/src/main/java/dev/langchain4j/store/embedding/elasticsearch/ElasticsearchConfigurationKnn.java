@@ -12,14 +12,31 @@ import java.io.IOException;
 
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store
- * using the Knn implementation.
+ * using the approximate kNN query implementation.
+ * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html#knn-query-top-level-parameters">kNN query</a>
  */
 public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationKnn.class);
+    private final Integer numCandidates;
 
     public static class Builder {
+        private Integer numCandidates;
+
         public ElasticsearchConfigurationKnn build() {
-            return new ElasticsearchConfigurationKnn();
+            return new ElasticsearchConfigurationKnn(numCandidates);
+        }
+
+        /**
+         * The number of nearest neighbor candidates to consider per shard while doing knn search.
+         * Cannot exceed 10,000. Increasing num_candidates tends to improve the accuracy of the final
+         * results.
+         *
+         * @param numCandidates The number of nearest neighbor candidates to consider per shard
+         * @return the builder instance
+         */
+        public Builder numCandidates(Integer numCandidates) {
+            this.numCandidates = numCandidates;
+            return this;
         }
     }
 
@@ -27,8 +44,9 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
         return new Builder();
     }
 
-    private ElasticsearchConfigurationKnn() {
 
+    private ElasticsearchConfigurationKnn(Integer numCandidates) {
+        this.numCandidates = numCandidates;
     }
 
     @Override
@@ -42,6 +60,11 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
         if (embeddingSearchRequest.filter() != null) {
             krb.filter(ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter()));
         }
+
+        if (numCandidates != null) {
+            krb.numCandidates(numCandidates);
+        }
+
         KnnQuery knn = krb.build();
 
         log.trace("Searching for embeddings in index [{}] with query [{}].", indexName, knn);

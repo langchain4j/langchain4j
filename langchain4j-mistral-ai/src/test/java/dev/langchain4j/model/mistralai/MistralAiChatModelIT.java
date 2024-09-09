@@ -56,7 +56,7 @@ class MistralAiChatModelIT {
 
     @AfterEach
     void afterEach() throws InterruptedException {
-        Thread.sleep(2_000); // to prevent hitting rate limits
+        Thread.sleep(5_000); // to prevent hitting rate limits
     }
 
     @Test
