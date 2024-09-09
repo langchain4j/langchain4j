@@ -39,4 +39,8 @@ class OllamaJsonUtils {
         }
     }
 
+    static ObjectMapper getObjectMapper() {
+        return OBJECT_MAPPER;
+    }
+
 }

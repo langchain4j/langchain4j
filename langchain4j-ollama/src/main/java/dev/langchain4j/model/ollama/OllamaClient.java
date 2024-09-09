@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.getObjectMapper;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 import static java.lang.Boolean.TRUE;
 
@@ -62,7 +63,7 @@ class OllamaClient {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClient)
-                .addConverterFactory(JacksonConverterFactory.create())
+                .addConverterFactory(JacksonConverterFactory.create(getObjectMapper()))
                 .build();
 
         ollamaApi = retrofit.create(OllamaApi.class);
