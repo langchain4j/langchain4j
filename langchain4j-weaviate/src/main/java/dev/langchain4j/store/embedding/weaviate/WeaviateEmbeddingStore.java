@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.weaviate;
+package com.redhat.composer.config.embedding.store;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
