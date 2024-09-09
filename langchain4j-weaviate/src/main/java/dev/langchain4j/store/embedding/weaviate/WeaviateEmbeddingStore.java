@@ -48,7 +48,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final boolean avoidDups;
     private final String consistencyLevel;
     private final Collection<String> metadataKeys;
-    private final String textKey;
+    private final String textFieldName;
 
     /**
      * Creates a new WeaviateEmbeddingStore instance.
@@ -67,7 +67,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param useGrpcForInserts Use GRPC instead of HTTP for batch inserts only. <b>You still need HTTP configured for search</b>
      * @param securedGrpc       The GRPC connection is secured
      * @param grpcPort          The port, e.g. 50051. This parameter is optional.
-     * @param textKey           The key in metadata that contains the text. Default is "text".
+     * @param textFieldName     The key in metadata that contains the text. Default is "text".
      */
     @Builder
     public WeaviateEmbeddingStore(
@@ -82,7 +82,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             Boolean avoidDups,
             String consistencyLevel,
             Collection<String> metadataKeys,
-            String textKey
+            String textFieldName
     ) {
         try {
 
@@ -106,7 +106,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.avoidDups = getOrDefault(avoidDups, true);
         this.consistencyLevel = getOrDefault(consistencyLevel, QUORUM);
         this.metadataKeys = getOrDefault(metadataKeys, Collections.emptyList());
-        this.textKey = getOrDefault(textKey, "text");
+        this.textFieldName = getOrDefault(textFieldName, "text");
     }
 
     private static String concatenate(String host, Integer port) {
@@ -183,7 +183,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             double minCertainty
     ) {
         List<Field> fields = new ArrayList<>();
-        fields.add(Field.builder().name(textKey).build());
+        fields.add(Field.builder().name(textFieldName).build());
         fields.add(Field
                 .builder()
                 .name(ADDITIONALS)
@@ -267,7 +267,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         Map<String, Object> props = new HashMap<>();
         Map<String, Object> metadata = prefillMetadata();
         if (segment != null) {
-            props.put(textKey, segment.text());
+            props.put(textFieldName, segment.text());
             if (!segment.metadata().toMap().isEmpty()) {
                 for (String property : metadataKeys) {
                     if (segment.metadata().containsKey(property)) {
@@ -277,7 +277,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             setMetadata(props, metadata);
         } else {
-            props.put(textKey, "");
+            props.put(textFieldName, "");
             setMetadata(props, metadata);
         }
         props.put("indexFilterable", true);
@@ -316,7 +316,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                 }
             }
         }
-        String text = (String) item.get(textKey);
+        String text = (String) item.get(textFieldName);
 
         return new EmbeddingMatch<>(
                 (Double) additional.get("certainty"),
