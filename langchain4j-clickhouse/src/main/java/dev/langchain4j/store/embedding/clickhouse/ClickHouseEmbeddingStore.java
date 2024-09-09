@@ -41,7 +41,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
         try {
             this.dataSource = Optional.ofNullable(dataSource).orElse(new ClickHouseDataSource(settings.getUrl(), new Properties()));
         } catch (SQLException e) {
-            throw new ClickhouseOperationException("encounter exception when initialize dataSource");
+            throw new ClickHouseOperationException("encounter exception when initialize dataSource");
         }
 
         // init experimental feature and table
@@ -49,7 +49,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
              Statement stmt = conn.createStatement()) {
             stmt.execute(buildCreateTableSql());
         } catch (SQLException e) {
-            throw new ClickhouseOperationException(String.format("encounter exception when creating table %s", e.getLocalizedMessage()));
+            throw new ClickHouseOperationException(String.format("encounter exception when creating table %s", e.getLocalizedMessage()));
         }
     }
 
@@ -194,9 +194,9 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .filter(relevant -> relevant.score() >= minScore)
                     .collect(toList());
         } catch (SQLException e) {
-            throw new ClickhouseOperationException(String.format("encounter exception when query data %s", e.getLocalizedMessage()));
+            throw new ClickHouseOperationException(String.format("encounter exception when query data %s", e.getLocalizedMessage()));
         } catch (JsonProcessingException e) {
-            throw new ClickhouseOperationException(String.format("Search failed! Error message=%s", e.getLocalizedMessage()));
+            throw new ClickHouseOperationException(String.format("Search failed! Error message=%s", e.getLocalizedMessage()));
         }
     }
 
@@ -232,7 +232,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             preparedStmt.executeBatch();
         } catch (SQLException | JsonProcessingException e) {
-            throw new ClickhouseOperationException(String.format("encounter exception when inserting data. Error message=%s", e.getLocalizedMessage()));
+            throw new ClickHouseOperationException(String.format("encounter exception when inserting data. Error message=%s", e.getLocalizedMessage()));
         }
     }
 
