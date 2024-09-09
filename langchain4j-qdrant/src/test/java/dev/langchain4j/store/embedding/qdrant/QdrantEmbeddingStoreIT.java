@@ -49,7 +49,7 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreIT {
     private static QdrantEmbeddingStore embeddingStore;
 
     @Container
-    private static final QdrantContainer qdrant = new QdrantContainer("qdrant/qdrant:v1.11.1");
+    private static final QdrantContainer qdrant = new QdrantContainer("qdrant/qdrant:latest");
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
