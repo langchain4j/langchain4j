@@ -103,7 +103,10 @@ The `demo` key has a quota and should only be used for demonstration purposes.
 
 Once you've set up the key, let's create an instance of an `OpenAiChatModel`:
 ```java
-OpenAiChatModel model = OpenAiChatModel.withApiKey(apiKey);
+OpenAiChatModel model = OpenAiChatModel.builder()
+    .apiKey(apiKey)
+    .modelName(GPT_4_O_MINI)
+    .build();
 ```
 Now, it is time to chat!
 ```java
