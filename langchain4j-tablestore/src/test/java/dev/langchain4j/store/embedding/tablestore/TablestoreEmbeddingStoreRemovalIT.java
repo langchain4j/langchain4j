@@ -10,7 +10,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.Arrays;
@@ -19,7 +18,6 @@ import java.util.Arrays;
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_INSTANCE_NAME", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_ACCESS_KEY_ID", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_ACCESS_KEY_SECRET", matches = ".+")
-@Slf4j
 class TablestoreEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();

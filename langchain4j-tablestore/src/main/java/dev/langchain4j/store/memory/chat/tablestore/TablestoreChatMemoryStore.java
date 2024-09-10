@@ -28,16 +28,17 @@ import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
-@Slf4j
 public class TablestoreChatMemoryStore implements ChatMemoryStore {
 
+    private final Logger log = LoggerFactory.getLogger(getClass());
     private final SyncClient client;
     private final String tableName;
     private final String pkName1;

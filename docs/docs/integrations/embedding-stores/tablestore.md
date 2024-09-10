@@ -13,7 +13,7 @@ https://www.aliyun.com/product/ots
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-tablestore</artifactId>
-    <version>{latest-version}</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 

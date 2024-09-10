@@ -25,15 +25,14 @@ import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsTextMatch;
-import dev.langchain4j.store.embedding.filter.comparison.IsTextMatchPhrase;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.function.TriConsumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
@@ -48,9 +47,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_INSTANCE_NAME", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_ACCESS_KEY_ID", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_ACCESS_KEY_SECRET", matches = ".+")
-@Slf4j
 class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
-
+    private final Logger log = LoggerFactory.getLogger(getClass());
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
     private final static long WAIT_FOR_REPLICA_TIME_IN_MILLS = TimeUnit.SECONDS.toMillis(3);
 

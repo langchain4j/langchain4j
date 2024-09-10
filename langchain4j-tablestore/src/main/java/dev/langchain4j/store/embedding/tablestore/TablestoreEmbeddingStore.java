@@ -56,8 +56,8 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -69,9 +69,8 @@ import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-@Getter
-@Slf4j
 public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
+    private final Logger log = LoggerFactory.getLogger(getClass());
     private final SyncClient client;
     private final String tableName;
     private final String searchIndexName;
@@ -126,6 +125,42 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void init() {
         createTableIfNotExist();
         createSearchIndexIfNotExist();
+    }
+
+    public SyncClient getClient() {
+        return client;
+    }
+
+    public String getTableName() {
+        return tableName;
+    }
+
+    public String getSearchIndexName() {
+        return searchIndexName;
+    }
+
+    public String getPkName() {
+        return pkName;
+    }
+
+    public String getTextField() {
+        return textField;
+    }
+
+    public String getEmbeddingField() {
+        return embeddingField;
+    }
+
+    public int getVectorDimension() {
+        return vectorDimension;
+    }
+
+    public VectorMetricType getVectorMetricType() {
+        return vectorMetricType;
+    }
+
+    public List<FieldSchema> getMetadataSchemaList() {
+        return metadataSchemaList;
     }
 
     @Override

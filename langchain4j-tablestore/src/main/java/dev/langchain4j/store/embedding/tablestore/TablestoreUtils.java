@@ -4,19 +4,10 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.langchain4j.internal.ValidationUtils;
 
-public class TablestoreUtils {
+class TablestoreUtils {
 
     private static final int MAX_DEBUG_LOG_LENGTH = 100;
     private static final Gson GSON = new GsonBuilder().create();
-    public static final boolean ASSERT_ENABLED;
-
-    static {
-        boolean assertEnabled = false;
-        // noinspection ConstantConditions,AssertWithSideEffects
-        assert assertEnabled = true;
-        // noinspection ConstantConditions
-        ASSERT_ENABLED = assertEnabled;
-    }
 
     protected static float[] parseEmbeddingString(String embeddingString) {
         ValidationUtils.ensureNotBlank(embeddingString, "embeddingString");
