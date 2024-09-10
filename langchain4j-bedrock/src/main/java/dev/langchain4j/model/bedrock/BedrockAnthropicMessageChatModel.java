@@ -21,12 +21,10 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.output.Response;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.Optional;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -88,6 +86,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         parameters.put("system", system);
 
         if (!toolSpecifications.isEmpty()) {
+            validateModelIdWithToolsSupport();
             parameters.put("tools", toAnthropicToolSpecifications(toolSpecifications));
         }
 
@@ -102,6 +101,27 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             result.getTokenUsage(),
             result.getFinishReason()
         );
+    }
+
+    private void validateModelIdWithToolsSupport() {
+        List<String> anthropicModelIdSplit = Arrays.asList(this.model.split("-"));
+
+        if (anthropicModelIdSplit.size() < 2) {
+            throw new IllegalArgumentException("Tools are currently not supported by this model");
+        }
+
+        String anthropicModelMajorVersion = anthropicModelIdSplit.get(1);
+        if (anthropicModelMajorVersion.contains(":")) {
+            anthropicModelMajorVersion = anthropicModelMajorVersion.split(":")[0];
+        }
+
+        if (!anthropicModelMajorVersion.matches("[0-9]")) {
+            anthropicModelMajorVersion = anthropicModelMajorVersion.replaceAll("[^0-9]", "");
+        }
+
+        if (anthropicModelMajorVersion.isEmpty() || Integer.parseInt(anthropicModelMajorVersion) < 3) {
+            throw new IllegalArgumentException("Tools are currently not supported by this model");
+        }
     }
 
     private AiMessage aiMessageFrom(BedrockAnthropicMessageChatModelResponse result) {
