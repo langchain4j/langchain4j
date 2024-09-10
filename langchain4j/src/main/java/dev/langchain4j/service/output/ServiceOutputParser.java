@@ -4,12 +4,16 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
-import dev.langchain4j.service.*;
+import dev.langchain4j.service.Result;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.TypeUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -17,6 +21,8 @@ import static dev.langchain4j.service.TypeUtils.*;
 import static java.lang.String.format;
 
 public class ServiceOutputParser {
+
+    private static final Pattern JSON_BLOCK_PATTERN = Pattern.compile("(?s)\\{.*\\}|\\[.*\\]");
 
     private final OutputParserFactory outputParserFactory;
 
@@ -60,7 +66,12 @@ public class ServiceOutputParser {
             return optionalOutputParser.get().parse(text);
         }
 
-        return Json.fromJson(text, rawReturnClass);
+        try {
+            return Json.fromJson(text, rawReturnClass);
+        } catch (Exception e) {
+            String jsonBlock = extractJsonBlock(text);
+            return Json.fromJson(jsonBlock, rawReturnClass);
+        }
     }
 
     public String outputFormatInstructions(Type returnType) {
@@ -83,6 +94,7 @@ public class ServiceOutputParser {
             return "";
         }
 
+        // TODO validate this earlier
         if (returnType == void.class) {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
@@ -105,7 +117,7 @@ public class ServiceOutputParser {
         return "\nYou must answer strictly in the following JSON format: " + jsonStructure((rawClass), new HashSet<>());
     }
 
-    public static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
+    private static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
         StringBuilder jsonSchema = new StringBuilder();
 
         jsonSchema.append("{\n");
@@ -193,5 +205,13 @@ public class ServiceOutputParser {
             default:
                 return type.getTypeName();
         }
+    }
+
+    private String extractJsonBlock(String text) {
+        Matcher matcher = JSON_BLOCK_PATTERN.matcher(text);
+        if (matcher.find()) {
+            return matcher.group();
+        }
+        return text;
     }
 }

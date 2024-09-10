@@ -2,7 +2,7 @@ package dev.langchain4j.model.jlama;
 
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
-import com.github.tjake.jlama.safetensors.tokenizer.PromptSupport;
+import com.github.tjake.jlama.safetensors.prompt.PromptSupport;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.RetryUtils;
@@ -66,7 +66,7 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
         if (model.promptSupport().isEmpty())
             throw new UnsupportedOperationException("This model does not support chat generation");
 
-        PromptSupport.Builder promptBuilder = model.promptSupport().get().newBuilder();
+        PromptSupport.Builder promptBuilder = model.promptSupport().get().builder();
         for (ChatMessage message : messages) {
             switch (message.type()) {
                 case SYSTEM -> promptBuilder.addSystemMessage(message.text());
@@ -77,11 +77,11 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
         }
 
         try {
-            Generator.Response r = model.generate(id, promptBuilder.build(), temperature, maxTokens, false, (token, time) -> {
+            Generator.Response r = model.generate(id, promptBuilder.build(), temperature, maxTokens, (token, time) -> {
                 handler.onNext(token);
             });
 
-            handler.onComplete(Response.from(AiMessage.from(r.text), new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason)));
+            handler.onComplete(Response.from(AiMessage.from(r.responseText), new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason)));
         } catch (Throwable t) {
             handler.onError(t);
         }

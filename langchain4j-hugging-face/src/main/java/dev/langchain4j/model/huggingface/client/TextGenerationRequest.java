@@ -1,9 +1,18 @@
 package dev.langchain4j.model.huggingface.client;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+
 import java.util.Objects;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static dev.langchain4j.internal.Utils.quoted;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
 public class TextGenerationRequest {
 
     private final String inputs;
@@ -14,6 +23,18 @@ public class TextGenerationRequest {
         this.inputs = builder.inputs;
         this.parameters = builder.parameters;
         this.options = builder.options;
+    }
+
+    public String getInputs() {
+        return inputs;
+    }
+
+    public Parameters getParameters() {
+        return parameters;
+    }
+
+    public Options getOptions() {
+        return options;
     }
 
     @Override

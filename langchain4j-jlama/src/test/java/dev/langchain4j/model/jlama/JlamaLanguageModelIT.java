@@ -2,7 +2,6 @@ package dev.langchain4j.model.jlama;
 
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
-import org.assertj.core.util.Files;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +10,7 @@ import java.io.File;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JlamaLanguageModelIT {
+class JlamaLanguageModelIT {
 
     static File tmpDir;
 
@@ -24,9 +23,10 @@ public class JlamaLanguageModelIT {
         tmpDir.mkdirs();
 
         model = JlamaLanguageModel.builder()
-                .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
+                .modelName("tjake/Meta-Llama-3.1-8B-Instruct-Jlama-Q4")
                 .modelCachePath(tmpDir.toPath())
-                .maxTokens(10)
+                .temperature(0.0f)
+                .maxTokens(30)
                 .build();
     }
 
@@ -34,11 +34,10 @@ public class JlamaLanguageModelIT {
     void should_send_prompt_and_return_response() {
 
         // given
-        String prompt = "hello";
+        String prompt = "When is the best time of year to visit Japan?";
 
         // when
         Response<String> response = model.generate(prompt);
-        System.out.println(response);
 
         // then
         assertThat(response.content()).isNotBlank();

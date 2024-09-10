@@ -1,14 +1,19 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 
 import java.util.List;
+import java.util.Set;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptySet;
 
 /**
  * Represents a language model that has a chat interface.
@@ -79,5 +84,15 @@ public interface ChatLanguageModel {
      */
     default Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
+    }
+
+    @Experimental
+    default ChatResponse chat(ChatRequest request) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Experimental
+    default Set<Capability> supportedCapabilities() {
+        return emptySet();
     }
 }
