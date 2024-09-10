@@ -5,13 +5,13 @@ import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Builder;
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Retrofit;
@@ -30,13 +30,13 @@ import static dev.langchain4j.model.ollama.OllamaJsonUtils.getObjectMapper;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 import static java.lang.Boolean.TRUE;
 
-@Slf4j
 class OllamaClient {
+
+    private static final Logger log = LoggerFactory.getLogger(OllamaClient.class);
 
     private final OllamaApi ollamaApi;
     private final boolean logStreamingResponses;
 
-    @Builder
     public OllamaClient(String baseUrl,
                         Duration timeout,
                         Boolean logRequests, Boolean logResponses, Boolean logStreamingResponses,
@@ -67,6 +67,10 @@ class OllamaClient {
                 .build();
 
         ollamaApi = retrofit.create(OllamaApi.class);
+    }
+
+    static Builder builder() {
+        return new Builder();
     }
 
     public CompletionResponse completion(CompletionRequest request) {
@@ -279,6 +283,50 @@ class OllamaClient {
             this.headers.forEach(builder::addHeader);
 
             return chain.proceed(builder.build());
+        }
+    }
+
+    static class Builder {
+
+        private String baseUrl;
+        private Duration timeout;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Boolean logStreamingResponses;
+        private Map<String, String> customHeaders;
+
+        Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        Builder logStreamingResponses(Boolean logStreamingResponses) {
+            this.logStreamingResponses = logStreamingResponses;
+            return this;
+        }
+
+        Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        OllamaClient build() {
+            return new OllamaClient(baseUrl, timeout, logRequests, logResponses, logStreamingResponses, customHeaders);
         }
     }
 }
