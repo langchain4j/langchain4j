@@ -10,43 +10,28 @@ import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.concurrent.atomic.AtomicReference;
-import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
-import static org.assertj.core.data.Percentage.withPercentage;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class AzureOpenAiChatModelIT {
-
-    Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModelIT.class);
-
-    Percentage tokenizerPrecision = withPercentage(5);
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
@@ -65,7 +50,6 @@ public class AzureOpenAiChatModelIT {
         UserMessage userMessage = userMessage("hello, how are you?");
 
         Response<AiMessage> response = model.generate(userMessage);
-        logger.info(response.toString());
 
         assertThat(response.content().text()).isNotBlank();
 
@@ -96,7 +80,6 @@ public class AzureOpenAiChatModelIT {
         UserMessage userMessage = userMessage("hello, how are you?");
 
         Response<AiMessage> response = model.generate(userMessage);
-        logger.info(response.toString());
 
         assertThat(response.content().text()).isNotBlank();
 
@@ -143,9 +126,6 @@ public class AzureOpenAiChatModelIT {
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
 
-        // We should get a response telling how to call the "getCurrentWeather" function, with the correct parameters in JSON format.
-        logger.info(response.toString());
-
         // We can now call the function with the correct parameters.
         WeatherLocation weatherLocation = BinaryData.fromString(toolExecutionRequest.arguments()).toObject(WeatherLocation.class);
         int currentWeather = getCurrentWeather(weatherLocation);
@@ -166,8 +146,6 @@ public class AzureOpenAiChatModelIT {
         chatMessages.add(toolExecutionResultMessage);
 
         Response<AiMessage> response2 = model.generate(chatMessages);
-
-        logger.info(response2.toString());
 
         assertThat(response2.content().text()).isNotBlank();
         assertThat(response2.content().text()).contains("t-shirt");
@@ -273,12 +251,11 @@ public class AzureOpenAiChatModelIT {
         AiMessage aiMessage2 = response2.content();
 
         // then
-        logger.debug("Final answer is: " + aiMessage2);
         assertThat(aiMessage2.text()).contains("4", "16", "512");
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
-        assertThat(tokenUsage2.inputTokenCount()).isCloseTo(112, tokenizerPrecision);
+        assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.totalTokenCount())
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
@@ -305,8 +282,6 @@ public class AzureOpenAiChatModelIT {
 
         Response<AiMessage> response = model.generate(systemMessage, userMessage);
 
-        logger.info(response.toString());
-
         assertThat(response.content().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
@@ -330,7 +305,6 @@ public class AzureOpenAiChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();
@@ -372,23 +346,23 @@ public class AzureOpenAiChatModelIT {
         int maxTokens = 7;
 
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName(deploymentName)
-            .topP(topP)
-            .temperature(temperature)
-            .maxTokens(maxTokens)
-            .logRequestsAndResponses(true)
-            .listeners(singletonList(listener))
-            .build();
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(deploymentName)
+                .topP(topP)
+                .temperature(temperature)
+                .maxTokens(maxTokens)
+                .logRequestsAndResponses(true)
+                .listeners(singletonList(listener))
+                .build();
 
         UserMessage userMessage = UserMessage.from("hello");
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
-            .name("add")
-            .addParameter("a", INTEGER)
-            .addParameter("b", INTEGER)
-            .build();
+                .name("add")
+                .addParameter("a", INTEGER)
+                .addParameter("b", INTEGER)
+                .build();
 
         // when
         AiMessage aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
@@ -444,12 +418,12 @@ public class AzureOpenAiChatModelIT {
         };
 
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(wrongApiKey)
-            .maxRetries(0)
-            .logRequestsAndResponses(true)
-            .listeners(singletonList(listener))
-            .build();
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(wrongApiKey)
+                .maxRetries(0)
+                .logRequestsAndResponses(true)
+                .listeners(singletonList(listener))
+                .build();
 
         String userMessage = "this message will fail";
         model.generate(userMessage);

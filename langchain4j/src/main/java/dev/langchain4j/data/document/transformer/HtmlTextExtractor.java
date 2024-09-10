@@ -8,10 +8,10 @@ import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.select.NodeVisitor;
-
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 import static dev.langchain4j.data.document.Document.URL;
 import static java.lang.String.format;
@@ -40,7 +40,17 @@ public class HtmlTextExtractor implements DocumentTransformer {
     }
 
     /**
-     * Constructs an instance of HtmlToTextTransformer that extracts text from HTML elements matching the provided CSS selector.
+     * Constructs an instance of HtmlToTextTransformer that extracts text from HTML elements matching the specified CSS selector.
+     *
+     * @param cssSelector A CSS selector.
+     *                    For example, "#page-content" will extract text from the HTML element with the id "page-content".
+     */
+    public HtmlTextExtractor(String cssSelector) {
+        this(cssSelector, null, false);
+    }
+
+    /**
+     * Constructs an instance of HtmlToTextTransformer that extracts text from HTML elements matching the specified CSS selector.
      *
      * @param cssSelector          A CSS selector.
      *                             For example, "#page-content" will extract text from the HTML element with the id "page-content".

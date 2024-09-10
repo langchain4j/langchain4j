@@ -36,7 +36,11 @@ interface OllamaApi {
     @Headers({"Content-Type: application/json"})
     Call<OllamaModelCard> showInformation(@Body ShowModelInformationRequest modelDetailsRequest);
 
-    @HTTP(method = "DELETE", path = "/api/delete", hasBody = true)
+    @HTTP(method = "DELETE", path = "api/delete", hasBody = true)
     @Headers({"Content-Type: application/json"})
     Call<Void> deleteModel(@Body DeleteModelRequest deleteModelRequest);
+
+    @GET("api/ps")
+    @Headers({"Content-Type: application/json"})
+    Call<RunningModelsListResponse> listRunningModels();
 }
