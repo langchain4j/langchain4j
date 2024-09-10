@@ -5,6 +5,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -28,11 +29,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
@@ -43,7 +47,7 @@ import static java.util.Collections.emptyList;
 public class GoogleAiGeminiChatModel implements ChatLanguageModel {
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/";
 
-    private static Gson GSON = new Gson();
+    private static final Gson GSON = new Gson();
 
     private final GeminiService geminiService;
 
@@ -232,6 +236,16 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         } else {
             throw new RuntimeException("Gemini response was null");
         }
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        Set<Capability> capabilities = new HashSet<>();
+        // when response format is not null, it's always application/json or text/x.enum as mime type
+        if (this.responseFormat != null) {
+            capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
+        }
+        return capabilities;
     }
 
     private GeminiService getGeminiService() {

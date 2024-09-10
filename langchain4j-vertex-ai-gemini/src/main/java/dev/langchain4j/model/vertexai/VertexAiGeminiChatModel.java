@@ -8,6 +8,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
@@ -22,12 +23,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
@@ -295,6 +299,18 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         } else {
             return generate(messages, Collections.singletonList(toolSpecification));
         }
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        Set<Capability> capabilities = new HashSet<>();
+        // When response format is not null, it's always application/json or text/x.enum as mime type.
+        // GenerationConfig defaults to an empty schema when a response schema is not specified,
+        // so we check that the response format schema is equal to a default (empty) schema.
+        if (Schema.getDefaultInstance().equals(this.generationConfig.getResponseSchema())) {
+            capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
+        }
+        return capabilities;
     }
 
     @Override
