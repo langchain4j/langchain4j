@@ -4,12 +4,19 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.stream.Collectors.joining;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolParameters;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
@@ -19,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Optional;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -27,21 +35,21 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 @Getter
 @SuperBuilder
 public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<BedrockAnthropicMessageChatModelResponse> {
-    
+
     private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
-    
+
     @Builder.Default
     private final int topK = 250;
     @Builder.Default
     private final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
     @Builder.Default
     private final String model = Types.AnthropicClaude3SonnetV1.getValue();
-    
+
     @Override
     protected String getModelId() {
         return model;
     }
-    
+
     @Override
     protected Map<String, Object> getRequestParameters(String prompt) {
         final Map<String, Object> parameters = new HashMap<>(9);
@@ -53,47 +61,142 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         parameters.put("anthropic_version", anthropicVersion);
         return parameters;
     }
-    
+
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
+        return generate(messages, (ToolSpecification) null);
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return generate(
+                messages,
+                Optional.ofNullable(toolSpecification)
+                        .map(Collections::singletonList)
+                        .orElse(Collections.emptyList())
+        );
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         final String system = getAnthropicSystemPrompt(messages);
-        
+
         List<BedrockAnthropicMessage> formattedMessages = getAnthropicMessages(messages);
-        
+
         Map<String, Object> parameters = getRequestParameters(null);
         parameters.put("messages", formattedMessages);
         parameters.put("system", system);
-        
+
+        if (!toolSpecifications.isEmpty()) {
+            parameters.put("tools", toAnthropicToolSpecifications(toolSpecifications));
+        }
+
         final String body = Json.toJson(parameters);
-        
+
         InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(body), getMaxRetries());
         final String response = invokeModelResponse.body().asUtf8String();
         BedrockAnthropicMessageChatModelResponse result = Json.fromJson(response, getResponseClassType());
-        
-        return new Response<>(new AiMessage(result.getOutputText()),
+
+        return new Response<>(
+            aiMessageFrom(result),
             result.getTokenUsage(),
-            result.getFinishReason());
+            result.getFinishReason()
+        );
     }
-    
+
+    private AiMessage aiMessageFrom(BedrockAnthropicMessageChatModelResponse result) {
+        List<BedrockAnthropicContent> toolUseRequests = result.getContent()
+                .stream()
+                .filter(content -> content.getType().equals("tool_use"))
+                .collect(Collectors.toList());
+
+        if (toolUseRequests.isEmpty()) {
+            return AiMessage.from(result.getOutputText());
+        }
+
+        List<ToolExecutionRequest> toolExecutionRequests = toolUseRequests.stream()
+                .map(toolUseRequest -> ToolExecutionRequest.builder()
+                        .id(toolUseRequest.getId())
+                        .name(toolUseRequest.getName())
+                        .arguments(Json.toJson(toolUseRequest.getInput()))
+                        .build())
+                .collect(Collectors.toList());
+
+        return AiMessage.from(toolExecutionRequests);
+    }
+
+    private Object toAnthropicToolSpecifications(List<ToolSpecification> toolSpecifications) {
+        return toolSpecifications.stream()
+                .map(toolSpecification -> BedrockAntropicToolSpecification.builder()
+                        .name(toolSpecification.name())
+                        .description(toolSpecification.description())
+                        .input_schema(toAnthropicToolParameters(toolSpecification.parameters()))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private Object toAnthropicToolParameters(ToolParameters toolParameters) {
+        ObjectNode propertiesNode = new ObjectMapper().createObjectNode();
+        toolParameters.properties().forEach((parameterName, parameterMetadata) -> {
+            ObjectNode parameterNode = new ObjectMapper().createObjectNode();
+            parameterMetadata.forEach((metadataName, metadataValue) -> parameterNode.put(metadataName, metadataValue.toString()));
+            propertiesNode.set(parameterName, parameterNode);
+        });
+
+        ArrayNode requiredNode = new ObjectMapper().createArrayNode();
+        toolParameters.required().forEach(requiredNode::add);
+
+        ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
+        inputSchemaNode.put("type", "object");
+        inputSchemaNode.set("properties", propertiesNode);
+        inputSchemaNode.set("required", requiredNode);
+
+        return inputSchemaNode;
+    }
+
     private List<BedrockAnthropicMessage> getAnthropicMessages(List<ChatMessage> messages) {
         return messages.stream()
             .filter(message -> message.type() != ChatMessageType.SYSTEM)
             .map(message -> new BedrockAnthropicMessage(getAnthropicRole(message), getAnthropicContent(message)))
             .collect(Collectors.toList());
     }
-    
+
     private List<BedrockAnthropicContent> getAnthropicContent(ChatMessage message) {
         if (message instanceof AiMessage) {
-            return Collections.singletonList(new BedrockAnthropicContent("text", ((AiMessage) message).text()));
+            AiMessage aiMessage = (AiMessage) message;
+
+            if (!aiMessage.hasToolExecutionRequests()) {
+                return Collections.singletonList(new BedrockAnthropicContent("text", aiMessage.text()));
+            }
+
+            List<BedrockAnthropicContent> toolUseRequests = aiMessage.toolExecutionRequests().stream()
+                    .map(toolExecutionRequest -> BedrockAnthropicContent.builder()
+                            .id(toolExecutionRequest.id())
+                            .type("tool_use")
+                            .name(toolExecutionRequest.name())
+                            .input(Json.fromJson(toolExecutionRequest.arguments(), Map.class))
+                            .build())
+                    .collect(Collectors.toList());
+
+            return toolUseRequests;
         } else if (message instanceof UserMessage) {
             return ((UserMessage) message).contents().stream()
                 .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
                 .collect(Collectors.toList());
+        } else if (message instanceof ToolExecutionResultMessage) {
+            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+            return Collections.singletonList(
+                    BedrockAnthropicContent.builder()
+                            .type("tool_result")
+                            .tool_use_id(toolExecutionResultMessage.id())
+                            .content(toolExecutionResultMessage.text())
+                            .build()
+            );
         } else {
             throw new IllegalArgumentException("Unknown message type: " + message.type());
         }
     }
-    
+
     private static BedrockAnthropicContent mapContentToAnthropic(Content content) {
         if (content instanceof TextContent) {
             return new BedrockAnthropicContent("text", ((TextContent) content).text());
@@ -112,18 +215,18 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             throw new IllegalArgumentException("Unknown content type: " + content);
         }
     }
-    
+
     private String getAnthropicSystemPrompt(List<ChatMessage> messages) {
         return messages.stream()
             .filter(message -> message.type() == ChatMessageType.SYSTEM)
             .map(ChatMessage::text)
             .collect(joining("\n"));
     }
-    
+
     private String getAnthropicRole(ChatMessage message) {
         return message.type() == ChatMessageType.AI ? "assistant" : "user";
     }
-    
+
     @Override
     public Class<BedrockAnthropicMessageChatModelResponse> getResponseClassType() {
         return BedrockAnthropicMessageChatModelResponse.class;
