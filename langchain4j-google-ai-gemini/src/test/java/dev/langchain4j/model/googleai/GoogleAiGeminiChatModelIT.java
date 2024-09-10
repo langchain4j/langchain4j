@@ -32,7 +32,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.ENUM;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
 import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
@@ -101,6 +100,7 @@ public class GoogleAiGeminiChatModelIT {
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-pro")
             .responseMimeType("application/json")
+            .logRequestsAndResponses(true)
             .build();
 
         // when
@@ -518,9 +518,8 @@ public class GoogleAiGeminiChatModelIT {
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
-            .responseMimeType("text/x.enum")
             .responseFormat(ResponseFormat.builder()
-                .type(ENUM)
+                .type(JSON)
                 .jsonSchema(JsonSchema.builder()
                     .rootElement(JsonEnumSchema.builder()
                         .enumValues("POSITIVE", "NEUTRAL", "NEGATIVE")

@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
@@ -99,14 +100,12 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
 
         this.responseFormat = responseFormat;
         if (responseFormat != null) {
-            if (responseFormat.type().equals(ResponseFormatType.JSON)) {
-                this.responseMimeType = "application/json";
-            } else if (responseFormat.type().equals(ResponseFormatType.ENUM)) {
+            if (responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
                 this.responseMimeType = "text/x.enum";
             } else {
-                this.responseMimeType = "text/plain";
+                this.responseMimeType = "application/json";
             }
-        } else if (responseMimeType != null) {
+        } else if(responseMimeType != null) {
             this.responseMimeType = responseMimeType;
         } else {
             this.responseMimeType = "text/plain";
@@ -159,14 +158,12 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         GeminiSchema schema;
         String responseMimeType = this.responseMimeType;
         if (chatRequest.responseFormat() != null) {
-            schema = fromJsonSchemaToGSchema(chatRequest.responseFormat().jsonSchema());
-            if (chatRequest.responseFormat().type().equals(ResponseFormatType.JSON)) {
-                responseMimeType = "application/json";
-            } else if (chatRequest.responseFormat().type().equals(ResponseFormatType.ENUM)) {
+            if (responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
                 responseMimeType = "text/x.enum";
             } else {
-                responseMimeType = "text/plain";
+                responseMimeType = "application/json";
             }
+            schema = fromJsonSchemaToGSchema(chatRequest.responseFormat().jsonSchema());
         } else if (this.responseFormat != null) {
             schema = fromJsonSchemaToGSchema(this.responseFormat.jsonSchema());
         } else {

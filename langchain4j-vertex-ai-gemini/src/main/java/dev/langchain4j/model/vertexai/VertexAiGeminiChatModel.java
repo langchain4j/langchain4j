@@ -103,7 +103,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             generationConfigBuilder.setResponseMimeType(responseMimeType);
         }
         if (responseSchema != null) {
-            if ("text/x.enum".equals(responseMimeType)) {
+            if (responseSchema.getEnumCount() > 0) {
                 generationConfigBuilder.setResponseMimeType("text/x.enum");
             } else {
                 generationConfigBuilder.setResponseMimeType("application/json");

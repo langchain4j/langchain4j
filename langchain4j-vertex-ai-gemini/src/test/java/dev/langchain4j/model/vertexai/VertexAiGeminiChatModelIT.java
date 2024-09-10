@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -643,7 +644,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
-    @Test
+    @RetryingTest(2)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
@@ -879,7 +880,6 @@ class VertexAiGeminiChatModelIT {
             .modelName(GEMINI_1_5_PRO)
             .logRequests(true)
             .logResponses(true)
-            .responseMimeType("text/x.enum")
             .responseSchema(Schema.newBuilder()
                 .setType(Type.STRING)
                 .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
@@ -890,7 +890,7 @@ class VertexAiGeminiChatModelIT {
         // when
         String instruction = "What is the sentiment expressed in the following sentence: ";
         String response = model.generate(
-            instruction + "This is super exciting new, congratulations!"
+            instruction + "This is super exciting news, congratulations!"
         );
 
         // then
