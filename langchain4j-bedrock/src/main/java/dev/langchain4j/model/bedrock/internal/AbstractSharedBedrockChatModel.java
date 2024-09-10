@@ -14,6 +14,8 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
+import java.time.Duration;
+
 @Getter
 @SuperBuilder
 public abstract class AbstractSharedBedrockChatModel {
@@ -43,6 +45,8 @@ public abstract class AbstractSharedBedrockChatModel {
     protected final String[] stopSequences = new String[]{};
     @Builder.Default
     protected final int topK = 250;
+    @Builder.Default
+    protected final Duration timeout = Duration.ofMinutes(1L);
     @Builder.Default
     protected final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
 

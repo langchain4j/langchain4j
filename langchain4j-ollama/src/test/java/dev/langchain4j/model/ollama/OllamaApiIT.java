@@ -36,13 +36,16 @@ public class OllamaApiIT {
                         .message(message)
                         .build();
 
+                String jsonBody;
                 try {
-                    return new MockResponse()
-                            .setResponseCode(200)
-                            .setBody(OBJECT_MAPPER.writeValueAsString(chatResponse));
+                    jsonBody = OBJECT_MAPPER.writeValueAsString(chatResponse);
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
+
+                return new MockResponse()
+                        .setResponseCode(200)
+                        .setBody(jsonBody);
             }
         };
         mockWebServer.setDispatcher(dispatcher);
