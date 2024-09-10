@@ -17,6 +17,8 @@ import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
+import java.time.Duration;
+
 /**
  * Bedrock chat model
  */
@@ -95,6 +97,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
         return BedrockRuntimeClient.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
+                .overrideConfiguration(c-> c.apiCallTimeout(timeout))
                 .build();
     }
 }
