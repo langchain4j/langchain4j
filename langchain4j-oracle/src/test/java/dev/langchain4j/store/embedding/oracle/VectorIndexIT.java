@@ -197,7 +197,7 @@ public class VectorIndexIT {
         try (Connection connection = CommonTestOperations.getDataSource().getConnection();
              Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(
-                 "SELECT 'OK', index_name, index_type" +
+                 "SELECT 'OK'" +
                      " FROM user_indexes" +
                      " WHERE table_name='" + tableName + "'" +
                      " AND index_name='" + indexName + "'" +
