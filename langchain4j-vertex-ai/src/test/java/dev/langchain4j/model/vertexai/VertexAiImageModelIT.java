@@ -42,7 +42,7 @@ public class VertexAiImageModelIT {
 
     @BeforeEach
     void beforeEach() throws InterruptedException {
-        Thread.sleep(5_000); // to prevent hitting rate limits
+        Thread.sleep(10_000); // to prevent hitting rate limits
     }
 
     @Test

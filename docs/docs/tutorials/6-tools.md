@@ -291,6 +291,21 @@ The value provided to the AI Service method will be automatically passed to the 
 This feature is useful if you have multiple users and/or multiple chats/memories per user
 and wish to distinguish between them inside the `@Tool` method.
 
+## Accessing Executed Tools
+If you wish to access tools executed during the invocation of an AI Service,
+you can easily do so by wrapping the return type in the `Result` class:
+```java
+interface Assistant {
+
+    Result<String> chat(String userMessage);
+}
+
+Result<String> result = assistant.chat("Cancel my booking 123-456");
+
+String answer = result.content();
+List<ToolExecution> toolExecutions = result.toolExecutions();
+```
+
 ### Configuring Tools Programmatically
 
 When using AI Services, tools can also be configured programmatically.
