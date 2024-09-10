@@ -3,7 +3,6 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.internal.Json;
 
 import java.util.List;
 import java.util.Map;
@@ -12,6 +11,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 
 class OllamaMessagesUtils {
 
@@ -48,7 +48,7 @@ class OllamaMessagesUtils {
         return toolCalls.stream().map(toolCall ->
                         ToolExecutionRequest.builder()
                                 .name(toolCall.getFunction().getName())
-                                .arguments(Json.toJson(toolCall.getFunction().getArguments()))
+                                .arguments(toJson(toolCall.getFunction().getArguments()))
                                 .build())
                 .collect(Collectors.toList());
     }
