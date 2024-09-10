@@ -193,7 +193,7 @@ public class VertexAiImageModelIT {
         assertThatExceptionOfType(Throwable.class).isThrownBy(() -> imagenModel.generate("a nude woman"));
     }
 
-    //    @Test
+    @Test
     public void should_generate_one_imagen_v3_with_persistence() {
 //        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "DEBUG");
 
@@ -202,7 +202,7 @@ public class VertexAiImageModelIT {
                 .location(LOCATION)
                 .project(PROJECT)
                 .publisher(PUBLISHER)
-                .modelName("imagen-3.0-generate-preview-0611")
+                .modelName("imagen-3.0-generate-001")
                 .aspectRatio(VertexAiImageModel.AspectRatio.LANDSCAPE)
                 .mimeType(VertexAiImageModel.MimeType.JPEG)
                 .compressionQuality(80)
