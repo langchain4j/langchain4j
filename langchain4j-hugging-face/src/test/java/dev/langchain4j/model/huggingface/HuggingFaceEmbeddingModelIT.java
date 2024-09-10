@@ -2,6 +2,7 @@ package dev.langchain4j.model.huggingface;
 
 import dev.langchain4j.data.embedding.Embedding;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
@@ -9,6 +10,7 @@ import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "HF_API_KEY", matches = ".+")
 class HuggingFaceEmbeddingModelIT {
 
     HuggingFaceEmbeddingModel model = HuggingFaceEmbeddingModel.builder()

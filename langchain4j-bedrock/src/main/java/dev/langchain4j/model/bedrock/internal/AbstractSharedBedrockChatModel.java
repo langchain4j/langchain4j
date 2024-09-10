@@ -1,21 +1,20 @@
 package dev.langchain4j.model.bedrock.internal;
 
+import static java.util.stream.Collectors.joining;
+
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
-import dev.langchain4j.internal.Json;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static java.util.stream.Collectors.joining;
+import java.time.Duration;
 
 @Getter
 @SuperBuilder
@@ -46,6 +45,8 @@ public abstract class AbstractSharedBedrockChatModel {
     protected final String[] stopSequences = new String[]{};
     @Builder.Default
     protected final int topK = 250;
+    @Builder.Default
+    protected final Duration timeout = Duration.ofMinutes(1L);
     @Builder.Default
     protected final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
 
