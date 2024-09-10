@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
+import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
@@ -867,5 +868,50 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("Gemini");
+    }
+
+    @Test
+    void should_support_enum_structured_output() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .responseMimeType("text/x.enum")
+            .responseSchema(Schema.newBuilder()
+                .setType(Type.STRING)
+                .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
+                .build())
+            .build();
+
+
+        // when
+        String instruction = "What is the sentiment expressed in the following sentence: ";
+        String response = model.generate(
+            instruction + "This is super exciting new, congratulations!"
+        );
+
+        // then
+        assertThat(response).isEqualTo("POSITIVE");
+
+        // when
+        response = model.generate(
+            instruction + "The sky is blue."
+        );
+
+        // then
+        assertThat(response).isEqualTo("NEUTRAL");
+
+        // when
+        response = model.generate(
+            instruction + "This is the worst movie I've ever watched! Boring!"
+        );
+
+        // then
+        assertThat(response).isEqualTo("NEGATIVE");
+
+
     }
 }

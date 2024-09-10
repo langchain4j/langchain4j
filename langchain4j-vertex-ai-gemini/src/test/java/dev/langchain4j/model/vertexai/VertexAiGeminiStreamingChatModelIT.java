@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
+import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
@@ -748,5 +749,51 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(handler.get().content().text()).containsIgnoringCase("Gemini");
+    }
+
+    @Test
+    void should_support_enum_structured_output() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .responseMimeType("text/x.enum")
+            .responseSchema(Schema.newBuilder()
+                .setType(Type.STRING)
+                .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
+                .build())
+            .build();
+
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        String instruction = "What is the sentiment expressed in the following sentence: ";
+        model.generate(
+            instruction + "This is super exciting new, congratulations!", handler
+        );
+
+        // then
+        assertThat(handler.get().content().text()).isEqualTo("POSITIVE");
+
+        // when
+        handler = new TestStreamingResponseHandler<>();
+        model.generate(
+            instruction + "The sky is blue.", handler
+        );
+
+        // then
+        assertThat(handler.get().content().text()).isEqualTo("NEUTRAL");
+
+        // when
+        handler = new TestStreamingResponseHandler<>();
+        model.generate(
+            instruction + "This is the worst movie I've ever watched! Boring!", handler
+        );
+
+        // then
+        assertThat(handler.get().content().text()).isEqualTo("NEGATIVE");
     }
 }
