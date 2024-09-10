@@ -67,7 +67,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param useGrpcForInserts Use GRPC instead of HTTP for batch inserts only. <b>You still need HTTP configured for search</b>
      * @param securedGrpc       The GRPC connection is secured
      * @param grpcPort          The port, e.g. 50051. This parameter is optional.
-     * @param textFieldName     The key in metadata that contains the text. Default is "text".
+     * @param textFieldName     The name of the field that contains the text of a {@link TextSegment}. Default is "text".
      */
     @Builder
     public WeaviateEmbeddingStore(
