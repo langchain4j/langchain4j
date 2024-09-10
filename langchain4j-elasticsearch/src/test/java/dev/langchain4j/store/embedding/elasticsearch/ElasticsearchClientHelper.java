@@ -13,6 +13,7 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.message.BasicHeader;
+import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.slf4j.Logger;
@@ -87,6 +88,10 @@ class ElasticsearchClientHelper {
         // We remove the indices in case we were running with a local test instance
         // we don't keep dirty things around
         client.indices().delete(dir -> dir.index(indexName).ignoreUnavailable(true));
+    }
+
+    void refreshIndex(String indexName) throws IOException {
+        restClient.performRequest(new Request("POST", "/" + indexName + "/_refresh"));
     }
 
     /**

@@ -4,6 +4,7 @@ hide_title: false
 sidebar_position: 0
 ---
 
+
 | Embedding Store                                                                       | Storing Metadata | Filtering by Metadata      | Removing Embeddings |
 |---------------------------------------------------------------------------------------|------------------|----------------------------|---------------------|
 | [In-memory](/integrations/embedding-stores/in-memory)                                 | ✅                | ✅                          | ✅                   |
@@ -13,6 +14,7 @@ sidebar_position: 0
 | [Azure CosmosDB NoSQL](/integrations/embedding-stores/azure-cosmos-nosql)             | ✅                |                            |                     |
 | [Cassandra](/integrations/embedding-stores/cassandra)                                 | ✅                |                            |                     |
 | [Chroma](/integrations/embedding-stores/chroma)                                       | ✅                | ✅                          | ✅                   |
+| [Couchbase](/integrations/embedding-stores/couchbase)                                 | ✅                |                       | ✅                   |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                          | ✅                   |
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                |                            |                     |
 | [Milvus](/integrations/embedding-stores/milvus)                                       | ✅                | ✅                          | ✅                   |

@@ -2,6 +2,7 @@ package dev.langchain4j.model.jlama;
 
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
+import com.github.tjake.jlama.safetensors.prompt.PromptContext;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.jlama.spi.JlamaLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
@@ -54,6 +55,7 @@ public class JlamaLanguageModel implements LanguageModel {
             case STOP_TOKEN -> FinishReason.STOP;
             case MAX_TOKENS -> FinishReason.LENGTH;
             case ERROR -> FinishReason.OTHER;
+            case TOOL_CALL -> FinishReason.TOOL_EXECUTION;
             default -> throw new IllegalArgumentException("Unknown reason: " + reason);
         };
     }
@@ -67,9 +69,8 @@ public class JlamaLanguageModel implements LanguageModel {
 
     @Override
     public Response<String> generate(String prompt) {
-        Generator.Response r = model.generate(id, prompt, temperature, maxTokens, false, (token, time) -> {
-        });
-        return Response.from(r.text, new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
+        Generator.Response r = model.generate(id, PromptContext.of(prompt), temperature, maxTokens, (token, time) -> {});
+        return Response.from(r.responseText, new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
     }
 
     public static class JlamaLanguageModelBuilder {

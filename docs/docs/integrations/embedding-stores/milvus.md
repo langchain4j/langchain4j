@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 10
 ---
 
 # Milvus
@@ -13,7 +13,7 @@ https://milvus.io/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-milvus</artifactId>
-    <version>0.33.0</version>
+    <version>0.34.0</version>
 </dependency>
 ```
 
