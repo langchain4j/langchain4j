@@ -49,7 +49,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * If the table does not already exist, it can be created by passing a {@link CreateOption} to
  * {@link Builder#embeddingTable(String, CreateOption)} or to {@link EmbeddingTable.Builder#createOption(CreateOption)}.
  * </p><p>
- * By default no index is create on the {@link EmbeddingTable}. The {@link Builder#index(Index...)} allows to create
+ * By default no index is created on the {@link EmbeddingTable}. The {@link Builder#index(Index...)} allows to create
  * indexes on the embedding and metadata columns of the embedding table. Two builders allow to configure an {@link
  * Index}: {@link IVFIndexBuilder} to configure an IVF index on the embedding column and {@link JSONIndexBuilder} to
  * configure function-based indexes on keys of the metadata column.
