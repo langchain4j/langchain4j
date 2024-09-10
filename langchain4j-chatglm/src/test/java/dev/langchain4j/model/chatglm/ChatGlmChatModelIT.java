@@ -19,6 +19,7 @@ class ChatGlmChatModelIT {
 
     ChatLanguageModel model = ChatGlmChatModel.builder()
             .baseUrl("http://localhost:8000")
+            .logRequestsAndResponses(true)
             .build();
 
     @Test
