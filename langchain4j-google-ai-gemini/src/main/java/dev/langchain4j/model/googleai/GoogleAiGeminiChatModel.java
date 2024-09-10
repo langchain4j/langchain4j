@@ -104,8 +104,11 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
 
         this.responseFormat = responseFormat;
         if (responseFormat != null) {
-            if (responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
+            if (responseFormat.jsonSchema() != null &&
+                responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
                 this.responseMimeType = "text/x.enum";
+            } else if (ResponseFormatType.TEXT.equals(responseFormat.type())) {
+                this.responseMimeType = "text/plain";
             } else {
                 this.responseMimeType = "application/json";
             }
@@ -154,7 +157,6 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-
         GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(chatRequest.messages(), systemInstruction);
         List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
@@ -162,13 +164,14 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         GeminiSchema schema;
         String responseMimeType = this.responseMimeType;
         if (chatRequest.responseFormat() != null) {
-            if (responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
+            if (responseFormat.jsonSchema() != null &&
+                responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
                 responseMimeType = "text/x.enum";
             } else {
                 responseMimeType = "application/json";
             }
             schema = fromJsonSchemaToGSchema(chatRequest.responseFormat().jsonSchema());
-        } else if (this.responseFormat != null) {
+        } else if (this.responseFormat != null && this.responseFormat.jsonSchema() != null) {
             schema = fromJsonSchemaToGSchema(this.responseFormat.jsonSchema());
         } else {
             schema = null;
@@ -242,7 +245,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>();
         // when response format is not null, it's always application/json or text/x.enum as mime type
-        if (this.responseFormat != null) {
+        if (this.responseFormat != null && this.responseFormat.jsonSchema() != null) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
