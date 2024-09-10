@@ -83,7 +83,7 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
 
         TextGenerationResponse textGenerationResponse = client.chat(request);
 
-        return Response.from(AiMessage.from(textGenerationResponse.generatedText()));
+        return Response.from(AiMessage.from(textGenerationResponse.getGeneratedText()));
     }
 
     public static Builder builder() {
