@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
@@ -29,6 +30,7 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelIT {
@@ -144,6 +146,39 @@ class BedrockChatModelIT {
         assertThat(secondTokenUsage.totalTokenCount()).isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void testFunctionCallingWithBedrockAnthropicChatModelWithoutToolsSupport() {
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+                .builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue())
+                .maxRetries(1)
+                .build();
+
+        assertThat(bedrockChatModel).isNotNull();
+
+        ToolSpecification calculator = ToolSpecification.builder()
+                .name("calculator")
+                .description("returns a sum of two numbers")
+                .addParameter("first", INTEGER)
+                .addParameter("second", INTEGER)
+                .build();
+
+        assertThat(calculator).isNotNull();
+
+        UserMessage userMessage = UserMessage.from("2+2=?");
+
+        IllegalArgumentException exception = Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> bedrockChatModel.generate(singletonList(userMessage), calculator),
+                "Expected generate() to throw, but it didn't"
+        );
+
+        assertEquals("Tools are currently not supported by this model", exception.getMessage());
     }
 
     @Test
