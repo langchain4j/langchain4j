@@ -96,7 +96,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.32.0</version>
+    <version>0.34.0</version>
 </dependency>
 ```
 
@@ -204,6 +204,20 @@ Result<String> result = assistant.chat("How to do Easy RAG with LangChain4j?");
 
 String answer = result.content();
 List<Content> sources = result.sources();
+```
+
+When streaming, a `Consumer<List<Content>>` can be specified using the `onRetrieved()` method:
+```java
+interface Assistant {
+
+    TokenStream chat(String userMessage);
+}
+
+assistant.chat("How to do Easy RAG with LangChain4j?")
+    .onRetrieved(sources -> ...)
+    .onNext(token -> ...)
+    .onError(error -> ...)
+    .start();
 ```
 
 ## RAG APIs
@@ -677,9 +691,7 @@ ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
 #### Web Search Content Retriever
 `WebSearchContentRetriever` retrieves relevant `Content` from the web using a `WebSearchEngine`.
 
-There are currently 2 implementations of the `WebSearchEngine` interface:
-- `GoogleCustomWebSearchEngine` in the `langchain4j-web-search-engine-google-custom` module
-- `TavilyWebSearchEngine` in the `langchain4j-web-search-engine-tavily` module
+All supported `WebSearchEngine` integrations can be [found here](/category/web-search-engines).
 
 Here is an example:
 ```java
@@ -742,6 +754,20 @@ More details are coming soon.
 `DefaultContentInjector`
 
 More details are coming soon.
+
+### Parallelization
+
+When there is only a single `Query` and a single `ContentRetriever`,
+`DefaultRetrievalAugmentor` performs query routing and content retrieval in the same thread.
+Otherwise, an `Executor` is used to parallelize the processing.
+By default, a modified (`keepAliveTime` is 1 second instead of 60 seconds) `Executors.newCachedThreadPool()`
+is used, but you can provide a custom `Executor` instance when creating the `DefaultRetrievalAugmentor`:
+```java
+DefaultRetrievalAugmentor.builder()
+        ...
+        .executor(executor)
+        .build;
+```
 
 ## Examples
 

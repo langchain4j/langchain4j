@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -35,9 +36,11 @@ class BedrockChatModelIT {
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
                 .maxRetries(1)
+                .timeout(Duration.ofMinutes(2L))
                 .build();
 
         assertThat(bedrockChatModel).isNotNull();
+        assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(2L);
 
         Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
 
@@ -60,6 +63,7 @@ class BedrockChatModelIT {
                 .build();
 
         assertThat(bedrockChatModel).isNotNull();
+        assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(1L);
 
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         ImageContent imageContent = ImageContent.from(base64Data, "image/png");
@@ -186,9 +190,11 @@ class BedrockChatModelIT {
         assertThat(response.tokenUsage()).isNotNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
-        assertThat(tokenUsage.totalTokenCount()).isGreaterThan(15);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
         assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
 

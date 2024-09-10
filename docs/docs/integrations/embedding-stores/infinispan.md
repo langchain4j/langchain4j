@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 ---
 
 # Infinispan
@@ -13,7 +13,7 @@ https://infinispan.org/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-infinispan</artifactId>
-    <version>0.32.0</version>
+    <version>0.34.0</version>
 </dependency>
 ```
 

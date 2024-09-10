@@ -10,9 +10,25 @@ public enum ContentType {
      */
     TEXT(TextContent.class),
     /**
+     * Text file content.
+     */
+    TEXT_FILE(TextFileContent.class),
+    /**
      * Image content.
      */
-    IMAGE(ImageContent.class);
+    IMAGE(ImageContent.class),
+    /**
+     * Audio content.
+     */
+    AUDIO(AudioContent.class),
+    /**
+     * Video content.
+     */
+    VIDEO(VideoContent.class),
+    /**
+     * PDF file content.
+     */
+    PDF(PdfFileContent.class);
 
     private final Class<? extends Content> contentClass;
 

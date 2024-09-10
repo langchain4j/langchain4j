@@ -1,27 +1,21 @@
 package dev.langchain4j.model.chatglm;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import dev.langchain4j.internal.Utils;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.time.Duration.ofSeconds;
 
 class ChatGlmClient {
 
     private final ChatGlmApi chatGLMApi;
-    private static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
-            .create();
-
 
     @Builder
     public ChatGlmClient(String baseUrl, Duration timeout) {
@@ -35,9 +29,9 @@ class ChatGlmClient {
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClient)
-                .addConverterFactory(GsonConverterFactory.create(GSON))
+                .addConverterFactory(JacksonConverterFactory.create())
                 .build();
 
         chatGLMApi = retrofit.create(ChatGlmApi.class);

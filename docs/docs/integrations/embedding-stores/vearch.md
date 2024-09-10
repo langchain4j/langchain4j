@@ -1,5 +1,5 @@
 ---
-sidebar_position: 17
+sidebar_position: 18
 ---
 
 # Vearch
@@ -13,7 +13,7 @@ https://github.com/vearch/vearch
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-vearch</artifactId>
-    <version>0.32.0</version>
+    <version>0.34.0</version>
 </dependency>
 ```
 

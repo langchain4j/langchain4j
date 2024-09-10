@@ -1,7 +1,7 @@
 package dev.langchain4j.model.ollama;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -26,14 +26,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.getObjectMapper;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 import static java.lang.Boolean.TRUE;
 
 @Slf4j
 class OllamaClient {
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(INDENT_OUTPUT);
 
     private final OllamaApi ollamaApi;
     private final boolean logStreamingResponses;
@@ -63,9 +61,9 @@ class OllamaClient {
         OkHttpClient okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/")
+                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClient)
-                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+                .addConverterFactory(JacksonConverterFactory.create(getObjectMapper()))
                 .build();
 
         ollamaApi = retrofit.create(OllamaApi.class);
@@ -117,7 +115,7 @@ class OllamaClient {
                             log.debug("Streaming partial response: {}", partialResponse);
                         }
 
-                        CompletionResponse completionResponse = OBJECT_MAPPER.readValue(partialResponse, CompletionResponse.class);
+                        CompletionResponse completionResponse = toObject(partialResponse, CompletionResponse.class);
                         contentBuilder.append(completionResponse.getResponse());
                         handler.onNext(completionResponse.getResponse());
 
@@ -160,7 +158,7 @@ class OllamaClient {
                                 log.debug("Streaming partial response: {}", partialResponse);
                             }
 
-                            ChatResponse chatResponse = OBJECT_MAPPER.readValue(partialResponse, ChatResponse.class);
+                            ChatResponse chatResponse = toObject(partialResponse, ChatResponse.class);
                             String content = chatResponse.getMessage().getContent();
                             contentBuilder.append(content);
                             handler.onNext(content);
@@ -192,7 +190,7 @@ class OllamaClient {
 
     public EmbeddingResponse embed(EmbeddingRequest request) {
         try {
-            retrofit2.Response<EmbeddingResponse> retrofitResponse = ollamaApi.embedd(request).execute();
+            retrofit2.Response<EmbeddingResponse> retrofitResponse = ollamaApi.embed(request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -219,6 +217,32 @@ class OllamaClient {
     public OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
         try {
             retrofit2.Response<OllamaModelCard> retrofitResponse = ollamaApi.showInformation(showInformationRequest).execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public RunningModelsListResponse listRunningModels() {
+        try {
+            retrofit2.Response<RunningModelsListResponse> retrofitResponse = ollamaApi.listRunningModels().execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Void deleteModel(DeleteModelRequest deleteModelRequest) {
+        try {
+            retrofit2.Response<Void> retrofitResponse = ollamaApi.deleteModel(deleteModelRequest).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {

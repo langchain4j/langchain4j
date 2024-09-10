@@ -19,6 +19,7 @@ class OpenAiEmbeddingModelIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(TEXT_EMBEDDING_3_SMALL)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -31,7 +32,6 @@ class OpenAiEmbeddingModelIT {
 
         // when
         Response<Embedding> response = model.embed(text);
-        System.out.println(response);
 
         // then
         assertThat(response.content().vector()).hasSize(1536);
@@ -55,7 +55,6 @@ class OpenAiEmbeddingModelIT {
 
         // when
         Response<List<Embedding>> response = model.embedAll(segments);
-        System.out.println(response);
 
         // then
         assertThat(response.content()).hasSize(2);
@@ -80,7 +79,7 @@ class OpenAiEmbeddingModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName("text-embedding-3-small")
+                .modelName(TEXT_EMBEDDING_3_SMALL)
                 .dimensions(dimension)
                 .logRequests(true)
                 .logResponses(true)
@@ -90,40 +89,9 @@ class OpenAiEmbeddingModelIT {
 
         // when
         Response<Embedding> response = model.embed(text);
-        System.out.println(response);
 
         // then
         assertThat(response.content().dimension()).isEqualTo(dimension);
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);
-        assertThat(tokenUsage.outputTokenCount()).isNull();
-        assertThat(tokenUsage.totalTokenCount()).isEqualTo(2);
-
-        assertThat(response.finishReason()).isNull();
-    }
-
-    @Test
-    void should_use_enum_as_model_name() {
-
-        // given
-        EmbeddingModel model = OpenAiEmbeddingModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(TEXT_EMBEDDING_3_SMALL)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        String text = "hello world";
-
-        // when
-        Response<Embedding> response = model.embed(text);
-        System.out.println(response);
-
-        // then
-        assertThat(response.content().vector()).hasSize(1536);
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);

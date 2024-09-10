@@ -3,10 +3,12 @@ package dev.langchain4j.store.embedding.vearch;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.*;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
@@ -194,8 +196,6 @@ class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
             Embedding altEmbedding = embeddingModel().embed(altSegment.text()).content();
             embeddingStore().add(altEmbedding, altSegment);
         }
-
-        awaitUntilPersisted();
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 1);
         assertThat(relevant).hasSize(1);

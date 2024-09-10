@@ -9,6 +9,7 @@ import lombok.Builder;
 import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -115,14 +116,16 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         if (includeImages && !searchTypeImage) {
             requestQuery.setSearchType("image");
             Search imagesSearch = googleCustomSearchApiClient.searchResults(requestQuery);
-            List<ImageSearchResult> images = imagesSearch.getItems().stream()
-                    .map(result -> ImageSearchResult.from(
-                            result.getTitle(),
-                            URI.create(result.getLink()),
-                            URI.create(result.getImage().getContextLink()),
-                            URI.create(result.getImage().getThumbnailLink())))
-                    .collect(toList());
-            addImagesToSearchInformation(searchInformationMetadata, images);
+            if (!isNullOrEmpty(imagesSearch.getItems())){
+                List<ImageSearchResult> images = imagesSearch.getItems().stream()
+                        .map(result -> ImageSearchResult.from(
+                                result.getTitle(),
+                                URI.create(result.getLink()),
+                                URI.create(result.getImage().getContextLink()),
+                                URI.create(result.getImage().getThumbnailLink())))
+                        .collect(toList());
+                addImagesToSearchInformation(searchInformationMetadata, images);
+            }
         }
 
         return WebSearchResults.from(
@@ -132,14 +135,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
                         !isNullOrEmpty(search.getQueries().getRequest())
                                 ? calculatePageNumberFromQueries(search.getQueries().getRequest().get(0)) : 1,
                         searchInformationMetadata.isEmpty() ? null : searchInformationMetadata),
-                search.getItems().stream()
-                        .map(result -> WebSearchOrganicResult.from(
-                                result.getTitle(),
-                                URI.create(result.getLink()),
-                                result.getSnippet(),
-                                null, // by default google custom search api does not return content
-                                toResultMetadataMap(result, searchTypeImage)
-                        )).collect(toList()));
+                toWebSearchOrganicResults(search, searchTypeImage));
     }
 
     private static void addImagesToSearchInformation(Map<String, Object> searchInformationMetadata, List<ImageSearchResult> images) {
@@ -186,6 +182,21 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
             return metadata;
         }
         return null;
+    }
+
+    private static List<WebSearchOrganicResult> toWebSearchOrganicResults(Search search, Boolean searchTypeImage) {
+        List<WebSearchOrganicResult>  organicResults = new ArrayList<>();
+        if (!isNullOrEmpty(search.getItems())) {
+            organicResults = search.getItems().stream()
+                    .map(result -> WebSearchOrganicResult.from(
+                            result.getTitle(),
+                            URI.create(result.getLink()),
+                            result.getSnippet(),
+                            null, // by default google custom search api does not return content
+                            toResultMetadataMap(result, searchTypeImage)
+                    )).collect(toList());
+        }
+        return organicResults;
     }
 
     private static Integer calculatePageNumberFromQueries(GenericJson query) {

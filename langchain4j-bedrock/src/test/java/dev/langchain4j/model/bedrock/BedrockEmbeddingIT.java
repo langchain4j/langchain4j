@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BedrockEmbeddingIT {
 
     @Test
-    void testBedrockTitanChatModel() {
+    void testBedrockTitanEmbeddingModelV1() {
 
         BedrockTitanEmbeddingModel embeddingModel = BedrockTitanEmbeddingModel
                 .builder()
@@ -48,4 +48,39 @@ class BedrockEmbeddingIT {
 
         assertThat(embeddingModel.dimension()).isEqualTo(1536);
     }
+
+    @Test
+    void testBedrockTitanEmbeddingModelV2() {
+        BedrockTitanEmbeddingModel embeddingModel = BedrockTitanEmbeddingModel
+                .builder()
+                .region(Region.US_EAST_1)
+                .maxRetries(1)
+                .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV2.getValue())
+                .dimensions(256)
+                .normalize(true)
+                .build();
+
+        assertThat(embeddingModel).isNotNull();
+
+        List<TextSegment> segments = Collections.singletonList(TextSegment.from("How are you?"));
+
+        Response<List<Embedding>> response = embeddingModel.embedAll(segments);
+        assertThat(response).isNotNull();
+
+        List<Embedding> embeddings = response.content();
+        assertThat(embeddings).hasSize(1);
+
+        Embedding embedding = embeddings.get(0);
+        assertThat(embedding.vector()).hasSize(256);
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(5);
+        assertThat(tokenUsage.outputTokenCount()).isNull();
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(5);
+
+        assertThat(response.finishReason()).isNull();
+
+        assertThat(embeddingModel.dimension()).isEqualTo(256);
+    }
+
 }
