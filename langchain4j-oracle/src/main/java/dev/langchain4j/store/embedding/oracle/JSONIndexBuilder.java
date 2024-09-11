@@ -59,6 +59,8 @@ public class JSONIndexBuilder extends IndexBuilder<JSONIndexBuilder> {
     DESC
   }
 
+  JSONIndexBuilder() { }
+
   /**
    * Specify UNIQUE to indicate that the value of the column (or columns) upon
    * which the index is based must be unique.

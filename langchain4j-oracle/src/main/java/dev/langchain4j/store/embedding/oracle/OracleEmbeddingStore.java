@@ -599,8 +599,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         /**
          * Configures the indexes that will be created on the {@link EmbeddingTable}. Two types of
-         * indexes can be created {@link IVFIndexBuilder} and {@link JSONIndex}.
-         * @param indexBuilders Indexes to create.
+         * indexes can be created {@link IVFIndexBuilder} and {@link JSONIndexBuilder}.
+         * @param indexes Indexes to create.
          * @return This builder.
          */
         public Builder index(Index... indexes) {

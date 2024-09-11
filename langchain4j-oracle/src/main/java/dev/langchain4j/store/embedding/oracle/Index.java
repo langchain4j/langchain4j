@@ -10,11 +10,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 /**
  * <p>
  *   Represents a database index. Indexes can be configured using two builders:
+ * </p>
  *   <ul>
  *     <li>{@link IVFIndexBuilder}</li>
  *     <li>{@link JSONIndexBuilder}</li>
  *   </ul>
- * </p>
  * <p>
  *   {@link IVFIndexBuilder} allows to configure an Inverted File Flat (IVF) index
  *   on the embedding column of the {@link EmbeddingTable}.

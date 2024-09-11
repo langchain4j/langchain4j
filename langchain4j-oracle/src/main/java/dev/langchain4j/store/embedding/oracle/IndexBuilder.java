@@ -11,9 +11,14 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  *   JSONIndexBuilder} allow to index keys of the metadata column of the
  *   embedding table.
  * </p>
+ * @param <T> The index builder's type.
  */
-public abstract class IndexBuilder<T extends IndexBuilder> {
+abstract class IndexBuilder<T extends IndexBuilder> {
   static final int INDEX_NAME_MAX_LENGTH = 128;
+
+  /**
+   * The name of the index, or null if no name was set.
+   */
   protected String indexName;
 
   /**
