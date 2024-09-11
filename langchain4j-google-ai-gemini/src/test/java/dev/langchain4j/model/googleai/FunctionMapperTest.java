@@ -56,9 +56,9 @@ public class FunctionMapperTest {
         assertThat(toolSpecifications.size()).isEqualTo(1);
         assertThat(toolSpecifications.get(0).name()).isEqualTo("distanceBetween");
         assertThat(toolSpecifications.get(0).description()).isEqualTo("Get the distance between the user and the ISS.");
-        assertThat(toolSpecifications.get(0).parameters().type()).isEqualTo("object");
-        assertThat(toolSpecifications.get(0).parameters().properties().size()).isEqualTo(2);
-        assertThat(toolSpecifications.get(0).parameters().properties().keySet()).containsAll(Arrays.asList("userCoordinates", "issCoordinates"));
+        assertThat(toolSpecifications.get(0).toolParameters().type()).isEqualTo("object");
+        assertThat(toolSpecifications.get(0).toolParameters().properties().size()).isEqualTo(2);
+        assertThat(toolSpecifications.get(0).toolParameters().properties().keySet()).containsAll(Arrays.asList("userCoordinates", "issCoordinates"));
 
         // when
         GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false);

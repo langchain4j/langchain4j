@@ -113,8 +113,9 @@ class JlamaModel {
                 .name(toolSpecification.name())
                 .description(toolSpecification.description());
 
-        for (Map.Entry<String, Map<String, Object>> p : toolSpecification.parameters().properties().entrySet()) {
-            builder.addParameter(p.getKey(), p.getValue(), toolSpecification.parameters().required().contains(p.getKey()));
+        ToolParameters toolParameters = toolSpecification.toolParameters();
+        for (Map.Entry<String, Map<String, Object>> p : toolParameters.properties().entrySet()) {
+            builder.addParameter(p.getKey(), p.getValue(), toolParameters.required().contains(p.getKey()));
         }
 
         return Tool.from(builder.build());

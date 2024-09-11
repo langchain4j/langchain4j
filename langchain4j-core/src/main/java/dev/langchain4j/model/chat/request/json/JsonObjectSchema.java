@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat.request.json;
 
-import com.google.gson.annotations.SerializedName;
 import dev.langchain4j.Experimental;
 
 import java.util.ArrayList;
@@ -19,7 +18,6 @@ public class JsonObjectSchema implements JsonSchemaElement {
     private final String description;
     private final Map<String, JsonSchemaElement> properties;
     private final List<String> required; // TODO Collection?
-    @SerializedName("additionalProperties")
     private final Boolean additionalProperties;
 
     public JsonObjectSchema(Builder builder) {

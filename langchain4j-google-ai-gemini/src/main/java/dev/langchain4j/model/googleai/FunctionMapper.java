@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
 import java.util.*;
@@ -42,8 +43,9 @@ class FunctionMapper {
                 if (specification.description() != null) {
                     fnBuilder.description(specification.description());
                 }
-                if (specification.parameters() != null) {
-                    Map<String, Map<String, Object>> properties = specification.parameters().properties();
+                ToolParameters toolParameters = specification.toolParameters();
+                if (toolParameters != null) {
+                    Map<String, Map<String, Object>> properties = toolParameters.properties();
 
                     String type = "object";
                     String description = specification.description();
