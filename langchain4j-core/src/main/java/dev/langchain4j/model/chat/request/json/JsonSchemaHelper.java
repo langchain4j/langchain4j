@@ -15,13 +15,14 @@ import java.util.Set;
 import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
 import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
 import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
+import static dev.langchain4j.internal.TypeUtils.isJsonString;
 import static java.lang.reflect.Modifier.isStatic;
 
 public class JsonSchemaHelper { // TODO name, place
 
     public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz, Type type, String fieldDescription) {
 
-        if (clazz == String.class) {
+        if (isJsonString(clazz)) {
             return JsonStringSchema.builder()
                     .description(fieldDescription)
                     .build();
