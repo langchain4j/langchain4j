@@ -72,7 +72,7 @@ OracleEmbeddingStore.builder()
 ```
 
 The builder allows to create an indexes on the embedding and metadata columns of the
-EmbeddingTable by providing an instance of the Index class. The builders allow to 
+EmbeddingTable by providing an instance of the Index class. Two builders allow to 
 create instances of the Index class: IVFIndexBuilder and JSONIndexBuilder.
 
 *IVFIndexBuilder* allows to configure an **IVF (Inverted File Flat)** index on the embedding
