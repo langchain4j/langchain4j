@@ -285,12 +285,14 @@ class InternalAzureOpenAiHelper {
         return BinaryData.fromObject(parameters);
     }
 
+    // TODO extract
     private static Map<String, Map<String, Object>> toOpenAiProperties(Map<String, JsonSchemaElement> properties) {
         Map<String, Map<String, Object>> openAiProperties = new LinkedHashMap<>();
         properties.forEach((key, value) -> openAiProperties.put(key, toOpenAiProperties(value)));
         return openAiProperties;
     }
 
+    // TODO extract
     private static Map<String, Object> toOpenAiProperties(JsonSchemaElement jsonSchemaElement) {
         if (jsonSchemaElement instanceof JsonObjectSchema) {
             JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
@@ -373,7 +375,7 @@ class InternalAzureOpenAiHelper {
 
         private final String type = "object";
 
-        private Map<String, ?> properties = new HashMap<>();
+        private Map<String, Map<String, Object>> properties = new HashMap<>();
 
         private List<String> required = new ArrayList<>();
 
@@ -381,7 +383,7 @@ class InternalAzureOpenAiHelper {
             return this.type;
         }
 
-        public Map<String, ?> getProperties() {
+        public Map<String, Map<String, Object>> getProperties() {
             return properties;
         }
 
