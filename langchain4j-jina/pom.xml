@@ -4,7 +4,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.34.0-SNAPSHOT</version>
+        <version>0.35.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -18,10 +18,17 @@
             <artifactId>langchain4j-core</artifactId>
         </dependency>
 
+        <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (START) -->
         <dependency>
             <groupId>com.squareup.retrofit2</groupId>
             <artifactId>retrofit</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib-jdk8</artifactId>
+        </dependency>
+        <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (END)  -->
 
         <dependency>
             <groupId>com.squareup.retrofit2</groupId>

@@ -4,11 +4,18 @@ import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.ModelSupport;
 import com.github.tjake.jlama.safetensors.DType;
 import com.github.tjake.jlama.safetensors.SafeTensorSupport;
+import com.github.tjake.jlama.safetensors.prompt.Function;
+import com.github.tjake.jlama.safetensors.prompt.Parameters;
+import com.github.tjake.jlama.safetensors.prompt.Tool;
+import dev.langchain4j.agent.tool.ToolParameters;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import lombok.Getter;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -99,5 +106,17 @@ class JlamaModel {
                     Optional.ofNullable(threadCount),
                     Optional.empty());
         }
+    }
+
+    public static Tool toTool(ToolSpecification toolSpecification) {
+        Function.Builder builder = Function.builder()
+                .name(toolSpecification.name())
+                .description(toolSpecification.description());
+
+        for (Map.Entry<String, Map<String, Object>> p : toolSpecification.parameters().properties().entrySet()) {
+            builder.addParameter(p.getKey(), p.getValue(), toolSpecification.parameters().required().contains(p.getKey()));
+        }
+
+        return Tool.from(builder.build());
     }
 }

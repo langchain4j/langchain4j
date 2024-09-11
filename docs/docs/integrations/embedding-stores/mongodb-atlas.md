@@ -1,5 +1,5 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 ---
 
 # MongoDB Atlas and Vector Search
@@ -24,7 +24,7 @@ To use Atlas Vector search, you need to have an Atlas deployment. MongoDB offers
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mongodb-atlas</artifactId>
-    <version>0.33.0</version>
+    <version>0.34.0</version>
 </dependency>
 ```
 

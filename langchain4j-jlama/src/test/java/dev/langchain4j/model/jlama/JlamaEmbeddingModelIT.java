@@ -3,8 +3,6 @@ package dev.langchain4j.model.jlama;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
-import org.assertj.core.util.Files;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +10,7 @@ import java.io.File;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JlamaEmbeddingModelIT {
+class JlamaEmbeddingModelIT {
 
     static File tmpDir;
 

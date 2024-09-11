@@ -20,7 +20,6 @@ import dev.langchain4j.model.zhipu.chat.*;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
 import dev.langchain4j.model.zhipu.shared.ErrorResponse;
 import dev.langchain4j.model.zhipu.shared.Usage;
-import lombok.Cleanup;
 import okhttp3.ResponseBody;
 
 import java.io.IOException;
@@ -212,7 +211,7 @@ class DefaultZhipuAiHelper {
                     .finishReason(FINISH_REASON_OTHER)
                     .build();
         }
-        @Cleanup ResponseBody errorBody = ((retrofit2.Response<?>) object).errorBody();
+        ResponseBody errorBody = ((retrofit2.Response<?>) object).errorBody();
 
         if (errorBody == null) {
             return ChatCompletionChoice.builder()
@@ -232,6 +231,8 @@ class DefaultZhipuAiHelper {
                     .message(AssistantMessage.builder().content(e.getMessage()).build())
                     .finishReason(FINISH_REASON_OTHER)
                     .build();
+        } finally {
+            errorBody.close();
         }
     }
 

@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.34.0-SNAPSHOT</version>
+        <version>0.35.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -113,5 +113,18 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <!-- ocom.oracle.database.jdbc:ojdbc8 has a FUTC license -->
+                    <skipCompliance>true</skipCompliance>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
