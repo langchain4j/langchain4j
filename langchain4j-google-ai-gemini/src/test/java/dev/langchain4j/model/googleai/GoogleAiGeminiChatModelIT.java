@@ -539,8 +539,6 @@ public class GoogleAiGeminiChatModelIT {
             )
             .build());
 
-        System.out.println("response = " + response);
-
         // then
         assertThat(response.aiMessage().text().trim())
             .isEqualTo("POSITIVE");
