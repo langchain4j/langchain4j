@@ -195,6 +195,8 @@ class OllamaClient {
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable throwable) {
                 handler.onError(throwable);
+
+                onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), new ConcurrentHashMap<>());
             }
         });
     }

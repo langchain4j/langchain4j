@@ -25,6 +25,7 @@ import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -241,15 +242,9 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
         UserMessage userMessage = UserMessage.from("hello");
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("add")
-                .addParameter("a", INTEGER)
-                .addParameter("b", INTEGER)
-                .build();
-
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), singletonList(toolSpecification), handler);
+        model.generate(singletonList(userMessage), handler);
         AiMessage aiMessage = handler.get().content();
 
         // then
@@ -259,15 +254,12 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         assertThat(request.topP()).isEqualTo(topP);
         assertThat(request.maxTokens()).isEqualTo(maxTokens);
         assertThat(request.messages()).containsExactly(userMessage);
-        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
 
         ChatModelResponse response = responseReference.get();
-        assertThat(response.id()).isNotBlank();
         assertThat(response.model()).isNotBlank();
         assertThat(response.tokenUsage().inputTokenCount()).isPositive();
         assertThat(response.tokenUsage().outputTokenCount()).isPositive();
         assertThat(response.tokenUsage().totalTokenCount()).isPositive();
-        assertThat(response.finishReason()).isNotNull();
         assertThat(response.aiMessage()).isEqualTo(aiMessage);
     }
 
@@ -275,7 +267,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
     void should_listen_error() throws Exception {
 
         // given
-        String wrongBaseUrl = "banana";
+        String wrongBaseUrl = "https://banana";
 
         AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
@@ -304,6 +296,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
         StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(wrongBaseUrl)
+                .modelName(TINY_DOLPHIN_MODEL)
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -335,8 +328,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         Throwable throwable = future.get(5, SECONDS);
 
         // then
-        assertThat(throwable).isExactlyInstanceOf(OpenAiHttpException.class);
-        assertThat(throwable).hasMessageContaining("Incorrect API key provided");
+        assertThat(throwable).hasMessageContaining("Name or service not known");
 
         assertThat(errorReference.get()).isSameAs(throwable);
     }

@@ -244,7 +244,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // then
         Throwable throwable = errorReference.get();
-        assertThat(throwable).isExactlyInstanceOf(OpenAiHttpException.class);
-        assertThat(throwable).hasMessageContaining("Incorrect API key provided");
+        assertThat(throwable).hasMessageContaining("Name or service not known");
     }
 }

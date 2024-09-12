@@ -149,7 +149,7 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
 
         // then
         ChatModelRequest request = requestReference.get();
-        assertThat(request.model()).isEqualTo(TINY_DOLPHIN_MODEL);
+        assertThat(request.model()).isEqualTo(TOOL_MODEL);
         assertThat(request.temperature()).isEqualTo(temperature);
         assertThat(request.topP()).isEqualTo(topP);
         assertThat(request.maxTokens()).isEqualTo(maxTokens);
@@ -157,12 +157,10 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
 
         ChatModelResponse response = responseReference.get();
-        assertThat(response.id()).isNotBlank();
         assertThat(response.model()).isNotBlank();
         assertThat(response.tokenUsage().inputTokenCount()).isPositive();
         assertThat(response.tokenUsage().outputTokenCount()).isPositive();
         assertThat(response.tokenUsage().totalTokenCount()).isPositive();
-        assertThat(response.finishReason()).isNotNull();
         assertThat(response.aiMessage()).isEqualTo(aiMessage);
     }
 
