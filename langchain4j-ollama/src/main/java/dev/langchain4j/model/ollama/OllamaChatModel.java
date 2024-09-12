@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
@@ -95,33 +96,18 @@ public class OllamaChatModel implements ChatLanguageModel {
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         ensureNotEmpty(messages, "messages");
 
-        ChatRequest request = ChatRequest.builder()
-                .model(modelName)
-                .messages(toOllamaMessages(messages))
-                .options(options)
-                .format(format)
-                .stream(false)
-                .build();
-
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, new ArrayList<>());
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        onListenRequest(listeners, modelListenerRequest, attributes);
-
-        ChatResponse chatResponse = withRetry(() -> client.chat(request), maxRetries);
-        Response<AiMessage> response = Response.from(
-                AiMessage.from(chatResponse.getMessage().getContent()),
-                new TokenUsage(chatResponse.getPromptEvalCount(), chatResponse.getEvalCount())
-        );
-
-        onListenResponse(listeners, response, modelListenerRequest, attributes);
-
-        return response;
+        return doGenerate(messages, null);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         ensureNotEmpty(messages, "messages");
+        ensureNotEmpty(toolSpecifications, "toolSpecifications");
 
+        return doGenerate(messages, toolSpecifications);
+    }
+
+    private Response<AiMessage> doGenerate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         ChatRequest request = ChatRequest.builder()
                 .model(modelName)
                 .messages(toOllamaMessages(messages))
@@ -135,18 +121,36 @@ public class OllamaChatModel implements ChatLanguageModel {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         onListenRequest(listeners, modelListenerRequest, attributes);
 
-        ChatResponse chatResponse = withRetry(() -> client.chat(request), maxRetries);
-        Response<AiMessage> response = Response.from(
-                chatResponse.getMessage().getToolCalls() != null ?
-                        AiMessage.from(toToolExecutionRequest(chatResponse.getMessage().getToolCalls())) :
-                        AiMessage.from(chatResponse.getMessage().getContent()),
-                new TokenUsage(chatResponse.getPromptEvalCount(), chatResponse.getEvalCount())
-        );
-        onListenResponse(listeners, response, modelListenerRequest, attributes);
+        try {
+            ChatResponse chatResponse = withRetry(() -> client.chat(request), maxRetries);
+            Response<AiMessage> response = Response.from(
+                    chatResponse.getMessage().getToolCalls() != null ?
+                            AiMessage.from(toToolExecutionRequest(chatResponse.getMessage().getToolCalls())) :
+                            AiMessage.from(chatResponse.getMessage().getContent()),
+                    new TokenUsage(chatResponse.getPromptEvalCount(), chatResponse.getEvalCount())
+            );
+            onListenResponse(listeners, response, modelListenerRequest, attributes);
 
-        return response;
+            return response;
+        } catch (Exception e) {
+            ChatModelErrorContext errorContext = new ChatModelErrorContext(
+                    e,
+                    modelListenerRequest,
+                    null,
+                    attributes
+            );
+
+            listeners.forEach(listener -> {
+                try {
+                    listener.onError(errorContext);
+                } catch (Exception e2) {
+                    log.warn("Exception while calling model listener", e2);
+                }
+            });
+
+            throw e;
+        }
     }
-
 
     public static class OllamaChatModelBuilder {
 
