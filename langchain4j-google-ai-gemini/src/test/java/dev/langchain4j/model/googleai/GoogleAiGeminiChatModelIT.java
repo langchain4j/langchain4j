@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -674,5 +675,66 @@ public class GoogleAiGeminiChatModelIT {
 
         // then
         assertThat(chatResponse.aiMessage().hasToolExecutionRequests()).isFalse();
+    }
+
+    @Test
+    void should_call_listener() {
+        final ChatModelRequestContext[] requestCtxt = {null};
+        final ChatModelResponseContext[] responseCtxt = {null};
+        final ChatModelErrorContext[] errorCtxt = {null};
+
+        // given
+        ChatModelListener listener = new ChatModelListener() {
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                requestCtxt[0] = requestContext;
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                responseCtxt[0] = responseContext;
+            }
+
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                errorCtxt[0] = errorContext;
+            }
+        };
+
+        // when
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .listeners(singletonList(listener))
+            .build();
+        try {
+            gemini.chat(ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build());
+        } catch (Throwable e) {
+            System.out.println("An exception was thrown: " + e);
+        }
+
+        // then
+        assertThat(errorCtxt[0]).isNull();
+        assertThat(requestCtxt[0]).isNotNull();
+        assertThat(responseCtxt[0]).isNotNull();
+
+        // when
+        gemini = GoogleAiGeminiChatModel.builder()
+            .apiKey("BAD API KEY") // Not a valid API key
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .listeners(singletonList(listener))
+            .build();
+        try {
+            gemini.chat(ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build());
+        } catch (Throwable e) {
+            System.out.println("An exception was thrown: " + e);
+        }
+
+        // then
+        assertThat(errorCtxt[0]).isNotNull();
+        assertThat(requestCtxt[0]).isNotNull();
+        assertThat(responseCtxt[0]).isNotNull();
     }
 }
