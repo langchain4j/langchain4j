@@ -16,6 +16,8 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -256,6 +258,66 @@ class BedrockChatModelIT {
         assertThat(secondTokenUsageTemp.totalTokenCount()).isEqualTo(secondTokenUsageTemp.inputTokenCount() + secondTokenUsageTemp.outputTokenCount());
 
         assertThat(secondResponseTemp.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void testNoParametersFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
+
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+                .builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
+                .maxRetries(1)
+                .build();
+
+        assertThat(bedrockChatModel).isNotNull();
+
+        ToolSpecification currentDateTime = ToolSpecification.builder()
+                .name("currentDateTime")
+                .description("returns current date and time")
+                .build();
+
+        assertThat(currentDateTime).isNotNull();
+
+        UserMessage userMessageCalc = UserMessage.from("Current date and time is = ?");
+
+        Response<AiMessage> responseCalc = bedrockChatModel.generate(singletonList(userMessageCalc), currentDateTime);
+
+        AiMessage aiMessageCalc = responseCalc.content();
+        assertThat(aiMessageCalc.text()).isNull();
+        assertThat(aiMessageCalc.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequestCalc = aiMessageCalc.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequestCalc.id()).isNotBlank();
+        assertThat(toolExecutionRequestCalc.name()).isEqualTo("currentDateTime");
+        assertThat(toolExecutionRequestCalc.arguments()).isEqualToIgnoringWhitespace("{}");
+
+        TokenUsage tokenUsageCalc = responseCalc.tokenUsage();
+        assertThat(tokenUsageCalc.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsageCalc.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsageCalc.totalTokenCount()).isEqualTo(tokenUsageCalc.inputTokenCount() + tokenUsageCalc.outputTokenCount());
+
+        assertThat(responseCalc.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        String nowDateTime = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+        ToolExecutionResultMessage toolExecutionResultMessageCalc = from(toolExecutionRequestCalc, nowDateTime);
+        List<ChatMessage> messagesCalc = asList(userMessageCalc, aiMessageCalc, toolExecutionResultMessageCalc);
+
+        Response<AiMessage> secondResponseCalc = bedrockChatModel.generate(messagesCalc, currentDateTime);
+
+        AiMessage secondAiMessageCalc = secondResponseCalc.content();
+        assertThat(secondAiMessageCalc.text()).contains(nowDateTime);
+        assertThat(secondAiMessageCalc.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsageCalc = secondResponseCalc.tokenUsage();
+        assertThat(secondTokenUsageCalc.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsageCalc.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsageCalc.totalTokenCount()).isEqualTo(secondTokenUsageCalc.inputTokenCount() + secondTokenUsageCalc.outputTokenCount());
+
+        assertThat(secondResponseCalc.finishReason()).isEqualTo(STOP);
     }
 
     @Test
