@@ -18,7 +18,6 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static dev.langchain4j.model.ollama.OllamaImage.TOOL_MODEL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;

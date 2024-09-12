@@ -112,30 +112,30 @@ class OllamaClient {
             @Override
             public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
                 try (InputStream inputStream = retrofitResponse.body().byteStream()) {
-                    StringBuilder contentBuilder = new StringBuilder();
-                    while (true) {
-                        byte[] bytes = new byte[1024];
-                        int len = inputStream.read(bytes);
-                        String partialResponse = new String(bytes, 0, len);
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                        StringBuilder contentBuilder = new StringBuilder();
+                        while (true) {
+                            String partialResponse = reader.readLine();
 
-                        if (logStreamingResponses) {
-                            log.debug("Streaming partial response: {}", partialResponse);
-                        }
+                            if (logStreamingResponses) {
+                                log.debug("Streaming partial response: {}", partialResponse);
+                            }
 
-                        CompletionResponse completionResponse = toObject(partialResponse, CompletionResponse.class);
-                        contentBuilder.append(completionResponse.getResponse());
-                        handler.onNext(completionResponse.getResponse());
+                            CompletionResponse completionResponse = toObject(partialResponse, CompletionResponse.class);
+                            contentBuilder.append(completionResponse.getResponse());
+                            handler.onNext(completionResponse.getResponse());
 
-                        if (TRUE.equals(completionResponse.getDone())) {
-                            Response<String> response = Response.from(
-                                    contentBuilder.toString(),
-                                    new TokenUsage(
-                                            completionResponse.getPromptEvalCount(),
-                                            completionResponse.getEvalCount()
-                                    )
-                            );
-                            handler.onComplete(response);
-                            return;
+                            if (TRUE.equals(completionResponse.getDone())) {
+                                Response<String> response = Response.from(
+                                        contentBuilder.toString(),
+                                        new TokenUsage(
+                                                completionResponse.getPromptEvalCount(),
+                                                completionResponse.getEvalCount()
+                                        )
+                                );
+                                handler.onComplete(response);
+                                return;
+                            }
                         }
                     }
                 } catch (Exception e) {

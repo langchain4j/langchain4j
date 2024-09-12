@@ -1,7 +1,5 @@
 package dev.langchain4j.model.ollama;
 
-import dev.ai4j.openai4j.OpenAiHttpException;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -15,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
