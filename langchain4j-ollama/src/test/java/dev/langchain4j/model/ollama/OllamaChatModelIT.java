@@ -178,14 +178,8 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         UserMessage userMessage = UserMessage.from("hello");
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("add")
-                .addParameter("a", INTEGER)
-                .addParameter("b", INTEGER)
-                .build();
-
         // when
-        AiMessage aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
+        AiMessage aiMessage = model.generate(singletonList(userMessage)).content();
 
         // then
         ChatModelRequest request = requestReference.get();
@@ -194,15 +188,12 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(request.topP()).isEqualTo(topP);
         assertThat(request.maxTokens()).isEqualTo(maxTokens);
         assertThat(request.messages()).containsExactly(userMessage);
-        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
 
         ChatModelResponse response = responseReference.get();
-        assertThat(response.id()).isNotBlank();
         assertThat(response.model()).isNotBlank();
         assertThat(response.tokenUsage().inputTokenCount()).isPositive();
         assertThat(response.tokenUsage().outputTokenCount()).isPositive();
         assertThat(response.tokenUsage().totalTokenCount()).isPositive();
-        assertThat(response.finishReason()).isNotNull();
         assertThat(response.aiMessage()).isEqualTo(aiMessage);
     }
 
@@ -210,7 +201,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
     void should_listen_error() {
 
         // given
-        String wrongBaseUrl = "banana";
+        String wrongBaseUrl = "http://banana";
 
         AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
@@ -239,6 +230,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         ChatLanguageModel model = OllamaChatModel.builder()
                 .baseUrl(wrongBaseUrl)
+                .modelName(TINY_DOLPHIN_MODEL)
                 .maxRetries(0)
                 .logRequests(true)
                 .logResponses(true)

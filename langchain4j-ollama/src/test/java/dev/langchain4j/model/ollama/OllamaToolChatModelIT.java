@@ -7,19 +7,23 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static dev.langchain4j.model.ollama.OllamaImage.TOOL_MODEL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Fail.fail;
 
 class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructure {
 
@@ -88,6 +92,78 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNotNull();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
+    }
+
+    @Test
+    void should_listen_request_and_response() {
+
+        // given
+        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
+
+        ChatModelListener listener = new ChatModelListener() {
+
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                requestReference.set(requestContext.request());
+                requestContext.attributes().put("id", "12345");
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                responseReference.set(responseContext.response());
+                assertThat(responseContext.request()).isSameAs(requestReference.get());
+                assertThat(responseContext.attributes()).containsEntry("id", "12345");
+            }
+
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                fail("onError() must not be called");
+            }
+        };
+
+        double temperature = 0.7;
+        double topP = 1.0;
+        int maxTokens = 7;
+        ChatLanguageModel model = OllamaChatModel.builder()
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TOOL_MODEL)
+                .temperature(temperature)
+                .topP(topP)
+                .numPredict(maxTokens)
+                .logRequests(true)
+                .logResponses(true)
+                .listeners(singletonList(listener))
+                .build();
+
+        UserMessage userMessage = UserMessage.from("hello");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("add")
+                .addParameter("a", INTEGER)
+                .addParameter("b", INTEGER)
+                .build();
+
+        // when
+        AiMessage aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
+
+        // then
+        ChatModelRequest request = requestReference.get();
+        assertThat(request.model()).isEqualTo(TINY_DOLPHIN_MODEL);
+        assertThat(request.temperature()).isEqualTo(temperature);
+        assertThat(request.topP()).isEqualTo(topP);
+        assertThat(request.maxTokens()).isEqualTo(maxTokens);
+        assertThat(request.messages()).containsExactly(userMessage);
+        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+
+        ChatModelResponse response = responseReference.get();
+        assertThat(response.id()).isNotBlank();
+        assertThat(response.model()).isNotBlank();
+        assertThat(response.tokenUsage().inputTokenCount()).isPositive();
+        assertThat(response.tokenUsage().outputTokenCount()).isPositive();
+        assertThat(response.tokenUsage().totalTokenCount()).isPositive();
+        assertThat(response.finishReason()).isNotNull();
+        assertThat(response.aiMessage()).isEqualTo(aiMessage);
     }
 
 }
