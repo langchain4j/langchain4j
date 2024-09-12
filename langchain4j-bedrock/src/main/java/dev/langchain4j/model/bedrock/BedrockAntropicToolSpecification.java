@@ -7,7 +7,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BedrockAntropicToolSpecification {
+class BedrockAntropicToolSpecification {
 
     private String name;
     private String description;
