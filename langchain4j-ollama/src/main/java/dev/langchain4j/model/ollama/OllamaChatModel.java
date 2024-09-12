@@ -4,7 +4,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
@@ -102,7 +101,6 @@ public class OllamaChatModel implements ChatLanguageModel {
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         ensureNotEmpty(messages, "messages");
-        ensureNotEmpty(toolSpecifications, "toolSpecifications");
 
         return doGenerate(messages, toolSpecifications);
     }
@@ -133,21 +131,7 @@ public class OllamaChatModel implements ChatLanguageModel {
 
             return response;
         } catch (Exception e) {
-            ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    e,
-                    modelListenerRequest,
-                    null,
-                    attributes
-            );
-
-            listeners.forEach(listener -> {
-                try {
-                    listener.onError(errorContext);
-                } catch (Exception e2) {
-                    log.warn("Exception while calling model listener", e2);
-                }
-            });
-
+            onListenError(listeners, e, modelListenerRequest, null, attributes);
             throw e;
         }
     }

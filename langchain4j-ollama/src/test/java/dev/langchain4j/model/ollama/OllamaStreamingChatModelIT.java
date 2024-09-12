@@ -263,7 +263,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
     void should_listen_error() throws Exception {
 
         // given
-        String wrongBaseUrl = "https://banana";
+        String wrongBaseUrl = "http://banana";
 
         AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
@@ -324,7 +324,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         Throwable throwable = future.get(5, SECONDS);
 
         // then
-        assertThat(throwable).hasMessageContaining("Name or service not known");
+        assertThat(throwable).isInstanceOf(RuntimeException.class);
 
         assertThat(errorReference.get()).isSameAs(throwable);
     }

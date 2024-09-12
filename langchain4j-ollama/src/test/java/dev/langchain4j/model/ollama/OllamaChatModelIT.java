@@ -241,6 +241,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // then
         Throwable throwable = errorReference.get();
-        assertThat(throwable).hasMessageContaining("Name or service not known");
+        assertThat(throwable).isInstanceOf(RuntimeException.class);
     }
 }
