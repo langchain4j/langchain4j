@@ -6,6 +6,7 @@ import com.github.tjake.jlama.safetensors.prompt.PromptSupport;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.jlama.spi.JlamaStreamingChatModelBuilderFactory;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -37,7 +39,7 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
                                    Float temperature,
                                    Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
+        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), ModelConstant.DEFAULT_CLIENT_RETRIES);
 
         JlamaModel.Loader loader = jlamaModel.loader();
         if (quantizeModelAtRuntime != null && quantizeModelAtRuntime)
@@ -50,8 +52,8 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
             loader = loader.workingDirectory(workingDirectory);
 
         this.model = loader.load();
-        this.temperature = temperature == null ? 0.7f : temperature;
-        this.maxTokens = maxTokens == null ? model.getConfig().contextLength : maxTokens;
+        this.temperature = getOrDefault(temperature, Double.valueOf(ModelConstant.DEFAULT_TEMPERATURE).floatValue());
+        this.maxTokens = getOrDefault(maxTokens, model.getConfig().contextLength);
     }
 
     public static JlamaStreamingChatModelBuilder builder() {

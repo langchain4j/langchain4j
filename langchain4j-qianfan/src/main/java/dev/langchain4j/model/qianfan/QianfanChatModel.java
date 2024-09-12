@@ -4,6 +4,7 @@ package dev.langchain4j.model.qianfan;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
@@ -28,8 +29,6 @@ public class QianfanChatModel implements ChatLanguageModel {
 
 
     private final QianfanClient client;
-
-    private final String baseUrl;
 
     private final Double temperature;
     private final Double topP;
@@ -76,17 +75,15 @@ public class QianfanChatModel implements ChatLanguageModel {
             throw new IllegalArgumentException("Qianfan is no such model name. You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
         }
 
-        this.baseUrl = getOrDefault(baseUrl,  "https://aip.baidubce.com");
-
         this.client = QianfanClient.builder()
-                .baseUrl(this.baseUrl)
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .secretKey(secretKey)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.temperature = getOrDefault(temperature, 0.7);
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.temperature = getOrDefault(temperature, ModelConstant.DEFAULT_TEMPERATURE);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
         this.topP = topP;
         this.penaltyScore = penaltyScore;
         this.responseFormat = responseFormat;

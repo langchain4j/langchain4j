@@ -1,9 +1,13 @@
 package dev.langchain4j.model.ovhai.internal.client;
 
+import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
+import java.util.Objects;
 
 public abstract class OvhAiClient {
+    private static final String BASE_URL="https://multilingual-e5-base.endpoints.kepler.ai.cloud.ovh.net";
 
     @SuppressWarnings("rawtypes")
     public static OvhAiClient.Builder builder() {
@@ -19,16 +23,22 @@ public abstract class OvhAiClient {
         public String baseUrl;
         public String apiKey;
         public Duration timeout;
-        public Boolean logRequests;
-        public Boolean logResponses;
+        public boolean logRequests;
+        public boolean logResponses;
+
+        public Builder() {
+            this.baseUrl = BASE_URL;
+            this.timeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.logRequests = false;
+            this.logResponses = false;
+        }
 
         public abstract T build();
 
         public B baseUrl(String baseUrl) {
-            if ((baseUrl == null) || baseUrl.trim().isEmpty()) {
-                throw new IllegalArgumentException("baseUrl cannot be null or empty");
-            }
-            this.baseUrl = baseUrl;
+            if (Objects.nonNull(baseUrl) && !baseUrl.trim().isEmpty()) {
+                this.baseUrl = Utils.ensureTrailingForwardSlash(baseUrl);
+            } // else { // keep default base url
             return (B) this;
         }
 
@@ -44,10 +54,9 @@ public abstract class OvhAiClient {
         }
 
         public B timeout(Duration timeout) {
-            if (timeout == null) {
-                throw new IllegalArgumentException("timeout cannot be null");
-            }
-            this.timeout = timeout;
+            if (Objects.nonNull(timeout)) {
+                this.timeout = timeout;
+            } // else { // keep default timeout
             return (B) this;
         }
 

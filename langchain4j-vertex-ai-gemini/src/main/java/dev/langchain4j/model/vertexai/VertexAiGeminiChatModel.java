@@ -8,6 +8,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
@@ -64,8 +65,8 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
     private final ToolConfig toolConfig;
     private final List<String> allowedFunctionNames;
 
-    private final Boolean logRequests;
-    private final Boolean logResponses;
+    private final boolean logRequests;
+    private final boolean logResponses;
     private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
 
     @Builder
@@ -171,18 +172,10 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             ensureNotBlank(modelName, "modelName"), vertexAI)
             .withGenerationConfig(generationConfig);
 
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
 
-        if (logRequests != null) {
-            this.logRequests = logRequests;
-        } else {
-            this.logRequests = false;
-        }
-        if (logResponses != null) {
-            this.logResponses = logResponses;
-        } else {
-            this.logResponses = false;
-        }
+        this.logRequests = getOrDefault(logRequests, false);
+        this.logResponses = getOrDefault(logResponses, false);
     }
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
@@ -196,7 +189,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel")
             .withGenerationConfig(generationConfig);
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
         this.vertexAI = null;
         this.safetySettings = Collections.emptyMap();
         this.googleSearch = null;

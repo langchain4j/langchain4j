@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.StreamingLanguageModel;
@@ -20,7 +21,6 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGE
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 
 /**
  * Represents an OpenAI language model with a completion interface, such as gpt-3.5-turbo-instruct.
@@ -48,7 +48,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                                         Tokenizer tokenizer,
                                         Map<String, String> customHeaders) {
 
-        timeout = getOrDefault(timeout, ofSeconds(60));
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         this.client = OpenAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
@@ -65,7 +65,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = getOrDefault(temperature, ModelConstant.DEFAULT_TEMPERATURE);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
     }
 

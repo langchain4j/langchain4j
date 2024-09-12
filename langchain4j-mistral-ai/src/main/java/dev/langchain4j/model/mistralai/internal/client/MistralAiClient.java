@@ -1,12 +1,17 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
+import java.util.Objects;
 
 public abstract class MistralAiClient {
+
+    private final static String BASE_URL = "https://api.mistral.ai/v1/";
 
     public abstract MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request);
 
@@ -30,16 +35,22 @@ public abstract class MistralAiClient {
         public String baseUrl;
         public String apiKey;
         public Duration timeout;
-        public Boolean logRequests;
-        public Boolean logResponses;
+        public boolean logRequests;
+        public boolean logResponses;
+
+        public Builder() {
+            this.baseUrl = BASE_URL;
+            this.timeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.logRequests = false;
+            this.logResponses = false;
+        }
 
         public abstract T build();
 
         public B baseUrl(String baseUrl) {
-            if (baseUrl == null || baseUrl.trim().isEmpty()) {
-                throw new IllegalArgumentException("baseUrl cannot be null or empty");
-            }
-            this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+            if (Objects.nonNull(baseUrl) && !baseUrl.trim().isEmpty()) {
+                this.baseUrl = Utils.ensureTrailingForwardSlash(baseUrl);
+            } // else { // keep default base url
             return (B) this;
         }
 
@@ -52,10 +63,9 @@ public abstract class MistralAiClient {
         }
 
         public B timeout(Duration timeout) {
-            if (timeout == null) {
-                throw new IllegalArgumentException("callTimeout cannot be null");
-            }
-            this.timeout = timeout;
+            if (Objects.nonNull(timeout)) {
+                this.timeout = timeout;
+            } // else { // keep default timeout
             return (B) this;
         }
 

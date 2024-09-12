@@ -2,6 +2,7 @@ package dev.langchain4j.model.ovhai;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingRequest;
@@ -47,14 +48,13 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
         this.client =
                 DefaultOvhAiClient
                         .builder()
-                        .baseUrl(getOrDefault(baseUrl,
-                                "https://multilingual-e5-base.endpoints.kepler.ai.cloud.ovh.net"))
+                        .baseUrl(baseUrl)
                         .apiKey(apiKey)
-                        .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                        .logRequests(getOrDefault(logRequests, false))
-                        .logResponses(getOrDefault(logResponses, false))
+                        .timeout(timeout)
+                        .logRequests(logRequests)
+                        .logResponses(logResponses)
                         .build();
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
     }
 
     /**

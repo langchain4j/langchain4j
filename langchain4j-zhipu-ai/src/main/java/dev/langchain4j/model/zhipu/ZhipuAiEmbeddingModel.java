@@ -2,6 +2,7 @@ package dev.langchain4j.model.zhipu;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingRequest;
@@ -44,16 +45,16 @@ public class ZhipuAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     ) {
         this.model = getOrDefault(model, EMBEDDING_2.toString());
         this.dimensions = dimensions;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
         this.client = ZhipuAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://open.bigmodel.cn/"))
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .callTimeout(callTimeout)
                 .connectTimeout(connectTimeout)
                 .writeTimeout(writeTimeout)
                 .readTimeout(readTimeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
     }
 

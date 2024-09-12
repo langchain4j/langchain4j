@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -49,8 +50,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
     private final ToolConfig toolConfig;
     private final List<String> allowedFunctionNames;
 
-    private final Boolean logRequests;
-    private final Boolean logResponses;
+    private final boolean logRequests;
+    private final boolean logResponses;
 
     private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
 
@@ -156,16 +157,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             ensureNotBlank(modelName, "modelName"), vertexAI)
             .withGenerationConfig(generationConfig);
 
-        if (logRequests != null) {
-            this.logRequests = logRequests;
-        } else {
-            this.logRequests = false;
-        }
-        if (logResponses != null) {
-            this.logResponses = logResponses;
-        } else {
-            this.logResponses = false;
-        }
+        this.logRequests = getOrDefault(logRequests, false);
+        this.logResponses = getOrDefault(logResponses, false);
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,

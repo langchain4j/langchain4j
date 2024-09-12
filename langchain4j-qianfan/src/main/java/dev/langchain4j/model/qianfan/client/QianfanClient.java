@@ -2,6 +2,7 @@ package dev.langchain4j.model.qianfan.client;
 
 
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.client.chat.ChatTokenResponse;
@@ -20,11 +21,15 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.Objects;
 
 
 public class QianfanClient {
 
     private static final Logger log = LoggerFactory.getLogger(QianfanClient.class);
+
+    private static final String BASE_URL = "https://aip.baidubce.com/";
+
     private final String baseUrl;
     private String token;
     private final OkHttpClient okHttpClient;
@@ -41,8 +46,10 @@ public class QianfanClient {
 
     private QianfanClient(Builder serviceBuilder) {
         this.baseUrl = serviceBuilder.baseUrl;
-        OkHttpClient.Builder okHttpClientBuilder = (new OkHttpClient.Builder()).callTimeout(serviceBuilder.callTimeout)
-                .connectTimeout(serviceBuilder.connectTimeout).readTimeout(serviceBuilder.readTimeout)
+        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
+                .callTimeout(serviceBuilder.callTimeout)
+                .connectTimeout(serviceBuilder.connectTimeout)
+                .readTimeout(serviceBuilder.readTimeout)
                 .writeTimeout(serviceBuilder.writeTimeout);
         if (serviceBuilder.apiKey == null) {
             throw new IllegalArgumentException("apiKey must be defined");
@@ -166,20 +173,20 @@ public class QianfanClient {
         private boolean logStreamingResponses;
 
         private Builder() {
-            this.baseUrl = "https://aip.baidubce.com/";
-            this.callTimeout = Duration.ofSeconds(60L);
-            this.connectTimeout = Duration.ofSeconds(60L);
-            this.readTimeout = Duration.ofSeconds(60L);
-            this.writeTimeout = Duration.ofSeconds(60L);
+            this.baseUrl = BASE_URL;
+            this.callTimeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.connectTimeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.readTimeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.writeTimeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.logRequests = false;
+            this.logResponses = false;
         }
 
         public Builder baseUrl(String baseUrl) {
-            if (baseUrl != null && !baseUrl.trim().isEmpty()) {
-                this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-                return this;
-            } else {
-                throw new IllegalArgumentException("baseUrl cannot be null or empty");
-            }
+            if (Objects.nonNull(baseUrl) && !baseUrl.trim().isEmpty()) {
+                this.baseUrl = Utils.ensureTrailingForwardSlash(baseUrl);
+            } // else { // keep default base url
+            return this;
         }
 
 
@@ -203,39 +210,31 @@ public class QianfanClient {
 
 
         public Builder callTimeout(Duration callTimeout) {
-            if (callTimeout == null) {
-                throw new IllegalArgumentException("callTimeout cannot be null");
-            } else {
+            if (Objects.nonNull(callTimeout)) {
                 this.callTimeout = callTimeout;
-                return this;
-            }
+            } // else { // keep default timeout
+            return this;
         }
 
         public Builder connectTimeout(Duration connectTimeout) {
-            if (connectTimeout == null) {
-                throw new IllegalArgumentException("connectTimeout cannot be null");
-            } else {
+            if (Objects.nonNull(connectTimeout)) {
                 this.connectTimeout = connectTimeout;
-                return this;
-            }
+            } // else { // keep default timeout
+            return this;
         }
 
         public Builder readTimeout(Duration readTimeout) {
-            if (readTimeout == null) {
-                throw new IllegalArgumentException("readTimeout cannot be null");
-            } else {
+            if (Objects.nonNull(readTimeout)) {
                 this.readTimeout = readTimeout;
-                return this;
-            }
+            } // else { // keep default timeout
+            return this;
         }
 
         public Builder writeTimeout(Duration writeTimeout) {
-            if (writeTimeout == null) {
-                throw new IllegalArgumentException("writeTimeout cannot be null");
-            } else {
+            if (Objects.nonNull(writeTimeout)) {
                 this.writeTimeout = writeTimeout;
-                return this;
-            }
+            } // else { // keep default timeout
+            return this;
         }
 
         public Builder proxy(Proxy.Type type, String ip, int port) {

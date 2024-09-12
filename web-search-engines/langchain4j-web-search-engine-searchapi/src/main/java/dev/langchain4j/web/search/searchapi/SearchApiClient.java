@@ -1,6 +1,7 @@
 package dev.langchain4j.web.search.searchapi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.model.ModelConstant;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
@@ -14,18 +15,21 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 class SearchApiClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
 
+    private static final String BASE_URL = "https://www.searchapi.io/";
     private final SearchApi api;
 
     @Builder
-    SearchApiClient(Duration timeout, String baseUrl) {
-        ensureNotNull(timeout, "timeout");
+    SearchApiClient(String baseUrl, Duration timeout) {
+        baseUrl = getOrDefault(baseUrl, BASE_URL);
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
+
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)

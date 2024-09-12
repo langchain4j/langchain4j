@@ -6,6 +6,7 @@ import com.github.tjake.jlama.model.bert.BertModel;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.jlama.spi.JlamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -30,7 +31,7 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                                Path workingDirectory) {
 
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
+        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), ModelConstant.DEFAULT_CLIENT_RETRIES);
 
         if (jlamaModel.getModelType() != ModelSupport.ModelType.BERT) {
             throw new IllegalArgumentException("Model type must be BERT");

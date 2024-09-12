@@ -7,6 +7,7 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.customsearch.v1.CustomSearchAPI;
 import com.google.api.services.customsearch.v1.CustomSearchAPIRequest;
 import com.google.api.services.customsearch.v1.model.Search;
+import dev.langchain4j.model.ModelConstant;
 import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +33,8 @@ class GoogleCustomSearchApiClient {
                                 Boolean siteRestrict,
                                 Duration timeout,
                                 Integer maxRetries,
-                                boolean logRequests,
-                                boolean logResponses) {
+                                Boolean logRequests,
+                                Boolean logResponses) {
 
         try {
             if (isNullOrBlank(apiKey)) {
@@ -45,19 +46,21 @@ class GoogleCustomSearchApiClient {
                         "It can be created here: https://cse.google.com/cse/create/new");
             }
 
-            this.logResponses = logResponses;
+            final int timeoutMillis = Math.toIntExact(getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT).toMillis());
+
+            this.logResponses = getOrDefault(logResponses, false);
 
             CustomSearchAPI.Builder customSearchAPIBuilder = new CustomSearchAPI.Builder(GoogleNetHttpTransport.newTrustedTransport(), new GsonFactory(), new HttpRequestInitializer() {
                 @Override
                 public void initialize(HttpRequest httpRequest) {
-                    httpRequest.setConnectTimeout(Math.toIntExact(timeout.toMillis()));
-                    httpRequest.setReadTimeout(Math.toIntExact(timeout.toMillis()));
-                    httpRequest.setWriteTimeout(Math.toIntExact(timeout.toMillis()));
-                    httpRequest.setNumberOfRetries(maxRetries);
-                    if (logRequests) {
+                    httpRequest.setConnectTimeout(timeoutMillis);
+                    httpRequest.setReadTimeout(timeoutMillis);
+                    httpRequest.setWriteTimeout(timeoutMillis);
+                    httpRequest.setNumberOfRetries(getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES));
+                    if (getOrDefault(logRequests, false)) {
                         httpRequest.setInterceptor(new GoogleSearchApiHttpRequestLoggingInterceptor());
                     }
-                    if (logResponses) {
+                    if (getOrDefault(logResponses, false)) {
                         httpRequest.setResponseInterceptor(new GoogleSearchApiHttpResponseLoggingInterceptor());
                     }
                 }
@@ -65,7 +68,7 @@ class GoogleCustomSearchApiClient {
 
             CustomSearchAPI customSearchAPI = customSearchAPIBuilder.build();
 
-            if (siteRestrict) {
+            if (getOrDefault(siteRestrict, false)) {
                 customSearchRequest = customSearchAPI.cse().siterestrict().list().setKey(apiKey).setCx(csi);
             } else {
                 customSearchRequest = customSearchAPI.cse().list().setKey(apiKey).setCx(csi);

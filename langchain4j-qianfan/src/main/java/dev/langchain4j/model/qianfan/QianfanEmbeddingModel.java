@@ -3,6 +3,7 @@ package dev.langchain4j.model.qianfan;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
@@ -27,7 +28,6 @@ public class QianfanEmbeddingModel extends DimensionAwareEmbeddingModel {
 
 
     private final QianfanClient client;
-    private final String baseUrl;
     private final String modelName;
     private final Integer maxRetries;
     private final String user;
@@ -57,16 +57,15 @@ public class QianfanEmbeddingModel extends DimensionAwareEmbeddingModel {
             throw new IllegalArgumentException("Qianfan is no such model name. You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
         }
 
-        this.baseUrl = getOrDefault(baseUrl, "https://aip.baidubce.com");
         this.client = QianfanClient.builder()
-                .baseUrl(this.baseUrl)
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .secretKey(secretKey)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .proxy(proxy)
                 .build();
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
         this.user = user;
     }
 

@@ -3,6 +3,7 @@ package dev.langchain4j.model.localai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.ai4j.openai4j.completion.CompletionResponse;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -11,10 +12,10 @@ import lombok.Builder;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 
 /**
  * See <a href="https://localai.io/features/text-generation/">LocalAI documentation</a> for more details.
@@ -39,9 +40,7 @@ public class LocalAiLanguageModel implements LanguageModel {
                                 Boolean logRequests,
                                 Boolean logResponses) {
 
-        temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(60) : timeout;
-        maxRetries = maxRetries == null ? 3 : maxRetries;
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         this.client = OpenAiClient.builder()
                 .openAiApiKey("ignored")
@@ -54,10 +53,10 @@ public class LocalAiLanguageModel implements LanguageModel {
                 .logResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.temperature = temperature;
+        this.temperature = getOrDefault(temperature, ModelConstant.DEFAULT_TEMPERATURE);
         this.topP = topP;
         this.maxTokens = maxTokens;
-        this.maxRetries = maxRetries;
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
     }
 
     @Override

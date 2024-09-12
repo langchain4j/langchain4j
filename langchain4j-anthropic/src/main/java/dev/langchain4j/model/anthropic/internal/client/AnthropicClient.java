@@ -1,14 +1,22 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.spi.ServiceHelper;
 
 import java.time.Duration;
+import java.util.Objects;
 
 public abstract class AnthropicClient {
+
+    static final String BASE_URL = "https://api.anthropic.com/v1/";
+    static final String VERSION = "2023-06-01";
+
+    public static final int DEFAULT_MAX_TOKENS = 1024;
 
     public abstract AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request);
 
@@ -30,16 +38,23 @@ public abstract class AnthropicClient {
         public String version;
         public String beta;
         public Duration timeout;
-        public Boolean logRequests;
-        public Boolean logResponses;
+        public boolean logRequests;
+        public boolean logResponses;
+
+        public Builder() {
+            this.baseUrl = BASE_URL;
+            this.version = VERSION;
+            this.timeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.logRequests = false;
+            this.logResponses = false;
+        }
 
         public abstract T build();
 
         public B baseUrl(String baseUrl) {
-            if ((baseUrl == null) || baseUrl.trim().isEmpty()) {
-                throw new IllegalArgumentException("baseUrl cannot be null or empty");
-            }
-            this.baseUrl = baseUrl;
+            if (Objects.nonNull(baseUrl) && !baseUrl.trim().isEmpty()) {
+                this.baseUrl = Utils.ensureTrailingForwardSlash(baseUrl);
+            } // else { // keep default base url
             return (B) this;
         }
 
@@ -53,10 +68,9 @@ public abstract class AnthropicClient {
         }
 
         public B version(String version) {
-            if (version == null) {
-                throw new IllegalArgumentException("version cannot be null or empty");
-            }
-            this.version = version;
+            if (Objects.nonNull(version) && !version.trim().isEmpty()) {
+                this.version = version;
+            } // else { // keep default version
             return (B) this;
         }
 
@@ -69,10 +83,9 @@ public abstract class AnthropicClient {
         }
 
         public B timeout(Duration timeout) {
-            if (timeout == null) {
-                throw new IllegalArgumentException("timeout cannot be null");
-            }
-            this.timeout = timeout;
+            if (Objects.nonNull(timeout)) {
+                this.timeout = timeout;
+            } // else { // keep default timeout
             return (B) this;
         }
 

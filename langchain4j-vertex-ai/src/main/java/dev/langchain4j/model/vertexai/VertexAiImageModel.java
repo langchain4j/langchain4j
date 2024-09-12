@@ -8,6 +8,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiImageModelBuilderFactory;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -225,7 +227,7 @@ public class VertexAiImageModel implements ImageModel {
         this.personGeneration = personGeneration;
         this.addWatermark = addWatermark;
 
-        this.maxRetries = maxRetries == null ? 3 : maxRetries;
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
 
         this.cloudStorageBucket = cloudStorageBucket;
 
@@ -250,16 +252,8 @@ public class VertexAiImageModel implements ImageModel {
             }
         }
 
-        if (logRequests != null) {
-            this.logRequests = logRequests;
-        } else {
-            this.logRequests = false;
-        }
-        if (logResponses != null) {
-            this.logResponses = logResponses;
-        } else {
-            this.logResponses = false;
-        }
+        this.logRequests = getOrDefault(logRequests, false);
+        this.logResponses = getOrDefault(logResponses, false);
     }
 
     @Override

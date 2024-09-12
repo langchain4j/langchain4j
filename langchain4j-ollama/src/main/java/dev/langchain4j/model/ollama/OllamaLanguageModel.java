@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -13,7 +14,6 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -47,7 +47,7 @@ public class OllamaLanguageModel implements LanguageModel {
     ) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .timeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .customHeaders(customHeaders)
@@ -64,7 +64,7 @@ public class OllamaLanguageModel implements LanguageModel {
                 .stop(stop)
                 .build();
         this.format = format;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
     }
 
     public static OllamaLanguageModelBuilder builder() {

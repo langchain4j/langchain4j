@@ -2,6 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -26,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.getObjectMapper;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 import static java.lang.Boolean.TRUE;
@@ -41,18 +43,20 @@ class OllamaClient {
                         Duration timeout,
                         Boolean logRequests, Boolean logResponses, Boolean logStreamingResponses,
                         Map<String, String> customHeaders) {
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
+
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout);
-        if (logRequests != null && logRequests) {
+        if (getOrDefault(logRequests, false)) {
             okHttpClientBuilder.addInterceptor(new OllamaRequestLoggingInterceptor());
         }
-        if (logResponses != null && logResponses) {
+        if (getOrDefault(logResponses, false)) {
             okHttpClientBuilder.addInterceptor(new OllamaResponseLoggingInterceptor());
         }
-        this.logStreamingResponses = logStreamingResponses != null && logStreamingResponses;
+        this.logStreamingResponses = getOrDefault(logStreamingResponses, false);
 
         // add custom header interceptor
         if (customHeaders != null && !customHeaders.isEmpty()) {

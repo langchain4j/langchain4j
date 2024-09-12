@@ -69,11 +69,11 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         this.googleCustomSearchApiClient = GoogleCustomSearchApiClient.builder()
                 .apiKey(apiKey)
                 .csi(csi)
-                .siteRestrict(getOrDefault(siteRestrict, false))
-                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .maxRetries(getOrDefault(maxRetries, 3))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .siteRestrict(siteRestrict)
+                .timeout(timeout)
+                .maxRetries(maxRetries)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
         this.includeImages = getOrDefault(includeImages, false);
     }

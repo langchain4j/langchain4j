@@ -9,9 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -27,8 +25,6 @@ import static java.util.stream.Collectors.toList;
  * the {@link WebSearchOrganicResult#title()} will always be "Tavily Search API".
  */
 public class TavilyWebSearchEngine implements WebSearchEngine {
-
-    private static final String DEFAULT_BASE_URL = "https://api.tavily.com/";
 
     private final String apiKey;
     private final TavilyClient tavilyClient;
@@ -48,8 +44,8 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
                                  List<String> includeDomains,
                                  List<String> excludeDomains) {
         this.tavilyClient = TavilyClient.builder()
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
-                .timeout(getOrDefault(timeout, ofSeconds(10)))
+                .baseUrl(baseUrl)
+                .timeout(timeout)
                 .build();
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.searchDepth = searchDepth;

@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
@@ -32,8 +33,6 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 public class QianfanStreamingChatModel implements StreamingChatLanguageModel  {
 
     private final QianfanClient client;
-
-    private final String baseUrl;
 
     private final Double temperature;
     private final Double topP;
@@ -69,16 +68,15 @@ public class QianfanStreamingChatModel implements StreamingChatLanguageModel  {
             throw new IllegalArgumentException("Qianfan is no such model name(or there is no model definition in the QianfanChatModelNameEnum class). You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
         }
 
-        this.baseUrl = getOrDefault(baseUrl,  "https://aip.baidubce.com");
         this.client = QianfanClient.builder()
-                .baseUrl(this.baseUrl)
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .secretKey(secretKey)
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
                 .proxy(proxy)
                 .build();
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = getOrDefault(temperature, ModelConstant.DEFAULT_TEMPERATURE);
         this.topP = topP;
         this.penaltyScore = penaltyScore;
         this.responseFormat = responseFormat;

@@ -3,6 +3,7 @@ package dev.langchain4j.model.zhipu;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.FinishReason;
@@ -30,6 +31,7 @@ import retrofit2.Retrofit;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
@@ -37,7 +39,10 @@ import static dev.langchain4j.model.zhipu.Json.OBJECT_MAPPER;
 import static retrofit2.converter.jackson.JacksonConverterFactory.create;
 
 public class ZhipuAiClient {
+
     private static final Logger log = LoggerFactory.getLogger(ZhipuAiClient.class);
+
+    private static final String BASE_URL = "https://open.bigmodel.cn/";
 
     private final ZhipuAiApi zhipuAiApi;
     private final OkHttpClient okHttpClient;
@@ -279,24 +284,24 @@ public class ZhipuAiClient {
         private boolean logResponses;
 
         private Builder() {
-            this.baseUrl = "https://open.bigmodel.cn/";
-            this.callTimeout = Duration.ofSeconds(60L);
-            this.connectTimeout = Duration.ofSeconds(60L);
-            this.readTimeout = Duration.ofSeconds(60L);
-            this.writeTimeout = Duration.ofSeconds(60L);
+            this.baseUrl = BASE_URL;
+            this.callTimeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.connectTimeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.readTimeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.writeTimeout = ModelConstant.DEFAULT_CLIENT_TIMEOUT;
+            this.logRequests = false;
+            this.logResponses = false;
         }
 
         public Builder baseUrl(String baseUrl) {
-            if (baseUrl != null && !baseUrl.trim().isEmpty()) {
-                this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-                return this;
-            } else {
-                throw new IllegalArgumentException("baseUrl cannot be null or empty");
-            }
+            if (Objects.nonNull(baseUrl) && !baseUrl.trim().isEmpty()) {
+                this.baseUrl = Utils.ensureTrailingForwardSlash(baseUrl);
+            } // else { // keep default base url
+            return this;
         }
 
         public Builder apiKey(String apiKey) {
-            if (apiKey != null && !apiKey.trim().isEmpty()) {
+            if (Objects.nonNull(apiKey) && !apiKey.trim().isEmpty()) {
                 this.apiKey = apiKey;
                 return this;
             } else {
@@ -305,39 +310,31 @@ public class ZhipuAiClient {
         }
 
         public Builder callTimeout(Duration callTimeout) {
-            if (callTimeout == null) {
-                throw new IllegalArgumentException("callTimeout cannot be null");
-            } else {
+            if (Objects.nonNull(callTimeout)) {
                 this.callTimeout = callTimeout;
-                return this;
-            }
+            } // else { // keep default timeout
+            return this;
         }
 
         public Builder connectTimeout(Duration connectTimeout) {
-            if (connectTimeout == null) {
-                throw new IllegalArgumentException("connectTimeout cannot be null");
-            } else {
+            if (Objects.nonNull(connectTimeout)) {
                 this.connectTimeout = connectTimeout;
-                return this;
-            }
+            } // else { // keep default timeout
+            return this;
         }
 
         public Builder readTimeout(Duration readTimeout) {
-            if (readTimeout == null) {
-                throw new IllegalArgumentException("readTimeout cannot be null");
-            } else {
+            if (Objects.nonNull(readTimeout)) {
                 this.readTimeout = readTimeout;
-                return this;
-            }
+            } // else { // keep default timeout
+            return this;
         }
 
         public Builder writeTimeout(Duration writeTimeout) {
-            if (writeTimeout == null) {
-                throw new IllegalArgumentException("writeTimeout cannot be null");
-            } else {
+            if (Objects.nonNull(writeTimeout)) {
                 this.writeTimeout = writeTimeout;
-                return this;
-            }
+            } // else { // keep default timeout
+            return this;
         }
 
         public Builder logRequests() {
@@ -345,10 +342,9 @@ public class ZhipuAiClient {
         }
 
         public Builder logRequests(Boolean logRequests) {
-            if (logRequests == null) {
+            if (Objects.isNull(logRequests)) {
                 logRequests = false;
             }
-
             this.logRequests = logRequests;
             return this;
         }
@@ -358,10 +354,9 @@ public class ZhipuAiClient {
         }
 
         public Builder logResponses(Boolean logResponses) {
-            if (logResponses == null) {
+            if (Objects.isNull(logResponses)) {
                 logResponses = false;
             }
-
             this.logResponses = logResponses;
             return this;
         }

@@ -3,6 +3,7 @@ package dev.langchain4j.model.chatglm;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chatglm.spi.ChatGlmChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -34,8 +35,8 @@ public class ChatGlmChatModel implements ChatLanguageModel {
                             Double temperature, Integer maxRetries,
                             Double topP, Integer maxLength) {
         this.client = new ChatGlmClient(baseUrl, timeout);
-        this.temperature = getOrDefault(temperature, 0.7);
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.temperature = getOrDefault(temperature, ModelConstant.DEFAULT_TEMPERATURE);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
         this.topP = topP;
         this.maxLength = maxLength;
     }

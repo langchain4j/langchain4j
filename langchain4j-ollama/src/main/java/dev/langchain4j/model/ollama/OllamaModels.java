@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
@@ -20,11 +21,11 @@ public class OllamaModels {
                         Boolean logResponses) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
-                .timeout((getOrDefault(timeout, Duration.ofSeconds(60))))
+                .timeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
     }
 
     public static OllamaModelsBuilder builder() {

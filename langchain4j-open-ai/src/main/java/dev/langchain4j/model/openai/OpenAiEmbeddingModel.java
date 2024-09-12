@@ -5,6 +5,7 @@ import dev.ai4j.openai4j.embedding.EmbeddingRequest;
 import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
@@ -22,7 +23,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -57,7 +57,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
             baseUrl = OPENAI_DEMO_URL;
         }
 
-        timeout = getOrDefault(timeout, ofSeconds(60));
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         this.client = OpenAiClient.builder()
                 .openAiApiKey(apiKey)
@@ -76,7 +76,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
         this.dimensions = dimensions;
         this.user = user;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
     }
 

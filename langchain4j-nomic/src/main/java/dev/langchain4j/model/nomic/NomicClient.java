@@ -3,6 +3,7 @@ package dev.langchain4j.model.nomic;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
@@ -12,9 +13,11 @@ import java.io.IOException;
 import java.time.Duration;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class NomicClient {
+    private static final String BASE_URL = "https://api-atlas.nomic.ai/v1/";
 
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
@@ -26,6 +29,8 @@ class NomicClient {
 
     @Builder
     NomicClient(String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses) {
+        baseUrl = getOrDefault(baseUrl, BASE_URL);
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -33,10 +38,10 @@ class NomicClient {
                 .readTimeout(timeout)
                 .writeTimeout(timeout);
 
-        if (logRequests) {
+        if (getOrDefault(logRequests, false)) {
             okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor());
         }
-        if (logResponses) {
+        if (getOrDefault(logResponses, false)) {
             okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
         }
 

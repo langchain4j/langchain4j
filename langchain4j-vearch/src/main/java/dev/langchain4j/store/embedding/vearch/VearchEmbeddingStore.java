@@ -13,7 +13,6 @@ import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
-import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -38,7 +37,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         vearchClient = VearchClient.builder()
                 .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .timeout(timeout)
                 .build();
 
         // Step 1: check whether db exist, if not, create it

@@ -24,6 +24,7 @@ import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
@@ -41,7 +42,6 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.output.FinishReason.*;
-import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 class InternalAzureOpenAiHelper {
@@ -61,7 +61,8 @@ class InternalAzureOpenAiHelper {
     }
 
     private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
-        timeout = getOrDefault(timeout, ofSeconds(60));
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
+
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
         clientOptions.setResponseTimeout(timeout);
@@ -86,9 +87,8 @@ class InternalAzureOpenAiHelper {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
-        maxRetries = getOrDefault(maxRetries, 3);
         ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
-        exponentialBackoffOptions.setMaxRetries(maxRetries);
+        exponentialBackoffOptions.setMaxRetries(getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES));
         RetryOptions retryOptions = new RetryOptions(exponentialBackoffOptions);
 
         OpenAIClientBuilder openAIClientBuilder = new OpenAIClientBuilder()

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chatglm;
 
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
@@ -11,7 +12,6 @@ import java.io.IOException;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.time.Duration.ofSeconds;
 
 class ChatGlmClient {
 
@@ -19,7 +19,7 @@ class ChatGlmClient {
 
     @Builder
     public ChatGlmClient(String baseUrl, Duration timeout) {
-        timeout = getOrDefault(timeout, ofSeconds(60));
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .callTimeout(timeout)

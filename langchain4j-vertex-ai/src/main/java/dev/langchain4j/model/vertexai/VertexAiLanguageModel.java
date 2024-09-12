@@ -6,6 +6,7 @@ import com.google.cloud.aiplatform.v1.PredictionServiceClient;
 import com.google.cloud.aiplatform.v1.PredictionServiceSettings;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -17,6 +18,7 @@ import java.util.List;
 import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.vertexai.VertexAiChatModel.extractTokenCount;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -72,7 +74,7 @@ public class VertexAiLanguageModel implements LanguageModel {
                 ensureNotBlank(modelName, "modelName")
         );
         this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
-        this.maxRetries = maxRetries == null ? 3 : maxRetries;
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
     }
 
     @Override

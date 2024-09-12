@@ -4,6 +4,7 @@ import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
 import com.github.tjake.jlama.safetensors.prompt.PromptContext;
 import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.jlama.spi.JlamaLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.FinishReason;
@@ -15,6 +16,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class JlamaLanguageModel implements LanguageModel {
@@ -33,7 +35,7 @@ public class JlamaLanguageModel implements LanguageModel {
                               Float temperature,
                               Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
+        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), ModelConstant.DEFAULT_CLIENT_RETRIES);
 
         JlamaModel.Loader loader = jlamaModel.loader();
         if (quantizeModelAtRuntime != null && quantizeModelAtRuntime)
@@ -46,8 +48,8 @@ public class JlamaLanguageModel implements LanguageModel {
             loader = loader.workingDirectory(workingDirectory);
 
         this.model = loader.load();
-        this.temperature = temperature == null ? 0.7f : temperature;
-        this.maxTokens = maxTokens == null ? model.getConfig().contextLength : maxTokens;
+        this.temperature = getOrDefault(temperature, Double.valueOf(ModelConstant.DEFAULT_TEMPERATURE).floatValue());
+        this.maxTokens = getOrDefault(maxTokens, model.getConfig().contextLength);
     }
 
     public static FinishReason toFinishReason(Generator.FinishReason reason) {

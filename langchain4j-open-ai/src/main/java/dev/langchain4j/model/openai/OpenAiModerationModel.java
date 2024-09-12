@@ -5,6 +5,7 @@ import dev.ai4j.openai4j.moderation.ModerationRequest;
 import dev.ai4j.openai4j.moderation.ModerationResponse;
 import dev.ai4j.openai4j.moderation.ModerationResult;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
@@ -21,7 +22,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -51,7 +51,7 @@ public class OpenAiModerationModel implements ModerationModel {
             baseUrl = OPENAI_DEMO_URL;
         }
 
-        timeout = getOrDefault(timeout, ofSeconds(60));
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         this.client = OpenAiClient.builder()
                 .openAiApiKey(apiKey)
@@ -68,7 +68,7 @@ public class OpenAiModerationModel implements ModerationModel {
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, TEXT_MODERATION_LATEST);
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
     }
 
     public String modelName() {

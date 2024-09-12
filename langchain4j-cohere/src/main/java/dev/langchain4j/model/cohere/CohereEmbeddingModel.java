@@ -14,7 +14,6 @@ import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
@@ -24,7 +23,6 @@ import static java.util.stream.Collectors.toList;
  */
 public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
 
-    private static final String DEFAULT_BASE_URL = "https://api.cohere.ai/v1/";
     private static final int DEFAULT_MAX_SEGMENTS_PER_BATCH = 96;
 
     private final CohereClient client;
@@ -42,11 +40,11 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
                                 Boolean logResponses,
                                 Integer maxSegmentsPerBatch) {
         this.client = CohereClient.builder()
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
+                .baseUrl(baseUrl)
                 .apiKey(ensureNotBlank(apiKey, "apiKey"))
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .timeout(timeout)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
         this.modelName = modelName;
         this.inputType = inputType;

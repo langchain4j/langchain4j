@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
@@ -85,21 +86,21 @@ public class AnthropicChatModel implements ChatLanguageModel {
                                Boolean logRequests,
                                Boolean logResponses) {
         this.client = AnthropicClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
-                .version(getOrDefault(version, "2023-06-01"))
+                .version(version)
                 .beta(getOrDefault(beta, "tools-2024-04-04"))
-                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .timeout(timeout)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
         this.modelName = getOrDefault(modelName, CLAUDE_3_HAIKU_20240307.toString());
         this.temperature = temperature;
         this.topP = topP;
         this.topK = topK;
-        this.maxTokens = getOrDefault(maxTokens, 1024);
+        this.maxTokens = getOrDefault(maxTokens, AnthropicClient.DEFAULT_MAX_TOKENS);
         this.stopSequences = stopSequences;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
     }
 
     public static class AnthropicChatModelBuilder {

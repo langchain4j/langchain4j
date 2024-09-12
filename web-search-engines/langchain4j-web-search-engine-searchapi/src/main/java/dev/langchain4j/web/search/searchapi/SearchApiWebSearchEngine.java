@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
 
 /**
  * An implementation of a {@link WebSearchEngine} that uses
@@ -26,7 +25,6 @@ import static java.time.Duration.ofSeconds;
  */
 public class SearchApiWebSearchEngine implements WebSearchEngine {
 
-    private static final String DEFAULT_BASE_URL = "https://www.searchapi.io";
     private static final String DEFAULT_ENGINE = "google";
 
     private final String apiKey;
@@ -57,8 +55,8 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         this.engine = getOrDefault(engine, DEFAULT_ENGINE);
         this.optionalParameters = getOrDefault(copyIfNotNull(optionalParameters), new HashMap<>());
         this.client = SearchApiClient.builder()
-                .timeout(getOrDefault(timeout, ofSeconds(30)))
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
+                .baseUrl(baseUrl)
+                .timeout(timeout)
                 .build();
     }
 

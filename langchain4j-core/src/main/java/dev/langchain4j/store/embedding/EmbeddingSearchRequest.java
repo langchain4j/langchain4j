@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -41,7 +42,7 @@ public class EmbeddingSearchRequest {
     @Builder
     public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
         this.queryEmbedding = ensureNotNull(queryEmbedding, "queryEmbedding");
-        this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
+        this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, ModelConstant.DEFAULT_CLIENT_RETRIES), "maxResults");
         this.minScore = ensureBetween(getOrDefault(minScore, 0.0), 0.0, 1.0, "minScore");
         this.filter = filter;
     }

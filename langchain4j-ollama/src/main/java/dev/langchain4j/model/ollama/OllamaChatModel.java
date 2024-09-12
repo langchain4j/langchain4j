@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -18,7 +19,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -51,9 +51,9 @@ public class OllamaChatModel implements ChatLanguageModel {
                            Boolean logResponses) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .timeout(timeout)
                 .customHeaders(customHeaders)
-                .logRequests(getOrDefault(logRequests, false))
+                .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
@@ -68,7 +68,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .stop(stop)
                 .build();
         this.format = format;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
     }
 
     public static OllamaChatModelBuilder builder() {

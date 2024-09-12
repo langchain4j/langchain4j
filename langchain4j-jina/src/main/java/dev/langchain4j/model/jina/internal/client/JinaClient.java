@@ -2,6 +2,7 @@ package dev.langchain4j.model.jina.internal.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.jina.internal.api.*;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.time.Duration;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 public class JinaClient {
@@ -22,7 +24,8 @@ public class JinaClient {
     private final String authorizationHeader;
 
     @Builder
-    JinaClient(String baseUrl, String apiKey, Duration timeout, boolean logRequests, boolean logResponses) {
+    JinaClient(String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses) {
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -30,10 +33,10 @@ public class JinaClient {
                 .readTimeout(timeout)
                 .writeTimeout(timeout);
 
-        if (logRequests) {
+        if (getOrDefault(logRequests, false)) {
             okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor());
         }
-        if (logResponses) {
+        if (getOrDefault(logResponses, false)) {
             okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
         }
 

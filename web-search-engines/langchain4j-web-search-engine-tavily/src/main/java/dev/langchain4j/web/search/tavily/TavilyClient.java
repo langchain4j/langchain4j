@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
@@ -15,18 +16,23 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
 import java.io.IOException;
 import java.time.Duration;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 class TavilyClient {
+
+    private static final String BASE_URL = "https://api.tavily.com/";
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
             .enable(SerializationFeature.INDENT_OUTPUT)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
-
     private final TavilyApi tavilyApi;
 
     @Builder
     public TavilyClient(String baseUrl, Duration timeout) {
+        baseUrl = getOrDefault(baseUrl, BASE_URL);
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)

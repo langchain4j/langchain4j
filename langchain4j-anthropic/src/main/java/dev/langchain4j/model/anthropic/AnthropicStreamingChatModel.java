@@ -12,7 +12,6 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
@@ -82,18 +81,18 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                                         Boolean logRequests,
                                         Boolean logResponses) {
         this.client = AnthropicClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
-                .version(getOrDefault(version, "2023-06-01"))
-                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .version(version)
+                .timeout(timeout)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
         this.modelName = getOrDefault(modelName, CLAUDE_3_HAIKU_20240307.toString());
         this.temperature = temperature;
         this.topP = topP;
         this.topK = topK;
-        this.maxTokens = getOrDefault(maxTokens, 1024);
+        this.maxTokens = getOrDefault(maxTokens, AnthropicClient.DEFAULT_MAX_TOKENS);
         this.stopSequences = stopSequences;
     }
 

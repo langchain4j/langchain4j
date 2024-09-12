@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.ValidationUtils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.FinishReason;
@@ -65,22 +66,22 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
             Duration readTimeout,
             Duration writeTimeout
     ) {
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = getOrDefault(temperature, ModelConstant.DEFAULT_TEMPERATURE);
         this.topP = topP;
         this.stops = stops;
         this.model = getOrDefault(model, GLM_4_FLASH.toString());
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        this.maxToken = getOrDefault(maxToken, 512);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
+        this.maxToken = getOrDefault(maxToken, ModelConstant.DEFAULT_MAX_TOKENS);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.client = ZhipuAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://open.bigmodel.cn/"))
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .callTimeout(callTimeout)
                 .connectTimeout(connectTimeout)
                 .writeTimeout(writeTimeout)
                 .readTimeout(readTimeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
     }
 

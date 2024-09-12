@@ -5,6 +5,7 @@ import dev.ai4j.openai4j.image.GenerateImagesRequest;
 import dev.ai4j.openai4j.image.GenerateImagesResponse;
 import dev.ai4j.openai4j.image.ImageData;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -23,7 +24,6 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGE
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 
 /**
  * Represents an OpenAI DALL·E models to generate artistic images. Versions 2 and 3 (default) are supported.
@@ -74,7 +74,7 @@ public class OpenAiImageModel implements ImageModel {
             Path persistTo,
             Map<String, String> customHeaders
     ) {
-        timeout = getOrDefault(timeout, ofSeconds(60));
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         OpenAiClient.Builder cBuilder = OpenAiClient
                 .builder()
@@ -86,8 +86,8 @@ public class OpenAiImageModel implements ImageModel {
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
                 .proxy(proxy)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
                 .persistTo(persistTo)
                 .customHeaders(customHeaders);
@@ -98,7 +98,7 @@ public class OpenAiImageModel implements ImageModel {
 
         this.client = cBuilder.build();
 
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
         this.modelName = modelName;
         this.size = size;
         this.quality = quality;

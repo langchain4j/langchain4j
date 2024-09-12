@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.ModelConstant;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
@@ -16,9 +17,11 @@ import java.net.Proxy;
 import java.time.Duration;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class CohereClient {
+    static final String BASE_URL = "https://api.cohere.ai/v1/";
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
@@ -31,6 +34,8 @@ class CohereClient {
 
     @Builder
     CohereClient(String baseUrl, String apiKey, Duration timeout, Proxy proxy, Boolean logRequests, Boolean logResponses) {
+        baseUrl = getOrDefault(baseUrl, BASE_URL);
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -38,10 +43,10 @@ class CohereClient {
                 .readTimeout(timeout)
                 .writeTimeout(timeout);
 
-        if (logRequests) {
+        if (getOrDefault(logRequests, false)) {
             okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor());
         }
-        if (logResponses) {
+        if (getOrDefault(logResponses, false)) {
             okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor());
         }
 

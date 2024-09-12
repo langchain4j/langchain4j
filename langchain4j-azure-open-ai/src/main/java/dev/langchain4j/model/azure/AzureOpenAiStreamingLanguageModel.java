@@ -9,6 +9,7 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
@@ -24,9 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.contentFilterManagement;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -194,7 +193,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
         this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
         this.maxTokens = maxTokens;
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = getOrDefault(temperature, ModelConstant.DEFAULT_TEMPERATURE);
         this.topP = topP;
         this.logitBias = logitBias;
         this.user = user;

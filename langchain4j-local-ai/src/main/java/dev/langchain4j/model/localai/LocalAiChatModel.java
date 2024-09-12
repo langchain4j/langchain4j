@@ -6,6 +6,7 @@ import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -15,10 +16,10 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 /**
@@ -44,9 +45,7 @@ public class LocalAiChatModel implements ChatLanguageModel {
                             Boolean logRequests,
                             Boolean logResponses) {
 
-        temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(60) : timeout;
-        maxRetries = maxRetries == null ? 3 : maxRetries;
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
 
         this.client = OpenAiClient.builder()
                 .openAiApiKey("ignored")
@@ -59,10 +58,10 @@ public class LocalAiChatModel implements ChatLanguageModel {
                 .logResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.temperature = temperature;
+        this.temperature = getOrDefault(temperature, ModelConstant.DEFAULT_TEMPERATURE);
         this.topP = topP;
         this.maxTokens = maxTokens;
-        this.maxRetries = maxRetries;
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
     }
 
     @Override

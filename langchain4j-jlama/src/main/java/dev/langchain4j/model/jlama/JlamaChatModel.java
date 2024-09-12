@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.jlama.spi.JlamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -18,6 +19,7 @@ import lombok.Builder;
 import java.nio.file.Path;
 import java.util.*;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -36,7 +38,7 @@ public class JlamaChatModel implements ChatLanguageModel {
                           Float temperature,
                           Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
+        JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), ModelConstant.DEFAULT_CLIENT_RETRIES);
 
         JlamaModel.Loader loader = jlamaModel.loader();
         if (quantizeModelAtRuntime != null && quantizeModelAtRuntime)
@@ -49,8 +51,8 @@ public class JlamaChatModel implements ChatLanguageModel {
             loader = loader.workingDirectory(workingDirectory);
 
         this.model = loader.load();
-        this.temperature = temperature == null ? 0.3f : temperature;
-        this.maxTokens = maxTokens == null ? model.getConfig().contextLength : maxTokens;
+        this.temperature = getOrDefault(temperature, 0.3f);
+        this.maxTokens = getOrDefault(maxTokens, model.getConfig().contextLength);
     }
 
     public static JlamaChatModelBuilder builder() {

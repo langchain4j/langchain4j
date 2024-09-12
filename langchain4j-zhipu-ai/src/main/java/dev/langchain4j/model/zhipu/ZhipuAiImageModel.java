@@ -1,6 +1,7 @@
 package dev.langchain4j.model.zhipu;
 
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.model.ModelConstant;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.zhipu.image.ImageModelName;
@@ -42,17 +43,17 @@ public class ZhipuAiImageModel implements ImageModel {
             Duration writeTimeout
     ) {
         this.model = getOrDefault(model, ImageModelName.COGVIEW_3.toString());
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxRetries = getOrDefault(maxRetries, ModelConstant.DEFAULT_CLIENT_RETRIES);
         this.userId = userId;
         this.client = ZhipuAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://open.bigmodel.cn/"))
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .callTimeout(callTimeout)
                 .connectTimeout(connectTimeout)
                 .writeTimeout(writeTimeout)
                 .readTimeout(readTimeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
     }
 

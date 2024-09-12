@@ -1,6 +1,7 @@
 package dev.langchain4j.code.judge0;
 
 import dev.langchain4j.code.CodeExecutionEngine;
+import dev.langchain4j.model.ModelConstant;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.Base64;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 class Judge0JavaScriptEngine implements CodeExecutionEngine {
@@ -24,6 +26,7 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
     Judge0JavaScriptEngine(String apiKey, int languageId, Duration timeout) {
         this.apiKey = apiKey;
         this.languageId = languageId;
+        timeout = getOrDefault(timeout, ModelConstant.DEFAULT_CLIENT_TIMEOUT);
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

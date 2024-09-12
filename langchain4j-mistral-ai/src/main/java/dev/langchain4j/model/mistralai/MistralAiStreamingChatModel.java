@@ -71,11 +71,11 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
                                        Duration timeout) {
 
         this.client = MistralAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
-                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .timeout(timeout)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
         this.modelName = getOrDefault(modelName, MistralAiChatModelName.OPEN_MISTRAL_7B.toString());
         this.temperature = temperature;
