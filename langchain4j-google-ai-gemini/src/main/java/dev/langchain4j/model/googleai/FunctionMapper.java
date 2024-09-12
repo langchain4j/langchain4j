@@ -5,9 +5,14 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 import static java.util.Collections.emptyMap;
 
 class FunctionMapper {
@@ -35,22 +40,21 @@ class FunctionMapper {
         List<GeminiFunctionDeclaration> functionDeclarations = specifications.stream()
             .map(specification -> {
                 GeminiFunctionDeclaration.GeminiFunctionDeclarationBuilder fnBuilder =
-                    GeminiFunctionDeclaration.builder();
+                    GeminiFunctionDeclaration.builder()
+                            .name(specification.name());
 
-                if (specification.name() != null) {
-                    fnBuilder.name(specification.name());
-                }
-                if (specification.description() != null) {
-                    fnBuilder.description(specification.description());
-                }
-                ToolParameters toolParameters = specification.toolParameters();
-                if (toolParameters != null) {
-                    Map<String, Map<String, Object>> properties = toolParameters.properties();
+                    if (specification.description() != null) {
+                        fnBuilder.description(specification.description());
+                    }
 
-                    String type = "object";
-                    String description = specification.description();
-                    fnBuilder.parameters(fromMap(type, null, null, properties));
-                }
+                    if (specification.parameters() != null) {
+                        fnBuilder.parameters(fromJsonSchemaToGSchema(specification.parameters()));
+                    } else if (specification.toolParameters() != null) {
+                        ToolParameters toolParameters = specification.toolParameters();
+                        String description = specification.description();
+                        Map<String, Map<String, Object>> properties = toolParameters.properties();
+                        fnBuilder.parameters(fromMap("object", null, description, properties));
+                    }
 
                 return fnBuilder.build();
             })

@@ -5,18 +5,20 @@ import com.github.tjake.jlama.model.ModelSupport;
 import com.github.tjake.jlama.safetensors.DType;
 import com.github.tjake.jlama.safetensors.SafeTensorSupport;
 import com.github.tjake.jlama.safetensors.prompt.Function;
-import com.github.tjake.jlama.safetensors.prompt.Parameters;
 import com.github.tjake.jlama.safetensors.prompt.Tool;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import lombok.Getter;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
+
+import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.toMap;
 
 /**
  * A Jlama model. Very basic information. Allows the model to be loaded with different options.
@@ -110,12 +112,22 @@ class JlamaModel {
 
     public static Tool toTool(ToolSpecification toolSpecification) {
         Function.Builder builder = Function.builder()
-                .name(toolSpecification.name())
-                .description(toolSpecification.description());
+                .name(toolSpecification.name());
 
-        ToolParameters toolParameters = toolSpecification.toolParameters();
-        for (Map.Entry<String, Map<String, Object>> p : toolParameters.properties().entrySet()) {
-            builder.addParameter(p.getKey(), p.getValue(), toolParameters.required().contains(p.getKey()));
+        if (toolSpecification.description() != null) {
+            builder.description(toolSpecification.description());
+        }
+
+        if (toolSpecification.parameters() != null) {
+            JsonObjectSchema parameters = toolSpecification.parameters();
+            for (Map.Entry<String, JsonSchemaElement> p : parameters.properties().entrySet()) {
+                builder.addParameter(p.getKey(), toMap(p.getValue()), parameters.required().contains(p.getKey()));
+            }
+        } else if (toolSpecification.toolParameters() != null) {
+            ToolParameters parameters = toolSpecification.toolParameters();
+            for (Map.Entry<String, Map<String, Object>> p : parameters.properties().entrySet()) {
+                builder.addParameter(p.getKey(), p.getValue(), parameters.required().contains(p.getKey()));
+            }
         }
 
         return Tool.from(builder.build());

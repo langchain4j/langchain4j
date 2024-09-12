@@ -23,19 +23,11 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
-import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
-import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +38,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -228,7 +221,7 @@ public class AnthropicMapper {
                     .name(toolSpecification.name())
                     .description(toolSpecification.description())
                     .inputSchema(AnthropicToolSchema.builder()
-                            .properties(parameters != null ? toAnthropicProperties(parameters.properties()) : emptyMap())
+                            .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
                             .required(parameters != null ? parameters.required() : emptyList())
                             .build())
                     .build();
@@ -242,82 +235,6 @@ public class AnthropicMapper {
                             .required(parameters != null ? parameters.required() : emptyList())
                             .build())
                     .build();
-        }
-    }
-
-    // TODO extract
-    private static Map<String, Map<String, Object>> toAnthropicProperties(Map<String, JsonSchemaElement> properties) {
-        Map<String, Map<String, Object>> openAiProperties = new LinkedHashMap<>();
-        properties.forEach((key, value) -> openAiProperties.put(key, toAnthropicProperties(value)));
-        return openAiProperties;
-    }
-
-    // TODO extract
-    private static Map<String, Object> toAnthropicProperties(JsonSchemaElement jsonSchemaElement) {
-        if (jsonSchemaElement instanceof JsonObjectSchema) {
-            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "object");
-            if (jsonObjectSchema.description() != null) {
-                openAiProperties.put("description", jsonObjectSchema.description());
-            }
-            openAiProperties.put("properties", toAnthropicProperties(jsonObjectSchema.properties()));
-            if (jsonObjectSchema.required() != null) {
-                openAiProperties.put("required", jsonObjectSchema.required());
-            }
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonArraySchema) {
-            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "array");
-            if (jsonArraySchema.description() != null) {
-                openAiProperties.put("description", jsonArraySchema.description());
-            }
-            openAiProperties.put("items", toAnthropicProperties(jsonArraySchema.items()));
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
-            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "string");
-            if (jsonEnumSchema.description() != null) {
-                openAiProperties.put("description", jsonEnumSchema.description());
-            }
-            openAiProperties.put("enum", jsonEnumSchema.enumValues());
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonStringSchema) {
-            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "string");
-            if (jsonStringSchema.description() != null) {
-                openAiProperties.put("description", jsonStringSchema.description());
-            }
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
-            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "integer");
-            if (jsonIntegerSchema.description() != null) {
-                openAiProperties.put("description", jsonIntegerSchema.description());
-            }
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
-            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "number");
-            if (jsonNumberSchema.description() != null) {
-                openAiProperties.put("description", jsonNumberSchema.description());
-            }
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
-            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "boolean");
-            if (jsonBooleanSchema.description() != null) {
-                openAiProperties.put("description", jsonBooleanSchema.description());
-            }
-            return openAiProperties;
-        } else {
-            throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
         }
     }
 }

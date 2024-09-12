@@ -9,9 +9,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -27,12 +25,16 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 public class StreamingAiServicesIT {
 
@@ -42,18 +44,6 @@ public class StreamingAiServicesIT {
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .logRequests(true)
-                        .logResponses(true)
-                        .build(),
-                AzureOpenAiStreamingChatModel.builder()
-                        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                        .deploymentName("gpt-4o")
-                        .logRequestsAndResponses(true)
-                        .build(),
-                MistralAiStreamingChatModel.builder()
-                        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                        .modelName(MISTRAL_LARGE_LATEST)
                         .logRequests(true)
                         .logResponses(true)
                         .build()
@@ -92,12 +82,10 @@ public class StreamingAiServicesIT {
         assertThat(response.content().text()).isEqualTo(answer);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        if (!(model instanceof AzureOpenAiStreamingChatModel)) { // TODO
-            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-        }
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
@@ -135,8 +123,8 @@ public class StreamingAiServicesIT {
         List<Content> returnedContents = futureContent.get(30, SECONDS);
 
         assertThat(returnedContents)
-        .hasSize(1)
-        .anySatisfy(c -> assertThat(c.textSegment().text()).isEqualTo("This is additional content"));
+                .hasSize(1)
+                .anySatisfy(c -> assertThat(c.textSegment().text()).isEqualTo("This is additional content"));
     }
 
     @ParameterizedTest
@@ -237,12 +225,10 @@ public class StreamingAiServicesIT {
         assertThat(response.content().text()).isEqualTo(answer);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        if (!(model instanceof AzureOpenAiStreamingChatModel)) { // TODO
-            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-        }
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
 
@@ -261,9 +247,7 @@ public class StreamingAiServicesIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        if (!(model instanceof AzureOpenAiStreamingChatModel)) { // TODO
-            assertThat(toolExecutionRequest.id()).isNotBlank();
-        }
+        assertThat(toolExecutionRequest.id()).isNotBlank();
 
         assertThat(toolExecutionRequest.name()).isEqualTo("squareRoot");
         assertThat(toolExecutionRequest.arguments())

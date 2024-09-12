@@ -1,8 +1,16 @@
 package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ContentType;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 
 import java.util.List;
 import java.util.Map;
@@ -11,6 +19,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.toMap;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 
 class OllamaMessagesUtils {
@@ -35,13 +44,28 @@ class OllamaMessagesUtils {
                                 .function(Function.builder()
                                         .name(toolSpecification.name())
                                         .description(toolSpecification.description())
-                                        .parameters(Parameters.builder()
-                                                .properties(toolSpecification.toolParameters().properties())
-                                                .required(toolSpecification.toolParameters().required())
-                                                .build())
+                                        .parameters(toOllamaParameters(toolSpecification))
                                         .build())
                                 .build())
                 .collect(Collectors.toList());
+    }
+
+    private static Parameters toOllamaParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            JsonObjectSchema parameters = toolSpecification.parameters();
+            return Parameters.builder()
+                    .properties(toMap(parameters.properties()))
+                    .required(parameters.required())
+                    .build();
+        } else if (toolSpecification.toolParameters() != null) {
+            ToolParameters parameters = toolSpecification.toolParameters();
+            return Parameters.builder()
+                    .properties(parameters.properties())
+                    .required(parameters.required())
+                    .build();
+        } else {
+            return null; // TODO test tool without parameters
+        }
     }
 
     static List<ToolExecutionRequest> toToolExecutionRequest(List<ToolCall> toolCalls) {

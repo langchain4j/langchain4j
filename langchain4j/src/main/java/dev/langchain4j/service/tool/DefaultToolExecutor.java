@@ -197,9 +197,12 @@ public class DefaultToolExecutor implements ToolExecutor {
             // TODO: Consider full type coverage.
         }
 
-
-        String result  = Json.toJson(argument);
-        return Json.fromJson(result, parameterType);
+        if (argument instanceof String) {
+            return Json.fromJson(argument.toString(), parameterType);
+        } else {
+            String result  = Json.toJson(argument);
+            return Json.fromJson(result, parameterType);
+        }
     }
 
     private static double getDoubleValue(

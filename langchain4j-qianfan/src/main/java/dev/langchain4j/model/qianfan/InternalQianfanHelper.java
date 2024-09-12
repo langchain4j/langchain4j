@@ -6,6 +6,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.client.chat.Parameters;
 import dev.langchain4j.model.output.FinishReason;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
@@ -37,19 +39,28 @@ public class InternalQianfanHelper {
         return Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toOpenAiParameters(toolSpecification.toolParameters()))
+                .parameters(toOpenAiParameters(toolSpecification))
                 .build();
     }
 
-    private static Parameters toOpenAiParameters(ToolParameters toolParameters) {
-        if (toolParameters == null) {
+    private static Parameters toOpenAiParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            JsonObjectSchema parameters = toolSpecification.parameters();
+            return Parameters.builder()
+                    .properties(toMap(parameters.properties()))
+                    .required(parameters.required())
+                    .build();
+        } else if (toolSpecification.toolParameters() != null) {
+            ToolParameters toolParameters = toolSpecification.toolParameters();
+            return Parameters.builder()
+                    .properties(toolParameters.properties())
+                    .required(toolParameters.required())
+                    .build();
+        } else {
             return Parameters.builder().build();
         }
-        return Parameters.builder()
-                .properties(toolParameters.properties())
-                .required(toolParameters.required())
-                .build();
     }
+
     public static Message toQianfanMessage(ChatMessage message) {
 
         if (message instanceof UserMessage) {

@@ -12,7 +12,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -32,7 +31,6 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -55,15 +53,7 @@ class StreamingAiServicesWithToolsIT {
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
-                        .build(),
-                MistralAiStreamingChatModel.builder()
-                        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                        .modelName(MISTRAL_LARGE_LATEST)
-                        .logRequests(true)
-                        .logResponses(true)
                         .build()
-                // Add your AzureOpenAiChatModel instance here...
-                // Add your GeminiChatModel instance here...
         );
     }
 

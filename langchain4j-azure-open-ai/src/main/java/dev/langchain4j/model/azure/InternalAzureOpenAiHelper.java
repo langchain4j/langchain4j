@@ -51,14 +51,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
-import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
-import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -71,7 +64,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -80,6 +72,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -280,85 +273,9 @@ class InternalAzureOpenAiHelper {
         if (toolParameters == null) {
             return BinaryData.fromObject(NO_PARAMETER_DATA);
         }
-        parameters.setProperties(toOpenAiProperties(toolParameters.properties()));
+        parameters.setProperties(toMap(toolParameters.properties()));
         parameters.setRequired(toolParameters.required());
         return BinaryData.fromObject(parameters);
-    }
-
-    // TODO extract
-    private static Map<String, Map<String, Object>> toOpenAiProperties(Map<String, JsonSchemaElement> properties) {
-        Map<String, Map<String, Object>> openAiProperties = new LinkedHashMap<>();
-        properties.forEach((key, value) -> openAiProperties.put(key, toOpenAiProperties(value)));
-        return openAiProperties;
-    }
-
-    // TODO extract
-    private static Map<String, Object> toOpenAiProperties(JsonSchemaElement jsonSchemaElement) {
-        if (jsonSchemaElement instanceof JsonObjectSchema) {
-            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "object");
-            if (jsonObjectSchema.description() != null) {
-                openAiProperties.put("description", jsonObjectSchema.description());
-            }
-            openAiProperties.put("properties", toOpenAiProperties(jsonObjectSchema.properties()));
-            if (jsonObjectSchema.required() != null) {
-                openAiProperties.put("required", jsonObjectSchema.required());
-            }
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonArraySchema) {
-            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "array");
-            if (jsonArraySchema.description() != null) {
-                openAiProperties.put("description", jsonArraySchema.description());
-            }
-            openAiProperties.put("items", toOpenAiProperties(jsonArraySchema.items()));
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
-            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "string");
-            if (jsonEnumSchema.description() != null) {
-                openAiProperties.put("description", jsonEnumSchema.description());
-            }
-            openAiProperties.put("enum", jsonEnumSchema.enumValues());
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonStringSchema) {
-            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "string");
-            if (jsonStringSchema.description() != null) {
-                openAiProperties.put("description", jsonStringSchema.description());
-            }
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
-            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "integer");
-            if (jsonIntegerSchema.description() != null) {
-                openAiProperties.put("description", jsonIntegerSchema.description());
-            }
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
-            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "number");
-            if (jsonNumberSchema.description() != null) {
-                openAiProperties.put("description", jsonNumberSchema.description());
-            }
-            return openAiProperties;
-        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
-            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
-            Map<String, Object> openAiProperties = new LinkedHashMap<>();
-            openAiProperties.put("type", "boolean");
-            if (jsonBooleanSchema.description() != null) {
-                openAiProperties.put("description", jsonBooleanSchema.description());
-            }
-            return openAiProperties;
-        } else {
-            throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
-        }
     }
 
     private static BinaryData toOpenAiParameters(ToolParameters toolParameters) {
