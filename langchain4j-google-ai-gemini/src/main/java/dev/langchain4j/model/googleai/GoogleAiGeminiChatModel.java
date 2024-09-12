@@ -62,7 +62,6 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
 
     private final Integer candidateCount;
 
-    private final String responseMimeType;
     private final ResponseFormat responseFormat;
 
     private final GeminiFunctionCallingConfig toolConfig;
@@ -78,7 +77,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
     public GoogleAiGeminiChatModel(String apiKey, String modelName,
                                    Double temperature, Integer topK, Double topP,
                                    Integer maxOutputTokens, Integer candidateCount,
-                                   String responseMimeType, ResponseFormat responseFormat,
+                                   ResponseFormat responseFormat,
                                    List<String> stopSequences, GeminiFunctionCallingConfig toolConfig,
                                    Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
                                    Boolean logRequestsAndResponses,
@@ -103,24 +102,26 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         this.safetySettings = copyIfNotNull(safetySettings);
 
         this.responseFormat = responseFormat;
-        if (responseFormat != null) {
-            if (responseFormat.jsonSchema() != null &&
-                responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
-                this.responseMimeType = "text/x.enum";
-            } else if (ResponseFormatType.TEXT.equals(responseFormat.type())) {
-                this.responseMimeType = "text/plain";
-            } else {
-                this.responseMimeType = "application/json";
-            }
-        } else if(responseMimeType != null) {
-            this.responseMimeType = responseMimeType;
-        } else {
-            this.responseMimeType = "text/plain";
-        }
 
         this.logRequestsAndResponses = getOrDefault(logRequestsAndResponses, false);
 
         this.geminiService = getGeminiService();
+    }
+
+    private static String computeMimeType(ResponseFormat responseFormat) {
+        if (responseFormat == null || ResponseFormatType.TEXT.equals(responseFormat.type())) {
+            return "text/plain";
+        }
+
+        if (ResponseFormatType.JSON.equals(responseFormat.type()) &&
+            responseFormat.jsonSchema() != null &&
+            responseFormat.jsonSchema().rootElement() != null &&
+            responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
+
+            return "text/x.enum";
+        }
+
+        return "application/json";
     }
 
     @Override
@@ -161,20 +162,13 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         List<GeminiContent> geminiContentList = fromMessageToGContent(chatRequest.messages(), systemInstruction);
         List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
 
-        GeminiSchema schema;
-        String responseMimeType = this.responseMimeType;
-        if (chatRequest.responseFormat() != null) {
-            if (responseFormat.jsonSchema() != null &&
-                responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
-                responseMimeType = "text/x.enum";
-            } else {
-                responseMimeType = "application/json";
-            }
-            schema = fromJsonSchemaToGSchema(chatRequest.responseFormat().jsonSchema());
-        } else if (this.responseFormat != null && this.responseFormat.jsonSchema() != null) {
-            schema = fromJsonSchemaToGSchema(this.responseFormat.jsonSchema());
-        } else {
-            schema = null;
+        ResponseFormat format = chatRequest.responseFormat() != null ? chatRequest.responseFormat() : this.responseFormat;
+        GeminiSchema schema = null;
+
+        String responseMimeType = computeMimeType(format);
+
+        if (format != null && format.jsonSchema() != null) {
+            schema = fromJsonSchemaToGSchema(format.jsonSchema());
         }
 
         GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
@@ -274,7 +268,6 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         }
 
         public GoogleAiGeminiChatModelBuilder responseSchema(JsonSchema schema) {
-            this.responseMimeType = "application/json";
             this.responseFormat = ResponseFormat.builder()
                 .type(ResponseFormatType.JSON)
                 .jsonSchema(schema)

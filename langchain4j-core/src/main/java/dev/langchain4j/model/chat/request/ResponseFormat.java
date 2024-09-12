@@ -7,12 +7,16 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 
 @Experimental
 public class ResponseFormat {
 
     private final ResponseFormatType type;
     private final JsonSchema jsonSchema;
+
+    public static final ResponseFormat TEXT_FORMAT = new ResponseFormat(builder().type(TEXT));
+    public static final ResponseFormat JSON_FORMAT = new ResponseFormat(builder().type(JSON));
 
     private ResponseFormat(Builder builder) {
         this.type = ensureNotNull(builder.type, "type");
