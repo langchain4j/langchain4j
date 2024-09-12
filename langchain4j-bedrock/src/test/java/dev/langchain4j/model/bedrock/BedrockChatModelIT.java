@@ -176,7 +176,7 @@ class BedrockChatModelIT {
 
         ToolSpecification currentTemperature = ToolSpecification.builder()
                 .name("currentTemperature")
-                .description("returns a current temperature of a city")
+                .description("returns the temperature of a city in degrees Celsius")
                 .addParameter("city", STRING)
                 .build();
 
