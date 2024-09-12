@@ -72,3 +72,5 @@ jobs:
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
+          CI_DELAY_SECONDS_AZURE_OPENAI: 1
+          CI_DELAY_SECONDS_BEDROCK: 1
