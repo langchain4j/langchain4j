@@ -4,21 +4,29 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.*;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+import static java.util.Collections.emptyList;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -27,11 +35,14 @@ import static java.time.Duration.ofSeconds;
  */
 public class OllamaChatModel implements ChatLanguageModel {
 
+    private static final Logger log = LoggerFactory.getLogger(OllamaChatModel.class);
+
     private final OllamaClient client;
     private final String modelName;
     private final Options options;
     private final String format;
     private final Integer maxRetries;
+    private final List<ChatModelListener> listeners;
 
     public OllamaChatModel(String baseUrl,
                            String modelName,
@@ -48,7 +59,8 @@ public class OllamaChatModel implements ChatLanguageModel {
                            Integer maxRetries,
                            Map<String, String> customHeaders,
                            Boolean logRequests,
-                           Boolean logResponses) {
+                           Boolean logResponses,
+                           List<ChatModelListener> listeners) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
@@ -69,6 +81,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .build();
         this.format = format;
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.listeners = new ArrayList<>(getOrDefault(listeners, emptyList()));
     }
 
     public static OllamaChatModelBuilder builder() {
@@ -90,12 +103,19 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .stream(false)
                 .build();
 
-        ChatResponse response = withRetry(() -> client.chat(request), maxRetries);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, new ArrayList<>());
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        onListenRequest(listeners, modelListenerRequest, attributes);
 
-        return Response.from(
-                AiMessage.from(response.getMessage().getContent()),
-                new TokenUsage(response.getPromptEvalCount(), response.getEvalCount())
+        ChatResponse chatResponse = withRetry(() -> client.chat(request), maxRetries);
+        Response<AiMessage> response = Response.from(
+                AiMessage.from(chatResponse.getMessage().getContent()),
+                new TokenUsage(chatResponse.getPromptEvalCount(), chatResponse.getEvalCount())
         );
+
+        onListenResponse(listeners, response, modelListenerRequest, attributes);
+
+        return response;
     }
 
     @Override
@@ -111,15 +131,22 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .tools(toOllamaTools(toolSpecifications))
                 .build();
 
-        ChatResponse response = withRetry(() -> client.chat(request), maxRetries);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        onListenRequest(listeners, modelListenerRequest, attributes);
 
-        return Response.from(
-                response.getMessage().getToolCalls() != null ?
-                        AiMessage.from(toToolExecutionRequest(response.getMessage().getToolCalls())) :
-                        AiMessage.from(response.getMessage().getContent()),
-                new TokenUsage(response.getPromptEvalCount(), response.getEvalCount())
+        ChatResponse chatResponse = withRetry(() -> client.chat(request), maxRetries);
+        Response<AiMessage> response = Response.from(
+                chatResponse.getMessage().getToolCalls() != null ?
+                        AiMessage.from(toToolExecutionRequest(chatResponse.getMessage().getToolCalls())) :
+                        AiMessage.from(chatResponse.getMessage().getContent()),
+                new TokenUsage(chatResponse.getPromptEvalCount(), chatResponse.getEvalCount())
         );
+        onListenResponse(listeners, response, modelListenerRequest, attributes);
+
+        return response;
     }
+
 
     public static class OllamaChatModelBuilder {
 
@@ -139,6 +166,7 @@ public class OllamaChatModel implements ChatLanguageModel {
         private Map<String, String> customHeaders;
         private Boolean logRequests;
         private Boolean logResponses;
+        private List<ChatModelListener> listeners;
 
         public OllamaChatModelBuilder() {
             // This is public so it can be extended
@@ -225,6 +253,11 @@ public class OllamaChatModel implements ChatLanguageModel {
             return this;
         }
 
+        public OllamaChatModelBuilder listeners(List<ChatModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
         public OllamaChatModel build() {
             return new OllamaChatModel(
                     baseUrl,
@@ -242,7 +275,8 @@ public class OllamaChatModel implements ChatLanguageModel {
                     maxRetries,
                     customHeaders,
                     logRequests,
-                    logResponses
+                    logResponses,
+                    listeners
             );
         }
     }
