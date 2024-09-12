@@ -21,6 +21,7 @@ import java.util.Base64;
 import java.util.List;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.Mistral7bInstructV0_2;
@@ -146,6 +147,115 @@ class BedrockChatModelIT {
         assertThat(secondTokenUsage.totalTokenCount()).isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void testSequentialFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
+
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+                .builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
+                .maxRetries(1)
+                .build();
+
+        assertThat(bedrockChatModel).isNotNull();
+
+        ToolSpecification calculator = ToolSpecification.builder()
+                .name("calculator")
+                .description("returns a sum of two numbers")
+                .addParameter("first", INTEGER)
+                .addParameter("second", INTEGER)
+                .build();
+
+        assertThat(calculator).isNotNull();
+
+        ToolSpecification currentTemperature = ToolSpecification.builder()
+                .name("currentTemperature")
+                .description("returns a current temperature of a city")
+                .addParameter("city", STRING)
+                .build();
+
+        assertThat(currentTemperature).isNotNull();
+
+        List<ToolSpecification> toolSpecifications = asList(calculator, currentTemperature);
+
+        assertThat(currentTemperature).isNotNull();
+        assertEquals(2, toolSpecifications.size());
+
+        UserMessage userMessageCalc = UserMessage.from("2+2=?");
+
+        Response<AiMessage> responseCalc = bedrockChatModel.generate(singletonList(userMessageCalc), toolSpecifications);
+
+        AiMessage aiMessageCalc = responseCalc.content();
+        assertThat(aiMessageCalc.text()).isNull();
+        assertThat(aiMessageCalc.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequestCalc = aiMessageCalc.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequestCalc.id()).isNotBlank();
+        assertThat(toolExecutionRequestCalc.name()).isEqualTo("calculator");
+        assertThat(toolExecutionRequestCalc.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        TokenUsage tokenUsageCalc = responseCalc.tokenUsage();
+        assertThat(tokenUsageCalc.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsageCalc.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsageCalc.totalTokenCount()).isEqualTo(tokenUsageCalc.inputTokenCount() + tokenUsageCalc.outputTokenCount());
+
+        assertThat(responseCalc.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage toolExecutionResultMessageCalc = from(toolExecutionRequestCalc, "4");
+        List<ChatMessage> messagesCalc = asList(userMessageCalc, aiMessageCalc, toolExecutionResultMessageCalc);
+
+        Response<AiMessage> secondResponseCalc = bedrockChatModel.generate(messagesCalc, calculator);
+
+        AiMessage secondAiMessageCalc = secondResponseCalc.content();
+        assertThat(secondAiMessageCalc.text()).contains("4");
+        assertThat(secondAiMessageCalc.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsageCalc = secondResponseCalc.tokenUsage();
+        assertThat(secondTokenUsageCalc.inputTokenCount()).isEqualTo(318);
+        assertThat(secondTokenUsageCalc.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsageCalc.totalTokenCount()).isEqualTo(secondTokenUsageCalc.inputTokenCount() + secondTokenUsageCalc.outputTokenCount());
+
+        assertThat(secondResponseCalc.finishReason()).isEqualTo(STOP);
+
+        UserMessage userMessageTemp = UserMessage.from("Temperature in New York = ?");
+
+        Response<AiMessage> responseTemp = bedrockChatModel.generate(singletonList(userMessageTemp), toolSpecifications);
+
+        AiMessage aiMessageTemp = responseTemp.content();
+        assertThat(aiMessageTemp.text()).isNull();
+        assertThat(aiMessageTemp.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequestTemp = aiMessageTemp.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequestTemp.id()).isNotBlank();
+        assertThat(toolExecutionRequestTemp.name()).isEqualTo("currentTemperature");
+        assertThat(toolExecutionRequestTemp.arguments()).isEqualToIgnoringWhitespace("{\"city\": \"New York\"}");
+
+        TokenUsage tokenUsageTemp = responseTemp.tokenUsage();
+        assertThat(tokenUsageTemp.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsageTemp.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsageTemp.totalTokenCount()).isEqualTo(tokenUsageTemp.inputTokenCount() + tokenUsageTemp.outputTokenCount());
+
+        assertThat(responseTemp.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage toolExecutionResultMessageTemp = from(toolExecutionRequestTemp, "25.0");
+        List<ChatMessage> messagesTemp = asList(userMessageTemp, aiMessageTemp, toolExecutionResultMessageTemp);
+
+        Response<AiMessage> secondResponseTemp = bedrockChatModel.generate(messagesTemp, calculator);
+
+        AiMessage secondAiMessageTemp = secondResponseTemp.content();
+        assertThat(secondAiMessageTemp.text()).contains("25.0");
+        assertThat(secondAiMessageTemp.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsageTemp = secondResponseTemp.tokenUsage();
+        assertThat(secondTokenUsageTemp.inputTokenCount()).isEqualTo(307);
+        assertThat(secondTokenUsageTemp.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsageTemp.totalTokenCount()).isEqualTo(secondTokenUsageTemp.inputTokenCount() + secondTokenUsageTemp.outputTokenCount());
+
+        assertThat(secondResponseTemp.finishReason()).isEqualTo(STOP);
     }
 
     @Test
