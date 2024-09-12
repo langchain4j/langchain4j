@@ -156,6 +156,15 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     }
 
     private Object toAnthropicToolParameters(ToolParameters toolParameters) {
+        if (toolParameters == null) {
+            ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
+            inputSchemaNode.put("type", "object");
+            inputSchemaNode.set("properties", new ObjectMapper().createObjectNode());
+            inputSchemaNode.set("required", new ObjectMapper().createArrayNode());
+
+            return inputSchemaNode;
+        }
+
         ObjectNode propertiesNode = new ObjectMapper().createObjectNode();
         toolParameters.properties().forEach((parameterName, parameterMetadata) -> {
             ObjectNode parameterNode = new ObjectMapper().createObjectNode();
