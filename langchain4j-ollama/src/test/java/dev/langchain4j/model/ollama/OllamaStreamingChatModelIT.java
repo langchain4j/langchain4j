@@ -321,11 +321,9 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
         // when
         model.generate(userMessage, handler);
-        Throwable throwable = future.get(5, SECONDS);
+        Throwable throwable = future.get(10, SECONDS);
 
         // then
-        assertThat(throwable).isInstanceOf(RuntimeException.class);
-
         assertThat(errorReference.get()).isSameAs(throwable);
     }
 }

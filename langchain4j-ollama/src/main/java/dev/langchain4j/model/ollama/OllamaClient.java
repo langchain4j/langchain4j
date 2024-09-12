@@ -186,17 +186,17 @@ class OllamaClient {
                         }
                     }
                 } catch (Exception e) {
-                    handler.onError(e);
-
                     onListenError(listeners, e, modelListenerRequest, responseBuilder.build(), new ConcurrentHashMap<>());
+
+                    handler.onError(e);
                 }
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable throwable) {
-                handler.onError(throwable);
+                onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), attributes);
 
-                onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), new ConcurrentHashMap<>());
+                handler.onError(throwable);
             }
         });
     }

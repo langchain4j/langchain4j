@@ -33,6 +33,9 @@ class OllamaStreamingResponseBuilder {
     }
 
     Response<AiMessage> build() {
+        if (contentBuilder.toString().isEmpty()) {
+            return null;
+        }
         return Response.from(
                 AiMessage.from(contentBuilder.toString()),
                 tokenUsage
