@@ -315,8 +315,8 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>();
-        // when response format is not null, it's always application/json or text/x.enum as mime type
-        if (this.responseFormat != null && this.responseFormat.jsonSchema() != null) {
+        // when response format is not null, it's JSON, either application/json or text/x.enum
+        if (this.responseFormat != null && ResponseFormatType.JSON.equals(this.responseFormat.type())) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
