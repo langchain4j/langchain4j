@@ -19,7 +19,7 @@ https://ai.google.dev/gemini-api/docs
 
 ## API Key
 
-Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key
+Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
 ## Models available
 
@@ -85,8 +85,8 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 
 ## GoogleAiGeminiStreamingChatModel
 
-No streaming chat model available yet.
-Please open a feature request if you're interested in a streaming model or if you want to contribute to implement it.
+No streaming chat model is available yet.
+Please open a feature request if you're interested in a streaming model or if you want to contribute to implementing it.
 
 ## Tools
 
@@ -224,7 +224,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 
 Large Language Models are great at extracting structured information out of unstructured text.
 
-In the following example, we retrieve a tyoe-safe `WeatherForecast` object from a weather forecast text, thanks to `AiServices`:
+In the following example, we retrieve a type-safe `WeatherForecast` object from a weather forecast text, thanks to `AiServices`:
 
 ```java
 // A type-safe / strongly-typed object 
@@ -281,8 +281,8 @@ WeatherForecast forecast = forecastAssistant.extract("""
 
 ## Python code execution
 
-Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environement.
-This is particulary interesting for situations where more advanced calculations or logic is needed.
+Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environment.
+This is particularly interesting for situations where more advanced calculations or logic is needed.
 
 ```java
 ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
@@ -313,7 +313,7 @@ Response<AiMessage> mathQuizz = gemini.generate(
 ```
 
 Gemini will craft a Python script, execute it on its server, and return the result.
-Since we asked to see the code and output of the execution, the answer will look as follow:
+Since we asked to see the code and output of the execution, the answer will look as follows:
 
 ~~~
 Code executed:
