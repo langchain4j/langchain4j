@@ -335,11 +335,53 @@ VertexAiGeminiChatModel.builder()
     .build();
 ```
 
+Or by specifying an explicit schema from a Java class:
+
+```java
+VertexAiGeminiChatModel.builder()
+    ...
+    .responseSchema(SchemaHelper.fromClass(Person.class))
+    .build();
+```
+
+From a JSON schema:
+
+```java
+VertexAiGeminiChatModel.builder()
+    ...
+    .responseSchema(Schema.builder()...build())
+    .build();
+```
+
 - For Google AI Gemini:
 ```java
 GoogleAiGeminiChatModel.builder()
     ...
-    .responseMimeType("application/json")
+    .responseFormat(ResponseFormat.JSON)
+    .build();
+```
+
+Or by specifying an explicit schema from a Java class:
+
+```java
+GoogleAiGeminiChatModel.builder()
+    ...
+    .responseFormat(ResponseFormat.builder()
+        .type(JSON)
+        .jsonSchema(JsonSchemas.jsonSchemaFrom(Person.class).get())
+        .build())
+    .build();
+```
+
+From a JSON schema:
+
+```java
+GoogleAiGeminiChatModel.builder()
+    ...
+    .responseFormat(ResponseFormat.builder()
+        .type(JSON)
+        .jsonSchema(JsonSchema.builder()...build())
+        .build())
     .build();
 ```
 

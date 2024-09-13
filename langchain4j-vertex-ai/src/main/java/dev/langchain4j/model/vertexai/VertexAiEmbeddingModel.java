@@ -66,7 +66,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public enum TaskType {
         RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION,
-        CLUSTERING, QUESTION_ANSWERING, FACT_VERIFICATION
+        CLUSTERING, QUESTION_ANSWERING, FACT_VERIFICATION, CODE_RETRIEVAL_QUERY
     }
 
     public VertexAiEmbeddingModel(String endpoint,

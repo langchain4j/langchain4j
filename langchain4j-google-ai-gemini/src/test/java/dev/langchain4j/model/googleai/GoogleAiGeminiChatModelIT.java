@@ -94,7 +94,8 @@ public class GoogleAiGeminiChatModelIT {
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-pro")
-            .responseMimeType("application/json")
+            .responseFormat(ResponseFormat.JSON)
+            .logRequestsAndResponses(true)
             .build();
 
         // when
@@ -506,6 +507,39 @@ public class GoogleAiGeminiChatModelIT {
     }
 
     @Test
+    void should_handle_enum_output_mode() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .responseFormat(ResponseFormat.builder()
+                .type(JSON)
+                .jsonSchema(JsonSchema.builder()
+                    .rootElement(JsonEnumSchema.builder()
+                        .enumValues("POSITIVE", "NEUTRAL", "NEGATIVE")
+                        .build())
+                    .build())
+                .build())
+            .build();
+
+        // when
+        ChatResponse response = gemini.chat(ChatRequest.builder()
+            .messages(
+                SystemMessage.from(
+                    "Your role is to analyze the sentiment of the text you receive."),
+                UserMessage.from(
+                    "This is super exciting news, congratulations!"
+                )
+            )
+            .build());
+
+        // then
+        assertThat(response.aiMessage().text().trim())
+            .isEqualTo("POSITIVE");
+    }
+
+    @Test
     void should_allow_array_as_response_schema() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
@@ -555,7 +589,9 @@ public class GoogleAiGeminiChatModelIT {
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
-            .responseSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+            .responseFormat(ResponseFormat.builder()
+                .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+                .build())
 //             Equivalent to:
 //            .responseFormat(ResponseFormat.builder()
 //                .type(JSON)
