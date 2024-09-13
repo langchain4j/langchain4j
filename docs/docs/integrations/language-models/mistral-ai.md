@@ -80,8 +80,10 @@ import dev.langchain4j.model.mistralai.MistralAiChatModel;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        ChatLanguageModel model = MistralAiChatModel
-                .withApiKey(ApiKeys.MISTRALAI_API_KEY);
+        ChatLanguageModel model = MistralAiChatModel.builder()
+                .apiKey(ApiKeys.MISTRALAI_API_KEY)
+                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+                .build();
 
         String response = model.generate("Say 'Hello World'");
         System.out.println(response);
@@ -107,8 +109,10 @@ import java.util.concurrent.CompletableFuture;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        MistralAiStreamingChatModel model = MistralAiStreamingChatModel
-                .withApiKey(ApiKeys.MISTRALAI_API_KEY);
+        MistralAiStreamingChatModel model = MistralAiStreamingChatModel.builder()
+                .apiKey(ApiKeys.MISTRALAI_API_KEY)
+                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+                .build();
 
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();         
         model.generate("Tell me a joke about Java", new StreamingResponseHandler() {

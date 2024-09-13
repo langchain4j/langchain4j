@@ -376,7 +376,10 @@ interface Assistant {
     TokenStream chat(String message);
 }
 
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
+StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 
 Assistant assistant = AiServices.create(Assistant.class, model);
 
