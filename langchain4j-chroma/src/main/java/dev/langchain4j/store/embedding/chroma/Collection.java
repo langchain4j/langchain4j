@@ -2,6 +2,9 @@ package dev.langchain4j.store.embedding.chroma;
 
 import java.util.Map;
 
+import lombok.Getter;
+
+@Getter
 class Collection {
 
     private String id;

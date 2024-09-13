@@ -6,6 +6,10 @@ import static java.util.Collections.singletonList;
 import java.util.List;
 import java.util.Map;
 
+import lombok.Getter;
+
+
+@Getter
 class QueryRequest {
 
     private final Map<String, Object> where;

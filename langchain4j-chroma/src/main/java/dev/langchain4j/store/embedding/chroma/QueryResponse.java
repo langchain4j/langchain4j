@@ -3,6 +3,9 @@ package dev.langchain4j.store.embedding.chroma;
 import java.util.List;
 import java.util.Map;
 
+import lombok.Getter;
+
+@Getter
 class QueryResponse {
 
     private List<List<String>> ids;

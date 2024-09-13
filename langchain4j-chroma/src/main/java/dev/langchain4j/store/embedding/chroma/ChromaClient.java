@@ -1,9 +1,9 @@
 package dev.langchain4j.store.embedding.chroma;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import dev.langchain4j.internal.Utils;
 
 import java.io.IOException;
@@ -12,7 +12,7 @@ import java.util.List;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 class ChromaClient {
 
@@ -32,12 +32,14 @@ class ChromaClient {
             httpClientBuilder.addInterceptor(new ChromaResponseLoggingInterceptor());
         }
 
-        Gson gson = new GsonBuilder().setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES).create();
+        ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         Retrofit retrofit = new Retrofit.Builder()
             .baseUrl(Utils.ensureTrailingForwardSlash(builder.baseUrl))
             .client(httpClientBuilder.build())
-            .addConverterFactory(GsonConverterFactory.create(gson))
+            .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
             .build();
 
         this.chromaApi = retrofit.create(ChromaApi.class);
