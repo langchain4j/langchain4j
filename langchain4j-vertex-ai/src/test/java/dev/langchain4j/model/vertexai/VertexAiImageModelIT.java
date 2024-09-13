@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+@Disabled("Run manually before release. Expensive to run very often.")
 public class VertexAiImageModelIT {
 
     private static final String ENDPOINT = System.getenv("GCP_VERTEXAI_ENDPOINT");
