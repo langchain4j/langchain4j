@@ -6,22 +6,20 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 
 @Experimental
 public class ResponseFormat {
 
+    public static final ResponseFormat TEXT = ResponseFormat.builder().type(ResponseFormatType.TEXT).build();
+    public static final ResponseFormat JSON = ResponseFormat.builder().type(ResponseFormatType.JSON).build();
+
     private final ResponseFormatType type;
     private final JsonSchema jsonSchema;
-
-    public static final ResponseFormat TEXT_FORMAT = new ResponseFormat(builder().type(TEXT));
-    public static final ResponseFormat JSON_FORMAT = new ResponseFormat(builder().type(JSON));
 
     private ResponseFormat(Builder builder) {
         this.type = ensureNotNull(builder.type, "type");
         this.jsonSchema = builder.jsonSchema;
-        if (jsonSchema != null && type != JSON) {
+        if (jsonSchema != null && type != ResponseFormatType.JSON) {
             throw new IllegalStateException("JsonSchema can be specified only when type=JSON");
         }
     }

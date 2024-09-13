@@ -100,7 +100,7 @@ public class GoogleAiGeminiChatModelIT {
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-pro")
-            .responseFormat(ResponseFormat.JSON_FORMAT)
+            .responseFormat(ResponseFormat.JSON)
             .logRequestsAndResponses(true)
             .build();
 
