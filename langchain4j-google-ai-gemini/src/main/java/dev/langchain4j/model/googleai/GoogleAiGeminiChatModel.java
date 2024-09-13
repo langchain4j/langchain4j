@@ -261,13 +261,13 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
             RuntimeException runtimeException = new RuntimeException("An error occurred when calling the Gemini API endpoint.", e);
 
             ChatModelErrorContext chatModelErrorContext = new ChatModelErrorContext(
-                runtimeException, chatModelRequest, null, listenerAttributes
+                e, chatModelRequest, null, listenerAttributes
             );
             listeners.forEach((listener) -> {
                 try {
                     listener.onError(chatModelErrorContext);
                 } catch (Exception ex) {
-                    log.warn("Exception while calling model listener (onError)", e);
+                    log.warn("Exception while calling model listener (onError)", ex);
                 }
             });
 
