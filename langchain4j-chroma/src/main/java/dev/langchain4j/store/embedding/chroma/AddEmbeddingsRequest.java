@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import lombok.Getter;
+
+@Getter
 class AddEmbeddingsRequest {
 
     private final List<String> ids;

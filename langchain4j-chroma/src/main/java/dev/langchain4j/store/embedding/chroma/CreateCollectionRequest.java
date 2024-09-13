@@ -3,6 +3,9 @@ package dev.langchain4j.store.embedding.chroma;
 import java.util.HashMap;
 import java.util.Map;
 
+import lombok.Getter;
+
+@Getter
 class CreateCollectionRequest {
 
     private final String name;
