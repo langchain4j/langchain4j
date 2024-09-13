@@ -49,11 +49,6 @@ public class GoogleAiGeminiChatModelIT {
     private static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     private static final String MD_FILE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/docs/docs/intro.md";
 
-    @AfterEach
-    void afterEach() throws InterruptedException {
-        Thread.sleep(2_000); // to prevent hitting rate limits
-    }
-
     @Test
     void should_answer_simple_question() {
         // given
@@ -736,5 +731,13 @@ public class GoogleAiGeminiChatModelIT {
         assertThat(errorCtxt[0]).isNotNull();
         assertThat(requestCtxt[0]).isNotNull();
         assertThat(responseCtxt[0]).isNotNull();
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds));
+        }
     }
 }

@@ -271,7 +271,7 @@ String text = """
 
 Person person = personExtractor.extractPersonFrom(text);
 
-System.out.println(person); // // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
+System.out.println(person); // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
 ```
 
 ## JSON mode
@@ -302,7 +302,7 @@ but now we have the JSON mode feature, which is more suitable for this purpose.
 Here is how to enable JSON mode:
 
 - For OpenAI:
-  - For newer models that support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) (e.g. gpt-4o-mini, gpt-4o-2024-08-06):
+  - For newer models that support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) (e.g., `gpt-4o-mini`, `gpt-4o-2024-08-06`):
     ```java
     OpenAiChatModel.builder()
         ...
@@ -376,7 +376,10 @@ interface Assistant {
     TokenStream chat(String message);
 }
 
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
+StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 
 Assistant assistant = AiServices.create(Assistant.class, model);
 
@@ -460,7 +463,7 @@ String answer = assistant.chat("What is 1+2 and 3*4?");
 ```
 In this scenario, LLM will execute `add(1, 2)` and `multiply(3, 4)` methods before providing an answer.
 
-More details about tools can be found [here](/tutorials/tools).
+More details about tools can be found [here](/tutorials/tools#high-level-tool-api).
 
 
 ## RAG

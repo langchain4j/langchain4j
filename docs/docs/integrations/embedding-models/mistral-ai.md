@@ -65,8 +65,10 @@ import java.util.List;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        EmbeddingModel embeddingModel = MistralAiEmbeddingModel
-                .withApiKey(System.getenv("MISTRAL_AI_API_KEY"));
+        EmbeddingModel embeddingModel = MistralAiEmbeddingModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName("mistral-embed")
+                .build();
 
         // For simplicity, this example uses an in-memory store, but you can choose any external compatible store for production environments.
         EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
