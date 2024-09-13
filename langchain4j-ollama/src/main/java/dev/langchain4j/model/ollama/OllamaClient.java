@@ -186,7 +186,7 @@ class OllamaClient {
                         }
                     }
                 } catch (Exception e) {
-                    onListenError(listeners, e, modelListenerRequest, responseBuilder.build(), new ConcurrentHashMap<>());
+                    onListenError(listeners, e, modelListenerRequest, responseBuilder.build(), attributes);
 
                     handler.onError(e);
                 }
