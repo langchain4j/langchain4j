@@ -271,7 +271,7 @@ String text = """
 
 Person person = personExtractor.extractPersonFrom(text);
 
-System.out.println(person); // // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
+System.out.println(person); // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
 ```
 
 ## JSON mode
@@ -302,7 +302,7 @@ but now we have the JSON mode feature, which is more suitable for this purpose.
 Here is how to enable JSON mode:
 
 - For OpenAI:
-  - For newer models that support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) (e.g. gpt-4o-mini, gpt-4o-2024-08-06):
+  - For newer models that support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) (e.g., `gpt-4o-mini`, `gpt-4o-2024-08-06`):
     ```java
     OpenAiChatModel.builder()
         ...
