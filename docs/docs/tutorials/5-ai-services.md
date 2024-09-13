@@ -460,7 +460,7 @@ String answer = assistant.chat("What is 1+2 and 3*4?");
 ```
 In this scenario, LLM will execute `add(1, 2)` and `multiply(3, 4)` methods before providing an answer.
 
-More details about tools can be found [here](/tutorials/tools).
+More details about tools can be found [here](/tutorials/tools#high-level-tool-api).
 
 
 ## RAG
