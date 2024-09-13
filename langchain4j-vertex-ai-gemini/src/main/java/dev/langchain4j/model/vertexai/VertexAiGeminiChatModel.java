@@ -302,18 +302,6 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
     }
 
     @Override
-    public Set<Capability> supportedCapabilities() {
-        Set<Capability> capabilities = new HashSet<>();
-        // When response format is not null, it's always application/json or text/x.enum as mime type.
-        // GenerationConfig defaults to an empty schema when a response schema is not specified,
-        // so we check that the response format schema is equal to a default (empty) schema.
-        if (Schema.getDefaultInstance().equals(this.generationConfig.getResponseSchema())) {
-            capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
-        }
-        return capabilities;
-    }
-
-    @Override
     public void close() throws IOException {
         if (this.vertexAI != null) {
             vertexAI.close();

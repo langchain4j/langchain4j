@@ -357,14 +357,6 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public GoogleAiGeminiChatModelBuilder responseSchema(JsonSchema schema) {
-            this.responseFormat = ResponseFormat.builder()
-                .type(ResponseFormatType.JSON)
-                .jsonSchema(schema)
-                .build();
-            return this;
-        }
-
         public GoogleAiGeminiChatModelBuilder safetySettings(Map<GeminiHarmCategory, GeminiHarmBlockThreshold> safetySettingMap) {
             this.safetySettings = safetySettingMap.entrySet().stream()
                 .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue())

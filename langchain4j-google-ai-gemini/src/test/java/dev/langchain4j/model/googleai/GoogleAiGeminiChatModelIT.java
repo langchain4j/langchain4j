@@ -589,7 +589,9 @@ public class GoogleAiGeminiChatModelIT {
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
-            .responseSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+            .responseFormat(ResponseFormat.builder()
+                .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+                .build())
 //             Equivalent to:
 //            .responseFormat(ResponseFormat.builder()
 //                .type(JSON)
