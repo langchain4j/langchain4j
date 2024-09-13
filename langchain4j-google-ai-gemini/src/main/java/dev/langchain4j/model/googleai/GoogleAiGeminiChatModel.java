@@ -27,6 +27,7 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -47,6 +48,7 @@ import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageT
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
+import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
 
 @Experimental
@@ -66,6 +68,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
     private final Integer topK;
     private final Double topP;
     private final Integer maxOutputTokens;
+    private final Duration timeout;
     private final List<String> stopSequences;
 
     private final Integer candidateCount;
@@ -87,6 +90,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
                                    Integer maxRetries,
                                    Double temperature, Integer topK, Double topP,
                                    Integer maxOutputTokens, Integer candidateCount,
+                                   Duration timeout,
                                    ResponseFormat responseFormat,
                                    List<String> stopSequences, GeminiFunctionCallingConfig toolConfig,
                                    Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
@@ -106,6 +110,8 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         this.maxOutputTokens = getOrDefault(maxOutputTokens, 8192);
         this.candidateCount = getOrDefault(candidateCount, 1);
         this.stopSequences = getOrDefault(stopSequences, emptyList());
+
+        this.timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.toolConfig = toolConfig;
 
@@ -331,7 +337,13 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
             HttpLoggingInterceptor logging = new HttpLoggingInterceptor(log::debug);
             logging.redactHeader(API_KEY_HEADER_NAME);
             logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-            retrofitBuilder.client(new OkHttpClient.Builder().addInterceptor(logging).build());
+
+            OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .addInterceptor(logging)
+                .callTimeout(this.timeout)
+                .build();
+
+            retrofitBuilder.client(okHttpClient);
         }
 
         Retrofit retrofit = retrofitBuilder.build();
