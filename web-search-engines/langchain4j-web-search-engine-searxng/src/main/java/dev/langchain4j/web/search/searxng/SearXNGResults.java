@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SearXNGResults {
+class SearXNGResults {
 	private String query;
 	private int numberOfResults;
 	private List<SearXNGResult> results;

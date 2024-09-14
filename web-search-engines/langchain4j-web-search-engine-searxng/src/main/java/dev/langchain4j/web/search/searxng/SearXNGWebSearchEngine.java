@@ -11,14 +11,24 @@ import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
 import lombok.Builder;
 
+/**
+ * Represents a SearXNG instance with its API enabled as a {@code WebSearchEngine}.
+ */
 public class SearXNGWebSearchEngine implements WebSearchEngine {
 	private SearXNGClient client;
 
+	/**
+	 * @param baseUrl base URL of the SearXNG instance e.g. http://localhost:8080
+	 */
 	@Builder
 	public SearXNGWebSearchEngine(String baseUrl) {
 		this(baseUrl, Duration.ofSeconds(10L));
 	}
 
+	/**
+	 * @param baseUrl base URL of the SearXNG instance e.g. http://localhost:8080
+	 * @param timeout connection timeout duration
+	 */
 	@Builder
 	public SearXNGWebSearchEngine(String baseUrl, Duration timeout) {
 		this.client = new SearXNGClient(baseUrl, timeout);
