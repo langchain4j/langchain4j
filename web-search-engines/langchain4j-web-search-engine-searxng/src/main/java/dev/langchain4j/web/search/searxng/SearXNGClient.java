@@ -19,7 +19,7 @@ public class SearXNGClient {
 	private SearXNGApi api;
 
 	@Builder
-	public SearXNGClient(Duration timeout, String baseUrl) {
+	public SearXNGClient(String baseUrl, Duration timeout) {
 		OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
 				.callTimeout(timeout)
 				.connectTimeout(timeout)
@@ -44,10 +44,5 @@ public class SearXNGClient {
 		catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-	}
-
-	public static void main(String[] args) {
-		final SearXNGResults results = new SearXNGClient(Duration.ofSeconds(10l), "http://localhost:8080").search(WebSearchRequest.from("Neil Armstrong"));
-		System.out.println(results);
 	}
 }

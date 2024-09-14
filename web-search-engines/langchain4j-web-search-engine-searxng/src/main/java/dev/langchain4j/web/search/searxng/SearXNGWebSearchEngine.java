@@ -15,11 +15,16 @@ public class SearXNGWebSearchEngine implements WebSearchEngine {
 	private SearXNGClient client;
 
 	@Builder
-	public SearXNGWebSearchEngine(String baseUrl, Duration timeout) {
-		this.client = new SearXNGClient(timeout, baseUrl);
+	public SearXNGWebSearchEngine(String baseUrl) {
+		this(baseUrl, Duration.ofSeconds(10L));
 	}
 
-	static WebSearchOrganicResult toWebSearchOrganicResult(SearXNGResult result) {
+	@Builder
+	public SearXNGWebSearchEngine(String baseUrl, Duration timeout) {
+		this.client = new SearXNGClient(baseUrl, timeout);
+	}
+
+	private static WebSearchOrganicResult toWebSearchOrganicResult(SearXNGResult result) {
 		return WebSearchOrganicResult.from(result.getTitle(), URI.create(result.getUrl()), result.getContent(), null);
 	}
 	

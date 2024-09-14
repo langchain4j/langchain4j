@@ -23,8 +23,8 @@ public class SearXNGResults {
 	private List<SearXNGResult> results;
 	private List<String> answers;
 	private List<String> corrections;
-	//private List<String> infoboxes;
 	private List<String> suggestions;
 	private List<List<String>> unresponsiveEngines;
+	// Skipping other returned fields like infoboxes for now
 }
 
