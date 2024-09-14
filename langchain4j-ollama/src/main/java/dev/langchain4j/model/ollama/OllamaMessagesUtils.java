@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -81,17 +82,21 @@ class OllamaMessagesUtils {
         List<ToolCall> toolCalls = null;
         if (ChatMessageType.AI == chatMessage.type()) {
             AiMessage aiMessage = (AiMessage) chatMessage;
-            toolCalls = aiMessage.toolExecutionRequests().stream()
-                    .map(toolExecutionRequest -> {
-                        TypeReference<HashMap<String, Object>> typeReference = new TypeReference<HashMap<String, Object>>() {
-                        };
-                        FunctionCall functionCall = FunctionCall.builder()
-                                .name(toolExecutionRequest.name())
-                                .arguments(toObject(toolExecutionRequest.arguments(), typeReference))
-                                .build();
-                        return ToolCall.builder()
-                                .function(functionCall).build();
-                    }).collect(Collectors.toList());
+            List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+            toolCalls = Optional.ofNullable(toolExecutionRequests)
+                    .map(reqs -> reqs.stream()
+                            .map(toolExecutionRequest -> {
+                                TypeReference<HashMap<String, Object>> typeReference = new TypeReference<HashMap<String, Object>>() {
+                                };
+                                FunctionCall functionCall = FunctionCall.builder()
+                                        .name(toolExecutionRequest.name())
+                                        .arguments(toObject(toolExecutionRequest.arguments(), typeReference))
+                                        .build();
+                                return ToolCall.builder()
+                                        .function(functionCall).build();
+                            }).collect(Collectors.toList()))
+                    .orElse(null);
+
         }
         return Message.builder()
                 .role(toOllamaRole(chatMessage.type()))
