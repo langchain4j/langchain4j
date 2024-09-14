@@ -1,9 +1,11 @@
 package dev.langchain4j.model.ollama;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -12,6 +14,7 @@ import java.util.stream.Collectors;
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 
 class OllamaMessagesUtils {
 
@@ -75,9 +78,25 @@ class OllamaMessagesUtils {
     }
 
     private static Message otherMessages(ChatMessage chatMessage) {
+        List<ToolCall> toolCalls = null;
+        if (ChatMessageType.AI == chatMessage.type()) {
+            AiMessage aiMessage = (AiMessage) chatMessage;
+            toolCalls = aiMessage.toolExecutionRequests().stream()
+                    .map(toolExecutionRequest -> {
+                        TypeReference<HashMap<String, Object>> typeReference = new TypeReference<HashMap<String, Object>>() {
+                        };
+                        FunctionCall functionCall = FunctionCall.builder()
+                                .name(toolExecutionRequest.name())
+                                .arguments(toObject(toolExecutionRequest.arguments(), typeReference))
+                                .build();
+                        return ToolCall.builder()
+                                .function(functionCall).build();
+                    }).collect(Collectors.toList());
+        }
         return Message.builder()
                 .role(toOllamaRole(chatMessage.type()))
                 .content(chatMessage.text())
+                .toolCalls(toolCalls)
                 .build();
     }
 
