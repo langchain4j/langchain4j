@@ -87,7 +87,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new OllamaHttpException(e);
         }
     }
 
@@ -102,7 +102,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new OllamaHttpException(e);
         }
     }
 
@@ -139,13 +139,15 @@ class OllamaClient {
                         }
                     }
                 } catch (Exception e) {
-                    handler.onError(e);
+                    OllamaHttpException wrappedException = new OllamaHttpException(e);
+                    handler.onError(wrappedException);
                 }
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable throwable) {
-                handler.onError(throwable);
+                OllamaHttpException wrappedException = new OllamaHttpException(throwable);
+                handler.onError(wrappedException);
             }
         });
     }
@@ -186,17 +188,19 @@ class OllamaClient {
                         }
                     }
                 } catch (Exception e) {
-                    onListenError(listeners, e, modelListenerRequest, responseBuilder.build(), attributes);
+                    OllamaHttpException wrappedException = new OllamaHttpException(e);
+                    onListenError(listeners, wrappedException, modelListenerRequest, responseBuilder.build(), attributes);
 
-                    handler.onError(e);
+                    handler.onError(wrappedException);
                 }
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable throwable) {
-                onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), attributes);
+                OllamaHttpException wrappedException = new OllamaHttpException(throwable);
+                onListenError(listeners, wrappedException, modelListenerRequest, responseBuilder.build(), attributes);
 
-                handler.onError(throwable);
+                handler.onError(wrappedException);
             }
         });
     }
@@ -210,7 +214,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new OllamaHttpException(e);
         }
     }
 
@@ -223,7 +227,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new OllamaHttpException(e);
         }
     }
 
@@ -236,7 +240,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new OllamaHttpException(e);
         }
     }
 
@@ -249,7 +253,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new OllamaHttpException(e);
         }
     }
 
@@ -262,17 +266,17 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new OllamaHttpException(e);
         }
     }
 
 
-    private RuntimeException toException(retrofit2.Response<?> response) throws IOException {
+    private OllamaHttpException toException(retrofit2.Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();
 
         String errorMessage = String.format("status code: %s; body: %s", code, body);
-        return new RuntimeException(errorMessage);
+        return new OllamaHttpException(errorMessage);
     }
 
     static class GenericHeadersInterceptor implements Interceptor {

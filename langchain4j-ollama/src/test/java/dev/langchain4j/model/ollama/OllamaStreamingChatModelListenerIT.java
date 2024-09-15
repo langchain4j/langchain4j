@@ -11,15 +11,12 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
 
     @Override
     protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
-        double temperature = 0.7;
-        double topP = 1.0;
-        int maxTokens = 7;
         return OllamaStreamingChatModel.builder()
                 .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollama.getEndpoint())
                 .modelName(TINY_DOLPHIN_MODEL)
-                .temperature(temperature)
-                .topP(topP)
-                .numPredict(maxTokens)
+                .temperature(temperature())
+                .topP(topP())
+                .numPredict(maxTokens())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -34,7 +31,7 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
     @Override
     protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OllamaStreamingChatModel.builder()
-                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollama.getEndpoint())
+                .baseUrl("http://banana")
                 .modelName(TINY_DOLPHIN_MODEL)
                 .logRequests(true)
                 .logResponses(true)
@@ -43,7 +40,22 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
     }
 
     @Override
-    protected Class<?> expectedExceptionClass() {
-        return RuntimeException.class;
+    protected Class<? extends Exception> expectedExceptionClass() {
+        return OllamaHttpException.class;
+    }
+
+    @Override
+    protected boolean supportToolCalls() {
+        return false;
+    }
+
+    @Override
+    protected boolean assertResponseId() {
+        return false;
+    }
+
+    @Override
+    protected boolean assertFinishReason() {
+        return false;
     }
 }
