@@ -3,6 +3,7 @@ package dev.langchain4j.service.output;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.Test;
@@ -17,11 +18,16 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -101,10 +107,10 @@ class ServiceOutputParserTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-        "{\"key\":\"value\"}",
-        "```\n{\"key\":\"value\"}\n```",
-        "```json\n{\"key\":\"value\"}\n```",
-        "Sure, here is your JSON:\n```\n{\"key\":\"value\"}\n```\nLet me know if you need more help."
+            "{\"key\":\"value\"}",
+            "```\n{\"key\":\"value\"}\n```",
+            "```json\n{\"key\":\"value\"}\n```",
+            "Sure, here is your JSON:\n```\n{\"key\":\"value\"}\n```\nLet me know if you need more help."
     })
     void makeSureJsonBlockIsExtractedBeforeParse(String json) {
         // Given
@@ -124,10 +130,10 @@ class ServiceOutputParserTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-        "{\"keyProperty\" : {\"key\" : \"value\"}}",
-        "```\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```",
-        "```json\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```",
-        "Sure, here is your JSON:\n```\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```\nLet me know if you need more help."
+            "{\"keyProperty\" : {\"key\" : \"value\"}}",
+            "```\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```",
+            "```json\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```",
+            "Sure, here is your JSON:\n```\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```\nLet me know if you need more help."
     })
     void makeSureNestedJsonBlockIsExtractedBeforeParse(String json) {
         // Given
@@ -147,15 +153,15 @@ class ServiceOutputParserTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-        "\"key\":\"value\"}",
-        "{\"key\":\"value\""
+            "\"key\":\"value\"}",
+            "{\"key\":\"value\""
     })
     void illegalJsonBlockNotExtractedAndFailsParse(String json) {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
         Response<AiMessage> responseStub = Response.from(aiMessage);
         sut = new ServiceOutputParser();
-        
+
         // When / Then
         assertThatExceptionOfType(JsonSyntaxException.class).isThrownBy(() -> sut.parse(responseStub, KeyProperty.class));
     }
@@ -438,10 +444,6 @@ class ServiceOutputParserTest {
         private PersonWithParentArray[] parents;
     }
 
-    static class ClassWithNoFields {
-
-    }
-
     @Test
     void outputFormatInstructions_PersonWithParentArray() {
         String formatInstructions = sut.outputFormatInstructions(PersonWithParentArray.class);
@@ -456,15 +458,6 @@ class ServiceOutputParserTest {
                         "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray)\n" +
                         "})\n" +
                         "}");
-    }
-
-    @Test
-    void outputFormatInstructions_ClassWithNoFields() {
-        String formatInstructions = sut.outputFormatInstructions(ClassWithNoFields.class);
-
-        assertThat(formatInstructions).isEqualTo("\n" +
-                "You must answer strictly in the following JSON format: {\n" +
-                "}");
     }
 
     static class PersonWithMotherAndFather {
@@ -490,5 +483,25 @@ class ServiceOutputParserTest {
                         "}),\n" +
                         "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
                         "}");
+    }
+
+    static class ClassWithNoFields {
+
+    }
+
+    @Test
+    void outputFormatInstructions_ClassWithNoFields() {
+
+        assertThatThrownBy(() -> sut.outputFormatInstructions(ClassWithNoFields.class))
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("Illegal method return type: " + ClassWithNoFields.class);
+    }
+
+    @Test
+    void outputFormatInstructions_Object() {
+
+        assertThatThrownBy(() -> sut.outputFormatInstructions(Object.class))
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("Illegal method return type: " + Object.class);
     }
 }

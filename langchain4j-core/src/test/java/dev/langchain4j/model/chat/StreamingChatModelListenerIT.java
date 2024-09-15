@@ -3,18 +3,22 @@ package dev.langchain4j.model.chat;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 
@@ -50,9 +54,9 @@ import static org.assertj.core.api.Fail.fail;
  *
  * </pre>
  */
-public abstract class ChatModelListenerIT {
+public abstract class StreamingChatModelListenerIT {
 
-    protected abstract ChatLanguageModel createModel(ChatModelListener listener);
+    protected abstract StreamingChatLanguageModel createModel(ChatModelListener listener);
 
     protected abstract String modelName();
 
@@ -68,7 +72,7 @@ public abstract class ChatModelListenerIT {
         return 7;
     }
 
-    protected abstract ChatLanguageModel createFailingModel(ChatModelListener listener);
+    protected abstract StreamingChatLanguageModel createFailingModel(ChatModelListener listener);
 
     protected abstract Class<?> expectedExceptionClass();
 
@@ -100,7 +104,7 @@ public abstract class ChatModelListenerIT {
             }
         };
 
-        ChatLanguageModel model = createModel(listener);
+        StreamingChatLanguageModel model = createModel(listener);
 
         UserMessage userMessage = UserMessage.from("hello");
 
@@ -111,7 +115,9 @@ public abstract class ChatModelListenerIT {
                 .build();
 
         // when
-        AiMessage aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(userMessage), singletonList(toolSpecification), handler);
+        AiMessage aiMessage = handler.get().content();
 
         // then
         ChatModelRequest request = requestReference.get();
@@ -139,7 +145,7 @@ public abstract class ChatModelListenerIT {
     }
 
     @Test
-    void should_listen_error() {
+    protected void should_listen_error() throws Exception {
 
         // given
         AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
@@ -162,24 +168,41 @@ public abstract class ChatModelListenerIT {
             public void onError(ChatModelErrorContext errorContext) {
                 errorReference.set(errorContext.error());
                 assertThat(errorContext.request()).isSameAs(requestReference.get());
-                assertThat(errorContext.partialResponse()).isNull();
+                assertThat(errorContext.partialResponse()).isNull(); // can be non-null if it fails in the middle of streaming
                 assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
             }
         };
 
-        ChatLanguageModel model = createFailingModel(listener);
+        StreamingChatLanguageModel model = createFailingModel(listener);
 
         String userMessage = "this message will fail";
 
+        CompletableFuture<Throwable> future = new CompletableFuture<>();
+        StreamingResponseHandler<AiMessage> handler = new StreamingResponseHandler<AiMessage>() {
+
+            @Override
+            public void onNext(String token) {
+                fail("onNext() must not be called");
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.complete(error);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                fail("onComplete() must not be called");
+            }
+        };
+
         // when
-        try {
-            model.generate(userMessage);
-        } catch (Exception e) {
-            // ignore
-        }
+        model.generate(userMessage, handler);
+        Throwable throwable = future.get(5, SECONDS);
 
         // then
-        Throwable throwable = errorReference.get();
         assertThat(throwable).isExactlyInstanceOf(expectedExceptionClass());
+
+        assertThat(errorReference.get()).isSameAs(throwable);
     }
 }
