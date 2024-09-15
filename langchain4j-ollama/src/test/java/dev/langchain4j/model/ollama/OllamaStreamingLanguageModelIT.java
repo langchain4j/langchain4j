@@ -130,6 +130,6 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
 
         // then
         assertThat(future.get())
-                .isExactlyInstanceOf(NullPointerException.class);
+                .isExactlyInstanceOf(OllamaHttpException.class);
     }
 }

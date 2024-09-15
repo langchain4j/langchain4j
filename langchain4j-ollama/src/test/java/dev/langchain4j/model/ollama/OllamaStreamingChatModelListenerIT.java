@@ -31,8 +31,8 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
     @Override
     protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OllamaStreamingChatModel.builder()
-                .baseUrl("http://banana")
-                .modelName(TINY_DOLPHIN_MODEL)
+                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollama.getEndpoint())
+                .modelName("banana")
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))

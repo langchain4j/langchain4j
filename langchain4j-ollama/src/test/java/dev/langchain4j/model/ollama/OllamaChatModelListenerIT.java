@@ -32,8 +32,8 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
     @Override
     protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OllamaChatModel.builder()
-                .baseUrl("http://banana")
-                .modelName(TINY_DOLPHIN_MODEL)
+                .baseUrl(AbstractOllamaToolsLanguageModelInfrastructure.ollama.getEndpoint())
+                .modelName("banana")
                 .maxRetries(0)
                 .logRequests(true)
                 .logResponses(true)
