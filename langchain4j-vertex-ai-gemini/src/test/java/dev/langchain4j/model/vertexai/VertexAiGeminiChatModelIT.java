@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
+import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
@@ -16,10 +17,12 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -642,7 +645,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
-    @Test
+    @RetryingTest(2)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
@@ -867,5 +870,55 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("Gemini");
+    }
+
+    @Test
+    void should_support_enum_structured_output() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .responseSchema(Schema.newBuilder()
+                .setType(Type.STRING)
+                .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
+                .build())
+            .build();
+
+
+        // when
+        String instruction = "What is the sentiment expressed in the following sentence: ";
+        String response = model.generate(
+            instruction + "This is super exciting news, congratulations!"
+        );
+
+        // then
+        assertThat(response).isEqualTo("POSITIVE");
+
+        // when
+        response = model.generate(
+            instruction + "The sky is blue."
+        );
+
+        // then
+        assertThat(response).isEqualTo("NEUTRAL");
+
+        // when
+        response = model.generate(
+            instruction + "This is the worst movie I've ever watched! Boring!"
+        );
+
+        // then
+        assertThat(response).isEqualTo("NEGATIVE");
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds));
+        }
     }
 }

@@ -8,6 +8,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
@@ -22,12 +23,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
@@ -103,7 +107,11 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             generationConfigBuilder.setResponseMimeType(responseMimeType);
         }
         if (responseSchema != null) {
-            generationConfigBuilder.setResponseMimeType("application/json");
+            if (responseSchema.getEnumCount() > 0) {
+                generationConfigBuilder.setResponseMimeType("text/x.enum");
+            } else {
+                generationConfigBuilder.setResponseMimeType("application/json");
+            }
             generationConfigBuilder.setResponseSchema(responseSchema);
         }
         this.generationConfig = generationConfigBuilder.build();
