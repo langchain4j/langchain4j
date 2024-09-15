@@ -2,6 +2,8 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.singletonList;
+import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.joining;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static java.util.Collections.emptyList;
@@ -24,6 +26,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.output.Response;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -73,6 +76,11 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     }
 
     @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return generate(messages, toolSpecification, singletonList(toolSpecification));
+    }
+
+    @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         return generate(messages, null, toolSpecifications);
     }
@@ -90,6 +98,11 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         parameters.put("messages", formattedMessages);
         parameters.put("system", system);
 
+        if (nonNull(toolChoiceSpecification)) {
+            validateModelIdWithToolsSupport();
+            parameters.put("tool_choice", toAnthropicToolChoice(toolChoiceSpecification));
+        }
+
         if (!toolSpecifications.isEmpty()) {
             validateModelIdWithToolsSupport();
             parameters.put("tools", toAnthropicToolSpecifications(toolSpecifications));
@@ -106,6 +119,13 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             result.getTokenUsage(),
             result.getFinishReason()
         );
+    }
+
+    private Object toAnthropicToolChoice(ToolSpecification toolChoiceSpecification) {
+        ObjectNode toolChoiceNode = new ObjectMapper().createObjectNode();
+        toolChoiceNode.put("type", "tool");
+        toolChoiceNode.put("name", toolChoiceSpecification.name());
+        return toolChoiceNode;
     }
 
     private void validateModelIdWithToolsSupport() {
