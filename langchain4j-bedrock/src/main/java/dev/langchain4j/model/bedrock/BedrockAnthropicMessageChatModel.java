@@ -270,6 +270,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         AnthropicClaudeV2("anthropic.claude-v2"),
         AnthropicClaudeV2_1("anthropic.claude-v2:1"),
         AnthropicClaude3SonnetV1("anthropic.claude-3-sonnet-20240229-v1:0"),
+        AnthropicClaude3_5SonnetV1("anthropic.claude-3-5-sonnet-20240620-v1:0"),
         AnthropicClaude3HaikuV1("anthropic.claude-3-haiku-20240307-v1:0");
 
         private final String value;
