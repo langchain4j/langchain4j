@@ -3,6 +3,8 @@ package dev.langchain4j.model.bedrock;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.stream.Collectors.joining;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static java.util.Collections.emptyList;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -62,21 +64,19 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, (ToolSpecification) null);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(
-                messages,
-                Optional.ofNullable(toolSpecification)
-                        .map(Collections::singletonList)
-                        .orElse(Collections.emptyList())
-        );
+        return generate(messages, emptyList());
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return generate(messages, null, toolSpecifications);
+    }
+
+    private Response<AiMessage> generate(
+            List<ChatMessage> messages,
+            ToolSpecification toolChoiceSpecification,
+            List<ToolSpecification> toolSpecifications
+    ) {
         final String system = getAnthropicSystemPrompt(messages);
 
         List<BedrockAnthropicMessage> formattedMessages = getAnthropicMessages(messages);
