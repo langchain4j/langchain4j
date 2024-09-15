@@ -18,6 +18,38 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 
+/**
+ * Make sure these dependencies are present in the module where this test class is extended:
+ * <pre>
+ *
+ * <dependency>
+ *     <groupId>dev.langchain4j</groupId>
+ *     <artifactId>langchain4j</artifactId>
+ *     <scope>test</scope>
+ * </dependency>
+ *
+ * <dependency>
+ *     <groupId>dev.langchain4j</groupId>
+ *     <artifactId>langchain4j</artifactId>
+ *     <classifier>tests</classifier>
+ *     <type>test-jar</type>
+ *     <scope>test</scope>
+ * </dependency>
+ *
+ * <dependency>
+ *     <groupId>org.mockito</groupId>
+ *     <artifactId>mockito-core</artifactId>
+ *     <scope>test</scope>
+ * </dependency>
+ *
+ * <dependency>
+ *     <groupId>org.mockito</groupId>
+ *     <artifactId>mockito-junit-jupiter</artifactId>
+ *     <scope>test</scope>
+ * </dependency>
+ *
+ * </pre>
+ */
 public abstract class ChatModelListenerIT {
 
     protected abstract ChatLanguageModel createModel(ChatModelListener listener);
