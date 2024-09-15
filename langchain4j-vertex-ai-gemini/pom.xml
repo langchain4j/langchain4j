@@ -85,6 +85,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Retry flaky tests -->
+        <dependency>
+            <groupId>org.junit-pioneer</groupId>
+            <artifactId>junit-pioneer</artifactId>
+            <version>1.9.1</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <dependencyManagement>

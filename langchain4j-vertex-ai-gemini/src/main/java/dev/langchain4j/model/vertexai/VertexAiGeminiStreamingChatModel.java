@@ -88,7 +88,11 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             generationConfigBuilder.setResponseMimeType(responseMimeType);
         }
         if (responseSchema != null) {
-            generationConfigBuilder.setResponseMimeType("application/json");
+            if (responseSchema.getEnumCount() > 0) {
+                generationConfigBuilder.setResponseMimeType("text/x.enum");
+            } else {
+                generationConfigBuilder.setResponseMimeType("application/json");
+            }
             generationConfigBuilder.setResponseSchema(responseSchema);
         }
         this.generationConfig = generationConfigBuilder.build();

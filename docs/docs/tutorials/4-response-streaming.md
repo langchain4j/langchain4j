@@ -40,7 +40,10 @@ and `String` for `StreamingLanguageModel`. The `Response` object contains the co
 
 Below is an example of how to implement streaming with `StreamingChatLanguageModel`:
 ```java
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
+StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 
 String userMessage = "Tell me a joke";
 
