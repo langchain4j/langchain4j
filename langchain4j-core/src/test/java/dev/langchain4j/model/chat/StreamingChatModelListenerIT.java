@@ -145,7 +145,7 @@ public abstract class StreamingChatModelListenerIT {
     }
 
     @Test
-    void should_listen_error() throws Exception {
+    protected void should_listen_error() throws Exception {
 
         // given
         AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
