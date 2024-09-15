@@ -398,6 +398,71 @@ class BedrockChatModelIT {
     }
 
     @Test
+    void testToolChoiceFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+                .builder()
+                .temperature(0f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
+                .maxRetries(1)
+                .build();
+
+        assertThat(bedrockChatModel).isNotNull();
+
+        ToolSpecification calculator = ToolSpecification.builder()
+                .name("calculator")
+                .description("returns a sum of two numbers")
+                .addParameter("first", INTEGER)
+                .addParameter("second", INTEGER)
+                .build();
+
+        assertThat(calculator).isNotNull();
+
+        UserMessage userMessage = UserMessage.from("2+2=?");
+
+        Response<AiMessage> response = bedrockChatModel.generate(singletonList(userMessage), calculator);
+
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isNotBlank();
+        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        Response<AiMessage> secondResponse = bedrockChatModel.generate(messages, calculator);
+
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).isNull();
+        assertThat(secondAiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest secondToolExecutionRequest = secondAiMessage.toolExecutionRequests().get(0);
+        assertThat(secondToolExecutionRequest.id()).isNotBlank();
+        assertThat(secondToolExecutionRequest.name()).isEqualTo("calculator");
+        assertThat(secondToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+
+        assertThat(secondResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
+    }
+
+    @Test
     void testFunctionCallingWithBedrockAnthropicChatModelWithoutToolsSupport() {
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
                 .builder()
