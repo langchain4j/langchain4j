@@ -25,6 +25,7 @@ import java.util.List;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.Mistral7bInstructV0_2;
 import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.MistralMixtral8x7bInstructV0_1;
@@ -116,7 +117,7 @@ class BedrockChatModelIT {
 
         UserMessage userMessage = UserMessage.from("2+2=?");
 
-        Response<AiMessage> response = bedrockChatModel.generate(singletonList(userMessage), calculator);
+        Response<AiMessage> response = bedrockChatModel.generate(singletonList(userMessage), singletonList(calculator));
 
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
@@ -137,7 +138,7 @@ class BedrockChatModelIT {
         ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
-        Response<AiMessage> secondResponse = bedrockChatModel.generate(messages, calculator);
+        Response<AiMessage> secondResponse = bedrockChatModel.generate(messages, singletonList(calculator));
 
         AiMessage secondAiMessage = secondResponse.content();
         assertThat(secondAiMessage.text()).contains("4");
@@ -210,7 +211,7 @@ class BedrockChatModelIT {
         ToolExecutionResultMessage toolExecutionResultMessageCalc = from(toolExecutionRequestCalc, "4");
         List<ChatMessage> messagesCalc = asList(userMessageCalc, aiMessageCalc, toolExecutionResultMessageCalc);
 
-        Response<AiMessage> secondResponseCalc = bedrockChatModel.generate(messagesCalc, calculator);
+        Response<AiMessage> secondResponseCalc = bedrockChatModel.generate(messagesCalc, toolSpecifications);
 
         AiMessage secondAiMessageCalc = secondResponseCalc.content();
         assertThat(secondAiMessageCalc.text()).contains("4");
@@ -246,7 +247,7 @@ class BedrockChatModelIT {
         ToolExecutionResultMessage toolExecutionResultMessageTemp = from(toolExecutionRequestTemp, "25.0");
         List<ChatMessage> messagesTemp = asList(userMessageTemp, aiMessageTemp, toolExecutionResultMessageTemp);
 
-        Response<AiMessage> secondResponseTemp = bedrockChatModel.generate(messagesTemp, calculator);
+        Response<AiMessage> secondResponseTemp = bedrockChatModel.generate(messagesTemp, toolSpecifications);
 
         AiMessage secondAiMessageTemp = secondResponseTemp.content();
         assertThat(secondAiMessageTemp.text()).contains("25.0");
@@ -283,7 +284,7 @@ class BedrockChatModelIT {
 
         UserMessage userMessageCalc = UserMessage.from("Current date and time is = ?");
 
-        Response<AiMessage> responseCalc = bedrockChatModel.generate(singletonList(userMessageCalc), currentDateTime);
+        Response<AiMessage> responseCalc = bedrockChatModel.generate(singletonList(userMessageCalc), singletonList(currentDateTime));
 
         AiMessage aiMessageCalc = responseCalc.content();
         assertThat(aiMessageCalc.text()).isNull();
@@ -306,7 +307,7 @@ class BedrockChatModelIT {
         ToolExecutionResultMessage toolExecutionResultMessageCalc = from(toolExecutionRequestCalc, nowDateTime);
         List<ChatMessage> messagesCalc = asList(userMessageCalc, aiMessageCalc, toolExecutionResultMessageCalc);
 
-        Response<AiMessage> secondResponseCalc = bedrockChatModel.generate(messagesCalc, currentDateTime);
+        Response<AiMessage> secondResponseCalc = bedrockChatModel.generate(messagesCalc, singletonList(currentDateTime));
 
         AiMessage secondAiMessageCalc = secondResponseCalc.content();
         assertThat(secondAiMessageCalc.text()).contains(nowDateTime);
@@ -346,7 +347,7 @@ class BedrockChatModelIT {
 
         IllegalArgumentException exception = Assertions.assertThrows(
                 IllegalArgumentException.class,
-                () -> bedrockChatModel.generate(singletonList(userMessage), calculator),
+                () -> bedrockChatModel.generate(singletonList(userMessage), singletonList(calculator)),
                 "Expected generate() to throw, but it didn't"
         );
 
