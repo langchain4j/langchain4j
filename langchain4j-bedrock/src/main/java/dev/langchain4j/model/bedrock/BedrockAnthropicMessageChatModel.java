@@ -6,6 +6,7 @@ import static java.util.stream.Collectors.joining;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static java.util.Collections.emptyList;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -23,8 +24,12 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.output.Response;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import lombok.Builder;
@@ -166,14 +171,14 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         }
 
         ObjectNode propertiesNode = new ObjectMapper().createObjectNode();
-        toolParameters.properties().forEach((parameterName, parameterMetadata) -> {
-            ObjectNode parameterNode = new ObjectMapper().createObjectNode();
-            parameterMetadata.forEach((metadataName, metadataValue) -> parameterNode.put(metadataName, metadataValue.toString()));
-            propertiesNode.set(parameterName, parameterNode);
-        });
+        if (toolParameters.properties() != null) {
+            propertiesNode.setAll(toAnthropicParameterProperties(toolParameters.properties()));
+        }
 
         ArrayNode requiredNode = new ObjectMapper().createArrayNode();
-        toolParameters.required().forEach(requiredNode::add);
+        if (toolParameters.required() != null) {
+            toolParameters.required().forEach(requiredNode::add);
+        }
 
         ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
         inputSchemaNode.put("type", "object");
@@ -183,31 +188,102 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         return inputSchemaNode;
     }
 
+    private ObjectNode toAnthropicParameterProperties(Map<String, Map<String, Object>> properties) {
+        ObjectNode propertiesNode = new ObjectMapper().createObjectNode();
+        properties.forEach((propertyName, propertyMetadata) ->
+                propertiesNode.set(propertyName, toAnthropicParameter(propertyMetadata)));
+        return propertiesNode;
+    }
+
+    private JsonNode toAnthropicParameter(Map<String, Object> propertyMetadata) {
+        ObjectNode propertyNode = new ObjectMapper().createObjectNode();
+
+        String propertyType = propertyMetadata.get("type").toString();
+        String propertyDescription = (String) propertyMetadata.get("description");
+        if (propertyDescription != null) {
+            propertyNode.put("description", propertyDescription);
+        }
+        propertyNode.put("type", propertyType);
+
+        if ("object".equals(propertyType)) {
+            ObjectNode childPropertiesNode = new ObjectMapper().createObjectNode();
+            childPropertiesNode.setAll(toAnthropicParameterProperties((Map<String, Map<String, Object>>) propertyMetadata.get("properties")));
+            propertyNode.set("properties", childPropertiesNode);
+        }
+
+        if ("array".equals(propertyType)) {
+            propertyNode.set("items", toAnthropicParameter((Map<String, Object>) propertyMetadata.get("items")));
+        }
+
+        if (propertyMetadata.get("enum") != null) {
+            ArrayNode enumValues = new ObjectMapper().createArrayNode();
+            ((List<String>) propertyMetadata.get("enum")).forEach(enumValues::add);
+            propertyNode.set("enum", enumValues);
+        }
+
+        return propertyNode;
+    }
+
     private List<BedrockAnthropicMessage> getAnthropicMessages(List<ChatMessage> messages) {
-        return messages.stream()
-            .filter(message -> message.type() != ChatMessageType.SYSTEM)
-            .map(message -> new BedrockAnthropicMessage(getAnthropicRole(message), getAnthropicContent(message)))
-            .collect(Collectors.toList());
+        List<ChatMessage> noSystemMessages = messages.stream()
+                .filter(message -> message.type() != ChatMessageType.SYSTEM)
+                .collect(Collectors.toList());
+
+        List<BedrockAnthropicMessage> anthropicMessages = new ArrayList<>();
+        List<BedrockAnthropicContent> toolContents = new ArrayList<>();
+
+        for (ChatMessage message : noSystemMessages) {
+            List<BedrockAnthropicContent> contents = getAnthropicContent(message);
+
+            if (message instanceof ToolExecutionResultMessage) {
+                toolContents.addAll(getAnthropicContent(message));
+                continue;
+            } else {
+                if (!toolContents.isEmpty()) {
+                    anthropicMessages.add(new BedrockAnthropicMessage("user", toolContents));
+                    toolContents = new ArrayList<>();
+                }
+
+                if (message instanceof UserMessage) {
+                    anthropicMessages.add(new BedrockAnthropicMessage("user", contents));
+                }
+
+                if (message instanceof AiMessage) {
+                    anthropicMessages.add(new BedrockAnthropicMessage("assistant", contents));
+                }
+            }
+        }
+
+        if (!toolContents.isEmpty()) {
+            anthropicMessages.add(new BedrockAnthropicMessage("user", toolContents));
+        }
+
+        return anthropicMessages;
     }
 
     private List<BedrockAnthropicContent> getAnthropicContent(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
+            List<BedrockAnthropicContent> contents = new ArrayList<>();
 
-            if (!aiMessage.hasToolExecutionRequests()) {
-                return Collections.singletonList(new BedrockAnthropicContent("text", aiMessage.text()));
+            if (isNotNullOrBlank(aiMessage.text())) {
+                contents.add(new BedrockAnthropicContent("text", aiMessage.text()));
             }
 
-            List<BedrockAnthropicContent> toolUseRequests = aiMessage.toolExecutionRequests().stream()
-                    .map(toolExecutionRequest -> BedrockAnthropicContent.builder()
-                            .id(toolExecutionRequest.id())
-                            .type("tool_use")
-                            .name(toolExecutionRequest.name())
-                            .input(Json.fromJson(toolExecutionRequest.arguments(), Map.class))
-                            .build())
-                    .collect(Collectors.toList());
+            if (aiMessage.hasToolExecutionRequests()) {
+                List<BedrockAnthropicContent> toolUseRequests = aiMessage.toolExecutionRequests().stream()
+                        .map(toolExecutionRequest -> BedrockAnthropicContent.builder()
+                                .id(toolExecutionRequest.id())
+                                .type("tool_use")
+                                .name(toolExecutionRequest.name())
+                                .input(Json.fromJson(toolExecutionRequest.arguments(), Map.class))
+                                .build())
+                        .collect(Collectors.toList());
 
-            return toolUseRequests;
+                contents.addAll(toolUseRequests);
+            }
+
+            return contents;
         } else if (message instanceof UserMessage) {
             return ((UserMessage) message).contents().stream()
                 .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
