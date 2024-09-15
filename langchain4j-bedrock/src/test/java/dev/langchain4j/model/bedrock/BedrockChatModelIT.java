@@ -262,6 +262,81 @@ class BedrockChatModelIT {
     }
 
     @Test
+    void testMultipleFunctionCallingInParallelWithBedrockAnthropicV3SonnetChatModel() {
+
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+                .builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
+                .maxRetries(1)
+                .build();
+
+        assertThat(bedrockChatModel).isNotNull();
+
+        ToolSpecification calculator = ToolSpecification.builder()
+                .name("calculator")
+                .description("returns a sum of two numbers")
+                .addParameter("first", INTEGER)
+                .addParameter("second", INTEGER)
+                .build();
+
+        assertThat(calculator).isNotNull();
+
+        List<ToolSpecification> toolSpecifications = singletonList(calculator);
+
+        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+
+        Response<AiMessage> response = bedrockChatModel.generate(singletonList(userMessage), toolSpecifications);
+
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
+
+        ToolExecutionRequest firstToolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(firstToolExecutionRequest.id()).isNotBlank();
+        assertThat(firstToolExecutionRequest.name()).isEqualTo("calculator");
+        assertThat(firstToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        ToolExecutionRequest secondToolExecutionRequest = aiMessage.toolExecutionRequests().get(1);
+        assertThat(secondToolExecutionRequest.id()).isNotBlank();
+        assertThat(secondToolExecutionRequest.name()).isEqualTo("calculator");
+        assertThat(secondToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
+
+        TokenUsage tokenUsageCalc = response.tokenUsage();
+        assertThat(tokenUsageCalc.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsageCalc.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsageCalc.totalTokenCount())
+                .isEqualTo(tokenUsageCalc.inputTokenCount() + tokenUsageCalc.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage firstToolExecutionResultMessageCalc = from(firstToolExecutionRequest, "4");
+        ToolExecutionResultMessage secondToolExecutionResultMessageCalc = from(secondToolExecutionRequest, "6");
+        List<ChatMessage> messages = asList(
+                userMessage,
+                aiMessage,
+                firstToolExecutionResultMessageCalc,
+                secondToolExecutionResultMessageCalc
+        );
+
+        Response<AiMessage> secondeResponse = bedrockChatModel.generate(messages, toolSpecifications);
+
+        AiMessage secondAiMessage = secondeResponse.content();
+        assertThat(secondAiMessage.text()).contains("4", "6");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondeResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+
+        assertThat(secondeResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
     void testNoParametersFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
