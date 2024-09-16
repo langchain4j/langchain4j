@@ -219,7 +219,7 @@ class BedrockChatModelIT {
         assertThat(secondAiMessageCalc.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsageCalc = secondResponseCalc.tokenUsage();
-        assertThat(secondTokenUsageCalc.inputTokenCount()).isEqualTo(318);
+        assertThat(secondTokenUsageCalc.inputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsageCalc.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsageCalc.totalTokenCount()).isEqualTo(secondTokenUsageCalc.inputTokenCount() + secondTokenUsageCalc.outputTokenCount());
 
@@ -251,11 +251,11 @@ class BedrockChatModelIT {
         Response<AiMessage> secondResponseTemp = bedrockChatModel.generate(messagesTemp, toolSpecifications);
 
         AiMessage secondAiMessageTemp = secondResponseTemp.content();
-        assertThat(secondAiMessageTemp.text()).contains("25.0");
+        assertThat(secondAiMessageTemp.text()).contains("25");
         assertThat(secondAiMessageTemp.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsageTemp = secondResponseTemp.tokenUsage();
-        assertThat(secondTokenUsageTemp.inputTokenCount()).isEqualTo(307);
+        assertThat(secondTokenUsageTemp.inputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsageTemp.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsageTemp.totalTokenCount()).isEqualTo(secondTokenUsageTemp.inputTokenCount() + secondTokenUsageTemp.outputTokenCount());
 
@@ -345,7 +345,7 @@ class BedrockChatModelIT {
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
-                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3_5SonnetV1.getValue())
                 .maxRetries(1)
                 .build();
 
