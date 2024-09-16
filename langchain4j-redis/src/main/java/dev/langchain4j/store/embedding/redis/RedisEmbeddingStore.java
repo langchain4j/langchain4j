@@ -310,6 +310,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @param metadataKeys Metadata keys that should be persisted (optional)
          * @deprecated use {@link #schemaFiledMap(Map)}} instead
          */
+        @Deprecated
         public Builder metadataKeys(Collection<String> metadataKeys) {
             metadataKeys.forEach(metadataKey -> schemaFieldMap.put(metadataKey, TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0)));
             return this;
