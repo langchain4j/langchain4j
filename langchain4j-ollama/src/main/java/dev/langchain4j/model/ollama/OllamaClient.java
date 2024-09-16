@@ -87,7 +87,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new OllamaHttpException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -102,7 +102,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new OllamaHttpException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -139,14 +139,14 @@ class OllamaClient {
                         }
                     }
                 } catch (Exception e) {
-                    OllamaHttpException wrappedException = new OllamaHttpException(e);
+                    RuntimeException wrappedException = new RuntimeException(e);
                     handler.onError(wrappedException);
                 }
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable throwable) {
-                OllamaHttpException wrappedException = new OllamaHttpException(throwable);
+                RuntimeException wrappedException = new RuntimeException(throwable);
                 handler.onError(wrappedException);
             }
         });
@@ -188,7 +188,7 @@ class OllamaClient {
                         }
                     }
                 } catch (Exception e) {
-                    OllamaHttpException wrappedException = new OllamaHttpException(e);
+                    RuntimeException wrappedException = new RuntimeException(e);
                     onListenError(listeners, wrappedException, modelListenerRequest, responseBuilder.build(), attributes);
 
                     handler.onError(wrappedException);
@@ -197,7 +197,7 @@ class OllamaClient {
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable throwable) {
-                OllamaHttpException wrappedException = new OllamaHttpException(throwable);
+                RuntimeException wrappedException = new RuntimeException(throwable);
                 onListenError(listeners, wrappedException, modelListenerRequest, responseBuilder.build(), attributes);
 
                 handler.onError(wrappedException);
@@ -214,7 +214,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new OllamaHttpException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -227,7 +227,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new OllamaHttpException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -240,7 +240,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new OllamaHttpException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -253,7 +253,7 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new OllamaHttpException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -266,17 +266,17 @@ class OllamaClient {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
-            throw new OllamaHttpException(e);
+            throw new RuntimeException(e);
         }
     }
 
 
-    private OllamaHttpException toException(retrofit2.Response<?> response) throws IOException {
+    private RuntimeException toException(retrofit2.Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();
 
         String errorMessage = String.format("status code: %s; body: %s", code, body);
-        return new OllamaHttpException(errorMessage);
+        return new RuntimeException(errorMessage);
     }
 
     static class GenericHeadersInterceptor implements Interceptor {

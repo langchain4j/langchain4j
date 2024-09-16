@@ -46,7 +46,7 @@ public class VertexAiGeminiStreamingChatModelListenerIT extends StreamingChatMod
     }
 
     @Override
-    protected Class<?> expectedExceptionClass() {
+    protected Class<? extends Exception> expectedExceptionClass() {
         return NotFoundException.class;
     }
 }

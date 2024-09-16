@@ -131,7 +131,7 @@ public class OllamaChatModel implements ChatLanguageModel {
 
             return response;
         } catch (Exception e) {
-            OllamaHttpException wrappedException = new OllamaHttpException(e);
+            RuntimeException wrappedException = new RuntimeException(e);
             onListenError(listeners, wrappedException, modelListenerRequest, null, attributes);
             throw wrappedException;
         }

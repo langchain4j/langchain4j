@@ -186,6 +186,6 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
         // then
         assertThat(future.get())
-                .isExactlyInstanceOf(OllamaHttpException.class);
+                .isExactlyInstanceOf(RuntimeException.class);
     }
 }
