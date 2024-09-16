@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Collections.singletonList;
@@ -8,6 +9,9 @@ import static java.util.stream.Collectors.joining;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static java.util.Collections.emptyList;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -52,6 +56,11 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     private final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
     @Builder.Default
     private final String model = Types.AnthropicClaude3SonnetV1.getValue();
+    @Builder.Default
+    private final ObjectMapper objectMapper = new ObjectMapper()
+        .enable(INDENT_OUTPUT)
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
     @Override
     protected String getModelId() {
@@ -163,12 +172,21 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
                 .map(toolUseRequest -> ToolExecutionRequest.builder()
                         .id(toolUseRequest.getId())
                         .name(toolUseRequest.getName())
-                        .arguments(Json.toJson(toolUseRequest.getInput()))
+                        .arguments(toJson(toolUseRequest.getInput()))
                         .build())
                 .collect(Collectors.toList());
 
         return AiMessage.from(toolExecutionRequests);
     }
+
+    private String toJson(Object input) {
+        try {
+            return objectMapper.writeValueAsString(input);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     private Object toAnthropicToolSpecifications(List<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
@@ -296,7 +314,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
                                 .id(toolExecutionRequest.id())
                                 .type("tool_use")
                                 .name(toolExecutionRequest.name())
-                                .input(Json.fromJson(toolExecutionRequest.arguments(), Map.class))
+                                .input(fromJson(toolExecutionRequest.arguments(), Map.class))
                                 .build())
                         .collect(Collectors.toList());
 
@@ -319,6 +337,14 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             );
         } else {
             throw new IllegalArgumentException("Unknown message type: " + message.type());
+        }
+    }
+
+    private <T> T fromJson(String json, Class<T> type) {
+        try {
+            return objectMapper.readValue(json, type);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
     }
 
