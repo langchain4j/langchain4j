@@ -13,7 +13,9 @@ import redis.clients.jedis.search.schemafields.NumericField;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TextField;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
@@ -47,8 +49,9 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
         Map<String, SchemaField> schemaFieldMap = new HashMap<>();
         Map<String, Object> metadataMap = createMetadata().toMap();
 
+        List<String> numericPrefix = Arrays.asList("integer", "float", "double", "long");
         metadataMap.forEach((key, value) -> {
-            if (key.startsWith("integer") || key.startsWith("float")) {
+            if (numericPrefix.stream().anyMatch(key::startsWith)) {
                 schemaFieldMap.put(key, NumericField.of("$." + key).as(key));
             } else {
                 schemaFieldMap.put(key, TextField.of("$." + key).as(key).weight(1.0));
