@@ -251,7 +251,7 @@ class AiServicesWithToolsIT {
                 .build();
 
         String userMessage = "What are the amounts of transactions T001 and T002? " +
-                "First call getTransactionAmount for T001, then for T002. Do not answer before you know all amounts!";
+                "First call getTransactionAmount for T001, then for T002, sequentially. Do not answer before you know all amounts!";
 
         Response<AiMessage> response = assistant.chat(userMessage);
 
@@ -939,7 +939,7 @@ class AiServicesWithToolsIT {
                 .tools(transactionService)
                 .build();
 
-        String userMessage = "What are the amounts of transactions T001 and T002?";
+        String userMessage = "What are the amounts of transactions T001 and T002? Call tools sequentially!";
 
         // when
         Result<AiMessage> result = assistant.chat(userMessage);
