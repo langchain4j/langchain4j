@@ -1,6 +1,5 @@
 package dev.langchain4j.model.ollama;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -27,15 +26,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.getObjectMapper;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 import static java.lang.Boolean.TRUE;
 
 class OllamaClient {
 
     private static final Logger log = LoggerFactory.getLogger(OllamaClient.class);
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(INDENT_OUTPUT);
 
     private final OllamaApi ollamaApi;
     private final boolean logStreamingResponses;
@@ -66,7 +63,7 @@ class OllamaClient {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClient)
-                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+                .addConverterFactory(JacksonConverterFactory.create(getObjectMapper()))
                 .build();
 
         ollamaApi = retrofit.create(OllamaApi.class);
@@ -122,7 +119,7 @@ class OllamaClient {
                             log.debug("Streaming partial response: {}", partialResponse);
                         }
 
-                        CompletionResponse completionResponse = OBJECT_MAPPER.readValue(partialResponse, CompletionResponse.class);
+                        CompletionResponse completionResponse = toObject(partialResponse, CompletionResponse.class);
                         contentBuilder.append(completionResponse.getResponse());
                         handler.onNext(completionResponse.getResponse());
 
@@ -165,7 +162,7 @@ class OllamaClient {
                                 log.debug("Streaming partial response: {}", partialResponse);
                             }
 
-                            ChatResponse chatResponse = OBJECT_MAPPER.readValue(partialResponse, ChatResponse.class);
+                            ChatResponse chatResponse = toObject(partialResponse, ChatResponse.class);
                             String content = chatResponse.getMessage().getContent();
                             contentBuilder.append(content);
                             handler.onNext(content);

@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
+import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -515,7 +517,7 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(accumulatedResponse.toString()).isEqualToIgnoringWhitespace(expectedJson);
     }
 
-    @Test
+    @RetryingTest(2)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
@@ -748,5 +750,50 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(handler.get().content().text()).containsIgnoringCase("Gemini");
+    }
+
+    @Test
+    void should_support_enum_structured_output() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .responseSchema(Schema.newBuilder()
+                .setType(Type.STRING)
+                .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
+                .build())
+            .build();
+
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        String instruction = "What is the sentiment expressed in the following sentence: ";
+        model.generate(
+            instruction + "This is super exciting news, congratulations!", handler
+        );
+
+        // then
+        assertThat(handler.get().content().text()).isEqualTo("POSITIVE");
+
+        // when
+        handler = new TestStreamingResponseHandler<>();
+        model.generate(
+            instruction + "The sky is blue.", handler
+        );
+
+        // then
+        assertThat(handler.get().content().text()).isEqualTo("NEUTRAL");
+
+        // when
+        handler = new TestStreamingResponseHandler<>();
+        model.generate(
+            instruction + "This is the worst movie I've ever watched! Boring!", handler
+        );
+
+        // then
+        assertThat(handler.get().content().text()).isEqualTo("NEGATIVE");
     }
 }

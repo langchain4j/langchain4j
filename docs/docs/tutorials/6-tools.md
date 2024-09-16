@@ -119,13 +119,13 @@ To see which models support tools, refer to the "Tools" column on [this](https:/
 Please note that tools/function calling is not the same as [JSON mode](/tutorials/ai-services#json-mode).
 :::
 
-## 2 levels of abstraction
+# 2 levels of abstraction
 
 LangChain4j provides two levels of abstraction for using tools:
 - Low-level, using the `ChatLanguageModel` API
 - High-level, using [AI Services](/tutorials/ai-services) and `@Tool`-annotated Java methods
 
-### Low level Tool API
+## Low Level Tool API
 
 At the low level, you can use the `generate(List<ChatMessage>, List<ToolSpecification>)` method
 of the `ChatLanguageModel`. A similar method is also present in the `StreamingChatLanguageModel`.
@@ -173,7 +173,7 @@ List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificatio
 Once you have a `List<ToolSpecification>`, you can call the model:
 ```java
 UserMessage userMessage = UserMessage.from("What will the weather be like in London tomorrow?");
-Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecifications);
+Response<AiMessage> response = model.generate(List.of(userMessage), toolSpecifications);
 AiMessage aiMessage = response.content();
 ```
 
@@ -200,7 +200,7 @@ List<ChatMessage> messages = List.of(userMessage, aiMessage, toolExecutionResult
 Response<AiMessage> response2 = model.generate(messages, toolSpecifications);
 ```
 
-### High Level Tool API
+## High Level Tool API
 At a high level, you can annotate any Java method with the `@Tool` annotation
 and use it with [AI Services](/tutorials/ai-services).
 
@@ -291,7 +291,7 @@ The value provided to the AI Service method will be automatically passed to the 
 This feature is useful if you have multiple users and/or multiple chats/memories per user
 and wish to distinguish between them inside the `@Tool` method.
 
-## Accessing Executed Tools
+### Accessing Executed Tools
 If you wish to access tools executed during the invocation of an AI Service,
 you can easily do so by wrapping the return type in the `Result` class:
 ```java
@@ -306,10 +306,10 @@ String answer = result.content();
 List<ToolExecution> toolExecutions = result.toolExecutions();
 ```
 
-### Configuring Tools Programmatically
+### Specifying Tools Programmatically
 
-When using AI Services, tools can also be configured programmatically.
-This approach offers a lot of flexibility, as tools can now be loaded
+When using AI Services, tools can also be specified programmatically.
+This approach offers a lot of flexibility, as tools can be loaded
 from external sources such as databases and configuration files.
 
 Tool names, descriptions, parameter names, and descriptions
@@ -339,6 +339,37 @@ we can specify them when creating an AI Service:
 Assistant assistant = AiServices.builder(Assistant.class)
     .chatLanguageModel(chatLanguageModel)
     .tools(singletonMap(toolSpecification, toolExecutor))
+    .build();
+```
+
+### Specifying Tools Dynamically
+
+When using AI services, tools can also be specified dynamically for each invocation.
+One can configure a `ToolProvider` that will be called each time the AI service is invoked
+and will provide the tools that should be included in the current request to the LLM.
+The `ToolProvider` accepts a `ToolProviderRequest` that contains the `UserMessage` and chat memory ID
+and returns a `ToolProviderResult` that contains tools in a form of a `Map` from `ToolSpecification` to `ToolExecutor`.
+
+Here is an example of how to add the `get_booking_details` tool only when the user's message contains the word "booking":
+```java
+ToolProvider toolProvider = (toolProviderRequest) -> {
+    if (toolProviderRequest.userMessage().singleText().contains("booking")) {
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+            .name("get_booking_details")
+            .description("Returns booking details")
+            .addParameter("bookingNumber", type("string"))
+            .build();
+        return ToolProviderResult.builder()
+            .add(toolSpecification, toolExecutor)
+            .build();
+    } else {
+        return null;
+    }
+};
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatLanguageModel(model)
+    .toolProvider(toolProvider)
     .build();
 ```
 

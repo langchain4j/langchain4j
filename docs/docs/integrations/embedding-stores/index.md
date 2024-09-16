@@ -4,7 +4,6 @@ hide_title: false
 sidebar_position: 0
 ---
 
-
 | Embedding Store                                                                       | Storing Metadata | Filtering by Metadata      | Removing Embeddings |
 |---------------------------------------------------------------------------------------|------------------|----------------------------|---------------------|
 | [In-memory](/integrations/embedding-stores/in-memory)                                 | ✅                | ✅                          | ✅                   |
@@ -14,7 +13,7 @@ sidebar_position: 0
 | [Azure CosmosDB NoSQL](/integrations/embedding-stores/azure-cosmos-nosql)             | ✅                |                            |                     |
 | [Cassandra](/integrations/embedding-stores/cassandra)                                 | ✅                |                            |                     |
 | [Chroma](/integrations/embedding-stores/chroma)                                       | ✅                | ✅                          | ✅                   |
-| [Couchbase](/integrations/embedding-stores/couchbase)                                 | ✅                |                       | ✅                   |
+| [Couchbase](/integrations/embedding-stores/couchbase)                                 | ✅                |                            | ✅                   |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                          | ✅                   |
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                |                            |                     |
 | [Milvus](/integrations/embedding-stores/milvus)                                       | ✅                | ✅                          | ✅                   |
@@ -24,7 +23,7 @@ sidebar_position: 0
 | [Oracle](/integrations/embedding-stores/oracle)                                       | ✅                | ✅                          | ✅                   |
 | [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                | ✅                          | ✅                   |
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   | ✅                | ✅                          | ✅                   |
-| [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                |                            |                     |
+| [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                | ✅                          |                     |
 | [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                            |                     |
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                            |                     |
 | [Vespa](/integrations/embedding-stores/vespa)                                         |                  |                            |                     |

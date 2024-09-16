@@ -1,11 +1,12 @@
 package dev.langchain4j.model.anthropic.internal.mapper;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.anthropic.internal.api.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -26,6 +27,8 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 public class AnthropicMapper {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
 
@@ -93,11 +96,17 @@ public class AnthropicMapper {
 
         if (message.hasToolExecutionRequests()) {
             List<AnthropicToolUseContent> toolUseContents = message.toolExecutionRequests().stream()
-                    .map(toolExecutionRequest -> AnthropicToolUseContent.builder()
-                            .id(toolExecutionRequest.id())
-                            .name(toolExecutionRequest.name())
-                            .input(Json.fromJson(toolExecutionRequest.arguments(), Map.class))
-                            .build())
+                    .map(toolExecutionRequest -> {
+                        try {
+                            return AnthropicToolUseContent.builder()
+                                    .id(toolExecutionRequest.id())
+                                    .name(toolExecutionRequest.name())
+                                    .input(OBJECT_MAPPER.readValue(toolExecutionRequest.arguments(), Map.class))
+                                    .build();
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
                     .collect(toList());
             contents.addAll(toolUseContents);
         }
@@ -127,11 +136,17 @@ public class AnthropicMapper {
 
         List<ToolExecutionRequest> toolExecutionRequests = contents.stream()
                 .filter(content -> "tool_use".equals(content.type))
-                .map(content -> ToolExecutionRequest.builder()
-                        .id(content.id)
-                        .name(content.name)
-                        .arguments(Json.toJson(content.input))
-                        .build())
+                .map(content -> {
+                    try {
+                        return ToolExecutionRequest.builder()
+                                .id(content.id)
+                                .name(content.name)
+                                .arguments(OBJECT_MAPPER.writeValueAsString(content.input))
+                                .build();
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
                 .collect(toList());
 
         if (isNotNullOrBlank(text) && !isNullOrEmpty(toolExecutionRequests)) {
