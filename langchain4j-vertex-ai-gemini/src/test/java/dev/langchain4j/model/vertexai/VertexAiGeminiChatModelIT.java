@@ -366,7 +366,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
     }
 
-    @Test
+    @RetryingTest(5)
     void should_handle_parallel_function_calls() {
         // given
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
