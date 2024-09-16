@@ -28,7 +28,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static redis.clients.jedis.search.IndexDefinition.Type.JSON;
-import static redis.clients.jedis.search.RediSearchUtil.ToByteArray;
+import static redis.clients.jedis.search.RediSearchUtil.toByteArray;
 
 /**
  * Represents a <a href="https://redis.io/">Redis</a> index as an embedding store.
@@ -120,7 +120,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<String> returnFields = new ArrayList<>(schema.schemaFieldMap().keySet());
         returnFields.addAll(asList(schema.vectorFieldName(), schema.scalarFieldName(), SCORE_FIELD_NAME));
         Query query = new Query(format(queryTemplate, maxResults, schema.vectorFieldName(), SCORE_FIELD_NAME))
-                .addParam("BLOB", ToByteArray(referenceEmbedding.vector()))
+                .addParam("BLOB", toByteArray(referenceEmbedding.vector()))
                 .returnFields(returnFields.toArray(new String[0]))
                 .setSortBy(SCORE_FIELD_NAME, true)
                 .dialect(2);

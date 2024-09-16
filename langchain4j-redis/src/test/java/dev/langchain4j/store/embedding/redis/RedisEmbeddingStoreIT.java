@@ -76,4 +76,9 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
     }
+
+    @Override
+    protected boolean supportLong() {
+        return false;
+    }
 }
