@@ -5,6 +5,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
@@ -12,19 +13,14 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
-import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -43,7 +39,6 @@ import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.googleai.GeminiService.API_KEY_HEADER_NAME;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
@@ -54,8 +49,6 @@ import static java.util.Collections.emptyList;
 @Experimental
 @Slf4j
 public class GoogleAiGeminiChatModel implements ChatLanguageModel {
-    private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/";
-
     private static final Gson GSON = new Gson();
 
     private final GeminiService geminiService;
@@ -76,8 +69,6 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
     private final ResponseFormat responseFormat;
 
     private final GeminiFunctionCallingConfig toolConfig;
-
-    private final Boolean logRequestsAndResponses;
 
     private final boolean allowCodeExecution;
     private final boolean includeCodeExecutionOutput;
@@ -122,11 +113,10 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
 
         this.responseFormat = responseFormat;
 
-        this.logRequestsAndResponses = getOrDefault(logRequestsAndResponses, false);
-
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
 
-        this.geminiService = getGeminiService();
+        this.geminiService = GeminiService.getGeminiService(
+            getOrDefault(logRequestsAndResponses, false) ? this.log : null, this.timeout);
     }
 
     private static String computeMimeType(ResponseFormat responseFormat) {
@@ -318,6 +308,38 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         }
     }
 
+    public int countTokens(List<ChatMessage> messages) {
+        List<GeminiContent> geminiContentList = fromMessageToGContent(messages, null);
+        GeminiCountTokensRequest countTokensRequest = new GeminiCountTokensRequest();
+        countTokensRequest.setContents(geminiContentList);
+
+        Call<GeminiCountTokensResponse> responseCall =
+            withRetry(() -> this.geminiService.countTokens(this.modelName, this.apiKey, countTokensRequest), this.maxRetries);
+
+        GeminiCountTokensResponse countTokensResponse;
+        try {
+            retrofit2.Response<GeminiCountTokensResponse> executed = responseCall.execute();
+            countTokensResponse = executed.body();
+
+            if (executed.code() >= 300) {
+                try (ResponseBody errorBody = executed.errorBody()) {
+                    GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
+
+                    throw new RuntimeException(
+                        String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("An error occurred when calling the Gemini API endpoint to calculate tokens count", e);
+        }
+
+        return countTokensResponse.getTotalTokens();
+    }
+
+    public int countTokens(String message) {
+        return countTokens(Collections.singletonList(UserMessage.from(message)));
+    }
+
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>();
@@ -326,29 +348,6 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
-    }
-
-    private GeminiService getGeminiService() {
-        Retrofit.Builder retrofitBuilder = new Retrofit.Builder()
-            .baseUrl(GEMINI_AI_ENDPOINT)
-            .addConverterFactory(GsonConverterFactory.create());
-
-        if (this.logRequestsAndResponses) {
-            HttpLoggingInterceptor logging = new HttpLoggingInterceptor(log::debug);
-            logging.redactHeader(API_KEY_HEADER_NAME);
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-
-            OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                .addInterceptor(logging)
-                .callTimeout(this.timeout)
-                .build();
-
-            retrofitBuilder.client(okHttpClient);
-        }
-
-        Retrofit retrofit = retrofitBuilder.build();
-
-        return retrofit.create(GeminiService.class);
     }
 
     public static class GoogleAiGeminiChatModelBuilder {
