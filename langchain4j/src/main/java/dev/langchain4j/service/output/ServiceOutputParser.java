@@ -11,13 +11,20 @@ import dev.langchain4j.service.TypeUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.TypeUtils.*;
+import static dev.langchain4j.service.TypeUtils.getRawClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static java.lang.String.format;
 
 public class ServiceOutputParser {
@@ -114,7 +121,19 @@ public class ServiceOutputParser {
             }
         }
 
-        return "\nYou must answer strictly in the following JSON format: " + jsonStructure((rawClass), new HashSet<>());
+        String jsonStructure = jsonStructure((rawClass), new HashSet<>());
+        validateJsonStructure(jsonStructure, returnType);
+        return "\nYou must answer strictly in the following JSON format: " + jsonStructure;
+    }
+
+    private void validateJsonStructure(String jsonStructure, Type returnType) {
+        if (jsonStructure.replaceAll("\\s", "").equals("{}")) {
+            if (returnType.toString().contains("reactor.core.publisher.Flux")) {
+                throw illegalConfiguration("Please import langchain4j-reactor module " +
+                        "if you wish to use Flux<String> as a method return type");
+            }
+            throw illegalConfiguration("Illegal method return type: " + returnType);
+        }
     }
 
     private static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
