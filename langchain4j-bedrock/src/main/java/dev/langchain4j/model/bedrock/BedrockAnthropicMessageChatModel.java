@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import lombok.Builder;
@@ -247,6 +248,11 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             ObjectNode childPropertiesNode = new ObjectMapper().createObjectNode();
             childPropertiesNode.setAll(toAnthropicParameterProperties((Map<String, Map<String, Object>>) propertyMetadata.get("properties")));
             propertyNode.set("properties", childPropertiesNode);
+            if (Objects.nonNull(propertyMetadata.get("required"))) {
+                ArrayNode requiredNode = new ObjectMapper().createArrayNode();
+                ((List<String>) propertyMetadata.get("required")).forEach(requiredNode::add);
+                propertyNode.set("required", requiredNode);
+            }
         }
 
         if ("array".equals(propertyType)) {
