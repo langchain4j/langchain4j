@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
+import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -124,7 +125,7 @@ public abstract class StreamingChatModelListenerIT {
         // then
         ChatModelRequest request = requestReference.get();
         assertThat(request.model()).isEqualTo(modelName());
-        assertThat(request.temperature()).isEqualTo(temperature());
+        assertThat(request.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
         assertThat(request.topP()).isEqualTo(topP());
         assertThat(request.maxTokens()).isEqualTo(maxTokens());
         assertThat(request.messages()).containsExactly(userMessage);

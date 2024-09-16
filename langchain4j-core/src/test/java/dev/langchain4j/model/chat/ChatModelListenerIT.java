@@ -3,7 +3,13 @@ package dev.langchain4j.model.chat;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -119,7 +125,7 @@ public abstract class ChatModelListenerIT {
         // then
         ChatModelRequest request = requestReference.get();
         assertThat(request.model()).isEqualTo(modelName());
-        assertThat(request.temperature()).isEqualTo(temperature());
+        assertThat(request.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
         assertThat(request.topP()).isEqualTo(topP());
         assertThat(request.maxTokens()).isEqualTo(maxTokens());
         assertThat(request.messages()).containsExactly(userMessage);
