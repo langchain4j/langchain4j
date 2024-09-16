@@ -4,7 +4,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static dev.langchain4j.model.ollama.OllamaImage.TOOL_MODEL;
 import static java.util.Collections.singletonList;
 
@@ -43,7 +42,7 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return NullPointerException.class;
     }
 
     @Override

@@ -41,7 +41,7 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return NullPointerException.class;
     }
 
     @Override

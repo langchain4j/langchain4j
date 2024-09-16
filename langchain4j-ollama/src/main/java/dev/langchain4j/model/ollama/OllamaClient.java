@@ -139,15 +139,13 @@ class OllamaClient {
                         }
                     }
                 } catch (Exception e) {
-                    RuntimeException wrappedException = new RuntimeException(e);
-                    handler.onError(wrappedException);
+                    handler.onError(e);
                 }
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable throwable) {
-                RuntimeException wrappedException = new RuntimeException(throwable);
-                handler.onError(wrappedException);
+                handler.onError(throwable);
             }
         });
     }
@@ -188,19 +186,17 @@ class OllamaClient {
                         }
                     }
                 } catch (Exception e) {
-                    RuntimeException wrappedException = new RuntimeException(e);
-                    onListenError(listeners, wrappedException, modelListenerRequest, responseBuilder.build(), attributes);
+                    onListenError(listeners, e, modelListenerRequest, responseBuilder.build(), attributes);
 
-                    handler.onError(wrappedException);
+                    handler.onError(e);
                 }
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable throwable) {
-                RuntimeException wrappedException = new RuntimeException(throwable);
-                onListenError(listeners, wrappedException, modelListenerRequest, responseBuilder.build(), attributes);
+                onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), attributes);
 
-                handler.onError(wrappedException);
+                handler.onError(throwable);
             }
         });
     }
