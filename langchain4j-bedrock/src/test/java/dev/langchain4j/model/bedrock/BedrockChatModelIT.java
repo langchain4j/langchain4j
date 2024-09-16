@@ -21,7 +21,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
@@ -36,6 +40,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelIT {
@@ -464,35 +469,98 @@ class BedrockChatModelIT {
 
     @Test
     void testFunctionCallingWithBedrockAnthropicChatModelWithoutToolsSupport() {
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
-                .temperature(0.50f)
-                .maxTokens(300)
-                .region(Region.US_EAST_1)
-                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue())
-                .maxRetries(1)
-                .build();
-
-        assertThat(bedrockChatModel).isNotNull();
-
-        ToolSpecification calculator = ToolSpecification.builder()
-                .name("calculator")
-                .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
-                .build();
-
-        assertThat(calculator).isNotNull();
-
-        UserMessage userMessage = UserMessage.from("2+2=?");
-
-        IllegalArgumentException exception = Assertions.assertThrows(
+        Function<String, IllegalArgumentException> exceptionSupplier = (modelId) -> Assertions.assertThrows(
                 IllegalArgumentException.class,
-                () -> bedrockChatModel.generate(singletonList(userMessage), singletonList(calculator)),
+                () -> BedrockAnthropicMessageChatModel
+                        .builder()
+                        .temperature(0.50f)
+                        .maxTokens(300)
+                        .region(Region.US_EAST_1)
+                        .model(modelId)
+                        .maxRetries(1)
+                        .build()
+                        .generate(
+                                singletonList(UserMessage.from("2+2=?")),
+                                singletonList(ToolSpecification.builder()
+                                        .name("calculator")
+                                        .description("returns a sum of two numbers")
+                                        .addParameter("first", INTEGER)
+                                        .addParameter("second", INTEGER)
+                                        .build())
+                        ),
                 "Expected generate() to throw, but it didn't"
         );
 
-        assertEquals("Tools are currently not supported by this model", exception.getMessage());
+        Function<String, Response<AiMessage>> notThrowsExceptionSupplier = (modelId) -> Assertions.assertDoesNotThrow(
+                () -> BedrockAnthropicMessageChatModel
+                        .builder()
+                        .temperature(0.50f)
+                        .maxTokens(300)
+                        .region(Region.US_EAST_1)
+                        .model(modelId)
+                        .maxRetries(1)
+                        .build()
+                        .generate(
+                                singletonList(UserMessage.from("2+2=?")),
+                                singletonList(ToolSpecification.builder()
+                                        .name("calculator")
+                                        .description("returns a sum of two numbers")
+                                        .addParameter("first", INTEGER)
+                                        .addParameter("second", INTEGER)
+                                        .build())
+                        )
+        );
+
+        Map<String, Supplier<?>> assertionsByModelId = new HashMap<>();
+
+        assertionsByModelId.put(
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaudeInstantV1.getValue(),
+                () -> exceptionSupplier.apply(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue())
+        );
+
+        assertionsByModelId.put(
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2.getValue(),
+                () -> exceptionSupplier.apply(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue())
+        );
+
+        assertionsByModelId.put(
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue(),
+                () -> exceptionSupplier.apply(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue())
+        );
+
+        assertionsByModelId.put(
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue(),
+                () -> notThrowsExceptionSupplier.apply(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue())
+        );
+
+        assertionsByModelId.put(
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaude3_5SonnetV1.getValue(),
+                () -> notThrowsExceptionSupplier.apply(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue())
+        );
+
+        assertionsByModelId.put(
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue(),
+                () -> notThrowsExceptionSupplier.apply(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue())
+        );
+
+        assertEquals(
+                assertionsByModelId.size(),
+                BedrockAnthropicMessageChatModel.Types.values().length,
+                "Add new model to assertionsByModelId"
+        );
+
+        for(Map.Entry<String, Supplier<?>> entry : assertionsByModelId.entrySet()) {
+            Object testResult = entry.getValue().get();
+            if (testResult instanceof IllegalArgumentException) {
+                IllegalArgumentException exception = (IllegalArgumentException) testResult;
+                assertEquals("Tools are currently not supported by this model", exception.getMessage());
+            } else  {
+                Response<AiMessage> response = (Response<AiMessage>) testResult;
+                assertThat(response).isNotNull();
+                assertTrue(response.content().hasToolExecutionRequests());
+            }
+
+        }
     }
 
     @Test
