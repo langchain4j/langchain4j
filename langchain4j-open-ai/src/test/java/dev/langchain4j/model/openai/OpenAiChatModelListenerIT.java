@@ -19,7 +19,7 @@ class OpenAiChatModelListenerIT extends ChatModelListenerIT {
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
-                .maxTokens(maxTokens())
+                .maxCompletionTokens(maxTokens())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
