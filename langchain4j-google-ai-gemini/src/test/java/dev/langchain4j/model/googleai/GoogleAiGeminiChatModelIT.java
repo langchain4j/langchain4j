@@ -589,9 +589,10 @@ public class GoogleAiGeminiChatModelIT {
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
-            .responseFormat(ResponseFormat.builder()
-                .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
-                .build())
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
+                        .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+                        .build())
 //             Equivalent to:
 //            .responseFormat(ResponseFormat.builder()
 //                .type(JSON)
@@ -677,7 +678,7 @@ public class GoogleAiGeminiChatModelIT {
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
         if (ciDelaySeconds != null) {
-            Thread.sleep(Integer.parseInt(ciDelaySeconds));
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
     }
 }

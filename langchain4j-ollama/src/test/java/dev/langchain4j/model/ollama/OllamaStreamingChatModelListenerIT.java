@@ -1,25 +1,22 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.model.ollama;
 
-import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Collections.singletonList;
 
-class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
 
     @Override
     protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
-        return OpenAiStreamingChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(modelName())
+        return OllamaStreamingChatModel.builder()
+                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
                 .temperature(temperature())
                 .topP(topP())
-                .maxCompletionTokens(maxTokens())
+                .numPredict(maxTokens())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -28,13 +25,14 @@ class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
 
     @Override
     protected String modelName() {
-        return GPT_4_O_MINI.toString();
+        return TINY_DOLPHIN_MODEL;
     }
 
     @Override
     protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
-        return OpenAiStreamingChatModel.builder()
-                .apiKey("banana")
+        return OllamaStreamingChatModel.builder()
+                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollama.getEndpoint())
+                .modelName("banana")
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -43,6 +41,21 @@ class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return OpenAiHttpException.class;
+        return NullPointerException.class;
+    }
+
+    @Override
+    protected boolean supportsTools() {
+        return false;
+    }
+
+    @Override
+    protected boolean assertResponseId() {
+        return false;
+    }
+
+    @Override
+    protected boolean assertFinishReason() {
+        return false;
     }
 }

@@ -71,7 +71,7 @@ public abstract class ChatModelListenerIT {
 
     protected abstract ChatLanguageModel createFailingModel(ChatModelListener listener);
 
-    protected abstract Class<?> expectedExceptionClass();
+    protected abstract Class<? extends Exception> expectedExceptionClass();
 
     @Test
     void should_listen_request_and_response() {
@@ -105,14 +105,22 @@ public abstract class ChatModelListenerIT {
 
         UserMessage userMessage = UserMessage.from("hello");
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("add")
-                .addParameter("a", INTEGER)
-                .addParameter("b", INTEGER)
-                .build();
+        ToolSpecification toolSpecification = null;
+        if (supportToolCalls()) {
+            toolSpecification = ToolSpecification.builder()
+                    .name("add")
+                    .addParameter("a", INTEGER)
+                    .addParameter("b", INTEGER)
+                    .build();
+        }
 
         // when
-        AiMessage aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
+        AiMessage aiMessage;
+        if (supportToolCalls()) {
+            aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
+        } else {
+            aiMessage = model.generate(singletonList(userMessage)).content();
+        }
 
         // then
         ChatModelRequest request = requestReference.get();
@@ -121,7 +129,9 @@ public abstract class ChatModelListenerIT {
         assertThat(request.topP()).isEqualTo(topP());
         assertThat(request.maxTokens()).isEqualTo(maxTokens());
         assertThat(request.messages()).containsExactly(userMessage);
-        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+        if (supportToolCalls()) {
+            assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+        }
 
         ChatModelResponse response = responseReference.get();
         if (assertResponseId()) {
@@ -131,11 +141,21 @@ public abstract class ChatModelListenerIT {
         assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
-        assertThat(response.finishReason()).isNotNull();
+        if (assertFinishReason()) {
+            assertThat(response.finishReason()).isNotNull();
+        }
         assertThat(response.aiMessage()).isEqualTo(aiMessage);
     }
 
+    protected boolean supportToolCalls() {
+        return true;
+    }
+
     protected boolean assertResponseId() {
+        return true;
+    }
+
+    protected boolean assertFinishReason() {
         return true;
     }
 
