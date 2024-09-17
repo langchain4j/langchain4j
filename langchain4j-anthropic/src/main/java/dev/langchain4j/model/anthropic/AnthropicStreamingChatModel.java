@@ -1,23 +1,31 @@
 package dev.langchain4j.model.anthropic;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
+import static java.util.Collections.emptyList;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -42,6 +50,7 @@ import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitize
  * <br>
  * Does not support tools.
  */
+@Slf4j
 public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
 
     private final AnthropicClient client;
@@ -51,6 +60,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     private final Integer topK;
     private final int maxTokens;
     private final List<String> stopSequences;
+    private final List<ChatModelListener> listeners;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -80,7 +90,8 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                                         List<String> stopSequences,
                                         Duration timeout,
                                         Boolean logRequests,
-                                        Boolean logResponses) {
+                                        Boolean logResponses,
+                                        List<ChatModelListener> listeners) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
@@ -95,6 +106,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
         this.topK = topK;
         this.maxTokens = getOrDefault(maxTokens, 1024);
         this.stopSequences = stopSequences;
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     public static class AnthropicStreamingChatModelBuilder {
@@ -138,6 +150,29 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                 .topK(topK)
                 .build();
 
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages);
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(requestContext);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
+
         client.createMessage(request, handler);
+    }
+
+
+    static ChatModelRequest createModelListenerRequest(AnthropicCreateMessageRequest request,
+                                                       List<ChatMessage> messages) {
+        return ChatModelRequest.builder()
+                .model(request.getModel())
+                .temperature(request.getTemperature())
+                .topP(request.getTopP())
+                .maxTokens(request.getMaxTokens())
+                .messages(messages)
+                .build();
     }
 }

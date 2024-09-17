@@ -7,17 +7,25 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageReques
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
+import static java.util.Collections.emptyList;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -40,6 +48,7 @@ import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitize
  * includes verifying that the first message is a {@link UserMessage} and removing any consecutive {@link UserMessage}s.
  * Any messages removed during sanitization are logged as warnings and not submitted to the API.
  */
+@Slf4j
 public class AnthropicChatModel implements ChatLanguageModel {
 
     private final AnthropicClient client;
@@ -50,6 +59,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private final int maxTokens;
     private final List<String> stopSequences;
     private final int maxRetries;
+    private final List<ChatModelListener> listeners;
 
     /**
      * Constructs an instance of an {@code AnthropicChatModel} with the specified parameters.
@@ -83,7 +93,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
                                Duration timeout,
                                Integer maxRetries,
                                Boolean logRequests,
-                               Boolean logResponses) {
+                               Boolean logResponses,
+                               List<ChatModelListener> listeners) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
@@ -100,6 +111,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
         this.maxTokens = getOrDefault(maxTokens, 1024);
         this.stopSequences = stopSequences;
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     public static class AnthropicChatModelBuilder {
@@ -150,6 +162,17 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
         AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
 
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(requestContext);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
+
         return Response.from(
                 toAiMessage(response.content),
                 toTokenUsage(response.usage),
@@ -157,5 +180,17 @@ public class AnthropicChatModel implements ChatLanguageModel {
         );
     }
 
+    static ChatModelRequest createModelListenerRequest(AnthropicCreateMessageRequest request,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        return ChatModelRequest.builder()
+                .model(request.getModel())
+                .temperature(request.getTemperature())
+                .topP(request.getTopP())
+                .maxTokens(request.getMaxTokens())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
     // TODO forcing tool use?
 }
