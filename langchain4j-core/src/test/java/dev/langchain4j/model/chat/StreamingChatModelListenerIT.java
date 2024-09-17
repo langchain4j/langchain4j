@@ -75,7 +75,7 @@ public abstract class StreamingChatModelListenerIT {
 
     protected abstract StreamingChatLanguageModel createFailingModel(ChatModelListener listener);
 
-    protected abstract Class<?> expectedExceptionClass();
+    protected abstract Class<? extends Exception> expectedExceptionClass();
 
     @Test
     void should_listen_request_and_response() {
@@ -109,15 +109,22 @@ public abstract class StreamingChatModelListenerIT {
 
         UserMessage userMessage = UserMessage.from("hello");
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("add")
-                .addParameter("a", INTEGER)
-                .addParameter("b", INTEGER)
-                .build();
+        ToolSpecification toolSpecification = null;
+        if (supportsTools()) {
+            toolSpecification = ToolSpecification.builder()
+                    .name("add")
+                    .addParameter("a", INTEGER)
+                    .addParameter("b", INTEGER)
+                    .build();
+        }
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), singletonList(toolSpecification), handler);
+        if (supportsTools()) {
+            model.generate(singletonList(userMessage), singletonList(toolSpecification), handler);
+        } else {
+            model.generate(singletonList(userMessage), handler);
+        }
         AiMessage aiMessage = handler.get().content();
 
         // then
@@ -127,7 +134,9 @@ public abstract class StreamingChatModelListenerIT {
         assertThat(request.topP()).isEqualTo(topP());
         assertThat(request.maxTokens()).isEqualTo(maxTokens());
         assertThat(request.messages()).containsExactly(userMessage);
-        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+        if (supportsTools()) {
+            assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+        }
 
         ChatModelResponse response = responseReference.get();
         if (assertResponseId()) {
@@ -137,11 +146,21 @@ public abstract class StreamingChatModelListenerIT {
         assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
-        assertThat(response.finishReason()).isNotNull();
+        if (assertFinishReason()) {
+            assertThat(response.finishReason()).isNotNull();
+        }
         assertThat(response.aiMessage()).isEqualTo(aiMessage);
     }
 
+    protected boolean supportsTools() {
+        return true;
+    }
+
     protected boolean assertResponseId() {
+        return true;
+    }
+
+    protected boolean assertFinishReason() {
         return true;
     }
 

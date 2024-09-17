@@ -45,7 +45,7 @@ public class VertexAiGeminiChatModelListenerIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected Class<?> expectedExceptionClass() {
+    protected Class<? extends Exception> expectedExceptionClass() {
         return RuntimeException.class;
     }
 }
