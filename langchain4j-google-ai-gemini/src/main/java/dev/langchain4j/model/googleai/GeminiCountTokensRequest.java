@@ -7,4 +7,5 @@ import java.util.List;
 @Data
 class GeminiCountTokensRequest {
     List<GeminiContent> contents;
+    GeminiGenerateContentRequest generateContentRequest;
 }

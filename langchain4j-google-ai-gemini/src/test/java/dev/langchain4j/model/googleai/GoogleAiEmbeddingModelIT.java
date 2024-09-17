@@ -44,6 +44,8 @@ public class GoogleAiEmbeddingModelIT {
             .modelName("embedding-001")
             .maxRetries(3)
             .logRequestsAndResponses(true)
+            .titleMetadataKey("title")
+            .taskType(GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT)
             .build();
 
         // when
@@ -51,7 +53,6 @@ public class GoogleAiEmbeddingModelIT {
             "What is the capital of France?",
             Metadata.from("taskType", "RETRIEVAL_DOCUMENT")
                 .put("title", "document title")
-                .put("outputDimensionality", 256)
         );
         Response<Embedding> embed = embeddingModel.embed(textSegment);
 
@@ -59,7 +60,6 @@ public class GoogleAiEmbeddingModelIT {
         Embedding content = embed.content();
         assertThat(content).isNotNull();
         assertThat(content.vector()).isNotNull();
-        assertThat(content.vector()).hasSize(256);
     }
 
     @Test
@@ -70,12 +70,13 @@ public class GoogleAiEmbeddingModelIT {
             .modelName("embedding-001")
             .maxRetries(3)
             .logRequestsAndResponses(true)
+            .outputDimensionality(512)
             .build();
 
         // when
         List<TextSegment> textSegments = Arrays.asList(
             TextSegment.from("What is the capital of France?"),
-            TextSegment.from("What is the capital of Germany?", Metadata.from("outputDimensionality", 512))
+            TextSegment.from("What is the capital of Germany?")
         );
 
         Response<List<Embedding>> embed = embeddingModel.embedAll(textSegments);
@@ -85,7 +86,7 @@ public class GoogleAiEmbeddingModelIT {
         assertThat(embeddings).isNotNull();
         assertThat(embeddings).hasSize(2);
         assertThat(embeddings.get(0).vector()).isNotNull();
-        assertThat(embeddings.get(0).vector()).hasSize(768);
+        assertThat(embeddings.get(0).vector()).hasSize(512);
         assertThat(embeddings.get(1).vector()).isNotNull();
         assertThat(embeddings.get(1).vector()).hasSize(512);
     }

@@ -61,7 +61,6 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
     private final Integer topK;
     private final Double topP;
     private final Integer maxOutputTokens;
-    private final Duration timeout;
     private final List<String> stopSequences;
 
     private final Integer candidateCount;
@@ -102,8 +101,6 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         this.candidateCount = getOrDefault(candidateCount, 1);
         this.stopSequences = getOrDefault(stopSequences, emptyList());
 
-        this.timeout = getOrDefault(timeout, ofSeconds(60));
-
         this.toolConfig = toolConfig;
 
         this.allowCodeExecution = allowCodeExecution != null ? allowCodeExecution : false;
@@ -116,7 +113,9 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
 
         this.geminiService = GeminiService.getGeminiService(
-            getOrDefault(logRequestsAndResponses, false) ? this.log : null, this.timeout);
+            getOrDefault(logRequestsAndResponses, false) ? this.log : null,
+            getOrDefault(timeout, ofSeconds(60))
+        );
     }
 
     private static String computeMimeType(ResponseFormat responseFormat) {

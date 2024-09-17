@@ -8,7 +8,7 @@ import lombok.Data;
 class GoogleAiEmbeddingRequest {
     String model;
     GeminiContent content;
-    GoogleAiEmbeddingTaskType taskType;
+    GoogleAiEmbeddingModel.TaskType taskType;
     String title;
     Integer outputDimensionality;
 }

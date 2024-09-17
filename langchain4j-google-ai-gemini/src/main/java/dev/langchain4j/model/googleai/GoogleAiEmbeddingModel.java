@@ -34,7 +34,7 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
     private final String modelName;
     private final String apiKey;
     private final Integer maxRetries;
-    private final GoogleAiEmbeddingTaskType taskType;
+    private final TaskType taskType;
     private final String titleMetadataKey;
     private final Integer outputDimensionality;
 
@@ -43,11 +43,12 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
         String modelName,
         String apiKey,
         Integer maxRetries,
-        GoogleAiEmbeddingTaskType taskType,
+        TaskType taskType,
         String titleMetadataKey,
         Integer outputDimensionality,
         Duration timeout,
-        Boolean logRequestsAndResponses) {
+        Boolean logRequestsAndResponses
+    ) {
 
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
@@ -55,7 +56,7 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
         this.maxRetries = getOrDefault(maxRetries, 3);
 
         this.taskType = taskType;
-        this.titleMetadataKey = titleMetadataKey;
+        this.titleMetadataKey = getOrDefault(titleMetadataKey, "title");
 
         this.outputDimensionality = outputDimensionality;
 
@@ -161,33 +162,34 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
 
         GeminiContent content = new GeminiContent(Collections.singletonList(geminiPart), null);
 
-        GoogleAiEmbeddingTaskType taskType = null;
-        if (textSegment.metadata() != null && textSegment.metadata().getString("taskType") != null) {
-            taskType = GoogleAiEmbeddingTaskType.valueOf(textSegment.metadata().getString("taskType"));
-        } else if (this.taskType != null) {
-            taskType = this.taskType;
+        String title = null;
+        if (TaskType.RETRIEVAL_DOCUMENT.equals(this.taskType)) {
+            if (textSegment.metadata() != null && textSegment.metadata().getString(this.titleMetadataKey) != null) {
+                title = textSegment.metadata().getString(this.titleMetadataKey);
+            }
         }
-
-        String title;
-        if (textSegment.metadata() != null && textSegment.metadata().getString("title") != null) {
-            title = textSegment.metadata().getString("title");
-        } else {
-            title = this.titleMetadataKey;
-        }
-
-        Integer dimension = getOrDefault(textSegment.metadata().getInteger("outputDimensionality"), this.dimension());
 
         return new GoogleAiEmbeddingRequest(
-                "models/" + this.modelName,
-                content,
-                taskType,
-                title,
-                dimension
-            );
+            "models/" + this.modelName,
+            content,
+            this.taskType,
+            title,
+            this.outputDimensionality
+        );
     }
 
     @Override
     public int dimension() {
         return getOrDefault(this.outputDimensionality, 768);
+    }
+
+    public enum TaskType {
+        RETRIEVAL_QUERY,
+        RETRIEVAL_DOCUMENT,
+        SEMANTIC_SIMILARITY,
+        CLASSIFICATION,
+        CLUSTERING,
+        QUESTION_ANSWERING,
+        FACT_VERIFICATION
     }
 }
