@@ -1,4 +1,4 @@
-package com.redhat.composer.config.embedding.store;
+package dev.langchain4j.store.embedding.weaviate;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -40,7 +40,6 @@ import static java.util.stream.Collectors.toList;
 public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final String ADDITIONALS = "_additional";
-    private static final String METADATA = "_metadata";
     private static final String NULL_VALUE = "<null>";
 
     private final WeaviateClient client;
