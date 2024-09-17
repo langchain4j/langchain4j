@@ -4,7 +4,12 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.output.Response;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
@@ -105,7 +110,7 @@ public abstract class StreamingChatModelListenerIT {
         UserMessage userMessage = UserMessage.from("hello");
 
         ToolSpecification toolSpecification = null;
-        if (supportToolCalls()) {
+        if (supportsTools()) {
             toolSpecification = ToolSpecification.builder()
                     .name("add")
                     .addParameter("a", INTEGER)
@@ -115,7 +120,7 @@ public abstract class StreamingChatModelListenerIT {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        if (supportToolCalls()) {
+        if (supportsTools()) {
             model.generate(singletonList(userMessage), singletonList(toolSpecification), handler);
         } else {
             model.generate(singletonList(userMessage), handler);
@@ -129,7 +134,7 @@ public abstract class StreamingChatModelListenerIT {
         assertThat(request.topP()).isEqualTo(topP());
         assertThat(request.maxTokens()).isEqualTo(maxTokens());
         assertThat(request.messages()).containsExactly(userMessage);
-        if (supportToolCalls()) {
+        if (supportsTools()) {
             assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
         }
 
@@ -147,7 +152,7 @@ public abstract class StreamingChatModelListenerIT {
         assertThat(response.aiMessage()).isEqualTo(aiMessage);
     }
 
-    protected boolean supportToolCalls() {
+    protected boolean supportsTools() {
         return true;
     }
 

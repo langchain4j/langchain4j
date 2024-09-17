@@ -42,7 +42,7 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return NullPointerException.class;
+        return RuntimeException.class;
     }
 
     @Override

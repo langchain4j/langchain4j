@@ -9,8 +9,6 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -22,8 +20,13 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.*;
-import static dev.langchain4j.model.ollama.OllamaMessagesUtils.*;
+import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createModelListenerRequest;
+import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;
+import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenRequest;
+import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenResponse;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaTools;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toToolExecutionRequest;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
@@ -34,8 +37,6 @@ import static java.util.Collections.emptyList;
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values">Ollama API parameters</a>.
  */
 public class OllamaChatModel implements ChatLanguageModel {
-
-    private static final Logger log = LoggerFactory.getLogger(OllamaChatModel.class);
 
     private final OllamaClient client;
     private final String modelName;
@@ -268,5 +269,4 @@ public class OllamaChatModel implements ChatLanguageModel {
             );
         }
     }
-
 }

@@ -45,7 +45,7 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
     }
 
     @Override
-    protected boolean supportToolCalls() {
+    protected boolean supportsTools() {
         return false;
     }
 
