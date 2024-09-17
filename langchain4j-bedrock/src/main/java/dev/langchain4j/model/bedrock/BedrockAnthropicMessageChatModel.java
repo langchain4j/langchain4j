@@ -109,12 +109,12 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         parameters.put("system", system);
 
         if (nonNull(toolChoiceSpecification)) {
-            validateModelIdWithToolsSupport();
+            validateModelIdWithToolsSupport(this.model);
             parameters.put("tool_choice", toAnthropicToolChoice(toolChoiceSpecification));
         }
 
         if (!toolSpecifications.isEmpty()) {
-            validateModelIdWithToolsSupport();
+            validateModelIdWithToolsSupport(this.model);
             parameters.put("tools", toAnthropicToolSpecifications(toolSpecifications));
         }
 
@@ -138,8 +138,12 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         return toolChoiceNode;
     }
 
-    private void validateModelIdWithToolsSupport() {
-        List<String> anthropicModelIdSplit = Arrays.asList(this.model.split("-"));
+    static void validateModelIdWithToolsSupport(String modelId) {
+        if (Objects.isNull(modelId)) {
+            throw new IllegalArgumentException("Model ID is required");
+        }
+
+        List<String> anthropicModelIdSplit = Arrays.asList(modelId.split("-"));
 
         if (anthropicModelIdSplit.size() < 2) {
             throw new IllegalArgumentException("Tools are currently not supported by this model");
