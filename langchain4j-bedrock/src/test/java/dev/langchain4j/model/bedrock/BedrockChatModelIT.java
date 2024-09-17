@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.awssdk.regions.Region;
 
 import java.time.Duration;
@@ -22,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
@@ -493,6 +496,43 @@ class BedrockChatModelIT {
         );
 
         assertEquals("Tools are currently not supported by this model", exception.getMessage());
+    }
+
+    @ParameterizedTest
+    @MethodSource("anthropicModelsWithoutToolSupport")
+    void testValidateModelIdWithoutToolsSupport(String modelId) {
+        IllegalArgumentException illegalArgumentException = Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> BedrockAnthropicMessageChatModel.validateModelIdWithToolsSupport(modelId),
+                "Expected validateModelIdWithToolsSupport() to throw, but it didn't"
+        );
+
+        assertEquals("Tools are currently not supported by this model", illegalArgumentException.getMessage());
+    }
+
+    static Stream<String> anthropicModelsWithoutToolSupport() {
+        return Stream.of(
+            BedrockAnthropicMessageChatModel.Types.AnthropicClaudeInstantV1.getValue(),
+            BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2.getValue(),
+            BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue()
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("anthropicModelsWithToolSupport")
+    void testValidateModelIdWithToolsSupport(String modelId) {
+        Assertions.assertDoesNotThrow(
+                () -> BedrockAnthropicMessageChatModel.validateModelIdWithToolsSupport(modelId),
+                "Expected validateModelIdWithToolsSupport() to not throw, but it did"
+        );
+    }
+
+    static Stream<String> anthropicModelsWithToolSupport() {
+        return Stream.of(
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue(),
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaude3_5SonnetV1.getValue(),
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue()
+        );
     }
 
     @Test
