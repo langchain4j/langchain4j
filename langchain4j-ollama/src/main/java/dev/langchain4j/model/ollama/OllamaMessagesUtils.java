@@ -34,6 +34,9 @@ class OllamaMessagesUtils {
     }
 
     static List<Tool> toOllamaTools(List<ToolSpecification> toolSpecifications) {
+        if (toolSpecifications == null) {
+            return null;
+        }
         return toolSpecifications.stream().map(toolSpecification ->
                         Tool.builder()
                                 .function(Function.builder()

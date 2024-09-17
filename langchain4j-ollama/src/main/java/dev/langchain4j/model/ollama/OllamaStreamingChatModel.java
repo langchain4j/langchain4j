@@ -4,9 +4,11 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -16,6 +18,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+import static java.util.Collections.emptyList;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -28,6 +31,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
     private final String modelName;
     private final Options options;
     private final String format;
+    private final List<ChatModelListener> listeners;
 
     public OllamaStreamingChatModel(String baseUrl,
                                     String modelName,
@@ -43,7 +47,8 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                                     Duration timeout,
                                     Boolean logRequests,
                                     Boolean logResponses,
-                                    Map<String, String> customHeaders
+                                    Map<String, String> customHeaders,
+                                    List<ChatModelListener> listeners
     ) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
@@ -64,6 +69,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .stop(stop)
                 .build();
         this.format = format;
+        this.listeners = new ArrayList<>(getOrDefault(listeners, emptyList()));
     }
 
     public static OllamaStreamingChatModelBuilder builder() {
@@ -85,7 +91,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .stream(true)
                 .build();
 
-        client.streamingChat(request, handler);
+        client.streamingChat(request, handler, listeners, messages);
     }
 
     public static class OllamaStreamingChatModelBuilder {
@@ -105,6 +111,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         private Map<String, String> customHeaders;
         private Boolean logRequests;
         private Boolean logResponses;
+        private List<ChatModelListener> listeners;
 
         public OllamaStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -186,6 +193,11 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
+        public OllamaStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
         public OllamaStreamingChatModel build() {
             return new OllamaStreamingChatModel(
                     baseUrl,
@@ -202,7 +214,8 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                     timeout,
                     logRequests,
                     logResponses,
-                    customHeaders
+                    customHeaders,
+                    listeners
             );
         }
     }
