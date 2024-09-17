@@ -1,23 +1,19 @@
 package dev.langchain4j.model.bedrock.internal;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamResponseHandler;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Bedrock Streaming chat model
@@ -28,7 +24,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
     @Getter
     private final BedrockRuntimeAsyncClient asyncClient = initAsyncClient();
 
-    class StreamingResponse {
+    static class StreamingResponse {
         public String completion;
     }
 
@@ -78,6 +74,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
         BedrockRuntimeAsyncClient client = BedrockRuntimeAsyncClient.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
+                .overrideConfiguration(c-> c.apiCallTimeout(timeout))
                 .build();
         return client;
     }

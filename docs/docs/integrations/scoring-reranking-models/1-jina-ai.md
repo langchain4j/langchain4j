@@ -29,7 +29,10 @@ It looks beyond the surface-level matching of terms to consider the deeper inter
 ```java
 
 
-ScoringModel scoringModel = JinaScoringModel.withApiKey(System.getenv("JINA_API_KEY"));;
+ScoringModel scoringModel = JinaScoringModel.builder()
+    .apiKey(System.getenv("JINA_API_KEY"))
+    .modelName("jina-reranker-v2-base-multilingual")
+    .build();
 
 ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
     .scoringModel(scoringModel)

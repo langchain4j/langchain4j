@@ -40,7 +40,7 @@ interface OllamaApi {
     @Headers({"Content-Type: application/json"})
     Call<Void> deleteModel(@Body DeleteModelRequest deleteModelRequest);
 
-    @GET( "api/ps")
+    @GET("api/ps")
     @Headers({"Content-Type: application/json"})
     Call<RunningModelsListResponse> listRunningModels();
 }
