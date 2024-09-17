@@ -41,7 +41,7 @@ class OpenAiChatModelListenerIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected Class<?> expectedExceptionClass() {
+    protected Class<? extends Exception> expectedExceptionClass() {
         return OpenAiHttpException.class;
     }
 }

@@ -42,7 +42,7 @@ class AzureOpenAiStreamingChatModelListenerIT extends StreamingChatModelListener
     }
 
     @Override
-    protected Class<?> expectedExceptionClass() {
+    protected Class<? extends Exception> expectedExceptionClass() {
         return ClientAuthenticationException.class;
     }
 

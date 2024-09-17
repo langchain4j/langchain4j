@@ -707,7 +707,7 @@ public class GoogleAiGeminiChatModelIT {
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
         if (ciDelaySeconds != null) {
-            Thread.sleep(Integer.parseInt(ciDelaySeconds));
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
     }
 }
