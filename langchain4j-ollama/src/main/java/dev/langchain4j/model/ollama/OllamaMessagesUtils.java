@@ -1,17 +1,21 @@
 package dev.langchain4j.model.ollama;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.internal.Json;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 
 class OllamaMessagesUtils {
 
@@ -30,6 +34,9 @@ class OllamaMessagesUtils {
     }
 
     static List<Tool> toOllamaTools(List<ToolSpecification> toolSpecifications) {
+        if (toolSpecifications == null) {
+            return null;
+        }
         return toolSpecifications.stream().map(toolSpecification ->
                         Tool.builder()
                                 .function(Function.builder()
@@ -48,7 +55,7 @@ class OllamaMessagesUtils {
         return toolCalls.stream().map(toolCall ->
                         ToolExecutionRequest.builder()
                                 .name(toolCall.getFunction().getName())
-                                .arguments(Json.toJson(toolCall.getFunction().getArguments()))
+                                .arguments(toJson(toolCall.getFunction().getArguments()))
                                 .build())
                 .collect(Collectors.toList());
     }
@@ -75,9 +82,29 @@ class OllamaMessagesUtils {
     }
 
     private static Message otherMessages(ChatMessage chatMessage) {
+        List<ToolCall> toolCalls = null;
+        if (ChatMessageType.AI == chatMessage.type()) {
+            AiMessage aiMessage = (AiMessage) chatMessage;
+            List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+            toolCalls = Optional.ofNullable(toolExecutionRequests)
+                    .map(reqs -> reqs.stream()
+                            .map(toolExecutionRequest -> {
+                                TypeReference<HashMap<String, Object>> typeReference = new TypeReference<HashMap<String, Object>>() {
+                                };
+                                FunctionCall functionCall = FunctionCall.builder()
+                                        .name(toolExecutionRequest.name())
+                                        .arguments(toObject(toolExecutionRequest.arguments(), typeReference))
+                                        .build();
+                                return ToolCall.builder()
+                                        .function(functionCall).build();
+                            }).collect(Collectors.toList()))
+                    .orElse(null);
+
+        }
         return Message.builder()
                 .role(toOllamaRole(chatMessage.type()))
                 .content(chatMessage.text())
+                .toolCalls(toolCalls)
                 .build();
     }
 

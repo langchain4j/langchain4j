@@ -10,12 +10,13 @@ import retrofit2.http.Headers;
 //import retrofit2.http.Streaming;
 
 interface GeminiService {
+    String API_KEY_HEADER_NAME = "x-goog-api-key";
 
     @POST("models/{model}:generateContent")
     @Headers("User-Agent: LangChain4j")
     Call<GeminiGenerateContentResponse> generateContent(
         @Path("model") String modelName,
-        @Header("x-goog-api-key") String apiKey,
+        @Header(API_KEY_HEADER_NAME) String apiKey,
         @Body GeminiGenerateContentRequest request);
 
 /*
@@ -24,7 +25,7 @@ interface GeminiService {
     @Headers("User-Agent: LangChain4j")
     Observable<GeminiGenerateContentResponse> streamGenerateContent(
         @Path("model") String modelName,
-        @Header("x-goog-api-key") String apiKey,
+        @Header(API_KEY_HEADER_NAME) String apiKey,
         @Body GeminiGenerateContentRequest request);
 */
 

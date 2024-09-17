@@ -5,7 +5,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.ollama.spi.OllamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
@@ -27,7 +26,6 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String modelName;
     private final Integer maxRetries;
 
-    @Builder
     public OllamaEmbeddingModel(String baseUrl,
                                 String modelName,
                                 Duration timeout,
@@ -44,6 +42,13 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 3);
+    }
+
+    public static OllamaEmbeddingModelBuilder builder() {
+        for (OllamaEmbeddingModelBuilderFactory factory : loadFactories(OllamaEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OllamaEmbeddingModelBuilder();
     }
 
     @Override
@@ -65,17 +70,58 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         return Response.from(embeddings);
     }
 
-    public static OllamaEmbeddingModelBuilder builder() {
-        for (OllamaEmbeddingModelBuilderFactory factory : loadFactories(OllamaEmbeddingModelBuilderFactory.class)) {
-            return factory.get();
-        }
-        return new OllamaEmbeddingModelBuilder();
-    }
-
     public static class OllamaEmbeddingModelBuilder {
+
+        private String baseUrl;
+        private String modelName;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Map<String, String> customHeaders;
+
         public OllamaEmbeddingModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public OllamaEmbeddingModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OllamaEmbeddingModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OllamaEmbeddingModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OllamaEmbeddingModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public OllamaEmbeddingModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OllamaEmbeddingModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public OllamaEmbeddingModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OllamaEmbeddingModel build() {
+            return new OllamaEmbeddingModel(baseUrl, modelName, timeout, maxRetries, logRequests, logResponses, customHeaders);
         }
     }
 }

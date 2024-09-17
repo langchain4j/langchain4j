@@ -49,7 +49,10 @@ import java.util.List;
 public class OvhAiEmbeddingSimpleExample {
 
     public static void main(String[] args) {
-        EmbeddingModel embeddingModel = OvhAiEmbeddingModel.withApiKey(System.getenv("OVH_AI_API_KEY"));
+        EmbeddingModel embeddingModel = OvhAiEmbeddingModel.builder()
+                .apiKey(System.getenv("OVH_AI_API_KEY"))
+                .baseUrl("https://multilingual-e5-base.endpoints.kepler.ai.cloud.ovh.net")
+                .build();
 
         // For simplicity, this example uses an in-memory store, but you can choose any external compatible store for production environments.
         EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();

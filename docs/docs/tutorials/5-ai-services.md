@@ -59,7 +59,10 @@ interface Assistant {
 Then, we create our low-level components. These components will be used under the hood of our AI Service.
 In this case, we just need the `ChatLanguageModel`:
 ```java
-ChatLanguageModel model = OpenAiChatModel.withApiKey("demo");
+ChatLanguageModel model = OpenAiChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 ```
 
 Finally, we can use the `AiServices` class to create an instance of our AI Service:
@@ -268,7 +271,7 @@ String text = """
 
 Person person = personExtractor.extractPersonFrom(text);
 
-System.out.println(person); // // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
+System.out.println(person); // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
 ```
 
 ## JSON mode
@@ -299,7 +302,7 @@ but now we have the JSON mode feature, which is more suitable for this purpose.
 Here is how to enable JSON mode:
 
 - For OpenAI:
-  - For newer models that support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) (e.g. gpt-4o-mini, gpt-4o-2024-08-06):
+  - For newer models that support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) (e.g., `gpt-4o-mini`, `gpt-4o-2024-08-06`):
     ```java
     OpenAiChatModel.builder()
         ...
@@ -332,11 +335,53 @@ VertexAiGeminiChatModel.builder()
     .build();
 ```
 
+Or by specifying an explicit schema from a Java class:
+
+```java
+VertexAiGeminiChatModel.builder()
+    ...
+    .responseSchema(SchemaHelper.fromClass(Person.class))
+    .build();
+```
+
+From a JSON schema:
+
+```java
+VertexAiGeminiChatModel.builder()
+    ...
+    .responseSchema(Schema.builder()...build())
+    .build();
+```
+
 - For Google AI Gemini:
 ```java
 GoogleAiGeminiChatModel.builder()
     ...
-    .responseMimeType("application/json")
+    .responseFormat(ResponseFormat.JSON)
+    .build();
+```
+
+Or by specifying an explicit schema from a Java class:
+
+```java
+GoogleAiGeminiChatModel.builder()
+    ...
+    .responseFormat(ResponseFormat.builder()
+        .type(JSON)
+        .jsonSchema(JsonSchemas.jsonSchemaFrom(Person.class).get())
+        .build())
+    .build();
+```
+
+From a JSON schema:
+
+```java
+GoogleAiGeminiChatModel.builder()
+    ...
+    .responseFormat(ResponseFormat.builder()
+        .type(JSON)
+        .jsonSchema(JsonSchema.builder()...build())
+        .build())
     .build();
 ```
 
@@ -373,7 +418,10 @@ interface Assistant {
     TokenStream chat(String message);
 }
 
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
+StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 
 Assistant assistant = AiServices.create(Assistant.class, model);
 
@@ -457,7 +505,7 @@ String answer = assistant.chat("What is 1+2 and 3*4?");
 ```
 In this scenario, LLM will execute `add(1, 2)` and `multiply(3, 4)` methods before providing an answer.
 
-More details about tools can be found [here](/tutorials/tools).
+More details about tools can be found [here](/tutorials/tools#high-level-tool-api).
 
 
 ## RAG

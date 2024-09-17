@@ -7,10 +7,12 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -35,9 +37,11 @@ class BedrockChatModelIT {
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
                 .maxRetries(1)
+                .timeout(Duration.ofMinutes(2L))
                 .build();
 
         assertThat(bedrockChatModel).isNotNull();
+        assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(2L);
 
         Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
 
@@ -60,6 +64,7 @@ class BedrockChatModelIT {
                 .build();
 
         assertThat(bedrockChatModel).isNotNull();
+        assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(1L);
 
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         ImageContent imageContent = ImageContent.from(base64Data, "image/png");
@@ -326,5 +331,13 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_BEDROCK");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

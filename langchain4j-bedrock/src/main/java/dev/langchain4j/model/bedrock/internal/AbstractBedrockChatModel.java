@@ -1,30 +1,23 @@
 package dev.langchain4j.model.bedrock.internal;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ChatMessageType;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
-import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
-
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
+import lombok.experimental.SuperBuilder;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static java.util.stream.Collectors.joining;
+import java.time.Duration;
 
 /**
  * Bedrock chat model
@@ -104,6 +97,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
         return BedrockRuntimeClient.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
+                .overrideConfiguration(c-> c.apiCallTimeout(timeout))
                 .build();
     }
 }
