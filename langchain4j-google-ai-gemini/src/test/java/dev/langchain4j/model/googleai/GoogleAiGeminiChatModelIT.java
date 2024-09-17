@@ -684,7 +684,7 @@ public class GoogleAiGeminiChatModelIT {
             .build();
 
         // when
-        int countedTokens = gemini.countTokens("What is the capital of France?");
+        int countedTokens = gemini.estimateTokenCount("What is the capital of France?");
 
         // then
         assertThat(countedTokens).isGreaterThan(0);
@@ -697,7 +697,7 @@ public class GoogleAiGeminiChatModelIT {
             UserMessage.from("Thank you!"),
             AiMessage.from("You're welcome!")
         );
-        int listOfMsgTokenCount = gemini.countTokens(messageList);
+        int listOfMsgTokenCount = gemini.estimateTokenCount(messageList);
 
         // then
         assertThat(listOfMsgTokenCount).isGreaterThan(0);

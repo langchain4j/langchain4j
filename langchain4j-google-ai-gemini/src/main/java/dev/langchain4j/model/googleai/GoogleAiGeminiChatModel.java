@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -48,7 +49,7 @@ import static java.util.Collections.emptyList;
 
 @Experimental
 @Slf4j
-public class GoogleAiGeminiChatModel implements ChatLanguageModel {
+public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private static final Gson GSON = new Gson();
 
     private final GeminiService geminiService;
@@ -72,6 +73,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
     private final boolean allowCodeExecution;
     private final boolean includeCodeExecutionOutput;
 
+    private final Boolean logRequestsAndResponses;
     private final List<GeminiSafetySetting> safetySettings;
     private final List<ChatModelListener> listeners;
 
@@ -105,6 +107,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
 
         this.allowCodeExecution = allowCodeExecution != null ? allowCodeExecution : false;
         this.includeCodeExecutionOutput = includeCodeExecutionOutput != null ? includeCodeExecutionOutput : false;
+        this.logRequestsAndResponses = logRequestsAndResponses;
 
         this.safetySettings = copyIfNotNull(safetySettings);
 
@@ -307,36 +310,17 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel {
         }
     }
 
-    public int countTokens(List<ChatMessage> messages) {
-        List<GeminiContent> geminiContentList = fromMessageToGContent(messages, null);
-        GeminiCountTokensRequest countTokensRequest = new GeminiCountTokensRequest();
-        countTokensRequest.setContents(geminiContentList);
+    @Override
+    public int estimateTokenCount(List<ChatMessage> messages) {
+        GoogleAiTokenizer tokenizer = GoogleAiTokenizer.builder()
+            .modelName(this.modelName)
+            .apiKey(this.apiKey)
+            .duration(Duration.ofSeconds(60))
+            .maxRetries(this.maxRetries)
+            .logRequestsAndResponses(this.logRequestsAndResponses)
+            .build();
 
-        Call<GeminiCountTokensResponse> responseCall =
-            withRetry(() -> this.geminiService.countTokens(this.modelName, this.apiKey, countTokensRequest), this.maxRetries);
-
-        GeminiCountTokensResponse countTokensResponse;
-        try {
-            retrofit2.Response<GeminiCountTokensResponse> executed = responseCall.execute();
-            countTokensResponse = executed.body();
-
-            if (executed.code() >= 300) {
-                try (ResponseBody errorBody = executed.errorBody()) {
-                    GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
-
-                    throw new RuntimeException(
-                        String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("An error occurred when calling the Gemini API endpoint to calculate tokens count", e);
-        }
-
-        return countTokensResponse.getTotalTokens();
-    }
-
-    public int countTokens(String message) {
-        return countTokens(Collections.singletonList(UserMessage.from(message)));
+        return tokenizer.estimateTokenCountInMessages(messages);
     }
 
     @Override
