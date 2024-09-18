@@ -31,13 +31,16 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 import static dev.langchain4j.model.zhipu.Json.OBJECT_MAPPER;
 import static retrofit2.converter.jackson.JacksonConverterFactory.create;
 
 public class ZhipuAiClient {
     private static final Logger log = LoggerFactory.getLogger(ZhipuAiClient.class);
+
+    private static final String BASE_URL = "https://open.bigmodel.cn/";
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(60L);
 
     private final ZhipuAiApi zhipuAiApi;
     private final OkHttpClient okHttpClient;
@@ -269,30 +272,20 @@ public class ZhipuAiClient {
     }
 
     public static class Builder {
-        private String baseUrl;
+        private String baseUrl = BASE_URL;
         private String apiKey;
-        private Duration callTimeout;
-        private Duration connectTimeout;
-        private Duration readTimeout;
-        private Duration writeTimeout;
-        private boolean logRequests;
-        private boolean logResponses;
-
-        private Builder() {
-            this.baseUrl = "https://open.bigmodel.cn/";
-            this.callTimeout = Duration.ofSeconds(60L);
-            this.connectTimeout = Duration.ofSeconds(60L);
-            this.readTimeout = Duration.ofSeconds(60L);
-            this.writeTimeout = Duration.ofSeconds(60L);
-        }
+        private Duration callTimeout = DEFAULT_TIMEOUT;
+        private Duration connectTimeout = DEFAULT_TIMEOUT;
+        private Duration readTimeout = DEFAULT_TIMEOUT;
+        private Duration writeTimeout = DEFAULT_TIMEOUT;
+        private boolean logRequests = false;
+        private boolean logResponses = false;
 
         public Builder baseUrl(String baseUrl) {
             if (baseUrl != null && !baseUrl.trim().isEmpty()) {
-                this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-                return this;
-            } else {
-                throw new IllegalArgumentException("baseUrl cannot be null or empty");
-            }
+                this.baseUrl = ensureTrailingForwardSlash(baseUrl);
+            } // else { // keep default url
+            return this;
         }
 
         public Builder apiKey(String apiKey) {
@@ -305,39 +298,31 @@ public class ZhipuAiClient {
         }
 
         public Builder callTimeout(Duration callTimeout) {
-            if (callTimeout == null) {
-                throw new IllegalArgumentException("callTimeout cannot be null");
-            } else {
+            if (callTimeout != null) {
                 this.callTimeout = callTimeout;
-                return this;
             }
+            return this;
         }
 
         public Builder connectTimeout(Duration connectTimeout) {
-            if (connectTimeout == null) {
-                throw new IllegalArgumentException("connectTimeout cannot be null");
-            } else {
+            if (connectTimeout != null) {
                 this.connectTimeout = connectTimeout;
-                return this;
             }
+            return this;
         }
 
         public Builder readTimeout(Duration readTimeout) {
-            if (readTimeout == null) {
-                throw new IllegalArgumentException("readTimeout cannot be null");
-            } else {
+            if (readTimeout != null) {
                 this.readTimeout = readTimeout;
-                return this;
             }
+                return this;
         }
 
         public Builder writeTimeout(Duration writeTimeout) {
-            if (writeTimeout == null) {
-                throw new IllegalArgumentException("writeTimeout cannot be null");
-            } else {
+            if (writeTimeout != null) {
                 this.writeTimeout = writeTimeout;
-                return this;
             }
+            return this;
         }
 
         public Builder logRequests() {

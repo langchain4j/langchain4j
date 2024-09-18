@@ -73,14 +73,14 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
         this.maxToken = getOrDefault(maxToken, 512);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.client = ZhipuAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://open.bigmodel.cn/"))
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .callTimeout(callTimeout)
                 .connectTimeout(connectTimeout)
                 .writeTimeout(writeTimeout)
                 .readTimeout(readTimeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
     }
 
