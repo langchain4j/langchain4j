@@ -1,5 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -8,6 +9,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -27,12 +29,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -141,21 +144,46 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, null, null, handler);
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, toolSpecifications, null, handler);
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, null, toolSpecification, handler);
+    }
+
+    private void generate(List<ChatMessage> messages,
+                          List<ToolSpecification> toolSpecifications,
+                          ToolSpecification toolThatMustBeExecuted,
+                          StreamingResponseHandler<AiMessage> handler) {
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         String systemPrompt = toAnthropicSystemPrompt(messages);
         ensureNotNull(handler, "handler");
 
-        AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
+        AnthropicCreateMessageRequest.AnthropicCreateMessageRequestBuilder requestBuilder = AnthropicCreateMessageRequest.builder()
+                .stream(true)
                 .model(modelName)
                 .messages(toAnthropicMessages(sanitizedMessages))
                 .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
-                .stream(true)
                 .temperature(temperature)
                 .topP(topP)
-                .topK(topK)
-                .build();
+                .topK(topK);
+
+        if (toolThatMustBeExecuted != null) {
+            requestBuilder.tools(toAnthropicTools(singletonList(toolThatMustBeExecuted)));
+            requestBuilder.toolChoice(AnthropicToolChoice.from(toolThatMustBeExecuted.name()));
+        } else if (!isNullOrEmpty(toolSpecifications)) {
+            requestBuilder.tools(toAnthropicTools(toolSpecifications));
+        }
+
+        AnthropicCreateMessageRequest request = requestBuilder.build();
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();

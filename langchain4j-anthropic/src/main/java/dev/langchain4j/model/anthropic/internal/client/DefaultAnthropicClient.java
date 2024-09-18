@@ -147,9 +147,6 @@ public class DefaultAnthropicClient extends AnthropicClient {
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
 
-            AtomicReference<String> responseId = new AtomicReference<>();
-            AtomicReference<String> responseModel = new AtomicReference<>();
-
             volatile String stopReason;
 
             private StringBuffer currentContentBuilder() {
@@ -207,17 +204,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private void handleMessageStart(AnthropicStreamingData data) {
-                AnthropicResponseMessage message = data.message;
-                if (message != null) {
-                    if (message.usage != null) {
-                        handleUsage(message.usage);
-                    }
-                    if (message.id != null) {
-                        responseId.set(message.id);
-                    }
-                    if (message.model != null) {
-                        responseModel.set(message.model);
-                    }
+                if (data.message != null && data.message.usage != null) {
+                    handleUsage(data.message.usage);
                 }
             }
 
@@ -271,21 +259,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 Response<AiMessage> response = Response.from(
                         AiMessage.from(String.join("\n", contents)),
                         new TokenUsage(inputTokenCount.get(), outputTokenCount.get()),
-                        toFinishReason(stopReason),
-                        createMetadata()
+                        toFinishReason(stopReason)
                 );
                 handler.onComplete(response);
-            }
-
-            private Map<String, Object> createMetadata() {
-                Map<String, Object> metadata = new HashMap<>();
-                if (responseId.get() != null) {
-                    metadata.put("id", responseId.get());
-                }
-                if (responseModel.get() != null) {
-                    metadata.put("model", responseModel.get());
-                }
-                return metadata;
             }
 
             private void handleError(String dataString) {
