@@ -51,8 +51,7 @@ public class GoogleAiEmbeddingModelIT {
         // when
         TextSegment textSegment = TextSegment.from(
             "What is the capital of France?",
-            Metadata.from("taskType", "RETRIEVAL_DOCUMENT")
-                .put("title", "document title")
+            Metadata.from("title", "document title")
         );
         Response<Embedding> embed = embeddingModel.embed(textSegment);
 

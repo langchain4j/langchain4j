@@ -5,7 +5,6 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
@@ -77,6 +76,8 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
     private final List<GeminiSafetySetting> safetySettings;
     private final List<ChatModelListener> listeners;
 
+    private final GoogleAiGeminiTokenizer geminiTokenizer;
+
     @Builder
     public GoogleAiGeminiChatModel(String apiKey, String modelName,
                                    Integer maxRetries,
@@ -107,7 +108,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
 
         this.allowCodeExecution = allowCodeExecution != null ? allowCodeExecution : false;
         this.includeCodeExecutionOutput = includeCodeExecutionOutput != null ? includeCodeExecutionOutput : false;
-        this.logRequestsAndResponses = logRequestsAndResponses;
+        this.logRequestsAndResponses = getOrDefault(logRequestsAndResponses, false);
 
         this.safetySettings = copyIfNotNull(safetySettings);
 
@@ -119,6 +120,14 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
             getOrDefault(logRequestsAndResponses, false) ? this.log : null,
             getOrDefault(timeout, ofSeconds(60))
         );
+
+        this.geminiTokenizer = GoogleAiGeminiTokenizer.builder()
+            .modelName(this.modelName)
+            .apiKey(this.apiKey)
+            .timeout(getOrDefault(timeout, ofSeconds(60)))
+            .maxRetries(this.maxRetries)
+            .logRequestsAndResponses(this.logRequestsAndResponses)
+            .build();
     }
 
     private static String computeMimeType(ResponseFormat responseFormat) {
@@ -312,15 +321,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
 
     @Override
     public int estimateTokenCount(List<ChatMessage> messages) {
-        GoogleAiTokenizer tokenizer = GoogleAiTokenizer.builder()
-            .modelName(this.modelName)
-            .apiKey(this.apiKey)
-            .duration(Duration.ofSeconds(60))
-            .maxRetries(this.maxRetries)
-            .logRequestsAndResponses(this.logRequestsAndResponses)
-            .build();
-
-        return tokenizer.estimateTokenCountInMessages(messages);
+        return geminiTokenizer.estimateTokenCountInMessages(messages);
     }
 
     @Override

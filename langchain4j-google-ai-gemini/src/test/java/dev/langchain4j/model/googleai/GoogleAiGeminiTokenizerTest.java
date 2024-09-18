@@ -11,13 +11,13 @@ import java.util.Arrays;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-public class GoogleAiTokenizerTest {
+public class GoogleAiGeminiTokenizerTest {
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
     @Test
     void should_estimate_token_count_for_text() {
         // given
-        GoogleAiTokenizer tokenizer = GoogleAiTokenizer.builder()
+        GoogleAiGeminiTokenizer tokenizer = GoogleAiGeminiTokenizer.builder()
             .logRequestsAndResponses(true)
             .modelName("gemini-1.5-flash")
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -27,13 +27,13 @@ public class GoogleAiTokenizerTest {
         int count = tokenizer.estimateTokenCountInText("Hello world!");
 
         // then
-        assertThat(count).isGreaterThan(0);
+        assertThat(count).isEqualTo(4);
     }
 
     @Test
     void should_estimate_token_count_for_a_message() {
         // given
-        GoogleAiTokenizer tokenizer = GoogleAiTokenizer.builder()
+        GoogleAiGeminiTokenizer tokenizer = GoogleAiGeminiTokenizer.builder()
             .logRequestsAndResponses(true)
             .modelName("gemini-1.5-flash")
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -43,13 +43,13 @@ public class GoogleAiTokenizerTest {
         int count = tokenizer.estimateTokenCountInMessage(UserMessage.from("Hello World!"));
 
         // then
-        assertThat(count).isGreaterThan(0);
+        assertThat(count).isEqualTo(4);
     }
 
     @Test
     void should_estimate_token_count_for_list_of_messages() {
         // given
-        GoogleAiTokenizer tokenizer = GoogleAiTokenizer.builder()
+        GoogleAiGeminiTokenizer tokenizer = GoogleAiGeminiTokenizer.builder()
             .logRequestsAndResponses(true)
             .modelName("gemini-1.5-flash")
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -64,13 +64,13 @@ public class GoogleAiTokenizerTest {
         );
 
         // then
-        assertThat(count).isGreaterThan(0);
+        assertThat(count).isEqualTo(14);
     }
 
     @Test
     void should_estimate_token_count_for_tool_exec_reqs() {
         // given
-        GoogleAiTokenizer tokenizer = GoogleAiTokenizer.builder()
+        GoogleAiGeminiTokenizer tokenizer = GoogleAiGeminiTokenizer.builder()
             .logRequestsAndResponses(true)
             .modelName("gemini-1.5-flash")
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -91,14 +91,14 @@ public class GoogleAiTokenizerTest {
         );
 
         // then
-        assertThat(count).isGreaterThan(0);
+        assertThat(count).isEqualTo(29);
     }
 
 
     @Test
     void should_estimate_token_count_for_tool_specs() {
         // given
-        GoogleAiTokenizer tokenizer = GoogleAiTokenizer.builder()
+        GoogleAiGeminiTokenizer tokenizer = GoogleAiGeminiTokenizer.builder()
             .logRequestsAndResponses(true)
             .modelName("gemini-1.5-flash")
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -122,6 +122,6 @@ public class GoogleAiTokenizerTest {
         );
 
         // then
-        assertThat(count).isGreaterThan(0);
+        assertThat(count).isEqualTo(114);
     }
 }

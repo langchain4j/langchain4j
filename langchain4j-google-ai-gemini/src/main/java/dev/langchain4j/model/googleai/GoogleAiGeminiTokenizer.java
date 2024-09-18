@@ -24,7 +24,7 @@ import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageT
 import static java.util.Collections.singletonList;
 
 @Slf4j
-public class GoogleAiTokenizer implements Tokenizer {
+public class GoogleAiGeminiTokenizer implements Tokenizer {
     private static final Gson GSON = new Gson();
 
     private final GeminiService geminiService;
@@ -33,19 +33,18 @@ public class GoogleAiTokenizer implements Tokenizer {
     private final Integer maxRetries;
 
     @Builder
-    GoogleAiTokenizer(
+    GoogleAiGeminiTokenizer(
         String modelName,
         String apiKey,
         Boolean logRequestsAndResponses,
-        Duration duration,
+        Duration timeout,
         Integer maxRetries
     ) {
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.geminiService = GeminiService.getGeminiService(
-            logRequestsAndResponses ? log : null,
-            duration != null ? duration : Duration.ofSeconds(60));
+        this.geminiService = GeminiService.getGeminiService(logRequestsAndResponses ? log : null,
+            timeout != null ? timeout : Duration.ofSeconds(60));
     }
 
     @Override
@@ -86,7 +85,7 @@ public class GoogleAiTokenizer implements Tokenizer {
 
         GeminiContent dummyContent = GeminiContent.builder().parts(
             singletonList(GeminiPart.builder()
-                .text("Dummy content")
+                .text("Dummy content") // This string contains 2 tokens
                 .build())
         ).build();
 
@@ -97,16 +96,10 @@ public class GoogleAiTokenizer implements Tokenizer {
             .tools(FunctionMapper.fromToolSepcsToGTool(allTools, false))
             .build());
 
-        GeminiCountTokensRequest countTokensRequestForDummyContent = new GeminiCountTokensRequest();
-        countTokensRequestForDummyContent.setGenerateContentRequest(GeminiGenerateContentRequest.builder()
-            .model("models/" + this.modelName)
-            .contents(singletonList(dummyContent))
-            .build());
-
         // The API doesn't allow us to make a request to count the tokens of the tool specifications only.
         // Instead, we take the approach of adding a dummy content in the request, and subtract the tokens for the dummy request.
-        // This is generating 2 API calls.
-        return estimateTokenCount(countTokensRequestWithDummyContent) - estimateTokenCount(countTokensRequestForDummyContent);
+        // The string "Dummy content" accounts for 2 tokens. So let's subtract 2 from the overall count.
+        return estimateTokenCount(countTokensRequestWithDummyContent) - 2;
     }
 
     private int estimateTokenCount(GeminiCountTokensRequest countTokensRequest) {
