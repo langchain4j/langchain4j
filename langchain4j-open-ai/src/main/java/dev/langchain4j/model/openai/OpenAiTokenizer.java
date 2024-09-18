@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.IntArrayList;
@@ -15,7 +17,6 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Json.fromJson;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.*;
@@ -30,6 +31,7 @@ public class OpenAiTokenizer implements Tokenizer {
 
     private final String modelName;
     private final Optional<Encoding> encoding;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
      * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-3.5-turbo" model.
@@ -146,7 +148,12 @@ public class OpenAiTokenizer implements Tokenizer {
                     tokenCount += 7;
                     tokenCount += estimateTokenCountInText(toolExecutionRequest.name());
 
-                    Map<?, ?> arguments = fromJson(toolExecutionRequest.arguments(), Map.class);
+                    Map<?, ?> arguments;
+                    try {
+                        arguments = OBJECT_MAPPER.readValue(toolExecutionRequest.arguments(), Map.class);
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
                     for (Map.Entry<?, ?> argument : arguments.entrySet()) {
                         tokenCount += 2;
                         tokenCount += estimateTokenCountInText(argument.getKey().toString());
@@ -370,7 +377,13 @@ public class OpenAiTokenizer implements Tokenizer {
         if (isNullOrBlank(arguments)) {
             return 0;
         }
-        Map<?, ?> argumentsMap = fromJson(arguments, Map.class);
+        Map<?, ?> argumentsMap;
+        try {
+            argumentsMap = OBJECT_MAPPER.readValue(arguments, Map.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
         return argumentsMap.size();
     }
 

@@ -80,8 +80,10 @@ import dev.langchain4j.model.mistralai.MistralAiChatModel;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        ChatLanguageModel model = MistralAiChatModel
-                .withApiKey(ApiKeys.MISTRALAI_API_KEY);
+        ChatLanguageModel model = MistralAiChatModel.builder()
+                .apiKey(ApiKeys.MISTRALAI_API_KEY)
+                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+                .build();
 
         String response = model.generate("Say 'Hello World'");
         System.out.println(response);
@@ -107,8 +109,10 @@ import java.util.concurrent.CompletableFuture;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        MistralAiStreamingChatModel model = MistralAiStreamingChatModel
-                .withApiKey(ApiKeys.MISTRALAI_API_KEY);
+        MistralAiStreamingChatModel model = MistralAiStreamingChatModel.builder()
+                .apiKey(ApiKeys.MISTRALAI_API_KEY)
+                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+                .build();
 
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();         
         model.generate("Tell me a joke about Java", new StreamingResponseHandler() {
@@ -171,11 +175,11 @@ import java.util.*;
 public class PaymentTransactionTool {
 
    private final Map<String, List<String>> paymentData = Map.of(
-            "transaction_id", Arrays.asList("T1001", "T1002", "T1003", "T1004", "T1005"),
-            "customer_id", Arrays.asList("C001", "C002", "C003", "C002", "C001"),
-            "payment_amount", Arrays.asList("125.50", "89.99", "120.00", "54.30", "210.20"),
-            "payment_date", Arrays.asList("2021-10-05", "2021-10-06", "2021-10-07", "2021-10-05", "2021-10-08"),
-            "payment_status", Arrays.asList("Paid", "Unpaid", "Paid", "Paid", "Pending"));
+            "transaction_id", List.of("T1001", "T1002", "T1003", "T1004", "T1005"),
+            "customer_id", List.of("C001", "C002", "C003", "C002", "C001"),
+            "payment_amount", List.of("125.50", "89.99", "120.00", "54.30", "210.20"),
+            "payment_date", List.of("2021-10-05", "2021-10-06", "2021-10-07", "2021-10-05", "2021-10-08"),
+            "payment_status", List.of("Paid", "Unpaid", "Paid", "Paid", "Pending"));
    
     ...
 }

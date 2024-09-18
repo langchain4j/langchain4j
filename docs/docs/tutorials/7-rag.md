@@ -176,8 +176,13 @@ interface Assistant {
     String chat(String userMessage);
 }
 
+ChatLanguageModel chatModel = OpenAiChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
+
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(OpenAiChatModel.withApiKey(OPENAI_API_KEY))
+    .chatLanguageModel(chatModel)
     .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
     .contentRetriever(EmbeddingStoreContentRetriever.from(embeddingStore))
     .build();

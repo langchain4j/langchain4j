@@ -52,6 +52,7 @@ import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_OBJECT;
 import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
@@ -69,7 +70,6 @@ public class InternalOpenAiHelper {
 
     static final String OPENAI_DEMO_API_KEY = "demo";
     static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai/v1";
-
 
     static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
@@ -498,7 +498,7 @@ public class InternalOpenAiHelper {
                 .model(request.model())
                 .temperature(request.temperature())
                 .topP(request.topP())
-                .maxTokens(request.maxTokens())
+                .maxTokens(getOrDefault(request.maxCompletionTokens(), request.maxTokens()))
                 .messages(messages)
                 .toolSpecifications(toolSpecifications)
                 .build();
