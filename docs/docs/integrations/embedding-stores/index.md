@@ -25,6 +25,7 @@ sidebar_position: 0
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   | ✅                | ✅                          | ✅                   |
 | [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                | ✅                          |                     |
 | [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                            |                     |
+| [Tablestore](/integrations/embedding-stores/tablestore) | ✅             |✅                      |✅                    |
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                            |                     |
 | [Vespa](/integrations/embedding-stores/vespa)                                         |                  |                            |                     |
 | [Weaviate](/integrations/embedding-stores/weaviate)                                   | ✅                |                            | ✅                   |
