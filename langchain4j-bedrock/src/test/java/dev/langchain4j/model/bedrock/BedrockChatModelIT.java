@@ -348,7 +348,7 @@ class BedrockChatModelIT {
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
-                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3_5SonnetV1.getValue())
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
                 .maxRetries(1)
                 .build();
 
