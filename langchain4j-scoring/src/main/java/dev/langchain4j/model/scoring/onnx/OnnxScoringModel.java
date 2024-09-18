@@ -6,7 +6,7 @@ public class OnnxScoringModel extends AbstractInProcessScoringModel {
 
     private static final int DEFAULT_MODEL_MAX_LENGTH = 510; // 512 - 2 (special tokens [CLS] and [SEP])
 
-    private static final boolean DEFAULT_NORMALIZE = true;
+    private static final boolean DEFAULT_NORMALIZE = false;
 
     private final OnnxScoringBertBiEncoder onnxBertBiEncoder;
 
