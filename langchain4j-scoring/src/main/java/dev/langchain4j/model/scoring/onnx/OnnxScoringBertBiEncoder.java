@@ -14,7 +14,7 @@ import java.util.*;
 
 import static ai.onnxruntime.OnnxTensor.createTensor;
 
-public class OnnxScoringBertBiEncoder {
+public class OnnxScoringBertCrossEncoder {
 
     private final OrtEnvironment environment;
     private final OrtSession session;
