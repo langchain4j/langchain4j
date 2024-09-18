@@ -589,10 +589,10 @@ public class GoogleAiGeminiChatModelIT {
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
-                        .build())
+            .responseFormat(ResponseFormat.builder()
+                .type(JSON)
+                .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+                .build())
 //             Equivalent to:
 //            .responseFormat(ResponseFormat.builder()
 //                .type(JSON)
@@ -672,6 +672,35 @@ public class GoogleAiGeminiChatModelIT {
 
         // then
         assertThat(chatResponse.aiMessage().hasToolExecutionRequests()).isFalse();
+    }
+
+    @Test
+    void should_count_tokens() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .build();
+
+        // when
+        int countedTokens = gemini.estimateTokenCount("What is the capital of France?");
+
+        // then
+        assertThat(countedTokens).isGreaterThan(0);
+
+        // when
+        List<ChatMessage> messageList = Arrays.asList(
+            SystemMessage.from("You are a helpful geography teacher"),
+            UserMessage.from("What is the capital of Germany?"),
+            AiMessage.from("Berlin"),
+            UserMessage.from("Thank you!"),
+            AiMessage.from("You're welcome!")
+        );
+        int listOfMsgTokenCount = gemini.estimateTokenCount(messageList);
+
+        // then
+        assertThat(listOfMsgTokenCount).isGreaterThan(0);
     }
 
     @AfterEach

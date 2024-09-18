@@ -132,7 +132,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         embeddingInstance.setTaskType(taskType);
                         if (this.taskType.equals(TaskType.RETRIEVAL_DOCUMENT)) {
                             // Title metadata is used for calculating embeddings for document retrieval
-                            embeddingInstance.setTitle(segment.metadata(titleMetadataKey));
+                            embeddingInstance.setTitle(segment.metadata().getString(titleMetadataKey));
                         }
                     }
 
