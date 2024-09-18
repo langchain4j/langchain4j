@@ -25,7 +25,7 @@ public abstract class AbstractInProcessScoringModel implements ScoringModel {
     protected abstract OnnxScoringBertBiEncoder model();
 
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
-        OnnxScoringBertBiEncoder.ScoringAndTokenCount embeddingAndTokenCount = this.model().scoreAll(query,
+        OnnxScoringBertBiEncoder.ScoringAndTokenCount scoresAndTokenCount = this.model().scoreAll(query,
                 segments.stream().map(TextSegment::text).collect(Collectors.toList()));
         return Response.from(embeddingAndTokenCount.scores, new TokenUsage(embeddingAndTokenCount.tokenCount));
     }
