@@ -66,7 +66,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public enum TaskType {
         RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION,
-        CLUSTERING, QUESTION_ANSWERING, FACT_VERIFICATION
+        CLUSTERING, QUESTION_ANSWERING, FACT_VERIFICATION, CODE_RETRIEVAL_QUERY
     }
 
     public VertexAiEmbeddingModel(String endpoint,
@@ -132,7 +132,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         embeddingInstance.setTaskType(taskType);
                         if (this.taskType.equals(TaskType.RETRIEVAL_DOCUMENT)) {
                             // Title metadata is used for calculating embeddings for document retrieval
-                            embeddingInstance.setTitle(segment.metadata(titleMetadataKey));
+                            embeddingInstance.setTitle(segment.metadata().getString(titleMetadataKey));
                         }
                     }
 

@@ -66,6 +66,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final Double topP;
     private final List<String> stop;
     private final Integer maxTokens;
+    private final Integer maxCompletionTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
     private final Map<String, Integer> logitBias;
@@ -87,6 +88,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Double topP,
                                     List<String> stop,
                                     Integer maxTokens,
+                                    Integer maxCompletionTokens,
                                     Double presencePenalty,
                                     Double frequencyPenalty,
                                     Map<String, Integer> logitBias,
@@ -124,6 +126,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.topP = topP;
         this.stop = stop;
         this.maxTokens = maxTokens;
+        this.maxCompletionTokens = maxCompletionTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.logitBias = logitBias;
@@ -174,6 +177,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .topP(topP)
                 .stop(stop)
                 .maxTokens(maxTokens)
+                .maxCompletionTokens(maxCompletionTokens)
                 .presencePenalty(presencePenalty)
                 .frequencyPenalty(frequencyPenalty)
                 .logitBias(logitBias)

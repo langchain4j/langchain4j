@@ -19,7 +19,7 @@ https://ai.google.dev/gemini-api/docs
 
 ## API Key
 
-Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key
+Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
 ## Models available
 
@@ -69,10 +69,9 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
     .topP(0.95)
     .topK(64)
     .maxOutputTokens(8192)
+    .timeout(Duration.ofSeconds(60))
     .candidateCount(1)
-    .responseMimeType("application/json")
-    .responseFormat(ResponseFormat.builder()...build()) // or below
-    .responseSchema(JsonSchema.builder()...build())
+    .responseFormat(ResponseFormat.JSON) // or .responseFormat(ResponseFormat.builder()...build()) 
     .stopSequences(List.of(...))
     .toolConfig(GeminiFunctionCallingConfig.builder()...build()) // or below
     .toolConfig(GeminiMode.ANY, List.of("fnOne", "fnTwo"))
@@ -85,8 +84,8 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 
 ## GoogleAiGeminiStreamingChatModel
 
-No streaming chat model available yet.
-Please open a feature request if you're interested in a streaming model or if you want to contribute to implement it.
+No streaming chat model is available yet.
+Please open a feature request if you're interested in a streaming model or if you want to contribute to implementing it.
 
 ## Tools
 
@@ -148,13 +147,13 @@ System.out.println("Gemini> " + tokyoWeather);
 
 ### JSON mode
 
-You can force Gemini to reply in JSON thanks to the `responseMimeType("application/json")` builder method:
+You can force Gemini to reply in JSON:
 
 ```java
 ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
-    .responseMimeType("application/json")
+    .responseFormat(ResponseFormat.JSON)
     .build();
 
 String roll = gemini.generate("Roll a 6-sided dice");
@@ -169,9 +168,7 @@ If you want a guaranteed application of a JSON schema, you should define a respo
 
 ### Response format / response schema
 
-You can specify:
-* a `ResponseFormat` via the `responseFormat()` builder method, or 
-* a `JsonSchema` via the `responseSchema()` builder method.
+You can specify: a `ResponseFormat` via the `responseFormat()` builder method.
 
 Let's have a look at an example to define a JSON schema for a recipe:
 
@@ -179,18 +176,21 @@ Let's have a look at an example to define a JSON schema for a recipe:
 ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
-    .responseSchema(JsonSchema.builder()
-        .rootElement(JsonObjectSchema.builder()
-            .properties(Map.of(
-                "title", JSON_STRING_SCHEMA,
-                "preparationTimeMinutes", JSON_INTEGER_SCHEMA,
-                "ingredients", JsonArraySchema.builder()
-                    .items(JSON_STRING_SCHEMA)
-                    .build(),
-                "steps", JsonArraySchema.builder()
-                    .items(JSON_STRING_SCHEMA)
-                    .build()
-                ))
+    .responseFormat(ResponseFormat.builder()
+        .type(JSON)
+        .jsonSchema(JsonSchema.builder()
+            .rootElement(JsonObjectSchema.builder()
+                .properties(Map.of(
+                    "title", JSON_STRING_SCHEMA,
+                    "preparationTimeMinutes", JSON_INTEGER_SCHEMA,
+                    "ingredients", JsonArraySchema.builder()
+                        .items(JSON_STRING_SCHEMA)
+                        .build(),
+                    "steps", JsonArraySchema.builder()
+                        .items(JSON_STRING_SCHEMA)
+                        .build()
+                    ))
+                .build())
             .build())
         .build())
     .build();
@@ -201,14 +201,6 @@ String recipeResponse = gemini.generate(
 System.out.println(recipeResponse);
 ```
 
-When using the `responseFormat()` method, you actually pass the surrounding `ResponseFormat` data structure, but it wraps a JSON schema like the above example:
-
-```java
-.responseFormat(ResponseFormat.builder()
-                    .type(JSON)
-                    .jsonSchema(JsonSchema.builder()...build())
-```
-
 Instead of building the JSON schema yourself, you can also derive a schema from your own Java classes:
 
 ```java
@@ -216,7 +208,10 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-1.5-flash")
     .temperature(2.0)
-    .responseSchema(jsonSchemaFrom(TripItinerary.class).get())
+    .responseFormat(ResponseFormat.builder()
+        .type(JSON)
+        .jsonSchema(JsonSchemas.jsonSchemaFrom(TripItinerary.class).get())
+        .build())
     .build();
 ```
 
@@ -224,7 +219,7 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 
 Large Language Models are great at extracting structured information out of unstructured text.
 
-In the following example, we retrieve a tyoe-safe `WeatherForecast` object from a weather forecast text, thanks to `AiServices`:
+In the following example, we retrieve a type-safe `WeatherForecast` object from a weather forecast text, thanks to `AiServices`:
 
 ```java
 // A type-safe / strongly-typed object 
@@ -281,8 +276,8 @@ WeatherForecast forecast = forecastAssistant.extract("""
 
 ## Python code execution
 
-Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environement.
-This is particulary interesting for situations where more advanced calculations or logic is needed.
+Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environment.
+This is particularly interesting for situations where more advanced calculations or logic is needed.
 
 ```java
 ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
@@ -313,7 +308,7 @@ Response<AiMessage> mathQuizz = gemini.generate(
 ```
 
 Gemini will craft a Python script, execute it on its server, and return the result.
-Since we asked to see the code and output of the execution, the answer will look as follow:
+Since we asked to see the code and output of the execution, the answer will look as follows:
 
 ~~~
 Code executed:

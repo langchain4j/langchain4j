@@ -271,5 +271,28 @@ class VertexAiEmbeddingModelIT {
         Response<Embedding> embeddedSegTitleKeyNoRetrieval = model.embed(segmentForRetrieval);
 
         assertThat(embeddedSegTitleKeyNoRetrieval.content().dimension()).isEqualTo(768);
+
+        // Check the code retrieval query task
+
+        model = VertexAiEmbeddingModel.builder()
+            .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .publisher("google")
+            .modelName("text-embedding-preview-0815")
+            .maxRetries(3)
+            .taskType(CODE_RETRIEVAL_QUERY)
+            .build();
+
+        Response<Embedding> codeRetrivalQuery = model.embed(TextSegment.from(
+            "        List<Double> distances = (List<Double>) _calculateCosineDistances(sentences)[0];\n" +
+            "        sentences = (List<Sentence>) _calculateCosineDistances(sentences)[1];\n" +
+            "\n" +
+            "        int breakpointPercentileThreshold = 65;\n" +
+            "        Percentile percentile = new Percentile();\n" +
+            "        percentile.setData(Doubles.toArray(distances));\n" +
+            "        double breakpointDistanceThreshold = percentile.evaluate(breakpointPercentileThreshold);"));
+
+        assertThat(codeRetrivalQuery.content().dimension()).isEqualTo(768);
     }
 }

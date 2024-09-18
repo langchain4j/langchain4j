@@ -20,6 +20,7 @@ jobs:
             included_modules: '-pl !langchain4j-ollama,!langchain4j-jlama,!langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
           - java_version: '21'
             included_modules: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
+      max-parallel: 1
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,3 +75,5 @@ jobs:
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
           CI_DELAY_SECONDS_AZURE_OPENAI: 1
           CI_DELAY_SECONDS_BEDROCK: 1
+          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 3
+          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 2
