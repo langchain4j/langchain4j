@@ -14,19 +14,19 @@ public abstract class AbstractInProcessScoringModel implements ScoringModel {
     public AbstractInProcessScoringModel() {
     }
 
-    static OnnxScoringBertBiEncoder loadFromFileSystem(String pathToModel, OrtSession.SessionOptions option, String pathToTokenizer, int modelMaxLength, boolean normalize) {
+    static OnnxScoringBertCrossEncoder loadFromFileSystem(String pathToModel, OrtSession.SessionOptions options, String pathToTokenizer, int modelMaxLength, boolean normalize) {
         try {
-            return new OnnxScoringBertBiEncoder(pathToModel, option, pathToTokenizer, modelMaxLength, normalize);
+            return new OnnxScoringBertCrossEncoder(pathToModel, options, pathToTokenizer, modelMaxLength, normalize);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    protected abstract OnnxScoringBertBiEncoder model();
+    protected abstract OnnxScoringBertCrossEncoder model();
 
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
-        OnnxScoringBertBiEncoder.ScoringAndTokenCount scoresAndTokenCount = this.model().scoreAll(query,
+        OnnxScoringBertCrossEncoder.ScoringAndTokenCount scoresAndTokenCount = this.model().scoreAll(query,
                 segments.stream().map(TextSegment::text).collect(Collectors.toList()));
-        return Response.from(embeddingAndTokenCount.scores, new TokenUsage(embeddingAndTokenCount.tokenCount));
+        return Response.from(scoresAndTokenCount.scores, new TokenUsage(scoresAndTokenCount.tokenCount));
     }
 }

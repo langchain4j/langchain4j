@@ -4,55 +4,54 @@ import ai.onnxruntime.OrtSession;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
-import dev.langchain4j.model.scoring.onnx.OnnxScoringModel;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
-import static java.util.Arrays.asList;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 class OnnxScoringModelIT {
 
-    @Test
-    void should_score_single_text() {
+    @TempDir
+    private static Path tempDir;
 
-//        String pathToModel = "D:\\github\\langchat\\model\\reranker\\bge-reranker-large\\onnx\\model.onnx";
-//        String pathToTokenizer = "D:\\github\\langchat\\model\\reranker\\bge-reranker-large\\tokenizer.json";
-//        ScoringModel model = new OnnxScoringModel(pathToModel, new OrtSession.SessionOptions(), pathToTokenizer, 510,  true);
+    private static ScoringModel model;
 
-        String pathToModel = "D:\\github\\langchat\\model\\reranker\\bge-reranker-v2-m3\\onnx\\model.onnx";
-        String pathToTokenizer = "D:\\github\\langchat\\model\\reranker\\bge-reranker-v2-m3\\tokenizer.json";
-        ScoringModel model = new OnnxScoringModel(pathToModel, new OrtSession.SessionOptions(), pathToTokenizer, 8000,  true);
+    @BeforeAll
+    static void initModel() throws IOException {
 
-        String text = "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear or simply panda, is a bear species endemic to China.";
-        String query = "What is panda?";
+        // I set up a local proxy to download the model
+        // System.setProperty("https.proxyHost","127.0.0.1" );
+        // System.setProperty("https.proxyPort","7890" );
 
-        // when
-        Response<Double> response = model.score(text, query);
+        URL modelUrl = new URL("https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2/resolve/main/onnx/model.onnx?download=true");
+        Path modelPath = tempDir.resolve("model.onnx");
+        Files.copy(modelUrl.openStream(), modelPath, REPLACE_EXISTING);
 
-        // then
-        assertThat(response.content()).isCloseTo(0.99, withPercentage(1));
+        URL tokenizerUrl = new URL("https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2/resolve/main/tokenizer.json?download=true");
+        Path tokenizerPath = tempDir.resolve("tokenizer.json");
+        Files.copy(tokenizerUrl.openStream(), tokenizerPath, REPLACE_EXISTING);
 
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(39);
-
-        assertThat(response.finishReason()).isNull();
+        // To check the modelMaxLength parameter, refer to the model configuration file at  https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2/resolve/main/tokenizer_config.json
+        model = new OnnxScoringModel(modelPath.toString(), new OrtSession.SessionOptions(), tokenizerPath.toString(), 512,  false);
     }
 
     @Test
     void should_score_multiple_segments_with_all_parameters() {
+        List<TextSegment> segments = new ArrayList<>();
+        segments.add(TextSegment.from("Berlin has a population of 3,520,031 registered inhabitants in an area of 891.82 square kilometers."));
+        segments.add(TextSegment.from("New York City is famous for the Metropolitan Museum of Art."));
 
-        String pathToModel = "D:\\github\\langchat\\model\\reranker\\bge-reranker-v2-m3\\onnx\\model.onnx";
-        String pathToTokenizer = "D:\\github\\langchat\\model\\reranker\\bge-reranker-v2-m3\\tokenizer.json";
-
-        ScoringModel model = new OnnxScoringModel(pathToModel, new OrtSession.SessionOptions(), pathToTokenizer, 8000,  true);
-
-        TextSegment segment1 = TextSegment.from("hi");
-        TextSegment segment2 = TextSegment.from("The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear or simply panda, is a bear species endemic to China.");
-        List<TextSegment> segments = asList(segment1, segment2);
-
-        String query = "What is panda?";
+        String query = "How many people live in Berlin?";
 
         // when
         Response<List<Double>> response = model.scoreAll(segments, query);
@@ -60,10 +59,14 @@ class OnnxScoringModelIT {
         // then
         List<Double> scores = response.content();
         assertThat(scores).hasSize(2);
-        assertThat(scores.get(0)).isLessThan(scores.get(1));
+
+        // python output results: [ 8.845855712890625, -11.245561599731445 ]
+        assertThat(scores.get(0)).isCloseTo(8.84, withPercentage(1));
+        assertThat(scores.get(1)).isCloseTo(-11.24, withPercentage(1));
 
         assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
 
         assertThat(response.finishReason()).isNull();
+
     }
 }

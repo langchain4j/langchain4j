@@ -22,7 +22,7 @@ public class OnnxScoringBertCrossEncoder {
     private final HuggingFaceTokenizer tokenizer;
     private final boolean normalize;
 
-    public OnnxScoringBertBiEncoder(String modelPath, OrtSession.SessionOptions options, String pathToTokenizer, int modelMaxLength, boolean normalize) {
+    public OnnxScoringBertCrossEncoder(String modelPath, OrtSession.SessionOptions options, String pathToTokenizer, int modelMaxLength, boolean normalize) {
         try {
             this.environment = OrtEnvironment.getEnvironment();
             this.session = this.environment.createSession(modelPath, options);
