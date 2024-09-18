@@ -48,11 +48,6 @@ public class GoogleAiGeminiChatModelIT {
     private static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     private static final String MD_FILE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/docs/docs/intro.md";
 
-    @AfterEach
-    void afterEach() throws InterruptedException {
-        Thread.sleep(2_000); // to prevent hitting rate limits
-    }
-
     @Test
     void should_answer_simple_question() {
         // given
@@ -99,7 +94,8 @@ public class GoogleAiGeminiChatModelIT {
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-pro")
-            .responseMimeType("application/json")
+            .responseFormat(ResponseFormat.JSON)
+            .logRequestsAndResponses(true)
             .build();
 
         // when
@@ -511,6 +507,39 @@ public class GoogleAiGeminiChatModelIT {
     }
 
     @Test
+    void should_handle_enum_output_mode() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .responseFormat(ResponseFormat.builder()
+                .type(JSON)
+                .jsonSchema(JsonSchema.builder()
+                    .rootElement(JsonEnumSchema.builder()
+                        .enumValues("POSITIVE", "NEUTRAL", "NEGATIVE")
+                        .build())
+                    .build())
+                .build())
+            .build();
+
+        // when
+        ChatResponse response = gemini.chat(ChatRequest.builder()
+            .messages(
+                SystemMessage.from(
+                    "Your role is to analyze the sentiment of the text you receive."),
+                UserMessage.from(
+                    "This is super exciting news, congratulations!"
+                )
+            )
+            .build());
+
+        // then
+        assertThat(response.aiMessage().text().trim())
+            .isEqualTo("POSITIVE");
+    }
+
+    @Test
     void should_allow_array_as_response_schema() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
@@ -560,7 +589,10 @@ public class GoogleAiGeminiChatModelIT {
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
-            .responseSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
+                        .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+                        .build())
 //             Equivalent to:
 //            .responseFormat(ResponseFormat.builder()
 //                .type(JSON)
@@ -640,5 +672,13 @@ public class GoogleAiGeminiChatModelIT {
 
         // then
         assertThat(chatResponse.aiMessage().hasToolExecutionRequests()).isFalse();
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

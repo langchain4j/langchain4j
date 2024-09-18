@@ -4,21 +4,46 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 class ShowModelInformationRequest {
 
     private String name;
+
+    ShowModelInformationRequest() {
+    }
+
+    ShowModelInformationRequest(String name) {
+        this.name = name;
+    }
+
+    static Builder builder() {
+        return new Builder();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    static class Builder {
+
+        private String name;
+
+        Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        ShowModelInformationRequest build() {
+            return new ShowModelInformationRequest(name);
+        }
+    }
 }
