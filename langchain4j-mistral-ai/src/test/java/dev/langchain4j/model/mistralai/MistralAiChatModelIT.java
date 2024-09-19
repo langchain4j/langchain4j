@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
+import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
@@ -32,11 +33,9 @@ class MistralAiChatModelIT {
             .build();
 
     ChatLanguageModel mistralLargeModel = MistralAiChatModel.builder()
-            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .mistralAiClient(defaultMistralAiClient())
             .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST)
             .temperature(0.1)
-            .logRequests(true)
-            .logResponses(true)
             .build();
 
     ChatLanguageModel defaultModel = MistralAiChatModel.builder()
@@ -47,11 +46,9 @@ class MistralAiChatModelIT {
             .build();
 
     ChatLanguageModel openMixtral8x22BModel = MistralAiChatModel.builder()
-            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .mistralAiClient(defaultMistralAiClient())
             .modelName(MistralAiChatModelName.OPEN_MIXTRAL_8X22B)
             .temperature(0.1)
-            .logRequests(true)
-            .logResponses(true)
             .build();
 
     @AfterEach
@@ -85,7 +82,7 @@ class MistralAiChatModelIT {
 
         // given
         ChatLanguageModel model = MistralAiChatModel.builder()
-                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .mistralAiClient(defaultMistralAiClient())
                 .maxTokens(4)
                 .build();
 
@@ -112,7 +109,7 @@ class MistralAiChatModelIT {
     void should_generate_system_prompt_to_enforce_guardrails() {
         // given
         ChatLanguageModel model = MistralAiChatModel.builder()
-                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .mistralAiClient(defaultMistralAiClient())
                 .safePrompt(true)
                 .temperature(0.0)
                 .build();
@@ -166,11 +163,9 @@ class MistralAiChatModelIT {
 
         // given - Mistral Small = Mistral-8X7B
         ChatLanguageModel model = MistralAiChatModel.builder()
-                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .mistralAiClient(defaultMistralAiClient())
                 .modelName(MistralAiChatModelName.OPEN_MIXTRAL_8x7B)
                 .temperature(0.1)
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         UserMessage userMessage = userMessage("Quelle est la capitale du Pérou?");
@@ -195,11 +190,9 @@ class MistralAiChatModelIT {
 
         // given - Mistral Small = Mistral-8X7B
         ChatLanguageModel model = MistralAiChatModel.builder()
-                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .mistralAiClient(defaultMistralAiClient())
                 .modelName(MistralAiChatModelName.OPEN_MIXTRAL_8x7B)
                 .temperature(0.1)
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         UserMessage userMessage = userMessage("¿Cuál es la capital de Perú?");
@@ -224,11 +217,9 @@ class MistralAiChatModelIT {
 
         // given - Mistral Medium 2312.
         ChatLanguageModel model = MistralAiChatModel.builder()
-                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .mistralAiClient(defaultMistralAiClient())
                 .modelName(MistralAiChatModelName.MISTRAL_MEDIUM_LATEST)
                 .maxTokens(10)
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         UserMessage userMessage = userMessage("What is the capital of Peru?");
@@ -394,12 +385,10 @@ class MistralAiChatModelIT {
         String expectedJson = "{\"transactionId\":\"T123\",\"status\":\"paid\"}";
 
         ChatLanguageModel mistralLargeModel = MistralAiChatModel.builder()
-                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .mistralAiClient(defaultMistralAiClient())
                 .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST)
                 .temperature(0.1)
                 .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         // when
@@ -468,4 +457,13 @@ class MistralAiChatModelIT {
 
         assertThat(response2.finishReason()).isEqualTo(STOP);
     }
+
+    private MistralAiClient defaultMistralAiClient() {
+        return MistralAiClient.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+    }
+
 }

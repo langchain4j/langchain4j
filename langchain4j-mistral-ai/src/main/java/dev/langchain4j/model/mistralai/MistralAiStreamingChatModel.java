@@ -42,23 +42,25 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
     /**
      * Constructs a MistralAiStreamingChatModel with the specified parameters.
      *
-     * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified
-     * @param apiKey       the API key for authentication
-     * @param modelName    the name of the Mistral AI model to use
-     * @param temperature  the temperature parameter for generating chat responses
-     * @param topP         the top-p parameter for generating chat responses
-     * @param maxTokens    the maximum number of new tokens to generate in a chat response
-     * @param safePrompt   a flag indicating whether to use a safe prompt for generating chat responses
-     * @param randomSeed   the random seed for generating chat responses
-     *                     (if not specified, a random number is used)
-     * @param responseFormat the response format for generating chat responses. Current values supported are "text" and "json_object".
-     * @param logRequests  a flag indicating whether to log raw HTTP requests
-     * @param logResponses a flag indicating whether to log raw HTTP responses
-     * @param timeout      the timeout duration for API requests
+     * @param mistralAiClient   the client to interact with Mistral AI.
+     * @param baseUrl           the base URL of the Mistral AI API. It uses the default value if not specified
+     * @param apiKey            the API key for authentication
+     * @param modelName         the name of the Mistral AI model to use
+     * @param temperature       the temperature parameter for generating chat responses
+     * @param topP              the top-p parameter for generating chat responses
+     * @param maxTokens         the maximum number of new tokens to generate in a chat response
+     * @param safePrompt        a flag indicating whether to use a safe prompt for generating chat responses
+     * @param randomSeed        the random seed for generating chat responses
+     *                          (if not specified, a random number is used)
+     * @param responseFormat    the response format for generating chat responses. Current values supported are "text" and "json_object".
+     * @param logRequests       a flag indicating whether to log raw HTTP requests
+     * @param logResponses      a flag indicating whether to log raw HTTP responses
+     * @param timeout           the timeout duration for API requests
      */
     @Builder
-    public MistralAiStreamingChatModel(String baseUrl,
-                                       String apiKey,
+    public MistralAiStreamingChatModel(MistralAiClient mistralAiClient,
+                                       @Deprecated String baseUrl,
+                                       @Deprecated String apiKey,
                                        String modelName,
                                        Double temperature,
                                        Double topP,
@@ -66,11 +68,11 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
                                        Boolean safePrompt,
                                        Integer randomSeed,
                                        String responseFormat,
-                                       Boolean logRequests,
-                                       Boolean logResponses,
-                                       Duration timeout) {
-
-        this.client = MistralAiClient.builder()
+                                       @Deprecated Boolean logRequests,
+                                       @Deprecated Boolean logResponses,
+                                       @Deprecated Duration timeout
+    ) {
+        this.client = mistralAiClient != null ? mistralAiClient : MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
@@ -87,11 +89,23 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     /**
+     * Creates a MistralAiStreamingChatModel with the specified Client.
+     *
+     * @param mistralAiClient the client to interact with Mistral AI.
+     * @return a MistralAiStreamingChatModel instance
+     */
+    public static MistralAiStreamingChatModel withClient(MistralAiClient mistralAiClient) {
+        return builder().mistralAiClient(mistralAiClient).build();
+    }
+
+    /**
      * Creates a MistralAiStreamingChatModel with the specified API key.
      *
      * @param apiKey the API key for authentication
      * @return a MistralAiStreamingChatModel instance
+     * @deprecated pass a MistralAiClient object using withClient()
      */
+    @Deprecated // Use withClient() instead.
     public static MistralAiStreamingChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

@@ -45,27 +45,29 @@ public class MistralAiChatModel implements ChatLanguageModel {
     /**
      * Constructs a MistralAiChatModel with the specified parameters.
      *
-     * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified
-     * @param apiKey       the API key for authentication
-     * @param modelName    the name of the Mistral AI model to use
-     * @param temperature  the temperature parameter for generating chat responses
-     * @param topP         the top-p parameter for generating chat responses
-     * @param maxTokens    the maximum number of new tokens to generate in a chat response
-     * @param safePrompt   a flag indicating whether to use a safe prompt for generating chat responses
-     * @param randomSeed   the random seed for generating chat responses
-     * @param responseFormat the response format for generating chat responses.
-     *                       <p>
-     *                       Current values supported are "text" and "json_object".
-     * @param timeout      the timeout duration for API requests
-     *                     <p>
-     *                     The default value is 60 seconds
-     * @param logRequests  a flag indicating whether to log API requests
-     * @param logResponses a flag indicating whether to log API responses
-     * @param maxRetries   the maximum number of retries for API requests. It uses the default value 3 if not specified
+     * @param mistralAiClient   the client to interact with Mistral AI.
+     * @param baseUrl           the base URL of the Mistral AI API. It uses the default value if not specified
+     * @param apiKey            the API key for authentication
+     * @param modelName         the name of the Mistral AI model to use
+     * @param temperature       the temperature parameter for generating chat responses
+     * @param topP              the top-p parameter for generating chat responses
+     * @param maxTokens         the maximum number of new tokens to generate in a chat response
+     * @param safePrompt        a flag indicating whether to use a safe prompt for generating chat responses
+     * @param randomSeed        the random seed for generating chat responses
+     * @param responseFormat    the response format for generating chat responses.
+     *                          <p>
+     *                          Current values supported are "text" and "json_object".
+     * @param timeout           the timeout duration for API requests
+     *                          <p>
+     *                          The default value is 60 seconds
+     * @param logRequests       a flag indicating whether to log API requests
+     * @param logResponses      a flag indicating whether to log API responses
+     * @param maxRetries        the maximum number of retries for API requests. It uses the default value 3 if not specified
      */
     @Builder
-    public MistralAiChatModel(String baseUrl,
-                              String apiKey,
+    public MistralAiChatModel(MistralAiClient mistralAiClient,
+                              @Deprecated String baseUrl,
+                              @Deprecated String apiKey,
                               String modelName,
                               Double temperature,
                               Double topP,
@@ -73,12 +75,12 @@ public class MistralAiChatModel implements ChatLanguageModel {
                               Boolean safePrompt,
                               Integer randomSeed,
                               String responseFormat,
-                              Duration timeout,
-                              Boolean logRequests,
-                              Boolean logResponses,
-                              Integer maxRetries) {
-
-        this.client = MistralAiClient.builder()
+                              @Deprecated Duration timeout,
+                              @Deprecated Boolean logRequests,
+                              @Deprecated Boolean logResponses,
+                              Integer maxRetries
+    ) {
+        this.client = mistralAiClient != null ? mistralAiClient : MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
@@ -96,11 +98,23 @@ public class MistralAiChatModel implements ChatLanguageModel {
     }
 
     /**
+     * Creates a MistralAiChatModel with the specified Client.
+     *
+     * @param mistralAiClient the client to interact with Mistral AI.
+     * @return a MistralAiChatModel instance
+     */
+    public static MistralAiChatModel withClient(MistralAiClient mistralAiClient) {
+        return builder().mistralAiClient(mistralAiClient).build();
+    }
+
+    /**
      * Creates a MistralAiChatModel with the specified API key.
      *
      * @param apiKey the API key for authentication
      * @return a MistralAiChatModel instance
+     * @deprecated pass a MistralAiClient object using withClient()
      */
+    @Deprecated // Use withClient() instead.
     public static MistralAiChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

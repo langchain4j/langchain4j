@@ -33,25 +33,28 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     /**
      * Constructs a new MistralAiEmbeddingModel instance.
      *
-     * @param baseUrl      the base URL of the Mistral AI API. It use a default value if not specified
-     * @param apiKey       the API key for authentication
-     * @param modelName    the name of the embedding model. It uses a default value if not specified
-     * @param timeout      the timeout duration for API requests. It uses a default value of 60 seconds if not specified
-     *                     <p>
-     *                     The default value is 60 seconds
-     * @param logRequests  a flag indicating whether to log API requests
-     * @param logResponses a flag indicating whether to log API responses
-     * @param maxRetries   the maximum number of retries for API requests. It uses a default value of 3 if not specified
+     * @param mistralAiClient   the client to interact with Mistral AI.
+     * @param baseUrl           the base URL of the Mistral AI API. It use a default value if not specified
+     * @param apiKey            the API key for authentication
+     * @param modelName         the name of the embedding model. It uses a default value if not specified
+     * @param timeout           the timeout duration for API requests. It uses a default value of 60 seconds if not specified
+     *                          <p>
+     *                          The default value is 60 seconds
+     * @param logRequests       a flag indicating whether to log API requests
+     * @param logResponses      a flag indicating whether to log API responses
+     * @param maxRetries        the maximum number of retries for API requests. It uses a default value of 3 if not specified
      */
     @Builder
-    public MistralAiEmbeddingModel(String baseUrl,
-                                   String apiKey,
+    public MistralAiEmbeddingModel(MistralAiClient mistralAiClient,
+                                   @Deprecated String baseUrl,
+                                   @Deprecated String apiKey,
                                    String modelName,
-                                   Duration timeout,
-                                   Boolean logRequests,
-                                   Boolean logResponses,
-                                   Integer maxRetries) {
-        this.client = MistralAiClient.builder()
+                                   @Deprecated Duration timeout,
+                                   @Deprecated Boolean logRequests,
+                                   @Deprecated Boolean logResponses,
+                                   Integer maxRetries
+    ) {
+        this.client = mistralAiClient != null ? mistralAiClient : MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
@@ -63,11 +66,23 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     /**
+     * Creates a MistralAiEmbeddingModel with the specified Client.
+     *
+     * @param mistralAiClient the client to interact with Mistral AI.
+     * @return a MistralAiEmbeddingModel instance
+     */
+    public static MistralAiEmbeddingModel withClient(MistralAiClient mistralAiClient) {
+        return builder().mistralAiClient(mistralAiClient).build();
+    }
+
+    /**
      * Creates a new MistralAiEmbeddingModel instance with the specified API key.
      *
      * @param apiKey the Mistral AI API key for authentication
      * @return a new MistralAiEmbeddingModel instance
+     * @deprecated pass a MistralAiClient object using withClient()
      */
+    @Deprecated // Use withClient() instead.
     public static MistralAiEmbeddingModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
