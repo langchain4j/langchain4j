@@ -685,7 +685,7 @@ class AiServicesWithToolsIT {
                 .tools(queryService)
                 .build();
 
-        Response<AiMessage> response = assistant.chat("Tell me names of 3 users from India");
+        Response<AiMessage> response = assistant.chat("List names of 3 users where country is India");
 
         assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
     }

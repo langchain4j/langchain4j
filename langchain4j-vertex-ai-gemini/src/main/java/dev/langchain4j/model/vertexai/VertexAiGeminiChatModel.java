@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
@@ -82,6 +83,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
                                    Integer maxOutputTokens,
                                    Integer topK,
                                    Float topP,
+                                   Integer seed,
                                    Integer maxRetries,
                                    String responseMimeType,
                                    Schema responseSchema,
@@ -105,6 +107,9 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         }
         if (topP != null) {
             generationConfigBuilder.setTopP(topP);
+        }
+        if (seed != null) {
+            generationConfigBuilder.setSeed(seed);
         }
         if (responseMimeType != null) {
             generationConfigBuilder.setResponseMimeType(responseMimeType);
