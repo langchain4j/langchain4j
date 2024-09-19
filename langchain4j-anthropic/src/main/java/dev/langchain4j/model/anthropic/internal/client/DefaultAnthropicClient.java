@@ -4,7 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.anthropic.internal.api.*;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicApi;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import okhttp3.OkHttpClient;
@@ -20,12 +28,17 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
@@ -134,6 +147,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
 
+            AtomicReference<String> responseId = new AtomicReference<>();
+            AtomicReference<String> responseModel = new AtomicReference<>();
+
             volatile String stopReason;
 
             private StringBuffer currentContentBuilder() {
@@ -191,8 +207,17 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private void handleMessageStart(AnthropicStreamingData data) {
-                if (data.message != null && data.message.usage != null) {
-                    handleUsage(data.message.usage);
+                AnthropicResponseMessage message = data.message;
+                if (message != null) {
+                    if (message.usage != null) {
+                        handleUsage(message.usage);
+                    }
+                    if (message.id != null) {
+                        responseId.set(message.id);
+                    }
+                    if (message.model != null) {
+                        responseModel.set(message.model);
+                    }
                 }
             }
 
@@ -246,9 +271,21 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 Response<AiMessage> response = Response.from(
                         AiMessage.from(String.join("\n", contents)),
                         new TokenUsage(inputTokenCount.get(), outputTokenCount.get()),
-                        toFinishReason(stopReason)
+                        toFinishReason(stopReason),
+                        createMetadata()
                 );
                 handler.onComplete(response);
+            }
+
+            private Map<String, Object> createMetadata() {
+                Map<String, Object> metadata = new HashMap<>();
+                if (responseId.get() != null) {
+                    metadata.put("id", responseId.get());
+                }
+                if (responseModel.get() != null) {
+                    metadata.put("model", responseModel.get());
+                }
+                return metadata;
             }
 
             private void handleError(String dataString) {
