@@ -8,8 +8,8 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-scoring</artifactId>
-    <name>langchain4j-scoring</name>
+    <artifactId>langchain4j-onnx-scoring</artifactId>
+    <name>langchain4j-onnx-scoring</name>
 
     <properties>
         <ai.djl.version>0.28.0</ai.djl.version>

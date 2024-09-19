@@ -33,8 +33,8 @@ class OnnxScoringModelIT {
         // System.setProperty("https.proxyHost","127.0.0.1" );
         // System.setProperty("https.proxyPort","7890" );
 
-        URL modelUrl = new URL("https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2/resolve/main/onnx/model.onnx?download=true");
-        Path modelPath = tempDir.resolve("model.onnx");
+        URL modelUrl = new URL("https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2/resolve/main/onnx/model_quantized.onnx?download=true");
+        Path modelPath = tempDir.resolve("model_quantized.onnx");
         Files.copy(modelUrl.openStream(), modelPath, REPLACE_EXISTING);
 
         URL tokenizerUrl = new URL("https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2/resolve/main/tokenizer.json?download=true");
