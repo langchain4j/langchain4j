@@ -142,7 +142,9 @@ public abstract class StreamingChatModelListenerIT {
         if (assertResponseId()) {
             assertThat(response.id()).isNotBlank();
         }
-        assertThat(response.model()).isNotBlank();
+        if (assertResponseModel()) {
+            assertThat(response.model()).isNotBlank();
+        }
         assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
@@ -153,6 +155,10 @@ public abstract class StreamingChatModelListenerIT {
     }
 
     protected boolean supportsTools() {
+        return true;
+    }
+
+    protected boolean assertResponseModel() {
         return true;
     }
 
