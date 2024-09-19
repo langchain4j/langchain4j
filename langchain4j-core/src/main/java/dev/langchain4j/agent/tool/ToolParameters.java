@@ -1,13 +1,16 @@
 package dev.langchain4j.agent.tool;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
 /**
  * Represents the parameters of a tool.
  */
-// TODO can be deprecated only when all models support JsonObjectSchema mapping
 @Deprecated // TODO what to use instead?
 public class ToolParameters {
 
@@ -17,6 +20,7 @@ public class ToolParameters {
 
     /**
      * Creates a {@link ToolParameters} from a {@link Builder}.
+     *
      * @param builder the builder.
      */
     private ToolParameters(Builder builder) {
@@ -27,6 +31,7 @@ public class ToolParameters {
 
     /**
      * Returns the type of the tool.
+     *
      * @return the type of the tool.
      */
     public String type() {
@@ -35,6 +40,7 @@ public class ToolParameters {
 
     /**
      * Returns the properties of the tool.
+     *
      * @return the properties of the tool.
      */
     public Map<String, Map<String, Object>> properties() {
@@ -43,6 +49,7 @@ public class ToolParameters {
 
     /**
      * Returns the required properties of the tool.
+     *
      * @return the required properties of the tool.
      */
     public List<String> required() {
@@ -58,6 +65,7 @@ public class ToolParameters {
 
     /**
      * Utility method to compare two {@link ToolParameters}.
+     *
      * @param another the other {@link ToolParameters}.
      * @return true if equal, false otherwise.
      */
@@ -87,6 +95,7 @@ public class ToolParameters {
 
     /**
      * ToolParameters builder static inner class.
+     *
      * @return a {@link Builder}.
      */
     @Deprecated // TODO what to use instead?
@@ -110,6 +119,7 @@ public class ToolParameters {
 
         /**
          * Sets the {@code type}.
+         *
          * @param type the {@code type}
          * @return the {@code Builder}.
          */
@@ -121,6 +131,7 @@ public class ToolParameters {
 
         /**
          * Sets the {@code properties}.
+         *
          * @param properties the {@code properties}
          * @return the {@code Builder}.
          */
@@ -132,6 +143,7 @@ public class ToolParameters {
 
         /**
          * Sets the {@code required}.
+         *
          * @param required the {@code required}
          * @return the {@code Builder}.
          */
@@ -143,6 +155,7 @@ public class ToolParameters {
 
         /**
          * Returns a {@code ToolParameters} built from the parameters previously set.
+         *
          * @return a {@code ToolParameters} built with parameters of this {@code ToolParameters.Builder}
          */
         @Deprecated // TODO what to use instead?

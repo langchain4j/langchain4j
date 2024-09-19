@@ -10,11 +10,11 @@ import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Arrays.asList;
 
 /**
- * Describes a tool that language model can use.
+ * Describes a tool that language model can execute.
  * <p>
  * Can be created automatically from class or method using {@link ToolSpecifications}.
  */
-public class ToolSpecification { // TODO new type?
+public class ToolSpecification {
 
     private final String name;
     private final String description;
@@ -62,7 +62,7 @@ public class ToolSpecification { // TODO new type?
      * @return the parameters of the tool.
      */
     @Deprecated
-    public ToolParameters toolParameters() {
+    public ToolParameters toolParameters() { // TODO check all places that call this method, it can return null
         return toolParameters;
     }
 

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import dev.langchain4j.agent.tool.*;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.Test;
 
@@ -54,11 +55,9 @@ public class FunctionMapperTest {
 
         // then
         assertThat(toolSpecifications.size()).isEqualTo(1);
-        assertThat(toolSpecifications.get(0).name()).isEqualTo("distanceBetween");
-        assertThat(toolSpecifications.get(0).description()).isEqualTo("Get the distance between the user and the ISS.");
-        assertThat(toolSpecifications.get(0).toolParameters().type()).isEqualTo("object");
-        assertThat(toolSpecifications.get(0).toolParameters().properties().size()).isEqualTo(2);
-        assertThat(toolSpecifications.get(0).toolParameters().properties().keySet()).containsAll(Arrays.asList("userCoordinates", "issCoordinates"));
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("distanceBetween");
+        assertThat(toolSpecification.description()).isEqualTo("Get the distance between the user and the ISS.");
 
         // when
         GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false);

@@ -18,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -340,6 +341,55 @@ public abstract class AiServicesWithNewToolsIT {
 
     protected boolean supportsRecursion() {
         return false;
+    }
+
+    static class Tools4 { // TODO name
+
+        @Tool
+        LocalTime currentTime() { // TODO support LocalTime
+            return LocalTime.of(17, 11, 45);
+        }
+    }
+
+    @Test
+    void should_execute_tool_without_parameters() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            Tools4 tools = spy(new Tools4());
+
+            Assistant assistant = AiServices.builder(Assistant.class)
+                    .chatLanguageModel(model)
+                    .tools(tools)
+                    .build();
+
+            String text = "What is the time now?";
+
+            // when
+            Response<AiMessage> response = assistant.chat(text);
+
+            // then
+            assertThat(response.content().text()).contains("17", "11", "45");
+
+            verify(tools).currentTime();
+            verifyNoMoreInteractions(tools);
+
+            if (verifyModelInteractions()) {
+                verify(model).supportedCapabilities();
+                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verifyNoMoreInteractions(model);
+
+                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                assertThat(toolSpecifications).hasSize(1);
+                ToolSpecification toolSpecification = toolSpecifications.get(0);
+                assertThat(toolSpecification.name()).isEqualTo("currentTime");
+                assertThat(toolSpecification.description()).isNull();
+                assertThat(toolSpecification.parameters()).isNull();
+            }
+        }
     }
 
     protected boolean verifyModelInteractions() {

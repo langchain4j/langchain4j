@@ -250,15 +250,25 @@ class InternalAzureOpenAiHelper {
         if (toolSpecification.parameters() != null) {
             functionDefinition.setParameters(toOpenAiParameters(toolSpecification.parameters()));
         } else {
-            functionDefinition.setParameters(toOpenAiParameters(toolSpecification.toolParameters()));
+            functionDefinition.setParameters(toOpenAiParametersOld(toolSpecification.toolParameters()));
         }
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
     public static ChatCompletionsToolSelection toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toOpenAiParameters(toolThatMustBeExecuted.toolParameters()).toString());
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), getParameters(toolThatMustBeExecuted));
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
         return ChatCompletionsToolSelection.fromBinaryData(BinaryData.fromObject(toolToCall));
+    }
+
+    private static String getParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            return toOpenAiParameters(toolSpecification.parameters()).toString();
+        } else if (toolSpecification.toolParameters() != null) {
+            return toOpenAiParametersOld(toolSpecification.toolParameters()).toString();
+        } else {
+            return toOpenAiParametersOld(toolSpecification.toolParameters()).toString();
+        }
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
@@ -278,7 +288,7 @@ class InternalAzureOpenAiHelper {
         return BinaryData.fromObject(parameters);
     }
 
-    private static BinaryData toOpenAiParameters(ToolParameters toolParameters) {
+    private static BinaryData toOpenAiParametersOld(ToolParameters toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
             return BinaryData.fromObject(NO_PARAMETER_DATA);
