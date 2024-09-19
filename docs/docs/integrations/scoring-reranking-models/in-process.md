@@ -33,7 +33,7 @@ Response<Double> response = scoringModel.score("query", "passage");
 Double score = response.content();
 ```
 
-If you want to use the GPU. onnxruntime_gpu version can be found  [here](https://huggingface.co/Xenova).
+If you want to use the GPU, onnxruntime_gpu version can be found  [here](https://huggingface.co/Xenova).
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
