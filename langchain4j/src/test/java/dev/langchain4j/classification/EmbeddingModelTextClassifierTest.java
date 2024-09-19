@@ -10,6 +10,7 @@ import java.util.Map;
 import static dev.langchain4j.classification.EmbeddingModelTextClassifierTest.CustomerServiceCategory.*;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.offset;
 
 class EmbeddingModelTextClassifierTest {
 
@@ -244,5 +245,28 @@ class EmbeddingModelTextClassifierTest {
         List<CustomerServiceCategory> categories = classifier.classify("Bro, this product is crap");
 
         assertThat(categories).containsExactly(RETURNS_AND_EXCHANGES);
+    }
+
+    @Test
+    void should_classify_with_score() {
+
+        double minScore = 0.64;
+
+        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
+                new AllMiniLmL6V2QuantizedEmbeddingModel(),
+                examples,
+                2,
+                minScore,
+                0.5
+        );
+
+        List<LabelWithScore<CustomerServiceCategory>> results = classifier.classifyWithScore("Bro, this product is crap");
+
+        assertThat(results.stream().map(LabelWithScore::getLabel))
+                .containsExactly(RETURNS_AND_EXCHANGES);
+        assertThat(results.stream().map(LabelWithScore::getScore))
+                .allMatch(score -> score > minScore);
+        assertThat(results.stream().map(LabelWithScore::getScore).findFirst().orElse(null))
+                .isCloseTo(minScore, offset(0.1));
     }
 }
