@@ -12,6 +12,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -27,10 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -67,7 +66,13 @@ class StreamingAiServicesWithToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("getTransactionAmounts")
                 .description("returns amounts of transactions")
-                .addParameter("arg0", ARRAY, items(STRING), description("IDs of transactions"))
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("arg0", JsonArraySchema.builder()
+                                .items(JSON_STRING_SCHEMA)
+                                .description("IDs of transactions")
+                                .build())
+                        .required("arg0")
+                        .build())
                 .build();
 
         @Tool("returns amounts of transactions")

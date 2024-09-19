@@ -3,8 +3,6 @@ package dev.langchain4j.service;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -14,6 +12,8 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,9 +30,9 @@ import java.util.Set;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
 import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesJsonSchemaWithDescriptionsIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -122,7 +122,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .build());
                                         }})
                                         .required("name", "age", "height", "married")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -188,11 +187,9 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                                 .build());
                                                     }})
                                                     .required("city")
-                                                    .additionalProperties(false)
                                                     .build());
                                         }})
                                         .required("name", "address")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -255,7 +252,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .build());
                                         }})
                                         .required("name", "maritalStatus")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -312,7 +308,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .build());
                                         }})
                                         .required("name", "favouriteColors")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -369,7 +364,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .build());
                                         }})
                                         .required("name", "favouriteColors")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -426,7 +420,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .build());
                                         }})
                                         .required("name", "favouriteColors")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -495,13 +488,11 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                                         .build());
                                                             }})
                                                             .required("name")
-                                                            .additionalProperties(false)
                                                             .build())
                                                     .description("pets of a person")
                                                     .build());
                                         }})
                                         .required("name", "pets")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -570,13 +561,11 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                                         .build());
                                                             }})
                                                             .required("name")
-                                                            .additionalProperties(false)
                                                             .build())
                                                     .description("pets of a person")
                                                     .build());
                                         }})
                                         .required("name", "pets")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -646,13 +635,11 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                                         .build());
                                                             }})
                                                             .required("name")
-                                                            .additionalProperties(false)
                                                             .build())
                                                     .description("pets of a person")
                                                     .build());
                                         }})
                                         .required("name", "pets")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -718,7 +705,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .build());
                                         }})
                                         .required("name", "groups")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -784,7 +770,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .build());
                                         }})
                                         .required("name", "groups")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -850,7 +835,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .build());
                                         }})
                                         .required("name", "groups")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())
@@ -918,7 +902,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                         put("day", JSON_INTEGER_SCHEMA);
                                                     }})
                                                     .required("year", "month", "day")
-                                                    .additionalProperties(false)
                                                     .build());
                                             put("birthTime", JsonObjectSchema.builder()
                                                     .description("a birth time")
@@ -929,7 +912,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                         put("nano", JSON_INTEGER_SCHEMA);
                                                     }})
                                                     .required("hour", "minute", "second", "nano")
-                                                    .additionalProperties(false)
                                                     .build());
                                             put("birthDateTime", JsonObjectSchema.builder()
                                                     .description("a birth date and time")
@@ -941,7 +923,6 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                                     put("day", JSON_INTEGER_SCHEMA);
                                                                 }})
                                                                 .required("year", "month", "day")
-                                                                .additionalProperties(false)
                                                                 .build());
                                                         put("time", JsonObjectSchema.builder()
                                                                 .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
@@ -951,15 +932,12 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                                     put("nano", JSON_INTEGER_SCHEMA);
                                                                 }})
                                                                 .required("hour", "minute", "second", "nano")
-                                                                .additionalProperties(false)
                                                                 .build());
                                                     }})
                                                     .required("date", "time")
-                                                    .additionalProperties(false)
                                                     .build());
                                         }})
                                         .required("name", "birthDate", "birthTime", "birthDateTime")
-                                        .additionalProperties(false)
                                         .build())
                                 .build())
                         .build())

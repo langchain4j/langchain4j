@@ -12,7 +12,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -37,9 +36,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
-import software.amazon.awssdk.regions.Region;
 
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -47,17 +44,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.type;
 import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
 import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
@@ -100,15 +90,6 @@ class AiServicesWithToolsIT {
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
-                        .build(),
-                BedrockAnthropicMessageChatModel
-                        .builder()
-                        .temperature(0.0f)
-                        .maxTokens(300)
-                        .region(Region.US_EAST_1)
-                        .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3_5SonnetV1.getValue())
-                        .maxRetries(1)
-                        .timeout(Duration.ofMinutes(2L))
                         .build()
         );
     }
@@ -123,15 +104,6 @@ class AiServicesWithToolsIT {
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
-                        .build(),
-                BedrockAnthropicMessageChatModel
-                        .builder()
-                        .temperature(0.0f)
-                        .maxTokens(300)
-                        .region(Region.US_EAST_1)
-                        .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3_5SonnetV1.getValue())
-                        .maxRetries(1)
-                        .timeout(Duration.ofMinutes(2L))
                         .build()
         );
     }
@@ -151,7 +123,6 @@ class AiServicesWithToolsIT {
                         .properties(singletonMap("arg0", JsonStringSchema.withDescription("ID of a transaction")))
                         .required("arg0")
                         .build())
-                .addParameter("arg0", STRING, description("ID of a transaction"))
                 .build();
 
         @Tool("returns amount of a given transaction")
@@ -420,7 +391,6 @@ class AiServicesWithToolsIT {
                                 .build()))
                         .required("arg0")
                         .build())
-                .addParameter("arg0", ARRAY, items(STRING), description("List of strings to process"))
                 .build();
 
         @Tool("Processes list of strings")
@@ -478,7 +448,6 @@ class AiServicesWithToolsIT {
                                 .items(JSON_INTEGER_SCHEMA)
                                 .build()))
                         .build())
-                .addParameter("arg0", ARRAY, items(INTEGER), description("List of integers to process"))
                 .build();
 
         @Tool("Processes list of integers")
@@ -537,7 +506,6 @@ class AiServicesWithToolsIT {
                                 .build()))
                         .required("arg0")
                         .build())
-                .addParameter("arg0", ARRAY, items(STRING), description("Array of strings to process"))
                 .build();
 
         @Tool("Processes array of strings")
@@ -596,8 +564,6 @@ class AiServicesWithToolsIT {
                         }})
                         .required("arg0", "arg1")
                         .build())
-                .addParameter("arg0", STRING)
-                .addParameter("arg1", STRING, from("enum", asList("CELSIUS", "fahrenheit", "Kelvin")))
                 .build();
 
         @Tool
@@ -719,7 +685,7 @@ class AiServicesWithToolsIT {
                 .tools(queryService)
                 .build();
 
-        Response<AiMessage> response = assistant.chat("List names of 3 users where country is India");
+        Response<AiMessage> response = assistant.chat("Tell me names of 3 users from India");
 
         assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
     }
@@ -757,13 +723,13 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_programmatically_configured_tools_old(ChatLanguageModel chatLanguageModel) {
+    void should_use_programmatically_configured_tools_old_API(ChatLanguageModel chatLanguageModel) {
 
         // given
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("get_booking_details")
                 .description("Returns booking details")
-                .addParameter("bookingNumber", type("string")) // old
+                .addParameter("bookingNumber", type("string")) // old API
                 .build();
 
         ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
@@ -804,7 +770,43 @@ class AiServicesWithToolsIT {
                 ToolSpecification toolSpecification = ToolSpecification.builder()
                         .name("get_booking_details")
                         .description("Returns booking details")
-                        .addParameter("bookingNumber", type("string"))
+                        .parameters(JsonObjectSchema.builder()
+                                .addProperty("bookingNumber", JSON_STRING_SCHEMA)
+                                .build())
+                        .build();
+                return ToolProviderResult.builder()
+                        .add(toolSpecification, toolExecutor)
+                        .build();
+            } else {
+                return null;
+            }
+        };
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(models().findFirst().get())
+                .toolProvider(toolProvider)
+                .build();
+
+        assistant.chat("When does my holiday 123-456 starts?");
+        verifyNoInteractions(toolExecutor); // user message does not contain word "booking"
+
+        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
+        assertThat(response.content().text()).contains("2027");
+        verify(toolExecutor).execute(any(), any());
+        verifyNoMoreInteractions(toolExecutor);
+    }
+
+    @Test
+    void should_use_tool_provider_old_API() {
+
+        ToolExecutor toolExecutor = spy(new BookingToolExecutor());
+
+        ToolProvider toolProvider = (toolProviderRequest) -> {
+            if (toolProviderRequest.userMessage().singleText().contains("booking")) {
+                ToolSpecification toolSpecification = ToolSpecification.builder()
+                        .name("get_booking_details")
+                        .description("Returns booking details")
+                        .addParameter("bookingNumber", type("string")) // old API
                         .build();
                 return ToolProviderResult.builder()
                         .add(toolSpecification, toolExecutor)

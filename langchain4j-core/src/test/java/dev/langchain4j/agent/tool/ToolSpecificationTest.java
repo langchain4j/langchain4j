@@ -1,9 +1,13 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
+
+import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
+import static java.util.Collections.singletonMap;
 
 class ToolSpecificationTest implements WithAssertions {
     @Test
@@ -13,10 +17,10 @@ class ToolSpecificationTest implements WithAssertions {
                 .description("description")
                 .parameters(ToolParameters.builder()
                         .type("type")
-                        .properties(Collections.singletonMap("foo", Collections.singletonMap("bar", "baz")))
+                        .properties(singletonMap("foo", singletonMap("bar", "baz")))
                         .required(Collections.singletonList("foo"))
                         .build())
-                        .build();
+                .build();
 
         assertThat(ts.name()).isEqualTo("name");
         assertThat(ts.description()).isEqualTo("description");
@@ -53,7 +57,7 @@ class ToolSpecificationTest implements WithAssertions {
                 .description("description")
                 .parameters(ToolParameters.builder()
                         .type("type")
-                        .properties(Collections.singletonMap("foo", Collections.singletonMap("bar", "baz")))
+                        .properties(singletonMap("foo", singletonMap("bar", "baz")))
                         .required(Collections.singletonList("foo"))
                         .build())
                 .build();
@@ -63,7 +67,7 @@ class ToolSpecificationTest implements WithAssertions {
                 .description("description")
                 .parameters(ToolParameters.builder()
                         .type("type")
-                        .properties(Collections.singletonMap("foo", Collections.singletonMap("bar", "baz")))
+                        .properties(singletonMap("foo", singletonMap("bar", "baz")))
                         .required(Collections.singletonList("foo"))
                         .build())
                 .build();
@@ -80,7 +84,7 @@ class ToolSpecificationTest implements WithAssertions {
                 .description("description")
                 .parameters(ToolParameters.builder()
                         .type("type")
-                        .properties(Collections.singletonMap("foo", Collections.singletonMap("bar", "baz")))
+                        .properties(singletonMap("foo", singletonMap("bar", "baz")))
                         .required(Collections.singletonList("foo"))
                         .build())
                 .build())
@@ -92,7 +96,7 @@ class ToolSpecificationTest implements WithAssertions {
                 .description("changed")
                 .parameters(ToolParameters.builder()
                         .type("type")
-                        .properties(Collections.singletonMap("foo", Collections.singletonMap("bar", "baz")))
+                        .properties(singletonMap("foo", singletonMap("bar", "baz")))
                         .required(Collections.singletonList("foo"))
                         .build())
                 .build())
@@ -104,7 +108,7 @@ class ToolSpecificationTest implements WithAssertions {
                 .description("description")
                 .parameters(ToolParameters.builder()
                         .type("type")
-                        .properties(Collections.singletonMap("foo", Collections.singletonMap("bar", "baz")))
+                        .properties(singletonMap("foo", singletonMap("bar", "baz")))
                         .required(Collections.singletonList("changed"))
                         .build())
                 .build())
@@ -117,16 +121,18 @@ class ToolSpecificationTest implements WithAssertions {
         ToolSpecification sp1 = ToolSpecification.builder()
                 .name("name")
                 .description("description")
-                .parameters(ToolParameters.builder()
-                        .type("type")
-                        .properties(Collections.singletonMap("foo", Collections.singletonMap("bar", "baz")))
-                        .required(Collections.singletonList("foo"))
+                .parameters(JsonObjectSchema.builder()
+                        .properties(singletonMap("foo", JSON_STRING_SCHEMA))
+                        .required("foo")
                         .build())
                 .build();
 
-        assertThat(sp1.toString())
-                .isEqualTo(
-                        "ToolSpecification { name = \"name\", description = \"description\", parameters = ToolParameters { type = \"type\", properties = {foo={bar=baz}}, required = [foo] } }");
+        assertThat(sp1.toString()).isEqualTo(
+                "ToolSpecification { " +
+                        "name = \"name\", " +
+                        "description = \"description\", " +
+                        "parameters = JsonObjectSchema {description = null, properties = {foo=JsonStringSchema {description = null }}, required = [foo], additionalProperties = null, defs = null }, " +
+                        "toolParameters = null " +
+                        "}");
     }
-
 }

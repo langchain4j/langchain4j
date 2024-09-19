@@ -9,10 +9,11 @@ import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.TypeUtils;
 
 import java.lang.reflect.Type;
+import java.util.LinkedHashMap;
 import java.util.Optional;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.jsonObjectSchemaFrom;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.jsonObjectOrRefSchemaFrom;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
@@ -39,7 +40,7 @@ public class JsonSchemas {
 
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(rawClass.getSimpleName())
-                .rootElement(jsonObjectSchemaFrom(rawClass, null))
+                .rootElement(jsonObjectOrRefSchemaFrom(rawClass, null, new LinkedHashMap<>(), true))
                 .build();
 
         return Optional.of(jsonSchema);

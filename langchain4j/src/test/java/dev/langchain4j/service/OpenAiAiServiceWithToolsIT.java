@@ -35,4 +35,9 @@ class OpenAiAiServiceWithToolsIT extends AiServicesWithNewToolsIT {
                         .build()
         );
     }
+
+    @Override
+    protected boolean supportsRecursion() {
+        return true;
+    }
 }

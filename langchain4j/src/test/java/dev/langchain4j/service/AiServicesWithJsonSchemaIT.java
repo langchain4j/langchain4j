@@ -6,9 +6,11 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRefSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,6 +28,7 @@ import static dev.langchain4j.model.chat.request.json.JsonNumberSchema.JSON_NUMB
 import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -82,7 +85,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                 put("married", JSON_BOOLEAN_SCHEMA);
                                             }})
                                             .required("name", "age", "height", "married")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -97,7 +99,8 @@ public abstract class AiServicesWithJsonSchemaIT {
         class Person {
 
             String name;
-            Address address;
+            Address shippingAddress;
+            Address billingAddress;
         }
 
         class Address {
@@ -118,14 +121,15 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             PersonExtractor2 personExtractor = AiServices.create(PersonExtractor2.class, model);
 
-            String text = "Klaus lives in Langley Falls";
+            String text = "Klaus wants a delivery to Langley Falls, but his company is in New York";
 
             // when
             PersonExtractor2.Person person = personExtractor.extractPersonFrom(text);
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.address.city).isEqualTo("Langley Falls");
+            assertThat(person.shippingAddress.city).isEqualTo("Langley Falls");
+            assertThat(person.billingAddress.city).isEqualTo("New York");
 
             verify(model).chat(ChatRequest.builder()
                     .messages(singletonList(userMessage(text)))
@@ -136,16 +140,20 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                                 put("name", JSON_STRING_SCHEMA);
-                                                put("address", JsonObjectSchema.builder()
+                                                put("shippingAddress", JsonObjectSchema.builder()
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                                             put("city", JSON_STRING_SCHEMA);
                                                         }})
                                                         .required("city")
-                                                        .additionalProperties(false)
+                                                        .build());
+                                                put("billingAddress", JsonObjectSchema.builder()
+                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                                            put("city", JSON_STRING_SCHEMA);
+                                                        }})
+                                                        .required("city")
                                                         .build());
                                             }})
-                                            .required("name", "address")
-                                            .additionalProperties(false)
+                                            .required("name", "shippingAddress", "billingAddress")
                                             .build())
                                     .build())
                             .build())
@@ -204,7 +212,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .build());
                                             }})
                                             .required("name", "maritalStatus")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -258,7 +265,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .build());
                                             }})
                                             .required("name", "favouriteColors")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -311,7 +317,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .build());
                                             }})
                                             .required("name", "favouriteColors")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -365,7 +370,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .build());
                                             }})
                                             .required("name", "favouriteColors")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -427,12 +431,10 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                                     put("name", JSON_STRING_SCHEMA);
                                                                 }})
                                                                 .required("name")
-                                                                .additionalProperties(false)
                                                                 .build())
                                                         .build());
                                             }})
                                             .required("name", "pets")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -494,12 +496,10 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                                     put("name", JSON_STRING_SCHEMA);
                                                                 }})
                                                                 .required("name")
-                                                                .additionalProperties(false)
                                                                 .build())
                                                         .build());
                                             }})
                                             .required("name", "pets")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -562,12 +562,10 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                                     put("name", JSON_STRING_SCHEMA);
                                                                 }})
                                                                 .required("name")
-                                                                .additionalProperties(false)
                                                                 .build())
                                                         .build());
                                             }})
                                             .required("name", "pets")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -629,7 +627,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .build());
                                             }})
                                             .required("name", "groups")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -690,7 +687,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .build());
                                             }})
                                             .required("name", "groups")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -751,7 +747,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .build());
                                             }})
                                             .required("name", "groups")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -812,7 +807,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                             put("day", JSON_INTEGER_SCHEMA);
                                                         }})
                                                         .required("year", "month", "day")
-                                                        .additionalProperties(false)
                                                         .build());
                                                 put("birthTime", JsonObjectSchema.builder()
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
@@ -822,7 +816,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                             put("nano", JSON_INTEGER_SCHEMA);
                                                         }})
                                                         .required("hour", "minute", "second", "nano")
-                                                        .additionalProperties(false)
                                                         .build());
                                                 put("birthDateTime", JsonObjectSchema.builder()
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
@@ -833,7 +826,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                                         put("day", JSON_INTEGER_SCHEMA);
                                                                     }})
                                                                     .required("year", "month", "day")
-                                                                    .additionalProperties(false)
                                                                     .build());
                                                             put("time", JsonObjectSchema.builder()
                                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
@@ -843,15 +835,12 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                                         put("nano", JSON_INTEGER_SCHEMA);
                                                                     }})
                                                                     .required("hour", "minute", "second", "nano")
-                                                                    .additionalProperties(false)
                                                                     .build());
                                                         }})
                                                         .required("date", "time")
-                                                        .additionalProperties(false)
                                                         .build());
                                             }})
                                             .required("name", "birthDate", "birthTime", "birthDateTime")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -901,12 +890,83 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                 put("name", JSON_STRING_SCHEMA);
                                             }})
                                             .required("name")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
                     .build());
             verify(model).supportedCapabilities();
         }
+    }
+
+    interface PersonExtractor15 {
+
+        class Person {
+
+            String name;
+            List<Person> children;
+        }
+
+        Person extractPersonFrom(String text);
+    }
+
+    @Test
+    @EnabledIf("supportsRecursion")
+    void should_execute_tool_with_pojo_with_recursion() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            PersonExtractor15 personExtractor = AiServices.create(PersonExtractor15.class, model);
+
+            String text = "Francine has 2 children: Steve and Hayley";
+
+            // when
+            PersonExtractor15.Person person = personExtractor.extractPersonFrom(text);
+
+            // then
+            assertThat(person.name).isEqualTo("Francine");
+            assertThat(person.children).hasSize(2);
+            assertThat(person.children.get(0).name).isEqualTo("Steve");
+            assertThat(person.children.get(0).children).isNullOrEmpty();
+            assertThat(person.children.get(1).name).isEqualTo("Hayley");
+            assertThat(person.children.get(1).children).isNullOrEmpty();
+
+            String ref = "14c0db86-dad7-3ce8-8939-8f06e6e2aae0";
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Person")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                                put("name", JSON_STRING_SCHEMA);
+                                                put("children", JsonArraySchema.builder()
+                                                        .items(JsonRefSchema.withRef("#/$defs/" + ref))
+                                                        .build());
+                                            }})
+                                            .required("name", "children")
+                                            .defs(singletonMap(ref, JsonObjectSchema.builder()
+                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                                        put("name", JSON_STRING_SCHEMA);
+                                                        put("children", JsonArraySchema.builder()
+                                                                .items(JsonRefSchema.withRef("#/$defs/" + ref))
+                                                                .build());
+                                                    }})
+                                                    .required("name", "children")
+                                                    .build()))
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    protected boolean supportsRecursion() {
+        return false;
     }
 }

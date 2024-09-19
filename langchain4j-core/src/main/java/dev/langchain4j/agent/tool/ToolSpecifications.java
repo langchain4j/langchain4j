@@ -2,38 +2,18 @@ package dev.langchain4j.agent.tool;
 
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.output.structured.Description;
+import dev.langchain4j.model.chat.request.json.JsonSchemaHelper;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.BOOLEAN;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.NUMBER;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.OBJECT;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.objectItems;
-import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
-import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
-import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.jsonSchemaElementFrom;
 import static java.lang.String.format;
@@ -107,12 +87,10 @@ public class ToolSpecifications {
             description = null;
         }
 
-        ToolSpecification.Builder builder = ToolSpecification.builder()
-                .name(name)
-                .description(description);
-
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
+
+        Map<Class<?>, JsonSchemaHelper.VisitedClassMetadata> visited = new LinkedHashMap<>();
 
         for (Parameter parameter : method.getParameters()) {
             if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
@@ -123,178 +101,40 @@ public class ToolSpecifications {
                     .map(P::required)
                     .orElse(true);
 
-            properties.put(parameter.getName(), toJsonSchemaElement(parameter));
+            properties.put(parameter.getName(), toJsonSchemaElement(parameter, visited));
             if (isRequired) {
                 required.add(parameter.getName());
             }
-
-            if (isRequired) {
-                builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
-            } else {
-                builder.addOptionalParameter(parameter.getName(), toJsonSchemaProperties(parameter));
-            }
         }
+
+        Map<String, JsonSchemaElement> defs = new LinkedHashMap<>();
+        visited.forEach((clazz, visitedClassMetadata) -> {
+            if (visitedClassMetadata.recursion) {
+                defs.put(visitedClassMetadata.ref, visitedClassMetadata.jsonSchemaElement);
+            }
+        });
 
         JsonObjectSchema parameters = JsonObjectSchema.builder()
                 .properties(properties)
                 .required(required)
+                .defs(defs.isEmpty() ? null : defs) // TODO
                 .build();
 
-        return builder
+        if (properties.isEmpty()) {
+            parameters = null; // TODO
+        }
+
+        return ToolSpecification.builder()
+                .name(name)
+                .description(description)
                 .parameters(parameters)
                 .build();
     }
 
-    private static JsonSchemaElement toJsonSchemaElement(Parameter parameter) {
+    private static JsonSchemaElement toJsonSchemaElement(Parameter parameter,
+                                                         Map<Class<?>, JsonSchemaHelper.VisitedClassMetadata> visited) {
         P annotation = parameter.getAnnotation(P.class);
         String description = annotation == null ? null : annotation.value();
-        return jsonSchemaElementFrom(parameter.getType(), parameter.getParameterizedType(), description);
-    }
-
-    /**
-     * Convert a {@link Parameter} to a {@link JsonSchemaProperty}.
-     *
-     * @param parameter the parameter.
-     * @return the {@link JsonSchemaProperty}.
-     */
-    static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Parameter parameter) {
-
-        Class<?> type = parameter.getType();
-
-        P annotation = parameter.getAnnotation(P.class);
-        JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
-
-        Iterable<JsonSchemaProperty> simpleType = toJsonSchemaProperties(type, description);
-
-        if (simpleType != null) {
-            return simpleType;
-        }
-
-        if (Collection.class.isAssignableFrom(type)) {
-            return removeNulls(ARRAY, arrayTypeFrom(parameter.getParameterizedType()), description);
-        }
-
-
-        return removeNulls(OBJECT, schema(type), description);
-    }
-
-    static JsonSchemaProperty schema(Class<?> structured) {
-        return schema(structured, new HashMap<>());
-    }
-
-    private static JsonSchemaProperty schema(Class<?> structured, HashMap<Class<?>, JsonSchemaProperty> visited) {
-        if (visited.containsKey(structured)) {
-            return visited.get(structured);
-        }
-
-        // Mark the class as visited by inserting it in the visited map with a null value initially.
-        visited.put(structured, null);
-        Map<String, Object> properties = new HashMap<>();
-        for (Field field : structured.getDeclaredFields()) {
-            String name = field.getName();
-            if (name.equals("this$0") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
-                // Skip inner class reference.
-                continue;
-            }
-            Iterable<JsonSchemaProperty> schemaProperties = toJsonSchemaProperties(field, visited);
-            Map<Object, Object> objectMap = new HashMap<>();
-            for (JsonSchemaProperty jsonSchemaProperty : schemaProperties) {
-                objectMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
-            }
-            properties.put(name, objectMap);
-        }
-        JsonSchemaProperty jsonSchemaProperty = from("properties", properties);
-        // Update the visited map with the final JsonSchemaProperty for the current class
-        visited.put(structured, jsonSchemaProperty);
-        return jsonSchemaProperty;
-    }
-
-    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, HashMap<Class<?>, JsonSchemaProperty> visited) {
-
-        Class<?> type = field.getType();
-
-        Description annotation = field.getAnnotation(Description.class);
-        JsonSchemaProperty description = annotation == null ? null : description(String.join(" ", annotation.value()));
-
-        Iterable<JsonSchemaProperty> simpleType = toJsonSchemaProperties(type, description);
-
-        if (simpleType != null) {
-            return simpleType;
-        }
-
-        if (Collection.class.isAssignableFrom(type)) {
-            return removeNulls(ARRAY, arrayTypeFrom((Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0]), description);
-        }
-
-        return removeNulls(OBJECT, schema(type, visited), description);
-    }
-
-    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Class<?> type, JsonSchemaProperty description) {
-
-        if (type == String.class) {
-            return removeNulls(STRING, description);
-        }
-
-        if (isJsonBoolean(type)) {
-            return removeNulls(BOOLEAN, description);
-        }
-
-        if (isJsonInteger(type)) {
-            return removeNulls(INTEGER, description);
-        }
-
-        if (isJsonNumber(type)) {
-            return removeNulls(NUMBER, description);
-        }
-
-        if (type.isArray()) {
-            return removeNulls(ARRAY, arrayTypeFrom(type.getComponentType()), description);
-        }
-
-        if (type.isEnum()) {
-            return removeNulls(STRING, enums((Class<?>) type), description);
-        }
-
-        return null;
-    }
-
-
-    private static JsonSchemaProperty arrayTypeFrom(Type type) {
-        if (type instanceof ParameterizedType) {
-            ParameterizedType parameterizedType = (ParameterizedType) type;
-            Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
-            if (actualTypeArguments.length == 1) {
-                return arrayTypeFrom((Class<?>) actualTypeArguments[0]);
-            }
-        }
-        return items(JsonSchemaProperty.OBJECT);
-    }
-
-    private static JsonSchemaProperty arrayTypeFrom(Class<?> clazz) {
-        if (clazz == String.class) {
-            return items(JsonSchemaProperty.STRING);
-        }
-        if (isJsonBoolean(clazz)) {
-            return items(JsonSchemaProperty.BOOLEAN);
-        }
-        if (isJsonInteger(clazz)) {
-            return items(JsonSchemaProperty.INTEGER);
-        }
-        if (isJsonNumber(clazz)) {
-            return items(JsonSchemaProperty.NUMBER);
-        }
-        return objectItems(schema(clazz));
-    }
-
-    /**
-     * Remove nulls from the given array.
-     *
-     * @param items the array
-     * @return an iterable of the non-null items.
-     */
-    static Iterable<JsonSchemaProperty> removeNulls(JsonSchemaProperty... items) {
-        return stream(items)
-                .filter(Objects::nonNull)
-                .collect(toList());
+        return jsonSchemaElementFrom(parameter.getType(), parameter.getParameterizedType(), description, visited);
     }
 }

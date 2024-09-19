@@ -35,6 +35,7 @@ import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRefSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -237,7 +238,8 @@ public class InternalOpenAiHelper {
         if (parameters != null) {
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
                     .properties(toOpenAiProperties(parameters.properties(), strict))
-                    .required(parameters.required());
+                    .required(parameters.required())
+                    .defs(toOpenAiProperties(parameters.defs(), strict));
             if (strict) {
                 builder
                         // when strict, all fields must be required:
@@ -281,6 +283,11 @@ public class InternalOpenAiHelper {
     private static Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> toOpenAiProperties(
             Map<String, JsonSchemaElement> properties,
             boolean strict) {
+
+        if (properties == null) {
+            return null;
+        }
+
         Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
         properties.forEach((key, value) ->
                 openAiProperties.put(key, toOpenAiJsonSchemaElement(value, strict)));
@@ -296,7 +303,8 @@ public class InternalOpenAiHelper {
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
                     .description(jsonObjectSchema.description())
                     .properties(toOpenAiProperties(jsonObjectSchema.properties(), strict))
-                    .additionalProperties(jsonObjectSchema.additionalProperties());
+                    .additionalProperties(strict ? Boolean.FALSE : jsonObjectSchema.additionalProperties())
+                    .defs(toOpenAiProperties(jsonObjectSchema.defs(), strict));
             if (jsonObjectSchema.required() != null) {
                 builder.required(jsonObjectSchema.required());
             }
@@ -342,6 +350,11 @@ public class InternalOpenAiHelper {
             return dev.ai4j.openai4j.chat.JsonBooleanSchema.builder()
                     .description(jsonBooleanSchema.description())
                     .build();
+        } else if (jsonSchemaElement instanceof JsonRefSchema) {
+            JsonRefSchema jsonRefSchema = (JsonRefSchema) jsonSchemaElement;
+            return dev.ai4j.openai4j.chat.JsonRefSchema.builder()
+                    .ref(jsonRefSchema.ref())
+                    .build();
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
         }
@@ -350,11 +363,11 @@ public class InternalOpenAiHelper {
     private static Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> toOpenAiPropertiesOld(Map<String, ?> properties, boolean strict) {
         Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
         properties.forEach((key, value) ->
-                openAiProperties.put(key, toOpenAiJsonSchemaElement((Map<String, ?>) value, strict)));
+                openAiProperties.put(key, toOpenAiJsonSchemaElementOld((Map<String, ?>) value, strict)));
         return openAiProperties;
     }
 
-    private static dev.ai4j.openai4j.chat.JsonSchemaElement toOpenAiJsonSchemaElement(Map<String, ?> properties, boolean strict) {
+    private static dev.ai4j.openai4j.chat.JsonSchemaElement toOpenAiJsonSchemaElementOld(Map<String, ?> properties, boolean strict) {
         Object type = properties.get("type");
         String description = (String) properties.get("description");
         // TODO is this needed now?
@@ -379,7 +392,7 @@ public class InternalOpenAiHelper {
         } else if ("array".equals(type)) {
             return dev.ai4j.openai4j.chat.JsonArraySchema.builder()
                     .description(description)
-                    .items(toOpenAiJsonSchemaElement((Map<String, ?>) properties.get("items"), strict))
+                    .items(toOpenAiJsonSchemaElementOld((Map<String, ?>) properties.get("items"), strict))
                     .build();
         } else if (properties.get("enum") != null) {
             return dev.ai4j.openai4j.chat.JsonEnumSchema.builder()
@@ -537,54 +550,12 @@ public class InternalOpenAiHelper {
             dev.ai4j.openai4j.chat.JsonSchema openAiJsonSchema = dev.ai4j.openai4j.chat.JsonSchema.builder()
                     .name(jsonSchema.name())
                     .strict(strict)
-                    .schema((dev.ai4j.openai4j.chat.JsonObjectSchema) toOpenAiJsonSchemaElement(jsonSchema.rootElement()))
+                    .schema((dev.ai4j.openai4j.chat.JsonObjectSchema) toOpenAiJsonSchemaElement(jsonSchema.rootElement(), strict)) // TODO 2
                     .build();
             return dev.ai4j.openai4j.chat.ResponseFormat.builder()
                     .type(JSON_SCHEMA)
                     .jsonSchema(openAiJsonSchema)
                     .build();
-        }
-    }
-
-    private static dev.ai4j.openai4j.chat.JsonSchemaElement toOpenAiJsonSchemaElement(JsonSchemaElement jsonSchemaElement) {
-        if (jsonSchemaElement instanceof JsonStringSchema) {
-            return dev.ai4j.openai4j.chat.JsonStringSchema.builder()
-                    .description(((JsonStringSchema) jsonSchemaElement).description())
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
-            return dev.ai4j.openai4j.chat.JsonIntegerSchema.builder()
-                    .description(((JsonIntegerSchema) jsonSchemaElement).description())
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
-            return dev.ai4j.openai4j.chat.JsonNumberSchema.builder()
-                    .description(((JsonNumberSchema) jsonSchemaElement).description())
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
-            return dev.ai4j.openai4j.chat.JsonBooleanSchema.builder()
-                    .description(((JsonBooleanSchema) jsonSchemaElement).description())
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
-            return dev.ai4j.openai4j.chat.JsonEnumSchema.builder()
-                    .description(((JsonEnumSchema) jsonSchemaElement).description())
-                    .enumValues(((JsonEnumSchema) jsonSchemaElement).enumValues())
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonArraySchema) {
-            return dev.ai4j.openai4j.chat.JsonArraySchema.builder()
-                    .description(((JsonArraySchema) jsonSchemaElement).description())
-                    .items(toOpenAiJsonSchemaElement(((JsonArraySchema) jsonSchemaElement).items()))
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonObjectSchema) {
-            Map<String, JsonSchemaElement> properties = ((JsonObjectSchema) jsonSchemaElement).properties();
-            Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
-            properties.forEach((key, value) -> openAiProperties.put(key, toOpenAiJsonSchemaElement(value)));
-            return dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
-                    .description(((JsonObjectSchema) jsonSchemaElement).description())
-                    .properties(openAiProperties)
-                    .required(((JsonObjectSchema) jsonSchemaElement).required())
-                    .additionalProperties(((JsonObjectSchema) jsonSchemaElement).additionalProperties())
-                    .build();
-        } else {
-            throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement);
         }
     }
 }
