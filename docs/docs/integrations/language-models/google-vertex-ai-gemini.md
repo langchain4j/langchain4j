@@ -123,6 +123,33 @@ public class GeminiProVisionWithImageInput {
 }
 ```
 
+Streaming is also supported thanks to the `VertexAiGeminiStreamingChatModel` class:
+
+```java
+var model = VertexAiGeminiStreamingChatModel.builder()
+        .project(PROJECT_ID)
+        .location(LOCATION)
+        .modelName(GEMINI_1_5_PRO)
+        .build();
+
+model.generate("Why is the sky blue?", new StreamingResponseHandler<>() {
+    void onNext(String token) {
+        System.print("token");
+    }
+
+    void onError(Throwable error) {
+        error.printStackTrace();
+    }
+});
+```
+
+You can use the shortcut `onNext()` and `onNextAndError()` utility functions from `LambdaStreamingResponseHandler`:
+
+```java
+model.generate("Why is the sky blue?", onNext(System.out::print));
+model.generate("Why is the sky blue?", onNextAndError(System.out::print, Throwable::printStackTrace));
+```
+
 ### Available models
 
 | Model name                | Description                                                                                                                         | Inputs                                                  | Properties                                            |
@@ -142,6 +169,304 @@ Note that in March 2024, the Ultra version has private access with an allow list
 Caused by: io.grpc.StatusRuntimeException:
  FAILED_PRECONDITION: Project `1234567890` is not allowed to use Publisher Model
   `projects/{YOUR_PROJECT_ID}/locations/us-central1/publishers/google/models/gemini-ultra`
+```
+
+## Configuration
+
+```java
+ChatModel model = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)        // your Google Cloud project ID
+    .location(LOCATION)         // the region where AI inference should take place
+    .modelName(MODEL_NAME)      // the model used
+    .logRequests(true)          // log input requests
+    .logResponses(true)         // log output responses
+    .maxOutputTokens(8192)      // the maximum number of tokens to generate (up to 8192)
+    .temperature(0.7)           // temperature (between 0 and 2)
+    .topP(0.95)                 // topP (between 0 and 1) — cumulative probability of the most probable tokens
+    .topK(3)                    // topK (positive integer) — pick a token among the most probable ones
+    .seed(1234)                 // seed for the random number generator
+    .maxRetries(3)              // maximum number of retries
+    .responseMimeType("application/json") // to get JSON structured outputs
+    .responseSchema(/*...*/)    // structured output following the provided schema
+    .safetySettings(/*...*/)    // specify safety settings to filter inappropriate content
+    .useGoogleSearch(true)      // to ground responses with Google Search results
+    .vertexSearchDatastore(name)// to ground responses with data backed documents 
+                                // from a custom Vertex AI Search datastore
+    .toolCallingMode(/*...*/)   // AUTO (automatic), ANY (from a list of functions), NONE
+    .allowedFunctionNames(/*...*/) // when using ANY tool calling mode, 
+                                // specify the allowed function names to be called
+    .listeners(/*...*/)         // list of listeners to receive model events
+    .build();
+```
+
+The same parameters are also available on the streaming chat model.
+
+## More examples
+
+Gemini is a `multimodal` model which accepts text, but also images, audio and video files, as well as PDFs in input.
+
+### Describing the content of an image
+
+```java
+ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName(GEMINI_1_5_PRO)
+    .build();
+
+UserMessage userMessage = UserMessage.from(
+    ImageContent.from(CAT_IMAGE_URL),
+    TextContent.from("What do you see? Reply in one word.")
+);
+
+Response<AiMessage> response = model.generate(userMessage);
+```
+
+The URL can be a web URL, or can point at a file stored in Google Cloud Storage buckets,
+like `gs://my-bucket/my-image.png`.
+
+You can also pass the content of an image as Base64 encoded string:
+
+```java
+String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+UserMessage userMessage = UserMessage.from(
+        ImageContent.from(base64Data, "image/png"),
+        TextContent.from("What do you see? Reply in one word.")
+);
+```
+
+### Asking questions about a PDF document
+
+```java
+var model = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName(GEMINI_1_5_PRO)
+    .logRequests(true)
+    .logResponses(true)
+    .build();
+
+UserMessage msg = UserMessage.from(
+    PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+    TextContent.from("Provide a summary of the document")
+);
+
+Response<AiMessage> response = model.generate(singletonList(msg));
+```
+
+### Tool calling
+
+```java
+ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+        .project(PROJECT_ID)
+        .location(LOCATION)
+        .modelName(GEMINI_1_5_PRO)
+        .build();
+
+ToolSpecification weatherToolSpec = ToolSpecification.builder()
+        .name("getWeatherForecast")
+        .description("Get the weather forecast for a location")
+        .addParameter("location", JsonSchemaProperty.STRING,
+                JsonSchemaProperty.description("the location to get the weather forecast for"))
+        .build();
+
+List<ChatMessage> allMessages = new ArrayList<>();
+UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
+allMessages.add(weatherQuestion);
+
+Response<AiMessage> messageResponse = model.generate(allMessages, weatherToolSpec);
+```
+
+The model will reply back with a tool execution request instead of a text message.
+Your responsibility will be to provide the model with the response of that execution request,
+by sending a `ToolExecutionResultMessage` back to the model.
+The model will then be able to reply with a text response.
+
+Parallel function calling is also supported, when the model asks to make multiple tool execution requests in a single response.
+
+### Tool support with AiServices
+
+You can use `AiServices` to create your own assistants powered by tools.
+The following example shows a `Calculator` tool to do some math calculations,
+an `Assistant` interface to specify the contract of our assistant,
+then we configure `AiServices` to use Gemini, with a chat memory, and the calculator tool.
+
+```java
+static class Calculator {
+    @Tool("Adds two given numbers")
+    double add(double a, double b) {
+        return a + b;
+    }
+
+    @Tool("Multiplies two given numbers")
+    String multiply(double a, double b) {
+        return String.valueOf(a * b);
+    }
+}
+
+interface Assistant {
+    String chat(String userMessage);
+}
+
+Calculator calculator = new Calculator();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatLanguageModel(model)
+        .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+        .tools(calculator)
+        .build();
+
+String answer = assistant.chat("How much is 74589613588 + 4786521789?");
+```
+
+### Grounding responses with Google Search results
+
+LLMs don't necessarily know tha answer to all possible questions!
+It's even more the case for recent events or information that have happened past the end of their last training.
+It's possible to _ground_ Gemini's answers with fresh results from Google Search results:
+
+```java
+var modelWithSearch = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName("gemini-1.5-flash-001")
+    .useGoogleSearch(true)
+    .build();
+
+String resp = modelWithSearch.generate("What is the score of yesterday's football match from Paris Saint Germain?");
+```
+
+### Grounding responses with Vertex AI Search results
+
+When working with private internal information, documents, data, you can use 
+[Vertex AI Search datastores](https://cloud.google.com/generative-ai-app-builder/docs/create-data-store-es) to hold those documents.
+You can then ground Gemini's answers with those documents:
+
+```java
+var modelWithSearch = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName("gemini-1.5-flash-001")
+    .vertexSearchDatastore("name_of_the_datastore")
+    .build();
+```
+
+### JSON structured output
+
+You can ask Gemini to return only valid JSON outputs:
+
+```java
+var modelWithResponseMimeType = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName("gemini-1.5-flash-001")
+    .responseMimeType("application/json")
+    .build();
+
+String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler.";
+String jsonResponse = modelWithResponseMimeType.generate(userMessage).content().text();
+// {"name": "Klaus", "surname": "Heisler"}
+```
+
+### Strict JSON structured output with JSON schemas
+
+With `responseMimeType("application/json)` the model can still be a bit creative in the way it responds
+if ever your prompt didn't precisely describe the desired JSON output.
+To ensure a stricter JSON structured output, you can specify a JSON schema for the response:
+
+```java
+Schema schema = Schema.newBuilder()
+    .setType(Type.OBJECT)
+    .putProperties("name", Schema.newBuilder()
+        .setType(Type.STRING)
+        .build())
+    .putProperties("address", Schema.newBuilder()
+        .setType(Type.OBJECT)
+        .putProperties("street", 
+            Schema.newBuilder().setType(Type.STRING).build())
+        .putProperties("zipcode",
+           Schema.newBuilder().setType(Type.STRING).build())
+    .build())
+.build();
+
+var model = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName(GEMINI_1_5_PRO)
+    .responseMimeType("application/json")
+    .responseSchema(Schema)
+    .build();
+```
+
+A convenience method allows you to generate a schema for a Java class:
+
+```java
+class Artist {
+    public String artistName;
+    int artistAge;
+    protected boolean artistAdult;
+    private String artistAddress;
+    public Pet[] pets;
+}
+
+class Pet {
+    public String name;
+}
+
+Schema schema = SchemaHelper.fromClass(Artist.class);
+
+var model = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName(GEMINI_1_5_PRO)
+    .responseMimeType("application/json")
+    .responseSchema(schema)
+    .build();
+```
+
+Another method allows you to create a schema from a JSON schema string:
+`SchemaHelper.fromJson(...)`.
+
+Gemini supports both JSON objects and arrays as structured output, 
+but there's also a special case for a JSON string enum as output,
+which is particularly interesting when asking Gemini to do classification tasks 
+(like sentiment analysis):
+
+```java
+var model = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName(GEMINI_1_5_PRO)
+    .logRequests(true)
+    .logResponses(true)
+    .responseSchema(Schema.newBuilder()
+        .setType(Type.STRING)
+        .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
+        .build())
+    .build();
+```
+
+In this case, the implicit response mime type is set to `text/x.enum` 
+(which is not an official registered mime type).
+
+### Specify safety settings
+
+If you want to filter or block harmful content, you can set safety settings with different threshold levels:
+
+```java
+HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
+safetySettings.put(HARM_CATEGORY_HARASSMENT, BLOCK_LOW_AND_ABOVE);
+safetySettings.put(HARM_CATEGORY_DANGEROUS_CONTENT, BLOCK_ONLY_HIGH);
+safetySettings.put(HARM_CATEGORY_SEXUALLY_EXPLICIT, BLOCK_MEDIUM_AND_ABOVE);
+
+var model = VertexAiGeminiChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName("gemini-1.5-flash-001")
+    .safetySettings(safetySettings)
+    .logRequests(true)
+    .logResponses(true)
+    .build();
 ```
 
 ## References
