@@ -1,13 +1,14 @@
 package dev.langchain4j.model.anthropic;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.anthropic.internal.InternalAnthropicHelper;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
-import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -28,11 +29,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 import static java.util.Collections.emptyList;
 
@@ -198,8 +196,8 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             @Override
             public void onComplete(Response<AiMessage> response) {
                 ChatModelResponse modelListenerResponse = InternalAnthropicHelper.createModelListenerResponse(
-                        null,
-                        null,
+                        (String) response.metadata().get("id"),
+                        (String) response.metadata().get("model"),
                         response
                 );
                 ChatModelResponseContext responseContext = new ChatModelResponseContext(

@@ -1,4 +1,4 @@
-package dev.langchain4j.model.anthropic.internal;
+package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -13,9 +13,11 @@ import dev.langchain4j.model.output.Response;
 import java.util.List;
 import java.util.Map;
 
-public class InternalAnthropicHelper {
+class InternalAnthropicHelper {
 
-    public static ChatModelErrorContext createErrorContext(Throwable e, ChatModelRequest modelListenerRequest, Map<Object, Object> attributes) {
+    static ChatModelErrorContext createErrorContext(Throwable e,
+                                                    ChatModelRequest modelListenerRequest,
+                                                    Map<Object, Object> attributes) {
         Throwable error;
         if (e.getCause() instanceof AnthropicHttpException) {
             error = e.getCause();
@@ -29,10 +31,9 @@ public class InternalAnthropicHelper {
                 null,
                 attributes
         );
-
     }
 
-    public static ChatModelRequest createModelListenerRequest(AnthropicCreateMessageRequest request,
+    static ChatModelRequest createModelListenerRequest(AnthropicCreateMessageRequest request,
                                                        List<ChatMessage> messages,
                                                        List<ToolSpecification> toolSpecifications) {
         return ChatModelRequest.builder()
@@ -45,7 +46,7 @@ public class InternalAnthropicHelper {
                 .build();
     }
 
-    public static ChatModelResponse createModelListenerResponse(String responseId,
+    static ChatModelResponse createModelListenerResponse(String responseId,
                                                          String responseModel,
                                                          Response<AiMessage> response) {
         if (response == null) {

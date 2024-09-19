@@ -158,11 +158,11 @@ public abstract class StreamingChatModelListenerIT {
         return true;
     }
 
-    protected boolean assertResponseModel() {
+    protected boolean assertResponseId() {
         return true;
     }
 
-    protected boolean assertResponseId() {
+    protected boolean assertResponseModel() {
         return true;
     }
 
