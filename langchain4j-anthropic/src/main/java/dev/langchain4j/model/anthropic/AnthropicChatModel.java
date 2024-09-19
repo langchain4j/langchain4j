@@ -7,9 +7,12 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageReques
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +26,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
+import static dev.langchain4j.model.anthropic.internal.InternalAnthropicHelper.createErrorContext;
+import static dev.langchain4j.model.anthropic.internal.InternalAnthropicHelper.createModelListenerRequest;
+import static dev.langchain4j.model.anthropic.internal.InternalAnthropicHelper.createModelListenerResponse;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 import static java.util.Collections.emptyList;
@@ -160,11 +166,10 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .tools(toAnthropicTools(toolSpecifications))
                 .build();
 
-        AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
-
         ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -173,24 +178,55 @@ public class AnthropicChatModel implements ChatLanguageModel {
             }
         });
 
-        return Response.from(
-                toAiMessage(response.content),
-                toTokenUsage(response.usage),
-                toFinishReason(response.stopReason)
-        );
-    }
+        try {
+            AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
+            Response<AiMessage> responseMessage = Response.from(
+                    toAiMessage(response.content),
+                    toTokenUsage(response.usage),
+                    toFinishReason(response.stopReason)
+            );
 
-    static ChatModelRequest createModelListenerRequest(AnthropicCreateMessageRequest request,
-                                                       List<ChatMessage> messages,
-                                                       List<ToolSpecification> toolSpecifications) {
-        return ChatModelRequest.builder()
-                .model(request.getModel())
-                .temperature(request.getTemperature())
-                .topP(request.getTopP())
-                .maxTokens(request.getMaxTokens())
-                .messages(messages)
-                .toolSpecifications(toolSpecifications)
-                .build();
+            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                    response.id,
+                    response.model,
+                    responseMessage
+            );
+            ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                    modelListenerResponse,
+                    modelListenerRequest,
+                    attributes
+            );
+
+            listeners.forEach(listener -> {
+                try {
+                    listener.onResponse(responseContext);
+                } catch (Exception e) {
+                    log.warn("Exception while calling model listener", e);
+                }
+            });
+
+            return Response.from(
+                    toAiMessage(response.content),
+                    toTokenUsage(response.usage),
+                    toFinishReason(response.stopReason)
+            );
+        } catch (RuntimeException e) {
+            ChatModelErrorContext errorContext = createErrorContext(
+                    e,
+                    modelListenerRequest,
+                    attributes
+            );
+
+            listeners.forEach(listener -> {
+                try {
+                    listener.onError(errorContext);
+                } catch (Exception e2) {
+                    log.warn("Exception while calling model listener", e2);
+                }
+            });
+
+            throw e;
+        }
     }
     // TODO forcing tool use?
 }

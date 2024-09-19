@@ -4,12 +4,18 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.anthropic.internal.InternalAnthropicHelper;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,8 +28,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 import static java.util.Collections.emptyList;
 
@@ -161,7 +170,57 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
             }
         });
 
-        client.createMessage(request, handler);
+        StreamingResponseHandler<AiMessage> listenerHandler = new StreamingResponseHandler<AiMessage>() {
+            @Override
+            public void onNext(String token) {
+                handler.onNext(token);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                ChatModelErrorContext errorContext = InternalAnthropicHelper.createErrorContext(
+                        error,
+                        modelListenerRequest,
+                        attributes
+                );
+
+                listeners.forEach(listener -> {
+                    try {
+                        listener.onError(errorContext);
+                    } catch (Exception e2) {
+                        log.warn("Exception while calling model listener", e2);
+                    }
+                });
+
+                handler.onError(error);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatModelResponse modelListenerResponse = InternalAnthropicHelper.createModelListenerResponse(
+                        null,
+                        null,
+                        response
+                );
+                ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                        modelListenerResponse,
+                        modelListenerRequest,
+                        attributes
+                );
+
+                listeners.forEach(listener -> {
+                    try {
+                        listener.onResponse(responseContext);
+                    } catch (Exception e) {
+                        log.warn("Exception while calling model listener", e);
+                    }
+                });
+                handler.onComplete(response);
+                StreamingResponseHandler.super.onComplete(response);
+            }
+        };
+
+        client.createMessage(request, listenerHandler);
     }
 
 
