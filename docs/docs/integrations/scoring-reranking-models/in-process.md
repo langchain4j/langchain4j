@@ -20,7 +20,7 @@ By default, Scoring (Reranking) use the CPU.
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-scoring</artifactId>
+    <artifactId>langchain4j-onnx-scoring</artifactId>
     <version>0.34.0</version>
 </dependency>
 ```
