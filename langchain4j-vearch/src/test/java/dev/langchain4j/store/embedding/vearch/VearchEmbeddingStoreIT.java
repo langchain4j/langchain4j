@@ -9,12 +9,6 @@ import dev.langchain4j.store.embedding.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
-import org.testcontainers.utility.MountableFile;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
@@ -24,15 +18,9 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@Testcontainers
 class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
-    @Container
-    static GenericContainer<?> vearch = new GenericContainer<>(DockerImageName.parse("vearch/vearch:3.4.1"))
-            .withExposedPorts(9001, 8817)
-            .withCommand("all")
-            .withCopyFileToContainer(MountableFile.forClasspathResource("config.toml"), "/vearch/config.toml")
-            .waitingFor(Wait.forLogMessage(".*INFO : server pid:1.*\\n", 1));
+    static VearchContainer vearch = new VearchContainer();
 
     static final UUID TEST_UUID = UUID.randomUUID();
 

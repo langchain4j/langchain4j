@@ -58,6 +58,10 @@ class CreateSpaceRequest {
         return models;
     }
 
+    static Builder builder() {
+        return new Builder();
+    }
+
     static class Builder {
 
         private String name;
