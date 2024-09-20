@@ -77,3 +77,10 @@ jobs:
           CI_DELAY_SECONDS_BEDROCK: 1
           CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 4
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 3
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: Test-Reports-${{ matrix.java-version }}
+          path: '**/target/surefire-reports/*'
