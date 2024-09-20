@@ -366,12 +366,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         Map<String, Object> variables = new HashMap<>();
         for (int i = 0; i < parameters.length; i++) {
-            V annotation = parameters[i].getAnnotation(V.class);
-            if (annotation != null) {
-                String variableName = annotation.value();
-                Object variableValue = args[i];
-                variables.put(variableName, variableValue);
-            }
+            String variableName = getVariableName(parameters[i]);
+            Object variableValue = args[i];
+            variables.put(variableName, variableValue);
         }
 
         if (template.contains("{{it}}") && !variables.containsKey("it")) {
@@ -380,6 +377,15 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         return variables;
+    }
+
+    private static String getVariableName(Parameter parameter) {
+        V annotation = parameter.getAnnotation(V.class);
+        if (annotation != null) {
+            return annotation.value();
+        } else {
+            return parameter.getName();
+        }
     }
 
     private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {
