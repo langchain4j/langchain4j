@@ -42,7 +42,7 @@ class OnnxScoringModelIT {
         Files.copy(tokenizerUrl.openStream(), tokenizerPath, REPLACE_EXISTING);
 
         // To check the modelMaxLength parameter, refer to the model configuration file at  https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2/resolve/main/tokenizer_config.json
-        model = new OnnxScoringModel(modelPath.toString(), new OrtSession.SessionOptions(), tokenizerPath.toString(), 512,  false);
+        model = new OnnxScoringModel(modelPath.toString(), new OrtSession.SessionOptions(), tokenizerPath.toString(), 512, false);
     }
 
     @Test
@@ -60,13 +60,12 @@ class OnnxScoringModelIT {
         List<Double> scores = response.content();
         assertThat(scores).hasSize(2);
 
-        // python output results: [ 8.845855712890625, -11.245561599731445 ]
-        assertThat(scores.get(0)).isCloseTo(8.84, withPercentage(1));
-        assertThat(scores.get(1)).isCloseTo(-11.24, withPercentage(1));
+        // python output results on https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2: [ 8.663132667541504, -11.245542526245117 ]
+        assertThat(scores.get(0)).isCloseTo(8.663132667541504, withPercentage(0.1));
+        assertThat(scores.get(1)).isCloseTo(-11.245542526245117, withPercentage(0.1));
 
         assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
 
         assertThat(response.finishReason()).isNull();
-
     }
 }

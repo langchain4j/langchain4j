@@ -9,7 +9,7 @@ import dev.langchain4j.model.scoring.ScoringModel;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public abstract class AbstractInProcessScoringModel implements ScoringModel {
+abstract class AbstractInProcessScoringModel implements ScoringModel {
 
     public AbstractInProcessScoringModel() {
     }
