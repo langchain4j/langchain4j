@@ -6,9 +6,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.*;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.*;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
@@ -31,15 +29,18 @@ class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
     /**
      * in order to clear embedding store
      */
-    VearchClient vearchClient;
+    static VearchClient vearchClient;
 
-    String databaseName;
+    static String databaseName;
 
-    String spaceName;
+    static String spaceName;
 
-    String baseUrl;
+    static String baseUrl;
 
-    public VearchEmbeddingStoreIT() {
+    @BeforeAll
+    static void start() {
+        vearch.start();
+
         databaseName = "embedding_db";
         spaceName = "embedding_space";
         baseUrl = "http://" + vearch.getHost() + ":" + vearch.getMappedPort(9001);
@@ -47,6 +48,11 @@ class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
                 .baseUrl(baseUrl)
                 .timeout(Duration.ofSeconds(60))
                 .build();
+    }
+
+    @AfterAll
+    static void stop() {
+        vearch.stop();
     }
 
     @BeforeEach
