@@ -433,6 +433,23 @@ tokenStream.onNext(System.out::println)
     .start();
 ```
 
+### Flux
+You can also use `Flux<String>` instead of `TokenStream`.
+For this, please import `langchain4j-reactor` module:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-reactor</artifactId>
+    <version>0.34.0</version>
+</dependency>
+```
+```java
+interface Assistant {
+
+  Flux<String> chat(String message);
+}
+```
+
 [Streaming example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
 
 
