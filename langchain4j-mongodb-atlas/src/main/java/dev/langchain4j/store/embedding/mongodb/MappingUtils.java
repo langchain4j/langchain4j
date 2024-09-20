@@ -21,7 +21,8 @@ class MappingUtils {
                 .id(id)
                 .embedding(embedding.vectorAsList())
                 .text(hasTextSegment ? textSegment.text() : null)
-                .metadata(hasTextSegment ? textSegment.metadata().toMap() : null)
+                // TODO: change to using Metadata.toMap()
+                .metadata(hasTextSegment ? textSegment.metadata().asMap() : null)
                 .build();
     }
 

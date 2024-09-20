@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-class MongoDbMatchedDocument {
+public class MongoDbMatchedDocument {
 
     private String id;
     private List<Float> embedding;
@@ -12,10 +12,10 @@ class MongoDbMatchedDocument {
     private Map<String, String> metadata;
     private Double score;
 
-    MongoDbMatchedDocument() {
+    public MongoDbMatchedDocument() {
     }
 
-    MongoDbMatchedDocument(String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
+    public MongoDbMatchedDocument(String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
@@ -61,43 +61,5 @@ class MongoDbMatchedDocument {
 
     public void setScore(Double score) {
         this.score = score;
-    }
-
-    static Builder builder() {
-        return new Builder();
-    }
-
-    static class Builder {
-
-        private String id;
-        private List<Float> embedding;
-        private String text;
-        private Map<String, String> metadata;
-        private Double score;
-
-        Builder id(String id) {
-            this.id = id;
-            return this;
-        }
-
-        Builder embedding(List<Float> embedding) {
-            this.embedding = embedding;
-            return this;
-        }
-
-        Builder text(String text) {
-            this.text = text;
-            return this;
-        }
-
-        Builder metadata(Map<String, String> metadata) {
-            this.metadata = metadata;
-            return this;
-        }
-
-        Builder score(Double score) {
-            this.score = score;
-            return this;
-        }
     }
 }

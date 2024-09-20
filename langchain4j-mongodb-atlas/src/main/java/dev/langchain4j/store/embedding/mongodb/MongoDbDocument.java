@@ -5,18 +5,18 @@ import org.bson.codecs.pojo.annotations.BsonId;
 import java.util.List;
 import java.util.Map;
 
-class MongoDbDocument {
+public class MongoDbDocument {
 
     @BsonId
     private String id;
     private List<Float> embedding;
     private String text;
-    private Map<String, Object> metadata;
+    private Map<String, String> metadata;
 
-    MongoDbDocument() {
+    public MongoDbDocument() {
     }
 
-    MongoDbDocument(String id, List<Float> embedding, String text, Map<String, Object> metadata) {
+    public MongoDbDocument(String id, List<Float> embedding, String text, Map<String, String> metadata) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
@@ -47,46 +47,46 @@ class MongoDbDocument {
         this.text = text;
     }
 
-    public Map<String, Object> getMetadata() {
+    public Map<String, String> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(Map<String, Object> metadata) {
+    public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
-    static class Builder {
+    public static class Builder {
 
         private String id;
         private List<Float> embedding;
         private String text;
-        private Map<String, Object> metadata;
+        private Map<String, String> metadata;
 
-        Builder id(String id) {
+        public Builder id(String id) {
             this.id = id;
             return this;
         }
 
-        Builder embedding(List<Float> embedding) {
+        public Builder embedding(List<Float> embedding) {
             this.embedding = embedding;
             return this;
         }
 
-        Builder text(String text) {
+        public Builder text(String text) {
             this.text = text;
             return this;
         }
 
-        Builder metadata(Map<String, Object> metadata) {
+        public Builder metadata(Map<String, String> metadata) {
             this.metadata = metadata;
             return this;
         }
 
-        MongoDbDocument build() {
+        public MongoDbDocument build() {
             return new MongoDbDocument(id, embedding, text, metadata);
         }
 
