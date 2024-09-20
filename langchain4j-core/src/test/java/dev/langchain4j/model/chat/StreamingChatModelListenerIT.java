@@ -145,9 +145,11 @@ public abstract class StreamingChatModelListenerIT {
         if (assertResponseModel()) {
             assertThat(response.model()).isNotBlank();
         }
-        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        if (assertTokenUsage()) {
+            assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
+            assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+            assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        }
         if (assertFinishReason()) {
             assertThat(response.finishReason()).isNotNull();
         }
@@ -163,6 +165,10 @@ public abstract class StreamingChatModelListenerIT {
     }
 
     protected boolean assertResponseModel() {
+        return true;
+    }
+
+    protected boolean assertTokenUsage() {
         return true;
     }
 
