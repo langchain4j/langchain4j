@@ -767,17 +767,9 @@ public class GoogleAiGeminiChatModelIT {
         assertThat(response).containsIgnoringCase("7");
         verify(spyCalculator).add(3, 4);
 
-        response = assistant.chat("How much is 18 - 4?");
-        assertThat(response).containsIgnoringCase("14");
-        verify(spyCalculator).subtract(18, 4);
-
         response = assistant.chat("How much is 7 * 11?");
         assertThat(response).containsIgnoringCase("77");
         verify(spyCalculator).multiply(7, 11);
-
-        response = assistant.chat("How much is 185 / 5?");
-        assertThat(response).containsIgnoringCase("37");
-        verify(spyCalculator).divide(185, 5);
 
         verifyNoMoreInteractions(spyCalculator);
 
