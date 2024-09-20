@@ -133,7 +133,6 @@ public class DefaultAnthropicClient extends AnthropicClient {
     @Override
     public void createMessage(AnthropicCreateMessageRequest request, StreamingResponseHandler<AiMessage> handler) {
 
-
         EventSourceListener eventSourceListener = new EventSourceListener() {
 
             private final ReentrantLock lock = new ReentrantLock();
