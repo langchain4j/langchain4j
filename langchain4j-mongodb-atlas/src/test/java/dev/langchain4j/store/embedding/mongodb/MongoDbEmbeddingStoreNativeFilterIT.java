@@ -12,7 +12,6 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import lombok.SneakyThrows;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -46,13 +45,12 @@ class MongoDbEmbeddingStoreNativeFilterIT {
             .databaseName("test_database")
             .collectionName("test_collection")
             .indexName("test_index")
-            .filter(Filters.and(Filters.eqFull("metadata.test-key", "test-value")))
+            .filter(Filters.and(Filters.eq("metadata.test-key", "test-value")))
             .indexMapping(indexMapping)
             .createIndex(true)
             .build();
 
     @BeforeAll
-    @SneakyThrows
     static void start() {
         mongodb.start();
 
@@ -86,7 +84,7 @@ class MongoDbEmbeddingStoreNativeFilterIT {
     }
 
     @Test
-    void should_find_relevant_with_filter() {
+    void should_find_relevant_with_filter() throws Exception {
 
         // given
         TextSegment segment = TextSegment.from("this segment should be found", Metadata.from("test-key", "test-value"));
@@ -115,8 +113,7 @@ class MongoDbEmbeddingStoreNativeFilterIT {
         assertThat(match.embedded()).isEqualTo(segment);
     }
 
-    @SneakyThrows
-    private void awaitUntilPersisted() {
+    private void awaitUntilPersisted() throws Exception {
         Thread.sleep(2000);
     }
 }
