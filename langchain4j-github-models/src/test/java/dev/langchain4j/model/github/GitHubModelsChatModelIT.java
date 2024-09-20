@@ -3,12 +3,12 @@ package dev.langchain4j.model.github;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.DEFAULT_CHAT_MODEL_NAME;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,7 +21,7 @@ public class GitHubModelsChatModelIT {
 
         GitHubModelsChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
-                .modelName("Phi-3.5-mini-instruct")
+                .modelName(DEFAULT_CHAT_MODEL_NAME)
                 .logRequestsAndResponses(true)
                 .build();
 

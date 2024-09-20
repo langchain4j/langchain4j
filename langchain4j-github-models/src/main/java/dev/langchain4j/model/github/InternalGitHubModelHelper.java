@@ -44,6 +44,8 @@ class InternalGitHubModelHelper {
 
     public static final String DEFAULT_GITHUB_MODELS_ENDPOINT = "https://models.inference.ai.azure.com";
 
+    public static final String DEFAULT_CHAT_MODEL_NAME = "Phi-3.5-mini-instruct";
+
     public static final String DEFAULT_USER_AGENT = "langchain4j-github-models";
 
     public static ChatCompletionsClient setupSyncClient(String endpoint, String serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
