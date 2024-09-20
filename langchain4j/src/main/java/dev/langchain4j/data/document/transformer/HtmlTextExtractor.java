@@ -23,6 +23,15 @@ import static org.jsoup.select.NodeTraversor.traverse;
  * Extracts text from a given HTML document.
  * A CSS selector can be specified to extract text only from desired element(s).
  * Also, multiple CSS selectors can be specified to extract metadata from desired elements.
+ * <p>
+ * This class uses Jsoup, which is an optional dependency, so please import it explicitly:
+ * <pre>
+ * <dependency>
+ *     <groupId>org.jsoup</groupId>
+ *     <artifactId>jsoup</artifactId>
+ *     <version>1.18.1</version>
+ * </dependency>
+ * </pre>
  */
 public class HtmlTextExtractor implements DocumentTransformer {
 
