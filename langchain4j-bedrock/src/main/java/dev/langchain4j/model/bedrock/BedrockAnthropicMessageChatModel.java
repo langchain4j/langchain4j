@@ -129,7 +129,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         }
 
         final String body = Json.toJson(parameters);
-        // Invoke model
+
         InvokeModelRequest invokeModelRequest = InvokeModelRequest
                 .builder()
                 .modelId(getModelId())

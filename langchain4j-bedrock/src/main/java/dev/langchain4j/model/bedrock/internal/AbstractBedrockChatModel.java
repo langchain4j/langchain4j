@@ -39,7 +39,7 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
     public Response<AiMessage> generate(List<ChatMessage> messages) {
 
         final String body = convertMessagesToAwsBody(messages);
-        // Invoke model
+
         InvokeModelRequest invokeModelRequest = InvokeModelRequest
                 .builder()
                 .modelId(getModelId())

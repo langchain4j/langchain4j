@@ -62,7 +62,7 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
 
         final Map<String, Object> requestParameters = getRequestParameters(prompt);
         final String body = Json.toJson(requestParameters);
-        // Invoke model
+
         InvokeModelRequest invokeModelRequest = InvokeModelRequest
                 .builder()
                 .modelId(getModelId())
