@@ -43,8 +43,7 @@ import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HA
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 public class GoogleAiGeminiChatModelIT {
 
@@ -779,6 +778,8 @@ public class GoogleAiGeminiChatModelIT {
         response = assistant.chat("How much is 185 / 5?");
         assertThat(response).containsIgnoringCase("37");
         verify(spyCalculator).divide(185, 5);
+
+        verifyNoMoreInteractions(spyCalculator);
 
         System.out.println("chatMemory = " + chatMemory.messages());
     }
