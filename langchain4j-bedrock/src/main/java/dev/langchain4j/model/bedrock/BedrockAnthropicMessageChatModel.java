@@ -29,8 +29,13 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.output.Response;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,13 +43,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
+@Slf4j
 @Getter
 @SuperBuilder
 public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<BedrockAnthropicMessageChatModelResponse> {
@@ -119,16 +129,56 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         }
 
         final String body = Json.toJson(parameters);
+        // Invoke model
+        InvokeModelRequest invokeModelRequest = InvokeModelRequest
+                .builder()
+                .modelId(getModelId())
+                .body(SdkBytes.fromString(body, Charset.defaultCharset()))
+                .build();
 
-        InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(body), getMaxRetries());
-        final String response = invokeModelResponse.body().asUtf8String();
-        BedrockAnthropicMessageChatModelResponse result = Json.fromJson(response, getResponseClassType());
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, messages, toolSpecifications);
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
 
-        return new Response<>(
-            aiMessageFrom(result),
-            result.getTokenUsage(),
-            result.getFinishReason()
-        );
+        try {
+            InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
+            final String response = invokeModelResponse.body().asUtf8String();
+            BedrockAnthropicMessageChatModelResponse result = Json.fromJson(response, getResponseClassType());
+
+            Response<AiMessage> responseMessage = Response.from(
+                    aiMessageFrom(result),
+                    result.getTokenUsage(),
+                    result.getFinishReason()
+            );
+
+            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                    result.getId(),
+                    result.getModel(),
+                    responseMessage
+            );
+            ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                    modelListenerResponse,
+                    modelListenerRequest,
+                    attributes
+            );
+
+            listeners.forEach(listener -> {
+                try {
+                    listener.onResponse(responseContext);
+                } catch (Exception e) {
+                    log.warn("Exception while calling model listener", e);
+                }
+            });
+
+            return responseMessage;
+        } catch (RuntimeException e) {
+            listenerErrorResponse(
+                    e,
+                    modelListenerRequest,
+                    attributes
+            );
+            throw e;
+        }
     }
 
     private Object toAnthropicToolChoice(ToolSpecification toolChoiceSpecification) {
