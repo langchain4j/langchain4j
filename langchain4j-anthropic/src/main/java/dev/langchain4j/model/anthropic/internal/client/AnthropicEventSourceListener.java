@@ -45,11 +45,11 @@ class AnthropicEventSourceListener extends EventSourceListener {
             AnthropicStreamingData partialResponse = OBJECT_MAPPER.readValue(dataString, AnthropicStreamingData.class);
 
             if ("message_start".equals(type)) {
-                responseBuilder.messageStart(partialResponse);
+                responseBuilder.handleMessageStart(partialResponse);
             } else if ("content_block_start".equals(type)) {
-                responseBuilder.contentBlockStart(partialResponse);
+                responseBuilder.handleContentBlockStart(partialResponse);
             } else if ("content_block_delta".equals(type)) {
-                responseBuilder.contentBlockDelta(partialResponse);
+                responseBuilder.handleContentBlockDelta(partialResponse);
                 String text = partialResponse.delta.text;
                 if (text != null && !text.isEmpty()) {
                     handler.onNext(text);
@@ -58,11 +58,13 @@ class AnthropicEventSourceListener extends EventSourceListener {
                 if (partialJson != null && !partialJson.isEmpty()) {
                     handler.onNext(partialJson);
                 }
+            } else if ("content_block_stop".equals(type)) {
+                responseBuilder.handleContentBlockStop();
             } else if ("message_delta".equals(type)) {
-                responseBuilder.messageDelta(partialResponse);
+                responseBuilder.handleMessageDelta(partialResponse);
             } else if ("message_stop".equals(type)) {
-                Response<AiMessage> message = responseBuilder.build();
-                handler.onComplete(message);
+                Response<AiMessage> response = responseBuilder.build();
+                handler.onComplete(response);
             } else if ("error".equals(type)) {
                 handler.onError(new AnthropicHttpException(null, dataString));
             }

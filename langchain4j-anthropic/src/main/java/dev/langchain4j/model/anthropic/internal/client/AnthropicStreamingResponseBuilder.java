@@ -6,34 +6,68 @@ import dev.langchain4j.model.anthropic.internal.api.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
+import static java.util.Collections.synchronizedList;
 
 class AnthropicStreamingResponseBuilder {
 
+    private final ReentrantLock lock = new ReentrantLock();
+    final List<String> contents = synchronizedList(new ArrayList<>());
+    volatile StringBuffer currentContentBuilder = new StringBuffer();
+    private AnthropicContentBlockType currentContentBlockStartType;
+
     private final AtomicInteger inputTokenCount = new AtomicInteger();
     private final AtomicInteger outputTokenCount = new AtomicInteger();
-    private AnthropicContentBlockType currentContentBlockStartType;
-    private final StringBuffer textBuilder = new StringBuffer();
     private final Map<Integer, AnthropicToolExecutionRequestBuilder> toolExecutionRequestBuilderMap = new HashMap<>();
+    AtomicReference<String> responseId = new AtomicReference<>();
+    AtomicReference<String> responseModel = new AtomicReference<>();
 
     volatile String stopReason;
 
-    public AnthropicStreamingResponseBuilder() {}
-
-    public void messageStart(AnthropicStreamingData data) {
-        if (data.message != null && data.message.usage != null) {
-            updateUsage(data.message.usage);
+    private StringBuffer currentContentBuilder() {
+        lock.lock();
+        try {
+            return currentContentBuilder;
+        } finally {
+            lock.unlock();
         }
     }
 
-    private void updateUsage(AnthropicUsage usage) {
+    private void setCurrentContentBuilder(StringBuffer stringBuffer) {
+        lock.lock();
+        try {
+            currentContentBuilder = stringBuffer;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void handleMessageStart(AnthropicStreamingData data) {
+        AnthropicResponseMessage message = data.message;
+        if (message != null) {
+            if (message.usage != null) {
+                handleUsage(message.usage);
+            }
+            if (message.id != null) {
+                responseId.set(message.id);
+            }
+            if (message.model != null) {
+                responseModel.set(message.model);
+            }
+        }
+    }
+
+    private void handleUsage(AnthropicUsage usage) {
         if (usage.inputTokens != null) {
             this.inputTokenCount.addAndGet(usage.inputTokens);
         }
@@ -42,7 +76,7 @@ class AnthropicStreamingResponseBuilder {
         }
     }
 
-    public void contentBlockStart(AnthropicStreamingData data) {
+    public void handleContentBlockStart(AnthropicStreamingData data) {
         if (data.contentBlock == null) {
             return;
         }
@@ -52,7 +86,7 @@ class AnthropicStreamingResponseBuilder {
         if (currentContentBlockStartType == AnthropicContentBlockType.TEXT) {
             String text = data.contentBlock.text;
             if (isNotNullOrEmpty(text)) {
-                textBuilder.append(text);
+                currentContentBuilder().append(text);
             }
         } else if (currentContentBlockStartType == AnthropicContentBlockType.TOOL_USE) {
             toolExecutionRequestBuilderMap.putIfAbsent(
@@ -62,7 +96,7 @@ class AnthropicStreamingResponseBuilder {
         }
     }
 
-    public void contentBlockDelta(AnthropicStreamingData data) {
+    public void handleContentBlockDelta(AnthropicStreamingData data) {
         if (data.delta == null) {
             return;
         }
@@ -70,7 +104,7 @@ class AnthropicStreamingResponseBuilder {
         if (currentContentBlockStartType == AnthropicContentBlockType.TEXT) {
             String text = data.delta.text;
             if (isNotNullOrEmpty(text)) {
-                textBuilder.append(text);
+                currentContentBuilder().append(text);
             }
         } else if (currentContentBlockStartType == AnthropicContentBlockType.TOOL_USE) {
             String partialJson = data.delta.partialJson;
@@ -84,7 +118,12 @@ class AnthropicStreamingResponseBuilder {
         }
     }
 
-    public void messageDelta(AnthropicStreamingData data) {
+    public void handleContentBlockStop() {
+        contents.add(currentContentBuilder().toString());
+        setCurrentContentBuilder(new StringBuffer());
+    }
+
+    public void handleMessageDelta(AnthropicStreamingData data) {
         if (data.delta != null) {
             AnthropicDelta delta = data.delta;
             if (delta.stopReason != null) {
@@ -92,7 +131,7 @@ class AnthropicStreamingResponseBuilder {
             }
         }
         if (data.usage != null) {
-            updateUsage(data.usage);
+            handleUsage(data.usage);
         }
     }
 
@@ -105,19 +144,32 @@ class AnthropicStreamingResponseBuilder {
             return Response.from(
                     AiMessage.from(toolExecutionRequests),
                     new TokenUsage(inputTokenCount.get(), outputTokenCount.get()),
-                    toFinishReason(stopReason)
+                    toFinishReason(stopReason),
+                    createMetadata()
             );
         }
 
-        String content = textBuilder.toString();
+        String content = String.join("\n", contents);
         if (!content.isEmpty()) {
             return Response.from(
-                    AiMessage.from(textBuilder.toString()),
+                    AiMessage.from(content),
                     new TokenUsage(inputTokenCount.get(), outputTokenCount.get()),
-                    toFinishReason(stopReason)
+                    toFinishReason(stopReason),
+                    createMetadata()
             );
         }
 
         return null;
+    }
+
+    private Map<String, Object> createMetadata() {
+        Map<String, Object> metadata = new HashMap<>();
+        if (responseId.get() != null) {
+            metadata.put("id", responseId.get());
+        }
+        if (responseModel.get() != null) {
+            metadata.put("model", responseModel.get());
+        }
+        return metadata;
     }
 }
