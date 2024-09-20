@@ -45,7 +45,7 @@ class MongoDbEmbeddingStoreNativeFilterIT {
             .databaseName("test_database")
             .collectionName("test_collection")
             .indexName("test_index")
-            .filter(Filters.and(Filters.eq("metadata.test-key", "test-value")))
+            .filter(Filters.and(Filters.eqFull("metadata.test-key", "test-value")))
             .indexMapping(indexMapping)
             .createIndex(true)
             .build();

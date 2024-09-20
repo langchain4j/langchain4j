@@ -16,12 +16,17 @@ import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariables;
 
 import static java.lang.String.format;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
-@EnabledIfEnvironmentVariable(named = "MONGODB_ATLAS_USERNAME", matches = ".+")
+@EnabledIfEnvironmentVariables({
+        @EnabledIfEnvironmentVariable(named = "MONGODB_ATLAS_USERNAME", matches = ".+"),
+        @EnabledIfEnvironmentVariable(named = "MONGODB_ATLAS_PASSWORD", matches = ".+"),
+        @EnabledIfEnvironmentVariable(named = "MONGODB_ATLAS_HOST", matches = ".+")
+})
 class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 
     private static final String DATABASE_NAME = "test_database";
