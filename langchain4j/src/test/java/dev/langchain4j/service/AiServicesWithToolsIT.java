@@ -435,8 +435,7 @@ class AiServicesWithToolsIT {
                 .tools(stringListProcessor)
                 .build();
 
-        String userMessage = "Process strings 'cat' and 'dog' together, do not separate them!. " +
-                "Use format ['cat', 'dog'] for the list of strings."; // Specify the format expected to avoid ambiguity
+        String userMessage = "Process strings 'cat' and 'dog' together in a single tool call.";
 
         // when
         assistant.chat(userMessage);
