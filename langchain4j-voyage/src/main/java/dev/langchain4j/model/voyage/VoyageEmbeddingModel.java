@@ -2,6 +2,7 @@ package dev.langchain4j.model.voyage;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -23,7 +24,7 @@ import static java.util.stream.Collectors.toList;
  * An implementation of an {@link EmbeddingModel} that uses
  * <a href="https://docs.voyageai.com/docs/embeddings">Voyage AI Embedding API</a>.
  */
-public class VoyageEmbeddingModel implements EmbeddingModel {
+public class VoyageEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final VoyageClient client;
     private final Integer maxRetries;
@@ -46,12 +47,12 @@ public class VoyageEmbeddingModel implements EmbeddingModel {
             Boolean logResponses,
             Integer maxSegmentsPerBatch
     ) {
-        // Below attribute is force to non-null.
+        // Below attributes are force to non-null.
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.modelName = getOrDefault(modelName, VOYAGE_3_LITE);
         this.truncation = getOrDefault(truncation, true);
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 96);
-        // Below attribute can be null.
+        // Below attributes can be null.
         this.inputType = inputType;
         this.encodeFormat = encodeFormat;
 
@@ -79,7 +80,7 @@ public class VoyageEmbeddingModel implements EmbeddingModel {
 
     private Response<List<Embedding>> embedTexts(List<String> texts) {
         List<Embedding> embeddings = new ArrayList<>();
-        int totalTokenCount = 0;
+        int inputTokenCount = 0;
 
         for (int i = 0; i < texts.size(); i += maxSegmentsPerBatch) {
             List<String> batch = texts.subList(i, Math.min(i + maxSegmentsPerBatch, texts.size()));
@@ -95,14 +96,19 @@ public class VoyageEmbeddingModel implements EmbeddingModel {
             EmbeddingResponse response = withRetry(() -> this.client.embed(request), maxRetries);
 
             embeddings.addAll(getEmbeddings(response));
-            totalTokenCount += getTokenUsage(response);
+            inputTokenCount += getTokenUsage(response);
         }
 
         return Response.from(
                 embeddings,
-                new TokenUsage(0, 0, totalTokenCount)
+                new TokenUsage(inputTokenCount)
         );
 
+    }
+
+    @Override
+    protected Integer knownDimension() {
+        return modelName.dimension();
     }
 
     private List<Embedding> getEmbeddings(EmbeddingResponse response) {

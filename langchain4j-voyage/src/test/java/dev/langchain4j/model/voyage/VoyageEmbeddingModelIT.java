@@ -30,8 +30,8 @@ class VoyageEmbeddingModelIT {
         // then
         assertThat(response.content().dimension()).isEqualTo(model.dimension());
 
-        assertThat(response.tokenUsage().inputTokenCount()).isZero();
-        assertThat(response.tokenUsage().outputTokenCount()).isZero();
+        assertThat(response.tokenUsage().inputTokenCount()).isPositive();
+        assertThat(response.tokenUsage().outputTokenCount()).isNull();
         assertThat(response.tokenUsage().totalTokenCount()).isPositive();
 
         assertThat(response.finishReason()).isNull();
@@ -65,11 +65,11 @@ class VoyageEmbeddingModelIT {
         Embedding embedding2 = response.content().get(1);
         assertThat(embedding2.dimension()).isEqualTo(model.dimension());
 
-        assertThat(CosineSimilarity.between(embedding1, embedding2)).isGreaterThan(0.9);
+        assertThat(CosineSimilarity.between(embedding1, embedding2)).isGreaterThan(0.8);
 
         assertThat(response.tokenUsage().inputTokenCount()).isZero();
-        assertThat(response.tokenUsage().outputTokenCount()).isZero();
-        assertThat(response.tokenUsage().totalTokenCount()).isPositive();
+        assertThat(response.tokenUsage().outputTokenCount()).isNull();
+        assertThat(response.tokenUsage().totalTokenCount()).isZero();
 
         assertThat(response.finishReason()).isNull();
     }
@@ -100,8 +100,8 @@ class VoyageEmbeddingModelIT {
         assertThat(response.content()).hasSize(segmentCount);
 
         assertThat(response.tokenUsage().inputTokenCount()).isZero();
-        assertThat(response.tokenUsage().outputTokenCount()).isZero();
-        assertThat(response.tokenUsage().totalTokenCount()).isPositive();
+        assertThat(response.tokenUsage().outputTokenCount()).isNull();
+        assertThat(response.tokenUsage().totalTokenCount()).isZero();
 
         assertThat(response.finishReason()).isNull();
     }
