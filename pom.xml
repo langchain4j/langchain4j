@@ -97,6 +97,7 @@
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-onnx-scoring</module>
+        <module>langchain4j-voyage</module>
 
     </modules>
 
