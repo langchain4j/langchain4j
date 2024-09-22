@@ -164,21 +164,52 @@ public class VoyageEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * Name of the model.
+         *
+         * @param modelName Name of the model.
+         * @see VoyageEmbeddingModelName
+         */
         public VoyageEmbeddingModelBuilder modelName(VoyageEmbeddingModelName modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Type of the input text. Defaults to null. Other options: query, document.
+         *
+         * @param inputType Type of input text
+         */
         public VoyageEmbeddingModelBuilder inputType(String inputType) {
             this.inputType = inputType;
             return this;
         }
 
+        /**
+         * Whether to truncate the input texts to fit within the context length. Defaults to true.
+         *
+         * <ul>
+         *     <li>If true, over-length input texts will be truncated to fit within the context length, before vectorized by the embedding model.</li>
+         *     <li>If false, an error will be raised if any given text exceeds the context length.</li>
+         * </ul>
+         *
+         * @param truncation Whether to truncate the input texts.
+         */
         public VoyageEmbeddingModelBuilder truncation(Boolean truncation) {
             this.truncation = truncation;
             return this;
         }
 
+        /**
+         * Format in which the embeddings are encoded. We support two options:
+         *
+         * <ul>
+         *     <li>If not specified (defaults to null): the embeddings are represented as lists of floating-point numbers;</li>
+         *     <li>base64: the embeddings are compressed to base64 encodings.</li>
+         * </ul>
+         *
+         * @param encodingFormat Format in which the embeddings are encoded. Support format is "null" and "base64".
+         */
         public VoyageEmbeddingModelBuilder encodingFormat(String encodingFormat) {
             this.encodingFormat = encodingFormat;
             return this;

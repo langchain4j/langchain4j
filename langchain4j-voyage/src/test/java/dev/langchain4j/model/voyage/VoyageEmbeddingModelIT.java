@@ -38,13 +38,12 @@ class VoyageEmbeddingModelIT {
     }
 
     @Test
-    void should_embed_respect_encoding_format() {
+    void should_respect_encoding_format() {
 
         // given
         EmbeddingModel model = VoyageEmbeddingModel.builder()
                 .apiKey(System.getenv("VOYAGE_API_KEY"))
                 .modelName(VoyageEmbeddingModelName.VOYAGE_3_LITE)
-                .inputType("query")
                 .timeout(Duration.ofSeconds(60))
                 .encodingFormat("base64")
                 .logRequests(true)
@@ -71,8 +70,8 @@ class VoyageEmbeddingModelIT {
         EmbeddingModel model = VoyageEmbeddingModel.builder()
                 .apiKey(System.getenv("VOYAGE_API_KEY"))
                 .modelName(VoyageEmbeddingModelName.VOYAGE_3_LITE)
-                .inputType("query")
                 .timeout(Duration.ofSeconds(60))
+                .inputType("query")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -108,7 +107,6 @@ class VoyageEmbeddingModelIT {
         EmbeddingModel model = VoyageEmbeddingModel.builder()
                 .apiKey(System.getenv("VOYAGE_API_KEY"))
                 .modelName(VoyageEmbeddingModelName.VOYAGE_3_LITE)
-                .inputType("query")
                 .timeout(Duration.ofSeconds(60))
                 .logRequests(true)
                 .logResponses(true)
@@ -126,9 +124,9 @@ class VoyageEmbeddingModelIT {
         // then
         assertThat(response.content()).hasSize(segmentCount);
 
-        assertThat(response.tokenUsage().inputTokenCount()).isZero();
+        assertThat(response.tokenUsage().inputTokenCount()).isPositive();
         assertThat(response.tokenUsage().outputTokenCount()).isNull();
-        assertThat(response.tokenUsage().totalTokenCount()).isZero();
+        assertThat(response.tokenUsage().totalTokenCount()).isPositive();
 
         assertThat(response.finishReason()).isNull();
     }

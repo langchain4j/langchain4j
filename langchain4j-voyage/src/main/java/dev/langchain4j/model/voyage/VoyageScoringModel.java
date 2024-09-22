@@ -123,21 +123,54 @@ public class VoyageScoringModel implements ScoringModel {
             return this;
         }
 
+        /**
+         * Name of the model.
+         *
+         * @param modelName Name of the model.
+         * @see VoyageScoringModelName
+         */
         public VoyageScoringModelBuilder modelName(VoyageScoringModelName modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * The number of most relevant documents to return. If not specified, the reranking results of all documents will be returned.
+         *
+         * @param topK the number of most relevant documents to return.
+         */
         public VoyageScoringModelBuilder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
+        /**
+         * Whether to return the documents in the response. Defaults to false.
+         *
+         * <ul>
+         *     <li>If false, the API will return a list of {"index", "relevance_score"} where "index" refers to the index of a document within the input list.</li>
+         *     <li>If true, the API will return a list of {"index", "document", "relevance_score"} where "document" is the corresponding document from the input list.</li>
+         * </ul>
+         *
+         * <p><b>NOTE:</b> this parameter has no effect on langchain4j, because {@link ScoringModel#score(TextSegment, String)} will only return the relevance score.</p>
+         *
+         * @param returnDocuments Whether to return the documents in the response.
+         */
         public VoyageScoringModelBuilder returnDocuments(Boolean returnDocuments) {
             this.returnDocuments = returnDocuments;
             return this;
         }
 
+        /**
+         * Whether to truncate the input to satisfy the "context length limit" on the query and the documents. Defaults to true.
+         *
+         * <ul>
+         *     <li>If true, the query and documents will be truncated to fit within the context length limit, before processed by the reranker model.</li>
+         *     <li>If false, an error will be raised when the query exceeds 1000 tokens for rerank-lite-1 and 2000 tokens for rerank-1, or the sum of the number of tokens in the query and the number of tokens in any single document exceeds 4000 for rerank-lite-1 and 8000 for rerank-1.</li>
+         * </ul>
+         *
+         * @param truncation Whether to truncate the input to satisfy the "context length limit" on the query and the documents.
+         */
         public VoyageScoringModelBuilder truncation(Boolean truncation) {
             this.truncation = truncation;
             return this;
