@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>langchain4j-cohere</artifactId>
-    <name>LangChain4j :: Integration :: Cohere</name>
+    <name>LangChain4j :: Integration :: Voyage</name>
 
     <dependencies>
         <dependency>
