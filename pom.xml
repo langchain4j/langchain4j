@@ -46,6 +46,7 @@
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-zhipu-ai</module>
+        <module>langchain4j-voyage</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
@@ -97,7 +98,6 @@
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-onnx-scoring</module>
-        <module>langchain4j-voyage</module>
 
     </modules>
 
