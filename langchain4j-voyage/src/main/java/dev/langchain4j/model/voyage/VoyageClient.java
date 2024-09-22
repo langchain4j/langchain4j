@@ -1,28 +1,20 @@
 package dev.langchain4j.model.voyage;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.jetbrains.annotations.NotNull;
+import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
 
-class VoyageClient {
+import static dev.langchain4j.model.voyage.VoyageJsonUtils.getObjectMapper;
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-            .enable(SerializationFeature.INDENT_OUTPUT)
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+class VoyageClient {
 
     private final VoyageApi voyageApi;
 
@@ -50,7 +42,7 @@ class VoyageClient {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClientBuilder.build())
-                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+                .addConverterFactory(JacksonConverterFactory.create(getObjectMapper()))
                 .build();
 
         this.voyageApi = retrofit.create(VoyageApi.class);
@@ -58,8 +50,7 @@ class VoyageClient {
 
     EmbeddingResponse embed(EmbeddingRequest request) {
         try {
-            retrofit2.Response<EmbeddingResponse> retrofitResponse
-                    = voyageApi.embed(request).execute();
+            Response<EmbeddingResponse> retrofitResponse = voyageApi.embed(request).execute();
 
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
@@ -73,8 +64,7 @@ class VoyageClient {
 
     RerankResponse rerank(RerankRequest request) {
         try {
-            retrofit2.Response<RerankResponse> retrofitResponse
-                    = voyageApi.rerank(request).execute();
+            Response<RerankResponse> retrofitResponse = voyageApi.rerank(request).execute();
 
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
@@ -86,7 +76,7 @@ class VoyageClient {
         }
     }
 
-    private static RuntimeException toException(retrofit2.Response<?> response) throws IOException {
+    private RuntimeException toException(retrofit2.Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();
         String errorMessage = String.format("status code: %s; body: %s", code, body);

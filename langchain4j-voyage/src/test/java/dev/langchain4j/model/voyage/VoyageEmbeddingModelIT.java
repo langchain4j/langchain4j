@@ -38,6 +38,33 @@ class VoyageEmbeddingModelIT {
     }
 
     @Test
+    void should_embed_respect_encoding_format() {
+
+        // given
+        EmbeddingModel model = VoyageEmbeddingModel.builder()
+                .apiKey(System.getenv("VOYAGE_API_KEY"))
+                .modelName(VoyageEmbeddingModelName.VOYAGE_3_LITE)
+                .inputType("query")
+                .timeout(Duration.ofSeconds(60))
+                .encodingFormat("base64")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        Response<Embedding> response = model.embed("Hello World");
+
+        // then
+        assertThat(response.content().dimension()).isEqualTo(model.dimension());
+
+        assertThat(response.tokenUsage().inputTokenCount()).isPositive();
+        assertThat(response.tokenUsage().outputTokenCount()).isNull();
+        assertThat(response.tokenUsage().totalTokenCount()).isPositive();
+
+        assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
     void should_embed_multiple_segments() {
 
         // given

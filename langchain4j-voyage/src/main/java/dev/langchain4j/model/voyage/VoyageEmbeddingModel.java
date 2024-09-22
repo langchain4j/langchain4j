@@ -31,7 +31,7 @@ public class VoyageEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final VoyageEmbeddingModelName modelName;
     private final String inputType;
     private final Boolean truncation;
-    private final String encodeFormat;
+    private final String encodingFormat;
     private final int maxSegmentsPerBatch;
 
     public VoyageEmbeddingModel(
@@ -42,7 +42,7 @@ public class VoyageEmbeddingModel extends DimensionAwareEmbeddingModel {
             VoyageEmbeddingModelName modelName,
             String inputType,
             Boolean truncation,
-            String encodeFormat,
+            String encodingFormat,
             Boolean logRequests,
             Boolean logResponses,
             Integer maxSegmentsPerBatch
@@ -54,7 +54,7 @@ public class VoyageEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 96);
         // Below attributes can be null.
         this.inputType = inputType;
-        this.encodeFormat = encodeFormat;
+        this.encodingFormat = encodingFormat;
 
         this.client = VoyageClient.builder()
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
@@ -90,7 +90,7 @@ public class VoyageEmbeddingModel extends DimensionAwareEmbeddingModel {
                     .inputType(inputType)
                     .model(modelName.toString())
                     .truncation(truncation)
-                    .encodeFormat(encodeFormat)
+                    .encodingFormat(encodingFormat)
                     .build();
 
             EmbeddingResponse response = withRetry(() -> this.client.embed(request), maxRetries);
@@ -139,7 +139,7 @@ public class VoyageEmbeddingModel extends DimensionAwareEmbeddingModel {
         private VoyageEmbeddingModelName modelName;
         private String inputType;
         private Boolean truncation;
-        private String encodeFormat;
+        private String encodingFormat;
         private Boolean logRequests;
         private Boolean logResponses;
         private Integer maxSegmentsPerBatch;
@@ -179,8 +179,8 @@ public class VoyageEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
-        public VoyageEmbeddingModelBuilder encodeFormat(String encodeFormat) {
-            this.encodeFormat = encodeFormat;
+        public VoyageEmbeddingModelBuilder encodingFormat(String encodingFormat) {
+            this.encodingFormat = encodingFormat;
             return this;
         }
 
@@ -208,7 +208,7 @@ public class VoyageEmbeddingModel extends DimensionAwareEmbeddingModel {
                     modelName,
                     inputType,
                     truncation,
-                    encodeFormat,
+                    encodingFormat,
                     logRequests,
                     logResponses,
                     maxSegmentsPerBatch

@@ -1,10 +1,13 @@
 package dev.langchain4j.model.voyage;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
 import java.util.List;
 
 class EmbeddingResponse {
 
     private String object;
+    @JsonDeserialize(using = VoyageEmbeddingDeserializer.class)
     private List<EmbeddingData> data;
     private String model;
     private TokenUsage usage;
@@ -30,6 +33,15 @@ class EmbeddingResponse {
         private String object;
         private List<Float> embedding;
         private Integer index;
+
+        EmbeddingData() {
+        }
+
+        EmbeddingData(String object, List<Float> embedding, Integer index) {
+            this.object = object;
+            this.embedding = embedding;
+            this.index = index;
+        }
 
         public String getObject() {
             return object;

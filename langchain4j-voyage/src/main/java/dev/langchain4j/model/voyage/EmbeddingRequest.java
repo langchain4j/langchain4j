@@ -7,18 +7,18 @@ class EmbeddingRequest {
     private List<String> input;
     private String model;
     private String inputType;
-    private boolean truncation;
-    private String encodeFormat;
+    private Boolean truncation;
+    private String encodingFormat;
 
     EmbeddingRequest() {
     }
 
-    public EmbeddingRequest(List<String> input, String model, String inputType, boolean truncation, String encodeFormat) {
+    public EmbeddingRequest(List<String> input, String model, String inputType, Boolean truncation, String encodingFormat) {
         this.input = input;
         this.model = model;
         this.inputType = inputType;
         this.truncation = truncation;
-        this.encodeFormat = encodeFormat;
+        this.encodingFormat = encodingFormat;
     }
 
     public List<String> getInput() {
@@ -33,12 +33,12 @@ class EmbeddingRequest {
         return inputType;
     }
 
-    public boolean getTruncation() {
+    public Boolean getTruncation() {
         return truncation;
     }
 
-    public String getEncodeFormat() {
-        return encodeFormat;
+    public String getEncodingFormat() {
+        return encodingFormat;
     }
 
     static EmbeddingRequestBuilder builder() {
@@ -50,8 +50,8 @@ class EmbeddingRequest {
         private List<String> input;
         private String model;
         private String inputType;
-        private boolean truncation;
-        private String encodeFormat;
+        private Boolean truncation;
+        private String encodingFormat;
 
         EmbeddingRequestBuilder input(List<String> input) {
             this.input = input;
@@ -68,18 +68,18 @@ class EmbeddingRequest {
             return this;
         }
 
-        EmbeddingRequestBuilder truncation(boolean truncation) {
+        EmbeddingRequestBuilder truncation(Boolean truncation) {
             this.truncation = truncation;
             return this;
         }
 
-        EmbeddingRequestBuilder encodeFormat(String encodeFormat) {
-            this.encodeFormat = encodeFormat;
+        EmbeddingRequestBuilder encodingFormat(String encodingFormat) {
+            this.encodingFormat = encodingFormat;
             return this;
         }
 
         EmbeddingRequest build() {
-            return new EmbeddingRequest(input, model, inputType, truncation, encodeFormat);
+            return new EmbeddingRequest(input, model, inputType, truncation, encodingFormat);
         }
     }
 }
