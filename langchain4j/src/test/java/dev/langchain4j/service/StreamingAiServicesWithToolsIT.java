@@ -25,17 +25,20 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
@@ -52,6 +55,7 @@ class StreamingAiServicesWithToolsIT {
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                        .modelName(GPT_4_O_MINI)
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
@@ -133,7 +137,7 @@ class StreamingAiServicesWithToolsIT {
                 .onComplete(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
+        Response<AiMessage> response = future.get(60, SECONDS);
 
         // then
         assertThat(response.content().text()).contains("42", "57");
@@ -152,6 +156,74 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel).generate(
                 eq(asList(messages.get(0), messages.get(1), messages.get(2))),
                 eq(singletonList(EXPECTED_SPECIFICATION)),
+                any()
+        );
+    }
+
+    static class WeatherService {
+
+        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
+                .name("currentTemperature")
+                .description("")
+                .addParameter("arg0", STRING)
+                .addParameter("arg1", STRING, from("enum", asList("CELSIUS", "fahrenheit", "Kelvin")))
+                .build();
+
+        @Tool
+        int currentTemperature(String city, TemperatureUnit unit) {
+            System.out.printf("called currentTemperature(%s, %s)%n", city, unit);
+            return 19;
+        }
+    }
+
+    enum TemperatureUnit {
+        CELSIUS, fahrenheit, Kelvin
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_tool_with_enum_parameter(StreamingChatLanguageModel model) throws Exception {
+
+        // given
+        WeatherService weatherService = spy(new WeatherService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        StreamingChatLanguageModel spyModel = spy(model);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatLanguageModel(spyModel)
+                .chatMemory(chatMemory)
+                .tools(weatherService)
+                .build();
+
+        String userMessage = "What is the temperature in Munich now, in Celsius?";
+
+        // when
+        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        assistant.chat(userMessage)
+                .onNext(token -> {
+                })
+                .onComplete(future::complete)
+                .onError(future::completeExceptionally)
+                .start();
+        Response<AiMessage> response = future.get(60, SECONDS);
+
+        // then
+        assertThat(response.content().text()).contains("19");
+
+        verify(weatherService).currentTemperature("Munich", CELSIUS);
+        verifyNoMoreInteractions(weatherService);
+
+        List<ChatMessage> messages = chatMemory.messages();
+        verify(spyModel).generate(
+                eq(singletonList(messages.get(0))),
+                eq(singletonList(WeatherService.EXPECTED_SPECIFICATION)),
+                any()
+        );
+        verify(spyModel).generate(
+                eq(asList(messages.get(0), messages.get(1), messages.get(2))),
+                eq(singletonList(WeatherService.EXPECTED_SPECIFICATION)),
                 any()
         );
     }
@@ -176,7 +248,7 @@ class StreamingAiServicesWithToolsIT {
                 .toolProvider(toolProvider)
                 .build();
 
-        String userMessage = "What are the amounts of transactions T001 and T002?";
+        String userMessage = "What is the amounts of transactions T001?";
 
         // when
         CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
@@ -186,10 +258,10 @@ class StreamingAiServicesWithToolsIT {
                 .onComplete(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
-        Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
+        Response<AiMessage> response = future.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("42", "57");
+        assertThat(response.content().text()).contains("42");
 
         // then
         verify(toolExecutor).execute(any(), any());

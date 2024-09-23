@@ -1,7 +1,9 @@
 package dev.langchain4j.model.openai;
 
 import dev.ai4j.openai4j.OpenAiClient;
+import dev.ai4j.openai4j.completion.CompletionChoice;
 import dev.ai4j.openai4j.completion.CompletionRequest;
+import dev.ai4j.openai4j.shared.StreamOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
@@ -16,6 +18,7 @@ import java.time.Duration;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
@@ -77,24 +80,29 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
 
         CompletionRequest request = CompletionRequest.builder()
+                .stream(true)
+                .streamOptions(StreamOptions.builder()
+                        .includeUsage(true)
+                        .build())
                 .model(modelName)
                 .prompt(prompt)
                 .temperature(temperature)
                 .build();
 
-        int inputTokenCount = tokenizer.estimateTokenCountInText(prompt);
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
                     responseBuilder.append(partialResponse);
-                    String token = partialResponse.text();
-                    if (token != null) {
-                        handler.onNext(token);
+                    for (CompletionChoice choice : partialResponse.choices()) {
+                        String token = choice.text();
+                        if (isNotNullOrEmpty(token)) {
+                            handler.onNext(token);
+                        }
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build(tokenizer, false);
+                    Response<AiMessage> response = responseBuilder.build();
                     handler.onComplete(Response.from(
                             response.content().text(),
                             response.tokenUsage(),
@@ -110,6 +118,10 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         return tokenizer.estimateTokenCountInText(prompt);
     }
 
+    /**
+     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
+     */
+    @Deprecated
     public static OpenAiStreamingLanguageModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

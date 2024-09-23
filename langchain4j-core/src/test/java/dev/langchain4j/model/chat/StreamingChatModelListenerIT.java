@@ -145,11 +145,11 @@ public abstract class StreamingChatModelListenerIT {
         if (assertResponseModel()) {
             assertThat(response.model()).isNotBlank();
         }
-
-        // Token usage should in fact be > 0, but this is currently unsupported on the server side
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(0);
-        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(0);
+        if (assertTokenUsage()) {
+            assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
+            assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+            assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        }
         if (assertFinishReason()) {
             assertThat(response.finishReason()).isNotNull();
         }
@@ -165,6 +165,10 @@ public abstract class StreamingChatModelListenerIT {
     }
 
     protected boolean assertResponseModel() {
+        return true;
+    }
+
+    protected boolean assertTokenUsage() {
         return true;
     }
 
