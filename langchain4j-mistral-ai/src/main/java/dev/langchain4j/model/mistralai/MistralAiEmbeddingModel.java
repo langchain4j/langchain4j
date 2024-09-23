@@ -63,11 +63,9 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     /**
-     * Creates a new MistralAiEmbeddingModel instance with the specified API key.
-     *
-     * @param apiKey the Mistral AI API key for authentication
-     * @return a new MistralAiEmbeddingModel instance
+     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
      */
+    @Deprecated
     public static MistralAiEmbeddingModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

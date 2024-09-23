@@ -136,11 +136,9 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     /**
-     * Creates an instance of {@code AnthropicStreamingChatModel} with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return an {@code AnthropicStreamingChatModel} instance
+     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
      */
+    @Deprecated
     public static AnthropicStreamingChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
