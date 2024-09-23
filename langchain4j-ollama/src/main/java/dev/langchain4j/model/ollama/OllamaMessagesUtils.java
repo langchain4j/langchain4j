@@ -42,7 +42,7 @@ class OllamaMessagesUtils {
                                 .function(Function.builder()
                                         .name(toolSpecification.name())
                                         .description(toolSpecification.description())
-                                        .parameters(Parameters.builder()
+                                        .parameters(toolSpecification.parameters() == null ? null : Parameters.builder()
                                                 .properties(toolSpecification.parameters().properties())
                                                 .required(toolSpecification.parameters().required())
                                                 .build())
