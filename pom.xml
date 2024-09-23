@@ -77,6 +77,7 @@
         <module>document-loaders/langchain4j-document-loader-github</module>
         <module>document-loaders/langchain4j-document-loader-selenium</module>
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
+        <module>document-loaders/langchain4j-document-loader-google-cloud-storage</module>
 
         <!-- document parsers -->
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
