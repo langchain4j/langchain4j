@@ -22,3 +22,4 @@ sidebar_position: 2
 
 ## Examples
 - [Advanced RAG with re-ranking using Voyage](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_03_Advanced_RAG_with_ReRanking_Example.java)
+- [VoyageScoringModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/voyage-examples/src/main/java/VoyageScoringModelExample.java)
