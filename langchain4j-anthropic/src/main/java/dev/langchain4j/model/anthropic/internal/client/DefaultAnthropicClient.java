@@ -5,7 +5,17 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.anthropic.internal.api.*;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicApi;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import okhttp3.OkHttpClient;
@@ -28,15 +38,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
+import static java.util.stream.Collectors.toList;
 
 public class DefaultAnthropicClient extends AnthropicClient {
 
@@ -135,16 +147,18 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         EventSourceListener eventSourceListener = new EventSourceListener() {
 
-            private final ReentrantLock lock = new ReentrantLock();
+            final ReentrantLock lock = new ReentrantLock();
             final List<String> contents = synchronizedList(new ArrayList<>());
             volatile StringBuffer currentContentBuilder = new StringBuffer();
-            private final AtomicReference<AnthropicContentBlockType> currentContentBlockStartType = new AtomicReference<>();
+
+            final AtomicReference<AnthropicContentBlockType> currentContentBlockStartType = new AtomicReference<>();
+            final Map<Integer, AnthropicToolExecutionRequestBuilder> toolExecutionRequestBuilderMap = new ConcurrentHashMap<>();
 
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
-            private final Map<Integer, AnthropicToolExecutionRequestBuilder> toolExecutionRequestBuilderMap = new ConcurrentHashMap<>();
-            AtomicReference<String> responseId = new AtomicReference<>();
-            AtomicReference<String> responseModel = new AtomicReference<>();
+
+            final AtomicReference<String> responseId = new AtomicReference<>();
+            final AtomicReference<String> responseModel = new AtomicReference<>();
 
             volatile String stopReason;
 
@@ -233,13 +247,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                 currentContentBlockStartType.set(data.contentBlock.type);
 
-                if (currentContentBlockStartType.get() == AnthropicContentBlockType.TEXT) {
+                if (currentContentBlockStartType.get() == TEXT) {
                     String text = data.contentBlock.text;
                     if (isNotNullOrEmpty(text)) {
                         currentContentBuilder().append(text);
                         handler.onNext(text);
                     }
-                } else if (currentContentBlockStartType.get() == AnthropicContentBlockType.TOOL_USE) {
+                } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     toolExecutionRequestBuilderMap.putIfAbsent(
                             data.index,
                             new AnthropicToolExecutionRequestBuilder(data.contentBlock.id, data.contentBlock.name)
@@ -252,13 +266,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     return;
                 }
 
-                if (currentContentBlockStartType.get() == AnthropicContentBlockType.TEXT) {
+                if (currentContentBlockStartType.get() == TEXT) {
                     String text = data.delta.text;
                     if (isNotNullOrEmpty(text)) {
                         currentContentBuilder().append(text);
                         handler.onNext(text);
                     }
-                } else if (currentContentBlockStartType.get() == AnthropicContentBlockType.TOOL_USE) {
+                } else if (currentContentBlockStartType.get() == TOOL_USE) {
                     String partialJson = data.delta.partialJson;
                     if (isNotNullOrEmpty(partialJson)) {
                         Integer toolExecutionsIndex = data.index;
@@ -293,30 +307,36 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private Response<AiMessage> build() {
-                if (!toolExecutionRequestBuilderMap.isEmpty()) {
+
+                String text = String.join("\n", contents);
+                TokenUsage tokenUsage = new TokenUsage(inputTokenCount.get(), outputTokenCount.get());
+                FinishReason finishReason = toFinishReason(stopReason);
+                Map<String, Object> metadata = createMetadata();
+
+                if (toolExecutionRequestBuilderMap.isEmpty()) {
+                    return Response.from(
+                            AiMessage.from(text),
+                            tokenUsage,
+                            finishReason,
+                            metadata
+                    );
+                } else {
                     List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestBuilderMap
                             .values().stream()
                             .map(AnthropicToolExecutionRequestBuilder::build)
-                            .collect(Collectors.toList());
+                            .collect(toList());
+
+                    AiMessage aiMessage = isNullOrBlank(text)
+                            ? AiMessage.from(toolExecutionRequests)
+                            : AiMessage.from(text, toolExecutionRequests);
+
                     return Response.from(
-                            AiMessage.from(toolExecutionRequests),
-                            new TokenUsage(inputTokenCount.get(), outputTokenCount.get()),
-                            toFinishReason(stopReason),
-                            createMetadata()
+                            aiMessage,
+                            tokenUsage,
+                            finishReason,
+                            metadata
                     );
                 }
-
-                String content = String.join("\n", contents);
-                if (!content.isEmpty()) {
-                    return Response.from(
-                            AiMessage.from(content),
-                            new TokenUsage(inputTokenCount.get(), outputTokenCount.get()),
-                            toFinishReason(stopReason),
-                            createMetadata()
-                    );
-                }
-
-                return null;
             }
 
             private Map<String, Object> createMetadata() {

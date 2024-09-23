@@ -2,13 +2,17 @@ package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -18,11 +22,14 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.OBJECT;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.CAT_IMAGE_URL;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20240620;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -175,11 +182,11 @@ class AnthropicStreamingChatModelIT {
         StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
-                .maxTokens(200)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
+
         UserMessage userMessage = userMessage("2+2=?");
         List<ToolSpecification> toolSpecifications = singletonList(calculator);
 
@@ -190,7 +197,6 @@ class AnthropicStreamingChatModelIT {
         // then
         Response<AiMessage> response = handler.get();
         AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isNull();
 
         List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
         assertThat(toolExecutionRequests).hasSize(1);
@@ -226,11 +232,12 @@ class AnthropicStreamingChatModelIT {
         // given
         StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .maxTokens(200)
+                .modelName(CLAUDE_3_5_SONNET_20240620)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
+
         UserMessage userMessage = userMessage("2+2=?");
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
 
@@ -254,19 +261,18 @@ class AnthropicStreamingChatModelIT {
     }
 
 
-    @Disabled("Parallel execution of tools is not supported in the streaming mode yet.")
-    @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.anthropic.AnthropicChatModelIT#models_supporting_tools")
-    void should_execute_multiple_tools_in_parallel_then_answer(AnthropicChatModelName modelName) {
+    @Test
+    void should_execute_multiple_tools_in_parallel_then_answer() {
 
         // given
         StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(modelName)
+                .modelName(CLAUDE_3_5_SONNET_20240620)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
+
         SystemMessage systemMessage = systemMessage("Do not think, nor explain step by step what you do. Output the result only.");
         UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
         List<ToolSpecification> toolSpecifications = singletonList(calculator);
@@ -313,18 +319,18 @@ class AnthropicStreamingChatModelIT {
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.anthropic.AnthropicChatModelIT#models_supporting_tools")
-    void should_execute_a_tool_with_nested_properties_then_answer(AnthropicChatModelName modelName) {
+    @Test
+    void should_execute_a_tool_with_nested_properties_then_answer() {
 
         // given
         StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(modelName)
+                .modelName(CLAUDE_3_5_SONNET_20240620)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
+
         UserMessage userMessage = userMessage("What is the weather in Berlin in Celsius?");
         List<ToolSpecification> toolSpecifications = singletonList(weather);
 

@@ -126,7 +126,7 @@
     "allPublicFields": true
   },
   {
-  "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice",
+    "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,
@@ -172,123 +172,6 @@
   },
   {
     "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicUsage",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-      "name": "dev.langchain4j.model.anthropic.internal.client.AnthropicClient",
-      "allDeclaredConstructors": true,
-      "allPublicConstructors": true,
-      "allDeclaredMethods": true,
-      "allPublicMethods": true,
-      "allDeclaredFields": true,
-      "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.internal.client.AnthropicClientBuilderFactory",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.internal.client.AnthropicRequestLoggingInterceptor",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.internal.client.AnthropicResponseLoggingInterceptor",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.internal.client.AnthropicToolExecutionRequestBuilder",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.internal.client.DefaultAnthropicClient",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.AnthropicChatModel",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.AnthropicChatModelName",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.AnthropicStreamingChatModel",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "dev.langchain4j.model.anthropic.InternalAnthropicHelper",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,
