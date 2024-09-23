@@ -16,7 +16,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
  * Implementation of a <code>ScoringModel</code> for the Vertex AI Ranking API:
  * https://cloud.google.com/generative-ai-app-builder/docs/ranking
  */
-public class VertexAiRankerScoringModel implements ScoringModel {
+public class VertexAiScoringModel implements ScoringModel {
 
     private final String model;
     private final String projectId;
@@ -33,7 +33,7 @@ public class VertexAiRankerScoringModel implements ScoringModel {
      * @param model      The model to use (by default <code>semantic-ranker-512@latest</code>)
      * @param titleMetadataKey The name of the key to use as a title.
      */
-    public VertexAiRankerScoringModel(String projectId, String projectNum, String location, String model, String titleMetadataKey) {
+    public VertexAiScoringModel(String projectId, String projectNum, String location, String model, String titleMetadataKey) {
         this.projectId = ensureNotBlank(projectId, "projectId");
         this.projectNum = ensureNotBlank(projectNum, "projectNum");
         this.location = ensureNotBlank(location, "location");
@@ -137,8 +137,8 @@ public class VertexAiRankerScoringModel implements ScoringModel {
             return this;
         }
 
-        public VertexAiRankerScoringModel build() {
-            return new VertexAiRankerScoringModel(projectId, projectNum, location, model, titleMetadataKey);
+        public VertexAiScoringModel build() {
+            return new VertexAiScoringModel(projectId, projectNum, location, model, titleMetadataKey);
         }
     }
 }

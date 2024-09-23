@@ -1,8 +1,6 @@
 package dev.langchain4j.model.vertexai;
 
-import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.document.splitter.DocumentBySentenceSplitter;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 import dev.langchain4j.data.segment.TextSegment;
@@ -14,11 +12,11 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class VertexAiRankerScoringModelIT {
+public class VertexAiScoringModelIT {
     @Test
     void should_rank_multiple() {
         // given
-        VertexAiRankerScoringModel scoringModel = VertexAiRankerScoringModel.builder()
+        VertexAiScoringModel scoringModel = VertexAiScoringModel.builder()
             .projectId(System.getenv("GCP_PROJECT_ID"))
             .projectNum(System.getenv("GCP_PROJECT_NUM"))
             .location(System.getenv("GCP_LOCATION"))
@@ -46,7 +44,7 @@ public class VertexAiRankerScoringModelIT {
     @Test
     void should_rank_single() {
         // given
-        VertexAiRankerScoringModel scoringModel = VertexAiRankerScoringModel.builder()
+        VertexAiScoringModel scoringModel = VertexAiScoringModel.builder()
             .projectId(System.getenv("GCP_PROJECT_ID"))
             .projectNum(System.getenv("GCP_PROJECT_NUM"))
             .location(System.getenv("GCP_LOCATION"))
@@ -69,7 +67,7 @@ public class VertexAiRankerScoringModelIT {
         // given
         String customTitleKey = "customTitle";
 
-        VertexAiRankerScoringModel scoringModel = VertexAiRankerScoringModel.builder()
+        VertexAiScoringModel scoringModel = VertexAiScoringModel.builder()
             .projectId(System.getenv("GCP_PROJECT_ID"))
             .projectNum(System.getenv("GCP_PROJECT_NUM"))
             .location(System.getenv("GCP_LOCATION"))
