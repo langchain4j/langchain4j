@@ -178,6 +178,12 @@ public class VoyageEmbeddingModel extends DimensionAwareEmbeddingModel {
         /**
          * Type of the input text. Defaults to null. Other options: query, document.
          *
+         * <ul>
+         *     <li>query: Use this for search or retrieval queries. Voyage AI will prepend a prompt to optimize the embeddings for query use cases.</li>
+         *     <li>document: Use this for documents or content that you want to be retrievable. Voyage AI will prepend a prompt to optimize the embeddings for document use cases.</li>
+         *     <li>null (default): The input text will be directly encoded without any additional prompt.</li>
+         * </ul>
+         *
          * @param inputType Type of input text
          */
         public VoyageEmbeddingModelBuilder inputType(String inputType) {
