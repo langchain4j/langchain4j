@@ -41,11 +41,11 @@ class EmbeddingRequest {
         return encodingFormat;
     }
 
-    static EmbeddingRequestBuilder builder() {
-        return new EmbeddingRequestBuilder();
+    static Builder builder() {
+        return new Builder();
     }
 
-    static class EmbeddingRequestBuilder {
+    static class Builder {
 
         private List<String> input;
         private String model;
@@ -53,27 +53,27 @@ class EmbeddingRequest {
         private Boolean truncation;
         private String encodingFormat;
 
-        EmbeddingRequestBuilder input(List<String> input) {
+        Builder input(List<String> input) {
             this.input = input;
             return this;
         }
 
-        EmbeddingRequestBuilder model(String model) {
+        Builder model(String model) {
             this.model = model;
             return this;
         }
 
-        EmbeddingRequestBuilder inputType(String inputType) {
+        Builder inputType(String inputType) {
             this.inputType = inputType;
             return this;
         }
 
-        EmbeddingRequestBuilder truncation(Boolean truncation) {
+        Builder truncation(Boolean truncation) {
             this.truncation = truncation;
             return this;
         }
 
-        EmbeddingRequestBuilder encodingFormat(String encodingFormat) {
+        Builder encodingFormat(String encodingFormat) {
             this.encodingFormat = encodingFormat;
             return this;
         }
