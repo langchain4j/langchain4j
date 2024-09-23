@@ -173,7 +173,7 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-voyage</artifactId>
+                <artifactId>langchain4j-voyage-ai</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
