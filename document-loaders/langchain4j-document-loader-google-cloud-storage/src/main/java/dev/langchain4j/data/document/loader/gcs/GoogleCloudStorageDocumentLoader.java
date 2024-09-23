@@ -52,17 +52,11 @@ public class GoogleCloudStorageDocumentLoader {
      */
     public Document loadDocument(String bucket, String objectName, DocumentParser parser) {
         Blob blob = storage.get(bucket, objectName);
-
         if (blob == null) {
             throw new IllegalArgumentException("Object gs://" + bucket + "/" + objectName + " couldn't be found.");
         }
 
-        ReadChannel readChannel = blob.reader();
-        InputStream inputStream = Channels.newInputStream(readChannel);
-        Metadata metadata = getMetadataForBlob(blob);
-
-        GcsSource gcsSource = new GcsSource(bucket, objectName, inputStream, metadata);
-
+        GcsSource gcsSource = new GcsSource(blob);
         return DocumentLoader.load(gcsSource, parser != null ? parser : new TextDocumentParser());
     }
 
@@ -82,12 +76,7 @@ public class GoogleCloudStorageDocumentLoader {
         List<Document> documents = new ArrayList<>();
 
         for (Blob blob : blobs.iterateAll()) {
-            ReadChannel readChannel = blob.reader();
-            InputStream inputStream = Channels.newInputStream(readChannel);
-            Metadata metadata = getMetadataForBlob(blob);
-
-            GcsSource gcsSource = new GcsSource(bucket, blob.getName(), inputStream, metadata);
-
+            GcsSource gcsSource = new GcsSource(blob);
             documents.add(DocumentLoader.load(gcsSource, parser != null ? parser : new TextDocumentParser()));
         }
 
@@ -104,19 +93,6 @@ public class GoogleCloudStorageDocumentLoader {
     public List<Document> loadDocuments(String bucket, DocumentParser parser) {
         return loadDocuments(bucket, null, parser);
     }
-
-    private static Metadata getMetadataForBlob(Blob blob) {
-        Metadata metadata = new Metadata();
-        metadata.put("source", "gs://" + blob.getBucket() + "/" + blob.getName());
-        metadata.put("bucket", blob.getBucket());
-        metadata.put("name", blob.getName());
-        metadata.put("contentType", blob.getContentType());
-        metadata.put("size", blob.getSize());
-        metadata.put("createTime", blob.getCreateTimeOffsetDateTime().toString());
-        metadata.put("updateTime", blob.getUpdateTimeOffsetDateTime().toString());
-        return metadata;
-    }
-
 
     public static Builder builder() {
         return new Builder();

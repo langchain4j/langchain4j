@@ -1,23 +1,22 @@
 package dev.langchain4j.data.document.source;
 
+import com.google.cloud.ReadChannel;
+import com.google.cloud.storage.Blob;
 import dev.langchain4j.data.document.DocumentSource;
 import dev.langchain4j.data.document.Metadata;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.Channels;
 
 public class GcsSource implements DocumentSource {
 
-    private final String bucket;
-    private final String objectName;
     private final InputStream inputStream;
     private final Metadata metadata;
 
-    public GcsSource(String bucket, String objectName, InputStream inputStream, Metadata metadata) {
-        this.bucket = bucket;
-        this.objectName = objectName;
-        this.inputStream = inputStream;
-        this.metadata = metadata;
+    public GcsSource(Blob blob) {
+        this.metadata = getMetadataForBlob(blob);
+        this.inputStream = Channels.newInputStream(blob.reader());
     }
 
     @Override
@@ -27,6 +26,18 @@ public class GcsSource implements DocumentSource {
 
     @Override
     public Metadata metadata() {
+        return metadata;
+    }
+
+    private static Metadata getMetadataForBlob(Blob blob) {
+        Metadata metadata = new Metadata();
+        metadata.put("source", "gs://" + blob.getBucket() + "/" + blob.getName());
+        metadata.put("bucket", blob.getBucket());
+        metadata.put("name", blob.getName());
+        metadata.put("contentType", blob.getContentType());
+        metadata.put("size", blob.getSize());
+        metadata.put("createTime", blob.getCreateTimeOffsetDateTime().toString());
+        metadata.put("updateTime", blob.getUpdateTimeOffsetDateTime().toString());
         return metadata;
     }
 }

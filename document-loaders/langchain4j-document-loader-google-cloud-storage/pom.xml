@@ -11,8 +11,8 @@
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-document-loader-github</artifactId>
-    <name>LangChain4j :: Document loader :: GitHub</name>
+    <artifactId>langchain4j-document-loader-google-cloud-storage</artifactId>
+    <name>LangChain4j :: Document loader :: Google Cloud Storage</name>
 
     <dependencies>
 

@@ -73,7 +73,7 @@ public class GoogleCloudStorageDocumentLoaderIT {
     }
 
     @Test
-    void should_load_multipe_documents_with_glob() {
+    void should_load_document_with_glob() {
         // given
         GoogleCloudStorageDocumentLoader gcsLoader = GoogleCloudStorageDocumentLoader.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
