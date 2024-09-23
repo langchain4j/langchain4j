@@ -8,9 +8,9 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -32,6 +32,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String inputType;
     private final Boolean truncation;
     private final String encodingFormat;
+    private Integer maxSegmentsPerBatch;
 
     public VoyageAiEmbeddingModel(
             String baseUrl,
@@ -43,11 +44,13 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             Boolean truncation,
             String encodingFormat,
             Boolean logRequests,
-            Boolean logResponses
+            Boolean logResponses,
+            Integer maxSegmentsPerBatch
     ) {
         // Below attributes are force to non-null.
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.modelName = ensureNotNull(modelName, "modelName");
+        this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 1000);
         // Below attributes can be null.
         this.truncation = truncation;
         this.inputType = inputType;
@@ -64,25 +67,39 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<String> input = textSegments.stream()
+        List<String> texts = textSegments.stream()
                 .map(TextSegment::text)
-                .collect(Collectors.toList());
+                .collect(toList());
 
-        EmbeddingRequest request = EmbeddingRequest.builder()
-                .input(input)
-                .inputType(inputType)
-                .model(modelName)
-                .truncation(truncation)
-                .encodingFormat(encodingFormat)
-                .build();
-        EmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
-        List<Embedding> embeddings = getEmbeddings(response);
-        int inputTokenCount = getTokenUsage(response);
+        return embedTexts(texts);
+    }
+
+    private Response<List<Embedding>> embedTexts(List<String> texts) {
+        List<Embedding> embeddings = new ArrayList<>();
+        int inputTokenCount = 0;
+
+        for (int i = 0; i < texts.size(); i += maxSegmentsPerBatch) {
+            List<String> batch = texts.subList(i, Math.min(i + maxSegmentsPerBatch, texts.size()));
+
+            EmbeddingRequest request = EmbeddingRequest.builder()
+                    .input(batch)
+                    .inputType(inputType)
+                    .model(modelName)
+                    .truncation(truncation)
+                    .encodingFormat(encodingFormat)
+                    .build();
+
+            EmbeddingResponse response = withRetry(() -> this.client.embed(request), maxRetries);
+
+            embeddings.addAll(getEmbeddings(response));
+            inputTokenCount += getTokenUsage(response);
+        }
 
         return Response.from(
                 embeddings,
                 new TokenUsage(inputTokenCount)
         );
+
     }
 
     @Override
@@ -121,6 +138,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private String encodingFormat;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Integer maxSegmentsPerBatch;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -220,6 +238,11 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        public Builder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
+            this.maxSegmentsPerBatch = maxSegmentsPerBatch;
+            return this;
+        }
+
         public VoyageAiEmbeddingModel build() {
             return new VoyageAiEmbeddingModel(
                     baseUrl,
@@ -231,7 +254,8 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                     truncation,
                     encodingFormat,
                     logRequests,
-                    logResponses
+                    logResponses,
+                    maxSegmentsPerBatch
             );
         }
     }

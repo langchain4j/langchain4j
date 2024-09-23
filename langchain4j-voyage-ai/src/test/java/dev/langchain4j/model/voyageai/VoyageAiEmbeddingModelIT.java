@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -105,6 +106,38 @@ class VoyageAiEmbeddingModelIT {
         assertThat(embedding2.dimension()).isEqualTo(model.dimension());
 
         assertThat(CosineSimilarity.between(embedding1, embedding2)).isGreaterThan(0.8);
+
+        assertThat(response.tokenUsage().inputTokenCount()).isNotNegative();
+        assertThat(response.tokenUsage().outputTokenCount()).isNull();
+        assertThat(response.tokenUsage().totalTokenCount()).isNotNegative();
+
+        assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void should_embed_any_number_of_segments() {
+
+        // given
+        EmbeddingModel model = VoyageAiEmbeddingModel.builder()
+                .apiKey(System.getenv("VOYAGE_API_KEY"))
+                .modelName(VoyageAiEmbeddingModelName.VOYAGE_3_LITE)
+                .timeout(Duration.ofSeconds(60))
+                .logRequests(true)
+                .logResponses(true)
+                .maxSegmentsPerBatch(96)
+                .build();
+
+        List<TextSegment> segments = new ArrayList<>();
+        int segmentCount = 97;
+        for (int i = 0; i < segmentCount; i++) {
+            segments.add(TextSegment.from("text"));
+        }
+
+        // when
+        Response<List<Embedding>> response = model.embedAll(segments);
+
+        // then
+        assertThat(response.content()).hasSize(segmentCount);
 
         assertThat(response.tokenUsage().inputTokenCount()).isNotNegative();
         assertThat(response.tokenUsage().outputTokenCount()).isNull();
