@@ -130,12 +130,12 @@ public class AnthropicMapper {
     public static AiMessage toAiMessage(List<AnthropicContent> contents) {
 
         String text = contents.stream()
-                .filter(content -> "text".equals(content.type))
+                .filter(content -> AnthropicContentBlockType.TEXT == content.type)
                 .map(content -> content.text)
                 .collect(joining("\n"));
 
         List<ToolExecutionRequest> toolExecutionRequests = contents.stream()
-                .filter(content -> "tool_use".equals(content.type))
+                .filter(content -> AnthropicContentBlockType.TOOL_USE == content.type)
                 .map(content -> {
                     try {
                         return ToolExecutionRequest.builder()
