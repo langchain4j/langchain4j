@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Comparator.comparing;
 
 /**
  * Implementation of a <code>ScoringModel</code> for the Vertex AI Ranking API:
@@ -88,12 +89,12 @@ public class VertexAiScoringModel implements ScoringModel {
 
             return Response.from(rankResponse.getRecordsList().stream()
                 // the API returns results sorted by relevance score, so reorder them back to original order
-                .sorted((rr1, rr2) -> (Double.valueOf(rr1.getId()) > Double.valueOf(rr2.getId())) ? 1 : -1)
+                .sorted(comparing(rr -> Double.valueOf(rr.getId())))
                 .map(RankingRecord::getScore)
                 .map(Double::valueOf)
                 .collect(Collectors.toList()));
         } catch (IOException e) {
-            throw new RuntimeException("An error happened when instantiating the RankServiceSettings class.", e);
+            throw new RuntimeException(e);
         }
     }
 
