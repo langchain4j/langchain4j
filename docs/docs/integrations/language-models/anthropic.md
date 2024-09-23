@@ -81,7 +81,7 @@ Identical to the `AnthropicChatModel`, see above.
 
 ## Tools
 
-Anthropic supports [tools](/tutorials/tools), but only in a non-streaming mode.
+Anthropic supports [tools](/tutorials/tools) in both streaming and non-streaming mode.
 
 Anthropic documentation on tools can be found [here](https://docs.anthropic.com/claude/docs/tool-use).
 
