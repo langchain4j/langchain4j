@@ -49,7 +49,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     ) {
         // Below attributes are force to non-null.
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.modelName = ensureNotNull(modelName, "modelName");
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 1000);
         // Below attributes can be null.
         this.truncation = truncation;
