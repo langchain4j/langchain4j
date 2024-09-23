@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.CosineSimilarity;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -17,6 +18,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "VOYAGE_API_KEY", matches = ".+")
 class VoyageEmbeddingModelIT {
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        // Voyage rate limit is 3 RPM and 10K TPM.
+        Thread.sleep(30000);
+    }
 
     @Test
     void should_embed_single_text() {

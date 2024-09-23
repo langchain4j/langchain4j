@@ -3,6 +3,7 @@ package dev.langchain4j.model.voyage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -16,6 +17,13 @@ import static org.assertj.core.data.Percentage.withPercentage;
 
 @EnabledIfEnvironmentVariable(named = "VOYAGE_API_KEY", matches = ".+")
 class VoyageScoringModelIT {
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        // Voyage rate limit is 3 RPM and 10K TPM.
+        Thread.sleep(30000);
+    }
+
 
     @Test
     void should_score_single_text() {
