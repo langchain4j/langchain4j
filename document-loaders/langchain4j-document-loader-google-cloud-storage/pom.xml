@@ -29,12 +29,14 @@
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
         </dependency>
+
+        <!--- Test dependencies -->
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
+            <scope>test</scope>
         </dependency>
-
-        <!--- Test dependencies -->
 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>

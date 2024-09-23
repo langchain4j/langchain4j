@@ -1,7 +1,6 @@
 package dev.langchain4j.data.document.loader.gcs;
 
 import com.google.auth.Credentials;
-import com.google.cloud.ReadChannel;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
@@ -10,16 +9,13 @@ import com.google.api.gax.paging.Page;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.source.GcsSource;
 
-import java.io.InputStream;
-import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Google Cloud Storage Document Loader to load documents from Google Cloud Storage buckets.
@@ -57,7 +53,7 @@ public class GoogleCloudStorageDocumentLoader {
         }
 
         GcsSource gcsSource = new GcsSource(blob);
-        return DocumentLoader.load(gcsSource, parser != null ? parser : new TextDocumentParser());
+        return DocumentLoader.load(gcsSource, ensureNotNull(parser, "parser"));
     }
 
     /**
@@ -77,7 +73,7 @@ public class GoogleCloudStorageDocumentLoader {
 
         for (Blob blob : blobs.iterateAll()) {
             GcsSource gcsSource = new GcsSource(blob);
-            documents.add(DocumentLoader.load(gcsSource, parser != null ? parser : new TextDocumentParser()));
+            documents.add(DocumentLoader.load(gcsSource, ensureNotNull(parser, "parser")));
         }
 
         return documents;
