@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,8 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
 
     private final Consumer<String> tokenHandler;
     private final Consumer<Response<AiMessage>> completionHandler;
+
+    private final Consumer<ToolExecution> toolExecuteHandler;
     private final Consumer<Throwable> errorHandler;
 
     private final List<ChatMessage> temporaryMemory;
@@ -44,6 +47,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     AiServiceStreamingResponseHandler(AiServiceContext context,
                                       Object memoryId,
                                       Consumer<String> tokenHandler,
+                                      Consumer<ToolExecution> toolExecuteHandler,
                                       Consumer<Response<AiMessage>> completionHandler,
                                       Consumer<Throwable> errorHandler,
                                       List<ChatMessage> temporaryMemory,
@@ -55,6 +59,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
 
         this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
         this.completionHandler = completionHandler;
+        this.toolExecuteHandler=toolExecuteHandler;
         this.errorHandler = errorHandler;
 
         this.temporaryMemory = new ArrayList<>(temporaryMemory);
@@ -84,6 +89,10 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                         toolExecutionRequest,
                         toolExecutionResult
                 );
+                ToolExecution toolExecution=ToolExecution.builder()
+                        .request(toolExecutionRequest).result(toolExecutionResult)
+                        .build();
+                toolExecuteHandler.accept(toolExecution);
                 addToMemory(toolExecutionResultMessage);
             }
 
@@ -94,6 +103,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                             context,
                             memoryId,
                             tokenHandler,
+                            toolExecuteHandler,
                             completionHandler,
                             errorHandler,
                             temporaryMemory,
