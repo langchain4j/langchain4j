@@ -1,4 +1,4 @@
-package dev.langchain4j.data.document.transformer;
+package dev.langchain4j.data.document.transformer.jsoup;
 
 import dev.langchain4j.data.document.Document;
 import org.junit.jupiter.api.Test;
@@ -114,8 +114,8 @@ class HtmlTextExtractorTest {
                 "Follow the link here <https://example.org/menu1>."
         );
         assertThat(transformedDocument.metadata().asMap())
-            .containsEntry(Document.URL, "https://example.org/page.html")
-            .hasSize(1);
+                .containsEntry(Document.URL, "https://example.org/page.html")
+                .hasSize(1);
     }
 
     @Test
@@ -127,20 +127,20 @@ class HtmlTextExtractorTest {
         Document transformedDocument = transformer.transform(htmlDocument);
 
         assertThat(transformedDocument.text()).isEqualTo(
-            "Title\n" +
-                "\n" +
-                "Paragraph 1\n" +
-                "Something\n" +
-                "\n" +
-                "Paragraph 2\n" +
-                "\n" +
-                "More details here <http://example.org>.\n" +
-                "List:\n" +
-                " * Item one\n" +
-                " * Item two"
+                "Title\n" +
+                        "\n" +
+                        "Paragraph 1\n" +
+                        "Something\n" +
+                        "\n" +
+                        "Paragraph 2\n" +
+                        "\n" +
+                        "More details here <http://example.org>.\n" +
+                        "List:\n" +
+                        " * Item one\n" +
+                        " * Item two"
         );
         assertThat(transformedDocument.metadata().asMap())
-            .containsEntry(Document.URL, "https://other.example.org/page.html")
-            .hasSize(1);
+                .containsEntry(Document.URL, "https://other.example.org/page.html")
+                .hasSize(1);
     }
 }

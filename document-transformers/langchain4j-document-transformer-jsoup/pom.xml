@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
@@ -9,29 +11,19 @@
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-document-loader-selenium</artifactId>
-    <name>LangChain4j :: Document loader :: Selenium</name>
-
-    <description>
-        Selenium is a suite of tools for automating web browsers.
-        Integration with LangChain4j adds web document loading through browser automation.
-        https://www.selenium.dev/documentation/about/copyright
-    </description>
-
-    <properties>
-        <selenium.webdriver.version>4.13.0</selenium.webdriver.version>
-    </properties>
+    <artifactId>langchain4j-document-transformer-jsoup</artifactId>
+    <name>LangChain4j :: Document transformer :: jsoup</name>
 
     <dependencies>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-java</artifactId>
-            <version>${selenium.webdriver.version}</version>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
         </dependency>
 
         <dependency>
@@ -47,20 +39,14 @@
         </dependency>
 
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>selenium</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-document-transformer-jsoup</artifactId>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>localstack</artifactId>
             <scope>test</scope>
         </dependency>
 
