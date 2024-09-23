@@ -13,7 +13,7 @@ class EmbeddingRequest {
     EmbeddingRequest() {
     }
 
-    public EmbeddingRequest(List<String> input, String model, String inputType, Boolean truncation, String encodingFormat) {
+    EmbeddingRequest(List<String> input, String model, String inputType, Boolean truncation, String encodingFormat) {
         this.input = input;
         this.model = model;
         this.inputType = inputType;

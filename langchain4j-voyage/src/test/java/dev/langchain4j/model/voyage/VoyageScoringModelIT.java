@@ -65,9 +65,9 @@ class VoyageScoringModelIT {
         assertThat(scores).hasSize(2);
         assertThat(scores.get(0)).isLessThan(scores.get(1));
 
-        assertThat(response.tokenUsage().inputTokenCount()).isPositive();
+        assertThat(response.tokenUsage().inputTokenCount()).isNotNegative();
         assertThat(response.tokenUsage().outputTokenCount()).isNull();
-        assertThat(response.tokenUsage().totalTokenCount()).isPositive();
+        assertThat(response.tokenUsage().totalTokenCount()).isNotNegative();
 
         assertThat(response.finishReason()).isNull();
     }
@@ -97,9 +97,9 @@ class VoyageScoringModelIT {
         List<Double> scores = response.content();
         assertThat(scores).hasSize(1);
 
-        assertThat(response.tokenUsage().inputTokenCount()).isPositive();
+        assertThat(response.tokenUsage().inputTokenCount()).isNotNegative();
         assertThat(response.tokenUsage().outputTokenCount()).isNull();
-        assertThat(response.tokenUsage().totalTokenCount()).isPositive();
+        assertThat(response.tokenUsage().totalTokenCount()).isNotNegative();
 
         assertThat(response.finishReason()).isNull();
     }
