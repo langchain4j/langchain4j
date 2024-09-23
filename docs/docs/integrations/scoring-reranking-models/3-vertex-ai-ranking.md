@@ -29,6 +29,14 @@ search results page.
 
 ### Usage
 
+To configure the model, you'll have to specify:
+* the Google Cloud project ID, 
+* the project number, 
+* the location (ex. `us-central1`, `europe-west1`), 
+* and the model you want to use.
+
+> Note: You can find the project number in the Google Cloud console, or by running `gcloud projects describe your-project-id`.
+
 You can score a single string or `TextSegment` against a query 
 thanks to the `score(text, query)` and `score(segment, query)` methods.
 
