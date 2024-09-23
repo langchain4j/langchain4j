@@ -14,8 +14,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Comparator.comparing;
 
 /**
- * Implementation of a <code>ScoringModel</code> for the Vertex AI Ranking API:
- * https://cloud.google.com/generative-ai-app-builder/docs/ranking
+ * Implementation of a <code>ScoringModel</code> for the Google Cloud Vertex AI
+ * <a href="https://cloud.google.com/generative-ai-app-builder/docs/ranking">Ranking API</a>.
  */
 public class VertexAiScoringModel implements ScoringModel {
 
@@ -31,7 +31,7 @@ public class VertexAiScoringModel implements ScoringModel {
      * @param projectId  The Google Cloud Project ID.
      * @param projectNumber The Google Cloud Project Number.
      * @param location   The Google Cloud Region.
-     * @param model      The model to use (by default <code>semantic-ranker-512@latest</code>)
+     * @param model      The model to use
      * @param titleMetadataKey The name of the key to use as a title.
      */
     public VertexAiScoringModel(String projectId, String projectNumber, String location, String model, String titleMetadataKey) {
