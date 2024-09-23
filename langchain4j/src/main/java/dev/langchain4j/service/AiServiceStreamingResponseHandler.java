@@ -92,7 +92,9 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                 ToolExecution toolExecution=ToolExecution.builder()
                         .request(toolExecutionRequest).result(toolExecutionResult)
                         .build();
-                toolExecuteHandler.accept(toolExecution);
+                if(toolExecuteHandler!=null){
+                    toolExecuteHandler.accept(toolExecution);
+                }
                 addToMemory(toolExecutionResultMessage);
             }
 
