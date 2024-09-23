@@ -15,11 +15,11 @@ sidebar_position: 2
 ```
 
 
-## Voyage Models
+## Voyage AI Models
 
-- `VoyageScoringModel`
+- `VoyageAiScoringModel`
 
 
 ## Examples
 - [Advanced RAG with re-ranking](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_03_Advanced_RAG_with_ReRanking_Example.java)
-- [VoyageScoringModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/voyage-examples/src/main/java/VoyageScoringModelExample.java)
+- [VoyageAiScoringModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/voyage-ai-examples/src/main/java/VoyageAiScoringModelExample.java)
