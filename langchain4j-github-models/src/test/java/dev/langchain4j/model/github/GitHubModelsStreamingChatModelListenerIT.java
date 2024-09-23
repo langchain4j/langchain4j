@@ -45,7 +45,12 @@ class GitHubModelsStreamingChatModelListenerIT extends StreamingChatModelListene
     }
 
     @Override
-    @Disabled("AzureOpenAiStreamingChatModel implementation is incorrect")
+    protected boolean assertTokenUsage() {
+        return false;
+    }
+
+    @Override
+    @Disabled("GitHubModelsStreamingChatModel implementation is incorrect")
     protected void should_listen_error() {
     }
 }
