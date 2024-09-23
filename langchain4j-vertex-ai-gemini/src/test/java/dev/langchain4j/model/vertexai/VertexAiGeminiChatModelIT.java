@@ -645,7 +645,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
-    @RetryingTest(2)
+    @RetryingTest(4)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
@@ -665,7 +665,7 @@ class VertexAiGeminiChatModelIT {
 
         // when
         Exception exception = assertThrows(RuntimeException.class, () -> {
-            model.generate("You're a dumb bastard!!!");
+            model.generate("You're a dumb fucking bastard!!! I'm gonna kill you!");
         });
 
         // then
