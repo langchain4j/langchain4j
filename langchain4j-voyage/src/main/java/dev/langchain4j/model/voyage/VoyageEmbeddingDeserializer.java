@@ -11,6 +11,11 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
+/**
+ * This class aims to handle Voyage "base64" compress on embedding.
+ *
+ * <p>Using custom deserializer to deserialize "base64" to normal embedding List</p>
+ */
 class VoyageEmbeddingDeserializer extends StdDeserializer<List<EmbeddingResponse.EmbeddingData>> {
 
     private static final Base64.Decoder BASE64_DECODER = Base64.getDecoder();
