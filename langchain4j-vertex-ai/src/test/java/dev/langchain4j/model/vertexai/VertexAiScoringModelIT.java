@@ -18,8 +18,9 @@ public class VertexAiScoringModelIT {
         // given
         VertexAiScoringModel scoringModel = VertexAiScoringModel.builder()
             .projectId(System.getenv("GCP_PROJECT_ID"))
-            .projectNum(System.getenv("GCP_PROJECT_NUM"))
+            .projectNumber(System.getenv("GCP_PROJECT_NUM"))
             .location(System.getenv("GCP_LOCATION"))
+            .model("semantic-ranker-512")
             .build();
 
         // when
@@ -35,8 +36,6 @@ public class VertexAiScoringModelIT {
             ).map(TextSegment::from).collect(Collectors.toList()),
             "Why is the sky blue?");
 
-        System.out.println("score = " + score);
-
         // then
         assertThat(score.content().get(0)).isGreaterThan(score.content().get(1));
     }
@@ -46,9 +45,9 @@ public class VertexAiScoringModelIT {
         // given
         VertexAiScoringModel scoringModel = VertexAiScoringModel.builder()
             .projectId(System.getenv("GCP_PROJECT_ID"))
-            .projectNum(System.getenv("GCP_PROJECT_NUM"))
+            .projectNumber(System.getenv("GCP_PROJECT_NUM"))
             .location(System.getenv("GCP_LOCATION"))
-            .model("semantic-ranker-512") // explicit model name & version
+            .model("semantic-ranker-512")
             .build();
 
         // when
@@ -69,8 +68,9 @@ public class VertexAiScoringModelIT {
 
         VertexAiScoringModel scoringModel = VertexAiScoringModel.builder()
             .projectId(System.getenv("GCP_PROJECT_ID"))
-            .projectNum(System.getenv("GCP_PROJECT_NUM"))
+            .projectNumber(System.getenv("GCP_PROJECT_NUM"))
             .location(System.getenv("GCP_LOCATION"))
+            .model("semantic-ranker-512")
             .titleMetadataKey(customTitleKey)
             .build();
 
@@ -97,8 +97,6 @@ public class VertexAiScoringModelIT {
 
         // when
         Response<List<Double>> score = scoringModel.scoreAll(segments, "What is the cargo capacity of the car?");
-
-        System.out.println("score = " + score);
 
         // then
         double maxScore = score.content().stream().mapToDouble(Double::doubleValue).max().getAsDouble();

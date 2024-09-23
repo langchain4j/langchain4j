@@ -20,7 +20,7 @@ public class VertexAiScoringModel implements ScoringModel {
 
     private final String model;
     private final String projectId;
-    private final String projectNum;
+    private final String projectNumber;
     private final String location;
     private final String titleMetadataKey;
 
@@ -28,17 +28,17 @@ public class VertexAiScoringModel implements ScoringModel {
      * Constructor for the Vertex AI Ranker Scoring Model.
      *
      * @param projectId  The Google Cloud Project ID.
-     * @param projectNum The Google Cloud Project Number.
+     * @param projectNumber The Google Cloud Project Number.
      * @param location   The Google Cloud Region.
      * @param model      The model to use (by default <code>semantic-ranker-512@latest</code>)
      * @param titleMetadataKey The name of the key to use as a title.
      */
-    public VertexAiScoringModel(String projectId, String projectNum, String location, String model, String titleMetadataKey) {
+    public VertexAiScoringModel(String projectId, String projectNumber, String location, String model, String titleMetadataKey) {
         this.projectId = ensureNotBlank(projectId, "projectId");
-        this.projectNum = ensureNotBlank(projectNum, "projectNum");
+        this.projectNumber = ensureNotBlank(projectNumber, "projectNumber");
         this.location = ensureNotBlank(location, "location");
-        this.model = model;
-        this.titleMetadataKey = titleMetadataKey;
+        this.model = ensureNotBlank(model, "model");
+        this.titleMetadataKey = titleMetadataKey != null ? titleMetadataKey : "title";
     }
 
     /**
@@ -66,7 +66,7 @@ public class VertexAiScoringModel implements ScoringModel {
                     .setProject(projectId)
                     .setLocation(location)
                     .setRankingConfig(
-                        String.format("projects/%s/locations/%s/rankingConfigs/default_ranking_config.", projectNum, location))
+                        String.format("projects/%s/locations/%s/rankingConfigs/default_ranking_config.", projectNumber, location))
                     .build().getRankingConfig())
                 .setQuery(query)
                 .setIgnoreRecordDetailsInResponse(true)
@@ -75,9 +75,8 @@ public class VertexAiScoringModel implements ScoringModel {
                         RankingRecord.Builder rankingBuilder = RankingRecord.newBuilder()
                             .setContent(segment.text());
                         // Ranker API takes into account titles in its score calculations
-                        String titleKeyToUse = titleMetadataKey != null ? titleMetadataKey : "title";
-                        if (segment.metadata().getString(titleKeyToUse) != null) {
-                            rankingBuilder.setTitle(segment.metadata().getString(titleKeyToUse));
+                        if (segment.metadata().getString(titleMetadataKey) != null) {
+                            rankingBuilder.setTitle(segment.metadata().getString(titleMetadataKey));
                         }
                         // custom ID used to reorder the (sorted) results back into original segment order
                         rankingBuilder.setId(String.valueOf(counter.getAndIncrement()));
@@ -88,9 +87,6 @@ public class VertexAiScoringModel implements ScoringModel {
             RankResponse rankResponse = rankServiceClient.rank(rankingRequestBuilder.build());
 
             return Response.from(rankResponse.getRecordsList().stream()
-                .peek(rankingRecord -> {
-                    System.out.println(rankingRecord.toString());
-                })
                 // the API returns results sorted by relevance score, so reorder them back to original order
                 .sorted((rr1, rr2) -> (Double.valueOf(rr1.getId()) > Double.valueOf(rr2.getId())) ? 1 : -1)
                 .map(RankingRecord::getScore)
@@ -108,7 +104,7 @@ public class VertexAiScoringModel implements ScoringModel {
     public static class Builder {
         private String model;
         private String projectId;
-        private String projectNum;
+        private String projectNumber;
         private String location;
         private String titleMetadataKey;
 
@@ -122,8 +118,8 @@ public class VertexAiScoringModel implements ScoringModel {
             return this;
         }
 
-        public Builder projectNum(String projectNum) {
-            this.projectNum = projectNum;
+        public Builder projectNumber(String projectNumber) {
+            this.projectNumber = projectNumber;
             return this;
         }
 
@@ -138,7 +134,7 @@ public class VertexAiScoringModel implements ScoringModel {
         }
 
         public VertexAiScoringModel build() {
-            return new VertexAiScoringModel(projectId, projectNum, location, model, titleMetadataKey);
+            return new VertexAiScoringModel(projectId, projectNumber, location, model, titleMetadataKey);
         }
     }
 }
