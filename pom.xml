@@ -65,6 +65,7 @@
         <module>langchain4j-pinecone</module>
         <module>langchain4j-qdrant</module>
         <module>langchain4j-redis</module>
+        <module>langchain4j-tablestore</module>
         <module>langchain4j-vearch</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
@@ -95,6 +96,7 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>langchain4j-onnx-scoring</module>
 
     </modules>
 

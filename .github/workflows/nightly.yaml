@@ -75,5 +75,12 @@ jobs:
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
           CI_DELAY_SECONDS_AZURE_OPENAI: 1
           CI_DELAY_SECONDS_BEDROCK: 1
-          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 2
-          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 1
+          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 5
+          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 4
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: Test-Reports-${{ matrix.java-version }}
+          path: '**/target/surefire-reports/*'
