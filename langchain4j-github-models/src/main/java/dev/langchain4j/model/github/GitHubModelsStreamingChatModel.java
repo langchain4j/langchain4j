@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.github.spi.GitHubModelsStreamingChatModelBuilderFactory;
@@ -20,6 +21,7 @@ import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,6 +34,14 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
+/**
+ * Represents a language model, hosted on GitHub Models, that has a chat completion interface, such as gpt-4o.
+ * <p>
+ * Mandatory parameters for initialization are: gitHubToken (the GitHub Token used for authentication) and modelName (the name of the model to use).
+ * You can also provide your own ChatCompletionsClient and ChatCompletionsAsyncClient instance, if you need more flexibility.
+ * <p>
+ * The list of models, as well as the documentation and a playground to test them, can be found at https://github.com/marketplace/models
+ */
 public class GitHubModelsStreamingChatModel implements StreamingChatLanguageModel {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubModelsStreamingChatModel.class);

@@ -266,8 +266,6 @@ class InternalGitHubModelHelper {
         } else {
             List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls()
                     .stream()
-                    .filter(toolCall -> toolCall instanceof ChatCompletionsFunctionToolCall)
-                    .map(toolCall -> (ChatCompletionsFunctionToolCall) toolCall)
                     .map(chatCompletionsFunctionToolCall ->
                             ToolExecutionRequest.builder()
                                     .id(chatCompletionsFunctionToolCall.getId())

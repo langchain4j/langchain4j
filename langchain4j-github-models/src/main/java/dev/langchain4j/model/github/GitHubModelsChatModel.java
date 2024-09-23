@@ -9,7 +9,9 @@ import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.github.spi.GitHubModelsChatModelBuilderFactory;
 import dev.langchain4j.model.output.FinishReason;
@@ -18,9 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
@@ -31,6 +31,14 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
+/**
+ * Represents a language model, hosted on GitHub Models, that has a chat completion interface, such as gpt-4o.
+ * <p>
+ * Mandatory parameters for initialization are: gitHubToken (the GitHub Token used for authentication) and modelName (the name of the model to use).
+ * You can also provide your own ChatCompletionsClient instance, if you need more flexibility.
+ * <p>
+ * The list of models, as well as the documentation and a playground to test them, can be found at https://github.com/marketplace/models
+ */
 public class GitHubModelsChatModel implements ChatLanguageModel {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubModelsChatModel.class);
