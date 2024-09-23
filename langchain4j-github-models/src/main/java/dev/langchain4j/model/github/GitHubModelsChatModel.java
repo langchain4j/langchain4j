@@ -9,9 +9,7 @@ import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.github.spi.GitHubModelsChatModelBuilderFactory;
 import dev.langchain4j.model.output.FinishReason;
@@ -20,7 +18,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
@@ -92,7 +92,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                                 Map<String, String> customHeaders) {
 
         this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, listeners);
-        this.client = setupSyncClient(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+        this.client = setupChatCompletionsBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders).buildClient();
     }
 
     private GitHubModelsChatModel(String modelName,
@@ -284,7 +284,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
         }
 
         /**
-         * Sets the deployment name in Azure AI Inference API. This is a mandatory parameter.
+         * Sets the model name in Azure AI Inference API. This is a mandatory parameter.
          *
          * @param modelName The Model name.
          * @return builder

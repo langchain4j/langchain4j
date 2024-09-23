@@ -9,7 +9,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.github.spi.GitHubModelsStreamingChatModelBuilderFactory;
@@ -21,7 +20,6 @@ import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -114,9 +112,11 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
 
         this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, listeners);
         if (useAsyncClient) {
-            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+            this.asyncClient = setupChatCompletionsBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders)
+                    .buildAsyncClient();
         } else {
-            this.client = setupSyncClient(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+            this.client = setupChatCompletionsBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders)
+                    .buildClient();
         }
     }
 
@@ -406,9 +406,9 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
         }
 
         /**
-         * Sets the deployment name in Azure OpenAI. This is a mandatory parameter.
+         * Sets the model name in Azure OpenAI. This is a mandatory parameter.
          *
-         * @param modelName The Deployment name.
+         * @param modelName The Model name.
          * @return builder
          */
         public Builder modelName(String modelName) {

@@ -1,11 +1,11 @@
 package dev.langchain4j.model.github;
 
-import com.azure.ai.inference.ChatCompletionsAsyncClient;
-import com.azure.ai.inference.ChatCompletionsClient;
 import com.azure.ai.inference.ChatCompletionsClientBuilder;
+import com.azure.ai.inference.EmbeddingsClientBuilder;
 import com.azure.ai.inference.ModelServiceVersion;
 import com.azure.ai.inference.models.*;
 import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.credential.KeyCredential;
 import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.HttpClient;
 import com.azure.core.http.ProxyOptions;
@@ -34,6 +34,8 @@ import java.util.*;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.model.github.GitHubModelsChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.github.GitHubModelsEmbeddingModelName.TEXT_EMBEDDING_3_SMALL;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
@@ -44,24 +46,58 @@ class InternalGitHubModelHelper {
 
     public static final String DEFAULT_GITHUB_MODELS_ENDPOINT = "https://models.inference.ai.azure.com";
 
-    public static final String DEFAULT_CHAT_MODEL_NAME = "Phi-3.5-mini-instruct";
+    public static final String DEFAULT_CHAT_MODEL_NAME = GPT_4_O_MINI.modelName();
+
+    public static final String DEFAULT_EMBEDDINGS_MODEL_NAME = TEXT_EMBEDDING_3_SMALL.modelName();
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-github-models";
 
-    public static ChatCompletionsClient setupSyncClient(String endpoint, String serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
-        ChatCompletionsClientBuilder chatCompletionsClientBuilder = setupChatCompletionsClientBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
-        return chatCompletionsClientBuilder.buildClient();
+    public static ChatCompletionsClientBuilder setupChatCompletionsBuilder(String endpoint, String serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+        HttpClientOptions clientOptions = getClientOptions(timeout, proxyOptions, userAgentSuffix, customHeaders);
+        ChatCompletionsClientBuilder chatCompletionsClientBuilder = new ChatCompletionsClientBuilder()
+                .endpoint(getEndpoint(endpoint))
+                .serviceVersion(getModelServiceVersion(serviceVersion))
+                .httpClient(getHttpClient(clientOptions))
+                .clientOptions(clientOptions)
+                .httpLogOptions(getHttpLogOptions(logRequestsAndResponses))
+                .retryOptions(getRetryOptions(maxRetries))
+                .credential(getCredential(gitHubToken));
+
+        return chatCompletionsClientBuilder;
     }
 
-    public static ChatCompletionsAsyncClient setupAsyncClient(String endpoint, String serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
-        ChatCompletionsClientBuilder chatCompletionsClientBuilder = setupChatCompletionsClientBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
-        return chatCompletionsClientBuilder.buildAsyncClient();
+    public static EmbeddingsClientBuilder setupEmbeddingsBuilder(String endpoint, String serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+        HttpClientOptions clientOptions = getClientOptions(timeout, proxyOptions, userAgentSuffix, customHeaders);
+        EmbeddingsClientBuilder embeddingsClientBuilder = new EmbeddingsClientBuilder()
+                .endpoint(getEndpoint(endpoint))
+                .serviceVersion(getModelServiceVersion(serviceVersion))
+                .httpClient(getHttpClient(clientOptions))
+                .clientOptions(clientOptions)
+                .httpLogOptions(getHttpLogOptions(logRequestsAndResponses))
+                .retryOptions(getRetryOptions(maxRetries))
+                .credential(getCredential(gitHubToken));
+
+        return embeddingsClientBuilder;
     }
 
-    private static ChatCompletionsClientBuilder setupChatCompletionsClientBuilder(String endpoint, String serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+    private static String getEndpoint(String endpoint) {
+        return isNullOrBlank(endpoint) ? DEFAULT_GITHUB_MODELS_ENDPOINT : endpoint;
+    }
 
-        String endpointToUse = isNullOrBlank(endpoint) ? DEFAULT_GITHUB_MODELS_ENDPOINT : endpoint;
+    public static ModelServiceVersion getModelServiceVersion(String serviceVersion) {
+        for (ModelServiceVersion version : ModelServiceVersion.values()) {
+            if (version.getVersion().equals(serviceVersion)) {
+                return version;
+            }
+        }
+        return ModelServiceVersion.getLatest();
+    }
 
+    private static HttpClient getHttpClient(HttpClientOptions clientOptions) {
+        return new NettyAsyncHttpClientProvider().createInstance(clientOptions);
+    }
+
+    private static HttpClientOptions getClientOptions(Duration timeout, ProxyOptions proxyOptions, String userAgentSuffix, Map<String, String> customHeaders) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -80,43 +116,30 @@ class InternalGitHubModelHelper {
             customHeaders.forEach((name, value) -> headers.add(new Header(name, value)));
         }
         clientOptions.setHeaders(headers);
-        HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
+        return clientOptions;
+    }
 
+    private static HttpLogOptions getHttpLogOptions(boolean logRequestsAndResponses) {
         HttpLogOptions httpLogOptions = new HttpLogOptions();
         if (logRequestsAndResponses) {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
+        return httpLogOptions;
+    }
 
+    private static RetryOptions getRetryOptions(Integer maxRetries) {
         maxRetries = getOrDefault(maxRetries, 3);
         ExponentialBackoffOptions exponentialBackoffOptions = new ExponentialBackoffOptions();
         exponentialBackoffOptions.setMaxRetries(maxRetries);
-        RetryOptions retryOptions = new RetryOptions(exponentialBackoffOptions);
+        return new RetryOptions(exponentialBackoffOptions);
+    }
 
-        ChatCompletionsClientBuilder chatCompletionsClientBuilder = new ChatCompletionsClientBuilder()
-                .endpoint(endpointToUse)
-                .serviceVersion(getModelServiceVersion(serviceVersion))
-                .httpClient(httpClient)
-                .clientOptions(clientOptions)
-                .httpLogOptions(httpLogOptions)
-                .retryOptions(retryOptions);
-
+    private static KeyCredential getCredential(String gitHubToken) {
         if (gitHubToken != null) {
-            chatCompletionsClientBuilder.credential(new AzureKeyCredential(gitHubToken));
+            return new AzureKeyCredential(gitHubToken);
         } else {
             throw new IllegalArgumentException("GitHub token is a mandatory parameter for connecting to GitHub models.");
         }
-
-        return chatCompletionsClientBuilder;
-
-    }
-
-    public static ModelServiceVersion getModelServiceVersion(String serviceVersion) {
-        for (ModelServiceVersion version : ModelServiceVersion.values()) {
-            if (version.getVersion().equals(serviceVersion)) {
-                return version;
-            }
-        }
-        return ModelServiceVersion.getLatest();
     }
 
     public static List<ChatRequestMessage> toAzureAiMessages(List<ChatMessage> messages) {
