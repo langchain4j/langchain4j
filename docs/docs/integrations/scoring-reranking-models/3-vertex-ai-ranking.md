@@ -36,10 +36,11 @@ It is also possible to score several strings or `TextSegment`s against the query
 with the `scoreAll(segments, query)` method:
 
 ```java
-VertexAiRankerScoringModel scoringModel = VertexAiRankerScoringModel.builder()
+VertexAiScoringModel scoringModel = VertexAiScoringModel.builder()
     .projectId(System.getenv("GCP_PROJECT_ID"))
-    .projectNum(System.getenv("GCP_PROJECT_NUM"))
+    .projectNumber(System.getenv("GCP_PROJECT_NUM"))
     .projectLocation(System.getenv("GCP_LOCATION"))
+    .model("semantic-ranker-512")
     .build();
 
 Response<List<Double>> score = scoringModel.scoreAll(Stream.of(
@@ -57,9 +58,6 @@ Response<List<Double>> score = scoringModel.scoreAll(Stream.of(
 // [0.8199999928474426, 0.4300000071525574]
 ```
 
-By default, the model `semantic-ranker-512@latest` will be used.
-But you can specify the version of the model you want to use, via the `model()` builder method.
-
 If you pass `TextSegment`s which have a particular `title` key, the Ranker model can take this metadata into account in its calculation.
 To specify a custom title key, you can use the `titleMetadataKey()` builder method.`
 
@@ -67,10 +65,11 @@ You can use scoring models with `AiServices` and its `contentAgregator()` method
 which takes a `ContentAggregator` class that can specify a scoring model:
 
 ```java
-VertexAiRankerScoringModel scoringModel = VertexAiRankerScoringModel.builder()
+VertexAiScoringModel scoringModel = VertexAiScoringModel.builder()
     .projectId(System.getenv("GCP_PROJECT_ID"))
-    .projectNum(System.getenv("GCP_PROJECT_NUM"))
+    .projectNumber(System.getenv("GCP_PROJECT_NUM"))
     .projectLocation(System.getenv("GCP_LOCATION"))
+    .model("semantic-ranker-512")
     .build();
 
 ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
