@@ -112,6 +112,14 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
         );
     }
 
+    @Override
+    protected Integer knownDimension() {
+        if (dimensions != null) {
+            return dimensions;
+        }
+        return GitHubModelsEmbeddingModelName.knownDimension(modelName);
+    }
+
     public static Builder builder() {
         for (GitHubModelsEmbeddingModelBuilderFactory factory : loadFactories(GitHubModelsEmbeddingModelBuilderFactory.class)) {
             return factory.get();
