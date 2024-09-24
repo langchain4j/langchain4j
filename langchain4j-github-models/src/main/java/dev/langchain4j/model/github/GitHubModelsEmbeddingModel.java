@@ -50,7 +50,7 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.client = client;
     }
 
-    public GitHubModelsEmbeddingModel(String endpoint,
+    private GitHubModelsEmbeddingModel(String endpoint,
                                       ModelServiceVersion serviceVersion,
                                       String apiKey,
                                       String modelName,
