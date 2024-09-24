@@ -165,7 +165,7 @@ class InternalGitHubModelHelper {
             UserMessage userMessage = (UserMessage) message;
             ChatRequestUserMessage chatRequestUserMessage;
             if (userMessage.hasSingleText()) {
-                chatRequestUserMessage = new ChatRequestUserMessage(((TextContent) userMessage.contents().get(0)).text());
+                chatRequestUserMessage = new ChatRequestUserMessage(userMessage.singleText());
             } else {
                 chatRequestUserMessage = ChatRequestUserMessage.fromContentItems(userMessage.contents().stream()
                         .map(content -> {
