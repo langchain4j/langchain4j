@@ -34,8 +34,6 @@ import java.util.*;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.model.github.GitHubModelsChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.github.GitHubModelsEmbeddingModelName.TEXT_EMBEDDING_3_SMALL;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;

@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.data.embedding.Embedding.from;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.setupEmbeddingsBuilder;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
