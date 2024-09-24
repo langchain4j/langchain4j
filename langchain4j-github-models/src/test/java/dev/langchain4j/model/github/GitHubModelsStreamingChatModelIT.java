@@ -51,7 +51,6 @@ class GitHubModelsStreamingChatModelIT {
         StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelName)
-                .useAsyncClient(useAsyncClient)
                 .logRequestsAndResponses(true)
                 .build();
 

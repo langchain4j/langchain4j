@@ -1,7 +1,6 @@
 package dev.langchain4j.model.github;
 
 import com.azure.ai.inference.ChatCompletionsAsyncClient;
-import com.azure.ai.inference.ChatCompletionsClient;
 import com.azure.ai.inference.models.*;
 import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
@@ -45,8 +44,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubModelsStreamingChatModel.class);
 
-    private ChatCompletionsClient client;
-    private ChatCompletionsAsyncClient asyncClient;
+    private ChatCompletionsAsyncClient client;
     private final String modelName;
     private final Integer maxTokens;
     private final Double temperature;
@@ -58,7 +56,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
     private final ChatCompletionsResponseFormat responseFormat;
     private final List<ChatModelListener> listeners;
 
-    public GitHubModelsStreamingChatModel(ChatCompletionsClient client,
+    public GitHubModelsStreamingChatModel(ChatCompletionsAsyncClient client,
                                           String modelName,
                                           Integer maxTokens,
                                           Double temperature,
@@ -72,22 +70,6 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
 
         this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, listeners);
         this.client = client;
-    }
-
-    public GitHubModelsStreamingChatModel(ChatCompletionsAsyncClient asyncClient,
-                                          String modelName,
-                                          Integer maxTokens,
-                                          Double temperature,
-                                          Double topP,
-                                          List<String> stop,
-                                          Double presencePenalty,
-                                          Double frequencyPenalty,
-                                          Long seed,
-                                          ChatCompletionsResponseFormat responseFormat,
-                                          List<ChatModelListener> listeners) {
-
-        this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, listeners);
-        this.asyncClient = asyncClient;
     }
 
     public GitHubModelsStreamingChatModel(String endpoint,
@@ -106,19 +88,13 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                                           Integer maxRetries,
                                           ProxyOptions proxyOptions,
                                           boolean logRequestsAndResponses,
-                                          boolean useAsyncClient,
                                           List<ChatModelListener> listeners,
                                           String userAgentSuffix,
                                           Map<String, String> customHeaders) {
 
         this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, listeners);
-        if (useAsyncClient) {
-            this.asyncClient = setupChatCompletionsBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders)
+        this.client = setupChatCompletionsBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders)
                     .buildAsyncClient();
-        } else {
-            this.client = setupChatCompletionsBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders)
-                    .buildClient();
-        }
     }
 
     private GitHubModelsStreamingChatModel(String modelName,
@@ -197,12 +173,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
             }
         });
 
-        // Sync version
-        if (client != null) {
-            syncCall(toolThatMustBeExecuted, handler, options, responseBuilder, requestContext);
-        } else if (asyncClient != null) {
-            asyncCall(toolThatMustBeExecuted, handler, options, responseBuilder, requestContext);
-        }
+        asyncCall(toolThatMustBeExecuted, handler, options, responseBuilder, requestContext);
     }
 
     private void handleResponseException(Throwable throwable, StreamingResponseHandler<AiMessage> handler) {
@@ -222,7 +193,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
     }
 
     private void asyncCall(ToolSpecification toolThatMustBeExecuted, StreamingResponseHandler<AiMessage> handler, ChatCompletionsOptions options, GitHubModelsStreamingResponseBuilder responseBuilder, ChatModelRequestContext requestContext) {
-        Flux<StreamingChatCompletionsUpdate> chatCompletionsStream = asyncClient.completeStream(options);
+        Flux<StreamingChatCompletionsUpdate> chatCompletionsStream = client.completeStream(options);
 
         AtomicReference<String> responseId = new AtomicReference<>();
         chatCompletionsStream.subscribe(chatCompletion -> {
@@ -235,10 +206,10 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                 },
                 throwable -> {
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                        throwable,
-                        requestContext.request(),
-                        null,
-                        requestContext.attributes()
+                            throwable,
+                            requestContext.request(),
+                            null,
+                            requestContext.attributes()
                     );
 
                     listeners.forEach(listener -> {
@@ -253,14 +224,14 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                 () -> {
                     Response<AiMessage> response = responseBuilder.build();
                     ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                        responseId.get(),
-                        options.getModel(),
-                        response
+                            responseId.get(),
+                            options.getModel(),
+                            response
                     );
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                        modelListenerResponse,
-                        requestContext.request(),
-                        requestContext.attributes()
+                            modelListenerResponse,
+                            requestContext.request(),
+                            requestContext.attributes()
                     );
                     listeners.forEach(listener -> {
                         try {
@@ -271,60 +242,6 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                     });
                     handler.onComplete(response);
                 });
-    }
-
-    private void syncCall(ToolSpecification toolThatMustBeExecuted, StreamingResponseHandler<AiMessage> handler, ChatCompletionsOptions options, GitHubModelsStreamingResponseBuilder responseBuilder, ChatModelRequestContext requestContext) {
-        try {
-            AtomicReference<String> responseId = new AtomicReference<>();
-
-            client.completeStream(options)
-                    .stream()
-                    .forEach(chatCompletions -> {
-                        responseBuilder.append(chatCompletions);
-                        handle(chatCompletions, handler);
-
-                        if (isNotNullOrBlank(chatCompletions.getId())) {
-                            responseId.set(chatCompletions.getId());
-                        }
-                    });
-            Response<AiMessage> response = responseBuilder.build();
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                responseId.get(),
-                options.getModel(),
-                response
-            );
-            ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                modelListenerResponse,
-                requestContext.request(),
-                requestContext.attributes()
-            );
-            listeners.forEach(listener -> {
-                try {
-                    listener.onResponse(responseContext);
-                } catch (Exception e) {
-                    logger.warn("Exception while calling model listener", e);
-                }
-            });
-
-            handler.onComplete(response);
-        } catch (Exception exception) {
-            handleResponseException(exception, handler);
-
-            ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                exception,
-                requestContext.request(),
-                null,
-                requestContext.attributes()
-            );
-
-            listeners.forEach(listener -> {
-                try {
-                    listener.onError(errorContext);
-                } catch (Exception e2) {
-                    logger.warn("Exception while calling model listener", e2);
-                }
-            });
-        }
     }
 
 
@@ -366,9 +283,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
-        private boolean useAsyncClient = true;
-        private ChatCompletionsClient chatCompletionsClient;
-        private ChatCompletionsAsyncClient chatCompletionsAsyncClient;
+        private ChatCompletionsAsyncClient client;
         private String userAgentSuffix;
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
@@ -477,20 +392,8 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
             return this;
         }
 
-        public Builder useAsyncClient(boolean useAsyncClient) {
-            this.useAsyncClient = useAsyncClient;
-            return this;
-        }
-
-        public Builder chatCompletionsClient(ChatCompletionsClient chatCompletionsClient) {
-            this.chatCompletionsClient = chatCompletionsClient;
-            this.useAsyncClient = false;
-            return this;
-        }
-
-        public Builder chatCompletionsAsyncClient(ChatCompletionsAsyncClient chatCompletionsAsyncClient) {
-            this.chatCompletionsAsyncClient = chatCompletionsAsyncClient;
-            this.useAsyncClient = true;
+        public Builder chatCompletionsAsyncClient(ChatCompletionsAsyncClient client) {
+            this.client = client;
             return this;
         }
 
@@ -510,23 +413,9 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
         }
 
         public GitHubModelsStreamingChatModel build() {
-            if (chatCompletionsClient != null) {
+            if (client != null) {
                 return new GitHubModelsStreamingChatModel(
-                        chatCompletionsClient,
-                        modelName,
-                        maxTokens,
-                        temperature,
-                        topP,
-                        stop,
-                        presencePenalty,
-                        frequencyPenalty,
-                        seed,
-                        responseFormat,
-                        listeners
-                );
-            } else if (chatCompletionsAsyncClient != null) {
-                return new GitHubModelsStreamingChatModel(
-                        chatCompletionsAsyncClient,
+                        client,
                         modelName,
                         maxTokens,
                         temperature,
@@ -556,7 +445,6 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                         maxRetries,
                         proxyOptions,
                         logRequestsAndResponses,
-                        useAsyncClient,
                         listeners,
                         userAgentSuffix,
                         customHeaders
