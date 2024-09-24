@@ -172,6 +172,7 @@ class InternalGitHubModelHelper {
                                     throw new IllegalArgumentException("Image URL is not present. Base64 encoded images are not supported at the moment.");
                                 }
                                 ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageContent.image().url().toString());
+                                imageUrl.setDetail(ChatMessageImageDetailLevel.fromString(imageContent.detailLevel().name()));
                                 return new ChatMessageImageContentItem(imageUrl);
                             } else {
                                 throw new IllegalArgumentException("Unsupported content type: " + content.type());
