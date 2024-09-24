@@ -19,28 +19,20 @@ public enum GitHubModelsEmbeddingModelName {
         this.dimension = dimension;
     }
 
-    public String modelName() {
-        return modelName;
-    }
-
     @Override
     public String toString() {
         return modelName;
-    }
-
-    public Integer dimension() {
-        return dimension;
     }
 
     private static final Map<String, Integer> KNOWN_DIMENSION = new HashMap<>(GitHubModelsEmbeddingModelName.values().length);
 
     static {
         for (GitHubModelsEmbeddingModelName embeddingModelName : GitHubModelsEmbeddingModelName.values()) {
-            KNOWN_DIMENSION.put(embeddingModelName.toString(), embeddingModelName.dimension());
+            KNOWN_DIMENSION.put(embeddingModelName.toString(), embeddingModelName.dimension);
         }
     }
 
-    public static Integer knownDimension(String modelName) {
+    static Integer knownDimension(String modelName) {
         return KNOWN_DIMENSION.get(modelName);
     }
 }

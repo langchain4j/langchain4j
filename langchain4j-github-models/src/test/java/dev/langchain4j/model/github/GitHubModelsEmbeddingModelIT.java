@@ -6,6 +6,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -15,11 +16,12 @@ import java.util.List;
 import static dev.langchain4j.model.github.GitHubModelsEmbeddingModelName.TEXT_EMBEDDING_3_SMALL;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
 class GitHubModelsEmbeddingModelIT {
 
     EmbeddingModel model = GitHubModelsEmbeddingModel.builder()
             .gitHubToken(System.getenv("GITHUB_TOKEN"))
-            .modelName(TEXT_EMBEDDING_3_SMALL.modelName())
+            .modelName(TEXT_EMBEDDING_3_SMALL)
             .logRequestsAndResponses(true)
             .build();
 
@@ -69,8 +71,7 @@ class GitHubModelsEmbeddingModelIT {
         // given
         EmbeddingModel model = GitHubModelsEmbeddingModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
-                .modelName(modelName.modelName())
-                .dimensions(modelName.dimension())
+                .modelName(modelName.toString())
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -89,7 +90,7 @@ class GitHubModelsEmbeddingModelIT {
 
         EmbeddingModel model = GitHubModelsEmbeddingModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
-                .modelName(TEXT_EMBEDDING_3_SMALL.modelName())
+                .modelName(TEXT_EMBEDDING_3_SMALL)
                 .dimensions(dimensions)
                 .logRequestsAndResponses(true)
                 .build();

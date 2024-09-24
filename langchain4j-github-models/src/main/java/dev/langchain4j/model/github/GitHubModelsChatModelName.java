@@ -35,20 +35,11 @@ public enum GitHubModelsChatModelName {
     MISTRAL_SMALL("Mistral-small", "mistral");
 
     private final String modelName;
-
     private final String modelType;
 
     GitHubModelsChatModelName(String modelName, String modelType) {
         this.modelName = modelName;
         this.modelType = modelType;
-    }
-
-    public String modelName() {
-        return modelName;
-    }
-
-    public String modelType() {
-        return modelType;
     }
 
     @Override

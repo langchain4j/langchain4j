@@ -292,8 +292,8 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
         private Double presencePenalty;
         private Double frequencyPenalty;
         private Duration timeout;
-        Long seed;
-        ChatCompletionsResponseFormat responseFormat;
+        private Long seed;
+        private ChatCompletionsResponseFormat responseFormat;
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
@@ -343,6 +343,11 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
          */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
+            return this;
+        }
+
+        public Builder modelName(GitHubModelsChatModelName modelName) {
+            this.modelName = modelName.toString();
             return this;
         }
 

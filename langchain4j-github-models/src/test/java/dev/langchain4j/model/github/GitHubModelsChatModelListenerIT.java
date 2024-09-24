@@ -4,10 +4,12 @@ import com.azure.core.exception.ClientAuthenticationException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static java.util.Collections.singletonList;
 
-public class GitHubModelsChatModelListenerIT extends ChatModelListenerIT {
+@EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
+class GitHubModelsChatModelListenerIT extends ChatModelListenerIT {
 
     @Override
     protected ChatLanguageModel createModel(ChatModelListener listener) {

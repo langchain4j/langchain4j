@@ -13,11 +13,11 @@ import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,31 +26,27 @@ import java.util.concurrent.CompletableFuture;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.github.GitHubModelsChatModelName.PHI_3_5_MINI_INSTRUCT;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
 class GitHubModelsStreamingChatModelIT {
-
-    private static final Logger logger = LoggerFactory.getLogger(GitHubModelsStreamingChatModelIT.class);
 
     public long STREAMING_TIMEOUT = 120;
 
-    @ParameterizedTest(name = "Model name {0} with async client set to {1}")
-    @CsvSource({
-            "Phi-3.5-mini-instruct, true",
-            "Phi-3.5-mini-instruct, false"
-    })
-    void should_stream_answer(String modelName, boolean useAsyncClient) throws Exception {
+    @Test
+    void should_stream_answer() throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
 
         StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
-                .modelName(modelName)
+                .modelName(PHI_3_5_MINI_INSTRUCT)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -95,7 +91,7 @@ class GitHubModelsStreamingChatModelIT {
             "Mistral-nemo",
             "meta-llama-3-8b-instruct"
     })
-    void test_different_available_models(String modelName) throws Exception {
+    void test_different_available_models(String modelName) {
 
         StreamingChatLanguageModel model = GitHubModelsStreamingChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))

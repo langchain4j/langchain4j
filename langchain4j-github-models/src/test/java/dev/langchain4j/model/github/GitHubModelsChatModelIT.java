@@ -13,6 +13,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -30,7 +31,8 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class GitHubModelsChatModelIT {
+@EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
+class GitHubModelsChatModelIT {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubModelsChatModelIT.class);
 
@@ -39,7 +41,7 @@ public class GitHubModelsChatModelIT {
 
         GitHubModelsChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
-                .modelName(GPT_4_O_MINI.modelName())
+                .modelName(GPT_4_O_MINI)
                 .logRequestsAndResponses(true)
                 .build();
 

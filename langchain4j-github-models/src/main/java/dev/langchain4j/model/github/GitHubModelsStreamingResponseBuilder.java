@@ -24,11 +24,7 @@ import static java.util.stream.Collectors.toList;
  */
 class GitHubModelsStreamingResponseBuilder {
 
-    Logger logger = LoggerFactory.getLogger(GitHubModelsStreamingResponseBuilder.class);
-
     private final StringBuffer contentBuilder = new StringBuffer();
-    private final StringBuffer toolNameBuilder = new StringBuffer();
-    private final StringBuffer toolArgumentsBuilder = new StringBuffer();
     private int inputTokenCount = 0;
     private int outputTokenCount = 0;
     private String toolExecutionsIndex = "call_undefined";

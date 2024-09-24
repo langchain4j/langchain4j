@@ -186,6 +186,11 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        public Builder modelName(GitHubModelsEmbeddingModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
+
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;

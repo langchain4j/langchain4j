@@ -241,8 +241,8 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
         private List<String> stop;
         private Double presencePenalty;
         private Double frequencyPenalty;
-        Long seed;
-        ChatCompletionsResponseFormat responseFormat;
+        private Long seed;
+        private ChatCompletionsResponseFormat responseFormat;
         private Duration timeout;
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
@@ -293,6 +293,11 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
          */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
+            return this;
+        }
+
+        public Builder modelName(GitHubModelsChatModelName modelName) {
+            this.modelName = modelName.toString();
             return this;
         }
 
