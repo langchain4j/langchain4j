@@ -209,7 +209,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(
                             throwable,
                             requestContext.request(),
-                            null,
+                            modelListenerPartialResponse,
                             requestContext.attributes()
                     );
 
