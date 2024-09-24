@@ -106,7 +106,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
                                  ChatCompletionsResponseFormat responseFormat,
                                  List<ChatModelListener> listeners) {
 
-        this.modelName = getOrDefault(modelName, DEFAULT_CHAT_MODEL_NAME);
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
