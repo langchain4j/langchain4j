@@ -82,7 +82,7 @@ public class GitHubModelsChatModelConfiguration {
 }
 ```
 
-This configuration will create an `GitHubModelsChatModel` bean (with default model parameters),
+This configuration will create an `GitHubModelsChatModel` bean,
 which can be either used by an [AI Service](https://docs.langchain4j.dev/tutorials/spring-boot-integration/#langchain4j-spring-boot-starter)
 or autowired where needed, for example:
 
