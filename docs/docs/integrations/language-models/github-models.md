@@ -47,7 +47,7 @@ GitHubModelsChatModel model = GitHubModelsChatModel.builder()
         .build();
 ```
 
-This will create an instance of `GitHubModelsChatModel` with default model parameters (e.g. `0.7` temperature, etc.).
+This will create an instance of `GitHubModelsChatModel`.
 Those parameters can be customized by providing values in the GitHubModelsChatModel's builder.
 
 ### Spring Boot
