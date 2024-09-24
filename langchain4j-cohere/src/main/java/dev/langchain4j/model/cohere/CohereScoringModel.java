@@ -52,6 +52,10 @@ public class CohereScoringModel implements ScoringModel {
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
+    /**
+     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
+     */
+    @Deprecated
     public static CohereScoringModel withApiKey(String apiKey) {
         return CohereScoringModel.builder().apiKey(apiKey).build();
     }

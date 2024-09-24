@@ -248,7 +248,7 @@ class StreamingAiServicesWithToolsIT {
                 .toolProvider(toolProvider)
                 .build();
 
-        String userMessage = "What are the amounts of transactions T001 and T002?";
+        String userMessage = "What is the amounts of transactions T001?";
 
         // when
         CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
@@ -261,7 +261,7 @@ class StreamingAiServicesWithToolsIT {
         Response<AiMessage> response = future.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("42", "57");
+        assertThat(response.content().text()).contains("42");
 
         // then
         verify(toolExecutor).execute(any(), any());

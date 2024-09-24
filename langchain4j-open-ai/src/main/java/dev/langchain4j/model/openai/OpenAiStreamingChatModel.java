@@ -289,6 +289,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         return tokenizer.estimateTokenCountInMessages(messages);
     }
 
+    /**
+     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
+     */
+    @Deprecated
     public static OpenAiStreamingChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
