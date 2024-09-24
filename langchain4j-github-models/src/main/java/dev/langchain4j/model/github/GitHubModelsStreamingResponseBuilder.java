@@ -3,6 +3,7 @@ package dev.langchain4j.model.github;
 import com.azure.ai.inference.models.*;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.finishReasonFrom;
 import static java.util.stream.Collectors.toList;
 
@@ -31,7 +33,7 @@ class GitHubModelsStreamingResponseBuilder {
     private int outputTokenCount = 0;
     private String toolExecutionsIndex = "call_undefined";
     private final Map<String, ToolExecutionRequestBuilder> toolExecutionRequestBuilderHashMap = new HashMap<>();
-    private volatile CompletionsFinishReason finishReason;
+    private volatile CompletionsFinishReason azureFinishReason;
 
     public GitHubModelsStreamingResponseBuilder() {
     }
@@ -57,7 +59,7 @@ class GitHubModelsStreamingResponseBuilder {
 
         CompletionsFinishReason finishReason = chatCompletionChoice.getFinishReason();
         if (finishReason != null) {
-            this.finishReason = finishReason;
+            this.azureFinishReason = finishReason;
         }
 
         StreamingChatResponseMessageUpdate delta = chatCompletionChoice.getDelta();
@@ -96,30 +98,17 @@ class GitHubModelsStreamingResponseBuilder {
     }
 
     public Response<AiMessage> build() {
-
         String content = contentBuilder.toString();
-        if (!content.isEmpty()) {
+        TokenUsage tokenUsage = new TokenUsage(inputTokenCount, outputTokenCount);
+        FinishReason finishReason = finishReasonFrom(azureFinishReason);
+
+        if (toolExecutionRequestBuilderHashMap.isEmpty()) {
             return Response.from(
                     AiMessage.from(content),
-                    new TokenUsage(inputTokenCount, outputTokenCount),
-                    finishReasonFrom(finishReason)
+                    tokenUsage,
+                    finishReason
             );
-        }
-
-        String toolName = toolNameBuilder.toString();
-        if (!toolName.isEmpty()) {
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(toolName)
-                    .arguments(toolArgumentsBuilder.toString())
-                    .build();
-            return Response.from(
-                    AiMessage.from(toolExecutionRequest),
-                    new TokenUsage(inputTokenCount, outputTokenCount),
-                    finishReasonFrom(finishReason)
-            );
-        }
-
-        if (!toolExecutionRequestBuilderHashMap.isEmpty()) {
+        } else {
             List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestBuilderHashMap.values().stream()
                     .map(it -> ToolExecutionRequest.builder()
                             .id(it.idBuilder.toString())
@@ -127,14 +116,17 @@ class GitHubModelsStreamingResponseBuilder {
                             .arguments(it.argumentsBuilder.toString())
                             .build())
                     .collect(toList());
+
+            AiMessage aiMessage = isNullOrBlank(content)
+                    ? AiMessage.from(toolExecutionRequests)
+                    : AiMessage.from(content, toolExecutionRequests);
+
             return Response.from(
-                    AiMessage.from(toolExecutionRequests),
-                    new TokenUsage(inputTokenCount, outputTokenCount),
-                    finishReasonFrom(finishReason)
+                    aiMessage,
+                    tokenUsage,
+                    finishReason
             );
         }
-
-        return null;
     }
 
     private static class ToolExecutionRequestBuilder {
