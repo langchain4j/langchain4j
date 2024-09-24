@@ -73,7 +73,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
         this.client = client;
     }
 
-    public GitHubModelsStreamingChatModel(String endpoint,
+    private GitHubModelsStreamingChatModel(String endpoint,
                                           ModelServiceVersion serviceVersion,
                                           String gitHubToken,
                                           String modelName,
