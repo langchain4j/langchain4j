@@ -1,6 +1,7 @@
 package dev.langchain4j.model.github;
 
 import com.azure.ai.inference.ChatCompletionsAsyncClient;
+import com.azure.ai.inference.ModelServiceVersion;
 import com.azure.ai.inference.models.*;
 import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
@@ -73,7 +74,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
     }
 
     public GitHubModelsStreamingChatModel(String endpoint,
-                                          String serviceVersion,
+                                          ModelServiceVersion serviceVersion,
                                           String gitHubToken,
                                           String modelName,
                                           Integer maxTokens,
@@ -268,7 +269,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
     public static class Builder {
 
         private String endpoint;
-        private String serviceVersion;
+        private ModelServiceVersion serviceVersion;
         private String gitHubToken;
         private String modelName;
         private Integer maxTokens;
@@ -300,12 +301,12 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
         }
 
         /**
-         * Sets the Azure OpenAI API service version. This is a mandatory parameter.
+         * Sets the Azure OpenAI API service version. If left blank, the latest service version will be used.
          *
          * @param serviceVersion The Azure OpenAI API service version in the format: 2023-05-15
          * @return builder
          */
-        public Builder serviceVersion(String serviceVersion) {
+        public Builder serviceVersion(ModelServiceVersion serviceVersion) {
             this.serviceVersion = serviceVersion;
             return this;
         }

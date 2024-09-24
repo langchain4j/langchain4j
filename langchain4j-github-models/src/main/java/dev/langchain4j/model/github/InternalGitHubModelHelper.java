@@ -34,6 +34,7 @@ import java.util.*;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
@@ -46,7 +47,7 @@ class InternalGitHubModelHelper {
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-github-models";
 
-    public static ChatCompletionsClientBuilder setupChatCompletionsBuilder(String endpoint, String serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+    public static ChatCompletionsClientBuilder setupChatCompletionsBuilder(String endpoint, ModelServiceVersion serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
         HttpClientOptions clientOptions = getClientOptions(timeout, proxyOptions, userAgentSuffix, customHeaders);
         ChatCompletionsClientBuilder chatCompletionsClientBuilder = new ChatCompletionsClientBuilder()
                 .endpoint(getEndpoint(endpoint))
@@ -60,7 +61,7 @@ class InternalGitHubModelHelper {
         return chatCompletionsClientBuilder;
     }
 
-    public static EmbeddingsClientBuilder setupEmbeddingsBuilder(String endpoint, String serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+    public static EmbeddingsClientBuilder setupEmbeddingsBuilder(String endpoint, ModelServiceVersion serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
         HttpClientOptions clientOptions = getClientOptions(timeout, proxyOptions, userAgentSuffix, customHeaders);
         EmbeddingsClientBuilder embeddingsClientBuilder = new EmbeddingsClientBuilder()
                 .endpoint(getEndpoint(endpoint))
@@ -78,13 +79,8 @@ class InternalGitHubModelHelper {
         return isNullOrBlank(endpoint) ? DEFAULT_GITHUB_MODELS_ENDPOINT : endpoint;
     }
 
-    public static ModelServiceVersion getModelServiceVersion(String serviceVersion) {
-        for (ModelServiceVersion version : ModelServiceVersion.values()) {
-            if (version.getVersion().equals(serviceVersion)) {
-                return version;
-            }
-        }
-        return ModelServiceVersion.getLatest();
+    public static ModelServiceVersion getModelServiceVersion(ModelServiceVersion serviceVersion) {
+        return getOrDefault(serviceVersion, ModelServiceVersion.getLatest());
     }
 
     private static HttpClient getHttpClient(HttpClientOptions clientOptions) {

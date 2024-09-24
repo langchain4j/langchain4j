@@ -1,6 +1,7 @@
 package dev.langchain4j.model.github;
 
 import com.azure.ai.inference.EmbeddingsClient;
+import com.azure.ai.inference.ModelServiceVersion;
 import com.azure.ai.inference.models.EmbeddingItem;
 import com.azure.ai.inference.models.EmbeddingsResult;
 import com.azure.core.http.ProxyOptions;
@@ -50,7 +51,7 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     public GitHubModelsEmbeddingModel(String endpoint,
-                                      String serviceVersion,
+                                      ModelServiceVersion serviceVersion,
                                       String apiKey,
                                       String modelName,
                                       Duration timeout,
@@ -121,7 +122,7 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
     public static class Builder {
 
         private String endpoint;
-        private String serviceVersion;
+        private ModelServiceVersion serviceVersion;
         private String gitHubToken;
         private String modelName;
         private Duration timeout;
@@ -144,14 +145,13 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
-
         /**
-         * Sets the Azure OpenAI API service version. This is a mandatory parameter.
+         * Sets the Azure OpenAI API service version. If left blank, the latest service version will be used.
          *
          * @param serviceVersion The Azure OpenAI API service version in the format: 2023-05-15
          * @return builder
          */
-        public Builder serviceVersion(String serviceVersion) {
+        public Builder serviceVersion(ModelServiceVersion serviceVersion) {
             this.serviceVersion = serviceVersion;
             return this;
         }

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.github;
 
 import com.azure.ai.inference.ChatCompletionsClient;
+import com.azure.ai.inference.ModelServiceVersion;
 import com.azure.ai.inference.models.ChatCompletions;
 import com.azure.ai.inference.models.ChatCompletionsOptions;
 import com.azure.ai.inference.models.ChatCompletionsResponseFormat;
@@ -73,7 +74,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
     }
 
     public GitHubModelsChatModel(String endpoint,
-                                String serviceVersion,
+                                ModelServiceVersion serviceVersion,
                                 String gitHubToken,
                                 String modelName,
                                 Integer maxTokens,
@@ -231,7 +232,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
     public static class Builder {
 
         private String endpoint;
-        private String serviceVersion;
+        private ModelServiceVersion serviceVersion;
         private String gitHubToken;
         private String modelName;
         private Integer maxTokens;
@@ -263,12 +264,12 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
         }
 
         /**
-         * Sets the Azure OpenAI API service version. This is a mandatory parameter.
+         * Sets the Azure OpenAI API service version. If left blank, the latest service version will be used.
          *
          * @param serviceVersion The Azure OpenAI API service version in the format: 2023-05-15
          * @return builder
          */
-        public Builder serviceVersion(String serviceVersion) {
+        public Builder serviceVersion(ModelServiceVersion serviceVersion) {
             this.serviceVersion = serviceVersion;
             return this;
         }
