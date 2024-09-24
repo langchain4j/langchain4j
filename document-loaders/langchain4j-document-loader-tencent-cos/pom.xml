@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>langchain4j-document-loader-tencent-cos</artifactId>
-    <name>LangChain4j :: Document loader :: Tencent COS</name>
+    <name>LangChain4j :: Document Loader :: Tencent COS</name>
 
     <dependencies>
         <dependency>

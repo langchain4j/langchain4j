@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-document-parser-apache-tika</artifactId>
-    <name>LangChain4j :: Document parser :: Apache Tika</name>
+    <name>LangChain4j :: Document Parser :: Apache Tika</name>
     <packaging>jar</packaging>
 
     <properties>

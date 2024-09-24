@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-document-loader-google-cloud-storage</artifactId>
-    <name>LangChain4j :: Document loader :: Google Cloud Storage</name>
+    <name>LangChain4j :: Document Loader :: Google Cloud Storage</name>
 
     <dependencies>
 

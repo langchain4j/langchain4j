@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>langchain4j-document-loader-selenium</artifactId>
-    <name>LangChain4j :: Document loader :: Selenium</name>
+    <name>LangChain4j :: Document Loader :: Selenium</name>
 
     <description>
         Selenium is a suite of tools for automating web browsers.
