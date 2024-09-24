@@ -73,7 +73,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
         this.client = client;
     }
 
-    public GitHubModelsChatModel(String endpoint,
+    private GitHubModelsChatModel(String endpoint,
                                 ModelServiceVersion serviceVersion,
                                 String gitHubToken,
                                 String modelName,
