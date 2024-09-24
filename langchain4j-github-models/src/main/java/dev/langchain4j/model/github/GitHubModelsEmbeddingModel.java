@@ -52,7 +52,7 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private GitHubModelsEmbeddingModel(String endpoint,
                                       ModelServiceVersion serviceVersion,
-                                      String apiKey,
+                                      String gitHubToken,
                                       String modelName,
                                       Duration timeout,
                                       Integer maxRetries,
