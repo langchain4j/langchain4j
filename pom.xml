@@ -84,6 +84,9 @@
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
         <module>document-parsers/langchain4j-document-parser-apache-tika</module>
 
+        <!-- document transformers -->
+        <module>document-transformers/langchain4j-document-transformer-jsoup</module>
+
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
         <module>code-execution-engines/langchain4j-code-execution-engine-judge0</module>
