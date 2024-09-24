@@ -57,7 +57,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
     private final ChatCompletionsResponseFormat responseFormat;
     private final List<ChatModelListener> listeners;
 
-    public GitHubModelsChatModel(ChatCompletionsClient client,
+    private GitHubModelsChatModel(ChatCompletionsClient client,
                                 String modelName,
                                 Integer maxTokens,
                                 Double temperature,
