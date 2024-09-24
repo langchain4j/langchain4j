@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-document-loader-github</artifactId>
-    <name>LangChain4j :: Document loader :: GitHub</name>
+    <name>LangChain4j :: Document Loader :: GitHub</name>
 
     <dependencies>
 

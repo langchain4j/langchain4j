@@ -11,8 +11,8 @@
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-document-loader-azure-storage-blob</artifactId>
-    <name>LangChain4j :: Document Loader :: Azure Blob Storage</name>
+    <artifactId>langchain4j-document-transformer-jsoup</artifactId>
+    <name>LangChain4j :: Document Transformer :: jsoup</name>
 
     <dependencies>
 
@@ -22,49 +22,14 @@
         </dependency>
 
         <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-storage-blob</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-storage-common</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
-            <artifactId>jackson-dataformat-xml</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-identity</artifactId>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.18.1</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <version>2.22.0</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-            <version>2.22.0</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j2-impl</artifactId>
-            <version>2.20.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -82,7 +47,7 @@
 
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>localstack</artifactId>
             <scope>test</scope>
         </dependency>
 

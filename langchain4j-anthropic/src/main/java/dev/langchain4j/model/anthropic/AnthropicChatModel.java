@@ -134,7 +134,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
     }
 
     /**
-     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
+     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
     @Deprecated
     public static AnthropicChatModel withApiKey(String apiKey) {

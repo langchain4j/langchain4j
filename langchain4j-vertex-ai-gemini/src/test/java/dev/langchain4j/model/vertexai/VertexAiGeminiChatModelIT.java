@@ -645,7 +645,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
-    @RetryingTest(4)
+    @RetryingTest(10)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
@@ -659,6 +659,10 @@ class VertexAiGeminiChatModelIT {
             .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-1.5-flash-001")
             .safetySettings(safetySettings)
+            .temperature(0.0f)
+            .topP(0.0f)
+            .topK(1)
+            .seed(1234)
             .logRequests(true)
             .logResponses(true)
             .build();
