@@ -9,7 +9,7 @@ import com.google.api.gax.paging.Page;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
-import dev.langchain4j.data.document.source.GcsSource;
+import dev.langchain4j.data.document.source.gcs.GcsSource;
 
 import java.util.ArrayList;
 import java.util.List;
