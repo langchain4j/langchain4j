@@ -71,12 +71,14 @@ jobs:
           OVHAI_AI_API_KEY: ${{ secrets.OVHAI_AI_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
           CI_DELAY_SECONDS_AZURE_OPENAI: 1
           CI_DELAY_SECONDS_BEDROCK: 1
           CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 5
-          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 4
+          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 5
+          CI_DELAY_SECONDS_VOYAGE_AI: 22
 
       - name: Upload Test Reports
         if: always()
