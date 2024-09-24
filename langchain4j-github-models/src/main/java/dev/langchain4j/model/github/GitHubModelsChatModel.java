@@ -110,7 +110,7 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
         this.maxTokens = maxTokens;
         this.temperature = temperature;
         this.topP = topP;
-        this.stop = stop;
+        this.stop = copyIfNotNull(stop);
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.seed = seed;
