@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-document-transformer-jsoup</artifactId>
-    <name>LangChain4j :: Document transformer :: jsoup</name>
+    <name>LangChain4j :: Document Transformer :: jsoup</name>
 
     <dependencies>
 
