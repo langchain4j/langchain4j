@@ -63,7 +63,7 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
                                       Map<String, String> customHeaders) {
 
         this(modelName, dimensions);
-        this.client = setupEmbeddingsBuilder(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders)
+        this.client = setupEmbeddingsBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders)
                 .buildClient();
     }
 

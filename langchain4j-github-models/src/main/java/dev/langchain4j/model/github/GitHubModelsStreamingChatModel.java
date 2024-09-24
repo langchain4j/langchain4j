@@ -174,7 +174,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
             }
         });
 
-        asyncCall(toolThatMustBeExecuted, handler, options, responseBuilder, requestContext);
+        asyncCall(handler, options, responseBuilder, requestContext);
     }
 
     private void handleResponseException(Throwable throwable, StreamingResponseHandler<AiMessage> handler) {
@@ -193,10 +193,12 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
         }
     }
 
-    private void asyncCall(ToolSpecification toolThatMustBeExecuted, StreamingResponseHandler<AiMessage> handler, ChatCompletionsOptions options, GitHubModelsStreamingResponseBuilder responseBuilder, ChatModelRequestContext requestContext) {
+    private void asyncCall(StreamingResponseHandler<AiMessage> handler, ChatCompletionsOptions options, GitHubModelsStreamingResponseBuilder responseBuilder, ChatModelRequestContext requestContext) {
         Flux<StreamingChatCompletionsUpdate> chatCompletionsStream = client.completeStream(options);
 
         AtomicReference<String> responseId = new AtomicReference<>();
+        AtomicReference<String> responseModel = new AtomicReference<>();
+
         chatCompletionsStream.subscribe(chatCompletion -> {
                     responseBuilder.append(chatCompletion);
                     handle(chatCompletion, handler);
@@ -204,8 +206,19 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                     if (isNotNullOrBlank(chatCompletion.getId())) {
                         responseId.set(chatCompletion.getId());
                     }
+                    if (!isNullOrBlank(chatCompletion.getModel())) {
+                        responseModel.set(chatCompletion.getModel());
+                    }
                 },
                 throwable -> {
+                    Response<AiMessage> response = responseBuilder.build();
+
+                    ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
+                            responseId.get(),
+                            responseModel.get(),
+                            response
+                    );
+
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(
                             throwable,
                             requestContext.request(),
