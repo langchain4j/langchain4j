@@ -331,7 +331,7 @@ to be later included in each `TextSegment` (which we will cover below) to potent
 
 `Metadata` entries can also be added, modified, or removed at this stage.
 
-Currently, the only implementation provided out-of-the-box is `HtmlTextExtractor`
+Currently, the only implementation provided out-of-the-box is `HtmlToTextDocumentTransformer`
 in the `langchain4j-document-transformer-jsoup` module,
 which can extract desired text content and metadata entries from the raw HTML.
 
