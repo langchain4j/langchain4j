@@ -11,7 +11,6 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.voyageai.VoyageAiApi.DEFAULT_BASE_URL;
 import static java.time.Duration.ofSeconds;
 import static java.util.Comparator.comparingInt;
@@ -27,7 +26,6 @@ public class VoyageAiScoringModel implements ScoringModel {
     private final Integer maxRetries;
     private final String modelName;
     private final Integer topK;
-    private final Boolean returnDocuments;
     private final Boolean truncation;
 
     public VoyageAiScoringModel(
@@ -37,7 +35,6 @@ public class VoyageAiScoringModel implements ScoringModel {
             String apiKey,
             String modelName,
             Integer topK,
-            Boolean returnDocuments,
             Boolean truncation,
             Boolean logRequests,
             Boolean logResponses
@@ -47,7 +44,6 @@ public class VoyageAiScoringModel implements ScoringModel {
         this.modelName = ensureNotBlank(modelName, "modelName");
         // Below attributes can be null
         this.truncation = truncation;
-        this.returnDocuments = returnDocuments;
         this.topK = topK;
 
         this.client = VoyageAiClient.builder()
@@ -68,7 +64,6 @@ public class VoyageAiScoringModel implements ScoringModel {
                         .map(TextSegment::text)
                         .collect(toList()))
                 .topK(topK)
-                .returnDocuments(returnDocuments)
                 .truncation(truncation)
                 .build();
 
@@ -94,7 +89,6 @@ public class VoyageAiScoringModel implements ScoringModel {
         private String apiKey;
         private String modelName;
         private Integer topK;
-        private Boolean returnDocuments;
         private Boolean truncation;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -152,23 +146,6 @@ public class VoyageAiScoringModel implements ScoringModel {
         }
 
         /**
-         * Whether to return the documents in the response. Defaults to false.
-         *
-         * <ul>
-         *     <li>If false, the API will return a list of {"index", "relevance_score"} where "index" refers to the index of a document within the input list.</li>
-         *     <li>If true, the API will return a list of {"index", "document", "relevance_score"} where "document" is the corresponding document from the input list.</li>
-         * </ul>
-         *
-         * <p><b>NOTE:</b> this parameter has no effect on langchain4j, because {@link ScoringModel#score(TextSegment, String)} will only return the relevance score.</p>
-         *
-         * @param returnDocuments Whether to return the documents in the response.
-         */
-        public Builder returnDocuments(Boolean returnDocuments) {
-            this.returnDocuments = returnDocuments;
-            return this;
-        }
-
-        /**
          * Whether to truncate the input to satisfy the "context length limit" on the query and the documents. Defaults to true.
          *
          * <ul>
@@ -194,7 +171,7 @@ public class VoyageAiScoringModel implements ScoringModel {
         }
 
         public VoyageAiScoringModel build() {
-            return new VoyageAiScoringModel(baseUrl, timeout, maxRetries, apiKey, modelName, topK, returnDocuments, truncation, logRequests, logResponses);
+            return new VoyageAiScoringModel(baseUrl, timeout, maxRetries, apiKey, modelName, topK, truncation, logRequests, logResponses);
         }
     }
 }
