@@ -187,18 +187,6 @@ class InternalGitHubModelHelper {
         }
     }
 
-    private static String nameFrom(ChatMessage message) {
-        if (message instanceof UserMessage) {
-            return ((UserMessage) message).name();
-        }
-
-        if (message instanceof ToolExecutionResultMessage) {
-            return ((ToolExecutionResultMessage) message).toolName();
-        }
-
-        return null;
-    }
-
     private static List<ChatCompletionsToolCall> toolExecutionRequestsFrom(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
