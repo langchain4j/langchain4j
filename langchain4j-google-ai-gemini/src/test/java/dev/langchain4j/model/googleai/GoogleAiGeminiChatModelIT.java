@@ -741,13 +741,16 @@ public class GoogleAiGeminiChatModelIT {
         String chat(String userMessage);
     }
 
-    @RetryingTest(3)
+    @RetryingTest(10)
     void should_work_with_tools_with_AiServices() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-pro")
             .logRequestsAndResponses(true)
+            .temperature(0.0)
+            .topP(0.0)
+            .topK(1)
             .build();
 
         // when
