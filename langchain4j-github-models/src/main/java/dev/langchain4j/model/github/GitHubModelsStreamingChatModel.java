@@ -57,7 +57,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
     private final ChatCompletionsResponseFormat responseFormat;
     private final List<ChatModelListener> listeners;
 
-    public GitHubModelsStreamingChatModel(ChatCompletionsAsyncClient client,
+    private GitHubModelsStreamingChatModel(ChatCompletionsAsyncClient client,
                                           String modelName,
                                           Integer maxTokens,
                                           Double temperature,
