@@ -46,10 +46,6 @@ class InternalGitHubModelHelper {
 
     public static final String DEFAULT_GITHUB_MODELS_ENDPOINT = "https://models.inference.ai.azure.com";
 
-    public static final String DEFAULT_CHAT_MODEL_NAME = GPT_4_O_MINI.modelName();
-
-    public static final String DEFAULT_EMBEDDINGS_MODEL_NAME = TEXT_EMBEDDING_3_SMALL.modelName();
-
     public static final String DEFAULT_USER_AGENT = "langchain4j-github-models";
 
     public static ChatCompletionsClientBuilder setupChatCompletionsBuilder(String endpoint, String serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {

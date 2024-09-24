@@ -12,15 +12,14 @@ import org.junit.jupiter.params.provider.EnumSource;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.DEFAULT_EMBEDDINGS_MODEL_NAME;
+import static dev.langchain4j.model.github.GitHubModelsEmbeddingModelName.TEXT_EMBEDDING_3_SMALL;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 class GitHubModelsEmbeddingModelIT {
 
     EmbeddingModel model = GitHubModelsEmbeddingModel.builder()
             .gitHubToken(System.getenv("GITHUB_TOKEN"))
-            .modelName(DEFAULT_EMBEDDINGS_MODEL_NAME)
+            .modelName(TEXT_EMBEDDING_3_SMALL.modelName())
             .logRequestsAndResponses(true)
             .build();
 
@@ -90,7 +89,7 @@ class GitHubModelsEmbeddingModelIT {
 
         EmbeddingModel model = GitHubModelsEmbeddingModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
-                .modelName(DEFAULT_EMBEDDINGS_MODEL_NAME)
+                .modelName(TEXT_EMBEDDING_3_SMALL.modelName())
                 .dimensions(dimensions)
                 .logRequestsAndResponses(true)
                 .build();

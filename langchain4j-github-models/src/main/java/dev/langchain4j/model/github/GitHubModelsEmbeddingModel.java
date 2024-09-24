@@ -20,7 +20,7 @@ import java.util.Map;
 
 import static dev.langchain4j.data.embedding.Embedding.from;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.DEFAULT_EMBEDDINGS_MODEL_NAME;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.setupEmbeddingsBuilder;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
@@ -68,7 +68,7 @@ public class GitHubModelsEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     private GitHubModelsEmbeddingModel(String modelName, Integer dimensions) {
-        this.modelName = getOrDefault(modelName, DEFAULT_EMBEDDINGS_MODEL_NAME);
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.dimensions = dimensions;
     }
 

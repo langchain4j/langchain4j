@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.github.InternalGitHubModelHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
@@ -131,7 +132,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
                                            ChatCompletionsResponseFormat responseFormat,
                                            List<ChatModelListener> listeners) {
 
-        this.modelName = getOrDefault(modelName, DEFAULT_CHAT_MODEL_NAME);
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;

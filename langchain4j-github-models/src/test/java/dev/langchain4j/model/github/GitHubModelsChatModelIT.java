@@ -24,7 +24,7 @@ import java.util.*;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.DEFAULT_CHAT_MODEL_NAME;
+import static dev.langchain4j.model.github.GitHubModelsChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
@@ -39,7 +39,7 @@ public class GitHubModelsChatModelIT {
 
         GitHubModelsChatModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
-                .modelName(DEFAULT_CHAT_MODEL_NAME)
+                .modelName(GPT_4_O_MINI.modelName())
                 .logRequestsAndResponses(true)
                 .build();
 
