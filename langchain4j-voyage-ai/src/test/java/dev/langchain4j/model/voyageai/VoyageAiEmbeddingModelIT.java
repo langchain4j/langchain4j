@@ -19,12 +19,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "VOYAGE_API_KEY", matches = ".+")
 class VoyageAiEmbeddingModelIT {
 
-    @AfterEach
-    void afterEach() throws InterruptedException {
-        // Voyage rate limit is 3 RPM and 10K TPM.
-        Thread.sleep(21000);
-    }
-
     @Test
     void should_embed_single_text() {
 
@@ -144,5 +138,13 @@ class VoyageAiEmbeddingModelIT {
         assertThat(response.tokenUsage().totalTokenCount()).isNotNegative();
 
         assertThat(response.finishReason()).isNull();
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VOYAGE_AI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

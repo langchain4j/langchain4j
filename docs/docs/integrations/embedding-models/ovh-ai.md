@@ -1,3 +1,7 @@
+---
+sidebar_position: 15
+---
+
 # OVHcloud AI Endpoints
 
 - [OVHclous AI Endpoints Documentation](https://labs.ovhcloud.com/en/ai-endpoints/)

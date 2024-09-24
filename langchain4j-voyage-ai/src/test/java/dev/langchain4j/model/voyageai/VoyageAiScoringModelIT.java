@@ -18,12 +18,6 @@ import static org.assertj.core.data.Percentage.withPercentage;
 @EnabledIfEnvironmentVariable(named = "VOYAGE_API_KEY", matches = ".+")
 class VoyageAiScoringModelIT {
 
-    @AfterEach
-    void afterEach() throws InterruptedException {
-        // Voyage rate limit is 3 RPM and 10K TPM.
-        Thread.sleep(21000);
-    }
-
     @Test
     void should_score_single_text() {
 
@@ -115,5 +109,13 @@ class VoyageAiScoringModelIT {
         assertThat(response.tokenUsage().totalTokenCount()).isNotNegative();
 
         assertThat(response.finishReason()).isNull();
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VOYAGE_AI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }
