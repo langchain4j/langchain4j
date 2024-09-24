@@ -58,7 +58,7 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
     }
 
     /**
-     * @deprecated use {@link #builder()} instead and explicitly set the base URL and, if required, other parameters.
+     * @deprecated use {@code builder()} instead and explicitly set the base URL and, if required, other parameters.
      */
     @Deprecated
     public static OvhAiEmbeddingModel withApiKey(String apiKey) {
