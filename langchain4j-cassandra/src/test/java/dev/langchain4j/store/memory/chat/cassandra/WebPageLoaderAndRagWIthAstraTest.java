@@ -6,7 +6,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.source.UrlSource;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
-import dev.langchain4j.data.document.transformer.jsoup.HtmlTextExtractor;
+import dev.langchain4j.data.document.transformer.jsoup.HtmlToTextDocumentTransformer;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.segment.TextSegment;
@@ -64,7 +64,7 @@ public class WebPageLoaderAndRagWIthAstraTest {
 
         //Document document = UrlDocumentLoader.load("https://beta.goodbards.ai", new HtmlDocumentParser());;
 
-        HtmlTextExtractor transformer = new HtmlTextExtractor();
+        HtmlToTextDocumentTransformer transformer = new HtmlToTextDocumentTransformer();
 
         UrlSource.from("https://beta.goodbards.ai").inputStream();
 

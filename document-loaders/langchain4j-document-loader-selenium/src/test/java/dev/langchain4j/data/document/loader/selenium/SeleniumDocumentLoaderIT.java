@@ -3,7 +3,7 @@ package dev.langchain4j.data.document.loader.selenium;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
-import dev.langchain4j.data.document.transformer.jsoup.HtmlTextExtractor;
+import dev.langchain4j.data.document.transformer.jsoup.HtmlToTextDocumentTransformer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -20,7 +20,7 @@ class SeleniumDocumentLoaderIT {
     static SeleniumDocumentLoader loader;
 
     DocumentParser parser = new TextDocumentParser();
-    HtmlTextExtractor extractor = new HtmlTextExtractor();
+    HtmlToTextDocumentTransformer extractor = new HtmlToTextDocumentTransformer();
 
     @BeforeAll
     static void beforeAll() {
