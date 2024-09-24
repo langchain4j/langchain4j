@@ -1,4 +1,4 @@
-package dev.langchain4j.data.document.transformer;
+package dev.langchain4j.data.document.transformer.jsoup;
 
 import dev.langchain4j.data.document.Document;
 import org.junit.jupiter.api.Test;
@@ -8,7 +8,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class HtmlTextExtractorTest {
+class HtmlToTextDocumentTransformerTest {
 
     private static final String SAMPLE_HTML = "<html>" +
             "<body>" +
@@ -29,7 +29,7 @@ class HtmlTextExtractorTest {
     @Test
     void should_extract_all_text_from_html() {
 
-        HtmlTextExtractor transformer = new HtmlTextExtractor();
+        HtmlToTextDocumentTransformer transformer = new HtmlToTextDocumentTransformer();
         Document htmlDocument = Document.from(SAMPLE_HTML);
 
         Document transformedDocument = transformer.transform(htmlDocument);
@@ -52,7 +52,7 @@ class HtmlTextExtractorTest {
     @Test
     void should_extract_text_from_html_by_css_selector() {
 
-        HtmlTextExtractor transformer = new HtmlTextExtractor("#p1", null, false);
+        HtmlToTextDocumentTransformer transformer = new HtmlToTextDocumentTransformer("#p1", null, false);
         Document htmlDocument = Document.from(SAMPLE_HTML);
 
         Document transformedDocument = transformer.transform(htmlDocument);
@@ -67,7 +67,7 @@ class HtmlTextExtractorTest {
         Map<String, String> metadataCssSelectors = new HashMap<>();
         metadataCssSelectors.put("title", "#title");
 
-        HtmlTextExtractor transformer = new HtmlTextExtractor("#p1", metadataCssSelectors, false);
+        HtmlToTextDocumentTransformer transformer = new HtmlToTextDocumentTransformer("#p1", metadataCssSelectors, false);
         Document htmlDocument = Document.from(SAMPLE_HTML);
 
         Document transformedDocument = transformer.transform(htmlDocument);
@@ -81,7 +81,7 @@ class HtmlTextExtractorTest {
     @Test
     void should_extract_text_with_links_from_html() {
 
-        HtmlTextExtractor transformer = new HtmlTextExtractor(null, null, true);
+        HtmlToTextDocumentTransformer transformer = new HtmlToTextDocumentTransformer(null, null, true);
         Document htmlDocument = Document.from(SAMPLE_HTML);
 
         Document transformedDocument = transformer.transform(htmlDocument);
@@ -104,7 +104,7 @@ class HtmlTextExtractorTest {
 
     @Test
     void should_extract_text_with_absolute_links_from_html_with_relative_links_and_url_metadata() {
-        HtmlTextExtractor transformer = new HtmlTextExtractor(null, null, true);
+        HtmlToTextDocumentTransformer transformer = new HtmlToTextDocumentTransformer(null, null, true);
         Document htmlDocument = Document.from(SAMPLE_HTML_WITH_RELATIVE_LINKS);
         htmlDocument.metadata().put(Document.URL, "https://example.org/page.html");
 
@@ -114,33 +114,33 @@ class HtmlTextExtractorTest {
                 "Follow the link here <https://example.org/menu1>."
         );
         assertThat(transformedDocument.metadata().asMap())
-            .containsEntry(Document.URL, "https://example.org/page.html")
-            .hasSize(1);
+                .containsEntry(Document.URL, "https://example.org/page.html")
+                .hasSize(1);
     }
 
     @Test
     void should_extract_text_with_absolute_links_from_html_with_absolute_links_and_url_metadata() {
-        HtmlTextExtractor transformer = new HtmlTextExtractor(null, null, true);
+        HtmlToTextDocumentTransformer transformer = new HtmlToTextDocumentTransformer(null, null, true);
         Document htmlDocument = Document.from(SAMPLE_HTML);
         htmlDocument.metadata().put(Document.URL, "https://other.example.org/page.html");
 
         Document transformedDocument = transformer.transform(htmlDocument);
 
         assertThat(transformedDocument.text()).isEqualTo(
-            "Title\n" +
-                "\n" +
-                "Paragraph 1\n" +
-                "Something\n" +
-                "\n" +
-                "Paragraph 2\n" +
-                "\n" +
-                "More details here <http://example.org>.\n" +
-                "List:\n" +
-                " * Item one\n" +
-                " * Item two"
+                "Title\n" +
+                        "\n" +
+                        "Paragraph 1\n" +
+                        "Something\n" +
+                        "\n" +
+                        "Paragraph 2\n" +
+                        "\n" +
+                        "More details here <http://example.org>.\n" +
+                        "List:\n" +
+                        " * Item one\n" +
+                        " * Item two"
         );
         assertThat(transformedDocument.metadata().asMap())
-            .containsEntry(Document.URL, "https://other.example.org/page.html")
-            .hasSize(1);
+                .containsEntry(Document.URL, "https://other.example.org/page.html")
+                .hasSize(1);
     }
 }

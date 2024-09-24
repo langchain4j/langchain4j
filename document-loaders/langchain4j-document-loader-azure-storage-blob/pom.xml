@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-document-loader-azure-storage-blob</artifactId>
-    <name>LangChain4j :: Document loader :: Azure Blob Storage</name>
+    <name>LangChain4j :: Document Loader :: Azure Blob Storage</name>
 
     <dependencies>
 

@@ -46,6 +46,7 @@
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-zhipu-ai</module>
+        <module>langchain4j-voyage-ai</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
@@ -82,6 +83,9 @@
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
         <module>document-parsers/langchain4j-document-parser-apache-tika</module>
+
+        <!-- document transformers -->
+        <module>document-transformers/langchain4j-document-transformer-jsoup</module>
 
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>

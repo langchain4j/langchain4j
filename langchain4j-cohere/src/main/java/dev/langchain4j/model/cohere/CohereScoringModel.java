@@ -53,11 +53,11 @@ public class CohereScoringModel implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
+     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
     @Deprecated
     public static CohereScoringModel withApiKey(String apiKey) {
-        return CohereScoringModel.builder().apiKey(apiKey).build();
+        return builder().apiKey(apiKey).build();
     }
 
     @Override

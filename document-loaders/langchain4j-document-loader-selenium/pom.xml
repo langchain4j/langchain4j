@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>langchain4j-document-loader-selenium</artifactId>
-    <name>LangChain4j :: Document loader :: Selenium</name>
+    <name>LangChain4j :: Document Loader :: Selenium</name>
 
     <description>
         Selenium is a suite of tools for automating web browsers.
@@ -57,6 +57,13 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-document-transformer-jsoup</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
 </project>

@@ -54,11 +54,11 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     /**
-     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
+     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
     @Deprecated
     public static CohereEmbeddingModel withApiKey(String apiKey) {
-        return CohereEmbeddingModel.builder().apiKey(apiKey).build();
+        return builder().apiKey(apiKey).build();
     }
 
     @Override
@@ -69,7 +69,6 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .collect(toList());
 
         return embedTexts(texts);
-        
     }
 
 
@@ -89,14 +88,14 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
                     .build();
 
             EmbedResponse response = this.client.embed(request);
-            
+
             embeddings.addAll(getEmbeddings(response));
             totalTokenUsage += getTokenUsage(response);
         }
 
         return Response.from(
                 embeddings,
-                new TokenUsage(totalTokenUsage,0)
+                new TokenUsage(totalTokenUsage, 0)
         );
 
     }

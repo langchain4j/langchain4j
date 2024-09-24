@@ -171,6 +171,12 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-voyage-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- embedding stores -->
 
             <dependency>
@@ -448,6 +454,14 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-document-parser-apache-tika</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- document transformers -->
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-transformer-jsoup</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

@@ -1,4 +1,4 @@
-package dev.langchain4j.data.document.transformer;
+package dev.langchain4j.data.document.transformer.jsoup;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentTransformer;
@@ -20,13 +20,13 @@ import static org.jsoup.internal.StringUtil.in;
 import static org.jsoup.select.NodeTraversor.traverse;
 
 /**
- * Extracts text from a given HTML document.
- * A CSS selector can be specified to extract text only from desired element(s).
- * Also, multiple CSS selectors can be specified to extract metadata from desired elements.
+ * Extracts plain text from a given HTML document.
+ * A CSS selector can be specified to extract text only from desired HTML element(s).
+ * Also, multiple CSS selectors can be specified to extract metadata from desired HTML elements.
  */
-public class HtmlTextExtractor implements DocumentTransformer {
+public class HtmlToTextDocumentTransformer implements DocumentTransformer {
 
-    private static final Logger log = LoggerFactory.getLogger(HtmlTextExtractor.class);
+    private static final Logger log = LoggerFactory.getLogger(HtmlToTextDocumentTransformer.class);
 
     private final String cssSelector;
     private final Map<String, String> metadataCssSelectors;
@@ -35,7 +35,7 @@ public class HtmlTextExtractor implements DocumentTransformer {
     /**
      * Constructs an instance of HtmlToTextTransformer that extracts all text from a given Document containing HTML.
      */
-    public HtmlTextExtractor() {
+    public HtmlToTextDocumentTransformer() {
         this(null, null, false);
     }
 
@@ -45,7 +45,7 @@ public class HtmlTextExtractor implements DocumentTransformer {
      * @param cssSelector A CSS selector.
      *                    For example, "#page-content" will extract text from the HTML element with the id "page-content".
      */
-    public HtmlTextExtractor(String cssSelector) {
+    public HtmlToTextDocumentTransformer(String cssSelector) {
         this(cssSelector, null, false);
     }
 
@@ -59,7 +59,7 @@ public class HtmlTextExtractor implements DocumentTransformer {
      *                             with id "title" and store it in {@link Metadata} under the key "title".
      * @param includeLinks         Specifies whether links should be included in the extracted text.
      */
-    public HtmlTextExtractor(String cssSelector, Map<String, String> metadataCssSelectors, boolean includeLinks) {
+    public HtmlToTextDocumentTransformer(String cssSelector, Map<String, String> metadataCssSelectors, boolean includeLinks) {
         this.cssSelector = cssSelector;
         this.metadataCssSelectors = metadataCssSelectors;
         this.includeLinks = includeLinks;
