@@ -15,6 +15,7 @@ public class AnthropicDelta {
     // when AnthropicStreamingData.type = "content_block_delta"
     public String type;
     public String text;
+    public String partialJson;
 
     // when AnthropicStreamingData.type = "message_delta"
     public String stopReason;

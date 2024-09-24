@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -13,6 +14,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -23,6 +25,7 @@ import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.output.JsonSchemas;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +43,7 @@ import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HA
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
 
 public class GoogleAiGeminiChatModelIT {
 
@@ -589,10 +593,10 @@ public class GoogleAiGeminiChatModelIT {
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
-                        .build())
+            .responseFormat(ResponseFormat.builder()
+                .type(JSON)
+                .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+                .build())
 //             Equivalent to:
 //            .responseFormat(ResponseFormat.builder()
 //                .type(JSON)
@@ -672,6 +676,104 @@ public class GoogleAiGeminiChatModelIT {
 
         // then
         assertThat(chatResponse.aiMessage().hasToolExecutionRequests()).isFalse();
+    }
+
+    @Test
+    void should_count_tokens() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .build();
+
+        // when
+        int countedTokens = gemini.estimateTokenCount("What is the capital of France?");
+
+        // then
+        assertThat(countedTokens).isGreaterThan(0);
+
+        // when
+        List<ChatMessage> messageList = Arrays.asList(
+            SystemMessage.from("You are a helpful geography teacher"),
+            UserMessage.from("What is the capital of Germany?"),
+            AiMessage.from("Berlin"),
+            UserMessage.from("Thank you!"),
+            AiMessage.from("You're welcome!")
+        );
+        int listOfMsgTokenCount = gemini.estimateTokenCount(messageList);
+
+        // then
+        assertThat(listOfMsgTokenCount).isGreaterThan(0);
+    }
+
+    static class Calculator {
+        @Tool
+        public int add(int a, int b) {
+            System.out.println("ADD " + a + " + " + b);
+            return a + b;
+        }
+
+        @Tool
+        public int subtract(int a, int b) {
+            System.out.println("SUBTRACT " + a + " - " + b);
+            return a - b;
+        }
+
+        @Tool
+        public int multiply(int a, int b) {
+            System.out.println("MULTIPLY " + a + " * " + b);
+            return a * b;
+        }
+
+        @Tool
+        public int divide(int a, int b) {
+            System.out.println("DIVIDE " + a + " / " + b);
+            return a / b;
+        }
+    }
+
+    interface Assistant {
+        @dev.langchain4j.service.SystemMessage(
+            "When asked to evaluate some math expressions, " +
+            "you MUST use the `add`, `substract`, `multiply`, and `divide` tool functions."
+        )
+        String chat(String userMessage);
+    }
+
+    @RetryingTest(3)
+    void should_work_with_tools_with_AiServices() {
+        // given
+        GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-pro")
+            .logRequestsAndResponses(true)
+            .build();
+
+        // when
+        Calculator spyCalculator = spy(new Calculator());
+
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
+        Assistant assistant = AiServices.builder(Assistant.class)
+            .tools(spyCalculator)
+            .chatMemory(chatMemory)
+            .chatLanguageModel(gemini)
+            .build();
+
+        // then
+        String response = "";
+
+        response = assistant.chat("How much is 3 + 4?");
+        assertThat(response).containsIgnoringCase("7");
+        verify(spyCalculator).add(3, 4);
+
+        response = assistant.chat("How much is 7 * 11?");
+        assertThat(response).containsIgnoringCase("77");
+        verify(spyCalculator).multiply(7, 11);
+
+        verifyNoMoreInteractions(spyCalculator);
+
+        System.out.println("chatMemory = " + chatMemory.messages());
     }
 
     @AfterEach

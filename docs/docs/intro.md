@@ -17,9 +17,9 @@ Here's how:
    LangChain4j currently supports [15+ popular LLM providers](/integrations/language-models/)
    and [20+ embedding stores](/integrations/embedding-stores/).
 2. **Comprehensive Toolbox:**
-   Over the past year, the community has been building numerous LLM-powered applications,
+   Since early 2023, the community has been building numerous LLM-powered applications,
    identifying common abstractions, patterns, and techniques. LangChain4j has refined these into a ready to use package.
-   Our toolbox includes tools ranging from low-level prompt templating, chat memory management, and output parsing
+   Our toolbox includes tools ranging from low-level prompt templating, chat memory management, and function calling
    to high-level patterns like AI Services and RAG.
    For each abstraction, we provide an interface along with multiple ready-to-use implementations based on common techniques.
    Whether you're building a chatbot or developing a RAG with a complete pipeline from data ingestion to retrieval,

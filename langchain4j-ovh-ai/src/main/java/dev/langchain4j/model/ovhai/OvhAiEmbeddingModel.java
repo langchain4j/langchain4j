@@ -58,11 +58,9 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
     }
 
     /**
-     * Creates an instance of {@code OvhAiEmbeddingModel} with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return an {@code OvhAiEmbeddingModel} instance
+     * @deprecated use {@link #builder()} instead and explicitly set the base URL and, if required, other parameters.
      */
+    @Deprecated
     public static OvhAiEmbeddingModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

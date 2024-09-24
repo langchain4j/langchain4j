@@ -51,11 +51,9 @@ public class MistralAiModels {
     }
 
     /**
-     * Creates a new instance of MistralAiModels with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return a new instance of MistralAiModels
+     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
      */
+    @Deprecated
     public static MistralAiModels withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

@@ -7,7 +7,7 @@ import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.ai4j.openai4j.chat.Delta;
 import dev.ai4j.openai4j.chat.ResponseFormat;
 import dev.ai4j.openai4j.chat.ResponseFormatType;
-import dev.ai4j.openai4j.chat.StreamOptions;
+import dev.ai4j.openai4j.shared.StreamOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -42,8 +42,6 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGE
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerRequest;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerResponse;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.isOpenAiModel;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.removeTokenUsage;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toTools;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
@@ -76,7 +74,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final Boolean strictTools;
     private final Boolean parallelToolCalls;
     private final Tokenizer tokenizer;
-    private final boolean isOpenAiModel;
     private final List<ChatModelListener> listeners;
 
     @Builder
@@ -138,7 +135,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.strictTools = getOrDefault(strictTools, false);
         this.parallelToolCalls = parallelToolCalls;
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
-        this.isOpenAiModel = isOpenAiModel(this.modelName);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
@@ -206,8 +202,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             }
         });
 
-        int inputTokenCount = countInputTokens(messages, toolSpecifications, toolThatMustBeExecuted);
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
         AtomicReference<String> responseId = new AtomicReference<>();
         AtomicReference<String> responseModel = new AtomicReference<>();
@@ -225,7 +220,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = createResponse(responseBuilder, toolThatMustBeExecuted);
+                    Response<AiMessage> response = responseBuilder.build();
 
                     ChatModelResponse modelListenerResponse = createModelListenerResponse(
                             responseId.get(),
@@ -248,7 +243,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     handler.onComplete(response);
                 })
                 .onError(error -> {
-                    Response<AiMessage> response = createResponse(responseBuilder, toolThatMustBeExecuted);
+                    Response<AiMessage> response = responseBuilder.build();
 
                     ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
                             responseId.get(),
@@ -276,27 +271,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .execute();
     }
 
-    private Response<AiMessage> createResponse(OpenAiStreamingResponseBuilder responseBuilder,
-                                               ToolSpecification toolThatMustBeExecuted) {
-        Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
-        if (isOpenAiModel) {
-            return response;
-        }
-        return removeTokenUsage(response);
-    }
-
-    private int countInputTokens(List<ChatMessage> messages,
-                                 List<ToolSpecification> toolSpecifications,
-                                 ToolSpecification toolThatMustBeExecuted) {
-        int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
-        if (toolThatMustBeExecuted != null) {
-            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
-        } else if (!isNullOrEmpty(toolSpecifications)) {
-            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
-        }
-        return inputTokenCount;
-    }
-
     private static void handle(ChatCompletionResponse partialResponse,
                                StreamingResponseHandler<AiMessage> handler) {
         List<ChatCompletionChoice> choices = partialResponse.choices();
@@ -315,6 +289,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         return tokenizer.estimateTokenCountInMessages(messages);
     }
 
+    /**
+     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
+     */
+    @Deprecated
     public static OpenAiStreamingChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

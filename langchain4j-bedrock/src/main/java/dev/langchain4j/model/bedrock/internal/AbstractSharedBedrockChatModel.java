@@ -2,20 +2,35 @@ package dev.langchain4j.model.bedrock.internal;
 
 import static java.util.stream.Collectors.joining;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
+
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithResponseStreamRequest;
 
 import java.time.Duration;
 
+@Slf4j
 @Getter
 @SuperBuilder
 public abstract class AbstractSharedBedrockChatModel {
@@ -49,7 +64,8 @@ public abstract class AbstractSharedBedrockChatModel {
     protected final Duration timeout = Duration.ofMinutes(1L);
     @Builder.Default
     protected final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
-
+    @Builder.Default
+    protected final List<ChatModelListener> listeners = Collections.emptyList();
 
     /**
      * Convert chat message to string
@@ -101,6 +117,76 @@ public abstract class AbstractSharedBedrockChatModel {
         parameters.put("anthropic_version", anthropicVersion);
 
         return parameters;
+    }
+
+    protected void listenerErrorResponse(Throwable e,
+                                         ChatModelRequest modelListenerRequest,
+                                         Map<Object, Object> attributes) {
+        Throwable error;
+        if (e.getCause() instanceof SdkClientException) {
+            error = e.getCause();
+        } else {
+            error = e;
+        }
+
+        ChatModelErrorContext errorContext = new ChatModelErrorContext(
+                error,
+                modelListenerRequest,
+                null,
+                attributes
+        );
+
+        listeners.forEach(listener -> {
+            try {
+                listener.onError(errorContext);
+            } catch (Exception e2) {
+                log.warn("Exception while calling model listener", e2);
+            }
+        });
+
+    }
+
+    protected ChatModelRequest createModelListenerRequest(InvokeModelRequest invokeModelRequest,
+                                                          List<ChatMessage> messages,
+                                                          List<ToolSpecification> toolSpecifications) {
+        return ChatModelRequest.builder()
+                .model(invokeModelRequest.modelId())
+                .temperature(this.temperature)
+                .topP((double) this.topP)
+                .maxTokens(this.maxTokens)
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
+
+    protected ChatModelRequest createModelListenerRequest(InvokeModelWithResponseStreamRequest invokeModelRequest,
+                                                          List<ChatMessage> messages,
+                                                          List<ToolSpecification> toolSpecifications) {
+        return ChatModelRequest.builder()
+                .model(getModelId())
+                .temperature(this.temperature)
+                .topP((double) this.topP)
+                .maxTokens(this.maxTokens)
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
+
+
+    protected ChatModelResponse createModelListenerResponse(String responseId,
+                                                            String responseModel,
+                                                            Response<AiMessage> response) {
+        if (response == null) {
+            return null;
+        }
+
+        return ChatModelResponse.builder()
+                .id(responseId)
+                .model(responseModel)
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .aiMessage(response.content())
+                .build();
     }
 
     /**

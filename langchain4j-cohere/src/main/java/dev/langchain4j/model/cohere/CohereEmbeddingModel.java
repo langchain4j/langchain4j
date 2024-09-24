@@ -53,6 +53,10 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH);
     }
 
+    /**
+     * @deprecated use {@link #builder()} instead and explicitly set the model name and, if required, other parameters.
+     */
+    @Deprecated
     public static CohereEmbeddingModel withApiKey(String apiKey) {
         return CohereEmbeddingModel.builder().apiKey(apiKey).build();
     }
