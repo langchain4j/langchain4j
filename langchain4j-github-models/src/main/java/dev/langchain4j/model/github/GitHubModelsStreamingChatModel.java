@@ -111,7 +111,7 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
 
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxTokens = maxTokens;
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.temperature = temperature;
         this.topP = topP;
         this.stop = copyIfNotNull(stop);
         this.presencePenalty = presencePenalty;
