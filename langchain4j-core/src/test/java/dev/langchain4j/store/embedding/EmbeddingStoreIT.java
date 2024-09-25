@@ -58,13 +58,11 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         assertThat(match.embedded().metadata().getInteger("integer_1")).isEqualTo(1);
         assertThat(match.embedded().metadata().getInteger("integer_max")).isEqualTo(Integer.MAX_VALUE);
 
-        if (supportLong()) {
-            assertThat(match.embedded().metadata().getLong("long_min")).isEqualTo(Long.MIN_VALUE);
-            assertThat(match.embedded().metadata().getLong("long_minus_1")).isEqualTo(-1L);
-            assertThat(match.embedded().metadata().getLong("long_0")).isEqualTo(0L);
-            assertThat(match.embedded().metadata().getLong("long_1")).isEqualTo(1L);
-            assertThat(match.embedded().metadata().getLong("long_max")).isEqualTo(Long.MAX_VALUE);
-        }
+        assertThat(match.embedded().metadata().getLong("long_min")).isEqualTo(Long.MIN_VALUE);
+        assertThat(match.embedded().metadata().getLong("long_minus_1")).isEqualTo(-1L);
+        assertThat(match.embedded().metadata().getLong("long_0")).isEqualTo(0L);
+        assertThat(match.embedded().metadata().getLong("long_1")).isEqualTo(1L);
+        assertThat(match.embedded().metadata().getLong("long_max")).isEqualTo(Long.MAX_VALUE);
 
         assertThat(match.embedded().metadata().getFloat("float_min")).isEqualTo(-Float.MAX_VALUE);
         assertThat(match.embedded().metadata().getFloat("float_minus_1")).isEqualTo(-1f);
@@ -73,12 +71,10 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         assertThat(match.embedded().metadata().getFloat("float_123")).isEqualTo(1.23456789f);
         assertThat(match.embedded().metadata().getFloat("float_max")).isEqualTo(Float.MAX_VALUE);
 
-        if (supportDouble()) {
-            assertThat(match.embedded().metadata().getDouble("double_minus_1")).isEqualTo(-1d);
-            assertThat(match.embedded().metadata().getDouble("double_0")).isEqualTo(Double.MIN_VALUE);
-            assertThat(match.embedded().metadata().getDouble("double_1")).isEqualTo(1d);
-            assertThat(match.embedded().metadata().getDouble("double_123")).isEqualTo(1.23456789d);
-        }
+        assertThat(match.embedded().metadata().getDouble("double_minus_1")).isEqualTo(-1d);
+        assertThat(match.embedded().metadata().getDouble("double_0")).isEqualTo(Double.MIN_VALUE);
+        assertThat(match.embedded().metadata().getDouble("double_1")).isEqualTo(1d);
+        assertThat(match.embedded().metadata().getDouble("double_123")).isEqualTo(1.23456789d);
 
         // new API
         assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
@@ -103,13 +99,11 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         metadata.put("integer_1", 1);
         metadata.put("integer_max", Integer.MAX_VALUE);
 
-        if (supportLong()) {
-            metadata.put("long_min", Long.MIN_VALUE);
-            metadata.put("long_minus_1", -1L);
-            metadata.put("long_0", 0L);
-            metadata.put("long_1", 1L);
-            metadata.put("long_max", Long.MAX_VALUE);
-        }
+        metadata.put("long_min", Long.MIN_VALUE);
+        metadata.put("long_minus_1", -1L);
+        metadata.put("long_0", 0L);
+        metadata.put("long_1", 1L);
+        metadata.put("long_max", Long.MAX_VALUE);
 
         metadata.put("float_min", -Float.MAX_VALUE);
         metadata.put("float_minus_1", -1f);
@@ -118,21 +112,11 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         metadata.put("float_123", 1.23456789f);
         metadata.put("float_max", Float.MAX_VALUE);
 
-        if (supportDouble()) {
-            metadata.put("double_minus_1", -1d);
-            metadata.put("double_0", Double.MIN_VALUE);
-            metadata.put("double_1", 1d);
-            metadata.put("double_123", 1.23456789d);
-        }
+        metadata.put("double_minus_1", -1d);
+        metadata.put("double_0", Double.MIN_VALUE);
+        metadata.put("double_1", 1d);
+        metadata.put("double_123", 1.23456789d);
 
         return metadata;
-    }
-
-    protected boolean supportLong() {
-        return true;
-    }
-
-    protected boolean supportDouble() {
-        return true;
     }
 }
