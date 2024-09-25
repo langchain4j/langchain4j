@@ -70,7 +70,12 @@ public class AnthropicMapper {
         return message.contents().stream()
                 .map(content -> {
                     if (content instanceof TextContent) {
-                        return new AnthropicTextContent(((TextContent) content).text());
+                        TextContent textContent = (TextContent) content;
+                        if (textContent.cacheType() != null) {
+                            AnthropicCacheType cacheType = AnthropicCacheType.valueOf(textContent.cacheType());
+                            return new AnthropicTextContent(textContent.text(), cacheType.cacheControl());
+                        }
+                        return new AnthropicTextContent(textContent.text());
                     } else if (content instanceof ImageContent) {
                         Image image = ((ImageContent) content).image();
                         if (image.url() != null) {
