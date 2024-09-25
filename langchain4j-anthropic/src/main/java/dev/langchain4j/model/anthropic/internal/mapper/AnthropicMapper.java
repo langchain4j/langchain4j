@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
