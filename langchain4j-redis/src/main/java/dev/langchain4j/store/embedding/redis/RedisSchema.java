@@ -19,6 +19,7 @@ import static redis.clients.jedis.search.schemafields.VectorField.VectorAlgorith
 class RedisSchema {
 
     public static final String SCORE_FIELD_NAME = "vector_score";
+    public static final String JSON_PATH = "$";
     public static final String JSON_PATH_PREFIX = "$.";
     private static final VectorAlgorithm DEFAULT_VECTOR_ALGORITHM = HNSW;
     private static final MetricType DEFAULT_METRIC_TYPE = COSINE;

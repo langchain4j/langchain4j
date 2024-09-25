@@ -1,7 +1,5 @@
 package dev.langchain4j.store.embedding.redis;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -20,8 +18,8 @@ import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
-import static dev.langchain4j.store.embedding.redis.RedisSchema.JSON_PATH_PREFIX;
-import static dev.langchain4j.store.embedding.redis.RedisSchema.SCORE_FIELD_NAME;
+import static dev.langchain4j.store.embedding.redis.RedisJsonUtils.toProperties;
+import static dev.langchain4j.store.embedding.redis.RedisSchema.*;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -37,7 +35,6 @@ import static redis.clients.jedis.search.RediSearchUtil.toByteArray;
 public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(RedisEmbeddingStore.class);
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final JedisPooled client;
     private final RedisSchema schema;
@@ -121,7 +118,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         returnFields.addAll(asList(schema.vectorFieldName(), schema.scalarFieldName(), SCORE_FIELD_NAME));
         Query query = new Query(format(queryTemplate, maxResults, schema.vectorFieldName(), SCORE_FIELD_NAME))
                 .addParam("BLOB", toByteArray(referenceEmbedding.vector()))
-                .returnFields(returnFields.toArray(new String[0]))
+                // .returnFields(returnFields.toArray(new String[0]))
                 .setSortBy(SCORE_FIELD_NAME, true)
                 .dialect(2);
 
@@ -173,19 +170,8 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                 Map<String, Object> fields = new HashMap<>();
                 fields.put(schema.vectorFieldName(), embedding.vector());
                 if (textSegment != null) {
-                    // NOTE: do not check metadata key is included in RedisSchema#metadataKeys
                     fields.put(schema.scalarFieldName(), textSegment.text());
-                    Map<String, Object> metadataMap = textSegment.metadata().toMap();
-
-                    // NOTE: since Java types and Redis types don't always correspond, there is a conversion to be done here.
-                    for (Map.Entry<String, SchemaField> fieldEntry : schema.schemaFieldMap().entrySet()) {
-                        String metadataKey = fieldEntry.getKey();
-                        SchemaField field = fieldEntry.getValue();
-                        if (field instanceof TextField && metadataMap.containsKey(metadataKey)) {
-                            metadataMap.put(metadataKey, String.valueOf(metadataMap.get(metadataKey)));
-                        }
-                    }
-                    fields.putAll(metadataMap);
+                    fields.putAll(textSegment.metadata().toMap());
                 }
                 String key = schema.prefix() + id;
                 pipeline.jsonSetWithEscape(key, Path2.of("$"), fields);
@@ -203,6 +189,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(List<Document> documents, double minScore) {
         if (documents == null || documents.isEmpty()) {
             return new ArrayList<>();
@@ -212,22 +199,26 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .map(document -> {
                     double score = (2 - Double.parseDouble(document.getString(SCORE_FIELD_NAME))) / 2;
                     String id = document.getId().substring(schema.prefix().length());
-                    String text = document.hasProperty(schema.scalarFieldName()) ? document.getString(schema.scalarFieldName()) : null;
-                    TextSegment embedded = null;
+
+                    Map<String, Object> properties = toProperties(document.getString(JSON_PATH));
+
+                    List<Double> vectors = (List<Double>) properties.get(schema.vectorFieldName());
+                    Embedding embedding = Embedding.from(
+                            vectors.stream()
+                                    .map(Double::floatValue)
+                                    .collect(toList())
+                    );
+
+                    String text = properties.containsKey(schema.scalarFieldName()) ? (String) properties.get(schema.scalarFieldName()) : null;
+                    TextSegment textSegment = null;
                     if (text != null) {
-                        Map<String, String> metadata = schema.schemaFieldMap().keySet().stream()
-                                .filter(document::hasProperty)
-                                .collect(toMap(metadataKey -> metadataKey, document::getString));
-                        embedded = new TextSegment(text, new Metadata(metadata));
+                        Map<String, Object> metadata = schema.schemaFieldMap().keySet().stream()
+                                .filter(properties::containsKey)
+                                .collect(toMap(metadataKey -> metadataKey, properties::get));
+                        textSegment = TextSegment.from(text, Metadata.from(metadata));
                     }
-                    Embedding embedding;
-                    try {
-                        float[] vectors = OBJECT_MAPPER.readValue(document.getString(schema.vectorFieldName()), float[].class);
-                        embedding = new Embedding(vectors);
-                    } catch (JsonProcessingException e) {
-                        throw new RedisRequestFailedException("failed to parse embedding", e);
-                    }
-                    return new EmbeddingMatch<>(score, id, embedding, embedded);
+
+                    return new EmbeddingMatch<>(score, id, embedding, textSegment);
                 })
                 .filter(embeddingMatch -> embeddingMatch.score() >= minScore)
                 .collect(toList());
