@@ -118,6 +118,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-document-transformer-jsoup</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

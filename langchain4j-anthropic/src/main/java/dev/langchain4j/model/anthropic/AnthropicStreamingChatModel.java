@@ -1,5 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -8,6 +9,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -27,12 +29,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -130,34 +136,57 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     /**
-     * Creates an instance of {@code AnthropicStreamingChatModel} with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return an {@code AnthropicStreamingChatModel} instance
+     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
+    @Deprecated
     public static AnthropicStreamingChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, null, null, handler);
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, toolSpecifications, null, handler);
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, null, toolSpecification, handler);
+    }
+
+    private void generate(List<ChatMessage> messages,
+                          List<ToolSpecification> toolSpecifications,
+                          ToolSpecification toolThatMustBeExecuted,
+                          StreamingResponseHandler<AiMessage> handler) {
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         String systemPrompt = toAnthropicSystemPrompt(messages);
         ensureNotNull(handler, "handler");
 
-        AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
+        AnthropicCreateMessageRequest.AnthropicCreateMessageRequestBuilder requestBuilder = AnthropicCreateMessageRequest.builder()
+                .stream(true)
                 .model(modelName)
                 .messages(toAnthropicMessages(sanitizedMessages))
                 .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
-                .stream(true)
                 .temperature(temperature)
                 .topP(topP)
-                .topK(topK)
-                .build();
+                .topK(topK);
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages);
+        if (toolThatMustBeExecuted != null) {
+            requestBuilder.tools(toAnthropicTools(singletonList(toolThatMustBeExecuted)));
+            requestBuilder.toolChoice(AnthropicToolChoice.from(toolThatMustBeExecuted.name()));
+        } else if (!isNullOrEmpty(toolSpecifications)) {
+            requestBuilder.tools(toAnthropicTools(toolSpecifications));
+        }
+
+        AnthropicCreateMessageRequest request = requestBuilder.build();
+
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
         listeners.forEach(listener -> {
@@ -219,17 +248,5 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
         };
 
         client.createMessage(request, listenerHandler);
-    }
-
-
-    static ChatModelRequest createModelListenerRequest(AnthropicCreateMessageRequest request,
-                                                       List<ChatMessage> messages) {
-        return ChatModelRequest.builder()
-                .model(request.getModel())
-                .temperature(request.getTemperature())
-                .topP(request.getTopP())
-                .maxTokens(request.getMaxTokens())
-                .messages(messages)
-                .build();
     }
 }

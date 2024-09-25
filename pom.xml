@@ -41,11 +41,13 @@
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-qianfan</module>
+        <module>langchain4j-github-models</module>
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-zhipu-ai</module>
+        <module>langchain4j-voyage-ai</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
@@ -76,11 +78,15 @@
         <module>document-loaders/langchain4j-document-loader-github</module>
         <module>document-loaders/langchain4j-document-loader-selenium</module>
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
+        <module>document-loaders/langchain4j-document-loader-google-cloud-storage</module>
 
         <!-- document parsers -->
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
         <module>document-parsers/langchain4j-document-parser-apache-tika</module>
+
+        <!-- document transformers -->
+        <module>document-transformers/langchain4j-document-transformer-jsoup</module>
 
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
@@ -96,6 +102,7 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>langchain4j-onnx-scoring</module>
 
     </modules>
 
