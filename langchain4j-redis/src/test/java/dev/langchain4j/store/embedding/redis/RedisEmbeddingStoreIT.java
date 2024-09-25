@@ -6,11 +6,13 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.search.schemafields.NumericField;
 import redis.clients.jedis.search.schemafields.SchemaField;
+import redis.clients.jedis.search.schemafields.TagField;
 import redis.clients.jedis.search.schemafields.TextField;
 
 import java.util.Arrays;
@@ -22,7 +24,7 @@ import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
+class RedisEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
 
@@ -54,7 +56,7 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
             if (numericPrefix.stream().anyMatch(key::startsWith)) {
                 schemaFieldMap.put(key, NumericField.of("$." + key).as(key));
             } else {
-                schemaFieldMap.put(key, TextField.of("$." + key).as(key).weight(1.0));
+                schemaFieldMap.put(key, TagField.of("$." + key).as(key));
             }
         });
 

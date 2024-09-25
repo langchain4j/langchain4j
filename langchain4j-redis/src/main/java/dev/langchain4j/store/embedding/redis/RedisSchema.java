@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.redis;
 
+import redis.clients.jedis.json.Path2;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TextField;
 import redis.clients.jedis.search.schemafields.VectorField;
@@ -19,7 +20,8 @@ import static redis.clients.jedis.search.schemafields.VectorField.VectorAlgorith
 class RedisSchema {
 
     public static final String SCORE_FIELD_NAME = "vector_score";
-    public static final String JSON_PATH = "$";
+    public static final String JSON_KEY = "$";
+    public static final Path2 JSON_SET_PATH = Path2.of(JSON_KEY);
     public static final String JSON_PATH_PREFIX = "$.";
     private static final VectorAlgorithm DEFAULT_VECTOR_ALGORITHM = HNSW;
     private static final MetricType DEFAULT_METRIC_TYPE = COSINE;

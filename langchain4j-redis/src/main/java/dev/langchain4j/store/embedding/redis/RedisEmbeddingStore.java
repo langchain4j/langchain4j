@@ -4,12 +4,13 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.json.Path2;
 import redis.clients.jedis.search.*;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TextField;
@@ -35,8 +36,11 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(RedisEmbeddingStore.class);
 
+    private static final String QUERY_TEMPLATE = "%s=>[ KNN %d @%s $BLOB AS %s ]";
+
     private final JedisPooled client;
     private final RedisSchema schema;
+    private final RedisMetadataFilterMapper filterMapper;
 
     /**
      * Creates an instance of RedisEmbeddingStore
@@ -65,6 +69,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .dimension(dimension)
                 .schemaFieldMap(copyIfNotNull(schemaFieldMap))
                 .build();
+        this.filterMapper = new RedisMetadataFilterMapper(schemaFieldMap);
 
         if (!isIndexExist(schema.indexName())) {
             ensureNotNull(dimension, "dimension");
@@ -110,18 +115,17 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         // Using KNN query on @vector field
-        String queryTemplate = "*=>[ KNN %d @%s $BLOB AS %s ]";
-        Query query = new Query(format(queryTemplate, maxResults, schema.vectorFieldName(), SCORE_FIELD_NAME))
-                .addParam("BLOB", toByteArray(referenceEmbedding.vector()))
+        Query query = new Query(format(QUERY_TEMPLATE, filterMapper.mapToFilter(request.filter()), request.maxResults(), schema.vectorFieldName(), SCORE_FIELD_NAME))
+                .addParam("BLOB", toByteArray(request.queryEmbedding().vector()))
                 .setSortBy(SCORE_FIELD_NAME, true)
                 .dialect(2);
 
         SearchResult result = client.ftSearch(schema.indexName(), query);
         List<Document> documents = result.getDocuments();
 
-        return toEmbeddingMatch(documents, minScore);
+        return new EmbeddingSearchResult<>(toEmbeddingMatch(documents, request.minScore()));
     }
 
     private void createIndex(String indexName) {
@@ -170,7 +174,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                     fields.putAll(textSegment.metadata().toMap());
                 }
                 String key = schema.prefix() + id;
-                pipeline.jsonSetWithEscape(key, Path2.of("$"), fields);
+                pipeline.jsonSetWithEscape(key, JSON_SET_PATH, fields);
             }
 
             responses = pipeline.syncAndReturnAll();
@@ -196,7 +200,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                     double score = (2 - Double.parseDouble(document.getString(SCORE_FIELD_NAME))) / 2;
                     String id = document.getId().substring(schema.prefix().length());
 
-                    Map<String, Object> properties = toProperties(document.getString(JSON_PATH));
+                    Map<String, Object> properties = toProperties(document.getString(JSON_KEY));
 
                     List<Double> vectors = (List<Double>) properties.get(schema.vectorFieldName());
                     Embedding embedding = Embedding.from(
