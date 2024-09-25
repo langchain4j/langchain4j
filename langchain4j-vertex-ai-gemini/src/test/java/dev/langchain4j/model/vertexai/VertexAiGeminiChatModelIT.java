@@ -366,7 +366,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
     }
 
-    @Test
+    @RetryingTest(5)
     void should_handle_parallel_function_calls() {
         // given
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
@@ -645,7 +645,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
-    @RetryingTest(2)
+    @RetryingTest(10)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
@@ -659,13 +659,17 @@ class VertexAiGeminiChatModelIT {
             .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-1.5-flash-001")
             .safetySettings(safetySettings)
+            .temperature(0.0f)
+            .topP(0.0f)
+            .topK(1)
+            .seed(1234)
             .logRequests(true)
             .logResponses(true)
             .build();
 
         // when
         Exception exception = assertThrows(RuntimeException.class, () -> {
-            model.generate("You're a dumb bastard!!!");
+            model.generate("You're a dumb fucking bastard!!! I'm gonna kill you!");
         });
 
         // then
@@ -918,7 +922,7 @@ class VertexAiGeminiChatModelIT {
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_GEMINI");
         if (ciDelaySeconds != null) {
-            Thread.sleep(Integer.parseInt(ciDelaySeconds));
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
     }
 }

@@ -148,10 +148,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
-        if(useAsyncClient)
+        if(useAsyncClient) {
             this.asyncClient = setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
-        else
-            this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);  }
+        } else {
+            this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+        }
+    }
 
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,

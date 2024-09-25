@@ -56,6 +56,7 @@ jobs:
           GCP_LOCATION: ${{ secrets.GCP_LOCATION }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           GCP_VERTEXAI_ENDPOINT: ${{ secrets.GCP_VERTEXAI_ENDPOINT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
@@ -71,9 +72,18 @@ jobs:
           OVHAI_AI_API_KEY: ${{ secrets.OVHAI_AI_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
-          CI_DELAY_SECONDS_AZURE_OPENAI: 2
+          CI_DELAY_SECONDS_AZURE_OPENAI: 1
           CI_DELAY_SECONDS_BEDROCK: 1
           CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 5
-          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 3
+          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 5
+          CI_DELAY_SECONDS_VOYAGE_AI: 22
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: Test-Reports-${{ matrix.java-version }}
+          path: '**/target/surefire-reports/*'

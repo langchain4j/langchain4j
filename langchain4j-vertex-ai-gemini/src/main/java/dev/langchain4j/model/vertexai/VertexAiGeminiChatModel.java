@@ -8,8 +8,9 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
 import lombok.Builder;
@@ -23,16 +24,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.emptyList;
 
 /**
  * Represents a Google Vertex AI Gemini language model with a chat completion interface, such as gemini-pro.
@@ -70,7 +70,10 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
 
     private final Boolean logRequests;
     private final Boolean logResponses;
+
     private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
+
+    private final List<ChatModelListener> listeners;
 
     @Builder
     public VertexAiGeminiChatModel(String project,
@@ -80,6 +83,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
                                    Integer maxOutputTokens,
                                    Integer topK,
                                    Float topP,
+                                   Integer seed,
                                    Integer maxRetries,
                                    String responseMimeType,
                                    Schema responseSchema,
@@ -89,7 +93,8 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
                                    ToolCallingMode toolCallingMode,
                                    List<String> allowedFunctionNames,
                                    Boolean logRequests,
-                                   Boolean logResponses) {
+                                   Boolean logResponses,
+                                   List<ChatModelListener> listeners) {
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
@@ -102,6 +107,9 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         }
         if (topP != null) {
             generationConfigBuilder.setTopP(topP);
+        }
+        if (seed != null) {
+            generationConfigBuilder.setSeed(seed);
         }
         if (responseMimeType != null) {
             generationConfigBuilder.setResponseMimeType(responseMimeType);
@@ -191,6 +199,8 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         } else {
             this.logResponses = false;
         }
+
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
@@ -217,6 +227,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         this.allowedFunctionNames = Collections.emptyList();
         this.logRequests = false;
         this.logResponses = false;
+        this.listeners = Collections.emptyList();
     }
 
     @Override
@@ -261,8 +272,42 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         }
 
         GenerativeModel finalModel = model;
-        GenerateContentResponse response = withRetry(() ->
-            finalModel.generateContent(instructionAndContent.contents), maxRetries);
+
+        ChatModelRequest chatModelRequest = ChatModelRequest.builder()
+            .model(modelName)
+            .temperature((double) generationConfig.getTemperature())
+            .topP((double) generationConfig.getTopP())
+            .maxTokens(generationConfig.getMaxOutputTokens())
+            .messages(messages)
+            .toolSpecifications(toolSpecifications)
+            .build();
+        ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, listenerAttributes);
+        listeners.forEach((listener) -> {
+            try {
+                listener.onRequest(chatModelRequestContext);
+            } catch (Exception e) {
+                logger.warn("Exception while calling model listener (onRequest)", e);
+            }
+        });
+
+        GenerateContentResponse response = null;
+        try {
+            response = withRetry(() ->
+                finalModel.generateContent(instructionAndContent.contents), maxRetries);
+        } catch (Exception e) {
+            listeners.forEach((listener) -> {
+                try {
+                    ChatModelErrorContext chatModelErrorContext =
+                        new ChatModelErrorContext(e, chatModelRequest, null, listenerAttributes);
+                    listener.onError(chatModelErrorContext);
+                } catch (Exception t) {
+                    logger.warn("Exception while calling model listener (onError)", t);
+                }
+            });
+
+            throw new RuntimeException(e);
+        }
 
         if (this.logResponses && logger.isDebugEnabled()) {
             logger.debug("GEMINI ({}) response: {}", modelName, response);
@@ -275,21 +320,44 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             .map(Part::getFunctionCall)
             .collect(Collectors.toList());
 
+        Response finalResponse = null;
+        AiMessage aiMessage;
+
         if (!functionCalls.isEmpty()) {
             List<ToolExecutionRequest> toolExecutionRequests = FunctionCallHelper.fromFunctionCalls(functionCalls);
 
-            return Response.from(
-                AiMessage.from(toolExecutionRequests),
+            aiMessage = AiMessage.from(toolExecutionRequests);
+            finalResponse = Response.from(
+                aiMessage,
                 TokenUsageMapper.map(response.getUsageMetadata()),
                 FinishReasonMapper.map(ResponseHandler.getFinishReason(response))
             );
         } else {
-            return Response.from(
-                AiMessage.from(ResponseHandler.getText(response)),
+            aiMessage = AiMessage.from(ResponseHandler.getText(response));
+            finalResponse = Response.from(
+                aiMessage,
                 TokenUsageMapper.map(response.getUsageMetadata()),
                 FinishReasonMapper.map(ResponseHandler.getFinishReason(response))
             );
         }
+
+        ChatModelResponse chatModelResponse = ChatModelResponse.builder()
+            .model(modelName)
+            .tokenUsage(finalResponse.tokenUsage())
+            .finishReason(finalResponse.finishReason())
+            .aiMessage(aiMessage)
+            .build();
+        ChatModelResponseContext chatModelResponseContext = new ChatModelResponseContext(
+            chatModelResponse, chatModelRequest, listenerAttributes);
+        listeners.forEach((listener) -> {
+            try {
+                listener.onResponse(chatModelResponseContext);
+            } catch (Exception e) {
+                logger.warn("Exception while calling model listener (onResponse)", e);
+            }
+        });
+
+        return finalResponse;
     }
 
     @Override

@@ -77,6 +77,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-github-models</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-hugging-face</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -90,6 +96,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-jina</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-onnx-scoring</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -162,6 +174,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-zhipu-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-voyage-ai</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -254,6 +272,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-tablestore</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -413,6 +437,12 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-loader-google-cloud-storage</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- document parsers -->
 
             <dependency>
@@ -430,6 +460,14 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-document-parser-apache-tika</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- document transformers -->
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-transformer-jsoup</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

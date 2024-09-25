@@ -1,23 +1,44 @@
 package dev.langchain4j.model.anthropic;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -42,6 +63,7 @@ import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitize
  * <br>
  * Does not support tools.
  */
+@Slf4j
 public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
 
     private final AnthropicClient client;
@@ -51,6 +73,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     private final Integer topK;
     private final int maxTokens;
     private final List<String> stopSequences;
+    private final List<ChatModelListener> listeners;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -80,7 +103,8 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                                         List<String> stopSequences,
                                         Duration timeout,
                                         Boolean logRequests,
-                                        Boolean logResponses) {
+                                        Boolean logResponses,
+                                        List<ChatModelListener> listeners) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
@@ -95,6 +119,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
         this.topK = topK;
         this.maxTokens = getOrDefault(maxTokens, 1024);
         this.stopSequences = stopSequences;
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     public static class AnthropicStreamingChatModelBuilder {
@@ -111,33 +136,117 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     /**
-     * Creates an instance of {@code AnthropicStreamingChatModel} with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return an {@code AnthropicStreamingChatModel} instance
+     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
+    @Deprecated
     public static AnthropicStreamingChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, null, null, handler);
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, toolSpecifications, null, handler);
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, null, toolSpecification, handler);
+    }
+
+    private void generate(List<ChatMessage> messages,
+                          List<ToolSpecification> toolSpecifications,
+                          ToolSpecification toolThatMustBeExecuted,
+                          StreamingResponseHandler<AiMessage> handler) {
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         String systemPrompt = toAnthropicSystemPrompt(messages);
         ensureNotNull(handler, "handler");
 
-        AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
+        AnthropicCreateMessageRequest.AnthropicCreateMessageRequestBuilder requestBuilder = AnthropicCreateMessageRequest.builder()
+                .stream(true)
                 .model(modelName)
                 .messages(toAnthropicMessages(sanitizedMessages))
                 .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
-                .stream(true)
                 .temperature(temperature)
                 .topP(topP)
-                .topK(topK)
-                .build();
+                .topK(topK);
 
-        client.createMessage(request, handler);
+        if (toolThatMustBeExecuted != null) {
+            requestBuilder.tools(toAnthropicTools(singletonList(toolThatMustBeExecuted)));
+            requestBuilder.toolChoice(AnthropicToolChoice.from(toolThatMustBeExecuted.name()));
+        } else if (!isNullOrEmpty(toolSpecifications)) {
+            requestBuilder.tools(toAnthropicTools(toolSpecifications));
+        }
+
+        AnthropicCreateMessageRequest request = requestBuilder.build();
+
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(requestContext);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
+
+        StreamingResponseHandler<AiMessage> listenerHandler = new StreamingResponseHandler<AiMessage>() {
+            @Override
+            public void onNext(String token) {
+                handler.onNext(token);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                ChatModelErrorContext errorContext = InternalAnthropicHelper.createErrorContext(
+                        error,
+                        modelListenerRequest,
+                        attributes
+                );
+
+                listeners.forEach(listener -> {
+                    try {
+                        listener.onError(errorContext);
+                    } catch (Exception e2) {
+                        log.warn("Exception while calling model listener", e2);
+                    }
+                });
+
+                handler.onError(error);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatModelResponse modelListenerResponse = InternalAnthropicHelper.createModelListenerResponse(
+                        (String) response.metadata().get("id"),
+                        (String) response.metadata().get("model"),
+                        response
+                );
+                ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                        modelListenerResponse,
+                        modelListenerRequest,
+                        attributes
+                );
+
+                listeners.forEach(listener -> {
+                    try {
+                        listener.onResponse(responseContext);
+                    } catch (Exception e) {
+                        log.warn("Exception while calling model listener", e);
+                    }
+                });
+                handler.onComplete(response);
+                StreamingResponseHandler.super.onComplete(response);
+            }
+        };
+
+        client.createMessage(request, listenerHandler);
     }
 }

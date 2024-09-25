@@ -19,7 +19,7 @@ class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
-                .maxTokens(maxTokens())
+                .maxCompletionTokens(maxTokens())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
@@ -42,7 +42,7 @@ class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
     }
 
     @Override
-    protected Class<?> expectedExceptionClass() {
+    protected Class<? extends Exception> expectedExceptionClass() {
         return OpenAiHttpException.class;
     }
 }
