@@ -123,7 +123,7 @@ class RedisMetadataFilterMapper {
     }
 
     private String doMapEqual(String key, Object value) {
-        SchemaField fieldType = schemaFieldMap.getOrDefault(key, TextField.of(key));
+        SchemaField fieldType = schemaFieldMap.getOrDefault(key, TagField.of(key));
 
         String keyPrefix = toKeyPrefix(key);
         if (fieldType instanceof NumericField) {
@@ -148,15 +148,21 @@ class RedisMetadataFilterMapper {
     }
 
     private String doMapIn(String key, Collection<?> values) {
-        SchemaField fieldType = schemaFieldMap.getOrDefault(key, TextField.of(key));
-
-        String inFilter = values.stream().map(Object::toString).collect(Collectors.joining(OR_DELIMITER));
+        SchemaField fieldType = schemaFieldMap.getOrDefault(key, TagField.of(key));
 
         String keyPrefix = toKeyPrefix(key);
         if (fieldType instanceof TagField) {
+            String inFilter = values.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(OR_DELIMITER));
+
             return keyPrefix + Boundary.TAG_BOUNDARY.toSingleString(inFilter);
         } else if (fieldType instanceof TextField) {
-            return keyPrefix + Boundary.TEXT_BOUNDARY.toSingleString(inFilter);
+            String inFilter = values.stream()
+                    .map(Boundary.TEXT_BOUNDARY::toSingleString)
+                    .collect(Collectors.joining(OR_DELIMITER));
+
+            return keyPrefix + Boundary.TEXT_IN_BOUNDARY.toSingleString(inFilter);
         } else {
             throw new UnsupportedOperationException("Redis do not support NumericType \"in\" search, fieldType: " + fieldType);
         }
@@ -211,6 +217,7 @@ class RedisMetadataFilterMapper {
 
         static final Boundary TAG_BOUNDARY = new Boundary("{", "}");
         static final Boundary TEXT_BOUNDARY = new Boundary("\"", "\"");
+        static final Boundary TEXT_IN_BOUNDARY = new Boundary("(", ")");
         static final Boundary NUMERIC_BOUNDARY = new Boundary("[", "]");
 
         private final String left;
@@ -222,7 +229,7 @@ class RedisMetadataFilterMapper {
         }
 
         String toSingleString(Object value) {
-            return String.format("%s %s %s", left, value, right);
+            return String.format("%s%s%s", left, value, right);
         }
 
         String toRangeString(Object leftValue, Object rightValue) {

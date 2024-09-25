@@ -117,9 +117,11 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         // Using KNN query on @vector field
+        System.out.println(filterMapper.mapToFilter(request.filter()));
         Query query = new Query(format(QUERY_TEMPLATE, filterMapper.mapToFilter(request.filter()), request.maxResults(), schema.vectorFieldName(), SCORE_FIELD_NAME))
                 .addParam("BLOB", toByteArray(request.queryEmbedding().vector()))
                 .setSortBy(SCORE_FIELD_NAME, true)
+                .limit(0, request.maxResults())
                 .dialect(2);
 
         SearchResult result = client.ftSearch(schema.indexName(), query);
