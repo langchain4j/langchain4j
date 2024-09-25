@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>langchain4j-jlama</artifactId>
     <name>LangChain4j :: Integration :: Jlama</name>
-    <description>Jlama: Pure Java LLM Inference Engine - Requires Java 21</description>
+    <description>Jlama: LLM Inference Engine for Java - Requires Java 20+</description>
 
     <parent>
         <groupId>dev.langchain4j</groupId>
@@ -15,7 +15,7 @@
     </parent>
 
     <properties>
-        <jlama.version>0.3.1</jlama.version>
+        <jlama.version>0.5.0</jlama.version>
         <jackson.version>2.16.1</jackson.version>
         <spotless.version>2.40.0</spotless.version>
         <maven.compiler.release>21</maven.compiler.release>
