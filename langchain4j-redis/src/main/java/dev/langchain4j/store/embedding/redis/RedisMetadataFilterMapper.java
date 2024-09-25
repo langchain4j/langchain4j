@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * TODO: document
+ * Metadata Filter Mapper according to <a href="https://redis.io/docs/latest/develop/interact/search-and-query/query/">RedisSearch Document</a>
  */
 class RedisMetadataFilterMapper {
 
@@ -62,61 +62,110 @@ class RedisMetadataFilterMapper {
     }
 
     /**
-     * Numeric: @key:[value]
-     * Tag: @key:{value}
-     * Text: @key:\"value\"
+     * <ul>
+     *     <li>Numeric: @key:[value]</li>
+     *     <li>Tag: @key:{value}</li>
+     *     <li>Text: @key:\"value\"</li>
+     * </ul>
      */
     String mapEqual(IsEqualTo filter) {
         return doMapEqual(filter.key(), filter.comparisonValue());
     }
 
     /**
-     * Numeric: -@key:[value]
-     * Tag: -@key:{value}
-     * Text: -@key:\"value\"
+     * <ul>
+     *     <li>Numeric: -@key:[value]</li>
+     *     <li>Tag: -@key:{value}</li>
+     *     <li>Text: -@key:\"value\"</li>
+     * </ul>
      */
     String mapNotEqual(IsNotEqualTo filter) {
-        return NOT_PREFIX + String.format("(%s)", doMapEqual(filter.key(), filter.comparisonValue()));
+        return doMapNot(doMapEqual(filter.key(), filter.comparisonValue()));
     }
 
+    /**
+     * Only support NumericType
+     *
+     * <p>Numeric: @key:[(value inf]</p>
+     */
     String mapGreaterThan(IsGreaterThan filter) {
         Numeric value = Numeric.constructNumeric(filter.comparisonValue(), true);
         return doMapCompare(filter.key(), value.toString(), Numeric.POSITIVE_INFINITY.toString());
     }
 
+    /**
+     * Only support NumericType
+     *
+     * <p>Numeric: @key:[value inf]</p>
+     */
     String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo filter) {
         Numeric value = Numeric.constructNumeric(filter.comparisonValue(), false);
         return doMapCompare(filter.key(), value.toString(), Numeric.POSITIVE_INFINITY.toString());
     }
 
+    /**
+     * Only support NumericType
+     *
+     * <p>Numeric: @key:[-inf (value]</p>
+     */
     String mapLessThan(IsLessThan filter) {
         Numeric value = Numeric.constructNumeric(filter.comparisonValue(), true);
         return doMapCompare(filter.key(), Numeric.NEGATIVE_INFINITY.toString(), value.toString());
     }
 
+    /**
+     * Only support NumericType
+     *
+     * <p>Numeric: @key:[-inf value]</p>
+     */
     String mapLessThanOrEqual(IsLessThanOrEqualTo filter) {
         Numeric value = Numeric.constructNumeric(filter.comparisonValue(), false);
         return doMapCompare(filter.key(), Numeric.NEGATIVE_INFINITY.toString(), value.toString());
     }
 
+    /**
+     * Only support TagType and TextType
+     *
+     * <ul>
+     *     <li>TagType: @key:{value1 | value2 | value3 | ...}</li>
+     *     <li>TextType: @key:("value1" | "value2" | "value3" | ...)</li>
+     * </ul>
+     */
     String mapIn(IsIn filter) {
         return doMapIn(filter.key(), filter.comparisonValues());
     }
 
+    /**
+     * Only support TagType and TextType
+     *
+     * <ul>
+     *     <li>TagType: -@key:{value1 | value2 | value3 | ...}</li>
+     *     <li>TextType: -@key:("value1" | "value2" | "value3" | ...)</li>
+     * </ul>
+     */
     String mapNotIn(IsNotIn filter) {
-        return NOT_PREFIX + doMapIn(filter.key(), filter.comparisonValues());
+        return doMapNot(doMapIn(filter.key(), filter.comparisonValues()));
     }
 
+    /**
+     * (left right)
+     */
     String mapAnd(And filter) {
         // @filter1 @filter2
         return "(" + mapToFilter(filter.left()) + " " + mapToFilter(filter.right()) + ")";
     }
 
+    /**
+     * -filter
+     */
     String mapNot(Not filter) {
         // -@filter
-        return NOT_PREFIX + "(" + mapToFilter(filter.expression()) + ")";
+        return doMapNot(mapToFilter(filter.expression()));
     }
 
+    /**
+     * (left | right)
+     */
     String mapOr(Or filter) {
         // @filter1 | @filter2
         return "(" + mapToFilter(filter.left()) + OR_DELIMITER + mapToFilter(filter.right()) + ")";
@@ -166,6 +215,10 @@ class RedisMetadataFilterMapper {
         } else {
             throw new UnsupportedOperationException("Redis do not support NumericType \"in\" search, fieldType: " + fieldType);
         }
+    }
+
+    private String doMapNot(String filter) {
+        return NOT_PREFIX + String.format("(%s)", filter);
     }
 
     private String toKeyPrefix(String key) {
