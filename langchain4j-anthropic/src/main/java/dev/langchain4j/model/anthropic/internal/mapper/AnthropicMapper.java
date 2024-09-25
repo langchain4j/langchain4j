@@ -142,17 +142,19 @@ public class AnthropicMapper {
         return contents;
     }
 
-    public static String toAnthropicSystemPrompt(List<ChatMessage> messages) {
-        String systemPrompt = messages.stream()
-                .filter(message -> message instanceof SystemMessage)
-                .map(message -> ((SystemMessage) message).text())
-                .collect(joining("\n\n"));
 
-        if (isNullOrBlank(systemPrompt)) {
-            return null;
-        } else {
-            return systemPrompt;
-        }
+    public static List<AnthropicTextContent> toAnthropicSystemPrompt(List<ChatMessage> messages) {
+        return messages.stream()
+                .filter(message -> message instanceof SystemMessage)
+                .map(message -> {
+                    SystemMessage systemMessage = (SystemMessage) message;
+                    if (systemMessage.cacheType() != null) {
+                        AnthropicCacheType cacheType = AnthropicCacheType.valueOf(systemMessage.cacheType());
+                        return new AnthropicTextContent(systemMessage.text(), cacheType.cacheControl());
+                    }
+                    return new AnthropicTextContent(systemMessage.text());
+                })
+                .collect(toList());
     }
 
     public static AiMessage toAiMessage(List<AnthropicContent> contents) {

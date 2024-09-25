@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -163,7 +164,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                           ToolSpecification toolThatMustBeExecuted,
                           StreamingResponseHandler<AiMessage> handler) {
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
-        String systemPrompt = toAnthropicSystemPrompt(messages);
+        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages);
         ensureNotNull(handler, "handler");
 
         AnthropicCreateMessageRequest.AnthropicCreateMessageRequestBuilder requestBuilder = AnthropicCreateMessageRequest.builder()

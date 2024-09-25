@@ -221,7 +221,7 @@ class AnthropicChatModelIT {
                 .temperature(1.0)
                 .topP(1.0)
                 .topK(1)
-                .maxTokens(3)
+                .maxTokens(100)
                 .stopSequences(asList("hello", "world"))
                 .timeout(Duration.ofSeconds(30))
                 .maxRetries(1)
@@ -229,8 +229,8 @@ class AnthropicChatModelIT {
                 .logResponses(true)
                 .build();
 
-        SystemMessage systemMessage = SystemMessage.from("You are a professional translator");
-        UserMessage userMessage = new UserMessage(TextContent.from("How say java is very slow on spanish ?", AnthropicCacheType.EPHEMERAL.toString()));
+        SystemMessage systemMessage = SystemMessage.from("You are a professional translator", AnthropicCacheType.EPHEMERAL.toString());
+        UserMessage userMessage = new UserMessage(TextContent.from("How say: java is very slow on spanish ?", AnthropicCacheType.EPHEMERAL.toString()));
 
         // when
         Response<AiMessage> response = model.generate(systemMessage, userMessage);

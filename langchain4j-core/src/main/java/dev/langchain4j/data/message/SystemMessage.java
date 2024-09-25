@@ -13,6 +13,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 public class SystemMessage implements ChatMessage {
 
     private final String text;
+    private String cacheType;
 
     /**
      * Creates a new system message.
@@ -23,11 +24,28 @@ public class SystemMessage implements ChatMessage {
     }
 
     /**
+     * Creates a new system message.
+     * @param text the message text.
+     * @param cacheType cache type used.
+     */
+    public SystemMessage(String text, String cacheType) {
+        this.text = ensureNotBlank(text, "text");
+        this.cacheType = ensureNotBlank(cacheType, "cacheType");
+    }
+
+    /**
      * Returns the message text.
      * @return the message text.
      */
     public String text() {
         return text;
+    }
+
+    /**
+     * @return the cacheType used
+     */
+    public String cacheType() {
+        return cacheType;
     }
 
     @Override
@@ -67,9 +85,29 @@ public class SystemMessage implements ChatMessage {
     /**
      * Creates a new system message.
      * @param text the message text.
+     * @param cacheType cache type used.
+     * @return the system message.
+     */
+    public static SystemMessage from(String text, String cacheType) {
+        return new SystemMessage(text, cacheType);
+    }
+
+    /**
+     * Creates a new system message.
+     * @param text the message text.
      * @return the system message.
      */
     public static SystemMessage systemMessage(String text) {
         return from(text);
+    }
+
+    /**
+     * Creates a new system message.
+     * @param text the message text.
+     * @param cacheType cache type used.
+     * @return the system message.
+     */
+    public static SystemMessage systemMessage(String text, String cacheType) {
+        return from(text, cacheType);
     }
 }
