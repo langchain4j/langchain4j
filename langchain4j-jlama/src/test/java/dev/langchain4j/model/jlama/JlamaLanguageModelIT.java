@@ -26,7 +26,7 @@ class JlamaLanguageModelIT {
                 .modelName("tjake/Meta-Llama-3.1-8B-Instruct-Jlama-Q4")
                 .modelCachePath(tmpDir.toPath())
                 .temperature(0.0f)
-                .maxTokens(30)
+                .maxTokens(64)
                 .build();
     }
 
