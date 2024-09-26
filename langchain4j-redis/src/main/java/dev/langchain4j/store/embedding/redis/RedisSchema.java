@@ -45,7 +45,7 @@ class RedisSchema {
                 String vectorFieldName,
                 String scalarFieldName,
                 VectorAlgorithm vectorAlgorithm,
-                int dimension,
+                Integer dimension,
                 MetricType metricType,
                 Map<String, SchemaField> schemaFieldMap) {
         this.indexName = indexName;
@@ -113,7 +113,7 @@ class RedisSchema {
         /* Vector field settings */
 
         private VectorAlgorithm vectorAlgorithm = DEFAULT_VECTOR_ALGORITHM;
-        private int dimension;
+        private Integer dimension;
         private final MetricType metricType = DEFAULT_METRIC_TYPE;
 
         Builder indexName(String indexName) {
@@ -141,7 +141,7 @@ class RedisSchema {
             return this;
         }
 
-        Builder dimension(int dimension) {
+        Builder dimension(Integer dimension) {
             this.dimension = dimension;
             return this;
         }
