@@ -259,8 +259,10 @@ public class InternalOpenAiHelper {
 
     private static Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> toOpenAiProperties(Map<String, ?> properties, boolean strict) {
         Map<String, dev.ai4j.openai4j.chat.JsonSchemaElement> openAiProperties = new LinkedHashMap<>();
-        properties.forEach((key, value) ->
-                openAiProperties.put(key, toOpenAiJsonSchemaElement((Map<String, ?>) value, strict)));
+        if ( properties != null) {
+            properties.forEach((key, value) ->
+                    openAiProperties.put(key, toOpenAiJsonSchemaElement((Map<String, ?>) value, strict)));
+        }
         return openAiProperties;
     }
 
