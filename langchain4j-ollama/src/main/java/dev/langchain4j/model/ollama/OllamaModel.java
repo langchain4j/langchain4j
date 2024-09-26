@@ -26,11 +26,13 @@ public class OllamaModel {
     OllamaModel() {
     }
 
-    OllamaModel(String name, long size, String digest, OllamaModelDetails details) {
+    OllamaModel(String name, long size, String digest, OllamaModelDetails details, OffsetDateTime modifiedAt, String model) {
         this.name = name;
         this.size = size;
         this.digest = digest;
         this.details = details;
+        this.modifiedAt = modifiedAt;
+        this.model = model;
     }
 
     static Builder builder() {
@@ -69,12 +71,30 @@ public class OllamaModel {
         this.details = details;
     }
 
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+    }
+
+    public OffsetDateTime getModifiedAt() {
+        return modifiedAt;
+    }
+
+    public void setModifiedAt(OffsetDateTime modifiedAt) {
+        this.modifiedAt = modifiedAt;
+    }
+
     static class Builder {
 
         private String name;
         private long size;
         private String digest;
         private OllamaModelDetails details;
+        private OffsetDateTime modifiedAt;
+        private String model;
 
         Builder name(String name) {
             this.name = name;
@@ -96,8 +116,19 @@ public class OllamaModel {
             return this;
         }
 
+        Builder modifiedAt(OffsetDateTime modifiedAt) {
+            this.modifiedAt = modifiedAt;
+            return this;
+        }
+
+        Builder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+
         OllamaModel build() {
-            return new OllamaModel(name, size, digest, details);
+            return new OllamaModel(name, size, digest, details, modifiedAt, model);
         }
     }
 }
