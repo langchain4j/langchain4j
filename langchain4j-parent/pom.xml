@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.35.0-SNAPSHOT</version>
+    <version>0.36.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -18,7 +18,7 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
-        <openai4j.version>0.21.0</openai4j.version>
+        <openai4j.version>0.22.0</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.11</azure-ai-openai.version>
         <azure-ai-search.version>11.7.1</azure-ai-search.version>
         <azure.storage-blob.version>12.28.0</azure.storage-blob.version>
@@ -28,7 +28,6 @@
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.1.0</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
-        <jsoup.veresion>1.16.1</jsoup.veresion>
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.10.0</junit.version>
@@ -151,6 +150,12 @@
             </dependency>
 
             <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-transformer-jsoup</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>com.squareup.retrofit2</groupId>
                 <artifactId>retrofit</artifactId>
                 <version>${retrofit.version}</version>
@@ -224,12 +229,6 @@
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.jsoup</groupId>
-                <artifactId>jsoup</artifactId>
-                <version>${jsoup.veresion}</version>
             </dependency>
 
             <dependency>

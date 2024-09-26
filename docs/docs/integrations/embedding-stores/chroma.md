@@ -13,7 +13,7 @@ https://www.trychroma.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-chroma</artifactId>
-    <version>0.34.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 

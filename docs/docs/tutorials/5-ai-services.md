@@ -152,12 +152,9 @@ Friend friend = AiServices.create(Friend.class, model);
 String answer = friend.chat("Hello"); // Hey! What's shakin'?
 ```
 We have replaced the `@SystemMessage` annotation with `@UserMessage`
-and specified a prompt template with the variable `it` to refer to the only method argument.
+and specified a prompt template containing the variable `it` that refers to the only method argument.
 
-`@UserMessage` can also load a prompt template from resources:
-`@UserMessage(fromResource = "my-prompt-template.txt")`
-
-Additionally, it's possible to annotate the `String userMessage` with `@V`
+It's also possible to annotate the `String userMessage` with `@V`
 and assign a custom name to the prompt template variable:
 ```java
 interface Friend {
@@ -167,18 +164,98 @@ interface Friend {
 }
 ```
 
-## Output Parsing (aka Structured Outputs)
+:::note
+Please note that using `@V` is not necessary when using LangChain4j with Quarkus or Spring Boot.
+This annotation is necessary only when the `-parameters` option is *not* enabled during Java compilation.
+:::
+
+`@UserMessage` can also load a prompt template from resources:
+`@UserMessage(fromResource = "my-prompt-template.txt")`
+
+## Examples of valid AI Service methods
+
+Below are some examples of valid AI service methods.
+
+<details>
+<summary>`UserMessage`</summary>
+
+```java
+String chat(String userMessage);
+
+String chat(@UserMessage String userMessage);
+
+String chat(@UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
+
+@UserMessage("What is the capital of Germany?")
+String chat();
+
+@UserMessage("What is the capital of {{it}}?")
+String chat(String country);
+
+@UserMessage("What is the capital of {{country}}?")
+String chat(@V("country") String country);
+
+@UserMessage("What is the {{something}} of {{country}}?")
+String chat(@V("something") String something, @V("country") String country);
+
+@UserMessage("What is the capital of {{country}}?")
+String chat(String country); // this works only in Quarkus and Spring Boot applications
+```
+</details>
+
+<details>
+<summary>`SystemMessage` and `UserMessage`</summary>
+
+```java
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+String chat(String userMessage);
+
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+String chat(@UserMessage String userMessage);
+
+@SystemMessage("Given a name of a country, {{answerInstructions}}")
+String chat(@V("answerInstructions") String answerInstructions, @UserMessage String userMessage);
+
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+String chat(@UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
+
+@SystemMessage("Given a name of a country, {{answerInstructions}}")
+String chat(@V("answerInstructions") String answerInstructions, @UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
+
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+@UserMessage("Germany")
+String chat();
+
+@SystemMessage("Given a name of a country, {{answerInstructions}}")
+@UserMessage("Germany")
+String chat(@V("answerInstructions") String answerInstructions);
+
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+@UserMessage("{{it}}")
+String chat(String country);
+
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+@UserMessage("{{country}}")
+String chat(@V("country") String country);
+
+@SystemMessage("Given a name of a country, {{answerInstructions}}")
+@UserMessage("{{country}}")
+String chat(@V("answerInstructions") String answerInstructions, @V("country") String country);
+```
+</details>
+
+## Structured Outputs
 If you want to receive a structured output from the LLM,
 you can change the return type of your AI Service method from `String` to something else.
 Currently, AI Services support the following return types:
 - `String`
 - `AiMessage`
+- Any custom POJO
+- Any `Enum` or `List<Enum>` or `Set<Enum>`, if you want to classify text, e.g. sentiment, user intent, etc.
 - `boolean`/`Boolean`, if you need to get "yes" or "no" answer
-- `byte`/`Byte`/`short`/`Short`/`int`/`Integer`/`BigInteger`/`long`/`Long`/`float`/`Float`/`double`/`Double`/`BigDecimal`
+- `byte`/`short`/`int`/`BigInteger`/`long`/`float`/`double`/`BigDecimal`
 - `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
 - `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
-- Any `Enum`, `List<Enum>` and `Set<Enum>`, if you want to classify text, e.g. sentiment, user intent, etc.
-- Any custom POJO
 - `Result<T>`, if you need to access `TokenUsage`, `FinishReason`, sources (`Content`s retrieved during RAG) and executed tools, aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
 
 Unless the return type is `String` or `AiMessage`, the AI Service will automatically append instructions
@@ -186,6 +263,13 @@ to the end of the `UserMessage` indicating the format in which the LLM should re
 Before the method returns, the AI Service will parse the output of the LLM into the desired type.
 
 You can observe appended instructions by [enabling logging](/tutorials/logging).
+
+:::note
+Some LLMs support JSON mode (aka [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/)),
+where the LLM API has an option to specify a JSON schema for the desired output. If such a feature is supported and enabled, 
+instructions will not be appended to the end of the `UserMessage`. In this case, the JSON schema will be automatically
+created from your POJO and passed to the LLM. This will guarantee that the LLM adheres to this JSON schema.
+:::
 
 Now let's take a look at some examples.
 
@@ -246,6 +330,7 @@ class Person {
     Address address;
 }
 
+@Description("an address") // you can add an optional description to help an LLM have a better understanding
 class Address {
     String street;
     Integer streetNumber;
@@ -431,6 +516,23 @@ tokenStream.onNext(System.out::println)
     .onComplete(System.out::println)
     .onError(Throwable::printStackTrace)
     .start();
+```
+
+### Flux
+You can also use `Flux<String>` instead of `TokenStream`.
+For this, please import `langchain4j-reactor` module:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-reactor</artifactId>
+    <version>0.35.0</version>
+</dependency>
+```
+```java
+interface Assistant {
+
+  Flux<String> chat(String message);
+}
 ```
 
 [Streaming example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)

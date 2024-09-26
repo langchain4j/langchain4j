@@ -50,7 +50,6 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.type;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -121,7 +120,7 @@ class AiServicesWithToolsIT {
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .modelName(GPT_3_5_TURBO_0613) // this model can only call tools sequentially
+                        .modelName(GPT_4_O_MINI)
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
@@ -687,7 +686,7 @@ class AiServicesWithToolsIT {
                 .tools(queryService)
                 .build();
 
-        Response<AiMessage> response = assistant.chat("List names of 3 users where country is India");
+        Response<AiMessage> response = assistant.chat("Give me the names of 3 users from India");
 
         assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
     }

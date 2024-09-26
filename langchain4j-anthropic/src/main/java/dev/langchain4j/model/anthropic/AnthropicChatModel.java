@@ -134,11 +134,9 @@ public class AnthropicChatModel implements ChatLanguageModel {
     }
 
     /**
-     * Creates an instance of {@code AnthropicChatModel} with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return an {@code AnthropicChatModel} instance
+     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
+    @Deprecated
     public static AnthropicChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
