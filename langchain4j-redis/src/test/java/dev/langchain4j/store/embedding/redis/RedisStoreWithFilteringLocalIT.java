@@ -9,6 +9,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -30,11 +31,11 @@ import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metad
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
-class RedisStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
+class RedisStoreWithFilteringLocalIT extends EmbeddingStoreWithFilteringIT {
 
     static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
 
-    EmbeddingStore<TextSegment> embeddingStore;
+    RedisEmbeddingStore embeddingStore;
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -79,6 +80,11 @@ class RedisStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
                 .build();
     }
 
+    @AfterEach
+    void afterEach() {
+        embeddingStore.close();
+    }
+
     @Override
     @ParameterizedTest
     @MethodSource("redis_should_filter_by_metadata")
@@ -94,7 +100,7 @@ class RedisStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
     protected void should_filter_by_metadata_not(Filter metadataFilter,
                                                  List<Metadata> matchingMetadatas,
                                                  List<Metadata> notMatchingMetadatas) {
-        // super.should_filter_by_metadata_not(metadataFilter, matchingMetadatas, notMatchingMetadatas);
+        super.should_filter_by_metadata_not(metadataFilter, matchingMetadatas, notMatchingMetadatas);
     }
 
     private static Stream<Arguments> redis_should_filter_by_metadata() {
@@ -1067,63 +1073,63 @@ class RedisStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
                         )
                 ))
                 .add(Arguments.of(
-                        metadataKey("key").isNotEqualTo(1),
+                        metadataKey("integer_key").isNotEqualTo(1),
                         asList(
-                                new Metadata().put("key", -1),
-                                new Metadata().put("key", 0),
-                                new Metadata().put("key", 2),
-                                new Metadata().put("key", 10),
-                                new Metadata().put("key2", 1),
+                                new Metadata().put("integer_key", -1),
+                                new Metadata().put("integer_key", 0),
+                                new Metadata().put("integer_key", 2),
+                                new Metadata().put("integer_key", 10),
+                                new Metadata().put("integer_key2", 1),
                                 new Metadata()
                         ),
                         asList(
-                                new Metadata().put("key", 1),
-                                new Metadata().put("key", 1).put("key2", 2)
+                                new Metadata().put("integer_key", 1),
+                                new Metadata().put("integer_key", 1).put("integer_key2", 2)
                         )
                 ))
                 .add(Arguments.of(
-                        metadataKey("key").isNotEqualTo(1L),
+                        metadataKey("long_key").isNotEqualTo(1L),
                         asList(
-                                new Metadata().put("key", -1L),
-                                new Metadata().put("key", 0L),
-                                new Metadata().put("key", 2L),
-                                new Metadata().put("key", 10L),
-                                new Metadata().put("key2", 1L),
+                                new Metadata().put("long_key", -1L),
+                                new Metadata().put("long_key", 0L),
+                                new Metadata().put("long_key", 2L),
+                                new Metadata().put("long_key", 10L),
+                                new Metadata().put("long_key2", 1L),
                                 new Metadata()
                         ),
                         asList(
-                                new Metadata().put("key", 1L),
-                                new Metadata().put("key", 1L).put("key2", 2L)
+                                new Metadata().put("long_key", 1L),
+                                new Metadata().put("long_key", 1L).put("long_key2", 2L)
                         )
                 ))
                 .add(Arguments.of(
-                        metadataKey("key").isNotEqualTo(1.1f),
+                        metadataKey("float_key").isNotEqualTo(1.1f),
                         asList(
-                                new Metadata().put("key", -1.1f),
-                                new Metadata().put("key", 0.0f),
-                                new Metadata().put("key", 1.11f),
-                                new Metadata().put("key", 2.2f),
-                                new Metadata().put("key2", 1.1f),
+                                new Metadata().put("float_key", -1.1f),
+                                new Metadata().put("float_key", 0.0f),
+                                new Metadata().put("float_key", 1.11f),
+                                new Metadata().put("float_key", 2.2f),
+                                new Metadata().put("float_key2", 1.1f),
                                 new Metadata()
                         ),
                         asList(
-                                new Metadata().put("key", 1.1f),
-                                new Metadata().put("key", 1.1f).put("key2", 2.2f)
+                                new Metadata().put("float_key", 1.1f),
+                                new Metadata().put("float_key", 1.1f).put("float_key2", 2.2f)
                         )
                 ))
                 .add(Arguments.of(
-                        metadataKey("key").isNotEqualTo(1.1),
+                        metadataKey("double_key").isNotEqualTo(1.1),
                         asList(
-                                new Metadata().put("key", -1.1),
-                                new Metadata().put("key", 0.0),
-                                new Metadata().put("key", 1.11),
-                                new Metadata().put("key", 2.2),
-                                new Metadata().put("key2", 1.1),
+                                new Metadata().put("double_key", -1.1),
+                                new Metadata().put("double_key", 0.0),
+                                new Metadata().put("double_key", 1.11),
+                                new Metadata().put("double_key", 2.2),
+                                new Metadata().put("double_key2", 1.1),
                                 new Metadata()
                         ),
                         asList(
-                                new Metadata().put("key", 1.1),
-                                new Metadata().put("key", 1.1).put("key2", 2.2)
+                                new Metadata().put("double_key", 1.1),
+                                new Metadata().put("double_key", 1.1).put("double_key2", 2.2)
                         )
                 ))
 
@@ -1242,223 +1248,6 @@ class RedisStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
                                 new Metadata().put("UUID_name", TEST_UUID2).put("integer_age", 42)
                         )
                 ))
-
-                // NotIn: int
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(42),
-                        asList(
-                                new Metadata().put("integer_age", 666),
-                                new Metadata().put("integer_age2", 42),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42),
-                                new Metadata().put("integer_age", 42).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(singletonList(42)),
-                        asList(
-                                new Metadata().put("integer_age", 666),
-                                new Metadata().put("integer_age2", 42),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42),
-                                new Metadata().put("integer_age", 42).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(42, 18),
-                        asList(
-                                new Metadata().put("integer_age", 666),
-                                new Metadata().put("integer_age2", 42),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42),
-                                new Metadata().put("integer_age", 18),
-                                new Metadata().put("integer_age", 42).put("name", "Klaus"),
-                                new Metadata().put("integer_age", 18).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(asList(42, 18)),
-                        asList(
-                                new Metadata().put("integer_age", 666),
-                                new Metadata().put("integer_age2", 42),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42),
-                                new Metadata().put("integer_age", 18),
-                                new Metadata().put("integer_age", 42).put("name", "Klaus"),
-                                new Metadata().put("integer_age", 18).put("name", "Klaus")
-                        )
-                ))
-
-                // NotIn: long
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(42L),
-                        asList(
-                                new Metadata().put("integer_age", 666L),
-                                new Metadata().put("integer_age2", 42L),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42L),
-                                new Metadata().put("integer_age", 42L).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(singletonList(42L)),
-                        asList(
-                                new Metadata().put("integer_age", 666L),
-                                new Metadata().put("integer_age2", 42L),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42L),
-                                new Metadata().put("integer_age", 42L).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(42L, 18L),
-                        asList(
-                                new Metadata().put("integer_age", 666L),
-                                new Metadata().put("integer_age2", 42L),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42L),
-                                new Metadata().put("integer_age", 18L),
-                                new Metadata().put("integer_age", 42L).put("name", "Klaus"),
-                                new Metadata().put("integer_age", 18L).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(asList(42L, 18L)),
-                        asList(
-                                new Metadata().put("integer_age", 666L),
-                                new Metadata().put("integer_age2", 42L),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42L),
-                                new Metadata().put("integer_age", 18L),
-                                new Metadata().put("integer_age", 42L).put("name", "Klaus"),
-                                new Metadata().put("integer_age", 18L).put("name", "Klaus")
-                        )
-                ))
-
-                // NotIn: float
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(42.0f),
-                        asList(
-                                new Metadata().put("integer_age", 666.0f),
-                                new Metadata().put("integer_age2", 42.0f),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42.0f),
-                                new Metadata().put("integer_age", 42.0f).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(singletonList(42.0f)),
-                        asList(
-                                new Metadata().put("integer_age", 666.0f),
-                                new Metadata().put("integer_age2", 42.0f),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42.0f),
-                                new Metadata().put("integer_age", 42.0f).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(42.0f, 18.0f),
-                        asList(
-                                new Metadata().put("integer_age", 666.0f),
-                                new Metadata().put("integer_age2", 42.0f),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42.0f),
-                                new Metadata().put("integer_age", 18.0f),
-                                new Metadata().put("integer_age", 42.0f).put("name", "Klaus"),
-                                new Metadata().put("integer_age", 18.0f).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(asList(42.0f, 18.0f)),
-                        asList(
-                                new Metadata().put("integer_age", 666.0f),
-                                new Metadata().put("integer_age2", 42.0f),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42.0f),
-                                new Metadata().put("integer_age", 18.0f),
-                                new Metadata().put("integer_age", 42.0f).put("name", "Klaus"),
-                                new Metadata().put("integer_age", 18.0f).put("name", "Klaus")
-                        )
-                ))
-
-                // NotIn: double
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(42.0d),
-                        asList(
-                                new Metadata().put("integer_age", 666.0d),
-                                new Metadata().put("integer_age2", 42.0d),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42.0d),
-                                new Metadata().put("integer_age", 42.0d).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(singletonList(42.0d)),
-                        asList(
-                                new Metadata().put("integer_age", 666.0d),
-                                new Metadata().put("integer_age2", 42.0d),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42.0d),
-                                new Metadata().put("integer_age", 42.0d).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(42.0d, 18.0d),
-                        asList(
-                                new Metadata().put("integer_age", 666.0d),
-                                new Metadata().put("integer_age2", 42.0d),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42.0d),
-                                new Metadata().put("integer_age", 18.0d),
-                                new Metadata().put("integer_age", 42.0d).put("name", "Klaus"),
-                                new Metadata().put("integer_age", 18.0d).put("name", "Klaus")
-                        )
-                ))
-                .add(Arguments.of(
-                        metadataKey("integer_age").isNotIn(asList(42.0d, 18.0d)),
-                        asList(
-                                new Metadata().put("integer_age", 666.0d),
-                                new Metadata().put("integer_age2", 42.0d),
-                                new Metadata()
-                        ),
-                        asList(
-                                new Metadata().put("integer_age", 42.0d),
-                                new Metadata().put("integer_age", 18.0d),
-                                new Metadata().put("integer_age", 42.0d).put("name", "Klaus"),
-                                new Metadata().put("integer_age", 18.0d).put("name", "Klaus")
-                        )
-                ))
-
                 .build();
     }
 

@@ -7,6 +7,7 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.search.schemafields.NumericField;
@@ -22,11 +23,11 @@ import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
+class RedisEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
 
-    EmbeddingStore<TextSegment> embeddingStore;
+    RedisEmbeddingStore embeddingStore;
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -65,6 +66,11 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
                 .dimension(embeddingModel.dimension())
                 .schemaFiledMap(schemaFieldMap)
                 .build();
+    }
+
+    @AfterEach
+    void afterEach() {
+        embeddingStore.close();
     }
 
     @Override

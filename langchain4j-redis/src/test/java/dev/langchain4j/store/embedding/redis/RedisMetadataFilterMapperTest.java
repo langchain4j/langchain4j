@@ -38,11 +38,11 @@ class RedisMetadataFilterMapperTest {
     @Test
     void should_map_not_equal() {
         assertThat(mapper.mapToFilter(metadataKey("age").isNotEqualTo(20)))
-                .isEqualTo("-(@age:[20])");
+                .isEqualTo("(-@age:[20])");
         assertThat(mapper.mapToFilter(metadataKey("name").isNotEqualTo("Klaus")))
-                .isEqualTo("-(@name:{Klaus})");
+                .isEqualTo("(-@name:{Klaus})");
         assertThat(mapper.mapToFilter(metadataKey("country").isNotEqualTo("German")))
-                .isEqualTo("-(@country:\"German\")");
+                .isEqualTo("(-@country:\"German\")");
     }
 
     @Test
@@ -143,16 +143,16 @@ class RedisMetadataFilterMapperTest {
         // Single in
 
         assertThat(mapper.mapToFilter(metadataKey("name").isNotIn("Klaus")))
-                .isEqualTo("-(@name:{Klaus})");
+                .isEqualTo("(-@name:{Klaus})");
         assertThat(mapper.mapToFilter(metadataKey("country").isNotIn("German")))
-                .isEqualTo("-(@country:(\"German\"))");
+                .isEqualTo("(-@country:(\"German\"))");
 
         // Multi in
 
         assertThat(mapper.mapToFilter(metadataKey("name").isNotIn("Klaus", "Martin")))
-                .isEqualTo("-(@name:{Martin | Klaus})");
+                .isEqualTo("(-@name:{Martin | Klaus})");
         assertThat(mapper.mapToFilter(metadataKey("country").isNotIn("German", "Japan")))
-                .isEqualTo("-(@country:(\"Japan\" | \"German\"))");
+                .isEqualTo("(-@country:(\"Japan\" | \"German\"))");
     }
 
     @Test
@@ -184,13 +184,13 @@ class RedisMetadataFilterMapperTest {
     @Test
     void should_map_not() {
         assertThat(mapper.mapToFilter(not(metadataKey("age").isEqualTo(20))))
-                .isEqualTo("-(@age:[20])");
+                .isEqualTo("(-@age:[20])");
 
         assertThat(mapper.mapToFilter(not(metadataKey("name").isEqualTo("Klaus"))))
-                .isEqualTo("-(@name:{Klaus})");
+                .isEqualTo("(-@name:{Klaus})");
 
         assertThat(mapper.mapToFilter(not(metadataKey("country").isEqualTo("German"))))
-                .isEqualTo("-(@country:\"German\")");
+                .isEqualTo("(-@country:\"German\")");
     }
 
     @Test
@@ -202,7 +202,7 @@ class RedisMetadataFilterMapperTest {
 
         // age greater than 20 or name is not in [Klaus, Martin]
         assertThat(mapper.mapToFilter(metadataKey("age").isGreaterThan(20).or(metadataKey("name").isNotIn("Klaus", "Martin"))))
-                .isEqualTo("(@age:[(20 inf] | -(@name:{Martin | Klaus}))");
+                .isEqualTo("(@age:[(20 inf] | (-@name:{Martin | Klaus}))");
 
         // TODO: add more complex test case
     }

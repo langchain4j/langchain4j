@@ -218,7 +218,7 @@ class RedisMetadataFilterMapper {
     }
 
     private String doMapNot(String filter) {
-        return NOT_PREFIX + String.format("(%s)", filter);
+        return String.format("(%s%s)", NOT_PREFIX, filter);
     }
 
     private String toKeyPrefix(String key) {
