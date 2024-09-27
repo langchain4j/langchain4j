@@ -15,80 +15,80 @@ import static java.util.stream.Collectors.toList;
 
 class MilvusMetadataFilterMapper {
 
-    static String map(Filter filter) {
+    static String map(Filter filter, String metadataFiledName) {
         if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
+            return mapEqual((IsEqualTo) filter, metadataFiledName);
         } else if (filter instanceof IsNotEqualTo) {
-            return mapNotEqual((IsNotEqualTo) filter);
+            return mapNotEqual((IsNotEqualTo) filter, metadataFiledName);
         } else if (filter instanceof IsGreaterThan) {
-            return mapGreaterThan((IsGreaterThan) filter);
+            return mapGreaterThan((IsGreaterThan) filter, metadataFiledName);
         } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
+            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter, metadataFiledName);
         } else if (filter instanceof IsLessThan) {
-            return mapLessThan((IsLessThan) filter);
+            return mapLessThan((IsLessThan) filter, metadataFiledName);
         } else if (filter instanceof IsLessThanOrEqualTo) {
-            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
+            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter, metadataFiledName);
         } else if (filter instanceof IsIn) {
-            return mapIn((IsIn) filter);
+            return mapIn((IsIn) filter, metadataFiledName);
         } else if (filter instanceof IsNotIn) {
-            return mapNotIn((IsNotIn) filter);
+            return mapNotIn((IsNotIn) filter, metadataFiledName);
         } else if (filter instanceof And) {
-            return mapAnd((And) filter);
+            return mapAnd((And) filter, metadataFiledName);
         } else if (filter instanceof Not) {
-            return mapNot((Not) filter);
+            return mapNot((Not) filter, metadataFiledName);
         } else if (filter instanceof Or) {
-            return mapOr((Or) filter);
+            return mapOr((Or) filter, metadataFiledName);
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
-    private static String mapEqual(IsEqualTo isEqualTo) {
-        return format("%s == %s", formatKey(isEqualTo.key()), formatValue(isEqualTo.comparisonValue()));
+    private static String mapEqual(IsEqualTo isEqualTo, String metadataFiledName) {
+        return format("%s == %s", formatKey(isEqualTo.key(), metadataFiledName), formatValue(isEqualTo.comparisonValue()));
     }
 
-    private static String mapNotEqual(IsNotEqualTo isNotEqualTo) {
-        return format("%s != %s", formatKey(isNotEqualTo.key()), formatValue(isNotEqualTo.comparisonValue()));
+    private static String mapNotEqual(IsNotEqualTo isNotEqualTo, String metadataFiledName) {
+        return format("%s != %s", formatKey(isNotEqualTo.key(), metadataFiledName), formatValue(isNotEqualTo.comparisonValue()));
     }
 
-    private static String mapGreaterThan(IsGreaterThan isGreaterThan) {
-        return format("%s > %s", formatKey(isGreaterThan.key()), formatValue(isGreaterThan.comparisonValue()));
+    private static String mapGreaterThan(IsGreaterThan isGreaterThan, String metadataFiledName) {
+        return format("%s > %s", formatKey(isGreaterThan.key(), metadataFiledName), formatValue(isGreaterThan.comparisonValue()));
     }
 
-    private static String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
-        return format("%s >= %s", formatKey(isGreaterThanOrEqualTo.key()), formatValue(isGreaterThanOrEqualTo.comparisonValue()));
+    private static String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo, String metadataFiledName) {
+        return format("%s >= %s", formatKey(isGreaterThanOrEqualTo.key(), metadataFiledName), formatValue(isGreaterThanOrEqualTo.comparisonValue()));
     }
 
-    private static String mapLessThan(IsLessThan isLessThan) {
-        return format("%s < %s", formatKey(isLessThan.key()), formatValue(isLessThan.comparisonValue()));
+    private static String mapLessThan(IsLessThan isLessThan, String metadataFiledName) {
+        return format("%s < %s", formatKey(isLessThan.key(), metadataFiledName), formatValue(isLessThan.comparisonValue()));
     }
 
-    private static String mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
-        return format("%s <= %s", formatKey(isLessThanOrEqualTo.key()), formatValue(isLessThanOrEqualTo.comparisonValue()));
+    private static String mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo, String metadataFiledName) {
+        return format("%s <= %s", formatKey(isLessThanOrEqualTo.key(), metadataFiledName), formatValue(isLessThanOrEqualTo.comparisonValue()));
     }
 
-    private static String mapIn(IsIn isIn) {
-        return format("%s in %s", formatKey(isIn.key()), formatValues(isIn.comparisonValues()));
+    private static String mapIn(IsIn isIn, String metadataFiledName) {
+        return format("%s in %s", formatKey(isIn.key(), metadataFiledName), formatValues(isIn.comparisonValues()));
     }
 
-    private static String mapNotIn(IsNotIn isNotIn) {
-        return format("%s not in %s", formatKey(isNotIn.key()), formatValues(isNotIn.comparisonValues()));
+    private static String mapNotIn(IsNotIn isNotIn, String metadataFiledName) {
+        return format("%s not in %s", formatKey(isNotIn.key(), metadataFiledName), formatValues(isNotIn.comparisonValues()));
     }
 
-    private static String mapAnd(And and) {
-        return format("%s and %s", map(and.left()), map(and.right()));
+    private static String mapAnd(And and, String metadataFiledName) {
+        return format("%s and %s", map(and.left(), metadataFiledName), map(and.right(), metadataFiledName));
     }
 
-    private static String mapNot(Not not) {
-        return format("not(%s)", map(not.expression()));
+    private static String mapNot(Not not, String metadataFiledName) {
+        return format("not(%s)", map(not.expression(), metadataFiledName));
     }
 
-    private static String mapOr(Or or) {
-        return format("(%s or %s)", map(or.left()), map(or.right()));
+    private static String mapOr(Or or, String metadataFiledName) {
+        return format("(%s or %s)", map(or.left(), metadataFiledName), map(or.right(), metadataFiledName));
     }
 
-    private static String formatKey(String key) {
-        return "metadata[\"" + key + "\"]";
+    private static String formatKey(String key, String metadataFiledName) {
+        return metadataFiledName+"[\"" + key + "\"]";
     }
 
     private static String formatValue(Object value) {
