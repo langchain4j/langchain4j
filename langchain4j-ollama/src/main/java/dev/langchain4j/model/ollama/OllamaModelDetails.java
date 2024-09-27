@@ -31,7 +31,7 @@ public class OllamaModelDetails {
         this.quantizationLevel = quantizationLevel;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
