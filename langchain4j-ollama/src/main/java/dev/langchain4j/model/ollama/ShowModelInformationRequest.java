@@ -21,7 +21,7 @@ class ShowModelInformationRequest {
         this.name = name;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -37,12 +37,12 @@ class ShowModelInformationRequest {
 
         private String name;
 
-        Builder name(String name) {
+        public Builder name(String name) {
             this.name = name;
             return this;
         }
 
-        ShowModelInformationRequest build() {
+        public ShowModelInformationRequest build() {
             return new ShowModelInformationRequest(name);
         }
     }

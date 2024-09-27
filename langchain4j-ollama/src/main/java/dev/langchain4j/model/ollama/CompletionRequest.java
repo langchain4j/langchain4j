@@ -31,7 +31,7 @@ class CompletionRequest {
         this.stream = stream;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -92,37 +92,37 @@ class CompletionRequest {
         private String format;
         private Boolean stream;
 
-        Builder model(String model) {
+        public Builder model(String model) {
             this.model = model;
             return this;
         }
 
-        Builder system(String system) {
+        public Builder system(String system) {
             this.system = system;
             return this;
         }
 
-        Builder prompt(String prompt) {
+        public Builder prompt(String prompt) {
             this.prompt = prompt;
             return this;
         }
 
-        Builder options(Options options) {
+        public Builder options(Options options) {
             this.options = options;
             return this;
         }
 
-        Builder format(String format) {
+        public Builder format(String format) {
             this.format = format;
             return this;
         }
 
-        Builder stream(Boolean stream) {
+        public Builder stream(Boolean stream) {
             this.stream = stream;
             return this;
         }
 
-        CompletionRequest build() {
+        public CompletionRequest build() {
             return new CompletionRequest(model, system, prompt, options, format, stream);
         }
     }

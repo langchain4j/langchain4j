@@ -32,7 +32,7 @@ class ChatResponse {
         this.evalCount = evalCount;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -93,37 +93,37 @@ class ChatResponse {
         private Integer promptEvalCount;
         private Integer evalCount;
 
-        Builder model(String model) {
+        public Builder model(String model) {
             this.model = model;
             return this;
         }
 
-        Builder createdAt(String createdAt) {
+        public Builder createdAt(String createdAt) {
             this.createdAt = createdAt;
             return this;
         }
 
-        Builder message(Message message) {
+        public Builder message(Message message) {
             this.message = message;
             return this;
         }
 
-        Builder done(Boolean done) {
+        public Builder done(Boolean done) {
             this.done = done;
             return this;
         }
 
-        Builder promptEvalCount(Integer promptEvalCount) {
+        public Builder promptEvalCount(Integer promptEvalCount) {
             this.promptEvalCount = promptEvalCount;
             return this;
         }
 
-        Builder evalCount(Integer evalCount) {
+        public Builder evalCount(Integer evalCount) {
             this.evalCount = evalCount;
             return this;
         }
 
-        ChatResponse build() {
+        public ChatResponse build() {
             return new ChatResponse(model, createdAt, message, done, promptEvalCount, evalCount);
         }
     }

@@ -72,7 +72,7 @@ class OllamaClient {
         ollamaApi = retrofit.create(OllamaApi.class);
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -305,37 +305,37 @@ class OllamaClient {
         private Boolean logStreamingResponses;
         private Map<String, String> customHeaders;
 
-        Builder baseUrl(String baseUrl) {
+        public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
-        Builder timeout(Duration timeout) {
+        public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        Builder logRequests(Boolean logRequests) {
+        public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        Builder logResponses(Boolean logResponses) {
+        public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
-        Builder logStreamingResponses(Boolean logStreamingResponses) {
+        public Builder logStreamingResponses(Boolean logStreamingResponses) {
             this.logStreamingResponses = logStreamingResponses;
             return this;
         }
 
-        Builder customHeaders(Map<String, String> customHeaders) {
+        public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }
 
-        OllamaClient build() {
+        public OllamaClient build() {
             return new OllamaClient(baseUrl, timeout, logRequests, logResponses, logStreamingResponses, customHeaders);
         }
     }

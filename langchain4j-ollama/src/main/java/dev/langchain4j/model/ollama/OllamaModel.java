@@ -33,7 +33,7 @@ public class OllamaModel {
         this.details = details;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -76,27 +76,27 @@ public class OllamaModel {
         private String digest;
         private OllamaModelDetails details;
 
-        Builder name(String name) {
+        public Builder name(String name) {
             this.name = name;
             return this;
         }
 
-        Builder size(long size) {
+        public Builder size(long size) {
             this.size = size;
             return this;
         }
 
-        Builder digest(String digest) {
+        public Builder digest(String digest) {
             this.digest = digest;
             return this;
         }
 
-        Builder details(OllamaModelDetails details) {
+        public Builder details(OllamaModelDetails details) {
             this.details = details;
             return this;
         }
 
-        OllamaModel build() {
+        public OllamaModel build() {
             return new OllamaModel(name, size, digest, details);
         }
     }

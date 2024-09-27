@@ -31,6 +31,10 @@ class CompletionResponse {
         this.evalCount = evalCount;
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     public String getModel() {
         return model;
     }
@@ -88,37 +92,37 @@ class CompletionResponse {
         private Integer promptEvalCount;
         private Integer evalCount;
 
-        Builder model(String model) {
+        public Builder model(String model) {
             this.model = model;
             return this;
         }
 
-        Builder createdAt(String createdAt) {
+        public Builder createdAt(String createdAt) {
             this.createdAt = createdAt;
             return this;
         }
 
-        Builder response(String response) {
+        public Builder response(String response) {
             this.response = response;
             return this;
         }
 
-        Builder done(Boolean done) {
+        public Builder done(Boolean done) {
             this.done = done;
             return this;
         }
 
-        Builder promptEvalCount(Integer promptEvalCount) {
+        public Builder promptEvalCount(Integer promptEvalCount) {
             this.promptEvalCount = promptEvalCount;
             return this;
         }
 
-        Builder evalCount(Integer evalCount) {
+        public Builder evalCount(Integer evalCount) {
             this.evalCount = evalCount;
             return this;
         }
 
-        CompletionResponse build() {
+        public CompletionResponse build() {
             return new CompletionResponse(model, createdAt, response, done, promptEvalCount, evalCount);
         }
     }

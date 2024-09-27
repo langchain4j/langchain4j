@@ -25,7 +25,7 @@ class EmbeddingRequest {
         this.input = input;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -50,17 +50,17 @@ class EmbeddingRequest {
         private String model;
         private List<String> input;
 
-        Builder model(String model) {
+        public Builder model(String model) {
             this.model = model;
             return this;
         }
 
-        Builder input(List<String> input) {
+        public Builder input(List<String> input) {
             this.input = input;
             return this;
         }
 
-        EmbeddingRequest build() {
+        public EmbeddingRequest build() {
             return new EmbeddingRequest(model, input);
         }
     }

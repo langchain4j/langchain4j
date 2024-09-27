@@ -28,7 +28,7 @@ class Parameters {
         this.required = required;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -62,22 +62,22 @@ class Parameters {
         private Map<String, Map<String, Object>> properties;
         private List<String> required;
 
-        Builder type(String type) {
+        public Builder type(String type) {
             this.type = type;
             return this;
         }
 
-        Builder properties(Map<String, Map<String, Object>> properties) {
+        public Builder properties(Map<String, Map<String, Object>> properties) {
             this.properties = properties;
             return this;
         }
 
-        Builder required(List<String> required) {
+        public Builder required(List<String> required) {
             this.required = required;
             return this;
         }
 
-        Parameters build() {
+        public Parameters build() {
             return new Parameters(type, properties, required);
         }
     }

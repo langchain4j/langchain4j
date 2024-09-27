@@ -21,7 +21,7 @@ class DeleteModelRequest {
         this.name = name;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -37,12 +37,12 @@ class DeleteModelRequest {
 
         private String name;
 
-        Builder name(String name) {
+        public Builder name(String name) {
             this.name = name;
             return this;
         }
 
-        DeleteModelRequest build() {
+        public DeleteModelRequest build() {
             return new DeleteModelRequest(name);
         }
     }

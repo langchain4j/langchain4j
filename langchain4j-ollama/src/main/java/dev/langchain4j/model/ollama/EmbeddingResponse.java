@@ -25,7 +25,7 @@ class EmbeddingResponse {
         this.embeddings = embeddings;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -50,17 +50,17 @@ class EmbeddingResponse {
         private String model;
         private List<float[]> embeddings;
 
-        Builder model(String model) {
+        public Builder model(String model) {
             this.model = model;
             return this;
         }
 
-        Builder embeddings(List<float[]> embeddings) {
+        public Builder embeddings(List<float[]> embeddings) {
             this.embeddings = embeddings;
             return this;
         }
 
-        EmbeddingResponse build() {
+        public EmbeddingResponse build() {
             return new EmbeddingResponse(model, embeddings);
         }
     }

@@ -29,7 +29,7 @@ class Message {
         this.toolCalls = toolCalls;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -72,27 +72,27 @@ class Message {
         private List<String> images;
         private List<ToolCall> toolCalls;
 
-        Builder role(Role role) {
+        public Builder role(Role role) {
             this.role = role;
             return this;
         }
 
-        Builder content(String content) {
+        public Builder content(String content) {
             this.content = content;
             return this;
         }
 
-        Builder images(List<String> images) {
+        public Builder images(List<String> images) {
             this.images = images;
             return this;
         }
 
-        Builder toolCalls(List<ToolCall> toolCalls) {
+        public Builder toolCalls(List<ToolCall> toolCalls) {
             this.toolCalls = toolCalls;
             return this;
         }
 
-        Message build() {
+        public Message build() {
             return new Message(role, content, images, toolCalls);
         }
     }

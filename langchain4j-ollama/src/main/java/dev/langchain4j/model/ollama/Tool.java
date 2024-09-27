@@ -23,7 +23,7 @@ class Tool {
         this.function = function;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -48,12 +48,12 @@ class Tool {
         private final String type = "function";
         private Function function;
 
-        Builder function(Function function) {
+        public Builder function(Function function) {
             this.function = function;
             return this;
         }
 
-        Tool build() {
+        public Tool build() {
             return new Tool(type, function);
         }
     }

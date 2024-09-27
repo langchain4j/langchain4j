@@ -31,7 +31,7 @@ public class OllamaModelDetails {
         this.quantizationLevel = quantizationLevel;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -83,32 +83,32 @@ public class OllamaModelDetails {
         private String parameterSize;
         private String quantizationLevel;
 
-        Builder format(String format) {
+        public Builder format(String format) {
             this.format = format;
             return this;
         }
 
-        Builder family(String family) {
+        public Builder family(String family) {
             this.family = family;
             return this;
         }
 
-        Builder families(List<String> families) {
+        public Builder families(List<String> families) {
             this.families = families;
             return this;
         }
 
-        Builder parameterSize(String parameterSize) {
+        public Builder parameterSize(String parameterSize) {
             this.parameterSize = parameterSize;
             return this;
         }
 
-        Builder quantizationLevel(String quantizationLevel) {
+        public Builder quantizationLevel(String quantizationLevel) {
             this.quantizationLevel = quantizationLevel;
             return this;
         }
 
-        OllamaModelDetails build() {
+        public OllamaModelDetails build() {
             return new OllamaModelDetails(format, family, families, parameterSize, quantizationLevel);
         }
     }

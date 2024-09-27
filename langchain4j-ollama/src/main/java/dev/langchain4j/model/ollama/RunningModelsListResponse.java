@@ -40,12 +40,12 @@ class RunningModelsListResponse {
 
         private List<RunningOllamaModel> models;
 
-        Builder models(List<RunningOllamaModel> models) {
+        public Builder models(List<RunningOllamaModel> models) {
             this.models = models;
             return this;
         }
 
-        RunningModelsListResponse build() {
+        public RunningModelsListResponse build() {
             return new RunningModelsListResponse(models);
         }
     }

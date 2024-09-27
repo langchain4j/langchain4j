@@ -35,7 +35,7 @@ public class OllamaModelCard {
         this.details = details;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -105,42 +105,42 @@ public class OllamaModelCard {
         private Map<String, Object> modelInfo;
         private OffsetDateTime modifiedAt;
 
-        Builder license(String license) {
+        public Builder license(String license) {
             this.license = license;
             return this;
         }
 
-        Builder modelfile(String modelfile) {
+        public Builder modelfile(String modelfile) {
             this.modelfile = modelfile;
             return this;
         }
 
-        Builder parameters(String parameters) {
+        public Builder parameters(String parameters) {
             this.parameters = parameters;
             return this;
         }
 
-        Builder template(String template) {
+        public Builder template(String template) {
             this.template = template;
             return this;
         }
 
-        Builder details(OllamaModelDetails details) {
+        public Builder details(OllamaModelDetails details) {
             this.details = details;
             return this;
         }
 
-        Builder modelInfo(Map<String, Object> modelInfo) {
+        public Builder modelInfo(Map<String, Object> modelInfo) {
             this.modelInfo = modelInfo;
             return this;
         }
 
-        Builder modifiedAt(OffsetDateTime modifiedAt) {
+        public Builder modifiedAt(OffsetDateTime modifiedAt) {
             this.modifiedAt = modifiedAt;
             return this;
         }
 
-        OllamaModelCard build() {
+        public OllamaModelCard build() {
             return new OllamaModelCard(modelfile, parameters, template, details);
         }
     }

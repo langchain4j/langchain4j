@@ -74,27 +74,27 @@ public class OllamaModels {
         private Boolean logRequests;
         private Boolean logResponses;
 
-        OllamaModelsBuilder baseUrl(String baseUrl) {
+        public OllamaModelsBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
-        OllamaModelsBuilder timeout(Duration timeout) {
+        public OllamaModelsBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        OllamaModelsBuilder maxRetries(Integer maxRetries) {
+        public OllamaModelsBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        OllamaModelsBuilder logRequests(Boolean logRequests) {
+        public OllamaModelsBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        OllamaModelsBuilder logResponses(Boolean logResponses) {
+        public OllamaModelsBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }

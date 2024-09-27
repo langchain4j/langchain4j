@@ -42,7 +42,7 @@ class Options {
         this.stop = stop;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -121,42 +121,42 @@ class Options {
         private Integer numCtx;
         private List<String> stop;
 
-        Builder temperature(Double temperature) {
+        public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        Builder topK(Integer topK) {
+        public Builder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
-        Builder topP(Double topP) {
+        public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
-        Builder repeatPenalty(Double repeatPenalty) {
+        public Builder repeatPenalty(Double repeatPenalty) {
             this.repeatPenalty = repeatPenalty;
             return this;
         }
 
-        Builder seed(Integer seed) {
+        public Builder seed(Integer seed) {
             this.seed = seed;
             return this;
         }
 
-        Builder numPredict(Integer numPredict) {
+        public Builder numPredict(Integer numPredict) {
             this.numPredict = numPredict;
             return this;
         }
 
-        Builder numCtx(Integer numCtx) {
+        public Builder numCtx(Integer numCtx) {
             this.numCtx = numCtx;
             return this;
         }
 
-        Builder stop(List<String> stop) {
+        public Builder stop(List<String> stop) {
             this.stop = stop;
             return this;
         }

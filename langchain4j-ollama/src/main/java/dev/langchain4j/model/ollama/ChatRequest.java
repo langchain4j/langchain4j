@@ -34,7 +34,7 @@ class ChatRequest {
         this.format = format;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -95,37 +95,37 @@ class ChatRequest {
         private Boolean stream;
         private List<Tool> tools;
 
-        Builder model(String model) {
+        public Builder model(String model) {
             this.model = model;
             return this;
         }
 
-        Builder messages(List<Message> messages) {
+        public Builder messages(List<Message> messages) {
             this.messages = messages;
             return this;
         }
 
-        Builder options(Options options) {
+        public Builder options(Options options) {
             this.options = options;
             return this;
         }
 
-        Builder format(String format) {
+        public Builder format(String format) {
             this.format = format;
             return this;
         }
 
-        Builder stream(Boolean stream) {
+        public Builder stream(Boolean stream) {
             this.stream = stream;
             return this;
         }
 
-        Builder tools(List<Tool> tools) {
+        public Builder tools(List<Tool> tools) {
             this.tools = tools;
             return this;
         }
 
-        ChatRequest build() {
+        public ChatRequest build() {
             return new ChatRequest(model, messages, options, stream, tools, format);
         }
     }

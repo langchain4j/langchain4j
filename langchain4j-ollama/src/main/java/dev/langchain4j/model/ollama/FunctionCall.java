@@ -25,7 +25,7 @@ class FunctionCall {
         this.arguments = arguments;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -50,17 +50,17 @@ class FunctionCall {
         private String name;
         private Map<String, Object> arguments;
 
-        Builder name(String name) {
+        public Builder name(String name) {
             this.name = name;
             return this;
         }
 
-        Builder arguments(Map<String, Object> arguments) {
+        public Builder arguments(Map<String, Object> arguments) {
             this.arguments = arguments;
             return this;
         }
 
-        FunctionCall build() {
+        public FunctionCall build() {
             return new FunctionCall(name, arguments);
         }
     }

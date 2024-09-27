@@ -21,7 +21,7 @@ class ToolCall {
         this.function = function;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -37,12 +37,12 @@ class ToolCall {
 
         private FunctionCall function;
 
-        Builder function(FunctionCall function) {
+        public Builder function(FunctionCall function) {
             this.function = function;
             return this;
         }
 
-        ToolCall build() {
+        public ToolCall build() {
             return new ToolCall(function);
         }
     }

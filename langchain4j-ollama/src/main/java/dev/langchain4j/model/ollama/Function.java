@@ -25,7 +25,7 @@ class Function {
         this.parameters = parameters;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -59,22 +59,22 @@ class Function {
         private String description;
         private Parameters parameters;
 
-        Builder name(String name) {
+        public Builder name(String name) {
             this.name = name;
             return this;
         }
 
-        Builder description(String description) {
+        public Builder description(String description) {
             this.description = description;
             return this;
         }
 
-        Builder parameters(Parameters parameters) {
+        public Builder parameters(Parameters parameters) {
             this.parameters = parameters;
             return this;
         }
 
-        Function build() {
+        public Function build() {
             return new Function(name, description, parameters);
         }
     }

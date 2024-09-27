@@ -23,7 +23,7 @@ class ModelsListResponse {
         this.models = models;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -39,12 +39,12 @@ class ModelsListResponse {
 
         private List<OllamaModel> models;
 
-        Builder models(List<OllamaModel> models) {
+        public Builder models(List<OllamaModel> models) {
             this.models = models;
             return this;
         }
 
-        ModelsListResponse build() {
+        public ModelsListResponse build() {
             return new ModelsListResponse(models);
         }
     }

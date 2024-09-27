@@ -107,42 +107,42 @@ public class RunningOllamaModel {
         private OffsetDateTime expiresAt;
         private Long sizeVram;
 
-        Builder name(String name) {
+        public Builder name(String name) {
             this.name = name;
             return this;
         }
 
-        Builder model(String model) {
+        public Builder model(String model) {
             this.model = model;
             return this;
         }
 
-        Builder size(Long size) {
+        public Builder size(Long size) {
             this.size = size;
             return this;
         }
 
-        Builder digest(String digest) {
+        public Builder digest(String digest) {
             this.digest = digest;
             return this;
         }
 
-        Builder details(OllamaModelDetails details) {
+        public Builder details(OllamaModelDetails details) {
             this.details = details;
             return this;
         }
 
-        Builder expiresAt(OffsetDateTime expiresAt) {
+        public Builder expiresAt(OffsetDateTime expiresAt) {
             this.expiresAt = expiresAt;
             return this;
         }
 
-        Builder sizeVram(Long sizeVram) {
+        public Builder sizeVram(Long sizeVram) {
             this.sizeVram = sizeVram;
             return this;
         }
 
-        RunningOllamaModel build() {
+        public RunningOllamaModel build() {
             return new RunningOllamaModel(name, model, size, details, digest, expiresAt, sizeVram);
         }
     }
