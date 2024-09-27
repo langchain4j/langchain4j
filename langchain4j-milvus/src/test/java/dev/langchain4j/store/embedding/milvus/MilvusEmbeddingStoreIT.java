@@ -69,6 +69,10 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .consistencyLevel(STRONG)
                 .dimension(384)
                 .retrieveEmbeddingsOnSearch(false)
+                .idFieldName("id_field")
+                .textFieldName("text_field")
+                .metadataFieldName("metadata_field")
+                .vectorFieldName("vector_field")
                 .build();
 
         Embedding firstEmbedding = embeddingModel.embed("hello").content();
