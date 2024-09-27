@@ -26,7 +26,7 @@ public class OllamaModel {
     OllamaModel() {
     }
 
-    OllamaModel(String name, long size, String digest, OllamaModelDetails details, OffsetDateTime modifiedAt, String model) {
+    public OllamaModel(String name, long size, String digest, OllamaModelDetails details, OffsetDateTime modifiedAt, String model) {
         this.name = name;
         this.size = size;
         this.digest = digest;
@@ -35,7 +35,7 @@ public class OllamaModel {
         this.model = model;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -87,7 +87,7 @@ public class OllamaModel {
         this.modifiedAt = modifiedAt;
     }
 
-    static class Builder {
+    public static class Builder {
 
         private String name;
         private long size;
@@ -96,38 +96,38 @@ public class OllamaModel {
         private OffsetDateTime modifiedAt;
         private String model;
 
-        Builder name(String name) {
+        public Builder name(String name) {
             this.name = name;
             return this;
         }
 
-        Builder size(long size) {
+        public Builder size(long size) {
             this.size = size;
             return this;
         }
 
-        Builder digest(String digest) {
+        public Builder digest(String digest) {
             this.digest = digest;
             return this;
         }
 
-        Builder details(OllamaModelDetails details) {
+        public Builder details(OllamaModelDetails details) {
             this.details = details;
             return this;
         }
 
-        Builder modifiedAt(OffsetDateTime modifiedAt) {
+        public Builder modifiedAt(OffsetDateTime modifiedAt) {
             this.modifiedAt = modifiedAt;
             return this;
         }
 
-        Builder model(String model) {
+        public Builder model(String model) {
             this.model = model;
             return this;
         }
 
 
-        OllamaModel build() {
+        public OllamaModel build() {
             return new OllamaModel(name, size, digest, details, modifiedAt, model);
         }
     }
