@@ -243,7 +243,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
-        removeForVector(this.milvusClient, this.collectionName, map(filter));
+        removeForVector(this.milvusClient, this.collectionName, map(filter, this.fieldDefinition.getMetadataFieldName()));
     }
 
     /**

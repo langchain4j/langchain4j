@@ -70,7 +70,7 @@ class CollectionRequestBuilder {
                 .withOutFields(asList(fieldDefinition.getIdFieldName(), fieldDefinition.getTextFieldName(), fieldDefinition.getMetadataFieldName()));
 
         if (filter != null) {
-            builder.withExpr(MilvusMetadataFilterMapper.map(filter));
+            builder.withExpr(MilvusMetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
         }
 
         return builder.build();
