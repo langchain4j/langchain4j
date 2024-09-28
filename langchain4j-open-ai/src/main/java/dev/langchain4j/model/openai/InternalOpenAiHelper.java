@@ -52,6 +52,7 @@ import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_OBJECT;
 import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
@@ -69,7 +70,6 @@ public class InternalOpenAiHelper {
 
     static final String OPENAI_DEMO_API_KEY = "demo";
     static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai/v1";
-
 
     static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
@@ -385,22 +385,6 @@ public class InternalOpenAiHelper {
         }
     }
 
-    static boolean isOpenAiModel(String modelName) {
-        if (modelName == null) {
-            return false;
-        }
-        for (OpenAiChatModelName openAiChatModelName : OpenAiChatModelName.values()) {
-            if (modelName.contains(openAiChatModelName.toString())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    static Response<AiMessage> removeTokenUsage(Response<AiMessage> response) {
-        return Response.from(response.content(), null, response.finishReason());
-    }
-
     static ChatModelRequest createModelListenerRequest(ChatCompletionRequest request,
                                                        List<ChatMessage> messages,
                                                        List<ToolSpecification> toolSpecifications) {
@@ -408,7 +392,7 @@ public class InternalOpenAiHelper {
                 .model(request.model())
                 .temperature(request.temperature())
                 .topP(request.topP())
-                .maxTokens(request.maxTokens())
+                .maxTokens(getOrDefault(request.maxCompletionTokens(), request.maxTokens()))
                 .messages(messages)
                 .toolSpecifications(toolSpecifications)
                 .build();
@@ -437,14 +421,22 @@ public class InternalOpenAiHelper {
 
         JsonSchema jsonSchema = responseFormat.jsonSchema();
         if (jsonSchema == null) {
-            return new dev.ai4j.openai4j.chat.ResponseFormat(JSON_OBJECT, null);
+            return dev.ai4j.openai4j.chat.ResponseFormat.builder()
+                    .type(JSON_OBJECT)
+                    .build();
         } else {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+                throw new IllegalArgumentException("For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: " + jsonSchema.rootElement().getClass());
+            }
             dev.ai4j.openai4j.chat.JsonSchema openAiJsonSchema = dev.ai4j.openai4j.chat.JsonSchema.builder()
                     .name(jsonSchema.name())
                     .strict(strict)
-                    .schema((dev.ai4j.openai4j.chat.JsonObjectSchema) toOpenAiJsonSchemaElement(jsonSchema.schema()))
+                    .schema((dev.ai4j.openai4j.chat.JsonObjectSchema) toOpenAiJsonSchemaElement(jsonSchema.rootElement()))
                     .build();
-            return new dev.ai4j.openai4j.chat.ResponseFormat(JSON_SCHEMA, openAiJsonSchema);
+            return dev.ai4j.openai4j.chat.ResponseFormat.builder()
+                    .type(JSON_SCHEMA)
+                    .jsonSchema(openAiJsonSchema)
+                    .build();
         }
     }
 

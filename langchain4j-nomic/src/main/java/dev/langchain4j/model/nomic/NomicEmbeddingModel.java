@@ -52,6 +52,10 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
+    /**
+     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
+     */
+    @Deprecated
     public static NomicEmbeddingModel withApiKey(String apiKey) {
         return NomicEmbeddingModel.builder().apiKey(apiKey).build();
     }

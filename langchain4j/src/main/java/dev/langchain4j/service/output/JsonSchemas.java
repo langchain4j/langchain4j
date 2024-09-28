@@ -31,6 +31,7 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
 import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
 import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
+import static dev.langchain4j.internal.TypeUtils.isJsonString;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
@@ -58,7 +59,7 @@ public class JsonSchemas {
 
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(rawClass.getSimpleName())
-                .schema(toJsonObjectSchema(rawClass, null))
+                .rootElement(toJsonObjectSchema(rawClass, null))
                 .build();
 
         return Optional.of(jsonSchema);
@@ -126,7 +127,7 @@ public class JsonSchemas {
 
     private static JsonSchemaElement jsonSchema(Class<?> clazz, Type type, String fieldDescription) {
 
-        if (clazz == String.class) {
+        if (isJsonString(clazz)) {
             return JsonStringSchema.builder()
                     .description(fieldDescription)
                     .build();

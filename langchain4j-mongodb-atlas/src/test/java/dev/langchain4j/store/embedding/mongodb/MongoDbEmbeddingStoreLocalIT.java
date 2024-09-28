@@ -6,11 +6,10 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import lombok.SneakyThrows;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
@@ -18,6 +17,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.shaded.com.google.common.collect.Sets;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
@@ -31,8 +31,10 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     static MongoClient client;
 
+    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
     IndexMapping indexMapping = IndexMapping.builder()
-            .dimension(384)
+            .dimension(embeddingModel.dimension())
             .metadataFieldNames(Sets.newHashSet("test-key"))
             .build();
 
@@ -45,10 +47,7 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
             .createIndex(true)
             .build();
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-
     @BeforeAll
-    @SneakyThrows
     static void start() {
         mongodb.start();
 
@@ -78,6 +77,12 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
     }
 
     @Override
+    protected void ensureStoreIsReady() {
+        // to avoid "cannot query search index while in state INITIAL_SYNC" error
+        awaitUntilAsserted(() -> assertThatNoException().isThrownBy(this::getAllEmbeddings));
+    }
+
+    @Override
     protected void clearStore() {
         CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
                 .register(MongoDbDocument.class, MongoDbMatchedDocument.class)
@@ -90,11 +95,5 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
         Bson filter = Filters.exists("embedding");
         collection.deleteMany(filter);
-    }
-
-    @Override
-    @SneakyThrows
-    protected void awaitUntilPersisted() {
-        Thread.sleep(2000);
     }
 }

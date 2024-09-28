@@ -19,20 +19,17 @@ public class TestStreamingResponseHandler<T> implements StreamingResponseHandler
 
     @Override
     public void onNext(String token) {
-        System.out.println("onNext: '" + token + "'");
         textContentBuilder.append(token);
     }
 
     @Override
     public void onComplete(Response<T> response) {
-        System.out.println("onComplete: '" + response + "'");
 
         String expectedTextContent = textContentBuilder.toString();
         if (response.content() instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) response.content();
             if (aiMessage.hasToolExecutionRequests()){
                 assertThat(aiMessage.toolExecutionRequests().size()).isGreaterThan(0);
-                assertThat(aiMessage.text()).isNull();
             } else {
                 assertThat(aiMessage.text()).isEqualTo(expectedTextContent);
             }

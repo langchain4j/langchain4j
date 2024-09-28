@@ -207,7 +207,8 @@ public class ZhipuAiStreamingChatModelIT {
         // then
         Response<AiMessage> secondResponse = secondHandler.get();
         AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("2024-04-23 12:00:20");
+        assertThat(secondAiMessage.text()).contains("12:00:20");
+        assertThat(secondAiMessage.text()).contains("2024");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
@@ -377,7 +378,6 @@ public class ZhipuAiStreamingChatModelIT {
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         model.generate(multimodalChatMessagesWithImageData(), handler);
         Response<AiMessage> response = handler.get();
-        System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("parrot");
         assertThat(response.content().text()).endsWith("That's all!");

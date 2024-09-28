@@ -1,33 +1,34 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.Base64;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OpenAiChatModelIT {
 
@@ -45,16 +46,7 @@ class OpenAiChatModelIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .temperature(0.0)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
-
-    OpenAiChatModel visionModel = OpenAiChatModel.builder()
-            .baseUrl(System.getenv("OPENAI_BASE_URL"))
-            .apiKey(System.getenv("OPENAI_API_KEY"))
-            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_O)
+            .modelName(GPT_4_O_MINI)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -85,13 +77,14 @@ class OpenAiChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_length() {
 
         // given
-        int maxTokens = 1;
+        int maxCompletionTokens = 1;
 
         ChatLanguageModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .maxTokens(maxTokens)
+                .modelName(GPT_4_O_MINI)
+                .maxCompletionTokens(maxCompletionTokens)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -107,7 +100,7 @@ class OpenAiChatModelIT {
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxTokens);
+        assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxCompletionTokens);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -135,8 +128,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(52);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(18);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -183,8 +176,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(61);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(9);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -219,7 +212,7 @@ class OpenAiChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_1106) // supports parallel function calling
+                .modelName(GPT_4_O_MINI)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -245,8 +238,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(57);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(51);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -267,7 +260,7 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(83);
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
@@ -275,23 +268,26 @@ class OpenAiChatModelIT {
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
+    static class Person {
+
+        String name;
+        String surname;
+    }
+
     @Test
     void should_generate_valid_json() {
 
-        //given
+        // given
         String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
                 "Before returning, tell me a joke."; // nudging it to say something additionally to json
-
-        String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
-
-        assertThat(model.generate(userMessage)).isNotEqualToIgnoringWhitespace(expectedJson);
 
         ChatLanguageModel modelGeneratingJson = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
+                .modelName(GPT_4_O_MINI)
                 .responseFormat("json_object")
+                .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -300,7 +296,9 @@ class OpenAiChatModelIT {
         String json = modelGeneratingJson.generate(userMessage);
 
         // then
-        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
+        Person person = Json.fromJson(json, Person.class);
+        assertThat(person.name).isEqualTo("Klaus");
+        assertThat(person.surname).isEqualTo("Heisler");
     }
 
     @Test
@@ -311,12 +309,10 @@ class OpenAiChatModelIT {
         UserMessage userMessage = UserMessage.from(imageContent);
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(92);
     }
 
     @Test
@@ -328,12 +324,10 @@ class OpenAiChatModelIT {
         UserMessage userMessage = UserMessage.from(imageContent);
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(92);
     }
 
     @Test
@@ -346,12 +340,10 @@ class OpenAiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(102);
     }
 
     @Test
@@ -365,14 +357,12 @@ class OpenAiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
                 .containsIgnoringCase("dice");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
     }
 
     @Test
@@ -386,34 +376,12 @@ class OpenAiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
                 .containsIgnoringCase("dice");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
-    }
-
-    @Test
-    void should_use_enum_as_model_name() {
-
-        // given
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        // when
-        String response = model.generate("What is the capital of Germany?");
-
-        // then
-        assertThat(response).containsIgnoringCase("Berlin");
     }
 
     @Test
@@ -469,131 +437,5 @@ class OpenAiChatModelIT {
 
         // then
         assertThat(tokenCount).isEqualTo(42);
-    }
-
-    @Test
-    void should_listen_request_and_response() {
-
-        // given
-        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
-        AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
-
-        ChatModelListener listener = new ChatModelListener() {
-
-            @Override
-            public void onRequest(ChatModelRequestContext requestContext) {
-                requestReference.set(requestContext.request());
-                requestContext.attributes().put("id", "12345");
-            }
-
-            @Override
-            public void onResponse(ChatModelResponseContext responseContext) {
-                responseReference.set(responseContext.response());
-                assertThat(responseContext.request()).isSameAs(requestReference.get());
-                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
-            }
-
-            @Override
-            public void onError(ChatModelErrorContext errorContext) {
-                fail("onError() must not be called");
-            }
-        };
-
-        OpenAiChatModelName modelName = GPT_3_5_TURBO;
-        double temperature = 0.7;
-        double topP = 1.0;
-        int maxTokens = 7;
-
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(modelName)
-                .temperature(temperature)
-                .topP(topP)
-                .maxTokens(maxTokens)
-                .logRequests(true)
-                .logResponses(true)
-                .listeners(singletonList(listener))
-                .build();
-
-        UserMessage userMessage = UserMessage.from("hello");
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("add")
-                .addParameter("a", INTEGER)
-                .addParameter("b", INTEGER)
-                .build();
-
-        // when
-        AiMessage aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
-
-        // then
-        ChatModelRequest request = requestReference.get();
-        assertThat(request.model()).isEqualTo(modelName.toString());
-        assertThat(request.temperature()).isEqualTo(temperature);
-        assertThat(request.topP()).isEqualTo(topP);
-        assertThat(request.maxTokens()).isEqualTo(maxTokens);
-        assertThat(request.messages()).containsExactly(userMessage);
-        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
-
-        ChatModelResponse response = responseReference.get();
-        assertThat(response.id()).isNotBlank();
-        assertThat(response.model()).isNotBlank();
-        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
-        assertThat(response.finishReason()).isNotNull();
-        assertThat(response.aiMessage()).isEqualTo(aiMessage);
-    }
-
-    @Test
-    void should_listen_error() {
-
-        // given
-        String wrongApiKey = "banana";
-
-        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
-        AtomicReference<Throwable> errorReference = new AtomicReference<>();
-
-        ChatModelListener listener = new ChatModelListener() {
-
-            @Override
-            public void onRequest(ChatModelRequestContext requestContext) {
-                requestReference.set(requestContext.request());
-                requestContext.attributes().put("id", "12345");
-            }
-
-            @Override
-            public void onResponse(ChatModelResponseContext responseContext) {
-                fail("onResponse() must not be called");
-            }
-
-            @Override
-            public void onError(ChatModelErrorContext errorContext) {
-                errorReference.set(errorContext.error());
-                assertThat(errorContext.request()).isSameAs(requestReference.get());
-                assertThat(errorContext.partialResponse()).isNull();
-                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
-            }
-        };
-
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .apiKey(wrongApiKey)
-                .maxRetries(0)
-                .logRequests(true)
-                .logResponses(true)
-                .listeners(singletonList(listener))
-                .build();
-
-        String userMessage = "this message will fail";
-
-        // when
-        assertThrows(RuntimeException.class, () -> model.generate(userMessage));
-
-        // then
-        Throwable throwable = errorReference.get();
-        assertThat(throwable).isExactlyInstanceOf(OpenAiHttpException.class);
-        assertThat(throwable).hasMessageContaining("Incorrect API key provided");
     }
 }

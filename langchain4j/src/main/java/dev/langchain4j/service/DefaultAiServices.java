@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -22,7 +23,11 @@ import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.service.tool.ToolProviderResult;
+import dev.langchain4j.spi.services.TokenStreamAdapter;
 
 import java.io.InputStream;
 import java.lang.reflect.Array;
@@ -32,6 +37,7 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,12 +56,14 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
-    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
+    private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 100;
 
-    private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
+    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
+    private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -132,13 +140,15 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
 
+                        boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
+
                         boolean supportsJsonSchema = supportsJsonSchema();
                         Optional<JsonSchema> jsonSchema = Optional.empty();
-                        if (supportsJsonSchema) {
+                        if (supportsJsonSchema && !streaming) {
                             jsonSchema = jsonSchemaFrom(returnType);
                         }
 
-                        if (!supportsJsonSchema || !jsonSchema.isPresent()) {
+                        if ((!supportsJsonSchema || !jsonSchema.isPresent()) && !streaming) {
                             // TODO append after storing in the memory?
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
@@ -160,15 +170,45 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        if (returnType == TokenStream.class) {
-                            return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
+                        List<ToolSpecification> toolSpecifications = context.toolSpecifications;
+                        Map<String, ToolExecutor> toolExecutors = context.toolExecutors;
+
+                        if (context.toolProvider != null) {
+                            toolSpecifications = new ArrayList<>();
+                            toolExecutors = new HashMap<>();
+                            ToolProviderRequest toolProviderRequest = new ToolProviderRequest(memoryId, userMessage);
+                            ToolProviderResult toolProviderResult = context.toolProvider.provideTools(toolProviderRequest);
+                            if (toolProviderResult != null) {
+                                Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
+                                for (ToolSpecification toolSpecification : tools.keySet()) {
+                                    toolSpecifications.add(toolSpecification);
+                                    toolExecutors.put(toolSpecification.name(), tools.get(toolSpecification));
+                                }
+                            }
+                        }
+
+                        if (streaming) {
+                            TokenStream tokenStream = new AiServiceTokenStream(
+                                    messages,
+                                    toolSpecifications,
+                                    toolExecutors,
+                                    augmentationResult != null ? augmentationResult.contents() : null,
+                                    context,
+                                    memoryId
+                            );
+                            // TODO moderation
+                            if (returnType == TokenStream.class) {
+                                return tokenStream;
+                            } else {
+                                return adapt(tokenStream, returnType);
+                            }
                         }
 
                         Response<AiMessage> response;
                         if (supportsJsonSchema && jsonSchema.isPresent()) {
                             ChatRequest chatRequest = ChatRequest.builder()
                                     .messages(messages)
-                                    .toolSpecifications(context.toolSpecifications)
+                                    .toolSpecifications(toolSpecifications)
                                     .responseFormat(ResponseFormat.builder()
                                             .type(JSON)
                                             .jsonSchema(jsonSchema.get())
@@ -184,9 +224,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                             );
                         } else {
                             // TODO migrate to new API
-                            response = context.toolSpecifications == null
+                            response = toolSpecifications == null
                                     ? context.chatModel.generate(messages)
-                                    : context.chatModel.generate(messages, context.toolSpecifications);
+                                    : context.chatModel.generate(messages, toolSpecifications);
                         }
 
                         TokenUsage tokenUsageAccumulator = response.tokenUsage();
@@ -194,6 +234,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         verifyModerationIfNeeded(moderationFuture);
 
                         int executionsLeft = MAX_SEQUENTIAL_TOOL_EXECUTIONS;
+                        List<ToolExecution> toolExecutions = new ArrayList<>();
                         while (true) {
 
                             if (executionsLeft-- == 0) {
@@ -215,8 +256,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
 
                             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                                ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
+                                ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
                                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+                                toolExecutions.add(ToolExecution.builder()
+                                        .request(toolExecutionRequest)
+                                        .result(toolExecutionResult)
+                                        .build());
                                 ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
                                         toolExecutionRequest,
                                         toolExecutionResult
@@ -232,24 +277,42 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages = context.chatMemory(memoryId).messages();
                             }
 
-                            response = context.chatModel.generate(messages, context.toolSpecifications);
+                            response = context.chatModel.generate(messages, toolSpecifications);
                             tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, response.tokenUsage());
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
 
-                        Object parsedResponse;
-                        parsedResponse = serviceOutputParser.parse(response, returnType);
+                        Object parsedResponse = serviceOutputParser.parse(response, returnType);
                         if (typeHasRawClass(returnType, Result.class)) {
                             return Result.builder()
                                     .content(parsedResponse)
                                     .tokenUsage(tokenUsageAccumulator)
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
                                     .finishReason(response.finishReason())
+                                    .toolExecutions(toolExecutions)
                                     .build();
                         } else {
                             return parsedResponse;
                         }
+                    }
+
+                    private boolean canAdaptTokenStreamTo(Type returnType) {
+                        for (TokenStreamAdapter tokenStreamAdapter : tokenStreamAdapters) {
+                            if (tokenStreamAdapter.canAdaptTokenStreamTo(returnType)) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+
+                    private Object adapt(TokenStream tokenStream, Type returnType) {
+                        for (TokenStreamAdapter tokenStreamAdapter : tokenStreamAdapters) {
+                            if (tokenStreamAdapter.canAdaptTokenStreamTo(returnType)) {
+                                return tokenStreamAdapter.adapt(tokenStream);
+                            }
+                        }
+                        throw new IllegalStateException("Can't find suitable TokenStreamAdapter");
                     }
 
                     private boolean supportsJsonSchema() {
@@ -303,12 +366,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         Map<String, Object> variables = new HashMap<>();
         for (int i = 0; i < parameters.length; i++) {
-            V annotation = parameters[i].getAnnotation(V.class);
-            if (annotation != null) {
-                String variableName = annotation.value();
-                Object variableValue = args[i];
-                variables.put(variableName, variableValue);
-            }
+            String variableName = getVariableName(parameters[i]);
+            Object variableValue = args[i];
+            variables.put(variableName, variableValue);
         }
 
         if (template.contains("{{it}}") && !variables.containsKey("it")) {
@@ -319,13 +379,22 @@ class DefaultAiServices<T> extends AiServices<T> {
         return variables;
     }
 
+    private static String getVariableName(Parameter parameter) {
+        V annotation = parameter.getAnnotation(V.class);
+        if (annotation != null) {
+            return annotation.value();
+        } else {
+            return parameter.getName();
+        }
+    }
+
     private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {
         if (parameters.length == 1) {
             Parameter parameter = parameters[0];
-            if (!parameter.isAnnotationPresent(dev.langchain4j.service.MemoryId.class)
+            if (!parameter.isAnnotationPresent(MemoryId.class)
                     && !parameter.isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
-                    && !parameter.isAnnotationPresent(dev.langchain4j.service.UserName.class)
-                    && (!parameter.isAnnotationPresent(dev.langchain4j.service.V.class) || isAnnotatedWithIt(parameter))) {
+                    && !parameter.isAnnotationPresent(UserName.class)
+                    && (!parameter.isAnnotationPresent(V.class) || isAnnotatedWithIt(parameter))) {
                 return toString(args[0]);
             }
         }

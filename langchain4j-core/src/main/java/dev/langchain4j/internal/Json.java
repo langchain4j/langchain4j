@@ -10,7 +10,10 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * A utility class for JSON.
+ *
+ * @deprecated use Jackson's ObjectMapper
  */
+@Deprecated
 public class Json {
     private Json() {
     }
@@ -71,7 +74,9 @@ public class Json {
      *
      * @param o the object to convert.
      * @return the JSON string.
+     * @deprecated use Jackson's ObjectMapper
      */
+    @Deprecated
     public static String toJson(Object o) {
         return CODEC.toJson(o);
     }
@@ -83,7 +88,9 @@ public class Json {
      * @param type the type of the object.
      * @param <T>  the type of the object.
      * @return the object.
+     * @deprecated use Jackson's ObjectMapper
      */
+    @Deprecated
     public static <T> T fromJson(String json, Class<T> type) {
         return CODEC.fromJson(json, type);
     }
@@ -105,7 +112,9 @@ public class Json {
      * @param type the type of the object.
      * @return the {@link InputStream}.
      * @throws IOException if an I/O error occurs.
+     * @deprecated use Jackson's ObjectMapper
      */
+    @Deprecated
     public static InputStream toInputStream(Object o, Class<?> type) throws IOException {
         return CODEC.toInputStream(o, type);
     }
