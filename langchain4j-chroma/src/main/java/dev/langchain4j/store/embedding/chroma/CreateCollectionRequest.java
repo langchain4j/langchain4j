@@ -3,9 +3,6 @@ package dev.langchain4j.store.embedding.chroma;
 import java.util.HashMap;
 import java.util.Map;
 
-import lombok.Getter;
-
-@Getter
 class CreateCollectionRequest {
 
     private final String name;
@@ -19,5 +16,13 @@ class CreateCollectionRequest {
         HashMap<String, Object> metadata = new HashMap<>();
         metadata.put("hnsw:space", "cosine");
         this.metadata = metadata;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
     }
 }

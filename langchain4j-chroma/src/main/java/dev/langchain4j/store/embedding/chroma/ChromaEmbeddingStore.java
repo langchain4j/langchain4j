@@ -62,7 +62,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (collection == null) {
             createCollection();
         } else {
-            collectionId = collection.id();
+            collectionId = collection.getId();
         }
     }
 
@@ -237,10 +237,10 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();
 
-        for (int i = 0; i < queryResponse.ids().get(0).size(); i++) {
-            double score = distanceToScore(queryResponse.distances().get(0).get(i));
-            String embeddingId = queryResponse.ids().get(0).get(i);
-            Embedding embedding = Embedding.from(queryResponse.embeddings().get(0).get(i));
+        for (int i = 0; i < queryResponse.getIds().get(0).size(); i++) {
+            double score = distanceToScore(queryResponse.getDistances().get(0).get(i));
+            String embeddingId = queryResponse.getIds().get(0).get(i);
+            Embedding embedding = Embedding.from(queryResponse.getEmbeddings().get(0).get(i));
             TextSegment textSegment = toTextSegment(queryResponse, i);
 
             embeddingMatches.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
@@ -260,12 +260,12 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private static TextSegment toTextSegment(QueryResponse queryResponse, int i) {
-        String text = queryResponse.documents().get(0).get(i);
-        Map<String, Object> metadata = queryResponse.metadatas().get(0).get(i);
+        String text = queryResponse.getDocuments().get(0).get(i);
+        Map<String, Object> metadata = queryResponse.getMetadatas().get(0).get(i);
         return text == null ? null : TextSegment.from(text, metadata == null ? new Metadata() : new Metadata(metadata));
     }
 
     private void createCollection() {
-        collectionId = chromaClient.createCollection(new CreateCollectionRequest(this.collectionName)).id();
+        collectionId = chromaClient.createCollection(new CreateCollectionRequest(this.collectionName)).getId();
     }
 }
