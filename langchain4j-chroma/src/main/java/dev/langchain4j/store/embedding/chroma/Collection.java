@@ -2,24 +2,21 @@ package dev.langchain4j.store.embedding.chroma;
 
 import java.util.Map;
 
-import lombok.Getter;
-
-@Getter
 class Collection {
 
     private String id;
     private String name;
     private Map<String, Object> metadata;
 
-    public String id() {
+    public String getId() {
         return id;
     }
 
-    public String name() {
+    public String getName() {
         return name;
     }
 
-    public Map<String, Object> metadata() {
+    public Map<String, Object> getMetadata() {
         return metadata;
     }
 }

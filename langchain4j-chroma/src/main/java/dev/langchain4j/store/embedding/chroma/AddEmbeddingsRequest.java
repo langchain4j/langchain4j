@@ -4,9 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import lombok.Getter;
-
-@Getter
 class AddEmbeddingsRequest {
 
     private final List<String> ids;
@@ -19,6 +16,22 @@ class AddEmbeddingsRequest {
         this.embeddings = builder.embeddings;
         this.documents = builder.documents;
         this.metadatas = builder.metadatas;
+    }
+
+    public List<String> getIds() {
+        return ids;
+    }
+
+    public List<float[]> getEmbeddings() {
+        return embeddings;
+    }
+
+    public List<String> getDocuments() {
+        return documents;
+    }
+
+    public List<Map<String, Object>> getMetadatas() {
+        return metadatas;
     }
 
     public static Builder builder() {

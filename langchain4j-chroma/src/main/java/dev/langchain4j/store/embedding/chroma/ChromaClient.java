@@ -1,18 +1,19 @@
 package dev.langchain4j.store.embedding.chroma;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-
+import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.util.List;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.List;
 
 class ChromaClient {
 
@@ -33,8 +34,10 @@ class ChromaClient {
         }
 
         ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         Retrofit retrofit = new Retrofit.Builder()
             .baseUrl(Utils.ensureTrailingForwardSlash(builder.baseUrl))

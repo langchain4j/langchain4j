@@ -6,10 +6,6 @@ import static java.util.Collections.singletonList;
 import java.util.List;
 import java.util.Map;
 
-import lombok.Getter;
-
-
-@Getter
 class QueryRequest {
 
     private final Map<String, Object> where;
@@ -22,6 +18,22 @@ class QueryRequest {
         this.queryEmbeddings = builder.queryEmbeddings;
         this.nResults = builder.nResults;
         this.include = builder.include;
+    }
+
+    public Map<String, Object> getWhere() {
+        return where;
+    }
+
+    public List<List<Float>> getQueryEmbeddings() {
+        return queryEmbeddings;
+    }
+
+    public int getnResults() {
+        return nResults;
+    }
+
+    public List<String> getInclude() {
+        return include;
     }
 
     public static class Builder {
