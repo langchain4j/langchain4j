@@ -7,22 +7,17 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.TestUtils;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.*;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.data.Percentage.withPercentage;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -68,8 +63,6 @@ class MongoDbEmbeddingStoreMiscIT {
         helper = new MongoDbTestFixture(createClient()).initialize(builder -> builder
                         .filter(Filters.and(Filters.eq("metadata.test-key", "test-value"))));
 
-        waitForIndex();
-
         TextSegment segment = TextSegment.from("this segment should be found", Metadata.from("test-key", "test-value"));
         Embedding embedding = embeddingModel().embed(segment.text()).content();
 
@@ -97,14 +90,14 @@ class MongoDbEmbeddingStoreMiscIT {
         });
     }
 
-
-    void waitForIndex() {
-        // to avoid "cannot query search index while in state INITIAL_SYNC" error
-        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
-                .queryEmbedding(EMBEDDING_MODEL.embed("dummy").content())
-                .maxResults(1)
-                .build();
-        TestUtils.awaitUntilAsserted(
-                () -> assertThatNoException().isThrownBy(() -> embeddingStore().search(embeddingSearchRequest)));
+    @Test
+    void should_fail_when_index_absent() {
+        helper = new MongoDbTestFixture(createClient());
+        try {
+            helper = helper.initialize(builder -> builder.createIndex(false));
+            fail("Expected exception");
+        } catch (RuntimeException r) {
+            assertTrue(r.getMessage().contains("Search Index 'test_index' not found"));
+        }
     }
 }
