@@ -356,7 +356,13 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .build()).matches()).isEqualTo(relevant);
     }
 
+    @Deprecated
     protected void awaitUntilAsserted(ThrowingRunnable assertion) {
+        awaitUntilAssertedStatic(assertion);
+    }
+
+    public static void awaitUntilAssertedStatic(ThrowingRunnable assertion) {
+        // TODO remove overrides for the non-static method and make it static
         Awaitility.await()
                 .atMost(Duration.ofSeconds(60))
                 .pollDelay(Duration.ofSeconds(0))
