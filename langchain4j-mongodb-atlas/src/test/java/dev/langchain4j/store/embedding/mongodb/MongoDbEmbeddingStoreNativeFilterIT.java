@@ -1,118 +1,122 @@
 package dev.langchain4j.store.embedding.mongodb;
 
-import com.mongodb.*;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.model.Filters;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
-import org.testcontainers.shaded.com.google.common.collect.Sets;
 
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.*;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.data.Percentage.withPercentage;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 class MongoDbEmbeddingStoreNativeFilterIT {
 
-    static MongoDBAtlasLocalContainer mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
+    public static class ContainerIT extends MongoDbEmbeddingStoreNativeFilterIT {
+        static MongoDBAtlasLocalContainer mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
 
-    static MongoClient client;
+        @BeforeAll
+        static void start() {
+            MongoDbTestFixture.assertDoContainerTests();
+            mongodb.start();
+        }
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+        @AfterAll
+        static void stop() {
+            mongodb.stop();
+        }
 
-    IndexMapping indexMapping = IndexMapping.builder()
-            .dimension(embeddingModel.dimension())
-            .metadataFieldNames(Sets.newHashSet("test-key"))
-            .build();
-
-    EmbeddingStore<TextSegment> embeddingStore = MongoDbEmbeddingStore.builder()
-            .fromClient(client)
-            .databaseName("test_database")
-            .collectionName("test_collection")
-            .indexName("test_index")
-            .filter(Filters.and(Filters.eqFull("metadata.test-key", "test-value")))
-            .indexMapping(indexMapping)
-            .createIndex(true)
-            .build();
-
-    @BeforeAll
-    static void start() {
-        mongodb.start();
-
-        client = MongoClients.create(
-                MongoClientSettings.builder()
-                        .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
-                        .applyConnectionString(new ConnectionString(mongodb.getConnectionString()))
-                        .build());
+        @Override
+        MongoClient createClient() {
+            return createClientFromContainer(mongodb);
+        }
     }
 
-    @BeforeEach
-    void beforeEach() {
+    MongoDbTestFixture helper;
+
+    MongoClient createClient() {
+        return createClientFromEnv();
+    }
+
+    protected EmbeddingStore<TextSegment> embeddingStore() {
+        return helper.getEmbeddingStore();
+    }
+
+    protected EmbeddingModel embeddingModel() {
+        return EMBEDDING_MODEL;
+    }
+
+    @AfterEach
+    void afterEach() {
+        if (helper != null) {
+            helper.afterTests();
+        }
+    }
+
+    @Test
+    void should_find_relevant_with_filter() {
+        // given
+        helper = new MongoDbTestFixture(createClient()).initialize(builder -> builder
+                        .filter(Filters.and(Filters.eq("metadata.test-key", "test-value"))));
+
+        waitForIndex();
+
+        TextSegment segment = TextSegment.from("this segment should be found", Metadata.from("test-key", "test-value"));
+        Embedding embedding = embeddingModel().embed(segment.text()).content();
+
+        TextSegment filterSegment = TextSegment.from("this segment should not be found", Metadata.from("test-key", "no-value"));
+        Embedding filterEmbedding = embeddingModel().embed(filterSegment.text()).content();
+
+        List<String> ids = embeddingStore().addAll(asList(embedding, filterEmbedding), asList(segment, filterSegment));
+        assertThat(ids).hasSize(2);
+
+        TextSegment refSegment = TextSegment.from("find a segment");
+        Embedding refEmbedding = embeddingModel().embed(refSegment.text()).content();
+
+        awaitUntilAsserted(() -> {
+            // when
+            List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(refEmbedding, 2);
+
+            // then
+            assertThat(relevant).hasSize(1);
+
+            EmbeddingMatch<TextSegment> match = relevant.get(0);
+            assertThat(match.score()).isCloseTo(0.88, withPercentage(1));
+            assertThat(match.embeddingId()).isEqualTo(ids.get(0));
+            assertThat(match.embedding()).isEqualTo(embedding);
+            assertThat(match.embedded()).isEqualTo(segment);
+        });
+    }
+
+
+    void waitForIndex() {
         // to avoid "cannot query search index while in state INITIAL_SYNC" error
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
-                .queryEmbedding(embeddingModel.embed("dummy").content())
+                .queryEmbedding(EMBEDDING_MODEL.embed("dummy").content())
                 .maxResults(1)
                 .build();
         Awaitility.await()
                 .atMost(Duration.ofSeconds(60))
                 .pollDelay(Duration.ofSeconds(0))
                 .pollInterval(Duration.ofMillis(300))
-                .untilAsserted(() -> assertThatNoException().isThrownBy(() -> embeddingStore.search(embeddingSearchRequest)));
-    }
-
-    @AfterAll
-    static void stop() {
-        mongodb.stop();
-        client.close();
-    }
-
-    @Test
-    void should_find_relevant_with_filter() throws Exception {
-
-        // given
-        TextSegment segment = TextSegment.from("this segment should be found", Metadata.from("test-key", "test-value"));
-        Embedding embedding = embeddingModel.embed(segment.text()).content();
-
-        TextSegment filterSegment = TextSegment.from("this segment should not be found", Metadata.from("test-key", "no-value"));
-        Embedding filterEmbedding = embeddingModel.embed(filterSegment.text()).content();
-
-        List<String> ids = embeddingStore.addAll(asList(embedding, filterEmbedding), asList(segment, filterSegment));
-        assertThat(ids).hasSize(2);
-
-        TextSegment refSegment = TextSegment.from("find a segment");
-        Embedding refEmbedding = embeddingModel.embed(refSegment.text()).content();
-
-        awaitUntilPersisted();
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(refEmbedding, 2);
-
-        // then
-        assertThat(relevant).hasSize(1);
-
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(0.88, withPercentage(1));
-        assertThat(match.embeddingId()).isEqualTo(ids.get(0));
-        assertThat(match.embedding()).isEqualTo(embedding);
-        assertThat(match.embedded()).isEqualTo(segment);
-    }
-
-    private void awaitUntilPersisted() throws Exception {
-        Thread.sleep(2000);
+                .untilAsserted(() -> assertThatNoException().isThrownBy(() -> embeddingStore().search(embeddingSearchRequest)));
     }
 }
