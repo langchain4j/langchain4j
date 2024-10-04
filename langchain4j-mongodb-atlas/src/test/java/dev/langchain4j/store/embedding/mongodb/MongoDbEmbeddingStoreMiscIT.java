@@ -17,6 +17,7 @@ import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 
 import java.util.List;
 
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.mongodb.TestHelper.*;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -83,7 +84,7 @@ class MongoDbEmbeddingStoreMiscIT {
         TextSegment refSegment = TextSegment.from("find a segment");
         Embedding refEmbedding = embeddingModel().embed(refSegment.text()).content();
 
-        EmbeddingStoreWithoutMetadataIT.awaitUntilAssertedStatic(() -> {
+        awaitUntilAsserted(() -> {
             // when
             List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(refEmbedding, 2);
 

@@ -12,6 +12,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import dev.langchain4j.store.embedding.TestUtils;
 import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -24,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -323,16 +325,6 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
             azureAiSearchContentRetriever.createOrUpdateIndex(embeddingModel.dimension());
         } catch (RuntimeException e) {
             log.error("Failed to clean up the index. You should look at deleting it manually.", e);
-        }
-    }
-
-    @Override
-    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
-        super.awaitUntilAsserted(assertion);
-        try {
-            Thread.sleep(1000); // TODO figure out why this is needed and remove this hack
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
     }
 
