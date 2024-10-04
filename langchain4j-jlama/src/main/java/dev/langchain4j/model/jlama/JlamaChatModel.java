@@ -8,7 +8,6 @@ import com.github.tjake.jlama.util.JsonSupport;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.jlama.spi.JlamaChatModelBuilderFactory;
@@ -98,7 +97,7 @@ public class JlamaChatModel implements ChatLanguageModel {
 
                     if (aiMessage.hasToolExecutionRequests())
                         for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                            ToolCall toolCall = new ToolCall(toolExecutionRequest.name(), toolExecutionRequest.id(), Json.fromJson(toolExecutionRequest.arguments(), LinkedHashMap.class));
+                            ToolCall toolCall = new ToolCall(toolExecutionRequest.name(), toolExecutionRequest.id(), JacksonJsonCodec.fromJson(toolExecutionRequest.arguments(), LinkedHashMap.class));
                             promptBuilder.addToolCall(toolCall);
                         }
                 }
