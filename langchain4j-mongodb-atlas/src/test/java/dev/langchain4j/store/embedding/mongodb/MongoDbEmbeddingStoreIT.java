@@ -12,7 +12,7 @@ import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 
 import static dev.langchain4j.store.embedding.mongodb.TestHelper.*;
 
-public class MongoDbEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
+public class MongoDbEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     public static class ContainerIT extends MongoDbEmbeddingStoreWithRemovalIT {
         static MongoDBAtlasLocalContainer mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
