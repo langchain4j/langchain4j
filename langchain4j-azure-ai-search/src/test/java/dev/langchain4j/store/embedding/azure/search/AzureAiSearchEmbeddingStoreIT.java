@@ -11,6 +11,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import dev.langchain4j.store.embedding.TestUtils;
 import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,16 +67,6 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
             embeddingStore.deleteIndex();
         } catch (RuntimeException e) {
             log.error("Failed to delete the index. You should look at deleting it manually.", e);
-        }
-    }
-
-    @Override
-    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
-        super.awaitUntilAsserted(assertion);
-        try {
-            Thread.sleep(1000); // TODO figure out why this is needed and remove this hack
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
     }
 
