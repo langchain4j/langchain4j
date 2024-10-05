@@ -29,11 +29,11 @@ class JacksonJsonCodec {
     public static <T> T fromJson(String json, Class<T> type) {
         try {
             if (Map.class.isAssignableFrom(type)) {
-                return OBJECT_MAPPER.readValue(json, OBJECT_MAPPER.getTypeFactory().constructMapType(Map.class, String.class, String.class));
+                return OBJECT_MAPPER.readValue(json, OBJECT_MAPPER.getTypeFactory().constructMapType(Map.class, String.class, Object.class));
             }
             return OBJECT_MAPPER.readValue(json, type);
         } catch (IOException e) {
-            throw new RuntimeException("Error converting JSON to object", e);
+            throw new JacksonProcessingException("Error converting JSON to object", e);
         }
     }
 
