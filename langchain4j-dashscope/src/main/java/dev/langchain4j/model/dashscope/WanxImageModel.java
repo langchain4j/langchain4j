@@ -1,6 +1,7 @@
 package dev.langchain4j.model.dashscope;
 
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesis;
+import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisOutput;
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisParam;
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisResult;
 import com.alibaba.dashscope.exception.NoApiKeyException;
@@ -99,7 +100,14 @@ public class WanxImageModel implements ImageModel {
 
         try {
             ImageSynthesisResult result = imageSynthesis.call(builder.build());
-            return Response.from(imagesFrom(result).get(0));
+            List<Image> images = imagesFrom(result);
+            if (images.isEmpty()) {
+                ImageSynthesisOutput output = result.getOutput();
+                String errorMessage = String.format("[%s] %s: %s",
+                        output.getTaskStatus(), output.getCode(), output.getMessage());
+                throw new NullPointerException(errorMessage);
+            }
+            return Response.from(images.get(0));
         } catch (NoApiKeyException e) {
             throw new RuntimeException(e);
         }
