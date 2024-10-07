@@ -25,10 +25,6 @@ class MilvusEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
             .password(System.getenv("MILVUS_PASSWORD"))
             .consistencyLevel(STRONG)
             .dimension(384)
-            .idFieldName("id_field")
-            .textFieldName("text_field")
-            .metadataFieldName("metadata_field")
-            .vectorFieldName("vector_field")
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
