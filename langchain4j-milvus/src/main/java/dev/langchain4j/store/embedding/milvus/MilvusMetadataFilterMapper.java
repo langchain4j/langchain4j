@@ -15,7 +15,7 @@ import static java.util.stream.Collectors.toList;
 
 class MilvusMetadataFilterMapper {
 
-    static String map(Filter filter, String metadataFiledName) {
+    static String map(Filter filter, String metadataFieldName) {
         if (filter instanceof IsEqualTo) {
             return mapEqual((IsEqualTo) filter, metadataFiledName);
         } else if (filter instanceof IsNotEqualTo) {
