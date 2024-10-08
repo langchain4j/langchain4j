@@ -7,6 +7,7 @@ import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 // TODO move to langchain4j-open-ai module once cyclic dependency is resolved
 class OpenAiAiServiceWithToolsIT extends AiServicesWithNewToolsIT {
@@ -34,6 +35,11 @@ class OpenAiAiServiceWithToolsIT extends AiServicesWithNewToolsIT {
                         .logResponses(true)
                         .build()
         );
+    }
+
+    @Override
+    protected List<ChatLanguageModel> modelsSupportingMapParametersInTools() {
+        return singletonList(models().get(0)); // second model (with strictTools(true)) goes into an endless loop
     }
 
     @Override

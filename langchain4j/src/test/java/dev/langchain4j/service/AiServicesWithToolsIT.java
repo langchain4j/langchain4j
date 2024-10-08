@@ -30,7 +30,6 @@ import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -445,6 +444,7 @@ class AiServicesWithToolsIT {
                                 .description("List of integers to process")
                                 .items(JSON_INTEGER_SCHEMA)
                                 .build()))
+                        .required("arg0")
                         .build())
                 .build();
 
@@ -456,7 +456,6 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    @Disabled("should be enabled once List<Double> is automatically converted into List<Integer>") // https://github.com/langchain4j/langchain4j/issues/1858
     void should_use_tool_with_List_of_Integers_parameter(ChatLanguageModel chatLanguageModel) {
 
         IntegerListProcessor integerListProcessor = spy(new IntegerListProcessor());
