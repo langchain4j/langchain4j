@@ -59,7 +59,10 @@ interface Assistant {
 Then, we create our low-level components. These components will be used under the hood of our AI Service.
 In this case, we just need the `ChatLanguageModel`:
 ```java
-ChatLanguageModel model = OpenAiChatModel.withApiKey("demo");
+ChatLanguageModel model = OpenAiChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 ```
 
 Finally, we can use the `AiServices` class to create an instance of our AI Service:
@@ -116,8 +119,12 @@ Friend friend = AiServices.create(Friend.class, model);
 
 String answer = friend.chat("Hello"); // Hey! What's up?
 ```
-In this example, we have added the `@SystemMessage` annotation with a system prompt we want to use.
+
+In this example, we have added the `@SystemMessage` annotation with a system prompt template we want to use.
 This will be converted into a `SystemMessage` behind the scenes and sent to the LLM along with the `UserMessage`.
+
+`@SystemMessage` can also load a prompt template from resources:
+`@SystemMessage(fromResource = "my-prompt-template.txt")`
 
 ### System Message Provider
 System messages can also be defined dynamically with the system message provider:
@@ -145,9 +152,9 @@ Friend friend = AiServices.create(Friend.class, model);
 String answer = friend.chat("Hello"); // Hey! What's shakin'?
 ```
 We have replaced the `@SystemMessage` annotation with `@UserMessage`
-and specified a prompt template with the variable `it` to refer to the only method argument.
+and specified a prompt template containing the variable `it` that refers to the only method argument.
 
-Additionally, it's possible to annotate the `String userMessage` with `@V`
+It's also possible to annotate the `String userMessage` with `@V`
 and assign a custom name to the prompt template variable:
 ```java
 interface Friend {
@@ -157,69 +164,174 @@ interface Friend {
 }
 ```
 
-## Output Parsing (aka Structured Outputs)
+:::note
+Please note that using `@V` is not necessary when using LangChain4j with Quarkus or Spring Boot.
+This annotation is necessary only when the `-parameters` option is *not* enabled during Java compilation.
+:::
+
+`@UserMessage` can also load a prompt template from resources:
+`@UserMessage(fromResource = "my-prompt-template.txt")`
+
+## Examples of valid AI Service methods
+
+Below are some examples of valid AI service methods.
+
+<details>
+<summary>`UserMessage`</summary>
+
+```java
+String chat(String userMessage);
+
+String chat(@UserMessage String userMessage);
+
+String chat(@UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
+
+@UserMessage("What is the capital of Germany?")
+String chat();
+
+@UserMessage("What is the capital of {{it}}?")
+String chat(String country);
+
+@UserMessage("What is the capital of {{country}}?")
+String chat(@V("country") String country);
+
+@UserMessage("What is the {{something}} of {{country}}?")
+String chat(@V("something") String something, @V("country") String country);
+
+@UserMessage("What is the capital of {{country}}?")
+String chat(String country); // this works only in Quarkus and Spring Boot applications
+```
+</details>
+
+<details>
+<summary>`SystemMessage` and `UserMessage`</summary>
+
+```java
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+String chat(String userMessage);
+
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+String chat(@UserMessage String userMessage);
+
+@SystemMessage("Given a name of a country, {{answerInstructions}}")
+String chat(@V("answerInstructions") String answerInstructions, @UserMessage String userMessage);
+
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+String chat(@UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
+
+@SystemMessage("Given a name of a country, {{answerInstructions}}")
+String chat(@V("answerInstructions") String answerInstructions, @UserMessage String userMessage, @V("country") String country); // userMessage contains "{{country}}" template variable
+
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+@UserMessage("Germany")
+String chat();
+
+@SystemMessage("Given a name of a country, {{answerInstructions}}")
+@UserMessage("Germany")
+String chat(@V("answerInstructions") String answerInstructions);
+
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+@UserMessage("{{it}}")
+String chat(String country);
+
+@SystemMessage("Given a name of a country, answer with a name of it's capital")
+@UserMessage("{{country}}")
+String chat(@V("country") String country);
+
+@SystemMessage("Given a name of a country, {{answerInstructions}}")
+@UserMessage("{{country}}")
+String chat(@V("answerInstructions") String answerInstructions, @V("country") String country);
+```
+</details>
+
+## Structured Outputs
 If you want to receive a structured output from the LLM,
 you can change the return type of your AI Service method from `String` to something else.
 Currently, AI Services support the following return types:
 - `String`
 - `AiMessage`
+- Any custom POJO
+- Any `Enum` or `List<Enum>` or `Set<Enum>`, if you want to classify text, e.g. sentiment, user intent, etc.
 - `boolean`/`Boolean`, if you need to get "yes" or "no" answer
-- `byte`/`Byte`/`short`/`Short`/`int`/`Integer`/`BigInteger`/`long`/`Long`/`float`/`Float`/`double`/`Double`/`BigDecimal`
+- `byte`/`short`/`int`/`BigInteger`/`long`/`float`/`double`/`BigDecimal`
 - `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
 - `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
-- Any `Enum`, if you want to classify text, e.g. sentiment, user intent, etc.
-- Any custom POJO
-- `Result<T>`, if you need to access `TokenUsage` or sources (`Content`s retrieved during RAG), aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
+- `Map<K, V>`
+- `Result<T>`, if you need to access `TokenUsage`, `FinishReason`, sources (`Content`s retrieved during RAG) and executed tools, aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
 
-Unless the return type is `String`, `AiMessage`, or `Response<AiMessage>`,
-the AI Service will automatically append instructions to the end of `UserMessage` indicating the format
-in which the LLM should respond.
+Unless the return type is `String`, `AiMessage`, or `Map<K, V>`, the AI Service will automatically append instructions
+to the end of the `UserMessage` indicating the format in which the LLM should respond.
 Before the method returns, the AI Service will parse the output of the LLM into the desired type.
 
-You can see the specific instructions by enabling logging for the model, for example:
-```java
-ChatLanguageModel model = OpenAiChatModel.builder()
-    .apiKey(...)
-    .logRequests(true)
-    .logResponses(true)
-    .build();
-```
+You can observe appended instructions by [enabling logging](/tutorials/logging).
+
+:::note
+Some LLMs support JSON mode (aka [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/)),
+where the LLM API has an option to specify a JSON schema for the desired output. If such a feature is supported and enabled, 
+instructions will not be appended to the end of the `UserMessage`. In this case, the JSON schema will be automatically
+created from your POJO and passed to the LLM. This will guarantee that the LLM adheres to this JSON schema.
+:::
 
 Now let's take a look at some examples.
 
-### `Enum` and `boolean` as return types
+### `boolean` as return type
+
 ```java
-enum Sentiment {
-    POSITIVE, NEUTRAL, NEGATIVE
-}
-
 interface SentimentAnalyzer {
-
-    @UserMessage("Analyze sentiment of {{it}}")
-    Sentiment analyzeSentimentOf(String text);
 
     @UserMessage("Does {{it}} has a positive sentiment?")
     boolean isPositive(String text);
+
 }
 
 SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
 
-Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("This is great!");
-// POSITIVE
-
-boolean positive = sentimentAnalyzer.isPositive("It's awful!");
-// false
+boolean positive = sentimentAnalyzer.isPositive("It's wonderful!");
+// true
 ```
 
-### Custom POJO as a return type
+### `Enum` as return type
+```java
+enum Priority {
+    
+    @Description("Critical issues such as payment gateway failures or security breaches.")
+    CRITICAL,
+    
+    @Description("High-priority issues like major feature malfunctions or widespread outages.")
+    HIGH,
+    
+    @Description("Low-priority issues such as minor bugs or cosmetic problems.")
+    LOW
+}
+
+interface PriorityAnalyzer {
+    
+    @UserMessage("Analyze the priority of the following issue: {{it}}")
+    Priority analyzePriority(String issueDescription);
+}
+
+PriorityAnalyzer priorityAnalyzer = AiServices.create(PriorityAnalyzer.class, model);
+
+Priority priority = priorityAnalyzer.analyzePriority("The main payment gateway is down, and customers cannot process transactions.");
+// CRITICAL
+```
+
+:::note
+`@Description` annotation is optional. It's suggested to be used when enum names are not self-explanatory.
+:::
+
+### POJO as a return type
 ```java
 class Person {
+
+    @Description("first name of a person") // you can add an optional description to help an LLM have a better understanding
     String firstName;
     String lastName;
     LocalDate birthDate;
     Address address;
 }
 
+@Description("an address") // you can add an optional description to help an LLM have a better understanding
 class Address {
     String street;
     Integer streetNumber;
@@ -245,68 +357,134 @@ String text = """
 
 Person person = personExtractor.extractPersonFrom(text);
 
-System.out.println(person); // // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
+System.out.println(person); // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
 ```
 
 ## JSON mode
 
 When extracting custom POJOs (actually JSON, which is then parsed into the POJO),
 it is recommended to enable a "JSON mode" in the model configuration.
-This way, the LLM will be forced to produce valid JSON.
+This way, the LLM will be forced to respond with a valid JSON.
 
 :::note
 Please note that JSON mode and tools/function calling are similar features
 but have different APIs and are used for distinct purposes.
 
 JSON mode is useful when you _always_ need a response from the LLM in a structured format (valid JSON).
-The schema for the expected JSON can be defined in a free form inside a `SystemMessage` or `UserMessage`.
-In this scenario, the LLM must _always_ output valid JSON.
-Additionally, there is usually no state/memory required,
-so each interaction with the LLM is independent of others.
+Additionally, there is usually no state/memory required, so each interaction with the LLM is independent of others.
 For instance, you might want to extract information from a text, such as the list of people mentioned in this text
 or convert a free-form product review into a structured form with fields like
 `String productName`, `Sentiment sentiment`, `List<String> claimedProblems`, etc.
 
-On the other hand, the use of tool/function calling is useful when enabling the LLM to call or execute tools,
-but only as necessary. In this case, a list of tools is provided to the LLM, and it autonomously decides
-whether to call the tool.
+On the other hand, tools/functions are useful when LLM should be able to perform some action(s)
+(e.g. lookup the database, search the web, cancel user's booking, etc.)
+In this case, a list of tools with their expected JSON schemas is provided to the LLM, and it autonomously decides
+whether to call any of them to satisfy user request.
 
-Function calling is often used for structured data extraction,
+Earlier, function calling was often used for structured data extraction,
 but now we have the JSON mode feature, which is more suitable for this purpose.
 :::
 
 Here is how to enable JSON mode:
 
 - For OpenAI:
-```java
-OpenAiChatModel.builder()
+  - For newer models that support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) (e.g., `gpt-4o-mini`, `gpt-4o-2024-08-06`):
+    ```java
+    OpenAiChatModel.builder()
+        ...
+        .responseFormat("json_schema")
+        .strictJsonSchema(true)
+        .build();
+    ```
+    See more details [here](/integrations/language-models/open-ai#structured-outputs).
+  - For older models (e.g. gpt-3.5-turbo, gpt-4):
+    ```java
+    OpenAiChatModel.builder()
         ...
         .responseFormat("json_object")
         .build();
-```
+    ```
 
 - For Azure OpenAI:
 ```java
 AzureOpenAiChatModel.builder()
-        ...
-        .responseFormat(new ChatCompletionsJsonResponseFormat())
-        .build();
+    ...
+    .responseFormat(new ChatCompletionsJsonResponseFormat())
+    .build();
+```
+
+- For Vertex AI Gemini:
+```java
+VertexAiGeminiChatModel.builder()
+    ...
+    .responseMimeType("application/json")
+    .build();
+```
+
+Or by specifying an explicit schema from a Java class:
+
+```java
+VertexAiGeminiChatModel.builder()
+    ...
+    .responseSchema(SchemaHelper.fromClass(Person.class))
+    .build();
+```
+
+From a JSON schema:
+
+```java
+VertexAiGeminiChatModel.builder()
+    ...
+    .responseSchema(Schema.builder()...build())
+    .build();
+```
+
+- For Google AI Gemini:
+```java
+GoogleAiGeminiChatModel.builder()
+    ...
+    .responseFormat(ResponseFormat.JSON)
+    .build();
+```
+
+Or by specifying an explicit schema from a Java class:
+
+```java
+GoogleAiGeminiChatModel.builder()
+    ...
+    .responseFormat(ResponseFormat.builder()
+        .type(JSON)
+        .jsonSchema(JsonSchemas.jsonSchemaFrom(Person.class).get())
+        .build())
+    .build();
+```
+
+From a JSON schema:
+
+```java
+GoogleAiGeminiChatModel.builder()
+    ...
+    .responseFormat(ResponseFormat.builder()
+        .type(JSON)
+        .jsonSchema(JsonSchema.builder()...build())
+        .build())
+    .build();
 ```
 
 - For Mistral AI:
 ```java
 MistralAiChatModel.builder()
-        ...
-        .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
-        .build();
+    ...
+    .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
+    .build();
 ```
 
 - For Ollama:
 ```java
 OllamaChatModel.builder()
-        ...
-        .format("json")
-        .build();
+    ...
+    .format("json")
+    .build();
 ```
 
 - For other model providers: if the underlying model provider does not support JSON mode,
@@ -326,7 +504,10 @@ interface Assistant {
     TokenStream chat(String message);
 }
 
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
+StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 
 Assistant assistant = AiServices.create(Assistant.class, model);
 
@@ -336,6 +517,23 @@ tokenStream.onNext(System.out::println)
     .onComplete(System.out::println)
     .onError(Throwable::printStackTrace)
     .start();
+```
+
+### Flux
+You can also use `Flux<String>` instead of `TokenStream`.
+For this, please import `langchain4j-reactor` module:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-reactor</artifactId>
+    <version>0.35.0</version>
+</dependency>
+```
+```java
+interface Assistant {
+
+  Flux<String> chat(String message);
+}
 ```
 
 [Streaming example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
@@ -410,7 +608,7 @@ String answer = assistant.chat("What is 1+2 and 3*4?");
 ```
 In this scenario, LLM will execute `add(1, 2)` and `multiply(3, 4)` methods before providing an answer.
 
-More details about tools can be found [here](/tutorials/tools).
+More details about tools can be found [here](/tutorials/tools#high-level-tool-api).
 
 
 ## RAG
@@ -437,6 +635,7 @@ RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
         .queryRouter(...)
         .contentAggregator(...)
         .contentInjector(...)
+        .executor(...)
         .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)

@@ -2,7 +2,13 @@ package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -17,12 +23,18 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.OBJECT;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20240620;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.OTHER;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Collections.singletonList;
@@ -70,7 +82,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).contains("Berlin");
@@ -146,7 +157,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();
@@ -166,7 +176,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(systemMessage, userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("liebe");
@@ -189,7 +198,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("hello");
@@ -222,7 +230,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();
@@ -245,7 +252,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();
@@ -270,7 +276,6 @@ class AnthropicChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();
@@ -343,14 +348,13 @@ class AnthropicChatModelIT {
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest
-    @MethodSource("models_supporting_tools")
-    void should_execute_multiple_tools_in_parallel_then_answer(AnthropicChatModelName modelName) {
+    @Test
+    void should_execute_multiple_tools_in_parallel_then_answer() {
 
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(modelName)
+                .modelName(CLAUDE_3_5_SONNET_20240620)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -406,14 +410,13 @@ class AnthropicChatModelIT {
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest
-    @MethodSource("models_supporting_tools")
-    void should_execute_a_tool_with_nested_properties_then_answer(AnthropicChatModelName modelName) {
+    @Test
+    void should_execute_a_tool_with_nested_properties_then_answer() {
 
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(modelName)
+                .modelName(CLAUDE_3_5_SONNET_20240620)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)

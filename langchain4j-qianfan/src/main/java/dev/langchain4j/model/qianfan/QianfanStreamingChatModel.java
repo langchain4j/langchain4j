@@ -18,6 +18,7 @@ import lombok.Builder;
 
 import java.net.Proxy;
 import java.util.List;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.qianfan.InternalQianfanHelper.getSystemMessage;
@@ -143,7 +144,7 @@ public class QianfanStreamingChatModel implements StreamingChatLanguageModel  {
     private static void handle(ChatCompletionResponse partialResponse,
                                StreamingResponseHandler<AiMessage> handler) {
         String result = partialResponse.getResult();
-        if (Utils.isNullOrBlank(result)) {
+        if (Objects.isNull(result) || result.isEmpty()) {
             return;
         }
         handler.onNext(result);

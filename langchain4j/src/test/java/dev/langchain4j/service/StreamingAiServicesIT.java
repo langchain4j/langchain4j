@@ -15,16 +15,20 @@ import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,6 +100,43 @@ public class StreamingAiServicesIT {
         }
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_callback_with_content(StreamingChatLanguageModel model) throws Exception {
+
+        List<Content> contents = new ArrayList<>();
+        contents.add(Content.from("This is additional content"));
+
+        RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
+        ChatMessage message = UserMessage.from("What is the capital of Germany?");
+
+        AugmentationResult result = AugmentationResult.builder()
+                .chatMessage(message)
+                .contents(contents)
+                .build();
+        when(retrievalAugmentor.augment(any())).thenReturn(result);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatLanguageModel(model)
+                .retrievalAugmentor(retrievalAugmentor)
+                .build();
+
+        StringBuilder answerBuilder = new StringBuilder();
+        CompletableFuture<List<Content>> futureContent = new CompletableFuture<>();
+
+        assistant.chat("What is the capital of Germany?")
+                .onNext(answerBuilder::append)
+                .onRetrieved(futureContent::complete)
+                .ignoreErrors()
+                .start();
+
+        List<Content> returnedContents = futureContent.get(30, SECONDS);
+
+        assertThat(returnedContents)
+        .hasSize(1)
+        .anySatisfy(c -> assertThat(c.textSegment().text()).isEqualTo("This is additional content"));
     }
 
     @ParameterizedTest
@@ -245,7 +286,8 @@ public class StreamingAiServicesIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_0613) // this model can only call tools sequentially
+                .modelName(GPT_4_O_MINI)
+                .parallelToolCalls(false)  // called sequentially
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)

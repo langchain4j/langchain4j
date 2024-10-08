@@ -3,65 +3,67 @@ package dev.langchain4j.rag.content.retriever.azure.search;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.search.documents.indexes.SearchIndexClient;
 import com.azure.search.documents.indexes.SearchIndexClientBuilder;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
-public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
+public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFilteringIT {
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchContentRetrieverIT.class);
 
-    private EmbeddingModel embeddingModel;
+    private final EmbeddingModel embeddingModel;
 
-    private AzureAiSearchContentRetriever contentRetrieverWithVector;
+    private final AzureAiSearchContentRetriever contentRetrieverWithVector;
 
     private AzureAiSearchContentRetriever contentRetrieverWithFullText;
 
-    private AzureAiSearchContentRetriever contentRetrieverWithHybrid;
+    private final AzureAiSearchContentRetriever contentRetrieverWithHybrid;
 
-    private AzureAiSearchContentRetriever contentRetrieverWithHybridAndReranking;
+    private final AzureAiSearchContentRetriever contentRetrieverWithHybridAndReranking;
 
-    private int dimensions;
+    public AzureAiSearchContentRetrieverIT() {
+        embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-     public AzureAiSearchContentRetrieverIT() {
-         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-         dimensions = embeddingModel.embed("test").content().vector().length;
+        SearchIndexClient searchIndexClient = new SearchIndexClientBuilder()
+                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
+                .credential(new AzureKeyCredential(System.getenv("AZURE_SEARCH_KEY")))
+                .buildClient();
 
-         SearchIndexClient searchIndexClient = new SearchIndexClientBuilder()
-                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
-                 .credential(new AzureKeyCredential(System.getenv("AZURE_SEARCH_KEY")))
-                 .buildClient();
+        searchIndexClient.deleteIndex(DEFAULT_INDEX_NAME);
 
-         searchIndexClient.deleteIndex(DEFAULT_INDEX_NAME);
-
-         contentRetrieverWithVector =  createContentRetriever(AzureAiSearchQueryType.VECTOR);
-         contentRetrieverWithFullText =  createFullTextSearchContentRetriever();
-         contentRetrieverWithHybrid =  createContentRetriever(AzureAiSearchQueryType.HYBRID);
-         contentRetrieverWithHybridAndReranking =  createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RERANKING);
+        contentRetrieverWithVector = createContentRetriever(AzureAiSearchQueryType.VECTOR);
+        contentRetrieverWithFullText = createFullTextSearchContentRetriever();
+        contentRetrieverWithHybrid = createContentRetriever(AzureAiSearchQueryType.HYBRID);
+        contentRetrieverWithHybridAndReranking = createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RERANKING);
     }
 
     private AzureAiSearchContentRetriever createContentRetriever(AzureAiSearchQueryType azureAiSearchQueryType) {
         return AzureAiSearchContentRetriever.builder()
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-                .dimensions(dimensions)
+                .dimensions(embeddingModel.dimension())
                 .embeddingModel(embeddingModel)
                 .queryType(azureAiSearchQueryType)
                 .maxResults(3)
@@ -82,8 +84,9 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
     }
 
     @BeforeEach
-    void setUp() {
+    void beforeEach() throws InterruptedException {
         clearStore();
+        Thread.sleep(2_000);
     }
 
     @Test
@@ -102,7 +105,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
             contentRetrieverWithVector.add(embedding, textSegment);
         }
 
-        awaitUntilPersisted();
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         String content = "fruit";
         Query query = Query.from(content);
@@ -121,6 +124,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
     }
 
     @Test
+    @Disabled("no semantic ranker in a free Azure tier")
     void testAllTypesOfSearch() {
         String content1 = "This book is about politics";
         String content2 = "Cats sleeps a lot.";
@@ -128,13 +132,16 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         String content4 = "The house is open";
         List<String> contents = asList(content1, content2, content3, content4);
 
-        for (String content : contents) {
-            TextSegment textSegment = TextSegment.from(content);
+        for (int index = 0; index < contents.size(); index++) {
+            Map<String, String> meta = new HashMap<>();
+            meta.put("id", "content" + index);
+            String content = contents.get(index);
+            TextSegment textSegment = new TextSegment(content, new Metadata(meta));
             Embedding embedding = embeddingModel.embed(content).content();
             contentRetrieverWithVector.add(embedding, textSegment);
         }
 
-        awaitUntilPersisted();
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         String content = "house";
         Query query = Query.from(content);
@@ -143,6 +150,8 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         List<Content> relevant = contentRetrieverWithVector.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         assertThat(relevant.get(0).textSegment().text()).isEqualTo("The house is open");
+        assertThat(relevant.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
+
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
 
         log.info("Testing Full Text Search");
@@ -150,18 +159,21 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         List<Content> relevant2 = contentRetrieverWithFullText.retrieve(query);
         assertThat(relevant2).hasSizeGreaterThan(0);
         assertThat(relevant2.get(0).textSegment().text()).isEqualTo("The house is open");
+        assertThat(relevant2.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search");
         List<Content> relevant3 = contentRetrieverWithHybrid.retrieve(query);
         assertThat(relevant3).hasSizeGreaterThan(0);
         assertThat(relevant3.get(0).textSegment().text()).isEqualTo("The house is open");
+        assertThat(relevant3.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
         log.info("#1 relevant item: {}", relevant3.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search with Reranking");
         List<Content> relevant4 = contentRetrieverWithHybridAndReranking.retrieve(query);
         assertThat(relevant4).hasSizeGreaterThan(0);
         assertThat(relevant4.get(0).textSegment().text()).isEqualTo("The house is open");
+        assertThat(relevant4.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
         log.info("#1 relevant item: {}", relevant4.get(0).textSegment().text());
 
         log.info("Test complete");
@@ -178,7 +190,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
             contentRetrieverWithFullText.add(content);
         }
 
-        awaitUntilPersisted();
+        awaitUntilAsserted(() -> assertThat(contentRetrieverWithFullText.retrieve(Query.from("a"))).hasSize(contents.size()));
 
         Query query = Query.from("Alain");
         List<Content> relevant = contentRetrieverWithFullText.retrieve(query);
@@ -195,9 +207,9 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
 
     @Test
     void testFullTextSearchWithSpecificSearchIndex() {
-         // This doesn't reuse the existing search index, but creates a specialized one only for full text search
+        // This doesn't reuse the existing search index, but creates a specialized one only for full text search
         contentRetrieverWithVector.deleteIndex();
-        contentRetrieverWithFullText =  AzureAiSearchContentRetriever.builder()
+        contentRetrieverWithFullText = AzureAiSearchContentRetriever.builder()
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
                 .embeddingModel(null)
@@ -208,7 +220,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
                 .build();
         testFullTextSearch();
         clearStore();
-        contentRetrieverWithFullText =  createFullTextSearchContentRetriever();
+        contentRetrieverWithFullText = createFullTextSearchContentRetriever();
     }
 
     @Test
@@ -236,7 +248,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
             contentRetrieverWithHybrid.add(embedding, textSegment);
         }
 
-        awaitUntilPersisted();
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         Query query = Query.from("Algeria");
         List<Content> relevant = contentRetrieverWithHybrid.retrieve(query);
@@ -252,6 +264,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
     }
 
     @Test
+    @Disabled("no semantic ranker in a free Azure tier")
     void testAddEmbeddingsAndRetrieveRelevantWithHybridAndReranking() {
         String content1 = "Albert Camus (7 November 1913 – 4 January 1960) was a French philosopher, author, dramatist, journalist, world federalist, and political activist. He was the recipient of the 1957 Nobel Prize in Literature at the age of 44, the second-youngest recipient in history. His works include The Stranger, The Plague, The Myth of Sisyphus, The Fall, and The Rebel.\n" +
                 "\n" +
@@ -276,7 +289,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
             contentRetrieverWithHybridAndReranking.add(embedding, textSegment);
         }
 
-        awaitUntilPersisted();
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         Query query = Query.from("A philosopher who was in the French Resistance");
         List<Content> relevant = contentRetrieverWithHybridAndReranking.retrieve(query);
@@ -307,18 +320,24 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         AzureAiSearchContentRetriever azureAiSearchContentRetriever = contentRetrieverWithVector;
         try {
             azureAiSearchContentRetriever.deleteIndex();
-            azureAiSearchContentRetriever.createOrUpdateIndex(dimensions);
+            azureAiSearchContentRetriever.createOrUpdateIndex(embeddingModel.dimension());
         } catch (RuntimeException e) {
             log.error("Failed to clean up the index. You should look at deleting it manually.", e);
         }
     }
 
     @Override
-    protected void awaitUntilPersisted() {
+    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
+        super.awaitUntilAsserted(assertion);
         try {
-            Thread.sleep(1_000);
+            Thread.sleep(1000); // TODO figure out why this is needed and remove this hack
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    protected boolean assertEmbedding() {
+        return false; // TODO remove this hack after https://github.com/langchain4j/langchain4j/issues/1617 is closed
     }
 }

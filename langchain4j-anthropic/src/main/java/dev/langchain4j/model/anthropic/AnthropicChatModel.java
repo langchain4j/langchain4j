@@ -7,17 +7,31 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageReques
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createErrorContext;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerRequest;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createModelListenerResponse;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
 import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
+import static java.util.Collections.emptyList;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -40,6 +54,7 @@ import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitize
  * includes verifying that the first message is a {@link UserMessage} and removing any consecutive {@link UserMessage}s.
  * Any messages removed during sanitization are logged as warnings and not submitted to the API.
  */
+@Slf4j
 public class AnthropicChatModel implements ChatLanguageModel {
 
     private final AnthropicClient client;
@@ -50,6 +65,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private final int maxTokens;
     private final List<String> stopSequences;
     private final int maxRetries;
+    private final List<ChatModelListener> listeners;
 
     /**
      * Constructs an instance of an {@code AnthropicChatModel} with the specified parameters.
@@ -83,7 +99,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
                                Duration timeout,
                                Integer maxRetries,
                                Boolean logRequests,
-                               Boolean logResponses) {
+                               Boolean logResponses,
+                               List<ChatModelListener> listeners) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
@@ -100,6 +117,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
         this.maxTokens = getOrDefault(maxTokens, 1024);
         this.stopSequences = stopSequences;
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     public static class AnthropicChatModelBuilder {
@@ -116,11 +134,9 @@ public class AnthropicChatModel implements ChatLanguageModel {
     }
 
     /**
-     * Creates an instance of {@code AnthropicChatModel} with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return an {@code AnthropicChatModel} instance
+     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
+    @Deprecated
     public static AnthropicChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
@@ -148,14 +164,67 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .tools(toAnthropicTools(toolSpecifications))
                 .build();
 
-        AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
 
-        return Response.from(
-                toAiMessage(response.content),
-                toTokenUsage(response.usage),
-                toFinishReason(response.stopReason)
-        );
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(requestContext);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
+
+        try {
+            AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
+            Response<AiMessage> responseMessage = Response.from(
+                    toAiMessage(response.content),
+                    toTokenUsage(response.usage),
+                    toFinishReason(response.stopReason)
+            );
+
+            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                    response.id,
+                    response.model,
+                    responseMessage
+            );
+            ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                    modelListenerResponse,
+                    modelListenerRequest,
+                    attributes
+            );
+
+            listeners.forEach(listener -> {
+                try {
+                    listener.onResponse(responseContext);
+                } catch (Exception e) {
+                    log.warn("Exception while calling model listener", e);
+                }
+            });
+
+            return Response.from(
+                    toAiMessage(response.content),
+                    toTokenUsage(response.usage),
+                    toFinishReason(response.stopReason)
+            );
+        } catch (RuntimeException e) {
+            ChatModelErrorContext errorContext = createErrorContext(
+                    e,
+                    modelListenerRequest,
+                    attributes
+            );
+
+            listeners.forEach(listener -> {
+                try {
+                    listener.onError(errorContext);
+                } catch (Exception e2) {
+                    log.warn("Exception while calling model listener", e2);
+                }
+            });
+
+            throw e;
+        }
     }
-
     // TODO forcing tool use?
 }

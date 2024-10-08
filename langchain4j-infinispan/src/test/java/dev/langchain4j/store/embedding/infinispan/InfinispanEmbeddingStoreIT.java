@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.infinispan;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
@@ -19,8 +19,8 @@ import static org.infinispan.server.test.core.InfinispanContainer.IMAGE_BASENAME
 class InfinispanEmbeddingStoreIT extends EmbeddingStoreIT {
 
     static InfinispanContainer infinispan = new InfinispanContainer(IMAGE_BASENAME + ":" + Version.getVersion());
-    EmbeddingStore<TextSegment> embeddingStore;
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    EmbeddingStore<TextSegment> embeddingStore;
 
     @BeforeAll
     static void beforeAll() {
@@ -46,7 +46,7 @@ class InfinispanEmbeddingStoreIT extends EmbeddingStoreIT {
 
         InfinispanEmbeddingStore embeddingStoreInf = InfinispanEmbeddingStore.builder()
                 .cacheName("my-cache")
-                .dimension(384)
+                .dimension(embeddingModel.dimension())
                 .infinispanConfigBuilder(builder)
                 .build();
         embeddingStoreInf.clearCache();

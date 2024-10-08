@@ -1,16 +1,38 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.BOOLEAN;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.NUMBER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.OBJECT;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.objectItems;
+import static dev.langchain4j.internal.TypeUtils.*;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.model.output.structured.Description;
 
-import java.lang.reflect.*;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.*;
-
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.lang.String.format;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Utility methods for {@link ToolSpecification}s.
@@ -27,10 +49,12 @@ public class ToolSpecifications {
      * @return the {@link ToolSpecification}s.
      */
     public static List<ToolSpecification> toolSpecificationsFrom(Class<?> classWithTools) {
-        return stream(classWithTools.getDeclaredMethods())
+        List<ToolSpecification> toolSpecifications = stream(classWithTools.getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(Tool.class))
                 .map(ToolSpecifications::toolSpecificationFrom)
                 .collect(toList());
+        validateSpecifications(toolSpecifications);
+        return toolSpecifications;
     }
 
     /**
@@ -42,6 +66,23 @@ public class ToolSpecifications {
      */
     public static List<ToolSpecification> toolSpecificationsFrom(Object objectWithTools) {
         return toolSpecificationsFrom(objectWithTools.getClass());
+    }
+
+    /**
+     * Validates all the {@link ToolSpecification}s. The validation checks for duplicate method names.
+     * Throws {@link IllegalArgumentException} if validation fails
+     *
+     * @param toolSpecifications list of ToolSpecification to be validated.
+     */
+    public static void validateSpecifications(List<ToolSpecification> toolSpecifications) throws IllegalArgumentException {
+
+        // Checks for duplicates methods
+        Set<String> names = new HashSet<>();
+        for (ToolSpecification toolSpecification : toolSpecifications) {
+            if (!names.add(toolSpecification.name())) {
+                throw new IllegalArgumentException(format("Tool names must be unique. The tool '%s' appears several times", toolSpecification.name()));
+            }
+        }
     }
 
     /**
@@ -106,34 +147,38 @@ public class ToolSpecifications {
         return removeNulls(OBJECT, schema(type), description);
     }
 
-    static JsonSchemaProperty schema(Class<?> structured){
-        return schema(structured, new HashSet<>());
+    static JsonSchemaProperty schema(Class<?> structured) {
+        return schema(structured, new HashMap<>());
     }
 
-    private static JsonSchemaProperty schema(Class<?> structured, Set<Class<?>> visited) {
-        if (visited.contains(structured)) {
-            return null;
+    private static JsonSchemaProperty schema(Class<?> structured, HashMap<Class<?>, JsonSchemaProperty> visited) {
+        if (visited.containsKey(structured)) {
+            return visited.get(structured);
         }
 
-        visited.add(structured);
-        Map<String,Object> properties = new HashMap<>();
+        // Mark the class as visited by inserting it in the visited map with a null value initially.
+        visited.put(structured, null);
+        Map<String, Object> properties = new HashMap<>();
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
-            if ( name.equals("this$0") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+            if (name.equals("this$0") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
                 // Skip inner class reference.
                 continue;
             }
             Iterable<JsonSchemaProperty> schemaProperties = toJsonSchemaProperties(field, visited);
-            Map<Object,Object> objectMap = new HashMap<>();
-            for(JsonSchemaProperty jsonSchemaProperty : schemaProperties) {
+            Map<Object, Object> objectMap = new HashMap<>();
+            for (JsonSchemaProperty jsonSchemaProperty : schemaProperties) {
                 objectMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
             }
             properties.put(name, objectMap);
         }
-        return from( "properties", properties );
+        JsonSchemaProperty jsonSchemaProperty = from("properties", properties);
+        // Update the visited map with the final JsonSchemaProperty for the current class
+        visited.put(structured, jsonSchemaProperty);
+        return jsonSchemaProperty;
     }
 
-    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited) {
+    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, HashMap<Class<?>, JsonSchemaProperty> visited) {
 
         Class<?> type = field.getType();
 
@@ -159,15 +204,15 @@ public class ToolSpecifications {
             return removeNulls(STRING, description);
         }
 
-        if (isBoolean(type)) {
+        if (isJsonBoolean(type)) {
             return removeNulls(BOOLEAN, description);
         }
 
-        if (isInteger(type)) {
+        if (isJsonInteger(type)) {
             return removeNulls(INTEGER, description);
         }
 
-        if (isNumber(type)) {
+        if (isJsonNumber(type)) {
             return removeNulls(NUMBER, description);
         }
 
@@ -194,36 +239,17 @@ public class ToolSpecifications {
         return items(JsonSchemaProperty.OBJECT);
     }
 
-    // TODO put constraints on min and max?
-    private static boolean isNumber(Class<?> type) {
-        return type == float.class || type == Float.class
-                || type == double.class || type == Double.class
-                || type == BigDecimal.class;
-    }
-
-    private static boolean isInteger(Class<?> type) {
-        return type == byte.class || type == Byte.class
-                || type == short.class || type == Short.class
-                || type == int.class || type == Integer.class
-                || type == long.class || type == Long.class
-                || type == BigInteger.class;
-    }
-
-    private static boolean isBoolean(Class<?> type) {
-        return type == boolean.class || type == Boolean.class;
-    }
-
     private static JsonSchemaProperty arrayTypeFrom(Class<?> clazz) {
         if (clazz == String.class) {
             return items(JsonSchemaProperty.STRING);
         }
-        if (isBoolean(clazz)) {
+        if (isJsonBoolean(clazz)) {
             return items(JsonSchemaProperty.BOOLEAN);
         }
-        if (isInteger(clazz)) {
+        if (isJsonInteger(clazz)) {
             return items(JsonSchemaProperty.INTEGER);
         }
-        if (isNumber(clazz)) {
+        if (isJsonNumber(clazz)) {
             return items(JsonSchemaProperty.NUMBER);
         }
         return objectItems(schema(clazz));

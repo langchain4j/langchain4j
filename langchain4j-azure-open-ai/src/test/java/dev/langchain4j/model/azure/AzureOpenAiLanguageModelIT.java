@@ -22,7 +22,7 @@ class AzureOpenAiLanguageModelIT {
     LanguageModel model = AzureOpenAiLanguageModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-35-turbo-instruct")
+            .deploymentName("gpt-35-turbo-instruct-0914")
             .tokenizer(new AzureOpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
             .temperature(0.0)
             .maxTokens(20)
@@ -59,7 +59,7 @@ class AzureOpenAiLanguageModelIT {
 
     @ParameterizedTest(name = "Testing model {0}")
     @EnumSource(value = AzureOpenAiLanguageModelName.class,
-            mode = EXCLUDE, names = {"TEXT_DAVINCI_002", "TEXT_DAVINCI_002_1"})
+            mode = EXCLUDE, names = {"GPT_3_5_TURBO_INSTRUCT", "TEXT_DAVINCI_002", "TEXT_DAVINCI_002_1"})
     void should_support_all_string_model_names(AzureOpenAiLanguageModelName modelName) {
 
         // given
@@ -75,7 +75,6 @@ class AzureOpenAiLanguageModelIT {
         // when
         String prompt = "Describe the capital of France in 100 words: ";
         Response<String> response = model.generate(prompt);
-        System.out.println(response.toString());
 
         // then
         assertThat(response.finishReason()).isEqualTo(LENGTH);

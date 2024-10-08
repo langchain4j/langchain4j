@@ -1,8 +1,11 @@
 ---
-sidebar_position: 15
+sidebar_position: 16
 ---
 
 # Qdrant
+
+https://qdrant.tech/
+
 
 ## Maven Dependency
 
@@ -10,7 +13,7 @@ sidebar_position: 15
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-qdrant</artifactId>
-    <version>0.31.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 

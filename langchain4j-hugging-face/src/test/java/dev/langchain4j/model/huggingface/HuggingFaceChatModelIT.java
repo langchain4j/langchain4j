@@ -2,6 +2,7 @@ package dev.langchain4j.model.huggingface;
 
 import dev.langchain4j.data.message.AiMessage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 
@@ -12,10 +13,11 @@ import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@EnabledIfEnvironmentVariable(named = "HF_API_KEY", matches = ".+")
 class HuggingFaceChatModelIT {
 
     @Test
-    public void should_send_messages_and_receive_response() {
+    void should_send_messages_and_receive_response() {
 
         HuggingFaceChatModel model = HuggingFaceChatModel.builder()
                 .accessToken(System.getenv("HF_API_KEY"))
@@ -32,12 +34,11 @@ class HuggingFaceChatModelIT {
         ).content();
 
         assertThat(aiMessage.text()).isNotBlank();
-        System.out.println(aiMessage.text());
     }
 
     @ParameterizedTest
     @NullAndEmptySource
-    public void should_fail_when_access_token_is_null_or_empty(String accessToken) {
+    void should_fail_when_access_token_is_null_or_empty(String accessToken) {
 
         assertThatThrownBy(() -> HuggingFaceChatModel.withAccessToken(accessToken))
                 .isExactlyInstanceOf(IllegalArgumentException.class)

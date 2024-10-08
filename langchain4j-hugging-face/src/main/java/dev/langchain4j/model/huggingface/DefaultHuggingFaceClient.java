@@ -1,7 +1,5 @@
 package dev.langchain4j.model.huggingface;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
@@ -9,16 +7,17 @@ import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class DefaultHuggingFaceClient implements HuggingFaceClient {
+
+    private static final String BASE_URL = "https://api-inference.huggingface.co/";
 
     private final HuggingFaceApi huggingFaceApi;
     private final String modelId;
@@ -33,14 +32,10 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                 .writeTimeout(timeout)
                 .build();
 
-        Gson gson = new GsonBuilder()
-                .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
-                .create();
-
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://api-inference.huggingface.co")
+                .baseUrl(BASE_URL)
                 .client(okHttpClient)
-                .addConverterFactory(GsonConverterFactory.create(gson))
+                .addConverterFactory(JacksonConverterFactory.create())
                 .build();
 
         this.huggingFaceApi = retrofit.create(HuggingFaceApi.class);
