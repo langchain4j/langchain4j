@@ -19,13 +19,15 @@ class OllamaDateDeserializer extends JsonDeserializer<OffsetDateTime> {
         String date = p.getText();
         if (date.contains(".")) {
             String[] parts = date.split("\\.");
+            String nanoseconds;
             if (parts[1].contains("+")) {
-                String nanoseconds = parts[1].substring(0, parts[1].indexOf('+'));
-                date = date.replaceAll(nanoseconds, "");
+                nanoseconds = parts[1].substring(0, parts[1].indexOf('+'));
+            } else if (parts[1].contains("-")) {
+                nanoseconds = parts[1].substring(0, parts[1].indexOf('-'));
             } else {
-                String nanoseconds = parts[1].substring(0, parts[1].indexOf('Z'));
-                date = date.replaceAll(nanoseconds, "");
+                nanoseconds = parts[1].substring(0, parts[1].indexOf('Z'));
             }
+            date = date.replaceAll(nanoseconds, "");
         }
         return OffsetDateTime.parse(date, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     }
