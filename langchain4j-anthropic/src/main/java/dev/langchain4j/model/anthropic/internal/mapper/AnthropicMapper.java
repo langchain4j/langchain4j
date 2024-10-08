@@ -6,24 +6,8 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.anthropic.internal.api.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -152,12 +136,12 @@ public class AnthropicMapper {
     public static AiMessage toAiMessage(List<AnthropicContent> contents) {
 
         String text = contents.stream()
-                .filter(content -> "text".equals(content.type))
+                .filter(content -> content.type == TEXT)
                 .map(content -> content.text)
                 .collect(joining("\n"));
 
         List<ToolExecutionRequest> toolExecutionRequests = contents.stream()
-                .filter(content -> "tool_use".equals(content.type))
+                .filter(content -> content.type == TOOL_USE)
                 .map(content -> {
                     try {
                         return ToolExecutionRequest.builder()
@@ -172,7 +156,7 @@ public class AnthropicMapper {
                 .collect(toList());
 
         if (isNotNullOrBlank(text) && !isNullOrEmpty(toolExecutionRequests)) {
-            return new AiMessage(text, toolExecutionRequests);
+            return AiMessage.from(text, toolExecutionRequests);
         } else if (!isNullOrEmpty(toolExecutionRequests)) {
             return AiMessage.from(toolExecutionRequests);
         } else {

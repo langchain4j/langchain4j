@@ -62,6 +62,7 @@ class JlamaModel {
                 registry.getModelCachePath().toString(),
                 owner,
                 modelName,
+                true,
                 Optional.empty(),
                 authToken,
                 Optional.empty());
@@ -69,6 +70,7 @@ class JlamaModel {
 
     public class Loader {
         private Path workingDirectory;
+        private DType workingQuantizationType = DType.I8;
         private DType quantizationType;
         private Integer threadCount;
         private AbstractModel.InferenceType inferenceType = AbstractModel.InferenceType.FULL_GENERATION;
@@ -77,8 +79,16 @@ class JlamaModel {
         }
 
         public Loader quantized() {
-            //For now only allow Q4 quantization at load time
+            //For now only allow Q4 quantization at runtime
             this.quantizationType = DType.Q4;
+            return this;
+        }
+
+        /**
+         * Set the working quantization type. This is the type that the model will use for working inference memory.
+         */
+        public Loader workingQuantizationType(DType workingQuantizationType) {
+            this.workingQuantizationType = workingQuantizationType;
             return this;
         }
 
@@ -103,10 +113,11 @@ class JlamaModel {
                     new File(registry.getModelCachePath().toFile(), modelName),
                     workingDirectory == null ? null : workingDirectory.toFile(),
                     DType.F32,
-                    DType.I8,
+                    workingQuantizationType,
                     Optional.ofNullable(quantizationType),
                     Optional.ofNullable(threadCount),
-                    Optional.empty());
+                    Optional.empty(),
+                    SafeTensorSupport::loadWeights);
         }
     }
 

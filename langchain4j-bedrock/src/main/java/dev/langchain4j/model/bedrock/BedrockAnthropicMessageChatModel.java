@@ -1,5 +1,14 @@
 package dev.langchain4j.model.bedrock;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.singletonList;
+import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.joining;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static java.util.Collections.emptyList;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -18,14 +27,9 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.bedrock.internal.Json;
-import dev.langchain4j.model.chat.request.json.JsonSchemaHelper;
+import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,14 +40,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-import static java.util.Objects.nonNull;
-import static java.util.stream.Collectors.joining;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.experimental.SuperBuilder;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 @Getter
 @SuperBuilder
@@ -120,15 +120,55 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
 
         final String body = Json.toJson(parameters);
 
-        InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(body), getMaxRetries());
-        final String response = invokeModelResponse.body().asUtf8String();
-        BedrockAnthropicMessageChatModelResponse result = Json.fromJson(response, getResponseClassType());
+        InvokeModelRequest invokeModelRequest = InvokeModelRequest
+                .builder()
+                .modelId(getModelId())
+                .body(SdkBytes.fromString(body, Charset.defaultCharset()))
+                .build();
 
-        return new Response<>(
-                aiMessageFrom(result),
-                result.getTokenUsage(),
-                result.getFinishReason()
-        );
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, messages, toolSpecifications);
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+
+        try {
+            InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
+            final String response = invokeModelResponse.body().asUtf8String();
+            BedrockAnthropicMessageChatModelResponse result = Json.fromJson(response, getResponseClassType());
+
+            Response<AiMessage> responseMessage = Response.from(
+                    aiMessageFrom(result),
+                    result.getTokenUsage(),
+                    result.getFinishReason()
+            );
+
+            ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                    result.getId(),
+                    result.getModel(),
+                    responseMessage
+            );
+            ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                    modelListenerResponse,
+                    modelListenerRequest,
+                    attributes
+            );
+
+            listeners.forEach(listener -> {
+                try {
+                    listener.onResponse(responseContext);
+                } catch (Exception e) {
+                    log.warn("Exception while calling model listener", e);
+                }
+            });
+
+            return responseMessage;
+        } catch (RuntimeException e) {
+            listenerErrorResponse(
+                    e,
+                    modelListenerRequest,
+                    attributes
+            );
+            throw e;
+        }
     }
 
     private Object toAnthropicToolChoice(ToolSpecification toolChoiceSpecification) {

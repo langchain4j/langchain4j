@@ -1,16 +1,27 @@
 package dev.langchain4j.internal;
 
-import com.google.gson.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
 import com.google.gson.stream.JsonWriter;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Map;
 
-import static java.time.format.DateTimeFormatter.*;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 
 class GsonJsonCodec implements Json.JsonCodec {
 
@@ -87,19 +98,13 @@ class GsonJsonCodec implements Json.JsonCodec {
         return GSON.toJson(o);
     }
 
-    /**
-     * Reads a JSON string and returns an object of the specified type.
-     *
-     * <p>As a special case, if the type is {@link Map}, the returned object is
-     * parsed as a {@code Map<String, String>}.
-     *
-     * @param json JSON string to be parsed.
-     * @param type Type of the object to be returned.
-     * @return the object represented by the JSON string.
-     * @param <T> Type of the object to be returned.
-     */
     @Override
     public <T> T fromJson(String json, Class<T> type) {
+        return GSON.fromJson(json, type);
+    }
+
+    @Override
+    public <T> T fromJson(String json, Type type) {
         return GSON.fromJson(json, type);
     }
 

@@ -134,6 +134,7 @@ public class InternalOpenAiHelper {
                     .collect(toList());
 
             return AssistantMessage.builder()
+                    .content(aiMessage.text())
                     .toolCalls(toolCalls)
                     .build();
         }
@@ -486,22 +487,6 @@ public class InternalOpenAiHelper {
             default:
                 return null;
         }
-    }
-
-    static boolean isOpenAiModel(String modelName) {
-        if (modelName == null) {
-            return false;
-        }
-        for (OpenAiChatModelName openAiChatModelName : OpenAiChatModelName.values()) {
-            if (modelName.contains(openAiChatModelName.toString())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    static Response<AiMessage> removeTokenUsage(Response<AiMessage> response) {
-        return Response.from(response.content(), null, response.finishReason());
     }
 
     static ChatModelRequest createModelListenerRequest(ChatCompletionRequest request,

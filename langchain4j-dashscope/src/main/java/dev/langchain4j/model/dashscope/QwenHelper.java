@@ -68,6 +68,9 @@ import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.data.message.ChatMessageType.*;
+import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
 @Slf4j
@@ -106,7 +109,7 @@ class QwenHelper {
                         .map(TextContent::text)
                         .collect(Collectors.joining("\n"));
             case AI:
-                return ((AiMessage) message).hasToolExecutionRequests() ? "" : ((AiMessage) message).text();
+                return ((AiMessage) message).text();
             case SYSTEM:
                 return ((SystemMessage) message).text();
             case TOOL_EXECUTION_RESULT:
@@ -396,8 +399,14 @@ class QwenHelper {
     }
 
     static AiMessage aiMessageFrom(GenerationResult result) {
-        return isFunctionToolCalls(result) ?
-                new AiMessage(functionToolCallsFrom(result)) : new AiMessage(answerFrom(result));
+        if (isFunctionToolCalls(result)) {
+            String text = answerFrom(result);
+            return isNullOrBlank(text) ?
+                    new AiMessage(functionToolCallsFrom(result)) :
+                    new AiMessage(text, functionToolCallsFrom(result));
+        } else {
+            return new AiMessage(answerFrom(result));
+        }
     }
 
     private static List<ToolExecutionRequest> functionToolCallsFrom(GenerationResult result) {

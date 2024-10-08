@@ -101,7 +101,7 @@ class BedrockChatModelIT {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
                 .builder()
-                .temperature(0.50f)
+                .temperature(0.00f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
@@ -161,7 +161,7 @@ class BedrockChatModelIT {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
                 .builder()
-                .temperature(0.50f)
+                .temperature(0.00f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
@@ -270,7 +270,7 @@ class BedrockChatModelIT {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
                 .builder()
-                .temperature(0.50f)
+                .temperature(0.00f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
@@ -345,7 +345,7 @@ class BedrockChatModelIT {
 
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
                 .builder()
-                .temperature(0.50f)
+                .temperature(0.0f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
@@ -404,7 +404,7 @@ class BedrockChatModelIT {
     void testToolChoiceFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
                 .builder()
-                .temperature(0f)
+                .temperature(0.0f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
@@ -469,7 +469,7 @@ class BedrockChatModelIT {
     void testFunctionCallingWithBedrockAnthropicChatModelWithoutToolsSupport() {
         BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
                 .builder()
-                .temperature(0.50f)
+                .temperature(0.00f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
                 .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue())

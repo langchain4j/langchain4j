@@ -23,19 +23,28 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.service.AiServicesIT.Ingredient.*;
-import static dev.langchain4j.service.AiServicesIT.IssueCategory.*;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.SALT;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.COMFORT_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.MAINTENANCE_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.OVERALL_EXPERIENCE_ISSUE;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.SERVICE_ISSUE;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.data.MapEntry.entry;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 public class AiServicesIT {
@@ -323,6 +332,29 @@ public class AiServicesIT {
                 "CONNECTIVITY_ISSUE - The feedback mentions issues with internet connectivity, such as unreliable Wi-Fi\n" +
                 "CHECK_IN_ISSUE - The feedback mentions issues with the check-in process, such as it being tedious and time-consuming\n" +
                 "OVERALL_EXPERIENCE_ISSUE - The feedback mentions a general dissatisfaction with the overall hotel experience due to multiple issues")));
+        verify(chatLanguageModel).supportedCapabilities();
+    }
+
+    interface MapExtractor {
+
+        @UserMessage("Return a JSON map with the age of each person in the following text: {{it}}")
+        Map<String, Integer> extractAges(String text);
+    }
+
+    @Test
+    void should_extract_map() {
+
+        MapExtractor mapExtractor = AiServices.create(MapExtractor.class, chatLanguageModel);
+
+        String text = "Klaus is 42 and Francine is 47";
+
+        Map<String, Integer> ages = mapExtractor.extractAges(text);
+
+        assertThat(ages).containsExactly(entry("Klaus", 42), entry("Francine", 47));
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Return a JSON map with the age of each person in the following text: " + text
+        )));
         verify(chatLanguageModel).supportedCapabilities();
     }
 
