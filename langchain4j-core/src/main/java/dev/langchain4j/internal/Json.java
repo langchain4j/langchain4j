@@ -32,6 +32,16 @@ public class Json {
         String toJson(Object o);
 
         /**
+         * Convert the given JSON string to an object of the given class.
+         *
+         * @param json the JSON string.
+         * @param type the class of the object.
+         * @param <T>  the type of the object.
+         * @return the object.
+         */
+        <T> T fromJson(String json, Class<T> type);
+
+        /**
          * Convert the given JSON string to an object of the given type.
          *
          * @param json the JSON string.
@@ -39,7 +49,7 @@ public class Json {
          * @param <T>  the type of the object.
          * @return the object.
          */
-        <T> T fromJson(String json, Class<T> type);
+        <T> T fromJson(String json, Type type);
 
         /**
          * Convert the given JSON string to the object of the given type. Use this instead of {@link Json.JsonCodec#fromJson(String, Class)} in cases where generics are involved.
@@ -82,6 +92,20 @@ public class Json {
     }
 
     /**
+     * Convert the given JSON string to an object of the given class.
+     *
+     * @param json the JSON string.
+     * @param type the class of the object.
+     * @param <T>  the type of the object.
+     * @return the object.
+     * @deprecated use Jackson's ObjectMapper
+     */
+    @Deprecated
+    public static <T> T fromJson(String json, Class<T> type) {
+        return CODEC.fromJson(json, type);
+    }
+
+    /**
      * Convert the given JSON string to an object of the given type.
      *
      * @param json the JSON string.
@@ -91,7 +115,7 @@ public class Json {
      * @deprecated use Jackson's ObjectMapper
      */
     @Deprecated
-    public static <T> T fromJson(String json, Class<T> type) {
+    public static <T> T fromJson(String json, Type type) {
         return CODEC.fromJson(json, type);
     }
 
