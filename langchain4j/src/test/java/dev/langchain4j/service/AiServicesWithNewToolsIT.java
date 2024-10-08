@@ -279,7 +279,7 @@ public abstract class AiServicesWithNewToolsIT {
         void process(Person person) {
         }
 
-        static final String REF = "fa76e701-6d73-32c4-a8a5-e2777523b0ff";
+        static final String REF = "34cc18bf-ef8b-32c3-b2ea-e75be08db2e5";
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
                 .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
