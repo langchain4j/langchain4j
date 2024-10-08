@@ -203,12 +203,12 @@ class InternalGitHubModelHelper {
     private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
-        functionDefinition.setParameters(toAzureAiParameters(toolSpecification.parameters()));
+        functionDefinition.setParameters(toAzureAiParameters(toolSpecification.toolParameters()));
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
     public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toAzureAiParameters(toolThatMustBeExecuted.parameters()).toString());
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toAzureAiParameters(toolThatMustBeExecuted.toolParameters()).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
         return BinaryData.fromObject(toolToCall);
     }

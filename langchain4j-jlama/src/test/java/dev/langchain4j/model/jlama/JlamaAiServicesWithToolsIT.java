@@ -5,8 +5,9 @@ import dev.langchain4j.service.AiServicesWithNewToolsIT;
 import org.junit.jupiter.api.BeforeAll;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.List;
+
+import static java.util.Collections.singletonList;
 
 class JlamaAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
 
@@ -20,7 +21,7 @@ class JlamaAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return Collections.singletonList(
+        return singletonList(
                 JlamaChatModel.builder()
                         .modelName("tjake/Meta-Llama-3.1-8B-Instruct-Jlama-Q4")
                         .modelCachePath(tmpDir.toPath())

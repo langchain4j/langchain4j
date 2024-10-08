@@ -13,6 +13,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
@@ -28,15 +29,9 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
+import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -164,10 +159,13 @@ class StreamingAiServicesWithToolsIT {
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("currentTemperature")
-                .description("")
-                // TODO
-                .addParameter("arg0", STRING)
-                .addParameter("arg1", STRING, from("enum", asList("CELSIUS", "fahrenheit", "Kelvin")))
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("arg0", JSON_STRING_SCHEMA)
+                        .addProperty("arg1", JsonEnumSchema.builder()
+                                .enumValues("CELSIUS", "fahrenheit", "Kelvin")
+                                .build())
+                        .required("arg0", "arg1")
+                        .build())
                 .build();
 
         @Tool
