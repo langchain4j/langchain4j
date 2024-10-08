@@ -104,16 +104,18 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         for (int i = 0; i < parameters.length; i++) {
 
-            if (parameters[i].isAnnotationPresent(ToolMemoryId.class)) {
+            Parameter parameter = parameters[i];
+
+            if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
                 arguments[i] = memoryId;
                 continue;
             }
 
-            String parameterName = parameters[i].getName();
+            String parameterName = parameter.getName();
             if (argumentsMap.containsKey(parameterName)) {
                 Object argument = argumentsMap.get(parameterName);
-                Class<?> parameterClass = parameters[i].getType();
-                Type parameterType = parameters[i].getParameterizedType();
+                Class<?> parameterClass = parameter.getType();
+                Type parameterType = parameter.getParameterizedType();
 
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
             }
@@ -126,8 +128,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             Object argument,
             String parameterName,
             Class<?> parameterClass,
-            Type parameterType
-    ) {
+            Type parameterType) {
         if (parameterClass == String.class) {
             return argument.toString();
         }
