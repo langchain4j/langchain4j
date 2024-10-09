@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.toMap;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 

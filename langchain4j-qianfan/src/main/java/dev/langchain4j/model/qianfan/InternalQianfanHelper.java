@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.toMap;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 

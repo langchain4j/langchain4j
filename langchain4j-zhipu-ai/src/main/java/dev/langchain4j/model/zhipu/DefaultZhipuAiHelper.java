@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.toMap;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.*;
 
 class DefaultZhipuAiHelper {

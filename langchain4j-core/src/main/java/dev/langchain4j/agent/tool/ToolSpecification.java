@@ -12,7 +12,7 @@ import static java.util.Arrays.asList;
 /**
  * Describes a tool that language model can execute.
  * <p>
- * Can be created automatically from class or method using {@link ToolSpecifications}.
+ * Can be generated automatically from methods annotated with {@link Tool} using {@link ToolSpecifications} helper.
  */
 public class ToolSpecification {
 
@@ -30,6 +30,10 @@ public class ToolSpecification {
     private ToolSpecification(Builder builder) {
         this.name = builder.name;
         this.description = builder.description;
+        if (builder.parameters != null && builder.toolParameters != null) {
+            throw new IllegalArgumentException("Both (new) JsonObjectSchema and (old) ToolParameters " +
+                    "are used to specify tool parameters. Please use only (new) JsonObjectSchema.");
+        }
         this.parameters = builder.parameters;
         this.toolParameters = builder.toolParameters;
     }
@@ -52,7 +56,8 @@ public class ToolSpecification {
         return description;
     }
 
-    public JsonObjectSchema parameters() { // TODO
+    // TODO check backwards compatible?
+    public JsonObjectSchema parameters() { // TODO check all places that call this method, it can return null
         return parameters;
     }
 
@@ -154,7 +159,7 @@ public class ToolSpecification {
          * @param parameters the {@code parameters}
          * @return {@code this}
          */
-        public Builder parameters(JsonObjectSchema parameters) {
+        public Builder parameters(JsonObjectSchema parameters) { // TODO or JsonSchemaElement?
             this.parameters = parameters;
             return this;
         }
@@ -166,8 +171,9 @@ public class ToolSpecification {
          *
          * @param parameters the {@code parameters}
          * @return {@code this}
+         * @deprecated please use {@link #parameters(JsonObjectSchema)} instead
          */
-        @Deprecated // TODO what to use instead?
+        @Deprecated
         public Builder parameters(ToolParameters parameters) {
             this.toolParameters = parameters;
             return this;

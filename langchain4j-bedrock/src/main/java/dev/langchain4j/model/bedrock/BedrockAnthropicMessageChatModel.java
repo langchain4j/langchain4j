@@ -24,7 +24,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.request.json.JsonSchemaHelper;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.Getter;
@@ -258,7 +258,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     private Object toAnthropicToolParameters(ToolSpecification toolSpecification) {
 
         if (toolSpecification.parameters() != null) {
-            return JsonSchemaHelper.toMap(toolSpecification.parameters());
+            return JsonSchemaElementHelper.toMap(toolSpecification.parameters());
         } else if (toolSpecification.toolParameters() != null) {
             ToolParameters toolParameters = toolSpecification.toolParameters();
             ObjectNode propertiesNode = new ObjectMapper().createObjectNode();

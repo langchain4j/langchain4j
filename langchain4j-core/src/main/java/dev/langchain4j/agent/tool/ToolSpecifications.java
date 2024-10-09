@@ -2,7 +2,7 @@ package dev.langchain4j.agent.tool;
 
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.chat.request.json.JsonSchemaHelper;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -15,7 +15,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaHelper.jsonSchemaElementFrom;
 import static java.lang.String.format;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
@@ -78,6 +77,7 @@ public class ToolSpecifications {
      * @return the {@link ToolSpecification}.
      */
     public static ToolSpecification toolSpecificationFrom(Method method) {
+
         Tool annotation = method.getAnnotation(Tool.class);
 
         String name = isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
@@ -87,42 +87,7 @@ public class ToolSpecifications {
             description = null;
         }
 
-        Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
-        List<String> required = new ArrayList<>();
-
-        Map<Class<?>, JsonSchemaHelper.VisitedClassMetadata> visited = new LinkedHashMap<>();
-
-        for (Parameter parameter : method.getParameters()) {
-            if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
-                continue;
-            }
-
-            boolean isRequired = Optional.ofNullable(parameter.getAnnotation(P.class))
-                    .map(P::required)
-                    .orElse(true);
-
-            properties.put(parameter.getName(), toJsonSchemaElement(parameter, visited));
-            if (isRequired) {
-                required.add(parameter.getName());
-            }
-        }
-
-        Map<String, JsonSchemaElement> defs = new LinkedHashMap<>();
-        visited.forEach((clazz, visitedClassMetadata) -> {
-            if (visitedClassMetadata.recursion) {
-                defs.put(visitedClassMetadata.ref, visitedClassMetadata.jsonSchemaElement);
-            }
-        });
-
-        JsonObjectSchema parameters = JsonObjectSchema.builder()
-                .properties(properties)
-                .required(required)
-                .defs(defs.isEmpty() ? null : defs) // TODO
-                .build();
-
-        if (properties.isEmpty()) {
-            parameters = null; // TODO
-        }
+        JsonObjectSchema parameters = parametersFrom(method.getParameters());
 
         return ToolSpecification.builder()
                 .name(name)
@@ -131,10 +96,55 @@ public class ToolSpecifications {
                 .build();
     }
 
-    private static JsonSchemaElement toJsonSchemaElement(Parameter parameter,
-                                                         Map<Class<?>, JsonSchemaHelper.VisitedClassMetadata> visited) {
+    private static JsonObjectSchema parametersFrom(Parameter[] parameters) {
+
+        Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
+        List<String> required = new ArrayList<>();
+
+        Map<Class<?>, JsonSchemaElementHelper.VisitedClassMetadata> visited = new LinkedHashMap<>();
+
+        for (Parameter parameter : parameters) {
+            if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
+                continue;
+            }
+
+            boolean isRequired = Optional.ofNullable(parameter.getAnnotation(P.class))
+                    .map(P::required)
+                    .orElse(true);
+
+            properties.put(parameter.getName(), jsonSchemaElementFrom(parameter, visited));
+            if (isRequired) {
+                required.add(parameter.getName());
+            }
+        }
+
+        Map<String, JsonSchemaElement> defs = new LinkedHashMap<>();
+        visited.forEach((clazz, visitedClassMetadata) -> {
+            if (visitedClassMetadata.recursionDetected) {
+                defs.put(visitedClassMetadata.reference, visitedClassMetadata.jsonSchemaElement);
+            }
+        });
+
+        if (properties.isEmpty()) {
+            return null;
+        }
+
+        return JsonObjectSchema.builder()
+                .properties(properties)
+                .required(required)
+                .defs(defs.isEmpty() ? null : defs)
+                .build();
+    }
+
+    private static JsonSchemaElement jsonSchemaElementFrom(Parameter parameter,
+                                                           Map<Class<?>, JsonSchemaElementHelper.VisitedClassMetadata> visited) {
         P annotation = parameter.getAnnotation(P.class);
         String description = annotation == null ? null : annotation.value();
-        return jsonSchemaElementFrom(parameter.getType(), parameter.getParameterizedType(), description, visited);
+        return JsonSchemaElementHelper.jsonSchemaElementFrom(
+                parameter.getType(),
+                parameter.getParameterizedType(),
+                description,
+                visited
+        );
     }
 }

@@ -6,11 +6,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
 import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
@@ -19,7 +18,7 @@ import static dev.langchain4j.internal.TypeUtils.isJsonString;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 
-public class JsonSchemaHelper { // TODO name, place, vs JsonSchemas
+public class JsonSchemaElementHelper {
 
     public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz,
                                                           Type type,
@@ -63,31 +62,34 @@ public class JsonSchemaHelper { // TODO name, place, vs JsonSchemas
                     .build();
         }
 
-        if (clazz.equals(List.class) || clazz.equals(Set.class)) { // TODO Collection?
+        if (Collection.class.isAssignableFrom(clazz)) {
             return JsonArraySchema.builder()
                     .items(jsonSchemaElementFrom(getActualType(type), null, null, visited))
                     .description(fieldDescription)
                     .build();
         }
 
-        return jsonObjectOrRefSchemaFrom(clazz, fieldDescription, visited, false);
+        return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, visited, false); // TODO why false?
     }
 
-    public static JsonSchemaElement jsonObjectOrRefSchemaFrom(Class<?> type,
-                                                              String description,
-                                                              Map<Class<?>, VisitedClassMetadata> visited,
-                                                              boolean setDefs) {
+    public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(Class<?> type,
+                                                                    String description,
+                                                                    Map<Class<?>, VisitedClassMetadata> visited,
+                                                                    boolean setDefs) { // TODO name
         if (visited.containsKey(type) && isCustomClass(type)) {
             VisitedClassMetadata visitedClassMetadata = visited.get(type);
             JsonSchemaElement jsonSchemaElement = visitedClassMetadata.jsonSchemaElement;
-            if (jsonSchemaElement instanceof JsonRefSchema) {
-                visitedClassMetadata.recursion = true;
+            if (jsonSchemaElement instanceof JsonReferenceSchema) {
+                visitedClassMetadata.recursionDetected = true;
             }
             return jsonSchemaElement;
         }
 
-        String ref = generateUUIDFrom(type.getName()); // TODO shorter ref?
-        visited.put(type, new VisitedClassMetadata(JsonRefSchema.withRef("#/$defs/" + ref), ref, false));
+        String reference = generateUUIDFrom(type.getName()); // TODO shorter reference?
+        JsonReferenceSchema jsonReferenceSchema = JsonReferenceSchema.builder()
+                .reference("#/$defs/" + reference) // TODO should prefix be here?
+                .build();
+        visited.put(type, new VisitedClassMetadata(jsonReferenceSchema, reference, false));
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         for (Field field : type.getDeclaredFields()) {
@@ -115,8 +117,8 @@ public class JsonSchemaHelper { // TODO name, place, vs JsonSchemas
         if (setDefs) {
             Map<String, JsonSchemaElement> defs = new LinkedHashMap<>();
             visited.forEach((clazz, visitedClassMetadata) -> {
-                if (visitedClassMetadata.recursion) {
-                    defs.put(visitedClassMetadata.ref, visitedClassMetadata.jsonSchemaElement);
+                if (visitedClassMetadata.recursionDetected) {
+                    defs.put(visitedClassMetadata.reference, visitedClassMetadata.jsonSchemaElement);
                 }
             });
             builder.defs(defs.isEmpty() ? null : defs); // TODO
@@ -245,13 +247,13 @@ public class JsonSchemaHelper { // TODO name, place, vs JsonSchemas
     public static class VisitedClassMetadata {
 
         public JsonSchemaElement jsonSchemaElement;
-        public String ref;
-        public boolean recursion;
+        public String reference;
+        public boolean recursionDetected;
 
-        public VisitedClassMetadata(JsonSchemaElement jsonSchemaElement, String ref, boolean recursion) {
+        public VisitedClassMetadata(JsonSchemaElement jsonSchemaElement, String reference, boolean recursionDetected) {
             this.jsonSchemaElement = jsonSchemaElement;
-            this.ref = ref;
-            this.recursion = recursion;
+            this.reference = reference;
+            this.recursionDetected = recursionDetected;
         }
     }
 }

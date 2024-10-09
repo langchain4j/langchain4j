@@ -8,7 +8,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonRefSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.Response;
 import lombok.AllArgsConstructor;
@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.json.JsonBooleanSchema.JSON_BOOLEAN_SCHEMA;
 import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
 import static dev.langchain4j.model.chat.request.json.JsonNumberSchema.JSON_NUMBER_SCHEMA;
@@ -211,15 +212,11 @@ public abstract class AiServicesWithNewToolsIT {
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
                 .properties(singletonMap("arg0", JsonObjectSchema.builder()
-                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                            put("name", JSON_STRING_SCHEMA);
-                            put("address", JsonObjectSchema.builder()
-                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                        put("city", JSON_STRING_SCHEMA);
-                                    }})
-                                    .required("city")
-                                    .build());
-                        }})
+                        .addProperty("name", JSON_STRING_SCHEMA)
+                        .addProperty("address", JsonObjectSchema.builder()
+                                .addProperty("city", JSON_STRING_SCHEMA)
+                                .required("city")
+                                .build())
                         .required("name", "address")
                         .build()))
                 .required("arg0")
@@ -279,13 +276,15 @@ public abstract class AiServicesWithNewToolsIT {
         void process(Person person) {
         }
 
-        static final String REF = "34cc18bf-ef8b-32c3-b2ea-e75be08db2e5";
+        static final String REFERENCE = generateUUIDFrom(ToolWithRecursion.Person.class.getName());
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
                 .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                     put("name", JSON_STRING_SCHEMA);
                     put("children", JsonArraySchema.builder()
-                            .items(JsonRefSchema.withRef("#/$defs/" + REF))
+                            .items(JsonReferenceSchema.builder()
+                                    .reference("#/$defs/" + REFERENCE)
+                                    .build())
                             .build());
                 }})
                 .required("name", "children")
@@ -294,7 +293,7 @@ public abstract class AiServicesWithNewToolsIT {
         static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
                 .properties(singletonMap("arg0", PERSON_SCHEMA))
                 .required("arg0")
-                .defs(singletonMap(REF, PERSON_SCHEMA))
+                .defs(singletonMap(REFERENCE, PERSON_SCHEMA))
                 .build();
     }
 

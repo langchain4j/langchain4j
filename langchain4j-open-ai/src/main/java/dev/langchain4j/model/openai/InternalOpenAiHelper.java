@@ -35,7 +35,7 @@ import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonRefSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -351,10 +351,10 @@ public class InternalOpenAiHelper {
             return dev.ai4j.openai4j.chat.JsonBooleanSchema.builder()
                     .description(jsonBooleanSchema.description())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonRefSchema) {
-            JsonRefSchema jsonRefSchema = (JsonRefSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonReferenceSchema) {
+            JsonReferenceSchema jsonReferenceSchema = (JsonReferenceSchema) jsonSchemaElement;
             return dev.ai4j.openai4j.chat.JsonRefSchema.builder()
-                    .ref(jsonRefSchema.ref())
+                    .ref(jsonReferenceSchema.reference())
                     .build();
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());

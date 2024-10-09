@@ -1,5 +1,7 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,8 +12,10 @@ import static dev.langchain4j.internal.Utils.quoted;
 
 /**
  * Represents the parameters of a tool.
+ *
+ * @deprecated please use the new {@link JsonObjectSchema} API instead to define the schema for tool parameters
  */
-@Deprecated // TODO what to use instead?
+@Deprecated
 public class ToolParameters {
 
     private final String type;
@@ -97,8 +101,9 @@ public class ToolParameters {
      * ToolParameters builder static inner class.
      *
      * @return a {@link Builder}.
+     * @deprecated please use {@link JsonObjectSchema#builder()} instead
      */
-    @Deprecated // TODO what to use instead?
+    @Deprecated
     public static Builder builder() {
         return new Builder();
     }
@@ -122,8 +127,9 @@ public class ToolParameters {
          *
          * @param type the {@code type}
          * @return the {@code Builder}.
+         * @deprecated please use {@link JsonObjectSchema#builder()} instead
          */
-        @Deprecated // TODO what to use instead?
+        @Deprecated
         public Builder type(String type) {
             this.type = type;
             return this;
@@ -134,8 +140,9 @@ public class ToolParameters {
          *
          * @param properties the {@code properties}
          * @return the {@code Builder}.
+         * @deprecated please use {@link JsonObjectSchema.Builder#properties(Map)} instead
          */
-        @Deprecated // TODO what to use instead?
+        @Deprecated
         public Builder properties(Map<String, Map<String, Object>> properties) {
             this.properties = properties;
             return this;
@@ -146,8 +153,9 @@ public class ToolParameters {
          *
          * @param required the {@code required}
          * @return the {@code Builder}.
+         * @deprecated please use {@link JsonObjectSchema.Builder#required(List)} instead
          */
-        @Deprecated // TODO what to use instead?
+        @Deprecated
         public Builder required(List<String> required) {
             this.required = required;
             return this;
@@ -157,8 +165,9 @@ public class ToolParameters {
          * Returns a {@code ToolParameters} built from the parameters previously set.
          *
          * @return a {@code ToolParameters} built with parameters of this {@code ToolParameters.Builder}
+         * @deprecated please use {@link JsonObjectSchema.Builder#build()} instead
          */
-        @Deprecated // TODO what to use instead?
+        @Deprecated
         public ToolParameters build() {
             return new ToolParameters(this);
         }

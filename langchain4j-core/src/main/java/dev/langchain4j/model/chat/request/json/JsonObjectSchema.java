@@ -17,7 +17,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
 
     private final String description;
     private final Map<String, JsonSchemaElement> properties;
-    private final List<String> required; // TODO Collection?
+    private final List<String> required;
     private final Boolean additionalProperties;
     private final Map<String, JsonSchemaElement> defs; // TODO name
 
@@ -26,7 +26,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
         this.properties = copyIfNotNull(builder.properties);
         this.required = copyIfNotNull(builder.required);
         this.additionalProperties = builder.additionalProperties;
-        this.defs = builder.defs;
+        this.defs = copyIfNotNull(builder.defs);
     }
 
     public String description() {
@@ -45,7 +45,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
         return additionalProperties;
     }
 
-    public Map<String, JsonSchemaElement> defs() {
+    public Map<String, JsonSchemaElement> defs() { // TODO name
         return defs;
     }
 
@@ -93,6 +93,12 @@ public class JsonObjectSchema implements JsonSchemaElement {
         }
 
         // TODO name
+
+        /**
+         * TODO
+         * @param defs
+         * @return
+         */
         public Builder defs(Map<String, JsonSchemaElement> defs) {
             this.defs = defs;
             return this;

@@ -6,7 +6,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonRefSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import org.junit.jupiter.api.Test;
@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.chat.request.json.JsonBooleanSchema.JSON_BOOLEAN_SCHEMA;
 import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
@@ -933,7 +934,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.children.get(1).name).isEqualTo("Hayley");
             assertThat(person.children.get(1).children).isNullOrEmpty();
 
-            String ref = "14c0db86-dad7-3ce8-8939-8f06e6e2aae0";
+            String reference = generateUUIDFrom(PersonExtractor15.Person.class.getName());
 
             verify(model).chat(ChatRequest.builder()
                     .messages(singletonList(userMessage(text)))
@@ -945,15 +946,19 @@ public abstract class AiServicesWithJsonSchemaIT {
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                                 put("name", JSON_STRING_SCHEMA);
                                                 put("children", JsonArraySchema.builder()
-                                                        .items(JsonRefSchema.withRef("#/$defs/" + ref))
+                                                        .items(JsonReferenceSchema.builder()
+                                                                .reference("#/$defs/" + reference)
+                                                                .build())
                                                         .build());
                                             }})
                                             .required("name", "children")
-                                            .defs(singletonMap(ref, JsonObjectSchema.builder()
+                                            .defs(singletonMap(reference, JsonObjectSchema.builder()
                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                                         put("name", JSON_STRING_SCHEMA);
                                                         put("children", JsonArraySchema.builder()
-                                                                .items(JsonRefSchema.withRef("#/$defs/" + ref))
+                                                                .items(JsonReferenceSchema.builder()
+                                                                        .reference("#/$defs/" + reference)
+                                                                        .build())
                                                                 .build());
                                                     }})
                                                     .required("name", "children")
