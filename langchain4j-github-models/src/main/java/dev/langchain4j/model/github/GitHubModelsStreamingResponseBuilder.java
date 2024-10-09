@@ -1,13 +1,15 @@
 package dev.langchain4j.model.github;
 
-import com.azure.ai.inference.models.*;
+import com.azure.ai.inference.models.CompletionsFinishReason;
+import com.azure.ai.inference.models.StreamingChatChoiceUpdate;
+import com.azure.ai.inference.models.StreamingChatCompletionsUpdate;
+import com.azure.ai.inference.models.StreamingChatResponseMessageUpdate;
+import com.azure.ai.inference.models.StreamingChatResponseToolCallUpdate;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -99,11 +101,16 @@ class GitHubModelsStreamingResponseBuilder {
         FinishReason finishReason = finishReasonFrom(azureFinishReason);
 
         if (toolExecutionRequestBuilderHashMap.isEmpty()) {
-            return Response.from(
-                    AiMessage.from(content),
-                    tokenUsage,
-                    finishReason
-            );
+
+            if (isNullOrBlank(content)) {
+                return null;
+            } else {
+                return Response.from(
+                        AiMessage.from(content),
+                        tokenUsage,
+                        finishReason
+                );
+            }
         } else {
             List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestBuilderHashMap.values().stream()
                     .map(it -> ToolExecutionRequest.builder()
