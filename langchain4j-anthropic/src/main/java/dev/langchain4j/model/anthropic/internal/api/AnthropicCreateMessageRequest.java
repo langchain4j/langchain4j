@@ -32,4 +32,5 @@ public class AnthropicCreateMessageRequest {
     public Double topP;
     public Integer topK;
     public List<AnthropicTool> tools;
+    public AnthropicToolChoice toolChoice;
 }

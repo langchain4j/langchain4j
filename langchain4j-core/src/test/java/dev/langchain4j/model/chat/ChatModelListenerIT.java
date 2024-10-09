@@ -193,14 +193,17 @@ public abstract class ChatModelListenerIT {
         String userMessage = "this message will fail";
 
         // when
+        Throwable thrown = null;
         try {
             model.generate(userMessage);
         } catch (Exception e) {
-            // ignore
+            thrown = e;
         }
 
         // then
-        Throwable throwable = errorReference.get();
-        assertThat(throwable).isExactlyInstanceOf(expectedExceptionClass());
+        Throwable error = errorReference.get();
+        assertThat(error).isExactlyInstanceOf(expectedExceptionClass());
+
+        assertThat(thrown == error || thrown.getCause() == error).isTrue(); // TODO fix discrepancy, do not wrap
     }
 }

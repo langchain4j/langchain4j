@@ -51,6 +51,10 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
+    /**
+     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
+     */
+    @Deprecated
     public static JinaEmbeddingModel withApiKey(String apiKey) {
         return JinaEmbeddingModel.builder().apiKey(apiKey).build();
     }
