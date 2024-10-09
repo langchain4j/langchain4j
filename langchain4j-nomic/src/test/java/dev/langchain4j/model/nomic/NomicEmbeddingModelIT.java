@@ -43,6 +43,7 @@ class NomicEmbeddingModelIT {
                 .apiKey(System.getenv("NOMIC_API_KEY"))
                 .modelName("nomic-embed-text-v1")
                 .taskType("clustering")
+                .maxSegmentsPerBatch(1)
                 .timeout(ofSeconds(10))
                 .maxRetries(2)
                 .logRequests(true)

@@ -133,6 +133,7 @@ public class InternalOpenAiHelper {
                     .collect(toList());
 
             return AssistantMessage.builder()
+                    .content(aiMessage.text())
                     .toolCalls(toolCalls)
                     .build();
         }
