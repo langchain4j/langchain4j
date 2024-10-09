@@ -16,6 +16,10 @@ public abstract class MistralAiClient {
 
     public abstract MistralAiModelResponse listModels();
 
+    public abstract MistralAiChatCompletionResponse fimCompletion(MistralAiFimCompletionRequest request);
+
+    public abstract void streamingFimCompletion(MistralAiFimCompletionRequest request, StreamingResponseHandler<String> handler);
+
     @SuppressWarnings("rawtypes")
     public static MistralAiClient.Builder builder() {
         for (MistralAiClientBuilderFactory factory : ServiceHelper.loadFactories(MistralAiClientBuilderFactory.class)) {
