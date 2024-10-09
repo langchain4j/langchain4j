@@ -9,8 +9,6 @@ import static dev.langchain4j.internal.Utils.quoted;
 @Experimental
 public class JsonStringSchema implements JsonSchemaElement {
 
-    public static final JsonStringSchema JSON_STRING_SCHEMA = JsonStringSchema.builder().build();
-
     private final String description;
 
     public JsonStringSchema(Builder builder) {
@@ -57,10 +55,5 @@ public class JsonStringSchema implements JsonSchemaElement {
         return "JsonStringSchema {" +
                 "description = " + quoted(description) +
                 " }";
-    }
-
-    // TODO
-    public static JsonStringSchema withDescription(String description) {
-        return builder().description(description).build();
     }
 }

@@ -13,8 +13,8 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
@@ -72,7 +71,7 @@ class StreamingAiServicesWithToolsIT {
                 .description("returns amounts of transactions")
                 .parameters(JsonObjectSchema.builder()
                         .addProperty("arg0", JsonArraySchema.builder()
-                                .items(JSON_STRING_SCHEMA)
+                                .items(JsonStringSchema.builder().build())
                                 .description("IDs of transactions")
                                 .build())
                         .required("arg0")
@@ -160,10 +159,8 @@ class StreamingAiServicesWithToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("currentTemperature")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("arg0", JSON_STRING_SCHEMA)
-                        .addProperty("arg1", JsonEnumSchema.builder()
-                                .enumValues("CELSIUS", "fahrenheit", "Kelvin")
-                                .build())
+                        .addStringProperty("arg0")
+                        .addEnumProperty("arg1", "CELSIUS", "fahrenheit", "Kelvin")
                         .required("arg0", "arg1")
                         .build())
                 .build();

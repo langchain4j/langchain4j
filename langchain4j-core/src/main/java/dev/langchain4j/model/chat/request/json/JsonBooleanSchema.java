@@ -9,8 +9,6 @@ import static dev.langchain4j.internal.Utils.quoted;
 @Experimental
 public class JsonBooleanSchema implements JsonSchemaElement {
 
-    public static final JsonBooleanSchema JSON_BOOLEAN_SCHEMA = JsonBooleanSchema.builder().build();
-
     private final String description;
 
     public JsonBooleanSchema(Builder builder) {

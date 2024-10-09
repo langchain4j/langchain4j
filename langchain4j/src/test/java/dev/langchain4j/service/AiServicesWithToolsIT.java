@@ -16,6 +16,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -44,8 +45,6 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.type;
-import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
@@ -118,7 +117,7 @@ class AiServicesWithToolsIT {
                 .name("getTransactionAmount")
                 .description("returns amount of a given transaction")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("arg0", JsonStringSchema.withDescription("ID of a transaction")))
+                        .addStringProperty("arg0", s -> s.description("ID of a transaction"))
                         .required("arg0")
                         .build())
                 .build();
@@ -385,7 +384,7 @@ class AiServicesWithToolsIT {
                 .parameters(JsonObjectSchema.builder()
                         .properties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("List of strings to process")
-                                .items(JSON_STRING_SCHEMA)
+                                .items(JsonStringSchema.builder().build())
                                 .build()))
                         .required("arg0")
                         .build())
@@ -442,7 +441,7 @@ class AiServicesWithToolsIT {
                 .parameters(JsonObjectSchema.builder()
                         .properties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("List of integers to process")
-                                .items(JSON_INTEGER_SCHEMA)
+                                .items(JsonIntegerSchema.builder().build())
                                 .build()))
                         .required("arg0")
                         .build())
@@ -499,7 +498,7 @@ class AiServicesWithToolsIT {
                 .parameters(JsonObjectSchema.builder()
                         .properties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("Array of strings to process")
-                                .items(JSON_STRING_SCHEMA)
+                                .items(JsonStringSchema.builder().build())
                                 .build()))
                         .required("arg0")
                         .build())
@@ -554,7 +553,7 @@ class AiServicesWithToolsIT {
                 .name("currentTemperature")
                 .parameters(JsonObjectSchema.builder()
                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                            put("arg0", JSON_STRING_SCHEMA);
+                            put("arg0", JsonStringSchema.builder().build());
                             put("arg1", JsonEnumSchema.builder()
                                     .enumValues("CELSIUS", "fahrenheit", "Kelvin")
                                     .build());
@@ -696,7 +695,7 @@ class AiServicesWithToolsIT {
                 .name("get_booking_details")
                 .description("Returns booking details")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("bookingNumber", JSON_STRING_SCHEMA))
+                        .properties(singletonMap("bookingNumber", JsonStringSchema.builder().build()))
                         .build())
                 .build();
 
@@ -768,7 +767,7 @@ class AiServicesWithToolsIT {
                         .name("get_booking_details")
                         .description("Returns booking details")
                         .parameters(JsonObjectSchema.builder()
-                                .addProperty("bookingNumber", JSON_STRING_SCHEMA)
+                                .addStringProperty("bookingNumber")
                                 .build())
                         .build();
                 return ToolProviderResult.builder()

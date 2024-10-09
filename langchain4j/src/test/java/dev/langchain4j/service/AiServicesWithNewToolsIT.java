@@ -7,9 +7,11 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.Response;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -28,10 +30,6 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
-import static dev.langchain4j.model.chat.request.json.JsonBooleanSchema.JSON_BOOLEAN_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonNumberSchema.JSON_NUMBER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithListOfEnumsParameter.Color.GREEN;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithListOfEnumsParameter.Color.RED;
@@ -70,8 +68,8 @@ public abstract class AiServicesWithNewToolsIT {
         }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .addProperty("arg0", JSON_INTEGER_SCHEMA)
-                .addProperty("arg1", JSON_INTEGER_SCHEMA)
+                .addProperty("arg0", JsonIntegerSchema.builder().build())
+                .addProperty("arg1", JsonIntegerSchema.builder().build())
                 .required("arg0", "arg1")
                 .build();
     }
@@ -140,12 +138,10 @@ public abstract class AiServicesWithNewToolsIT {
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
                 .properties(singletonMap("arg0", JsonObjectSchema.builder()
-                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                            put("name", JSON_STRING_SCHEMA);
-                            put("age", JSON_INTEGER_SCHEMA);
-                            put("height", JSON_NUMBER_SCHEMA);
-                            put("married", JSON_BOOLEAN_SCHEMA);
-                        }})
+                        .addStringProperty("name")
+                        .addIntegerProperty("age")
+                        .addNumberProperty("height")
+                        .addBooleanProperty("married")
                         .required("name", "age", "height", "married")
                         .build()))
                 .required("arg0")
@@ -216,9 +212,9 @@ public abstract class AiServicesWithNewToolsIT {
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
                 .properties(singletonMap("arg0", JsonObjectSchema.builder()
-                        .addProperty("name", JSON_STRING_SCHEMA)
+                        .addProperty("name", JsonStringSchema.builder().build())
                         .addProperty("address", JsonObjectSchema.builder()
-                                .addProperty("city", JSON_STRING_SCHEMA)
+                                .addProperty("city", JsonStringSchema.builder().build())
                                 .required("city")
                                 .build())
                         .required("name", "address")
@@ -285,7 +281,7 @@ public abstract class AiServicesWithNewToolsIT {
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
                 .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                    put("name", JSON_STRING_SCHEMA);
+                    put("name", JsonStringSchema.builder().build());
                     put("children", JsonArraySchema.builder()
                             .items(JsonReferenceSchema.builder()
                                     .reference("#/$defs/" + REFERENCE)
@@ -418,7 +414,7 @@ public abstract class AiServicesWithNewToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("currentTemperature")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("arg0", JSON_STRING_SCHEMA)
+                        .addProperty("arg0", JsonStringSchema.builder().build())
                         .addProperty("arg1", JsonEnumSchema.builder()
                                 .enumValues("CELSIUS", "fahrenheit", "Kelvin")
                                 .build())

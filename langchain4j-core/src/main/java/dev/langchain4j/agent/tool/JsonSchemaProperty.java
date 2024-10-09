@@ -30,7 +30,7 @@ public class JsonSchemaProperty {
     /**
      * A property with key "type" and value "string".
      *
-     * @deprecated please use {@link JsonStringSchema#JSON_STRING_SCHEMA} or {@link JsonStringSchema#builder()} instead
+     * @deprecated please use {@link JsonStringSchema#JsonStringSchema.builder().build()} or {@link JsonStringSchema#builder()} instead
      */
     @Deprecated
     public static final JsonSchemaProperty STRING = type("string");
@@ -38,7 +38,7 @@ public class JsonSchemaProperty {
     /**
      * A property with key "type" and value "integer".
      *
-     * @deprecated please use {@link JsonIntegerSchema#JSON_INTEGER_SCHEMA} or {@link JsonIntegerSchema#builder()} instead
+     * @deprecated please use {@link JsonIntegerSchema#JsonIntegerSchema.builder().build()} or {@link JsonIntegerSchema#builder()} instead
      */
     @Deprecated
     public static final JsonSchemaProperty INTEGER = type("integer");

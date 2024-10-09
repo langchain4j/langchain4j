@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.quoted;
@@ -71,8 +72,91 @@ public class JsonObjectSchema implements JsonSchemaElement {
             return this;
         }
 
+        /**
+         * TODO helper method
+         *
+         * @param name
+         * @param jsonSchemaElement
+         * @return
+         */
         public Builder addProperty(String name, JsonSchemaElement jsonSchemaElement) {
             this.properties.put(name, jsonSchemaElement);
+            return this;
+        }
+
+        // TODO other types
+
+        public Builder addStringProperty(String name) {
+            this.properties.put(name, JsonStringSchema.builder().build());
+            return this;
+        }
+
+        public Builder addStringProperty(String name, Consumer<JsonStringSchema.Builder> builderConsumer) {
+            JsonStringSchema.Builder builder = JsonStringSchema.builder();
+            builderConsumer.accept(builder);
+            this.properties.put(name, builder.build());
+            return this;
+        }
+
+        public Builder addIntegerProperty(String name) {
+            this.properties.put(name, JsonIntegerSchema.builder().build());
+            return this;
+        }
+
+        public Builder addIntegerProperty(String name, Consumer<JsonIntegerSchema.Builder> builderConsumer) {
+            JsonIntegerSchema.Builder builder = JsonIntegerSchema.builder();
+            builderConsumer.accept(builder);
+            this.properties.put(name, builder.build());
+            return this;
+        }
+
+        public Builder addNumberProperty(String name) {
+            this.properties.put(name, JsonNumberSchema.builder().build());
+            return this;
+        }
+
+        public Builder addNumberProperty(String name, Consumer<JsonNumberSchema.Builder> builderConsumer) {
+            JsonNumberSchema.Builder builder = JsonNumberSchema.builder();
+            builderConsumer.accept(builder);
+            this.properties.put(name, builder.build());
+            return this;
+        }
+
+        public Builder addBooleanProperty(String name) {
+            this.properties.put(name, JsonBooleanSchema.builder().build());
+            return this;
+        }
+
+        public Builder addBooleanProperty(String name, Consumer<JsonBooleanSchema.Builder> builderConsumer) {
+            JsonBooleanSchema.Builder builder = JsonBooleanSchema.builder();
+            builderConsumer.accept(builder);
+            this.properties.put(name, builder.build());
+            return this;
+        }
+
+        public Builder addEnumProperty(String name, String... enumValues) {
+            this.properties.put(name, JsonEnumSchema.builder().enumValues(enumValues).build());
+            return this;
+        }
+
+        public Builder addEnumProperty(String name, Consumer<JsonEnumSchema.Builder> builderConsumer) {
+            JsonEnumSchema.Builder builder = JsonEnumSchema.builder();
+            builderConsumer.accept(builder);
+            this.properties.put(name, builder.build());
+            return this;
+        }
+
+        public Builder addArrayProperty(String name, Consumer<JsonArraySchema.Builder> builderConsumer) {
+            JsonArraySchema.Builder builder = JsonArraySchema.builder();
+            builderConsumer.accept(builder);
+            this.properties.put(name, builder.build());
+            return this;
+        }
+
+        public Builder addObjectProperty(String name, Consumer<JsonObjectSchema.Builder> builderConsumer) {
+            JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
+            builderConsumer.accept(builder);
+            this.properties.put(name, builder.build());
             return this;
         }
 
@@ -92,13 +176,13 @@ public class JsonObjectSchema implements JsonSchemaElement {
             return this;
         }
 
-        // TODO name
-
         /**
          * TODO
+         *
          * @param defs
          * @return
          */
+        // TODO name
         public Builder defs(Map<String, JsonSchemaElement> defs) {
             this.defs = defs;
             return this;

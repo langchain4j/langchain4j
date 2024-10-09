@@ -16,8 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
-
 class ToolSpecificationsTest implements WithAssertions {
 
     @Data
@@ -334,15 +332,15 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(toolSpecification.description()).isEqualTo("register a new customer");
         assertThat(toolSpecification.parameters()).isEqualTo(JsonObjectSchema.builder()
                 .addProperty("arg0", JsonObjectSchema.builder()
-                        .addProperty("name", JSON_STRING_SCHEMA)
+                        .addStringProperty("name")
                         .addProperty("billingAddress", JsonObjectSchema.builder()
-                                .addProperty("street", JSON_STRING_SCHEMA)
-                                .addProperty("city", JSON_STRING_SCHEMA)
+                                .addStringProperty("street")
+                                .addStringProperty("city")
                                 .required("street", "city")
                                 .build())
                         .addProperty("shippingAddress", JsonObjectSchema.builder()
-                                .addProperty("street", JSON_STRING_SCHEMA)
-                                .addProperty("city", JSON_STRING_SCHEMA)
+                                .addStringProperty("street")
+                                .addStringProperty("city")
                                 .required("street", "city")
                                 .build())
                         .required("name", "billingAddress", "shippingAddress")

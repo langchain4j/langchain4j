@@ -5,10 +5,12 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
@@ -23,10 +25,6 @@ import java.util.Set;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.chat.request.json.JsonBooleanSchema.JSON_BOOLEAN_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonNumberSchema.JSON_NUMBER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
@@ -79,12 +77,10 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("age", JSON_INTEGER_SCHEMA);
-                                                put("height", JSON_NUMBER_SCHEMA);
-                                                put("married", JSON_BOOLEAN_SCHEMA);
-                                            }})
+                                            .addStringProperty("name")
+                                            .addIntegerProperty("age")
+                                            .addNumberProperty("height")
+                                            .addBooleanProperty("married")
                                             .required("name", "age", "height", "married")
                                             .build())
                                     .build())
@@ -139,21 +135,9 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("shippingAddress", JsonObjectSchema.builder()
-                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("city", JSON_STRING_SCHEMA);
-                                                        }})
-                                                        .required("city")
-                                                        .build());
-                                                put("billingAddress", JsonObjectSchema.builder()
-                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("city", JSON_STRING_SCHEMA);
-                                                        }})
-                                                        .required("city")
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addObjectProperty("shippingAddress", o -> o.addStringProperty("city").required("city"))
+                                            .addObjectProperty("billingAddress", o -> o.addStringProperty("city").required("city"))
                                             .required("name", "shippingAddress", "billingAddress")
                                             .build())
                                     .build())
@@ -206,12 +190,8 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("maritalStatus", JsonEnumSchema.builder()
-                                                        .enumValues("SINGLE", "MARRIED")
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addEnumProperty("maritalStatus", "SINGLE", "MARRIED")
                                             .required("name", "maritalStatus")
                                             .build())
                                     .build())
@@ -259,12 +239,8 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("favouriteColors", JsonArraySchema.builder()
-                                                        .items(JSON_STRING_SCHEMA)
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("favouriteColors", a -> a.items(JsonStringSchema.builder().build()))
                                             .required("name", "favouriteColors")
                                             .build())
                                     .build())
@@ -311,12 +287,8 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("favouriteColors", JsonArraySchema.builder()
-                                                        .items(JSON_STRING_SCHEMA)
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("favouriteColors", a -> a.items(JsonStringSchema.builder().build()))
                                             .required("name", "favouriteColors")
                                             .build())
                                     .build())
@@ -364,12 +336,8 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("favouriteColors", JsonArraySchema.builder()
-                                                        .items(JSON_STRING_SCHEMA)
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("favouriteColors", a -> a.items(JsonStringSchema.builder().build()))
                                             .required("name", "favouriteColors")
                                             .build())
                                     .build())
@@ -424,17 +392,11 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("pets", JsonArraySchema.builder()
-                                                        .items(JsonObjectSchema.builder()
-                                                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("name", JSON_STRING_SCHEMA);
-                                                                }})
-                                                                .required("name")
-                                                                .build())
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("pets", a -> a.items(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .required("name")
+                                                    .build()))
                                             .required("name", "pets")
                                             .build())
                                     .build())
@@ -489,17 +451,11 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("pets", JsonArraySchema.builder()
-                                                        .items(JsonObjectSchema.builder()
-                                                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("name", JSON_STRING_SCHEMA);
-                                                                }})
-                                                                .required("name")
-                                                                .build())
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("pets", a -> a.items(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .required("name")
+                                                    .build()))
                                             .required("name", "pets")
                                             .build())
                                     .build())
@@ -555,17 +511,11 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("pets", JsonArraySchema.builder()
-                                                        .items(JsonObjectSchema.builder()
-                                                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("name", JSON_STRING_SCHEMA);
-                                                                }})
-                                                                .required("name")
-                                                                .build())
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("pets", a -> a.items(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .required("name")
+                                                    .build()))
                                             .required("name", "pets")
                                             .build())
                                     .build())
@@ -620,7 +570,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", JsonStringSchema.builder().build());
                                                 put("groups", JsonArraySchema.builder()
                                                         .items(JsonEnumSchema.builder()
                                                                 .enumValues("A", "B", "C")
@@ -680,7 +630,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", JsonStringSchema.builder().build());
                                                 put("groups", JsonArraySchema.builder()
                                                         .items(JsonEnumSchema.builder()
                                                                 .enumValues("A", "B", "C")
@@ -740,7 +690,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", JsonStringSchema.builder().build());
                                                 put("groups", JsonArraySchema.builder()
                                                         .items(JsonEnumSchema.builder()
                                                                 .enumValues("A", "B", "C")
@@ -800,21 +750,21 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", JsonStringSchema.builder().build());
                                                 put("birthDate", JsonObjectSchema.builder()
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("year", JSON_INTEGER_SCHEMA);
-                                                            put("month", JSON_INTEGER_SCHEMA);
-                                                            put("day", JSON_INTEGER_SCHEMA);
+                                                            put("year", JsonIntegerSchema.builder().build());
+                                                            put("month", JsonIntegerSchema.builder().build());
+                                                            put("day", JsonIntegerSchema.builder().build());
                                                         }})
                                                         .required("year", "month", "day")
                                                         .build());
                                                 put("birthTime", JsonObjectSchema.builder()
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("hour", JSON_INTEGER_SCHEMA);
-                                                            put("minute", JSON_INTEGER_SCHEMA);
-                                                            put("second", JSON_INTEGER_SCHEMA);
-                                                            put("nano", JSON_INTEGER_SCHEMA);
+                                                            put("hour", JsonIntegerSchema.builder().build());
+                                                            put("minute", JsonIntegerSchema.builder().build());
+                                                            put("second", JsonIntegerSchema.builder().build());
+                                                            put("nano", JsonIntegerSchema.builder().build());
                                                         }})
                                                         .required("hour", "minute", "second", "nano")
                                                         .build());
@@ -822,18 +772,18 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                                             put("date", JsonObjectSchema.builder()
                                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                        put("year", JSON_INTEGER_SCHEMA);
-                                                                        put("month", JSON_INTEGER_SCHEMA);
-                                                                        put("day", JSON_INTEGER_SCHEMA);
+                                                                        put("year", JsonIntegerSchema.builder().build());
+                                                                        put("month", JsonIntegerSchema.builder().build());
+                                                                        put("day", JsonIntegerSchema.builder().build());
                                                                     }})
                                                                     .required("year", "month", "day")
                                                                     .build());
                                                             put("time", JsonObjectSchema.builder()
                                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                        put("hour", JSON_INTEGER_SCHEMA);
-                                                                        put("minute", JSON_INTEGER_SCHEMA);
-                                                                        put("second", JSON_INTEGER_SCHEMA);
-                                                                        put("nano", JSON_INTEGER_SCHEMA);
+                                                                        put("hour", JsonIntegerSchema.builder().build());
+                                                                        put("minute", JsonIntegerSchema.builder().build());
+                                                                        put("second", JsonIntegerSchema.builder().build());
+                                                                        put("nano", JsonIntegerSchema.builder().build());
                                                                     }})
                                                                     .required("hour", "minute", "second", "nano")
                                                                     .build());
@@ -888,7 +838,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", JsonStringSchema.builder().build());
                                             }})
                                             .required("name")
                                             .build())
@@ -944,7 +894,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", JsonStringSchema.builder().build());
                                                 put("children", JsonArraySchema.builder()
                                                         .items(JsonReferenceSchema.builder()
                                                                 .reference("#/$defs/" + reference)
@@ -954,7 +904,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                             .required("name", "children")
                                             .defs(singletonMap(reference, JsonObjectSchema.builder()
                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                        put("name", JSON_STRING_SCHEMA);
+                                                        put("name", JsonStringSchema.builder().build());
                                                         put("children", JsonArraySchema.builder()
                                                                 .items(JsonReferenceSchema.builder()
                                                                         .reference("#/$defs/" + reference)

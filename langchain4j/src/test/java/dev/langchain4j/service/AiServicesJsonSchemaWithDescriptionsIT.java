@@ -30,8 +30,6 @@ import java.util.Set;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesJsonSchemaWithDescriptionsIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
@@ -303,7 +301,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .description("a name")
                                                     .build());
                                             put("favouriteColors", JsonArraySchema.builder()
-                                                    .items(JSON_STRING_SCHEMA)
+                                                    .items(JsonStringSchema.builder().build())
                                                     .description("favourite colors")
                                                     .build());
                                         }})
@@ -359,7 +357,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .description("a name")
                                                     .build());
                                             put("favouriteColors", JsonArraySchema.builder()
-                                                    .items(JSON_STRING_SCHEMA)
+                                                    .items(JsonStringSchema.builder().build())
                                                     .description("favourite colors")
                                                     .build());
                                         }})
@@ -415,7 +413,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .description("a name")
                                                     .build());
                                             put("favouriteColors", JsonArraySchema.builder()
-                                                    .items(JSON_STRING_SCHEMA)
+                                                    .items(JsonStringSchema.builder().build())
                                                     .description("favourite colors")
                                                     .build());
                                         }})
@@ -897,19 +895,19 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                             put("birthDate", JsonObjectSchema.builder()
                                                     .description("a birth date")
                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                        put("year", JSON_INTEGER_SCHEMA);
-                                                        put("month", JSON_INTEGER_SCHEMA);
-                                                        put("day", JSON_INTEGER_SCHEMA);
+                                                        put("year", JsonIntegerSchema.builder().build());
+                                                        put("month", JsonIntegerSchema.builder().build());
+                                                        put("day", JsonIntegerSchema.builder().build());
                                                     }})
                                                     .required("year", "month", "day")
                                                     .build());
                                             put("birthTime", JsonObjectSchema.builder()
                                                     .description("a birth time")
                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                        put("hour", JSON_INTEGER_SCHEMA);
-                                                        put("minute", JSON_INTEGER_SCHEMA);
-                                                        put("second", JSON_INTEGER_SCHEMA);
-                                                        put("nano", JSON_INTEGER_SCHEMA);
+                                                        put("hour", JsonIntegerSchema.builder().build());
+                                                        put("minute", JsonIntegerSchema.builder().build());
+                                                        put("second", JsonIntegerSchema.builder().build());
+                                                        put("nano", JsonIntegerSchema.builder().build());
                                                     }})
                                                     .required("hour", "minute", "second", "nano")
                                                     .build());
@@ -918,18 +916,18 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                                         put("date", JsonObjectSchema.builder()
                                                                 .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("year", JSON_INTEGER_SCHEMA);
-                                                                    put("month", JSON_INTEGER_SCHEMA);
-                                                                    put("day", JSON_INTEGER_SCHEMA);
+                                                                    put("year", JsonIntegerSchema.builder().build());
+                                                                    put("month", JsonIntegerSchema.builder().build());
+                                                                    put("day", JsonIntegerSchema.builder().build());
                                                                 }})
                                                                 .required("year", "month", "day")
                                                                 .build());
                                                         put("time", JsonObjectSchema.builder()
                                                                 .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("hour", JSON_INTEGER_SCHEMA);
-                                                                    put("minute", JSON_INTEGER_SCHEMA);
-                                                                    put("second", JSON_INTEGER_SCHEMA);
-                                                                    put("nano", JSON_INTEGER_SCHEMA);
+                                                                    put("hour", JsonIntegerSchema.builder().build());
+                                                                    put("minute", JsonIntegerSchema.builder().build());
+                                                                    put("second", JsonIntegerSchema.builder().build());
+                                                                    put("nano", JsonIntegerSchema.builder().build());
                                                                 }})
                                                                 .required("hour", "minute", "second", "nano")
                                                                 .build());

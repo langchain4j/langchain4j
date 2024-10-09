@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static java.util.Collections.singletonMap;
 
 class ToolSpecificationTest implements WithAssertions {
@@ -122,7 +121,7 @@ class ToolSpecificationTest implements WithAssertions {
                 .name("name")
                 .description("description")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("foo", JSON_STRING_SCHEMA))
+                        .addStringProperty("foo")
                         .required("foo")
                         .build())
                 .build();
