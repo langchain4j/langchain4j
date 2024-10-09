@@ -11,6 +11,7 @@ import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -61,31 +62,143 @@ class ElasticsearchMetadataFilterMapper {
     }
 
     private static Query mapGreaterThan(IsGreaterThan isGreaterThan) {
-        return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + isGreaterThan.key())
-                        .gt(JsonData.of(isGreaterThan.comparisonValue()))
-        ))).build();
+        if (isGreaterThan.comparisonValue() instanceof Integer) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isGreaterThan.key())
+                            .gt(((Integer) isGreaterThan.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isGreaterThan.comparisonValue() instanceof Long) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isGreaterThan.key())
+                            .gt(((Long) isGreaterThan.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isGreaterThan.comparisonValue() instanceof Float) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isGreaterThan.key())
+                            .gt(((Float) isGreaterThan.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isGreaterThan.comparisonValue() instanceof Double) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isGreaterThan.key())
+                            .gt((Double) isGreaterThan.comparisonValue()))
+            ))).build();
+        } else if (isGreaterThan.comparisonValue() instanceof Date) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.date(df -> df.field("metadata." + isGreaterThan.key())
+                            .gt((String) isGreaterThan.comparisonValue()))
+            ))).build();
+        } else if (isGreaterThan.comparisonValue() instanceof String) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.date(df -> df.field("metadata." + isGreaterThan.key())
+                            .gt((String) isGreaterThan.comparisonValue()))
+            ))).build();
+        }
+        throw new UnsupportedOperationException("Unsupported type for comparison value: " + isGreaterThan.comparisonValue().getClass().getSimpleName());
     }
 
     private static Query mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
-        return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + isGreaterThanOrEqualTo.key())
-                        .gte(JsonData.of(isGreaterThanOrEqualTo.comparisonValue()))
-        ))).build();
+        if (isGreaterThanOrEqualTo.comparisonValue() instanceof Integer) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isGreaterThanOrEqualTo.key())
+                            .gte(((Integer) isGreaterThanOrEqualTo.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isGreaterThanOrEqualTo.comparisonValue() instanceof Long) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isGreaterThanOrEqualTo.key())
+                            .gte(((Long) isGreaterThanOrEqualTo.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isGreaterThanOrEqualTo.comparisonValue() instanceof Float) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isGreaterThanOrEqualTo.key())
+                            .gte(((Float) isGreaterThanOrEqualTo.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isGreaterThanOrEqualTo.comparisonValue() instanceof Double) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isGreaterThanOrEqualTo.key())
+                            .gte((Double) isGreaterThanOrEqualTo.comparisonValue()))
+            ))).build();
+        } else if (isGreaterThanOrEqualTo.comparisonValue() instanceof Date) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.date(df -> df.field("metadata." + isGreaterThanOrEqualTo.key())
+                            .gte((String) isGreaterThanOrEqualTo.comparisonValue()))
+            ))).build();
+        } else if (isGreaterThanOrEqualTo.comparisonValue() instanceof String) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.date(df -> df.field("metadata." + isGreaterThanOrEqualTo.key())
+                            .gte((String) isGreaterThanOrEqualTo.comparisonValue()))
+            ))).build();
+        }
+        throw new UnsupportedOperationException("Unsupported type for comparison value: " + isGreaterThanOrEqualTo.comparisonValue().getClass().getSimpleName());
     }
 
     private static Query mapLessThan(IsLessThan isLessThan) {
-        return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + isLessThan.key())
-                        .lt(JsonData.of(isLessThan.comparisonValue()))
-        ))).build();
+        if (isLessThan.comparisonValue() instanceof Integer) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isLessThan.key())
+                            .lt(((Integer) isLessThan.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isLessThan.comparisonValue() instanceof Long) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isLessThan.key())
+                            .lt(((Long) isLessThan.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isLessThan.comparisonValue() instanceof Float) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isLessThan.key())
+                            .lt(((Float) isLessThan.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isLessThan.comparisonValue() instanceof Double) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isLessThan.key())
+                            .lt((Double) isLessThan.comparisonValue()))
+            ))).build();
+        } else if (isLessThan.comparisonValue() instanceof Date) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.date(df -> df.field("metadata." + isLessThan.key())
+                            .lt((String) isLessThan.comparisonValue()))
+            ))).build();
+        } else if (isLessThan.comparisonValue() instanceof String) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.date(df -> df.field("metadata." + isLessThan.key())
+                            .lt((String) isLessThan.comparisonValue()))
+            ))).build();
+        }
+        throw new UnsupportedOperationException("Unsupported type for comparison value: " + isLessThan.comparisonValue().getClass().getSimpleName());
     }
 
     private static Query mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
-        return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + isLessThanOrEqualTo.key())
-                        .lte(JsonData.of(isLessThanOrEqualTo.comparisonValue()))
-        ))).build();
+        if (isLessThanOrEqualTo.comparisonValue() instanceof Integer) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isLessThanOrEqualTo.key())
+                            .lte(((Integer) isLessThanOrEqualTo.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isLessThanOrEqualTo.comparisonValue() instanceof Long) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isLessThanOrEqualTo.key())
+                            .lte(((Long) isLessThanOrEqualTo.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isLessThanOrEqualTo.comparisonValue() instanceof Float) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isLessThanOrEqualTo.key())
+                            .lte(((Float) isLessThanOrEqualTo.comparisonValue()).doubleValue()))
+            ))).build();
+        } else if (isLessThanOrEqualTo.comparisonValue() instanceof Double) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.number(nf -> nf.field("metadata." + isLessThanOrEqualTo.key())
+                            .lte((Double) isLessThanOrEqualTo.comparisonValue()))
+            ))).build();
+        } else if (isLessThanOrEqualTo.comparisonValue() instanceof Date) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.date(df -> df.field("metadata." + isLessThanOrEqualTo.key())
+                            .lte((String) isLessThanOrEqualTo.comparisonValue()))
+            ))).build();
+        } else if (isLessThanOrEqualTo.comparisonValue() instanceof String) {
+            return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
+                    r.date(df -> df.field("metadata." + isLessThanOrEqualTo.key())
+                            .lte((String) isLessThanOrEqualTo.comparisonValue()))
+            ))).build();
+        }
+        throw new UnsupportedOperationException("Unsupported type for comparison value: " + isLessThanOrEqualTo.comparisonValue().getClass().getSimpleName());
     }
 
     public static Query mapIn(IsIn isIn) {
