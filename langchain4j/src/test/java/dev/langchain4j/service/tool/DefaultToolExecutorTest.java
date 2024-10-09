@@ -328,4 +328,157 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), (ToolExecutionRequest) null));
 
     }
+
+    private static class PersonTool {
+
+        @Tool
+        public Person save(Person arg) {
+            assert arg != null;
+            return arg;
+        }
+
+        @Tool
+        public Person[] saveArray(Person[] arg) {
+            assert arg != null;
+            assert arg.length == 2;
+            assert arg[0].getClass() == Person.class;
+            assert arg[0].name.equals("Klaus");
+            assert arg[0].age == 42;
+            assert arg[1].getClass() == Person.class;
+            assert arg[1].name.equals("Peter");
+            assert arg[1].age == 43;
+            return arg;
+        }
+
+        @Tool
+        public List<Person> saveList(List<Person> personList) {
+            assert personList != null;
+            assert personList.size() == 2;
+            personList.forEach(person -> {
+                assert person.getClass() == Person.class;
+            });
+            assert personList.get(0).name.equals("Klaus");
+            assert personList.get(0).age == 42;
+            assert personList.get(1).name.equals("Peter");
+            assert personList.get(1).age == 43;
+            return personList;
+        }
+
+        @Tool
+        public Set<Person> saveSet(Set<Person> personSet) {
+            assert personSet != null;
+            assert personSet.size() == 2;
+            personSet.forEach(person -> {
+                assert person.getClass() == Person.class;
+            });
+            assert personSet.stream().anyMatch(person -> person.name.equals("Klaus") && person.age == 42);
+            assert personSet.stream().anyMatch(person -> person.name.equals("Peter") && person.age == 43);
+            return personSet;
+        }
+
+        @Tool
+        public Map<String, Person> saveMap(Map<String, Person> idPersonMap) {
+            assert idPersonMap != null;
+            assert idPersonMap.size() == 2;
+            idPersonMap.forEach((id, person) -> {
+                assert id.getClass() == String.class;
+                assert person.getClass() == Person.class;
+            });
+            assert idPersonMap.get("p1").name.equals("Klaus");
+            assert idPersonMap.get("p1").age == 42;
+            assert idPersonMap.get("p2").name.equals("Peter");
+            assert idPersonMap.get("p2").age == 43;
+            return idPersonMap;
+        }
+    }
+
+    @Test
+    public void should_execute_tools_with_collection() {
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("save")
+                .arguments("{ \"arg0\": {\"name\": \"Klaus\", \"age\": 42} }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new PersonTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+        assertThat(result).isEqualTo("{\n" +
+                "  \"name\": \"Klaus\",\n" +
+                "  \"age\": 42\n" +
+                "}");
+
+        ToolExecutionRequest request2 = ToolExecutionRequest.builder()
+                .id("2")
+                .name("saveList")
+                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+                .build();
+        DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
+        String result2 = toolExecutor2.execute(request2, "DEFAULT");
+        assertThat(result2).isEqualTo("[\n" +
+                "  {\n" +
+                "    \"name\": \"Klaus\",\n" +
+                "    \"age\": 42\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"name\": \"Peter\",\n" +
+                "    \"age\": 43\n" +
+                "  }\n" +
+                "]");
+
+        ToolExecutionRequest request3 = ToolExecutionRequest.builder()
+                .id("3")
+                .name("saveSet")
+                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+                .build();
+        DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
+        String result3 = toolExecutor3.execute(request3, "DEFAULT");
+        assertThat(result3).isEqualTo("[\n" +
+                "  {\n" +
+                "    \"name\": \"Klaus\",\n" +
+                "    \"age\": 42\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"name\": \"Peter\",\n" +
+                "    \"age\": 43\n" +
+                "  }\n" +
+                "]");
+
+        ToolExecutionRequest request4 = ToolExecutionRequest.builder()
+                .id("4")
+                .name("saveMap")
+                .arguments("{ \"arg0\": { \"p1\" : {\"name\": \"Klaus\", \"age\": 42}, \"p2\" : {\"name\": \"Peter\", \"age\": 43} } }")
+                .build();
+        DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
+        String result4 = toolExecutor4.execute(request4, "DEFAULT");
+        assertThat(result4).isEqualTo("{\n" +
+                "  \"p1\": {\n" +
+                "    \"name\": \"Klaus\",\n" +
+                "    \"age\": 42\n" +
+                "  },\n" +
+                "  \"p2\": {\n" +
+                "    \"name\": \"Peter\",\n" +
+                "    \"age\": 43\n" +
+                "  }\n" +
+                "}");
+
+        ToolExecutionRequest request5 = ToolExecutionRequest.builder()
+                .id("5")
+                .name("saveArray")
+                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+                .build();
+        DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
+        String result5 = toolExecutor5.execute(request5, "DEFAULT");
+        assertThat(result5).isEqualTo("[\n" +
+                "  {\n" +
+                "    \"name\": \"Klaus\",\n" +
+                "    \"age\": 42\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"name\": \"Peter\",\n" +
+                "    \"age\": 43\n" +
+                "  }\n" +
+                "]");
+    }
 }
