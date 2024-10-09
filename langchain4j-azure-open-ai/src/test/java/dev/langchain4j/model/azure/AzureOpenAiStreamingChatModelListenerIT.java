@@ -4,7 +4,6 @@ import com.azure.core.exception.ClientAuthenticationException;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import org.junit.jupiter.api.Disabled;
 
 import static java.util.Collections.singletonList;
 
@@ -42,12 +41,7 @@ class AzureOpenAiStreamingChatModelListenerIT extends StreamingChatModelListener
     }
 
     @Override
-    protected Class<?> expectedExceptionClass() {
+    protected Class<? extends Exception> expectedExceptionClass() {
         return ClientAuthenticationException.class;
-    }
-
-    @Override
-    @Disabled("AzureOpenAiStreamingChatModel implementation is incorrect")
-    protected void should_listen_error() {
     }
 }

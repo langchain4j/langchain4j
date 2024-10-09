@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
@@ -32,7 +33,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.regions.Region;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -47,7 +50,6 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.from;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.type;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -98,6 +100,15 @@ class AiServicesWithToolsIT {
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
+                        .build(),
+                BedrockAnthropicMessageChatModel
+                        .builder()
+                        .temperature(0.0f)
+                        .maxTokens(300)
+                        .region(Region.US_EAST_1)
+                        .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
+                        .maxRetries(1)
+                        .timeout(Duration.ofMinutes(2L))
                         .build()
                 // TODO other models supporting tools
         );
@@ -109,10 +120,19 @@ class AiServicesWithToolsIT {
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .modelName(GPT_3_5_TURBO_0613) // this model can only call tools sequentially
+                        .modelName(GPT_4_O_MINI)
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
+                        .build(),
+                BedrockAnthropicMessageChatModel
+                        .builder()
+                        .temperature(0.0f)
+                        .maxTokens(300)
+                        .region(Region.US_EAST_1)
+                        .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
+                        .maxRetries(1)
+                        .timeout(Duration.ofMinutes(2L))
                         .build()
         );
     }
@@ -230,7 +250,7 @@ class AiServicesWithToolsIT {
                 .build();
 
         String userMessage = "What are the amounts of transactions T001 and T002? " +
-                "First call getTransactionAmount for T001, then for T002. Do not answer before you know all amounts!";
+                "First call getTransactionAmount for T001, then for T002, sequentially. Do not answer before you know all amounts!";
 
         Response<AiMessage> response = assistant.chat(userMessage);
 
@@ -318,7 +338,7 @@ class AiServicesWithToolsIT {
                 .tools(transactionService)
                 .build();
 
-        String userMessage = "What are the amounts of transactions T001 and T002?";
+        String userMessage = "What are the amounts of transactions T001 and T002? Call tools in parallel!";
 
         Response<AiMessage> response = assistant.chat(userMessage);
 
@@ -414,8 +434,7 @@ class AiServicesWithToolsIT {
                 .tools(stringListProcessor)
                 .build();
 
-        String userMessage = "Process strings 'cat' and 'dog' together, do not separate them!. " +
-                "Use format ['cat', 'dog'] for the list of strings."; // Specify the format expected to avoid ambiguity
+        String userMessage = "Process strings 'cat' and 'dog' together in a single tool call.";
 
         // when
         assistant.chat(userMessage);
@@ -452,7 +471,7 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    @Disabled("should be enabled once List<Double> is automatically converted into List<Integer>")
+    @Disabled("should be enabled once List<Double> is automatically converted into List<Integer>") // https://github.com/langchain4j/langchain4j/issues/1858
     void should_use_tool_with_List_of_Integers_parameter(ChatLanguageModel chatLanguageModel) {
 
         IntegerListProcessor integerListProcessor = spy(new IntegerListProcessor());
@@ -667,7 +686,7 @@ class AiServicesWithToolsIT {
                 .tools(queryService)
                 .build();
 
-        Response<AiMessage> response = assistant.chat("List names of 3 users where country is India");
+        Response<AiMessage> response = assistant.chat("Give me the names of 3 users from India");
 
         assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
     }
@@ -880,7 +899,7 @@ class AiServicesWithToolsIT {
                 .build();
 
         String userMessage = "What are the amounts of transactions T001 and T002? " +
-                "First call getTransactionAmount for T001, then for T002. Do not answer before you know all amounts!";
+                "First call getTransactionAmount for T001, then for T002, in parallel. Do not answer before you know all amounts!";
 
         // when
         Result<AiMessage> result = assistant.chat(userMessage);
@@ -918,7 +937,7 @@ class AiServicesWithToolsIT {
                 .tools(transactionService)
                 .build();
 
-        String userMessage = "What are the amounts of transactions T001 and T002?";
+        String userMessage = "What are the amounts of transactions T001 and T002? Call tools sequentially!";
 
         // when
         Result<AiMessage> result = assistant.chat(userMessage);
@@ -937,5 +956,39 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecution.result()).contains("22.2");
 
         verify(spyChatLanguageModel, times(3)).generate(anyList(), anyList());
+    }
+
+    static class EnumTools {
+
+        public enum Color {
+            Red, Blue, Green, Yellow
+        }
+
+        @Tool
+        public void processColors(List<Color> colors) {
+            System.out.println(colors);
+        }
+    }
+
+    @Test
+    public void test() {
+
+        // given
+        EnumTools enumTools = spy(new EnumTools());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatLanguageModel spyChatLanguageModel = spy(models().findFirst().get());
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatLanguageModel(spyChatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(enumTools)
+                .build();
+
+        String userMessage = "Process these colors: reg, yellow";
+
+        // when
+        Result<AiMessage> result = assistant.chat(userMessage);
     }
 }

@@ -17,14 +17,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai</artifactId>
-  <version>0.34.0</version>
+  <version>0.35.0</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai:0.34.0'
+implementation 'dev.langchain4j:langchain4j-vertex-ai:0.35.0'
 ```
 
 ### Try out an example code:
@@ -79,7 +79,47 @@ public class VertexAiEmbeddingModelExample {
 
 Model names suffixed with `@latest` reference the most recent version of the model.
 
-The API accepts a maximum of 3,072 input tokens and outputs 768-dimensional vector embeddings.
+By default, most embedding models output 768-dimensional vector embeddings (except for "Matryoshka" models that accept a configurable lower dimension).
+The API accepts a maximum of 2,048 input tokens per segment to embed.
+You can send upto 250 text segments.
+The `VertexAiEmbeddingModel` class automatically and transparently splits the requests in batches when you ask for more than 250 segments to be embedded at the same time.
+The embedding API is limited to a total of 20,000 tokens per call (across all segments). When that limit is reached, `VertexAiEmbeddingModel` will again batch the requests to avoid hitting that limit.
+
+### Configuring the embedding model
+
+```java
+EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
+    .project(PROJECT_ID)
+    .location("us-central1")
+    .endpoint("us-central1-aiplatform.googleapis.com:443") // optional
+    .publisher("google")
+    .modelName(MODEL_NAME)
+    .maxRetries(3)             // 3 by default
+    .maxSegmentsPerBatch(250)  // up to 250 segments per batch
+    .maxTokensPerBatch(2048)   // up to 2048 tokens per segment
+    .taskType()                // see below for the different task types
+    .titleMetadataKey()        // for the RETRIEVAL_DOCUMENT task, you can specify a title  
+                               // for the text segment to identify its document origin
+    .autoTruncate(false)       // false by default: truncates segments longer than 2,048 input tokens
+    .outputDimensionality(512) // for models that support different output vector dimensions
+    .build();
+```
+
+## Embedding task types
+
+Embedding models can be used for different use cases.
+To get better embedding values, you can specify a _task_ among the following ones:
+
+* `RETRIEVAL_QUERY`
+* `RETRIEVAL_DOCUMENT`
+* `SEMANTIC_SIMILARITY`
+* `CLASSIFICATION`
+* `CLUSTERING`
+* `QUESTION_ANSWERING`
+* `FACT_VERIFICATION`
+* `CODE_RETRIEVAL_QUERY`
+
+See the list of [supported models](https://cloud.google.com/vertex-ai/generative-ai/docs/embeddings/task-types).
 
 ### References
 

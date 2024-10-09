@@ -20,6 +20,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.TOOL_MODEL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructure {
 
@@ -29,6 +30,11 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
             .description("Get the current weather for a location")
             .addParameter("format", STRING, enums("celsius", "fahrenheit"), description("The format to return the weather in, e.g. 'celsius' or 'fahrenheit'"))
             .addParameter("location", STRING, description("The location to get the weather for, e.g. San Francisco, CA"))
+            .build();
+
+    ToolSpecification toolWithoutParameter = ToolSpecification.builder()
+            .name("get_current_time")
+            .description("Get the current time")
             .build();
 
     ChatLanguageModel ollamaChatModel = OllamaChatModel.builder()
@@ -88,6 +94,24 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNotNull();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
+    }
+
+    @Test
+    void should_handle_tool_without_parameter() {
+
+        // given
+        List<ToolSpecification> toolSpecifications = singletonList(toolWithoutParameter);
+
+        // when
+        List<ChatMessage> chatMessages = singletonList(
+                userMessage("What is the current time?")
+        );
+
+        // then
+        assertDoesNotThrow(() -> {
+            ollamaChatModel.generate(chatMessages, toolSpecifications);
+        });
+
     }
 
 }

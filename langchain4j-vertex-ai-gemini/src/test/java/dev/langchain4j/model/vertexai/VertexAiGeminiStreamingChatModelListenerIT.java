@@ -4,23 +4,25 @@ import com.google.api.gax.rpc.NotFoundException;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.AfterEach;
 
 import static java.util.Collections.singletonList;
 
-public class VertexAiGeminiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+class VertexAiGeminiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
+
     @Override
     protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
         return VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(modelName())
-            .temperature(temperature().floatValue())
-            .topP(topP().floatValue())
-            .maxOutputTokens(maxTokens())
-            .listeners(singletonList(listener))
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(modelName())
+                .temperature(temperature().floatValue())
+                .topP(topP().floatValue())
+                .maxOutputTokens(maxTokens())
+                .listeners(singletonList(listener))
+                .logRequests(true)
+                .logResponses(true)
+                .build();
     }
 
     @Override
@@ -36,17 +38,26 @@ public class VertexAiGeminiStreamingChatModelListenerIT extends StreamingChatMod
     @Override
     protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
         return VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("banana")
-            .listeners(singletonList(listener))
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName("banana")
+                .listeners(singletonList(listener))
+                .logRequests(true)
+                .logResponses(true)
+                .build();
     }
 
     @Override
-    protected Class<?> expectedExceptionClass() {
+    protected Class<? extends Exception> expectedExceptionClass() {
         return NotFoundException.class;
+    }
+
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

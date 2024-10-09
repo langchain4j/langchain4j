@@ -409,7 +409,7 @@ class AzureOpenAiStreamingChatModelIT {
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_OPENAI");
         if (ciDelaySeconds != null) {
-            Thread.sleep(Integer.parseInt(ciDelaySeconds));
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
     }
 }

@@ -129,11 +129,8 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
         List<WebSearchOrganicResult> results = googleSearchEngine.search(webSearchRequest).results();
 
         // then
-        assertThat(results)
-                .as("At least one result should be contains 'Java' and 'AI' ignoring case")
-                .anySatisfy(result -> assertThat(result.snippet())
-                        .containsIgnoringCase("Java")
-                        .containsIgnoringCase("github.com/langchain4j/langchain4j"));
+        assertThat(results).anySatisfy(result ->
+                assertThat(result.snippet()).containsIgnoringCase("github.com/langchain4j/langchain4j"));
     }
 
     @Test

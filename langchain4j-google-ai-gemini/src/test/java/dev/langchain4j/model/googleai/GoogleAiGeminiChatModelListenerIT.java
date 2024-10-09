@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.AfterEach;
 
 import static java.util.Collections.singletonList;
 
@@ -43,7 +44,15 @@ class GoogleAiGeminiChatModelListenerIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected Class<?> expectedExceptionClass() {
+    protected Class<? extends Exception> expectedExceptionClass() {
         return RuntimeException.class;
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }
