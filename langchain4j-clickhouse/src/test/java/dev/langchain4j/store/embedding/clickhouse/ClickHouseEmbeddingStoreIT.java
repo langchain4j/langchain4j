@@ -9,6 +9,7 @@ import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.clickhouse.ClickHouseContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
@@ -17,7 +18,7 @@ import java.util.Properties;
 
 class ClickHouseEmbeddingStoreIT extends EmbeddingStoreIT {
 
-    static ClickHouseContainer clickhouse = new ClickHouseContainer("clickhouse/clickhouse-server")
+    static ClickHouseContainer clickhouse = new ClickHouseContainer(DockerImageName.parse("clickhouse/clickhouse-server:latest"))
             .withDatabaseName("default")
             .withUsername("test-username")
             .withPassword("test-password");
