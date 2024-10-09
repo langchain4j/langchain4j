@@ -96,7 +96,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.34.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
@@ -176,8 +176,13 @@ interface Assistant {
     String chat(String userMessage);
 }
 
+ChatLanguageModel chatModel = OpenAiChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
+
 Assistant assistant = AiServices.builder(Assistant.class)
-    .chatLanguageModel(OpenAiChatModel.withApiKey(OPENAI_API_KEY))
+    .chatLanguageModel(chatModel)
     .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
     .contentRetriever(EmbeddingStoreContentRetriever.from(embeddingStore))
     .build();
@@ -326,7 +331,8 @@ to be later included in each `TextSegment` (which we will cover below) to potent
 
 `Metadata` entries can also be added, modified, or removed at this stage.
 
-Currently, the only implementation provided out-of-the-box is `HtmlTextExtractor` in the `langchain4j` module,
+Currently, the only implementation provided out-of-the-box is `HtmlToTextDocumentTransformer`
+in the `langchain4j-document-transformer-jsoup` module,
 which can extract desired text content and metadata entries from the raw HTML.
 
 Since there is no one-size-fits-all solution, we recommend implementing your own `DocumentTransformer`,

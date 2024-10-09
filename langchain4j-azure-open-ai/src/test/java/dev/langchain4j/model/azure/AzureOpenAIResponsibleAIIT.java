@@ -42,7 +42,7 @@ public class AzureOpenAIResponsibleAIIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
+                .temperature(0.0)
                 .logRequestsAndResponses(true)
                 .build();
 

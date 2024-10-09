@@ -130,10 +130,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 ProxyOptions proxyOptions,
                                 boolean logRequestsAndResponses,
                                 List<ChatModelListener> listeners,
-                                String userAgentSuffix) {
+                                String userAgentSuffix,
+                                Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
-        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
     public AzureOpenAiChatModel(String endpoint,
@@ -159,10 +160,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 ProxyOptions proxyOptions,
                                 boolean logRequestsAndResponses,
                                 List<ChatModelListener> listeners,
-                                String userAgentSuffix) {
+                                String userAgentSuffix,
+                                Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
-        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
     public AzureOpenAiChatModel(String endpoint,
@@ -188,10 +190,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 ProxyOptions proxyOptions,
                                 boolean logRequestsAndResponses,
                                 List<ChatModelListener> listeners,
-                                String userAgentSuffix) {
+                                String userAgentSuffix,
+                                Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
-        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
     private AzureOpenAiChatModel(String deploymentName,
@@ -312,12 +315,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return response;
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating response, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
-            Response<AiMessage> response = Response.from(
-                    aiMessage(httpResponseException.getMessage()),
-                    null,
-                    exceptionFinishReason
-            );
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
                 httpResponseException,
                 modelListenerRequest,
@@ -332,7 +329,16 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                     logger.warn("Exception while calling model listener", e2);
                 }
             });
-            return response;
+            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
+            if (exceptionFinishReason != FinishReason.CONTENT_FILTER) {
+                throw httpResponseException;
+            }
+
+            return Response.from(
+                    aiMessage(httpResponseException.getMessage()),
+                    null,
+                    exceptionFinishReason
+            );
         }
     }
 
@@ -377,6 +383,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         private OpenAIClient openAIClient;
         private String userAgentSuffix;
         private List<ChatModelListener> listeners;
+        private Map<String, String> customHeaders;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -557,6 +564,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return this;
         }
 
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
         public AzureOpenAiChatModel build() {
             if (openAIClient == null) {
                 if (tokenCredential != null) {
@@ -584,7 +596,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             proxyOptions,
                             logRequestsAndResponses,
                             listeners,
-                            userAgentSuffix
+                            userAgentSuffix,
+                            customHeaders
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiChatModel(
@@ -611,7 +624,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             proxyOptions,
                             logRequestsAndResponses,
                             listeners,
-                            userAgentSuffix
+                            userAgentSuffix,
+                            customHeaders
                     );
                 }
                 return new AzureOpenAiChatModel(
@@ -638,7 +652,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                         proxyOptions,
                         logRequestsAndResponses,
                         listeners,
-                        userAgentSuffix
+                        userAgentSuffix,
+                        customHeaders
                 );
             } else {
                 return new AzureOpenAiChatModel(
