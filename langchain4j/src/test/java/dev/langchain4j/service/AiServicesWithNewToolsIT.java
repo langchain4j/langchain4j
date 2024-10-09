@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.Response;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -122,6 +123,7 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithPojoParameter {
 
+        @ToString
         @AllArgsConstructor
         @EqualsAndHashCode
         static class Person {
@@ -191,6 +193,7 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithNestedPojoParameter {
 
+        @ToString
         @AllArgsConstructor
         @EqualsAndHashCode
         static class Person {
@@ -199,6 +202,7 @@ public abstract class AiServicesWithNewToolsIT {
             Address address;
         }
 
+        @ToString
         @AllArgsConstructor
         @EqualsAndHashCode
         static class Address {
@@ -264,6 +268,7 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithRecursion {
 
+        @ToString
         @AllArgsConstructor
         @EqualsAndHashCode
         static class Person {
@@ -555,7 +560,7 @@ public abstract class AiServicesWithNewToolsIT {
                     .tools(tool)
                     .build();
 
-            String text = "Process the following: red and green";
+            String text = "Process the following colors: RED and GREEN";
 
             // when
             assistant.chat(text);

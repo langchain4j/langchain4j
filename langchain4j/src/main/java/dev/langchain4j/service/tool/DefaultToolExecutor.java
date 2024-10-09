@@ -133,6 +133,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             return argument.toString();
         }
 
+        // TODO handle enum and collection of enums (e.g. wrong case, etc)
         if (parameterClass.isEnum()) {
             try {
                 @SuppressWarnings({"unchecked", "rawtypes"})
