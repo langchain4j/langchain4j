@@ -33,6 +33,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-reactor</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-easy-rag</artifactId>
                 <version>${project.version}</version>
             </dependency>
