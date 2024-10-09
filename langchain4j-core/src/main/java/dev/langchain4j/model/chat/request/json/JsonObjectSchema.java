@@ -161,6 +161,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
         }
 
         // TODO addOptionalProperty? addProperty(..., boolean required)?
+        // TODO should "required" be added by default?
 
         public Builder required(List<String> required) {
             this.required = required;
