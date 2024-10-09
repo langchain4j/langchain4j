@@ -90,6 +90,138 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
     }
 
+    interface PersonListExtractor {
+
+        class Person {
+
+            String name;
+            int age;
+            Double height;
+            boolean married;
+        }
+
+        List<Person> extractPersonFrom(String text);
+    }
+
+    @Test
+    void should_extract_list_of_pojo() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            PersonListExtractor personExtractor = AiServices.create(PersonListExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                    "Franny is 35 years old, 1.65m height and single.";
+
+            // when
+            List<PersonListExtractor.Person> people = personExtractor.extractPersonFrom(text);
+
+            // then
+            assertThat(people.get(0).name).isEqualTo("Klaus");
+            assertThat(people.get(0).age).isEqualTo(37);
+            assertThat(people.get(0).height).isEqualTo(1.78);
+            assertThat(people.get(0).married).isFalse();
+
+            assertThat(people.get(1).name).isEqualTo("Franny");
+            assertThat(people.get(1).age).isEqualTo(35);
+            assertThat(people.get(1).height).isEqualTo(1.65);
+            assertThat(people.get(1).married).isFalse();
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Person")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addArrayProperty("array", a -> a.items(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addIntegerProperty("age")
+                                                    .addNumberProperty("height")
+                                                    .addBooleanProperty("married")
+                                                    .required("name", "age", "height", "married")
+                                                    .build()))
+                                            .required("array")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface PersonSetExtractor {
+
+        class Person {
+
+            String name;
+            int age;
+            Double height;
+            boolean married;
+        }
+
+        Set<Person> extractPersonFrom(String text);
+    }
+
+    @Test
+    void should_extract_set_of_pojo() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            PersonSetExtractor personExtractor = AiServices.create(PersonSetExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                    "Franny is 35 years old, 1.65m height and single.";
+
+            // when
+            Set<PersonSetExtractor.Person> people = personExtractor.extractPersonFrom(text);
+
+            // then
+            assertThat(people).hasSize(2);
+
+            // Use assertThat with filters to ensure each person is in the set
+            assertThat(people).anyMatch(person ->
+                    person.name.equals("Klaus") &&
+                            person.age == 37 &&
+                            person.height.equals(1.78) &&
+                            !person.married
+            );
+
+            assertThat(people).anyMatch(person ->
+                    person.name.equals("Franny") &&
+                            person.age == 35 &&
+                            person.height.equals(1.65) &&
+                            !person.married
+            );
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Collection_of_Person")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addArrayProperty("array", a -> a.items(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addIntegerProperty("age")
+                                                    .addNumberProperty("height")
+                                                    .addBooleanProperty("married")
+                                                    .required("name", "age", "height", "married")
+                                                    .build()))
+                                            .required("array")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
 
     interface PersonExtractor2 {
 
