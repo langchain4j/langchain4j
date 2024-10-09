@@ -74,10 +74,10 @@ public class ServiceOutputParser {
         }
 
         try {
-            return Json.fromJson(text, rawReturnClass);
+            return Json.fromJson(text, returnType);
         } catch (Exception e) {
             String jsonBlock = extractJsonBlock(text);
-            return Json.fromJson(jsonBlock, rawReturnClass);
+            return Json.fromJson(jsonBlock, returnType);
         }
     }
 
@@ -97,7 +97,8 @@ public class ServiceOutputParser {
         if (rawClass == String.class
                 || rawClass == AiMessage.class
                 || rawClass == TokenStream.class
-                || rawClass == Response.class) {
+                || rawClass == Response.class
+                || rawClass == Map.class) {
             return "";
         }
 

@@ -315,12 +315,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return response;
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating response, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
-            Response<AiMessage> response = Response.from(
-                    aiMessage(httpResponseException.getMessage()),
-                    null,
-                    exceptionFinishReason
-            );
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
                 httpResponseException,
                 modelListenerRequest,
@@ -335,7 +329,16 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                     logger.warn("Exception while calling model listener", e2);
                 }
             });
-            return response;
+            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
+            if (exceptionFinishReason != FinishReason.CONTENT_FILTER) {
+                throw httpResponseException;
+            }
+
+            return Response.from(
+                    aiMessage(httpResponseException.getMessage()),
+                    null,
+                    exceptionFinishReason
+            );
         }
     }
 

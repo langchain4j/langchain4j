@@ -17,6 +17,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 import org.testcontainers.shaded.com.google.common.collect.Sets;
 
 import java.time.Duration;
@@ -29,7 +30,7 @@ import static org.assertj.core.data.Percentage.withPercentage;
 
 class MongoDbEmbeddingStoreNativeFilterIT {
 
-    static MongoDBAtlasContainer mongodb = new MongoDBAtlasContainer();
+    static MongoDBAtlasLocalContainer mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
 
     static MongoClient client;
 
@@ -54,10 +55,8 @@ class MongoDbEmbeddingStoreNativeFilterIT {
     static void start() {
         mongodb.start();
 
-        MongoCredential credential = MongoCredential.createCredential("root", "admin", "root".toCharArray());
         client = MongoClients.create(
                 MongoClientSettings.builder()
-                        .credential(credential)
                         .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
                         .applyConnectionString(new ConnectionString(mongodb.getConnectionString()))
                         .build());

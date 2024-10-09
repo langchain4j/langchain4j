@@ -15,7 +15,6 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.voyageai.VoyageAiApi.DEFAULT_BASE_URL;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
@@ -32,7 +31,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String inputType;
     private final Boolean truncation;
     private final String encodingFormat;
-    private Integer maxSegmentsPerBatch;
+    private final Integer maxSegmentsPerBatch;
 
     public VoyageAiEmbeddingModel(
             String baseUrl,
@@ -47,11 +46,9 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             Boolean logResponses,
             Integer maxSegmentsPerBatch
     ) {
-        // Below attributes are force to non-null.
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 1000);
-        // Below attributes can be null.
+        this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 128);
         this.truncation = truncation;
         this.inputType = inputType;
         this.encodingFormat = encodingFormat;
@@ -95,11 +92,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             inputTokenCount += getTokenUsage(response);
         }
 
-        return Response.from(
-                embeddings,
-                new TokenUsage(inputTokenCount)
-        );
-
+        return Response.from(embeddings, new TokenUsage(inputTokenCount));
     }
 
     @Override

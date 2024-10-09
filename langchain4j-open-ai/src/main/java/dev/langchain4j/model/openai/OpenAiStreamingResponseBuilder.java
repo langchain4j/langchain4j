@@ -18,8 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -142,14 +144,7 @@ public class OpenAiStreamingResponseBuilder {
 
     public Response<AiMessage> build() {
 
-        String content = contentBuilder.toString();
-        if (!content.isEmpty()) {
-            return Response.from(
-                    AiMessage.from(content),
-                    tokenUsage,
-                    finishReason
-            );
-        }
+        String text = contentBuilder.toString();
 
         String toolName = toolNameBuilder.toString();
         if (!toolName.isEmpty()) {
@@ -157,8 +152,13 @@ public class OpenAiStreamingResponseBuilder {
                     .name(toolName)
                     .arguments(toolArgumentsBuilder.toString())
                     .build();
+
+            AiMessage aiMessage = isNullOrBlank(text) ?
+                    AiMessage.from(toolExecutionRequest) :
+                    AiMessage.from(text, singletonList(toolExecutionRequest));
+
             return Response.from(
-                    AiMessage.from(toolExecutionRequest),
+                    aiMessage,
                     tokenUsage,
                     finishReason
             );
@@ -172,8 +172,21 @@ public class OpenAiStreamingResponseBuilder {
                             .arguments(it.argumentsBuilder.toString())
                             .build())
                     .collect(toList());
+
+            AiMessage aiMessage = isNullOrBlank(text) ?
+                    AiMessage.from(toolExecutionRequests) :
+                    AiMessage.from(text, toolExecutionRequests);
+
             return Response.from(
-                    AiMessage.from(toolExecutionRequests),
+                    aiMessage,
+                    tokenUsage,
+                    finishReason
+            );
+        }
+
+        if (!isNullOrBlank(text)) {
+            return Response.from(
+                    AiMessage.from(text),
                     tokenUsage,
                     finishReason
             );

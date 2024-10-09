@@ -256,9 +256,10 @@ Currently, AI Services support the following return types:
 - `byte`/`short`/`int`/`BigInteger`/`long`/`float`/`double`/`BigDecimal`
 - `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
 - `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
+- `Map<K, V>`
 - `Result<T>`, if you need to access `TokenUsage`, `FinishReason`, sources (`Content`s retrieved during RAG) and executed tools, aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
 
-Unless the return type is `String` or `AiMessage`, the AI Service will automatically append instructions
+Unless the return type is `String`, `AiMessage`, or `Map<K, V>`, the AI Service will automatically append instructions
 to the end of the `UserMessage` indicating the format in which the LLM should respond.
 Before the method returns, the AI Service will parse the output of the LLM into the desired type.
 

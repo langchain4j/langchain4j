@@ -471,7 +471,7 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    @Disabled("should be enabled once List<Double> is automatically converted into List<Integer>")
+    @Disabled("should be enabled once List<Double> is automatically converted into List<Integer>") // https://github.com/langchain4j/langchain4j/issues/1858
     void should_use_tool_with_List_of_Integers_parameter(ChatLanguageModel chatLanguageModel) {
 
         IntegerListProcessor integerListProcessor = spy(new IntegerListProcessor());
@@ -956,5 +956,39 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecution.result()).contains("22.2");
 
         verify(spyChatLanguageModel, times(3)).generate(anyList(), anyList());
+    }
+
+    static class EnumTools {
+
+        public enum Color {
+            Red, Blue, Green, Yellow
+        }
+
+        @Tool
+        public void processColors(List<Color> colors) {
+            System.out.println(colors);
+        }
+    }
+
+    @Test
+    public void test() {
+
+        // given
+        EnumTools enumTools = spy(new EnumTools());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatLanguageModel spyChatLanguageModel = spy(models().findFirst().get());
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatLanguageModel(spyChatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(enumTools)
+                .build();
+
+        String userMessage = "Process these colors: reg, yellow";
+
+        // when
+        Result<AiMessage> result = assistant.chat(userMessage);
     }
 }

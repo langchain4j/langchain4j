@@ -15,19 +15,16 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 import org.testcontainers.shaded.com.google.common.collect.Sets;
 
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
-/**
- * If container startup timeout (because atlas cli need to download mongodb binaries, which may take a few minutes),
- * the alternative way is running `docker compose up -d` in `src/test/resources`
- */
 class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
-    static MongoDBAtlasContainer mongodb = new MongoDBAtlasContainer();
+    static MongoDBAtlasLocalContainer mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
 
     static MongoClient client;
 
@@ -51,10 +48,8 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
     static void start() {
         mongodb.start();
 
-        MongoCredential credential = MongoCredential.createCredential("root", "admin", "root".toCharArray());
         client = MongoClients.create(
                 MongoClientSettings.builder()
-                        .credential(credential)
                         .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
                         .applyConnectionString(new ConnectionString(mongodb.getConnectionString()))
                         .build());
