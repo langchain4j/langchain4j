@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -118,5 +119,10 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
             ollamaChatModel.generate(chatMessages, toolSpecifications);
         });
 
+    }
+
+    @Test
+    @Disabled("This test is hard for llama3.1")
+    void should_execute_tool_with_pojo_with_nested_pojo() {
     }
 }
