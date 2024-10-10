@@ -6,15 +6,9 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
@@ -99,9 +93,9 @@ public class EmbeddingModelTextClassifier<E extends Enum<E>> implements TextClas
         this.exampleEmbeddingsByLabel = new HashMap<>();
         examplesByLabel.forEach((label, examples) ->
                 exampleEmbeddingsByLabel.put(label, embeddingModel.embedAll(
-                    examples.stream()
-                        .map(TextSegment::from)
-                        .collect(toList())).content()
+                        examples.stream()
+                                .map(TextSegment::from)
+                                .collect(toList())).content()
                 )
         );
 
@@ -111,11 +105,11 @@ public class EmbeddingModelTextClassifier<E extends Enum<E>> implements TextClas
     }
 
     @Override
-    public List<E> classify(String text) {
+    public List<LabelWithScore<E>> classifyWithScore(String text) {
 
         Embedding textEmbedding = embeddingModel.embed(text).content();
 
-        List<LabelWithScore> labelsWithScores = new ArrayList<>();
+        List<LabelWithScore<E>> labelsWithScores = new ArrayList<>();
         exampleEmbeddingsByLabel.forEach((label, exampleEmbeddings) -> {
 
             double meanScore = 0;
@@ -128,30 +122,18 @@ public class EmbeddingModelTextClassifier<E extends Enum<E>> implements TextClas
             }
             meanScore /= exampleEmbeddings.size();
 
-            labelsWithScores.add(new LabelWithScore(label, aggregatedScore(meanScore, maxScore)));
+            labelsWithScores.add(new LabelWithScore<>(label, aggregatedScore(meanScore, maxScore)));
         });
 
         return labelsWithScores.stream()
-                .filter(it -> it.score >= minScore)
+                .filter(it -> it.getScore() >= minScore)
                 // sorting in descending order to return highest score first
-                .sorted(comparingDouble(labelWithScore -> 1 - labelWithScore.score))
+                .sorted(comparingDouble(labelWithScore -> 1 - labelWithScore.getScore()))
                 .limit(maxResults)
-                .map(it -> it.label)
                 .collect(toList());
     }
 
     private double aggregatedScore(double meanScore, double maxScore) {
         return (meanToMaxScoreRatio * meanScore) + ((1 - meanToMaxScoreRatio) * maxScore);
-    }
-
-    private class LabelWithScore {
-
-        private final E label;
-        private final double score;
-
-        private LabelWithScore(E label, double score) {
-            this.label = label;
-            this.score = score;
-        }
     }
 }
