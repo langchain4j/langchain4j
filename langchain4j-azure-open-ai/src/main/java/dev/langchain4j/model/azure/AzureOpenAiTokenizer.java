@@ -220,7 +220,7 @@ public class AzureOpenAiTokenizer implements Tokenizer {
                 tokenCount += 2;
                 tokenCount += estimateTokenCountInText(toolSpecification.description());
             }
-            tokenCount += estimateTokenCountInToolParameters(toolSpecification.toolParameters()); // TODO
+            tokenCount += estimateTokenCountInToolParameters(toolSpecification.toolParameters());
         }
         return tokenCount;
     }

@@ -118,10 +118,10 @@ public class ToolSpecifications {
             }
         }
 
-        Map<String, JsonSchemaElement> defs = new LinkedHashMap<>();
+        Map<String, JsonSchemaElement> definitions = new LinkedHashMap<>();
         visited.forEach((clazz, visitedClassMetadata) -> {
             if (visitedClassMetadata.recursionDetected) {
-                defs.put(visitedClassMetadata.reference, visitedClassMetadata.jsonSchemaElement);
+                definitions.put(visitedClassMetadata.reference, visitedClassMetadata.jsonSchemaElement);
             }
         });
 
@@ -132,7 +132,7 @@ public class ToolSpecifications {
         return JsonObjectSchema.builder()
                 .properties(properties)
                 .required(required)
-                .defs(defs.isEmpty() ? null : defs)
+                .definitions(definitions.isEmpty() ? null : definitions)
                 .build();
     }
 

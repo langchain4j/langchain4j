@@ -8,6 +8,8 @@ import static dev.langchain4j.internal.Utils.quoted;
 
 /**
  * Can reference {@link JsonObjectSchema} when recursion is required.
+ * When used, the {@link JsonObjectSchema#definitions()} of the root JSON schema element
+ * should contain an entry with a key equal to the {@link #reference()} of this {@link JsonReferenceSchema}.
  */
 @Experimental
 public class JsonReferenceSchema implements JsonSchemaElement {

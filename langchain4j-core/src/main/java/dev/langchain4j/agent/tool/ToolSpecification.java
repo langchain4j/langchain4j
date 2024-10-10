@@ -56,18 +56,20 @@ public class ToolSpecification {
         return description;
     }
 
-    // TODO check backwards compatible?
-    public JsonObjectSchema parameters() { // TODO check all places that call this method, it can return null
+    /**
+     * Returns the parameters of the tool.
+     * <p>
+     * The old method that returns the deprecated {@link ToolParameters} has been renamed to {@link #toolParameters()}.
+     */
+    public JsonObjectSchema parameters() {
         return parameters;
     }
 
     /**
-     * Returns the parameters of the tool.
-     *
-     * @return the parameters of the tool.
+     * @deprecated please use {@link #parameters()} instead
      */
     @Deprecated
-    public ToolParameters toolParameters() { // TODO check all places that call this method, it can return null
+    public ToolParameters toolParameters() {
         return toolParameters;
     }
 
@@ -159,7 +161,7 @@ public class ToolSpecification {
          * @param parameters the {@code parameters}
          * @return {@code this}
          */
-        public Builder parameters(JsonObjectSchema parameters) { // TODO or JsonSchemaElement?
+        public Builder parameters(JsonObjectSchema parameters) {
             this.parameters = parameters;
             return this;
         }

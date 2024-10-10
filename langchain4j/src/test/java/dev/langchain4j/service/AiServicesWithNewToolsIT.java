@@ -284,7 +284,7 @@ public abstract class AiServicesWithNewToolsIT {
                     put("name", JsonStringSchema.builder().build());
                     put("children", JsonArraySchema.builder()
                             .items(JsonReferenceSchema.builder()
-                                    .reference("#/$defs/" + REFERENCE)
+                                    .reference(REFERENCE)
                                     .build())
                             .build());
                 }})
@@ -294,7 +294,7 @@ public abstract class AiServicesWithNewToolsIT {
         static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
                 .properties(singletonMap("arg0", PERSON_SCHEMA))
                 .required("arg0")
-                .defs(singletonMap(REFERENCE, PERSON_SCHEMA))
+                .definitions(singletonMap(REFERENCE, PERSON_SCHEMA))
                 .build();
     }
 

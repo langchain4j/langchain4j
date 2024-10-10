@@ -897,17 +897,17 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                 put("name", JsonStringSchema.builder().build());
                                                 put("children", JsonArraySchema.builder()
                                                         .items(JsonReferenceSchema.builder()
-                                                                .reference("#/$defs/" + reference)
+                                                                .reference(reference)
                                                                 .build())
                                                         .build());
                                             }})
                                             .required("name", "children")
-                                            .defs(singletonMap(reference, JsonObjectSchema.builder()
+                                            .definitions(singletonMap(reference, JsonObjectSchema.builder()
                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                                         put("name", JsonStringSchema.builder().build());
                                                         put("children", JsonArraySchema.builder()
                                                                 .items(JsonReferenceSchema.builder()
-                                                                        .reference("#/$defs/" + reference)
+                                                                        .reference(reference)
                                                                         .build())
                                                                 .build());
                                                     }})

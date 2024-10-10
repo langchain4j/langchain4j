@@ -69,13 +69,13 @@ public class JsonSchemaElementHelper {
                     .build();
         }
 
-        return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, visited, false); // TODO why false?
+        return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, visited, false);
     }
 
     public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(Class<?> type,
                                                                     String description,
                                                                     Map<Class<?>, VisitedClassMetadata> visited,
-                                                                    boolean setDefs) { // TODO name
+                                                                    boolean setDefinitions) {
         if (visited.containsKey(type) && isCustomClass(type)) {
             VisitedClassMetadata visitedClassMetadata = visited.get(type);
             JsonSchemaElement jsonSchemaElement = visitedClassMetadata.jsonSchemaElement;
@@ -85,9 +85,9 @@ public class JsonSchemaElementHelper {
             return jsonSchemaElement;
         }
 
-        String reference = generateUUIDFrom(type.getName()); // TODO shorter reference?
+        String reference = generateUUIDFrom(type.getName());
         JsonReferenceSchema jsonReferenceSchema = JsonReferenceSchema.builder()
-                .reference("#/$defs/" + reference) // TODO should prefix be here?
+                .reference(reference)
                 .build();
         visited.put(type, new VisitedClassMetadata(jsonReferenceSchema, reference, false));
 
@@ -114,14 +114,16 @@ public class JsonSchemaElementHelper {
 
         visited.get(type).jsonSchemaElement = builder.build();
 
-        if (setDefs) {
-            Map<String, JsonSchemaElement> defs = new LinkedHashMap<>();
+        if (setDefinitions) {
+            Map<String, JsonSchemaElement> definitions = new LinkedHashMap<>();
             visited.forEach((clazz, visitedClassMetadata) -> {
                 if (visitedClassMetadata.recursionDetected) {
-                    defs.put(visitedClassMetadata.reference, visitedClassMetadata.jsonSchemaElement);
+                    definitions.put(visitedClassMetadata.reference, visitedClassMetadata.jsonSchemaElement);
                 }
             });
-            builder.defs(defs.isEmpty() ? null : defs); // TODO
+            if (!definitions.isEmpty()) {
+                builder.definitions(definitions);
+            }
         }
 
         return builder.build();

@@ -20,14 +20,14 @@ public class JsonObjectSchema implements JsonSchemaElement {
     private final Map<String, JsonSchemaElement> properties;
     private final List<String> required;
     private final Boolean additionalProperties;
-    private final Map<String, JsonSchemaElement> defs; // TODO name
+    private final Map<String, JsonSchemaElement> definitions;
 
     public JsonObjectSchema(Builder builder) {
         this.description = builder.description;
         this.properties = copyIfNotNull(builder.properties);
         this.required = copyIfNotNull(builder.required);
         this.additionalProperties = builder.additionalProperties;
-        this.defs = copyIfNotNull(builder.defs);
+        this.definitions = copyIfNotNull(builder.definitions);
     }
 
     public String description() {
@@ -46,8 +46,11 @@ public class JsonObjectSchema implements JsonSchemaElement {
         return additionalProperties;
     }
 
-    public Map<String, JsonSchemaElement> defs() { // TODO name
-        return defs;
+    /**
+     * Used together with {@link JsonReferenceSchema} when recursion is required.
+     */
+    public Map<String, JsonSchemaElement> definitions() {
+        return definitions;
     }
 
     public static Builder builder() {
@@ -60,7 +63,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
         private Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         private List<String> required = new ArrayList<>();
         private Boolean additionalProperties;
-        private Map<String, JsonSchemaElement> defs;
+        private Map<String, JsonSchemaElement> definitions;
 
         public Builder description(String description) {
             this.description = description;
@@ -178,14 +181,10 @@ public class JsonObjectSchema implements JsonSchemaElement {
         }
 
         /**
-         * TODO
-         *
-         * @param defs
-         * @return
+         * Used together with {@link JsonReferenceSchema} when recursion is required.
          */
-        // TODO name
-        public Builder defs(Map<String, JsonSchemaElement> defs) {
-            this.defs = defs;
+        public Builder definitions(Map<String, JsonSchemaElement> definitions) {
+            this.definitions = definitions;
             return this;
         }
 
@@ -203,12 +202,12 @@ public class JsonObjectSchema implements JsonSchemaElement {
                 && Objects.equals(this.properties, that.properties)
                 && Objects.equals(this.required, that.required)
                 && Objects.equals(this.additionalProperties, that.additionalProperties)
-                && Objects.equals(this.defs, that.defs);
+                && Objects.equals(this.definitions, that.definitions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(description, properties, required, additionalProperties, defs);
+        return Objects.hash(description, properties, required, additionalProperties, definitions);
     }
 
     @Override
@@ -218,7 +217,7 @@ public class JsonObjectSchema implements JsonSchemaElement {
                 ", properties = " + properties +
                 ", required = " + required +
                 ", additionalProperties = " + additionalProperties +
-                ", defs = " + defs + // TODO name
+                ", definitions = " + definitions +
                 " }";
     }
 }
