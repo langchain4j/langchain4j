@@ -11,12 +11,12 @@ public class MongoDbDocument {
     private String id;
     private List<Float> embedding;
     private String text;
-    private Map<String, String> metadata;
+    private Map<String, Object> metadata;
 
     public MongoDbDocument() {
     }
 
-    public MongoDbDocument(String id, List<Float> embedding, String text, Map<String, String> metadata) {
+    public MongoDbDocument(String id, List<Float> embedding, String text, Map<String, Object> metadata) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
@@ -47,11 +47,11 @@ public class MongoDbDocument {
         this.text = text;
     }
 
-    public Map<String, String> getMetadata() {
+    public Map<String, Object> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(Map<String, String> metadata) {
+    public void setMetadata(Map<String, Object> metadata) {
         this.metadata = metadata;
     }
 
@@ -64,7 +64,7 @@ public class MongoDbDocument {
         private String id;
         private List<Float> embedding;
         private String text;
-        private Map<String, String> metadata;
+        private Map<String, Object> metadata;
 
         public Builder id(String id) {
             this.id = id;
@@ -81,7 +81,7 @@ public class MongoDbDocument {
             return this;
         }
 
-        public Builder metadata(Map<String, String> metadata) {
+        public Builder metadata(Map<String, Object> metadata) {
             this.metadata = metadata;
             return this;
         }
