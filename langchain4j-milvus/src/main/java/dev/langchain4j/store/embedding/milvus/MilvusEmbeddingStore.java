@@ -48,10 +48,10 @@ import static java.util.stream.Collectors.toList;
  */
 public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    static final String ID_FIELD_NAME = "id";
-    static final String TEXT_FIELD_NAME = "text";
-    static final String METADATA_FIELD_NAME = "metadata";
-    static final String VECTOR_FIELD_NAME = "vector";
+    private static final String DEFAULT_ID_FIELD_NAME = "id";
+    private static final String DEFAULT_TEXT_FIELD_NAME = "text";
+    private static final String DEFAULT_METADATA_FIELD_NAME = "metadata";
+    private static final String DEFAULT_VECTOR_FIELD_NAME = "vector";
 
     private final MilvusServiceClient milvusClient;
     private final String collectionName;
@@ -59,6 +59,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final ConsistencyLevelEnum consistencyLevel;
     private final boolean retrieveEmbeddingsOnSearch;
     private final boolean autoFlushOnInsert;
+    private final FieldDefinition fieldDefinition;
 
     public MilvusEmbeddingStore(
             String host,
@@ -74,7 +75,11 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             ConsistencyLevelEnum consistencyLevel,
             Boolean retrieveEmbeddingsOnSearch,
             Boolean autoFlushOnInsert,
-            String databaseName
+            String databaseName,
+            String idFieldName,
+            String textFieldName,
+            String metadataFiledName,
+            String vectorFiledName
     ) {
         ConnectParam.Builder connectBuilder = ConnectParam
                 .newBuilder()
@@ -94,10 +99,15 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
         this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
         this.autoFlushOnInsert = getOrDefault(autoFlushOnInsert, false);
+        this.fieldDefinition = new FieldDefinition(
+                                        getOrDefault(idFieldName, DEFAULT_ID_FIELD_NAME),
+                                        getOrDefault(textFieldName, DEFAULT_TEXT_FIELD_NAME),
+                                        getOrDefault(metadataFiledName, DEFAULT_METADATA_FIELD_NAME),
+                                        getOrDefault(vectorFiledName, DEFAULT_VECTOR_FIELD_NAME));
 
         if (!hasCollection(this.milvusClient, this.collectionName)) {
-            createCollection(this.milvusClient, this.collectionName, ensureNotNull(dimension, "dimension"));
-            createIndex(this.milvusClient, this.collectionName, getOrDefault(indexType, FLAT), this.metricType);
+            createCollection(this.milvusClient, this.collectionName, this.fieldDefinition, ensureNotNull(dimension, "dimension"));
+            createIndex(this.milvusClient, this.collectionName, this.fieldDefinition.getVectorFieldName(), getOrDefault(indexType, FLAT), this.metricType);
         }
 
         loadCollectionInMemory(this.milvusClient, collectionName);
@@ -144,6 +154,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         SearchParam searchParam = buildSearchRequest(
                 collectionName,
+                fieldDefinition,
                 embeddingSearchRequest.queryEmbedding().vectorAsList(),
                 embeddingSearchRequest.filter(),
                 embeddingSearchRequest.maxResults(),
@@ -157,6 +168,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 milvusClient,
                 resultsWrapper,
                 collectionName,
+                fieldDefinition,
                 consistencyLevel,
                 retrieveEmbeddingsOnSearch
         );
@@ -178,10 +190,10 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
         List<InsertParam.Field> fields = new ArrayList<>();
-        fields.add(new InsertParam.Field(ID_FIELD_NAME, ids));
-        fields.add(new InsertParam.Field(TEXT_FIELD_NAME, toScalars(textSegments, ids.size())));
-        fields.add(new InsertParam.Field(METADATA_FIELD_NAME, toMetadataJsons(textSegments, ids.size())));
-        fields.add(new InsertParam.Field(VECTOR_FIELD_NAME, toVectors(embeddings)));
+        fields.add(new InsertParam.Field(fieldDefinition.getIdFieldName(), ids));
+        fields.add(new InsertParam.Field(fieldDefinition.getTextFieldName(), toScalars(textSegments, ids.size())));
+        fields.add(new InsertParam.Field(fieldDefinition.getMetadataFieldName(), toMetadataJsons(textSegments, ids.size())));
+        fields.add(new InsertParam.Field(fieldDefinition.getVectorFieldName(), toVectors(embeddings)));
 
         insert(this.milvusClient, this.collectionName, fields);
         if (autoFlushOnInsert) {
@@ -207,7 +219,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
-        removeForVector(this.milvusClient, this.collectionName, format("%s in %s", ID_FIELD_NAME, formatValues(ids)));
+        removeForVector(this.milvusClient, this.collectionName, format("%s in %s", this.fieldDefinition.getIdFieldName(), formatValues(ids)));
     }
 
 
@@ -231,7 +243,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
-        removeForVector(this.milvusClient, this.collectionName, map(filter));
+        removeForVector(this.milvusClient, this.collectionName, map(filter, this.fieldDefinition.getMetadataFieldName()));
     }
 
     /**
@@ -250,7 +262,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public void removeAll() {
-        removeForVector(this.milvusClient, this.collectionName, format("%s != \"\"", ID_FIELD_NAME));
+        removeForVector(this.milvusClient, this.collectionName, format("%s != \"\"", this.fieldDefinition.getIdFieldName()));
     }
 
     public static class Builder {
@@ -269,6 +281,10 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Boolean retrieveEmbeddingsOnSearch;
         private String databaseName;
         private Boolean autoFlushOnInsert;
+        private String idFieldName;
+        private String textFieldName;
+        private String metadataFieldName;
+        private String vectorFieldName;
 
         /**
          * @param host The host of the self-managed Milvus instance.
@@ -414,6 +430,48 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * @param idFieldName id field name of collection.
+         *                    Default value: id. In this case default id filed name will be used.
+         * @return builder
+         */
+        public Builder idFieldName(String idFieldName) {
+            this.idFieldName = idFieldName;
+            return this;
+        }
+
+        /**
+         * @param textFieldName text field name of collection.
+         *                      Default value: text. In this case default text field name will be used.
+         * @return builder
+         */
+        public Builder textFieldName(String textFieldName) {
+            this.textFieldName = textFieldName;
+            return this;
+        }
+
+        /**
+         * @param metadataFieldName metadata field name of database.
+         *                          Default value: metadata. In this case default metadata filed name will be used.
+         * @return builder
+         */
+        public Builder metadataFieldName(String metadataFieldName) {
+            this.metadataFieldName = metadataFieldName;
+            return this;
+        }
+
+        /**
+         * @param vectorFieldName vector field name of database.
+         *                        Default value: vector. In this case default Milvus database name will be used.
+         * @return builder
+         */
+        public Builder vectorFieldName(String vectorFieldName) {
+            this.vectorFieldName = vectorFieldName;
+            return this;
+        }
+
+
+
         public MilvusEmbeddingStore build() {
             return new MilvusEmbeddingStore(
                     host,
@@ -429,7 +487,11 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                     consistencyLevel,
                     retrieveEmbeddingsOnSearch,
                     autoFlushOnInsert,
-                    databaseName
+                    databaseName,
+                    idFieldName,
+                    textFieldName,
+                    metadataFieldName,
+                    vectorFieldName
             );
         }
     }
