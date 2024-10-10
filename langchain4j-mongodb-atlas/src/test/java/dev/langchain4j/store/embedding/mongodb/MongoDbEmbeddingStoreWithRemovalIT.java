@@ -10,7 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 
-import static dev.langchain4j.store.embedding.mongodb.TestHelper.*;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.*;
 
 public class MongoDbEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
 
@@ -19,7 +19,7 @@ public class MongoDbEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemova
 
         @BeforeAll
         static void start() {
-            TestHelper.assertDoContainerTests();
+            MongoDbTestFixture.assertDoContainerTests();
             mongodb.start();
         }
 
@@ -34,7 +34,7 @@ public class MongoDbEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemova
         }
     }
 
-    private TestHelper helper = new TestHelper(createClient()).initialize();
+    private MongoDbTestFixture helper = new MongoDbTestFixture(createClient()).initialize();
 
     MongoClient createClient() {
         return createClientFromEnv();

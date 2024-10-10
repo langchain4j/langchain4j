@@ -19,6 +19,7 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
@@ -29,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
 
@@ -42,47 +42,40 @@ import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.store.embedding.mongodb.IndexMapping.defaultIndexMapping;
 import static dev.langchain4j.store.embedding.mongodb.MappingUtils.*;
 import static dev.langchain4j.store.embedding.mongodb.MongoDbMetadataFilterMapper.map;
-import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 /**
- * Represents a <a href="https://www.mongodb.com/">MongoDB</a> index as an embedding store.
+ * Represents a <a href="https://www.mongodb.com/">MongoDB</a> indexed collection as an embedding store.
  * <p>
- * More <a href="https://www.mongodb.com/docs/atlas/atlas-search/field-types/knn-vector/">info</a>
- * to set up MongoDb as vectorDatabase.
+ * More <a href="https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-overview/">info</a>
+ * on using MongoDb vector search.
  * <p>
  * <a href="https://www.mongodb.com/developer/products/atlas/semantic-search-mongodb-atlas-vector-search/">tutorial</a>
- * how to use a knn-vector in MongoDB Atlas (great starting point).
+ * how to use vector search with MongoDB Atlas (great starting point).
+ * <p>
+ * To deploy a local instance of Atlas, see
+ * <a href="https://www.mongodb.com/docs/atlas/cli/current/atlas-cli-deploy-local/">this guide</a>.
  * <p>
  * If you are using a free tier, {@code #createIndex = true} might not be supported,
  * so you will need to create an index manually.
- * In your Atlas web console go to: DEPLOYMENT -&gt; Database -&gt; {your cluster} -&gt; Atlas Search -&gt; Create Index Search
- * -&gt; "JSON Editor" under "Atlas Search" -&gt; Next -&gt; Select your database in the left pane
- * -&gt; Insert the following JSON into the right pane (set "dimensions" and "metadata"-&gt;"fields" to desired values)
+ * In your Atlas web console go to: DEPLOYMENT -&gt; Database -&gt; {your cluster} -&gt; Atlas Search tab
+ * -&gt; Create Index Search -&gt; "JSON Editor" under "Atlas Vector Search" (not "Atlas Search") -&gt; Next
+ * -&gt; Select your database in the left pane -&gt; Insert the following JSON into the right pane
+ * (set "numDimensions" and additional metadata fields to desired values)
  * <pre>
  * {
- *   "mappings": {
- *     "dynamic": false,
- *     "fields": {
- *       "embedding": {
- *         "dimensions": 384,
- *         "similarity": "cosine",
- *         "type": "knnVector"
- *       },
- *       "metadata": {
- *         "dynamic": false,
- *         "fields": {
- *           "test-key": {
- *             "type": "token"
- *           }
- *         },
- *         "type": "document"
- *       }
- *     }
- *   }
+ *   "fields" : [ {
+ *     "type" : "vector",
+ *     "path" : "embedding",
+ *     "numDimensions" : 384,
+ *     "similarity" : "cosine"
+ *   }, {
+ *     "type" : "filter",
+ *     "path" : "metadata.test-key"
+ *   } ]
  * }
  * </pre>
  * -&gt; Next -&gt; Create Search Index
@@ -284,7 +277,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll() {
-        collection.drop();
+        collection.deleteMany(new Document());
     }
 
     @Override
@@ -413,7 +406,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         long startTime = System.nanoTime();
         long timeoutNanos = TimeUnit.SECONDS.toNanos(SECONDS_TO_WAIT_FOR_INDEX);
         while (System.nanoTime() - startTime < timeoutNanos) {
-            if (indexExistsAndNot(indexName, "INITIAL_SYNC", "PENDING")) {
+            if (indexExistsAndNot(indexName, "INITIAL_SYNC", "PENDING", "BUILDING")) {
                 return;
             }
             try {
