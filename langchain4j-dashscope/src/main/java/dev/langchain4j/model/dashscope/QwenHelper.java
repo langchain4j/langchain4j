@@ -380,7 +380,7 @@ class QwenHelper {
     static ToolBase toToolFunction(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = FunctionDefinition.builder()
                 .name(toolSpecification.name())
-                .description(toolSpecification.description())
+                .description(getOrDefault(toolSpecification.description(), ""))
                 .parameters(toParameters(toolSpecification))
                 .build();
         return ToolFunction.builder().function(functionDefinition).build();
