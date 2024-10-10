@@ -1,7 +1,13 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import lombok.Data;
 import org.assertj.core.api.WithAssertions;
@@ -69,10 +75,10 @@ class ToolSpecificationsTest implements WithAssertions {
                 List<Integer> p22,
                 Set<BigDecimal> p23,
                 Collection<String> p24,
-                E p28,
-                Person p29,
-                @P(value = "optional", required = false) int p30,
-                @P(value = "required") int p31) {
+                E p25,
+                Person p26,
+                @P(value = "optional", required = false) int p27,
+                @P(value = "required") int p28) {
             return 42;
         }
 
@@ -231,46 +237,35 @@ class ToolSpecificationsTest implements WithAssertions {
         Map<String, JsonSchemaElement> properties = ts.parameters().properties();
 
         assertThat(properties).hasSize(29);
-//        assertThat(properties)
-//                .containsEntry("arg0", mapOf("type", "string", "description", "foo"))
-//                .containsEntry("arg1", mapOf("type", "boolean"))
-//                .containsEntry("arg2", mapOf("type", "boolean", "description", "b2"))
-//                .containsEntry("arg3", mapOf("type", "integer"))
-//                .containsEntry("arg4", mapOf("type", "integer"))
-//                .containsEntry("arg5", mapOf("type", "integer"))
-//                .containsEntry("arg6", mapOf("type", "integer"))
-//                .containsEntry("arg7", mapOf("type", "integer"))
-//                .containsEntry("arg8", mapOf("type", "integer"))
-//                .containsEntry("arg9", mapOf("type", "integer"))
-//                .containsEntry("arg10", mapOf("type", "integer"))
-//                .containsEntry("arg11", mapOf("type", "integer", "description", "biggy"))
-//                .containsEntry("arg12", mapOf("type", "number"))
-//                .containsEntry("arg13", mapOf("type", "number"))
-//                .containsEntry("arg14", mapOf("type", "number"))
-//                .containsEntry("arg15", mapOf("type", "number"))
-//                .containsEntry("arg16", mapOf("type", "number", "description", "bigger"))
-//                .containsEntry("arg17", mapOf("type", "array", "items", mapOf("type", "string")))
-//                .containsEntry("arg18", mapOf("type", "array", "items", mapOf("type", "integer")))
-//                .containsEntry("arg19", mapOf("type", "array", "items", mapOf("type", "boolean")))
-//                .containsEntry("arg20", mapOf("type", "array", "items", mapOf("type", "integer")))
-//                .containsEntry("arg21", mapOf("type", "array", "items", mapOf("type", "boolean")))
-//                .containsEntry("arg22", mapOf("type", "array", "items", mapOf("type", "integer")))
-//                .containsEntry("arg23", mapOf("type", "array", "items", mapOf("type", "number")))
-//                .containsEntry("arg24", mapOf("type", "array", "items", mapOf("type", "string")))
-//                .containsEntry("arg25", mapOf("type", "object", "properties", mapOf(
-//                        "name", mapOf("description", "Name of the person", "type", "string"),
-//                        "active", mapOf("type", "boolean"),
-//                        "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-//                        "currentAddress", mapOf("type", "object", "properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string"))),
-//                        "parent", mapOf("type", "object"),
-//                        "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-//                        "previousAddresses", mapOf("type", "array", "items", mapOf("type", "object", "properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string")))))))
-//                .containsEntry("arg26", mapOf("type", "integer", "description", "optional"))
-//                .containsEntry("arg27", mapOf("type", "integer", "description", "required"));
-
-
-//        assertThat(properties.get("arg28")).containsEntry("type", "string");
-//        assertThat(properties.get("arg28").get("enum")).isEqualTo(asList("A", "B", "C"));
+        assertThat(properties)
+                .containsEntry("arg0", JsonStringSchema.builder().description("foo").build())
+                .containsEntry("arg1", JsonBooleanSchema.builder().build())
+                .containsEntry("arg2", JsonBooleanSchema.builder().description("b2").build())
+                .containsEntry("arg3", JsonIntegerSchema.builder().build())
+                .containsEntry("arg4", JsonIntegerSchema.builder().build())
+                .containsEntry("arg5", JsonIntegerSchema.builder().build())
+                .containsEntry("arg6", JsonIntegerSchema.builder().build())
+                .containsEntry("arg7", JsonIntegerSchema.builder().build())
+                .containsEntry("arg8", JsonIntegerSchema.builder().build())
+                .containsEntry("arg9", JsonIntegerSchema.builder().build())
+                .containsEntry("arg10", JsonIntegerSchema.builder().build())
+                .containsEntry("arg11", JsonIntegerSchema.builder().description("biggy").build())
+                .containsEntry("arg12", JsonNumberSchema.builder().build())
+                .containsEntry("arg13", JsonNumberSchema.builder().build())
+                .containsEntry("arg14", JsonNumberSchema.builder().build())
+                .containsEntry("arg15", JsonNumberSchema.builder().build())
+                .containsEntry("arg16", JsonNumberSchema.builder().description("bigger").build())
+                .containsEntry("arg17", JsonArraySchema.builder().items(JsonStringSchema.builder().build()).build())
+                .containsEntry("arg18", JsonArraySchema.builder().items(JsonIntegerSchema.builder().build()).build())
+                .containsEntry("arg19", JsonArraySchema.builder().items(JsonBooleanSchema.builder().build()).build())
+                .containsEntry("arg20", JsonArraySchema.builder().items(JsonIntegerSchema.builder().build()).build())
+                .containsEntry("arg21", JsonArraySchema.builder().items(JsonBooleanSchema.builder().build()).build())
+                .containsEntry("arg22", JsonArraySchema.builder().items(JsonIntegerSchema.builder().build()).build())
+                .containsEntry("arg23", JsonArraySchema.builder().items(JsonNumberSchema.builder().build()).build())
+                .containsEntry("arg24", JsonArraySchema.builder().items(JsonStringSchema.builder().build()).build())
+                .containsEntry("arg25", JsonEnumSchema.builder().enumValues("A", "B", "C").build())
+                .containsEntry("arg27", JsonIntegerSchema.builder().description("optional").build())
+                .containsEntry("arg28", JsonIntegerSchema.builder().description("required").build());
 
         assertThat(ts.parameters().required())
                 .containsExactly("arg0",
@@ -300,7 +295,7 @@ class ToolSpecificationsTest implements WithAssertions {
                         "arg24",
                         "arg25",
                         "arg26",
-                        // "arg30", params with @P(optional = true) are optional
+                        // "arg27", params with @P(required = false) are optional
                         "arg28"
                 );
     }

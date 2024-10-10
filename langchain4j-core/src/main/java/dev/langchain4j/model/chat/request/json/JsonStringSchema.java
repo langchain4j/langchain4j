@@ -11,6 +11,8 @@ public class JsonStringSchema implements JsonSchemaElement {
 
     private final String description;
 
+    // TODO default ctor here and in other primitive types?
+
     public JsonStringSchema(Builder builder) {
         this.description = builder.description;
     }

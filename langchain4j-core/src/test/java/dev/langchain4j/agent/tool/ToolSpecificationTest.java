@@ -130,7 +130,7 @@ class ToolSpecificationTest implements WithAssertions {
                 "ToolSpecification { " +
                         "name = \"name\", " +
                         "description = \"description\", " +
-                        "parameters = JsonObjectSchema {description = null, properties = {foo=JsonStringSchema {description = null }}, required = [foo], additionalProperties = null, defs = null }, " +
+                        "parameters = JsonObjectSchema {description = null, properties = {foo=JsonStringSchema {description = null }}, required = [foo], additionalProperties = null, definitions = null }, " +
                         "toolParameters = null " +
                         "}");
     }
