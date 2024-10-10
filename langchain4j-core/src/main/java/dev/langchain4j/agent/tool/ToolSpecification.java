@@ -166,8 +166,6 @@ public class ToolSpecification {
             return this;
         }
 
-        // TODO add convenience methods?
-
         /**
          * Sets the {@code parameters}.
          *
@@ -187,8 +185,9 @@ public class ToolSpecification {
          * @param name                 the name of the parameter.
          * @param jsonSchemaProperties the properties of the parameter.
          * @return {@code this}
+         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead
          */
-        @Deprecated // TODO what to use instead?
+        @Deprecated
         public Builder addParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
             return addParameter(name, asList(jsonSchemaProperties));
         }
@@ -199,8 +198,9 @@ public class ToolSpecification {
          * @param name                 the name of the parameter.
          * @param jsonSchemaProperties the properties of the parameter.
          * @return {@code this}
+         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead
          */
-        @Deprecated // TODO what to use instead?
+        @Deprecated
         public Builder addParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
             addOptionalParameter(name, jsonSchemaProperties);
             this.toolParameters.required().add(name);
@@ -213,8 +213,9 @@ public class ToolSpecification {
          * @param name                 the name of the parameter.
          * @param jsonSchemaProperties the properties of the parameter.
          * @return {@code this}
+         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead
          */
-        @Deprecated // TODO what to use instead?
+        @Deprecated
         public Builder addOptionalParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
             return addOptionalParameter(name, asList(jsonSchemaProperties));
         }
@@ -225,8 +226,9 @@ public class ToolSpecification {
          * @param name                 the name of the parameter.
          * @param jsonSchemaProperties the properties of the parameter.
          * @return {@code this}
+         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead
          */
-        @Deprecated // TODO what to use instead?
+        @Deprecated
         public Builder addOptionalParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
             if (this.toolParameters == null) {
                 this.toolParameters = ToolParameters.builder().build();
