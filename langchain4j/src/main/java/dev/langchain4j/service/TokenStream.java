@@ -4,6 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.ToolExecution;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -24,6 +25,16 @@ public interface TokenStream {
      * @return token stream instance used to configure or start stream processing
      */
     TokenStream onRetrieved(Consumer<List<Content>> contentHandler);
+
+    /**
+     * The provided consumer will be invoked when/if tool executed .
+     * <p>
+     * The invocation happens during any call is made to the language model.
+     *
+     * @param toolExecuteHandler lambda that consumes executed tool request and response
+     * @return token stream instance used to configure or start stream processing
+     */
+    TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler);
 
     /**
      * The provided consumer will be invoked every time a new token from a language model is available.
