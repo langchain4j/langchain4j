@@ -105,7 +105,7 @@ public class WanxImageModel implements ImageModel {
                 ImageSynthesisOutput output = result.getOutput();
                 String errorMessage = String.format("[%s] %s: %s",
                         output.getTaskStatus(), output.getCode(), output.getMessage());
-                throw new NullPointerException(errorMessage);
+                throw new IllegalStateException(errorMessage);
             }
             return Response.from(images.get(0));
         } catch (NoApiKeyException e) {
