@@ -25,10 +25,19 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.*;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.createCollection;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.createIndex;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.flush;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.hasCollection;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.insert;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.loadCollectionInMemory;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.removeForVector;
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.buildSearchRequest;
 import static dev.langchain4j.store.embedding.milvus.Generator.generateRandomIds;
-import static dev.langchain4j.store.embedding.milvus.Mapper.*;
+import static dev.langchain4j.store.embedding.milvus.Mapper.toEmbeddingMatches;
+import static dev.langchain4j.store.embedding.milvus.Mapper.toMetadataJsons;
+import static dev.langchain4j.store.embedding.milvus.Mapper.toScalars;
+import static dev.langchain4j.store.embedding.milvus.Mapper.toVectors;
 import static dev.langchain4j.store.embedding.milvus.MilvusMetadataFilterMapper.formatValues;
 import static dev.langchain4j.store.embedding.milvus.MilvusMetadataFilterMapper.map;
 import static io.milvus.common.clientenum.ConsistencyLevelEnum.EVENTUALLY;
@@ -100,10 +109,10 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
         this.autoFlushOnInsert = getOrDefault(autoFlushOnInsert, false);
         this.fieldDefinition = new FieldDefinition(
-                                        getOrDefault(idFieldName, DEFAULT_ID_FIELD_NAME),
-                                        getOrDefault(textFieldName, DEFAULT_TEXT_FIELD_NAME),
-                                        getOrDefault(metadataFiledName, DEFAULT_METADATA_FIELD_NAME),
-                                        getOrDefault(vectorFiledName, DEFAULT_VECTOR_FIELD_NAME));
+                getOrDefault(idFieldName, DEFAULT_ID_FIELD_NAME),
+                getOrDefault(textFieldName, DEFAULT_TEXT_FIELD_NAME),
+                getOrDefault(metadataFiledName, DEFAULT_METADATA_FIELD_NAME),
+                getOrDefault(vectorFiledName, DEFAULT_VECTOR_FIELD_NAME));
 
         if (!hasCollection(this.milvusClient, this.collectionName)) {
             createCollection(this.milvusClient, this.collectionName, this.fieldDefinition, ensureNotNull(dimension, "dimension"));
@@ -431,8 +440,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param idFieldName id field name of collection.
-         *                    Default value: id. In this case default id filed name will be used.
+         * @param idFieldName the name of the field where the ID of the {@link Embedding} is stored.
+         *                    Default value: "id".
          * @return builder
          */
         public Builder idFieldName(String idFieldName) {
@@ -441,8 +450,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param textFieldName text field name of collection.
-         *                      Default value: text. In this case default text field name will be used.
+         * @param textFieldName the name of the field where the text of the {@link TextSegment} is stored.
+         *                      Default value: "text".
          * @return builder
          */
         public Builder textFieldName(String textFieldName) {
@@ -451,8 +460,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param metadataFieldName metadata field name of database.
-         *                          Default value: metadata. In this case default metadata filed name will be used.
+         * @param metadataFieldName the name of the field where the {@link Metadata} of the {@link TextSegment} is stored.
+         *                          Default value: "metadata".
          * @return builder
          */
         public Builder metadataFieldName(String metadataFieldName) {
@@ -461,16 +470,14 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param vectorFieldName vector field name of database.
-         *                        Default value: vector. In this case default Milvus database name will be used.
+         * @param vectorFieldName the name of the field where the {@link Embedding} is stored.
+         *                        Default value: "vector".
          * @return builder
          */
         public Builder vectorFieldName(String vectorFieldName) {
             this.vectorFieldName = vectorFieldName;
             return this;
         }
-
-
 
         public MilvusEmbeddingStore build() {
             return new MilvusEmbeddingStore(
