@@ -75,19 +75,10 @@ public class JsonObjectSchema implements JsonSchemaElement {
             return this;
         }
 
-        /**
-         * TODO helper method
-         *
-         * @param name
-         * @param jsonSchemaElement
-         * @return
-         */
         public Builder addProperty(String name, JsonSchemaElement jsonSchemaElement) {
             this.properties.put(name, jsonSchemaElement);
             return this;
         }
-
-        // TODO other types
 
         public Builder addStringProperty(String name) {
             this.properties.put(name, JsonStringSchema.builder().build());

@@ -256,7 +256,7 @@ public class InternalOpenAiHelper {
         // keeping old logic with ToolParameters for backward compatibility
 
         ToolParameters toolParameters = toolSpecification.toolParameters();
-        if (toolParameters == null) { // TODO
+        if (toolParameters == null) {
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder();
             if (strict) {
                 // when strict, additionalProperties must be false:

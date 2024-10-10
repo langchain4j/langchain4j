@@ -160,7 +160,7 @@ class StreamingAiServicesWithToolsIT {
                 .name("currentTemperature")
                 .parameters(JsonObjectSchema.builder()
                         .addStringProperty("arg0")
-                        .addEnumProperty("arg1", "CELSIUS", "fahrenheit", "Kelvin")
+                        .addEnumProperty("arg1", e -> e.enumValues("CELSIUS", "fahrenheit", "Kelvin"))
                         .required("arg0", "arg1")
                         .build())
                 .build();

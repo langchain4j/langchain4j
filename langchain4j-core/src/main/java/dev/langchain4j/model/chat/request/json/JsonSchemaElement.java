@@ -3,7 +3,7 @@ package dev.langchain4j.model.chat.request.json;
 import dev.langchain4j.Experimental;
 
 /**
- * TODO
+ * A base interface for a JSON schema element.
  *
  * @see JsonArraySchema
  * @see JsonBooleanSchema
