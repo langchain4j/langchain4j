@@ -98,6 +98,7 @@ class AiServicesWithToolsIT {
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                         .modelName(GPT_4_O_MINI)
+                        .parallelToolCalls(false) // to force the model to call tools sequentially
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
@@ -221,8 +222,7 @@ class AiServicesWithToolsIT {
                 .tools(transactionService)
                 .build();
 
-        String userMessage = "What are the amounts of transactions T001 and T002? " +
-                "First call getTransactionAmount for T001, then for T002, sequentially. Do not answer before you know all amounts!";
+        String userMessage = "What are the amounts of transactions T001 and T002?";
 
         Response<AiMessage> response = assistant.chat(userMessage);
 
@@ -999,7 +999,7 @@ class AiServicesWithToolsIT {
                 .tools(transactionService)
                 .build();
 
-        String userMessage = "What are the amounts of transactions T001 and T002? Call tools sequentially!";
+        String userMessage = "What are the amounts of transactions T001 and T002?";
 
         // when
         Result<AiMessage> result = assistant.chat(userMessage);

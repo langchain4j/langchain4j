@@ -271,7 +271,7 @@ public class StreamingAiServicesIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
-                .parallelToolCalls(false)  // called sequentially
+                .parallelToolCalls(false) // to force the model to call tools sequentially
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
