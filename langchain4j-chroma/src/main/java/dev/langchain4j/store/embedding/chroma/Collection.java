@@ -8,15 +8,15 @@ class Collection {
     private String name;
     private Map<String, Object> metadata;
 
-    public String id() {
+    public String getId() {
         return id;
     }
 
-    public String name() {
+    public String getName() {
         return name;
     }
 
-    public Map<String, Object> metadata() {
+    public Map<String, Object> getMetadata() {
         return metadata;
     }
 }

@@ -17,4 +17,12 @@ class CreateCollectionRequest {
         metadata.put("hnsw:space", "cosine");
         this.metadata = metadata;
     }
+
+    public String getName() {
+        return name;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
 }
