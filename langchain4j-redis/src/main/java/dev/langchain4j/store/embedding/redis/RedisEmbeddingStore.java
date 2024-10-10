@@ -1,55 +1,66 @@
 package dev.langchain4j.store.embedding.redis;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.json.Path2;
 import redis.clients.jedis.search.*;
+import redis.clients.jedis.search.schemafields.SchemaField;
+import redis.clients.jedis.search.schemafields.TextField;
 
-import java.io.IOException;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
-import static dev.langchain4j.store.embedding.redis.RedisSchema.SCORE_FIELD_NAME;
+import static dev.langchain4j.store.embedding.redis.RedisJsonUtils.toProperties;
+import static dev.langchain4j.store.embedding.redis.RedisSchema.*;
 import static java.lang.String.format;
-import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static redis.clients.jedis.search.IndexDefinition.Type.JSON;
-import static redis.clients.jedis.search.RediSearchUtil.ToByteArray;
+import static redis.clients.jedis.search.RediSearchUtil.toByteArray;
 
 /**
  * Represents a <a href="https://redis.io/">Redis</a> index as an embedding store.
- * Current implementation assumes the index uses the cosine distance metric.
+ *
+ * <p>Current implementation assumes the index uses the cosine distance metric.</p>
+ *
+ * <p><b>NOTE: </b> For filter, Redis only support below filter type:</p>
+ *
+ * <ul>
+ *     <li>NumericType: eq/neq/gt/gte/lt/lte/</li>
+ *     <li>TagType: eq/neq/in</li>
+ *     <li>TextType: eq/neq/in</li>
+ * </ul>
  */
-public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(RedisEmbeddingStore.class);
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static final String QUERY_TEMPLATE = "%s=>[ KNN %d @%s $BLOB AS %s ]";
 
     private final JedisPooled client;
     private final RedisSchema schema;
+    private final RedisMetadataFilterMapper filterMapper;
 
     /**
      * Creates an instance of RedisEmbeddingStore
      *
-     * @param host         Redis Stack Server host
-     * @param port         Redis Stack Server port
-     * @param user         Redis Stack username (optional)
-     * @param password     Redis Stack password (optional)
-     * @param indexName    The name of the index (optional). Default value: "embedding-index".
-     * @param dimension    Embedding vector dimension
-     * @param metadataKeys Metadata keys that should be persisted (optional)
+     * @param host           Redis Stack Server host
+     * @param port           Redis Stack Server port
+     * @param user           Redis Stack username (optional)
+     * @param password       Redis Stack password (optional)
+     * @param indexName      The name of the index (optional). Default value: "embedding-index".
+     * @param dimension      Embedding vector dimension
+     * @param schemaFieldMap Metadata schemaField that should be persisted (optional)
      */
     public RedisEmbeddingStore(String host,
                                Integer port,
@@ -57,19 +68,48 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                                String password,
                                String indexName,
                                Integer dimension,
-                               Collection<String> metadataKeys) {
+                               Map<String, SchemaField> schemaFieldMap) {
         ensureNotBlank(host, "host");
         ensureNotNull(port, "port");
-        ensureNotNull(dimension, "dimension");
 
         this.client = user == null ? new JedisPooled(host, port) : new JedisPooled(host, port, user, password);
         this.schema = RedisSchema.builder()
                 .indexName(getOrDefault(indexName, "embedding-index"))
                 .dimension(dimension)
-                .metadataKeys(metadataKeys)
+                .schemaFieldMap(copyIfNotNull(schemaFieldMap))
                 .build();
+        this.filterMapper = new RedisMetadataFilterMapper(schemaFieldMap);
 
         if (!isIndexExist(schema.indexName())) {
+            ensureNotNull(dimension, "dimension");
+            createIndex(schema.indexName());
+        }
+    }
+
+    /**
+     * Creates an instance of RedisEmbeddingStore
+     *
+     * @param uri            Redis Stack Server URI. (e.g. redis://localhost:6379, rediss://localhost:6379)
+     * @param indexName      The name of the index (optional). Default value: "embedding-index".
+     * @param dimension      Embedding vector dimension
+     * @param schemaFieldMap Metadata schemaField that should be persisted (optional)
+     */
+    public RedisEmbeddingStore(String uri,
+                               String indexName,
+                               Integer dimension,
+                               Map<String, SchemaField> schemaFieldMap) {
+        ensureNotBlank(uri, "uri");
+
+        this.client = new JedisPooled(uri);
+        this.schema = RedisSchema.builder()
+                .indexName(getOrDefault(indexName, "embedding-index"))
+                .dimension(dimension)
+                .schemaFieldMap(copyIfNotNull(schemaFieldMap))
+                .build();
+        this.filterMapper = new RedisMetadataFilterMapper(schemaFieldMap);
+
+        if (!isIndexExist(schema.indexName())) {
+            ensureNotNull(dimension, "dimension");
             createIndex(schema.indexName());
         }
     }
@@ -112,21 +152,18 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         // Using KNN query on @vector field
-        String queryTemplate = "*=>[ KNN %d @%s $BLOB AS %s ]";
-        List<String> returnFields = new ArrayList<>(schema.metadataKeys());
-        returnFields.addAll(asList(schema.vectorFieldName(), schema.scalarFieldName(), SCORE_FIELD_NAME));
-        Query query = new Query(format(queryTemplate, maxResults, schema.vectorFieldName(), SCORE_FIELD_NAME))
-                .addParam("BLOB", ToByteArray(referenceEmbedding.vector()))
-                .returnFields(returnFields.toArray(new String[0]))
+        Query query = new Query(format(QUERY_TEMPLATE, filterMapper.mapToFilter(request.filter()), request.maxResults(), schema.vectorFieldName(), SCORE_FIELD_NAME))
+                .addParam("BLOB", toByteArray(request.queryEmbedding().vector()))
                 .setSortBy(SCORE_FIELD_NAME, true)
+                .limit(0, request.maxResults())
                 .dialect(2);
 
         SearchResult result = client.ftSearch(schema.indexName(), query);
         List<Document> documents = result.getDocuments();
 
-        return toEmbeddingMatch(documents, minScore);
+        return new EmbeddingSearchResult<>(toEmbeddingMatch(documents, request.minScore()));
     }
 
     private void createIndex(String indexName) {
@@ -171,12 +208,11 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                 Map<String, Object> fields = new HashMap<>();
                 fields.put(schema.vectorFieldName(), embedding.vector());
                 if (textSegment != null) {
-                    // do not check metadata key is included in RedisSchema#metadataKeys
                     fields.put(schema.scalarFieldName(), textSegment.text());
-                    fields.putAll(textSegment.metadata().asMap());
+                    fields.putAll(textSegment.metadata().toMap());
                 }
                 String key = schema.prefix() + id;
-                pipeline.jsonSetWithEscape(key, Path2.of("$"), fields);
+                pipeline.jsonSetWithEscape(key, JSON_SET_PATH, fields);
             }
 
             responses = pipeline.syncAndReturnAll();
@@ -191,6 +227,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(List<Document> documents, double minScore) {
         if (documents == null || documents.isEmpty()) {
             return new ArrayList<>();
@@ -200,22 +237,26 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .map(document -> {
                     double score = (2 - Double.parseDouble(document.getString(SCORE_FIELD_NAME))) / 2;
                     String id = document.getId().substring(schema.prefix().length());
-                    String text = document.hasProperty(schema.scalarFieldName()) ? document.getString(schema.scalarFieldName()) : null;
-                    TextSegment embedded = null;
+
+                    Map<String, Object> properties = toProperties(document.getString(JSON_KEY));
+
+                    List<Double> vectors = (List<Double>) properties.get(schema.vectorFieldName());
+                    Embedding embedding = Embedding.from(
+                            vectors.stream()
+                                    .map(Double::floatValue)
+                                    .collect(toList())
+                    );
+
+                    String text = properties.containsKey(schema.scalarFieldName()) ? (String) properties.get(schema.scalarFieldName()) : null;
+                    TextSegment textSegment = null;
                     if (text != null) {
-                        Map<String, String> metadata = schema.metadataKeys().stream()
-                                .filter(document::hasProperty)
-                                .collect(toMap(metadataKey -> metadataKey, document::getString));
-                        embedded = new TextSegment(text, new Metadata(metadata));
+                        Map<String, Object> metadata = schema.schemaFieldMap().keySet().stream()
+                                .filter(properties::containsKey)
+                                .collect(toMap(metadataKey -> metadataKey, properties::get));
+                        textSegment = TextSegment.from(text, Metadata.from(metadata));
                     }
-                    Embedding embedding;
-                    try {
-                        float[] vectors = OBJECT_MAPPER.readValue(document.getString(schema.vectorFieldName()), float[].class);
-                        embedding = new Embedding(vectors);
-                    } catch (JsonProcessingException e) {
-                        throw new RedisRequestFailedException("failed to parse embedding", e);
-                    }
-                    return new EmbeddingMatch<>(score, id, embedding, embedded);
+
+                    return new EmbeddingMatch<>(score, id, embedding, textSegment);
                 })
                 .filter(embeddingMatch -> embeddingMatch.score() >= minScore)
                 .collect(toList());
@@ -225,15 +266,29 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         return new Builder();
     }
 
+    /**
+     * Close the connection with Jedis
+     */
+    @Override
+    public void close() {
+        client.close();
+    }
+
     public static class Builder {
 
+        private String uri;
         private String host;
         private Integer port;
         private String user;
         private String password;
         private String indexName;
         private Integer dimension;
-        private Collection<String> metadataKeys = new ArrayList<>();
+        private Map<String, SchemaField> schemaFieldMap = new HashMap<>();
+
+        public Builder uri(String uri) {
+            this.uri = uri;
+            return this;
+        }
 
         /**
          * @param host Redis Stack host
@@ -277,7 +332,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param dimension embedding vector dimension
+         * @param dimension embedding vector dimension (optional)
          * @return builder
          */
         public Builder dimension(Integer dimension) {
@@ -291,20 +346,33 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
          */
         @Deprecated
         public Builder metadataFieldsName(Collection<String> metadataFieldsName) {
-            this.metadataKeys = metadataFieldsName;
-            return this;
+            return metadataKeys(metadataFieldsName);
         }
 
         /**
          * @param metadataKeys Metadata keys that should be persisted (optional)
+         * @deprecated use {@link #schemaFiledMap(Map)}} instead
          */
+        @Deprecated
         public Builder metadataKeys(Collection<String> metadataKeys) {
-            this.metadataKeys = metadataKeys;
+            metadataKeys.forEach(metadataKey -> schemaFieldMap.put(metadataKey, TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0)));
+            return this;
+        }
+
+        /**
+         * @param schemaFieldMap Metadata schemaField that should be persisted (optional)
+         */
+        public Builder schemaFiledMap(Map<String, SchemaField> schemaFieldMap) {
+            this.schemaFieldMap = schemaFieldMap;
             return this;
         }
 
         public RedisEmbeddingStore build() {
-            return new RedisEmbeddingStore(host, port, user, password, indexName, dimension, metadataKeys);
+            if (uri != null) {
+                return new RedisEmbeddingStore(uri, indexName, dimension, schemaFieldMap);
+            } else {
+                return new RedisEmbeddingStore(host, port, user, password, indexName, dimension, schemaFieldMap);
+            }
         }
     }
 }
