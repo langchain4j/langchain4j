@@ -2,7 +2,9 @@ package dev.langchain4j.service.output;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
@@ -10,7 +12,9 @@ import dev.langchain4j.service.TypeUtils;
 
 import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
@@ -38,10 +42,25 @@ public class JsonSchemas {
 
         Class<?> rawClass = getRawClass(returnType);
 
-        JsonSchema jsonSchema = JsonSchema.builder()
-                .name(rawClass.getSimpleName())
-                .rootElement(jsonObjectOrReferenceSchemaFrom(rawClass, null, new LinkedHashMap<>(), true))
-                .build();
+        JsonSchema jsonSchema;
+        JsonSchemaElement rootElement;
+
+        if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
+            rawClass = resolveFirstGenericParameterClass(returnType);
+            Class<?> finalRawClass = rawClass;
+            jsonSchema = JsonSchema.builder()
+                    .name("Collection_of_" + rawClass.getSimpleName())
+                    .rootElement(JsonObjectSchema.builder()
+                            .addArrayProperty("array", a -> a.items(jsonObjectOrReferenceSchemaFrom(finalRawClass, null, new LinkedHashMap<>(), true)))
+                            .required("array")
+                            .build())
+                    .build();
+        } else {
+            jsonSchema = JsonSchema.builder()
+                    .name(rawClass.getSimpleName())
+                    .rootElement(jsonObjectOrReferenceSchemaFrom(rawClass, null, new LinkedHashMap<>(), true))
+                    .build();
+        }
 
         return Optional.of(jsonSchema);
     }
