@@ -122,7 +122,7 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
     }
 
     @Test
-    @Disabled("This test is hard for llama3.1")
+    @Disabled("llama3.1 struggles with this test scenario")
     void should_execute_tool_with_pojo_with_nested_pojo() {
     }
 }

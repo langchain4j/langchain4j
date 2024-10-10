@@ -130,12 +130,10 @@ public class JsonSchemaElementHelper {
     }
 
     private static String descriptionFrom(Field field) {
-        // TODO check if works for tool params
         return descriptionFrom(field.getAnnotation(Description.class));
     }
 
     private static String descriptionFrom(Class<?> type) {
-        // TODO check if works for tool params
         return descriptionFrom(type.getAnnotation(Description.class));
     }
 

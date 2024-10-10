@@ -7,7 +7,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -55,6 +54,9 @@ public abstract class AiServicesWithNewToolsIT {
         return models();
     }
 
+    // TODO single argument: List/Set/Array of primitives, List/Set/Array of enums, List/Set/Array of POJOs, map?
+    // TODO up-wrap single POJO and Map? (remove one level of object nesting) Make sure descriptions still work.
+
     interface Assistant {
 
         Response<AiMessage> chat(String userMessage);
@@ -68,8 +70,8 @@ public abstract class AiServicesWithNewToolsIT {
         }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .addProperty("arg0", JsonIntegerSchema.builder().build())
-                .addProperty("arg1", JsonIntegerSchema.builder().build())
+                .addIntegerProperty("arg0")
+                .addIntegerProperty("arg1")
                 .required("arg0", "arg1")
                 .build();
     }
@@ -114,10 +116,6 @@ public abstract class AiServicesWithNewToolsIT {
             }
         }
     }
-
-    // TODO cover all cases similar to AiServicesJsonSchemaIT and AiServicesJsonSchemaWithDescriptionsIT
-    // TODO single argument: List/Set/Array of primitives, List/Set/Array of enums, List/Set/Array of POJOs, map?
-    // TODO with descriptions, including @Description
 
     static class ToolWithPojoParameter {
 

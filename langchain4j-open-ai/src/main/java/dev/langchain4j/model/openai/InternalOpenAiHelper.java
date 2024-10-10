@@ -371,7 +371,6 @@ public class InternalOpenAiHelper {
     private static dev.ai4j.openai4j.chat.JsonSchemaElement toOpenAiJsonSchemaElementOld(Map<String, ?> properties, boolean strict) {
         Object type = properties.get("type");
         String description = (String) properties.get("description");
-        // TODO is this needed now?
         if ("object".equals(type)) {
             List<String> required = (List<String>) properties.get("required");
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
@@ -535,7 +534,7 @@ public class InternalOpenAiHelper {
             dev.ai4j.openai4j.chat.JsonSchema openAiJsonSchema = dev.ai4j.openai4j.chat.JsonSchema.builder()
                     .name(jsonSchema.name())
                     .strict(strict)
-                    .schema((dev.ai4j.openai4j.chat.JsonObjectSchema) toOpenAiJsonSchemaElement(jsonSchema.rootElement(), strict)) // TODO 2
+                    .schema((dev.ai4j.openai4j.chat.JsonObjectSchema) toOpenAiJsonSchemaElement(jsonSchema.rootElement(), strict))
                     .build();
             return dev.ai4j.openai4j.chat.ResponseFormat.builder()
                     .type(JSON_SCHEMA)

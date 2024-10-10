@@ -72,7 +72,7 @@ class OllamaMessagesUtils {
                     .required(parameters.required())
                     .build();
         } else {
-            return null; // TODO test tool without parameters
+            return null;
         }
     }
 

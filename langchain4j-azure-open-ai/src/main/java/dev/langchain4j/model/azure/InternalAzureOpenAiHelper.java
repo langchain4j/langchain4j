@@ -247,25 +247,21 @@ class InternalAzureOpenAiHelper {
     private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
-        if (toolSpecification.parameters() != null) {
-            functionDefinition.setParameters(toOpenAiParameters(toolSpecification.parameters()));
-        } else {
-            functionDefinition.setParameters(toOpenAiParametersOld(toolSpecification.toolParameters()));
-        }
+        functionDefinition.setParameters(getParameters(toolSpecification));
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
     public static ChatCompletionsToolSelection toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), getParameters(toolThatMustBeExecuted));
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), getParameters(toolThatMustBeExecuted).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
         return ChatCompletionsToolSelection.fromBinaryData(BinaryData.fromObject(toolToCall));
     }
 
-    private static String getParameters(ToolSpecification toolSpecification) {
+    private static BinaryData getParameters(ToolSpecification toolSpecification) {
         if (toolSpecification.parameters() != null) {
-            return toOpenAiParameters(toolSpecification.parameters()).toString();
+            return toOpenAiParameters(toolSpecification.parameters());
         } else {
-            return toOpenAiParametersOld(toolSpecification.toolParameters()).toString();
+            return toOpenAiParametersOld(toolSpecification.toolParameters());
         }
     }
 

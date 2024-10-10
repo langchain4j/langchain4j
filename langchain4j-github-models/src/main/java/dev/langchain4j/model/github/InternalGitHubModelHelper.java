@@ -238,26 +238,24 @@ class InternalGitHubModelHelper {
     private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
-        if (toolSpecification.parameters() != null) {
-            functionDefinition.setParameters(toAzureAiParameters(toolSpecification.parameters()));
-        } else {
-            functionDefinition.setParameters(toAzureAiParametersOld(toolSpecification.toolParameters()));
-        }
+        functionDefinition.setParameters(getParameters(toolSpecification));
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
     public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        // TODO revisit, something is strange
-        // TODO check the same in Azure OpenAI
-        BinaryData parameters;
-        if (toolThatMustBeExecuted.parameters() != null) {
-            parameters = toAzureAiParameters(toolThatMustBeExecuted.parameters());
-        } else {
-            parameters = toAzureAiParametersOld(toolThatMustBeExecuted.toolParameters());
-        }
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), parameters.toString());
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), getParameters(toolThatMustBeExecuted).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
+        // TODO Revisit, does not seem right and differs from Azure OpenAI implementation.
+        // TODO It should probably contain only the name of the tool that must be called (without parameters).
         return BinaryData.fromObject(toolToCall);
+    }
+
+    private static BinaryData getParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            return toAzureAiParameters(toolSpecification.parameters());
+        } else {
+            return toAzureAiParametersOld(toolSpecification.toolParameters());
+        }
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
