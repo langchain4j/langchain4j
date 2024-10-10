@@ -25,8 +25,6 @@ import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 
 public class QianfanChatModel implements ChatLanguageModel {
 
-
-
     private final QianfanClient client;
 
     private final String baseUrl;

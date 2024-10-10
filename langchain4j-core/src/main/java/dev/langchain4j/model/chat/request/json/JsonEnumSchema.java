@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat.request.json;
 
-import com.google.gson.annotations.SerializedName;
 import dev.langchain4j.Experimental;
 
 import java.util.ArrayList;
@@ -17,7 +16,6 @@ import static java.util.stream.Collectors.toList;
 public class JsonEnumSchema implements JsonSchemaElement {
 
     private final String description;
-    @SerializedName("enum")
     private final List<String> enumValues;
 
     public JsonEnumSchema(Builder builder) {

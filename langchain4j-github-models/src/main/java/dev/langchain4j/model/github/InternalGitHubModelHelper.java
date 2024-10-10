@@ -3,7 +3,25 @@ package dev.langchain4j.model.github;
 import com.azure.ai.inference.ChatCompletionsClientBuilder;
 import com.azure.ai.inference.EmbeddingsClientBuilder;
 import com.azure.ai.inference.ModelServiceVersion;
-import com.azure.ai.inference.models.*;
+import com.azure.ai.inference.models.ChatCompletionsFunctionToolCall;
+import com.azure.ai.inference.models.ChatCompletionsFunctionToolDefinition;
+import com.azure.ai.inference.models.ChatCompletionsOptions;
+import com.azure.ai.inference.models.ChatCompletionsToolCall;
+import com.azure.ai.inference.models.ChatCompletionsToolDefinition;
+import com.azure.ai.inference.models.ChatMessageImageContentItem;
+import com.azure.ai.inference.models.ChatMessageImageDetailLevel;
+import com.azure.ai.inference.models.ChatMessageImageUrl;
+import com.azure.ai.inference.models.ChatMessageTextContentItem;
+import com.azure.ai.inference.models.ChatRequestAssistantMessage;
+import com.azure.ai.inference.models.ChatRequestMessage;
+import com.azure.ai.inference.models.ChatRequestSystemMessage;
+import com.azure.ai.inference.models.ChatRequestToolMessage;
+import com.azure.ai.inference.models.ChatRequestUserMessage;
+import com.azure.ai.inference.models.ChatResponseMessage;
+import com.azure.ai.inference.models.CompletionsFinishReason;
+import com.azure.ai.inference.models.CompletionsUsage;
+import com.azure.ai.inference.models.FunctionCall;
+import com.azure.ai.inference.models.FunctionDefinition;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.exception.HttpResponseException;
@@ -20,9 +38,16 @@ import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -30,11 +55,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -96,7 +131,7 @@ class InternalGitHubModelHelper {
         clientOptions.setProxyOptions(proxyOptions);
 
         String userAgent = DEFAULT_USER_AGENT;
-        if (userAgentSuffix!=null && !userAgentSuffix.isEmpty()) {
+        if (userAgentSuffix != null && !userAgentSuffix.isEmpty()) {
             userAgent = DEFAULT_USER_AGENT + "-" + userAgentSuffix;
         }
         List<Header> headers = new ArrayList<>();
@@ -203,14 +238,24 @@ class InternalGitHubModelHelper {
     private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
-        functionDefinition.setParameters(toAzureAiParameters(toolSpecification.parameters()));
+        functionDefinition.setParameters(getParameters(toolSpecification));
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
     public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toAzureAiParameters(toolThatMustBeExecuted.parameters()).toString());
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), getParameters(toolThatMustBeExecuted).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
+        // TODO Revisit, does not seem right and differs from Azure OpenAI implementation.
+        // TODO It should probably contain only the name of the tool that must be called (without parameters).
         return BinaryData.fromObject(toolToCall);
+    }
+
+    private static BinaryData getParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            return toAzureAiParameters(toolSpecification.parameters());
+        } else {
+            return toAzureAiParametersOld(toolSpecification.toolParameters());
+        }
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
@@ -220,7 +265,17 @@ class InternalGitHubModelHelper {
         NO_PARAMETER_DATA.put("properties", new HashMap<>());
     }
 
-    private static BinaryData toAzureAiParameters(ToolParameters toolParameters) {
+    private static BinaryData toAzureAiParameters(JsonObjectSchema toolParameters) {
+        Parameters parameters = new Parameters();
+        if (toolParameters == null) {
+            return BinaryData.fromObject(NO_PARAMETER_DATA);
+        }
+        parameters.setProperties(toMap(toolParameters.properties()));
+        parameters.setRequired(toolParameters.required());
+        return BinaryData.fromObject(parameters);
+    }
+
+    private static BinaryData toAzureAiParametersOld(ToolParameters toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
             return BinaryData.fromObject(NO_PARAMETER_DATA);
@@ -339,13 +394,13 @@ class InternalGitHubModelHelper {
                                                        List<ChatMessage> messages,
                                                        List<ToolSpecification> toolSpecifications) {
         return ChatModelRequest.builder()
-            .model(options.getModel())
-            .temperature(options.getTemperature())
-            .topP(options.getTopP())
-            .maxTokens(options.getMaxTokens())
-            .messages(messages)
-            .toolSpecifications(toolSpecifications)
-            .build();
+                .model(options.getModel())
+                .temperature(options.getTemperature())
+                .topP(options.getTopP())
+                .maxTokens(options.getMaxTokens())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
     }
 
     static ChatModelResponse createModelListenerResponse(String responseId,
@@ -356,11 +411,11 @@ class InternalGitHubModelHelper {
         }
 
         return ChatModelResponse.builder()
-            .id(responseId)
-            .model(responseModel)
-            .tokenUsage(response.tokenUsage())
-            .finishReason(response.finishReason())
-            .aiMessage(response.content())
-            .build();
+                .id(responseId)
+                .model(responseModel)
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .aiMessage(response.content())
+                .build();
     }
 }

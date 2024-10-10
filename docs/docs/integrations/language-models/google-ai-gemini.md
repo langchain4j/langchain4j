@@ -180,16 +180,10 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
         .type(JSON)
         .jsonSchema(JsonSchema.builder()
             .rootElement(JsonObjectSchema.builder()
-                .properties(Map.of(
-                    "title", JSON_STRING_SCHEMA,
-                    "preparationTimeMinutes", JSON_INTEGER_SCHEMA,
-                    "ingredients", JsonArraySchema.builder()
-                        .items(JSON_STRING_SCHEMA)
-                        .build(),
-                    "steps", JsonArraySchema.builder()
-                        .items(JSON_STRING_SCHEMA)
-                        .build()
-                    ))
+                .addStringProperty("title")
+                .addIntegerProperty("preparationTimeMinutes")
+                .addArrayProperty("ingredients", a -> a.items(JsonStringSchema.builder().build()))
+                .addArrayProperty("steps", a -> a.items(JsonStringSchema.builder().build()))
                 .build())
             .build())
         .build())

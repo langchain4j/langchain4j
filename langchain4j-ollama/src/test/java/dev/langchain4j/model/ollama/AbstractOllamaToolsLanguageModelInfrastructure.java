@@ -1,6 +1,8 @@
 package dev.langchain4j.model.ollama;
 
-class AbstractOllamaToolsLanguageModelInfrastructure {
+import dev.langchain4j.service.AiServicesWithNewToolsIT;
+
+abstract class AbstractOllamaToolsLanguageModelInfrastructure extends AiServicesWithNewToolsIT {
 
     private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, OllamaImage.TOOL_MODEL);
 
@@ -12,6 +14,4 @@ class AbstractOllamaToolsLanguageModelInfrastructure {
         ollama.start();
         ollama.commitToImage(LOCAL_OLLAMA_IMAGE);
     }
-
-
 }

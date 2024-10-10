@@ -9,8 +9,6 @@ import static dev.langchain4j.internal.Utils.quoted;
 @Experimental
 public class JsonIntegerSchema implements JsonSchemaElement {
 
-    public static final JsonIntegerSchema JSON_INTEGER_SCHEMA = JsonIntegerSchema.builder().build();
-
     private final String description;
 
     public JsonIntegerSchema(Builder builder) {

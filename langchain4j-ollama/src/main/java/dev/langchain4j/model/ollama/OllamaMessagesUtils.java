@@ -2,8 +2,17 @@ package dev.langchain4j.model.ollama;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ContentType;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +23,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 
@@ -42,13 +52,28 @@ class OllamaMessagesUtils {
                                 .function(Function.builder()
                                         .name(toolSpecification.name())
                                         .description(toolSpecification.description())
-                                        .parameters(toolSpecification.parameters() == null ? null : Parameters.builder()
-                                                .properties(toolSpecification.parameters().properties())
-                                                .required(toolSpecification.parameters().required())
-                                                .build())
+                                        .parameters(toOllamaParameters(toolSpecification))
                                         .build())
                                 .build())
                 .collect(Collectors.toList());
+    }
+
+    private static Parameters toOllamaParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            JsonObjectSchema parameters = toolSpecification.parameters();
+            return Parameters.builder()
+                    .properties(toMap(parameters.properties()))
+                    .required(parameters.required())
+                    .build();
+        } else if (toolSpecification.toolParameters() != null) {
+            ToolParameters parameters = toolSpecification.toolParameters();
+            return Parameters.builder()
+                    .properties(parameters.properties())
+                    .required(parameters.required())
+                    .build();
+        } else {
+            return null;
+        }
     }
 
     static List<ToolExecutionRequest> toToolExecutionRequest(List<ToolCall> toolCalls) {

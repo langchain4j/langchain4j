@@ -200,7 +200,7 @@ class GitHubModelsChatModelIT {
     @CsvSource({
             "gpt-4o"
     })
-    void should_call_three_functions_in_parallel(String modelName) throws Exception {
+    void should_call_three_functions_in_parallel(String modelName) {
 
         ChatLanguageModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))

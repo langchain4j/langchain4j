@@ -38,4 +38,9 @@ class OpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
                         .build()
         );
     }
+
+    @Override
+    protected boolean supportsRecursion() {
+        return true;
+    }
 }

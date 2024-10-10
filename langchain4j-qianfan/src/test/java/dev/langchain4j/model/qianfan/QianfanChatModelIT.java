@@ -26,20 +26,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 class QianfanChatModelIT {
 
     //see your api key and secret key here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application
-    private String apiKey = System.getenv("QIANFAN_API_KEY");
-    private String secretKey = System.getenv("QIANFAN_SECRET_KEY");
+    private final String apiKey = System.getenv("QIANFAN_API_KEY");
+    private final String secretKey = System.getenv("QIANFAN_SECRET_KEY");
 
-    QianfanChatModel model = QianfanChatModel.builder().modelName("ERNIE-Bot 4.0").temperature(0.7).topP(1.0).maxRetries(1)
+    QianfanChatModel model = QianfanChatModel.builder()
+            .modelName("ERNIE-Bot 4.0")
+            .temperature(0.7)
+            .topP(1.0)
+            .maxRetries(1)
             .apiKey(apiKey)
             .secretKey(secretKey)
             .build();
+
     ToolSpecification calculator = ToolSpecification.builder()
             .name("calculator")
             .description("returns a sum of two numbers")
             .addParameter("first", INTEGER)
             .addParameter("second", INTEGER)
             .build();
-
 
     @Test
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
