@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
@@ -15,8 +16,27 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 public abstract class AnthropicMessageContent {
 
     public String type;
+    public CacheControl cacheControl;
 
     public AnthropicMessageContent(String type) {
         this.type = type;
+    }
+
+    public AnthropicMessageContent(String type, CacheControl cacheControl) {
+        this.type = type;
+        this.cacheControl = cacheControl;
+    }
+
+    @EqualsAndHashCode
+    @JsonInclude(NON_NULL)
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonNaming(SnakeCaseStrategy.class)
+    @Getter
+    public static class CacheControl {
+        private String type;
+
+        public CacheControl(String type) {
+            this.type = type;
+        }
     }
 }
