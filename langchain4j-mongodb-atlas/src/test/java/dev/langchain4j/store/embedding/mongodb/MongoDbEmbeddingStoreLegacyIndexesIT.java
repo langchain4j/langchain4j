@@ -12,23 +12,23 @@ import org.testcontainers.shaded.com.google.common.collect.Sets;
 
 import java.util.Set;
 
-import static dev.langchain4j.store.embedding.mongodb.TestHelper.EMBEDDING_MODEL;
-import static dev.langchain4j.store.embedding.mongodb.TestHelper.createClientFromEnv;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.EMBEDDING_MODEL;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.createClientFromEnv;
 
 public class MongoDbEmbeddingStoreLegacyIndexesIT extends EmbeddingStoreIT {
 
-    private final TestHelper helper = initializeTestHelper();
+    private final MongoDbTestFixture helper = initializeTestHelper();
 
-    private TestHelper initializeTestHelper() {
-        TestHelper helper = new TestHelper(createClient());
+    private MongoDbTestFixture initializeTestHelper() {
+        MongoDbTestFixture helper = new MongoDbTestFixture(createClient());
         IndexMapping indexMapping = IndexMapping.builder()
                 .dimension(EMBEDDING_MODEL.dimension())
                 .metadataFieldNames(Sets.newHashSet("test-key"))
                 .build();
         helper.getDatabase().createCollection("test_collection");
         MongoCollection<Document> collection = helper.getDatabase().getCollection("test_collection");
-        collection.createSearchIndex("test_index", fromIndexMappingLegacyKnnVector(indexMapping));
-        return helper.initialize(builder -> builder.createIndex(false));
+        collection.createSearchIndex("test_index_legacy", fromIndexMappingLegacyKnnVector(indexMapping));
+        return helper.initialize(builder -> builder.createIndex(false).indexName("test_index_legacy"));
     }
 
     MongoClient createClient() {

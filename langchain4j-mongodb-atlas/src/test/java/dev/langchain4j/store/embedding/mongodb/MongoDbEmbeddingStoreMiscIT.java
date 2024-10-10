@@ -18,7 +18,7 @@ import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
-import static dev.langchain4j.store.embedding.mongodb.TestHelper.*;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.*;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
@@ -27,12 +27,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class MongoDbEmbeddingStoreMiscIT {
 
-    public static class ContainerIT extends MongoDbEmbeddingStoreWithRemovalIT {
+    public static class ContainerIT extends MongoDbEmbeddingStoreMiscIT {
         static MongoDBAtlasLocalContainer mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
 
         @BeforeAll
         static void start() {
-            TestHelper.assertDoContainerTests();
+            MongoDbTestFixture.assertDoContainerTests();
             mongodb.start();
         }
 
@@ -47,7 +47,7 @@ class MongoDbEmbeddingStoreMiscIT {
         }
     }
 
-    TestHelper helper;
+    MongoDbTestFixture helper;
 
     MongoClient createClient() {
         return createClientFromEnv();
@@ -69,7 +69,7 @@ class MongoDbEmbeddingStoreMiscIT {
     @Test
     void should_find_relevant_with_filter() {
         // given
-        helper = new TestHelper(createClient()).initialize(builder -> builder
+        helper = new MongoDbTestFixture(createClient()).initialize(builder -> builder
                         .filter(Filters.and(Filters.eq("metadata.test-key", "test-value"))));
 
         TextSegment segment = TextSegment.from("this segment should be found", Metadata.from("test-key", "test-value"));
@@ -101,7 +101,7 @@ class MongoDbEmbeddingStoreMiscIT {
 
     @Test
     void should_fail_when_index_absent() {
-        helper = new TestHelper(createClient());
+        helper = new MongoDbTestFixture(createClient());
         try {
             helper = helper.initialize(builder -> builder.createIndex(false));
             fail("Expected exception");

@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.mongodb;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
-import com.mongodb.MongoCredential;
 import com.mongodb.ServerApi;
 import com.mongodb.ServerApiVersion;
 import com.mongodb.client.MongoClient;
@@ -22,28 +21,28 @@ import java.util.function.Function;
 
 import static java.lang.String.format;
 
-class TestHelper {
+class MongoDbTestFixture {
 
     public static final EmbeddingModel EMBEDDING_MODEL = new AllMiniLmL6V2QuantizedEmbeddingModel();
     private static final String USERNAME = getenv("MONGODB_ATLAS_USERNAME");
     private static final String PASSWORD = getenv("MONGODB_ATLAS_PASSWORD");
     private static final String HOST = getenv("MONGODB_ATLAS_HOST");
-    private static final String CONNECTION_STRING = "mongodb://localhost"; // TODO
+    private static final String CONNECTION_STRING = getenv("MONGODB_CONNECTION_STRING");
 
     private final String dbName;
     private final MongoClient client;
     private MongoDbEmbeddingStore embeddingStore;
 
-    TestHelper(MongoClient client) {
+    MongoDbTestFixture(MongoClient client) {
         this.dbName = "test_database_" + ThreadLocalRandom.current().nextInt(0, Integer.MAX_VALUE);
         this.client = client;
     }
 
-    TestHelper initialize() {
+    MongoDbTestFixture initialize() {
         return this.initialize(b -> b);
     }
 
-    TestHelper initialize(Function<MongoDbEmbeddingStore.Builder, MongoDbEmbeddingStore.Builder> initializer) {
+    MongoDbTestFixture initialize(Function<MongoDbEmbeddingStore.Builder, MongoDbEmbeddingStore.Builder> initializer) {
         this.embeddingStore = initializer.apply(getDefaultMongoDbEmbeddingStoreBuilder()).build();
         return this;
     }
