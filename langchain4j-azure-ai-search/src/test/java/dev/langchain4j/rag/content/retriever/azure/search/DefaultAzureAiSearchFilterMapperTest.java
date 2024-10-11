@@ -18,7 +18,7 @@ class DefaultAzureAiSearchFilterMapperTest {
     @Test
     void map_nullFilter() {
         String result = mapper.map(null);
-        assertThat(result).isEqualTo("");
+        assertThat(result).isEmpty();
     }
 
     @Test

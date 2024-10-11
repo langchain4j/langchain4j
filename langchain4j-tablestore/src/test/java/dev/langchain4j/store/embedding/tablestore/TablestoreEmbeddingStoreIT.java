@@ -245,7 +245,7 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
             // when
             List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
             // then
-            assertThat(matches).hasSize(0);
+            assertThat(matches).isEmpty();
         }
         {
             EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()

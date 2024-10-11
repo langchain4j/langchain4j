@@ -20,7 +20,7 @@ import static dev.langchain4j.model.dashscope.QwenTestHelper.*;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".+")
 public class QwenStreamingChatModelIT {

@@ -25,7 +25,7 @@ class WebSearchResultsTest {
                 singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"))));
 
         assertThat(webSearchResults.results()).hasSize(1);
-        assertThat(webSearchResults.results().get(0).url().toString()).isEqualTo("https://google.com");
+        assertThat(webSearchResults.results().get(0).url()).hasToString("https://google.com");
         assertThat(webSearchResults.searchInformation().totalResults()).isEqualTo(1L);
 
         assertThat(webSearchResults).hasToString("WebSearchResults{searchMetadata=null, searchInformation=WebSearchInformationResult{totalResults=1, pageNumber=null, metadata=null}, results=[WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='null', metadata=null}]}");

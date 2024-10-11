@@ -21,7 +21,7 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Make sure these dependencies are present in the module where this test class is extended:

@@ -30,7 +30,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "ZHIPU_API_KEY", matches = ".+")
 public class ZhipuAiStreamingChatModelIT {
