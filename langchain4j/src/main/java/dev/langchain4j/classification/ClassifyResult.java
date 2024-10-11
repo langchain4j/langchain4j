@@ -1,20 +1,20 @@
 package dev.langchain4j.classification;
 
-public class LabelWithScore<E> {
+public class ClassifyResult<L> {
 
-    private final E label;
+    private final L label;
     private final double score;
 
-    public LabelWithScore(E label, double score) {
+    public ClassifyResult(L label, double score) {
         this.label = label;
         this.score = score;
     }
 
-    public E getLabel() {
+    public L label() {
         return label;
     }
 
-    public double getScore() {
+    public double score() {
         return score;
     }
 }

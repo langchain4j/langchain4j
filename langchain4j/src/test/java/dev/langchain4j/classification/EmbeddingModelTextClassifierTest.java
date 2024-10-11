@@ -248,7 +248,7 @@ class EmbeddingModelTextClassifierTest {
     }
 
     @Test
-    void should_classify_with_score() {
+    void should_classify_with_detail() {
 
         double minScore = 0.64;
 
@@ -260,13 +260,13 @@ class EmbeddingModelTextClassifierTest {
                 0.5
         );
 
-        List<LabelWithScore<CustomerServiceCategory>> results = classifier.classifyWithScore("Bro, this product is crap");
+        List<ClassifyResult<CustomerServiceCategory>> results = classifier.classifyWithDetail("Bro, this product is crap");
 
-        assertThat(results.stream().map(LabelWithScore::getLabel))
+        assertThat(results.stream().map(ClassifyResult::label))
                 .containsExactly(RETURNS_AND_EXCHANGES);
-        assertThat(results.stream().map(LabelWithScore::getScore))
+        assertThat(results.stream().map(ClassifyResult::score))
                 .allMatch(score -> score > minScore);
-        assertThat(results.stream().map(LabelWithScore::getScore).findFirst().orElse(null))
+        assertThat(results.stream().map(ClassifyResult::score).findFirst().orElse(null))
                 .isCloseTo(minScore, offset(0.1));
     }
 }
