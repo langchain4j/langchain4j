@@ -124,7 +124,7 @@ public class EmbeddingStoreIngestor {
      * <br>
      * For the "Easy RAG", import {@code langchain4j-easy-rag} module,
      * which contains a {@code DocumentSplitterFactory} and {@code EmbeddingModelFactory} implementations.
-     * @return the token usage of the embedding process.
+     * @return result including information related to ingestion process.
      */
     public static IngestionResult ingest(Document document, EmbeddingStore<TextSegment> embeddingStore) {
         return builder().embeddingStore(embeddingStore).build().ingest(document);
@@ -138,6 +138,7 @@ public class EmbeddingStoreIngestor {
      * <br>
      * For the "Easy RAG", import {@code langchain4j-easy-rag} module,
      * which contains a {@code DocumentSplitterFactory} and {@code EmbeddingModelFactory} implementations.
+     * @return result including information related to ingestion process.
      */
     public static IngestionResult ingest(List<Document> documents, EmbeddingStore<TextSegment> embeddingStore) {
         return builder().embeddingStore(embeddingStore).build().ingest(documents);
@@ -148,6 +149,7 @@ public class EmbeddingStoreIngestor {
      * during the creation of this {@code EmbeddingStoreIngestor}.
      *
      * @param document the document to ingest.
+     * @return result including information related to ingestion process.
      */
     public IngestionResult ingest(Document document) {
         return ingest(singletonList(document));
@@ -158,6 +160,7 @@ public class EmbeddingStoreIngestor {
      * during the creation of this {@code EmbeddingStoreIngestor}.
      *
      * @param documents the documents to ingest.
+     * @return result including information related to ingestion process.
      */
     public IngestionResult ingest(Document... documents) {
         return ingest(asList(documents));
@@ -168,6 +171,7 @@ public class EmbeddingStoreIngestor {
      * during the creation of this {@code EmbeddingStoreIngestor}.
      *
      * @param documents the documents to ingest.
+     * @return result including information related to ingestion process.
      */
     public IngestionResult ingest(List<Document> documents) {
 
