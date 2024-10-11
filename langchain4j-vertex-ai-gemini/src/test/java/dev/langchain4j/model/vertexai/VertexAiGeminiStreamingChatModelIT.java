@@ -681,7 +681,7 @@ class VertexAiGeminiStreamingChatModelIT {
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
+            .logRequests(false) // videos are huge in logs
             .logResponses(true)
             .build();
 
@@ -706,7 +706,7 @@ class VertexAiGeminiStreamingChatModelIT {
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
+            .logRequests(false) // videos are huge in logs
             .logResponses(true)
             .build();
 
