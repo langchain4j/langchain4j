@@ -1,0 +1,56 @@
+# Description: This workflow is triggered when the `receive-pr` workflow completes to post suggestions on the PR.
+# Since this pull request has write permissions on the target repo, we should **NOT** execute any untrusted code.
+# https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+---
+name: comment-pr
+
+on:
+  workflow_run:
+    workflows: ["receive-pr"]
+    types:
+      - completed
+
+jobs:
+  post-suggestions:
+    # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#running-a-workflow-based-on-the-conclusion-of-another-workflow
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      # https://docs.github.com/en/actions/reference/authentication-in-a-workflow#permissions-for-the-github_token
+      ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{github.event.workflow_run.head_branch}}
+          repository: ${{github.event.workflow_run.head_repository.full_name}}
+
+      # Download the patch
+      - uses: actions/download-artifact@v4
+        with:
+          name: patch
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Apply patch
+        run: |
+          git apply git-diff.patch --allow-empty
+          rm git-diff.patch
+
+      # Download the PR number
+      - uses: actions/download-artifact@v4
+        with:
+          name: pr_number
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Read pr_number.txt
+        run: |
+          PR_NUMBER=$(cat pr_number.txt)
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          rm pr_number.txt
+
+      # Post suggestions as a comment on the PR
+      - uses: googleapis/code-suggester@v4
+        with:
+          command: review
+          pull_number: ${{ env.PR_NUMBER }}
+          git_dir: '.'

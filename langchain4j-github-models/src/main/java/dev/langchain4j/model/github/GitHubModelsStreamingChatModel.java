@@ -2,7 +2,11 @@ package dev.langchain4j.model.github;
 
 import com.azure.ai.inference.ChatCompletionsAsyncClient;
 import com.azure.ai.inference.ModelServiceVersion;
-import com.azure.ai.inference.models.*;
+import com.azure.ai.inference.models.ChatCompletionsOptions;
+import com.azure.ai.inference.models.ChatCompletionsResponseFormat;
+import com.azure.ai.inference.models.StreamingChatChoiceUpdate;
+import com.azure.ai.inference.models.StreamingChatCompletionsUpdate;
+import com.azure.ai.inference.models.StreamingChatResponseMessageUpdate;
 import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -10,7 +14,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.github.spi.GitHubModelsStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -26,9 +35,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.github.InternalGitHubModelHelper.*;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.contentFilterManagement;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerRequest;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.createModelListenerResponse;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.setupChatCompletionsBuilder;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.toAzureAiMessages;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.toToolChoice;
+import static dev.langchain4j.model.github.InternalGitHubModelHelper.toToolDefinitions;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -58,44 +76,44 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
     private final List<ChatModelListener> listeners;
 
     private GitHubModelsStreamingChatModel(ChatCompletionsAsyncClient client,
-                                          String modelName,
-                                          Integer maxTokens,
-                                          Double temperature,
-                                          Double topP,
-                                          List<String> stop,
-                                          Double presencePenalty,
-                                          Double frequencyPenalty,
-                                          Long seed,
-                                          ChatCompletionsResponseFormat responseFormat,
-                                          List<ChatModelListener> listeners) {
+                                           String modelName,
+                                           Integer maxTokens,
+                                           Double temperature,
+                                           Double topP,
+                                           List<String> stop,
+                                           Double presencePenalty,
+                                           Double frequencyPenalty,
+                                           Long seed,
+                                           ChatCompletionsResponseFormat responseFormat,
+                                           List<ChatModelListener> listeners) {
 
         this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, listeners);
         this.client = client;
     }
 
     private GitHubModelsStreamingChatModel(String endpoint,
-                                          ModelServiceVersion serviceVersion,
-                                          String gitHubToken,
-                                          String modelName,
-                                          Integer maxTokens,
-                                          Double temperature,
-                                          Double topP,
-                                          List<String> stop,
-                                          Double presencePenalty,
-                                          Double frequencyPenalty,
-                                          Long seed,
-                                          ChatCompletionsResponseFormat responseFormat,
-                                          Duration timeout,
-                                          Integer maxRetries,
-                                          ProxyOptions proxyOptions,
-                                          boolean logRequestsAndResponses,
-                                          List<ChatModelListener> listeners,
-                                          String userAgentSuffix,
-                                          Map<String, String> customHeaders) {
+                                           ModelServiceVersion serviceVersion,
+                                           String gitHubToken,
+                                           String modelName,
+                                           Integer maxTokens,
+                                           Double temperature,
+                                           Double topP,
+                                           List<String> stop,
+                                           Double presencePenalty,
+                                           Double frequencyPenalty,
+                                           Long seed,
+                                           ChatCompletionsResponseFormat responseFormat,
+                                           Duration timeout,
+                                           Integer maxRetries,
+                                           ProxyOptions proxyOptions,
+                                           boolean logRequestsAndResponses,
+                                           List<ChatModelListener> listeners,
+                                           String userAgentSuffix,
+                                           Map<String, String> customHeaders) {
 
         this(modelName, maxTokens, temperature, topP, stop, presencePenalty, frequencyPenalty, seed, responseFormat, listeners);
         this.client = setupChatCompletionsBuilder(endpoint, serviceVersion, gitHubToken, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders)
-                    .buildAsyncClient();
+                .buildAsyncClient();
     }
 
     private GitHubModelsStreamingChatModel(String modelName,
@@ -182,12 +200,16 @@ public class GitHubModelsStreamingChatModel implements StreamingChatLanguageMode
             HttpResponseException httpResponseException = (HttpResponseException) throwable;
             logger.info("Error generating response, {}", httpResponseException.getValue());
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
-            Response<AiMessage> response =  Response.from(
-                    aiMessage(httpResponseException.getMessage()),
-                    null,
-                    exceptionFinishReason
-            );
-            handler.onComplete(response);
+            if (exceptionFinishReason == FinishReason.CONTENT_FILTER) {
+                Response<AiMessage> response = Response.from(
+                        aiMessage(httpResponseException.getMessage()),
+                        null,
+                        exceptionFinishReason
+                );
+                handler.onComplete(response);
+            } else {
+                handler.onError(throwable);
+            }
         } else {
             handler.onError(throwable);
         }
