@@ -13,7 +13,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.anyList;
 
 class WebSearchResultsTest {
@@ -88,9 +88,9 @@ class WebSearchResultsTest {
         searchMetadata.put("key", "value");
 
         // then
-        assertThrows(IllegalArgumentException.class, () -> new WebSearchResults(
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> new WebSearchResults(
                 searchMetadata,
                 null,
-                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),"snippet",null))));
+                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"), "snippet", null))));
     }
 }

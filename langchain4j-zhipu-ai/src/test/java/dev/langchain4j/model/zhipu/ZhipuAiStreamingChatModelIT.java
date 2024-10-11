@@ -237,7 +237,7 @@ public class ZhipuAiStreamingChatModelIT {
             public void onResponse(ChatModelResponseContext responseContext) {
                 responseReference.set(responseContext.response());
                 assertThat(responseContext.request()).isSameAs(requestReference.get());
-                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
             @Override
@@ -319,7 +319,7 @@ public class ZhipuAiStreamingChatModelIT {
                 errorReference.set(errorContext.error());
                 assertThat(errorContext.request()).isSameAs(requestReference.get());
                 assertThat(errorContext.partialResponse()).isNull(); // can be non-null if it fails in the middle of streaming
-                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };
 

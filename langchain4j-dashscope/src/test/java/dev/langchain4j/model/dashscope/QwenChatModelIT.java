@@ -26,8 +26,8 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.api.Fail.fail;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".+")
 public class QwenChatModelIT {
@@ -345,7 +345,7 @@ public class QwenChatModelIT {
             public void onResponse(ChatModelResponseContext responseContext) {
                 responseReference.set(responseContext.response());
                 assertThat(responseContext.request()).isSameAs(requestReference.get());
-                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
             @Override
@@ -430,7 +430,7 @@ public class QwenChatModelIT {
                 errorReference.set(errorContext.error());
                 assertThat(errorContext.request()).isSameAs(requestReference.get());
                 assertThat(errorContext.partialResponse()).isNull();
-                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };
 
@@ -443,7 +443,7 @@ public class QwenChatModelIT {
         String userMessage = "this message will fail";
 
         // when
-        assertThrows(RuntimeException.class, () -> model.generate(userMessage));
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> model.generate(userMessage));
 
         // then
         Throwable throwable = errorReference.get();

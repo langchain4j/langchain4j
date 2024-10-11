@@ -25,8 +25,7 @@ import java.util.Locale;
 import java.util.Random;
 import java.util.logging.Logger;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A collection of operations which are shared by tests in this package.
@@ -214,7 +213,7 @@ final class CommonTestOperations {
                 embeddingStore.search(request)
                         .matches()
                         .get(0);
-        assertEquals(ids.get(1), match.embeddingId());
-        assertArrayEquals(vector1, match.embedding().vector());
+        assertThat(match.embeddingId()).isEqualTo(ids.get(1));
+        assertThat(match.embedding().vector()).containsExactly(vector1);
     }
 }
