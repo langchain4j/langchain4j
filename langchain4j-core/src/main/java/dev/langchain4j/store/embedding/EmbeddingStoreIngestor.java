@@ -126,7 +126,7 @@ public class EmbeddingStoreIngestor {
      * which contains a {@code DocumentSplitterFactory} and {@code EmbeddingModelFactory} implementations.
      * @return the token usage of the embedding process.
      */
-    public static TokenUsage ingest(Document document, EmbeddingStore<TextSegment> embeddingStore) {
+    public static IngestionResult ingest(Document document, EmbeddingStore<TextSegment> embeddingStore) {
         return builder().embeddingStore(embeddingStore).build().ingest(document);
     }
 
@@ -139,7 +139,7 @@ public class EmbeddingStoreIngestor {
      * For the "Easy RAG", import {@code langchain4j-easy-rag} module,
      * which contains a {@code DocumentSplitterFactory} and {@code EmbeddingModelFactory} implementations.
      */
-    public static TokenUsage ingest(List<Document> documents, EmbeddingStore<TextSegment> embeddingStore) {
+    public static IngestionResult ingest(List<Document> documents, EmbeddingStore<TextSegment> embeddingStore) {
         return builder().embeddingStore(embeddingStore).build().ingest(documents);
     }
 
@@ -149,7 +149,7 @@ public class EmbeddingStoreIngestor {
      *
      * @param document the document to ingest.
      */
-    public TokenUsage ingest(Document document) {
+    public IngestionResult ingest(Document document) {
         return ingest(singletonList(document));
     }
 
@@ -159,7 +159,7 @@ public class EmbeddingStoreIngestor {
      *
      * @param documents the documents to ingest.
      */
-    public TokenUsage ingest(Document... documents) {
+    public IngestionResult ingest(Document... documents) {
         return ingest(asList(documents));
     }
 
@@ -169,7 +169,7 @@ public class EmbeddingStoreIngestor {
      *
      * @param documents the documents to ingest.
      */
-    public TokenUsage ingest(List<Document> documents) {
+    public IngestionResult ingest(List<Document> documents) {
 
         log.debug("Starting to ingest {} documents", documents.size());
 
@@ -201,7 +201,11 @@ public class EmbeddingStoreIngestor {
         embeddingStore.addAll(embeddingsResponse.content(), segments);
         log.debug("Finished storing {} text segments into the embedding store", segments.size());
 
-        return embeddingsResponse.tokenUsage();
+        return IngestionResult.builder()
+            .content(embeddingsResponse.content())
+            .metadata(embeddingsResponse.metadata())
+            .tokenUsage(embeddingsResponse.tokenUsage())
+            .build();
     }
 
     /**
