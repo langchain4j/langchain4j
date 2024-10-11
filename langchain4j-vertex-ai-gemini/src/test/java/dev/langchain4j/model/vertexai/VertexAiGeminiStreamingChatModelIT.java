@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
+import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
@@ -17,11 +18,15 @@ import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
+import java.io.File;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -360,7 +365,6 @@ class VertexAiGeminiStreamingChatModelIT {
         List<ChatMessage> allMessages = new ArrayList<>();
 
         UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
-        System.out.println("Question: " + weatherQuestion.text());
         allMessages.add(weatherQuestion);
 
         // when
@@ -387,7 +391,6 @@ class VertexAiGeminiStreamingChatModelIT {
         Response<AiMessage> weatherResponse = handler.get();
 
         // then
-        System.out.println("Answer: " + weatherResponse.content().text());
         assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
     }
 
@@ -515,7 +518,7 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(accumulatedResponse.toString()).isEqualToIgnoringWhitespace(expectedJson);
     }
 
-    @Test
+    @RetryingTest(2)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
@@ -577,7 +580,6 @@ class VertexAiGeminiStreamingChatModelIT {
         StringBuilder accumulatedResponse = new StringBuilder();
         model.generate(messages, onNext(accumulatedResponse::append));
         String response = accumulatedResponse.toString();
-        System.out.println("response = " + response);
 
         // then
         Artist artist = new Gson().fromJson(response, Artist.class);
@@ -645,5 +647,162 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(handler.get().content().hasToolExecutionRequests()).isEqualTo(false);
+    }
+
+    @Test
+    void should_accept_audio() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            AudioContent.from("gs://cloud-samples-data/generative-ai/audio/pixel.mp3"),
+            TextContent.from("Give a summary of the audio")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(msg), handler);
+
+        // then
+        assertThat(handler.get().content().text()).containsIgnoringCase("Pixel");
+    }
+
+    @Test
+    void should_accept_video() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(false) // videos are huge in logs
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            AudioContent.from("https://storage.googleapis.com/cloud-samples-data/video/animals.mp4"),
+            TextContent.from("What's in this video?")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(msg), handler);
+
+        // then
+        assertThat(handler.get().content().text()).containsIgnoringCase("animal");
+    }
+
+    @Test
+    void should_accept_local_file() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(false) // videos are huge in logs
+            .logResponses(true)
+            .build();
+
+        // when
+        File file = new File("src/test/resources/fingers.mp4");
+        assertThat(file).exists();
+
+        UserMessage msg = UserMessage.from(
+            AudioContent.from(Paths.get("src/test/resources/fingers.mp4").toUri()),
+            TextContent.from("What's in this video?")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(msg), handler);
+
+        // then
+        assertThat(handler.get().content().text()).containsAnyOf("finger", "hand");
+    }
+
+
+    @Test
+    void should_accept_PDF_documents() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+            TextContent.from("Provide a summary of the document")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(msg), handler);
+
+        // then
+        assertThat(handler.get().content().text()).containsIgnoringCase("Gemini");
+    }
+
+    @Test
+    void should_support_enum_structured_output() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .responseSchema(Schema.newBuilder()
+                .setType(Type.STRING)
+                .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
+                .build())
+            .build();
+
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        String instruction = "What is the sentiment expressed in the following sentence: ";
+        model.generate(
+            instruction + "This is super exciting news, congratulations!", handler
+        );
+
+        // then
+        assertThat(handler.get().content().text()).isEqualTo("POSITIVE");
+
+        // when
+        handler = new TestStreamingResponseHandler<>();
+        model.generate(
+            instruction + "The sky is blue.", handler
+        );
+
+        // then
+        assertThat(handler.get().content().text()).isEqualTo("NEUTRAL");
+
+        // when
+        handler = new TestStreamingResponseHandler<>();
+        model.generate(
+            instruction + "This is the worst movie I've ever watched! Boring!", handler
+        );
+
+        // then
+        assertThat(handler.get().content().text()).isEqualTo("NEGATIVE");
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

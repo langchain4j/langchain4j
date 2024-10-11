@@ -1,7 +1,9 @@
 package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.api.Part;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ImageContent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -76,21 +78,34 @@ class PartsMapperTest {
 
                 Arguments.of("http://example.org/cat.jpg", "image/jpeg"),
                 Arguments.of("http://example.org/cat.JPG", "image/jpeg"),
-                Arguments.of("http://example.org/cat.jpg?query=dog.png", "image/jpeg")
+                Arguments.of("http://example.org/cat.jpg?query=dog.png", "image/jpeg"),
+
+                Arguments.of("http://example.org/cat.mp3", "audio/mp3"),
+                Arguments.of("http://example.org/cat.MP3", "audio/mp3"),
+                Arguments.of("http://example.org/cat.mp3?query=dog.png", "audio/mp3"),
+
+                Arguments.of("http://example.org/cat.mp4", "video/mp4"),
+                Arguments.of("http://example.org/cat.MP4", "video/mp4"),
+                Arguments.of("http://example.org/cat.mp4?query=dog.png", "video/mp4"),
+
+                Arguments.of("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3", "audio/mp3"),
+                Arguments.of("gs://cloud-samples-data/generative-ai/audio/pixel.mp3", "audio/mp3"),
+
+                Arguments.of("https://storage.googleapis.com/cloud-samples-data/video/animals.mp4", "video/mp4"),
+                Arguments.of("gs://cloud-samples-data/video/animals.mp4", "video/mp4")
         );
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "http://example.org/cat",
-            "http://example.org/cat.banana",
-            "http://example.org/some.path/cat",
-            "http://example.org/cat?query=dog.png"
-    })
-    void should_fail_to_detect_mime_type(String url) {
+    @Test
+    void should_create_multimedia_part_from_url() {
+        // given
+        URI mp3url = URI.create("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3");
+        Audio mp3UrlAudio = Audio.builder().url(mp3url).mimeType("audio/mp3").build();
 
-        assertThatThrownBy(() -> PartsMapper.detectMimeType(URI.create(url)))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unable to detect the MIME type of '" + url + "'. Please provide it explicitly.");
+        // when
+        Part mp3urlPart = PartsMapper.map(AudioContent.from(mp3UrlAudio));
+
+        // then
+        assertThat(mp3urlPart.getInlineData().getMimeType()).isEqualTo("audio/mp3");
     }
 }

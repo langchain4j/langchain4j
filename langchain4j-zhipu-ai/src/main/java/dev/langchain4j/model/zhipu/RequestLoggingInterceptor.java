@@ -1,11 +1,12 @@
 package dev.langchain4j.model.zhipu;
 
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.Headers;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 import okio.Buffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.regex.Matcher;
@@ -14,8 +15,9 @@ import java.util.stream.Collectors;
 
 import static java.util.stream.StreamSupport.stream;
 
-@Slf4j
 class RequestLoggingInterceptor implements Interceptor {
+
+    private static final Logger log = LoggerFactory.getLogger(RequestLoggingInterceptor.class);
 
     private static final Pattern BEARER_PATTERN = Pattern.compile("(Bearer\\s)(\\w{2})(\\w+)(\\w{2})");
 

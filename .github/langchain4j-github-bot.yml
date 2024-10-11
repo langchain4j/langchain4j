@@ -18,3 +18,10 @@ triage:
       notifyInPullRequest: true
       files:
         - '*-vertex-*/**'
+    - id: elasticsearch
+      labels: [Elasticsearch]
+      title: "elasticsearch"
+      notify: [dadoonet]
+      notifyInPullRequest: true
+      files:
+        - '*-elasticsearch-*/**'

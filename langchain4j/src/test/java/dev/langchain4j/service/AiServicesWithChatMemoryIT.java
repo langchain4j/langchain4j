@@ -22,6 +22,7 @@ import static dev.langchain4j.data.message.ChatMessageDeserializer.messagesFromJ
 import static dev.langchain4j.data.message.ChatMessageSerializer.messagesToJson;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.ANOTHER_SYSTEM_MESSAGE;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.SYSTEM_MESSAGE;
 import static java.util.Arrays.asList;
@@ -37,6 +38,7 @@ class AiServicesWithChatMemoryIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_4_O_MINI)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -142,6 +144,7 @@ class AiServicesWithChatMemoryIT {
         ));
         verify(chatMemory).add(aiMessage(fourthAiMessage));
 
+        verify(chatLanguageModel, times(4)).supportedCapabilities();
         verify(chatMemory, times(12)).messages();
     }
 
@@ -171,6 +174,7 @@ class AiServicesWithChatMemoryIT {
                 aiMessage(firstAiMessage),
                 userMessage(secondUserMessage)
         ));
+        verify(chatLanguageModel, times(2)).supportedCapabilities();
 
         verify(chatMemory, times(2)).add(systemMessage(SYSTEM_MESSAGE));
         verify(chatMemory).add(userMessage(firstUserMessage));
@@ -207,6 +211,7 @@ class AiServicesWithChatMemoryIT {
                 systemMessage(ANOTHER_SYSTEM_MESSAGE),
                 userMessage(secondUserMessage)
         ));
+        verify(chatLanguageModel, times(2)).supportedCapabilities();
 
         verify(chatMemory).add(systemMessage(SYSTEM_MESSAGE));
         verify(chatMemory).add(userMessage(firstUserMessage));
@@ -304,5 +309,7 @@ class AiServicesWithChatMemoryIT {
                 userMessage(secondMessageFromSecondUser),
                 aiMessage(secondAiResponseToSecondUser)
         );
+
+        verify(chatLanguageModel, times(4)).supportedCapabilities();
     }
 }

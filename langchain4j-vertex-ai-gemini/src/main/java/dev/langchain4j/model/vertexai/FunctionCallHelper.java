@@ -109,8 +109,11 @@ class FunctionCallHelper {
 
         for (ToolSpecification toolSpecification : toolSpecifications) {
             FunctionDeclaration.Builder fnBuilder = FunctionDeclaration.newBuilder()
-                .setName(toolSpecification.name())
-                .setDescription(toolSpecification.description());
+                .setName(toolSpecification.name());
+
+            if (toolSpecification.description() != null) {
+                fnBuilder.setDescription(toolSpecification.description());
+            }
 
             Schema.Builder schema = Schema.newBuilder().setType(Type.OBJECT);
 

@@ -13,19 +13,22 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>0.32.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
 ## AnthropicChatModel
 
 ```java
-AnthropicChatModel model = AnthropicChatModel.withApiKey(System.getenv("ANTHROPIC_API_KEY"));
+AnthropicChatModel model = AnthropicChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName(CLAUDE_3_5_SONNET_20240620)
+    .build();
 String answer = model.generate("Say 'Hello World'");
 System.out.println(answer);
 ```
 
-### Customizing
+### Customizing AnthropicChatModel
 ```java
 AnthropicChatModel model = AnthropicChatModel.builder()
     .baseUrl(...)
@@ -48,7 +51,10 @@ See the description of some of the parameters above [here](https://docs.anthropi
 
 ## AnthropicStreamingChatModel
 ```java
-AnthropicStreamingChatModel model = AnthropicStreamingChatModel.withApiKey(System.getenv("ANTHROPIC_API_KEY"));
+AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName(CLAUDE_3_5_SONNET_20240620)
+    .build();
 
 model.generate("Say 'Hello World'", new StreamingResponseHandler<AiMessage>() {
 
@@ -69,13 +75,13 @@ model.generate("Say 'Hello World'", new StreamingResponseHandler<AiMessage>() {
 });
 ```
 
-### Customizing
+### Customizing AnthropicStreamingChatModel
 
 Identical to the `AnthropicChatModel`, see above.
 
 ## Tools
 
-Anthropic supports [tools](/tutorials/tools), but only in a non-streaming mode.
+Anthropic supports [tools](/tutorials/tools) in both streaming and non-streaming mode.
 
 Anthropic documentation on tools can be found [here](https://docs.anthropic.com/claude/docs/tool-use).
 
@@ -90,7 +96,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>0.32.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
