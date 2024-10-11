@@ -8,9 +8,23 @@ import java.util.List;
 import java.util.Map;
 import lombok.Builder;
 
+/**
+ * Represents the result of a {@link EmbeddingStoreIngestor} ingest process.
+ */
 public class IngestionResult {
+    /**
+     * The embeddings content that were ingested.
+     */
     private final List<Embedding> content;
+
+    /**
+     * The token usage information.
+     */
     private final TokenUsage tokenUsage;
+
+    /**
+     * Additional metadata.
+     */
     private final Map<String, Object> metadata;
 
     @Builder
