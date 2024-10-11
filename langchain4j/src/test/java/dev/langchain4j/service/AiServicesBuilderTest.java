@@ -11,7 +11,6 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.mockito.Spy;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
@@ -123,7 +122,7 @@ public class AiServicesBuilderTest {
     public void should_raise_an_error_when_tools_are_classes() {
         ChatLanguageModel chatLanguageModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
-        assertThrows(IllegalConfigurationException.class, () -> AiServices.builder(Assistant.class)
+        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> AiServices.builder(Assistant.class)
                 .chatLanguageModel(chatLanguageModel)
                 .tools(HelloWorld.class)
                 .build());
