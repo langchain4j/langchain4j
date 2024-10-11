@@ -1,5 +1,12 @@
 package dev.langchain4j.store.embedding;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.DocumentTransformer;
@@ -8,20 +15,11 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.spi.data.document.splitter.DocumentSplitterFactory;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.Collection;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The {@code EmbeddingStoreIngestor} represents an ingestion pipeline and is responsible
