@@ -513,9 +513,11 @@ Assistant assistant = AiServices.create(Assistant.class, model);
 
 TokenStream tokenStream = assistant.chat("Tell me a joke");
 
-tokenStream.onNext(System.out::println)
-    .onComplete(System.out::println)
-    .onError(Throwable::printStackTrace)
+tokenStream.onNext((String token) -> System.out.println(token))
+    .onRetrieved((List<Content> contents) -> System.out.println(contents))
+    .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
+    .onComplete((Response<AiMessage> response) -> System.out.println(response))
+    .onError((Throwable error) -> error.printStackTrace())
     .start();
 ```
 

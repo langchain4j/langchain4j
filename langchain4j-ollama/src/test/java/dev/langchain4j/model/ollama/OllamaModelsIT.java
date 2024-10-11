@@ -27,6 +27,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         // then
         assertThat(response.content().size()).isGreaterThan(0);
         assertThat(response.content().get(0).getName()).contains(TINY_DOLPHIN_MODEL);
+        assertThat(response.content().get(0).getModifiedAt()).isNotNull();
     }
 
     @Test

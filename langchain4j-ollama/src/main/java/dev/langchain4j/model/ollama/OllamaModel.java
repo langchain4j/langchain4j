@@ -26,14 +26,16 @@ public class OllamaModel {
     OllamaModel() {
     }
 
-    OllamaModel(String name, long size, String digest, OllamaModelDetails details) {
+    public OllamaModel(String name, long size, String digest, OllamaModelDetails details, OffsetDateTime modifiedAt, String model) {
         this.name = name;
         this.size = size;
         this.digest = digest;
         this.details = details;
+        this.modifiedAt = modifiedAt;
+        this.model = model;
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -69,35 +71,64 @@ public class OllamaModel {
         this.details = details;
     }
 
-    static class Builder {
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+    }
+
+    public OffsetDateTime getModifiedAt() {
+        return modifiedAt;
+    }
+
+    public void setModifiedAt(OffsetDateTime modifiedAt) {
+        this.modifiedAt = modifiedAt;
+    }
+
+    public static class Builder {
 
         private String name;
         private long size;
         private String digest;
         private OllamaModelDetails details;
+        private OffsetDateTime modifiedAt;
+        private String model;
 
-        Builder name(String name) {
+        public Builder name(String name) {
             this.name = name;
             return this;
         }
 
-        Builder size(long size) {
+        public Builder size(long size) {
             this.size = size;
             return this;
         }
 
-        Builder digest(String digest) {
+        public Builder digest(String digest) {
             this.digest = digest;
             return this;
         }
 
-        Builder details(OllamaModelDetails details) {
+        public Builder details(OllamaModelDetails details) {
             this.details = details;
             return this;
         }
 
-        OllamaModel build() {
-            return new OllamaModel(name, size, digest, details);
+        public Builder modifiedAt(OffsetDateTime modifiedAt) {
+            this.modifiedAt = modifiedAt;
+            return this;
+        }
+
+        public Builder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+
+        public OllamaModel build() {
+            return new OllamaModel(name, size, digest, details, modifiedAt, model);
         }
     }
 }
