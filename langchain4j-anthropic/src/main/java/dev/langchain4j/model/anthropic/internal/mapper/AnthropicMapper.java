@@ -33,7 +33,6 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
@@ -53,7 +52,7 @@ public class AnthropicMapper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
+    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages, AnthropicCacheType cacheType) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
@@ -69,7 +68,7 @@ public class AnthropicMapper {
                 }
 
                 if (message instanceof UserMessage) {
-                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message);
+                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message, cacheType);
                     anthropicMessages.add(new AnthropicMessage(USER, contents));
                 } else if (message instanceof AiMessage) {
                     List<AnthropicMessageContent> contents = toAnthropicMessageContents((AiMessage) message);
@@ -89,13 +88,12 @@ public class AnthropicMapper {
         return new AnthropicToolResultContent(message.id(), message.text(), null); // TODO propagate isError
     }
 
-    private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
+    private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message, AnthropicCacheType cacheType) {
         return message.contents().stream()
                 .map(content -> {
                     if (content instanceof TextContent) {
                         TextContent textContent = (TextContent) content;
-                        if (textContent.cacheType() != null) {
-                            AnthropicCacheType cacheType = AnthropicCacheType.valueOf(textContent.cacheType());
+                        if (cacheType.isApplyCache() && cacheType.isApplyUserMessage()) {
                             return new AnthropicTextContent(textContent.text(), cacheType.cacheControl());
                         }
                         return new AnthropicTextContent(textContent.text());
@@ -143,13 +141,12 @@ public class AnthropicMapper {
     }
 
 
-    public static List<AnthropicTextContent> toAnthropicSystemPrompt(List<ChatMessage> messages) {
+    public static List<AnthropicTextContent> toAnthropicSystemPrompt(List<ChatMessage> messages, AnthropicCacheType cacheType) {
         return messages.stream()
                 .filter(message -> message instanceof SystemMessage)
                 .map(message -> {
                     SystemMessage systemMessage = (SystemMessage) message;
-                    if (systemMessage.cacheType() != null) {
-                        AnthropicCacheType cacheType = AnthropicCacheType.valueOf(systemMessage.cacheType());
+                    if (cacheType.isApplyCache() && cacheType.isApplySystemMessage()) {
                         return new AnthropicTextContent(systemMessage.text(), cacheType.cacheControl());
                     }
                     return new AnthropicTextContent(systemMessage.text());

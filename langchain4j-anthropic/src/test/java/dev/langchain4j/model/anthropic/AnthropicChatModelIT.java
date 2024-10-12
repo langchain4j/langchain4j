@@ -210,6 +210,10 @@ class AnthropicChatModelIT {
 
     @Test
     void test_all_parameters_with_cache() {
+        AnthropicCacheType cacheType = AnthropicCacheType.builder()
+                .cacheType(AnthropicCacheType.CacheType.EPHEMERAL)
+                .messageTypeApplyCache(AnthropicCacheType.MessageTypeApplyCache.ALL)
+                .build();
 
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
@@ -227,10 +231,11 @@ class AnthropicChatModelIT {
                 .maxRetries(1)
                 .logRequests(true)
                 .logResponses(true)
+                .cacheType(cacheType)
                 .build();
 
-        SystemMessage systemMessage = SystemMessage.from("You are a professional translator", AnthropicCacheType.EPHEMERAL.toString());
-        UserMessage userMessage = new UserMessage(TextContent.from("How say: java is very slow on spanish ?", AnthropicCacheType.EPHEMERAL.toString()));
+        SystemMessage systemMessage = SystemMessage.from("You are a professional translator");
+        UserMessage userMessage = new UserMessage(TextContent.from("How say: java is very slow on spanish ?"));
 
         // when
         Response<AiMessage> response = model.generate(systemMessage, userMessage);

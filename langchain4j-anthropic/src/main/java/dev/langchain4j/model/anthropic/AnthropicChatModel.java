@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
@@ -67,6 +68,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private final List<String> stopSequences;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
+    private final AnthropicCacheType cacheType;
 
     /**
      * Constructs an instance of an {@code AnthropicChatModel} with the specified parameters.
@@ -101,7 +103,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
                                Integer maxRetries,
                                Boolean logRequests,
                                Boolean logResponses,
-                               List<ChatModelListener> listeners) {
+                               List<ChatModelListener> listeners,
+                               AnthropicCacheType cacheType) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
@@ -119,6 +122,14 @@ public class AnthropicChatModel implements ChatLanguageModel {
         this.stopSequences = stopSequences;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        if (cacheType == null) {
+            this.cacheType = AnthropicCacheType.builder()
+                    .cacheType(AnthropicCacheType.CacheType.NO_CACHE)
+                    .messageTypeApplyCache(AnthropicCacheType.MessageTypeApplyCache.NONE)
+                    .build();
+        } else {
+            this.cacheType = cacheType;
+        }
     }
 
     public static class AnthropicChatModelBuilder {
@@ -150,11 +161,11 @@ public class AnthropicChatModel implements ChatLanguageModel {
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
-        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages);
+        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages, cacheType);
 
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
-                .messages(toAnthropicMessages(sanitizedMessages))
+                .messages(toAnthropicMessages(sanitizedMessages, cacheType))
                 .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)

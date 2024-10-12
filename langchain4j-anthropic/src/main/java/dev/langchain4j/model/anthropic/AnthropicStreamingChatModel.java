@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
@@ -75,6 +76,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     private final int maxTokens;
     private final List<String> stopSequences;
     private final List<ChatModelListener> listeners;
+    private final AnthropicCacheType cacheType;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -105,7 +107,8 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                                         Duration timeout,
                                         Boolean logRequests,
                                         Boolean logResponses,
-                                        List<ChatModelListener> listeners) {
+                                        List<ChatModelListener> listeners,
+                                        AnthropicCacheType cacheType) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
@@ -121,6 +124,14 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
         this.maxTokens = getOrDefault(maxTokens, 1024);
         this.stopSequences = stopSequences;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        if (cacheType == null) {
+            this.cacheType = AnthropicCacheType.builder()
+                    .cacheType(AnthropicCacheType.CacheType.NO_CACHE)
+                    .messageTypeApplyCache(AnthropicCacheType.MessageTypeApplyCache.NONE)
+                    .build();
+        } else {
+            this.cacheType = cacheType;
+        }
     }
 
     public static class AnthropicStreamingChatModelBuilder {
@@ -164,13 +175,13 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                           ToolSpecification toolThatMustBeExecuted,
                           StreamingResponseHandler<AiMessage> handler) {
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
-        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages);
+        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages, cacheType);
         ensureNotNull(handler, "handler");
 
         AnthropicCreateMessageRequest.AnthropicCreateMessageRequestBuilder requestBuilder = AnthropicCreateMessageRequest.builder()
                 .stream(true)
                 .model(modelName)
-                .messages(toAnthropicMessages(sanitizedMessages))
+                .messages(toAnthropicMessages(sanitizedMessages, cacheType))
                 .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
