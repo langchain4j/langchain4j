@@ -59,7 +59,7 @@ jobs:
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
           ## compile and verify javadocs on ALL modules
-          mvn -B -U -T2C process-test-classes javadoc:javadoc
+          mvn -B -U -T4C process-test-classes javadoc:aggregate
           
           ## run tests
           mvn -B -U verify \
