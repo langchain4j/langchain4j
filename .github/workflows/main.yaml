@@ -58,6 +58,10 @@ jobs:
           cache: 'maven'
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
+          ## compile and verify javadocs on ALL modules
+          mvn -B -U -T2C process-test-classes javadoc:javadoc
+          
+          ## run tests
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             ${{ matrix.included_modules }}
