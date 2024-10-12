@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
-import co.elastic.clients.elasticsearch._types.InlineScript;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.ScriptScoreQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
@@ -67,11 +66,9 @@ public class ElasticsearchConfigurationScript extends ElasticsearchConfiguration
         return ScriptScoreQuery.of(q -> q
                 .minScore(minScore)
                 .query(query)
-                .script(s -> s.inline(InlineScript.of(i -> i
-                        // The script adds 1.0 to the cosine similarity to prevent the score from being negative.
-                        // divided by 2 to keep score in the range [0, 1]
+                .script(s -> s
                         .source("(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2")
-                        .params("query_vector", queryVector)))));
+                        .params("query_vector", queryVector)));
     }
 
     private <T> JsonData toJsonData(T rawData) throws JsonProcessingException {
