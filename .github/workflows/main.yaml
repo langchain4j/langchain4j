@@ -57,7 +57,10 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build with JDK ${{ matrix.java_version }}
-        run: mvn -B -U install ${{ matrix.included_modules }} -Dgib.disable=false -Dgib.referenceBranch=__branch_before
+        run: |
+          mvn -B -U install \
+            -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
+            ${{ matrix.included_modules }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

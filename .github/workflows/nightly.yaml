@@ -40,7 +40,10 @@ jobs:
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
       - name: Build with JDK ${{ matrix.java_version }}
-        run: mvn -B -U --fail-at-end -Dmaven.test.failure.ignore=true ${{ matrix.included_modules }} verify
+        run: |
+          mvn -B -U --fail-at-end \
+              -Dmaven.test.failure.ignore=true \
+              ${{ matrix.included_modules }} verify
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
