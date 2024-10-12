@@ -45,10 +45,12 @@ public class AnthropicCacheType {
     }
 
     public boolean isApplyUserMessage() {
-        return this.messageTypeApplyCache == MessageTypeApplyCache.USER_MESSAGE || this.messageTypeApplyCache == MessageTypeApplyCache.ALL;
+        return (this.messageTypeApplyCache == MessageTypeApplyCache.USER_MESSAGE || this.messageTypeApplyCache == MessageTypeApplyCache.ALL)
+                && isApplyCache();
     }
 
     public boolean isApplySystemMessage() {
-        return this.messageTypeApplyCache == MessageTypeApplyCache.SYSTEM_MESSAGE || this.messageTypeApplyCache == MessageTypeApplyCache.ALL;
+        return (this.messageTypeApplyCache == MessageTypeApplyCache.SYSTEM_MESSAGE || this.messageTypeApplyCache == MessageTypeApplyCache.ALL)
+                && isApplyCache();
     }
 }
