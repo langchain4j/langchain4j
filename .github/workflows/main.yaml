@@ -58,7 +58,7 @@ jobs:
           cache: 'maven'
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
-          mvn -B -U install \
+          mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             ${{ matrix.included_modules }}
         env:
