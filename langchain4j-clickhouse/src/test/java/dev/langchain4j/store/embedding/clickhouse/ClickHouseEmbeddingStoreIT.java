@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.clickhouse;
 
-import com.clickhouse.jdbc.ClickHouseDataSource;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -11,25 +10,40 @@ import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.clickhouse.ClickHouseContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import javax.sql.DataSource;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Properties;
+import java.util.HashMap;
+import java.util.Map;
 
 class ClickHouseEmbeddingStoreIT extends EmbeddingStoreIT {
 
+    private static final String USERNAME = "test-username";
+    private static final String PASSWORD = "test-password";
+
+    static final Map<String, String> COLUMN_MAP = new HashMap<>();
+
+    static {
+        COLUMN_MAP.put("text", "text");
+        COLUMN_MAP.put("id", "id");
+        COLUMN_MAP.put("embedding", "embedding");
+        COLUMN_MAP.put("metadata", "metadata");
+    }
+
     static ClickHouseContainer clickhouse = new ClickHouseContainer(DockerImageName.parse("clickhouse/clickhouse-server:latest"))
             .withDatabaseName("default")
-            .withUsername("test-username")
-            .withPassword("test-password");
+            .withUsername(USERNAME)
+            .withPassword(PASSWORD);
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    EmbeddingStore<TextSegment> embeddingStore = ClickHouseEmbeddingStore.builder()
-            .url(clickhouse.getJdbcUrl())
-            .username("test-username")
-            .password("test-password")
+    ClickHouseSettings settings = ClickHouseSettings.builder()
+            .url("http://" + clickhouse.getHost() + ":" + clickhouse.getMappedPort(8123))
+            .username(USERNAME)
+            .password(PASSWORD)
             .dimension(embeddingModel.dimension())
+            .columnMap(COLUMN_MAP)
+            .build();
+
+    EmbeddingStore<TextSegment> embeddingStore = ClickHouseEmbeddingStore.builder()
+            .settings(settings)
             .build();
 
     @BeforeAll
@@ -54,17 +68,6 @@ class ClickHouseEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        DataSource dataSource = null;
-        try {
-            dataSource = new ClickHouseDataSource(clickhouse.getJdbcUrl(), new Properties());
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        try (Statement stmt = dataSource.getConnection("test-username", "test-password").createStatement()) {
-            stmt.execute("DELETE FROM default.langchain4j_clickhouse_example WHERE id IS NOT NULL");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        embeddingStore.removeAll();
     }
 }

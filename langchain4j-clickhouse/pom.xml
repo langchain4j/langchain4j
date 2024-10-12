@@ -16,7 +16,8 @@
     <name>LangChain4j :: Integration :: Clickhouse</name>
 
     <properties>
-        <clickhouse.version>0.6.0</clickhouse.version>
+        <clickhouse.version>0.7.0</clickhouse.version>
+        <clickhouse-jdbc.version>0.6.5</clickhouse-jdbc.version>
         <lz4.version>1.8.0</lz4.version>
     </properties>
 
@@ -24,14 +25,8 @@
 
         <dependency>
             <groupId>com.clickhouse</groupId>
-            <artifactId>clickhouse-jdbc</artifactId>
+            <artifactId>client-v2</artifactId>
             <version>${clickhouse.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.lz4</groupId>
-            <artifactId>lz4-java</artifactId>
-            <version>${lz4.version}</version>
         </dependency>
 
         <dependency>
@@ -101,6 +96,22 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>clickhouse</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ClickHouse Testcontainers do not contain driver -->
+
+        <dependency>
+            <groupId>com.clickhouse</groupId>
+            <artifactId>clickhouse-jdbc</artifactId>
+            <version>${clickhouse-jdbc.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.lz4</groupId>
+            <artifactId>lz4-java</artifactId>
+            <version>${lz4.version}</version>
             <scope>test</scope>
         </dependency>
 
