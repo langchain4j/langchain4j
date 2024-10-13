@@ -54,9 +54,9 @@ jobs:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
           cache: 'maven'
-      - name: Compile with JDK ${{ matrix.java_version }}
+      - name: Compile and test with JDK ${{ matrix.java_version }}
         run: |
-          mvn -B -U -T4C process-test-classes javadoc:aggregate \
+          mvn -B -U -T4C test javadoc:aggregate \
             ${{ matrix.included_modules }}
 
       - name: Integration test with JDK ${{ matrix.java_version }}
