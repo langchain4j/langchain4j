@@ -29,11 +29,11 @@ jobs:
     strategy:
       matrix:
         java_version:
-          #- 17
+          - 17
           - 21
         include:
-#          - java_version: '17'
-#            included_modules: '-pl !langchain4j-jlama,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
+          - java_version: '17'
+            included_modules: '-pl !langchain4j-jlama'
           - java_version: '21'
             included_modules: ''
     runs-on: ubuntu-latest
@@ -57,7 +57,8 @@ jobs:
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
           ## compile and verify javadocs on ALL modules
-          mvn -B -U -T4C process-test-classes javadoc:aggregate
+          mvn -B -U -T4C process-test-classes javadoc:aggregate \
+            ${{ matrix.included_modules }}
           
           ## run tests for some modules
           mvn -B -U verify \
