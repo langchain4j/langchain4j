@@ -10,9 +10,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.clickhouse.ClickHouseMappingKey.REQUIRED_COLUMN_MAP_KEYS;
 
-/**
- * TODO: javadoc
- */
 public class ClickHouseSettings {
 
     private static final Map<String, String> DEFAULT_COLUMN_MAP = new HashMap<>();
@@ -34,12 +31,26 @@ public class ClickHouseSettings {
      */
     private Map<String, String> columnMap;
     /**
-     * TODO: javadoc
+     *
      */
     private Map<String, ClickHouseDataType> metadataTypeMap;
     private Integer dimension;
     private Long timeout;
 
+    /**
+     * Construct a ClickHouseSettings instance
+     *
+     * @param url             ClickHouse http endpoint. (e.g. http://localhost:8123)
+     * @param username        Username. (Optional)
+     * @param password        Password. (Optional)
+     * @param database        Database name. (Optional)
+     * @param table           Table name. (Optional)
+     * @param columnMap       Column type map to project column name onto langchain4j semantics.
+     *                        Must have keys: `text`, `id` and `embedding`, other keys will be ignored. (Optional)
+     * @param metadataTypeMap Metadata type map to project column name onto ClickHouseDataType in order to filter.
+     * @param dimension       Embedding dimension.
+     * @param timeout         Request timeout in milliseconds. (Optional)
+     */
     public ClickHouseSettings(String url,
                               String username,
                               String password,

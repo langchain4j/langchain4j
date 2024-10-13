@@ -74,7 +74,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment>, Au
     /**
      * Construct embedding store.
      *
-     * @param client   Custom ClickHouse client.
+     * @param client   Custom ClickHouse client. (Optional)
      * @param settings ClickHouse settings.
      * @see ClickHouseSettings
      */
@@ -92,6 +92,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment>, Au
                         .build()
                 );
 
+        createDatabase();
         // init experiment features and create table
         createTable();
     }
@@ -110,11 +111,22 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment>, Au
         private Client client;
         private ClickHouseSettings settings;
 
+        /**
+         * Configure custom ClickHouse client
+         *
+         * @param client Custom ClickHouse client
+         */
         public Builder client(Client client) {
             this.client = client;
             return this;
         }
 
+        /**
+         * Configure ClickHouse settings
+         *
+         * @param settings ClickHouse settings
+         * @see ClickHouseSettings
+         */
         public Builder settings(ClickHouseSettings settings) {
             this.settings = settings;
             return this;
@@ -215,6 +227,14 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment>, Au
             if (log.isDebugEnabled()) {
                 log.debug("Insert finished: {} rows written", response.getMetrics().getMetric(ServerMetrics.NUM_ROWS_WRITTEN).getLong());
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void createDatabase() {
+        try {
+            client.execute(String.format("CREATE DATABASE IF NOT EXISTS %s", settings.getDatabase())).get(settings.getTimeout(), TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
