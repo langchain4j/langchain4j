@@ -32,8 +32,8 @@ jobs:
           #- 17
           - 21
         include:
-          - java_version: '17'
-            included_modules: '-pl !langchain4j-jlama,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
+#          - java_version: '17'
+#            included_modules: '-pl !langchain4j-jlama,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
           - java_version: '21'
             included_modules: ''
     runs-on: ubuntu-latest
