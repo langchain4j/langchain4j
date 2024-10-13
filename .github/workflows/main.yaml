@@ -28,7 +28,9 @@ jobs:
   java_build:
     strategy:
       matrix:
-        java_version: [17, 21]
+        java_version:
+          #- 17
+          - 21
         include:
           - java_version: '17'
             included_modules: '-pl !langchain4j-jlama,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
