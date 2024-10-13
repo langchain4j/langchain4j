@@ -54,13 +54,13 @@ jobs:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
           cache: 'maven'
-      - name: Build with JDK ${{ matrix.java_version }}
+      - name: Compile with JDK ${{ matrix.java_version }}
         run: |
-          ## compile and verify javadocs on ALL modules
           mvn -B -U -T4C process-test-classes javadoc:aggregate \
             ${{ matrix.included_modules }}
-          
-          ## run tests for some modules
+
+      - name: Integration test with JDK ${{ matrix.java_version }}
+        run: |
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             ${{ matrix.included_modules }}
