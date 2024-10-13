@@ -21,7 +21,6 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Random;
 import java.util.logging.Logger;
 
@@ -62,6 +61,8 @@ final class CommonTestOperations {
 
     private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
 
+    public static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.5-slim-faststart";
+
     static {
         try {
             DATA_SOURCE.setConnectionFactoryClassName("oracle.jdbc.datasource.impl.OracleDataSource");
@@ -70,9 +71,9 @@ final class CommonTestOperations {
             if (urlFromEnv == null) {
                 // The Ryuk component is relied upon to stop this container.
                 OracleContainer oracleContainer =
-                    new OracleContainer("gvenzl/oracle-free:23.4-slim-faststart")
-                        .withStartupTimeout(Duration.ofSeconds(600))
-                        .withConnectTimeoutSeconds(600)
+                    new OracleContainer(ORACLE_IMAGE_NAME)
+                        .withStartupTimeout(Duration.ofSeconds(60))
+                        .withConnectTimeoutSeconds(60)
                         .withDatabaseName("pdb1")
                         .withUsername("testuser")
                         .withPassword("testpwd");
