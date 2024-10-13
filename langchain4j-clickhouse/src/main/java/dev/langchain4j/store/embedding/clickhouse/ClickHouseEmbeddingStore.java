@@ -233,11 +233,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment>, Au
     }
 
     private void createDatabase() {
-        try {
-            client.execute(String.format("CREATE DATABASE IF NOT EXISTS %s", settings.getDatabase())).get(settings.getTimeout(), TimeUnit.MILLISECONDS);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        client.execute(String.format("CREATE DATABASE IF NOT EXISTS %s", settings.getDatabase()));
     }
 
     private void createTable() {
@@ -263,11 +259,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment>, Au
                 metadataCreateSql, settings.getColumnMapping(EMBEDDING_MAPPING_KEY), settings.getDimension(),
                 settings.getColumnMapping(EMBEDDING_MAPPING_KEY));
 
-        try {
-            client.execute(createTableSql).get(settings.getTimeout(), TimeUnit.MILLISECONDS);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        client.execute(createTableSql);
     }
 
     private String buildQuerySql(EmbeddingSearchRequest request) {
