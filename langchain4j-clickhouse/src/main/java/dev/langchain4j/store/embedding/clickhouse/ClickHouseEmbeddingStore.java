@@ -1,127 +1,127 @@
 package dev.langchain4j.store.embedding.clickhouse;
 
-import com.clickhouse.jdbc.ClickHouseDataSource;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.clickhouse.client.api.Client;
+import com.clickhouse.client.api.insert.InsertResponse;
+import com.clickhouse.client.api.metrics.ServerMetrics;
+import com.clickhouse.client.api.query.GenericRecord;
+import com.clickhouse.client.api.query.Records;
+import com.clickhouse.data.ClickHouseDataType;
+import com.clickhouse.data.ClickHouseFormat;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.*;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static dev.langchain4j.store.embedding.clickhouse.ClickHouseSettings.REQUIRED_COLUMN_MAP_KEYS;
+import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.store.embedding.clickhouse.ClickHouseJsonUtils.toJson;
+import static dev.langchain4j.store.embedding.clickhouse.ClickHouseMappingKey.*;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
-public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
+/**
+ * <p>
+ * An <code>EmbeddingStore</code> which uses AI Vector Search capabilities of ClickHouse Database. This embedding store
+ * supports metadata filtering and removal
+ * </p><p>
+ * Instances of this store are created by configuring a builder:
+ * </p><pre>{@code
+ * EmbeddingStore<TextSegment> example() {
+ *   return ClickHouseEmbeddingStore.builder()
+ *     .settings(ClickHouseSettings.builder()
+ *             .url("http://localhost:8123")
+ *             .dimension(embeddingModel.dimension())
+ *             .build();)
+ *     .build();
+ * }
+ * }</pre><p>
+ * It is recommended to configure a {@link com.clickhouse.client.ClickHouseClient} in order to customize your connection or authorization.
+ * </p><p>
+ * This embedding store requires a {@link ClickHouseSettings} to be configured
+ * </p>
+ */
+public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment>, AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(ClickHouseEmbeddingStore.class);
-    private final ClickHouseDataSource dataSource;
+
+    /**
+     * Client to connect ClickHouse server.
+     */
+    private final Client client;
+    /**
+     * ClickHouse settings.
+     *
+     * @see ClickHouseSettings
+     */
     private final ClickHouseSettings settings;
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    /**
+     * ClickHouse filter mapper.
+     */
+    private final ClickHouseMetadataFilterMapper filterMapper;
 
-    public ClickHouseEmbeddingStore(ClickHouseDataSource dataSource,
-                                    ClickHouseSettings settings) {
+    /**
+     * Construct embedding store.
+     *
+     * @param client   Custom ClickHouse client.
+     * @param settings ClickHouse settings.
+     * @see ClickHouseSettings
+     */
+    public ClickHouseEmbeddingStore(Client client, ClickHouseSettings settings) {
         this.settings = ensureNotNull(settings, "settings");
-        checkColumnMap(settings.getColumnMap());
-        // init dataSource
-        try {
-            this.dataSource = Optional.ofNullable(dataSource).orElse(new ClickHouseDataSource(settings.getUrl(), new Properties()));
-        } catch (SQLException e) {
-            throw new RuntimeException(String.format("Encounter exception when initialize dataSource. Error message: %s", e.getLocalizedMessage()));
-        }
+        this.filterMapper = new ClickHouseMetadataFilterMapper(settings.getColumnMap(), settings.getMetadataTypeMap());
 
-        // init experimental feature and table
-        try (Connection conn = createConnection();
-             Statement stmt = conn.createStatement()) {
-            stmt.execute(buildCreateTableSql());
-        } catch (SQLException e) {
-            throw new RuntimeException(String.format("Encounter exception when creating table. Error message: %s", e.getLocalizedMessage()));
-        }
+        // init client
+        this.client = Optional.ofNullable(client)
+                .orElse(new Client.Builder()
+                        .addEndpoint(settings.getUrl())
+                        .setUsername(settings.getUsername())
+                        .setPassword(settings.getPassword())
+                        .serverSetting("allow_experimental_vector_similarity_index", "1")
+                        .build()
+                );
+
+        // init experiment features and create table
+        createTable();
     }
 
     public static Builder builder() {
         return new Builder();
     }
 
+    @Override
+    public void close() throws Exception {
+        client.close();
+    }
+
     public static class Builder {
 
-        private ClickHouseDataSource dataSource;
-        private ClickHouseSettings settings = new ClickHouseSettings();
+        private Client client;
+        private ClickHouseSettings settings;
 
-        public Builder dataSource(ClickHouseDataSource dataSource) {
-            this.dataSource = dataSource;
+        public Builder client(Client client) {
+            this.client = client;
             return this;
         }
 
-        public Builder url(String url) {
-            settings.setUrl(url);
-            return this;
-        }
-
-        public Builder username(String username) {
-            settings.setUsername(username);
-            return this;
-        }
-
-        public Builder password(String password) {
-            settings.setPassword(password);
-            return this;
-        }
-
-        public Builder database(String database) {
-            settings.setDatabase(database);
-            return this;
-        }
-
-        public Builder table(String table) {
-            settings.setTable(table);
-            return this;
-        }
-
-        public Builder dimension(int dimension) {
-            settings.setDimension(dimension);
-            return this;
-        }
-
-        /**
-         * Column type map to project column name onto langchain semantics.
-         * <p>Must have keys: `text`, `id`, `embedding`</p>
-         * <p>Optional key: metadata</p>
-         *
-         * @param columnMap column map
-         * @return builder
-         */
-        public Builder columnMap(Map<String, String> columnMap) {
-            settings.setColumnMap(columnMap);
-            return this;
-        }
-
-        public Builder properties(Properties properties) {
-            settings.setProperties(properties);
-            return this;
-        }
-
-        public Builder setting(ClickHouseSettings setting) {
-            this.settings = setting;
+        public Builder settings(ClickHouseSettings settings) {
+            this.settings = settings;
             return this;
         }
 
         public ClickHouseEmbeddingStore build() {
-            return new ClickHouseEmbeddingStore(dataSource, settings);
+            return new ClickHouseEmbeddingStore(client, settings);
         }
     }
 
@@ -146,58 +146,48 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
         addAllInternal(ids, embeddings, null);
         return ids;
     }
 
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
         addAllInternal(ids, embeddings, embedded);
         return ids;
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        try (Connection conn = createConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet resultSet = stmt.executeQuery(buildQuerySql(referenceEmbedding, maxResults))) {
-
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        try (Records records = client.queryRecords(buildQuerySql(request)).get(settings.getTimeout(), TimeUnit.MILLISECONDS)) {
             List<EmbeddingMatch<TextSegment>> relevantList = new ArrayList<>();
-            while (resultSet.next()) {
-                String id = resultSet.getString(settings.getColumnMap().get("id"));
-                String text = resultSet.getString(settings.getColumnMap().get("text"));
-                float[] embedding = (float[]) resultSet.getArray(settings.getColumnMap().get("embedding")).getArray();
-                TextSegment textSegment = null;
-                if (text != null) {
-                    Metadata metadata = new Metadata();
-                    if (settings.getColumnMap().containsKey("metadata")) {
-                        String metadataStr = resultSet.getString("metadata");
-                        TypeReference<Map<String, String>> typeToken = new TypeReference<Map<String, String>>() {
-                        };
-                        Map<String, String> metadataMap = OBJECT_MAPPER.readValue(metadataStr, typeToken);
-                        metadata = Metadata.from(Optional.ofNullable(metadataMap).orElse(new HashMap<>()));
-                    }
-                    textSegment = TextSegment.from(text, metadata);
-                }
-                double cosineDistance = resultSet.getDouble("dist");
-                EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(RelevanceScore.fromCosineSimilarity(1 - cosineDistance), id, Embedding.from(embedding), textSegment);
-                relevantList.add(embeddingMatch);
-            }
+            records.forEach(r -> relevantList.add(toEmbeddingMatch(r)));
 
-            return relevantList.stream()
-                    .filter(relevant -> relevant.score() >= minScore)
-                    .collect(toList());
-        } catch (SQLException e) {
-            throw new RuntimeException(String.format("Encounter exception when query data. Error message: %s", e.getLocalizedMessage()));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(String.format("Search failed! Error message: %s", e.getLocalizedMessage()));
+            return new EmbeddingSearchResult<>(relevantList.stream().filter(relevant -> relevant.score() >= request.minScore()).collect(toList()));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public void removeAll(Collection<String> ids) {
+        ensureNotEmpty(ids, "ids");
+
+        removeAll(metadataKey(settings.getColumnMapping(ID_MAPPING_KEY)).isIn(ids));
+    }
+
+    @Override
+    public void removeAll(Filter filter) {
+        ensureNotNull(filter, "filter");
+
+        String whereClause = "WHERE " + filterMapper.map(filter);
+        client.execute(String.format("DELETE FROM %s.%s %s", settings.getDatabase(), settings.getTable(), whereClause));
+    }
+
+    @Override
+    public void removeAll() {
+        client.execute(String.format("TRUNCATE TABLE IF EXISTS %s.%s", settings.getDatabase(), settings.getTable()));
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
@@ -213,88 +203,121 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
         int length = ids.size();
 
-        try (Connection conn = createConnection();
-             PreparedStatement preparedStmt = conn.prepareStatement(buildInsertSql())) {
-            for (int i = 0; i < length; i++) {
-                String id = ids.get(i);
-                Embedding embedding = embeddings.get(i);
-                TextSegment text = embedded == null ? null : embedded.get(i);
+        List<Map<String, Object>> dataList = new ArrayList<>();
+        for (int i = 0; i < length; i++) {
+            dataList.add(toInsertData(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i)));
+        }
 
-                Float[] insertEmbedding = embedding.vectorAsList().toArray(new Float[0]);
+        String json = toJson(dataList);
+        InputStream inputStream = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
 
-                preparedStmt.setString(1, id);
-                preparedStmt.setString(2, text == null ? null : text.text());
-                preparedStmt.setArray(3, conn.createArrayOf("Float32", insertEmbedding));
-                if (this.settings.getColumnMap().containsKey("metadata")) {
-                    preparedStmt.setString(4, text == null ? null : OBJECT_MAPPER.writeValueAsString(text.metadata().toMap()));
-                }
-                preparedStmt.addBatch();
+        try (InsertResponse response = client.insert(settings.getTable(), inputStream, ClickHouseFormat.JSON).get(settings.getTimeout(), TimeUnit.MILLISECONDS)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Insert finished: {} rows written", response.getMetrics().getMetric(ServerMetrics.NUM_ROWS_WRITTEN).getLong());
             }
-            preparedStmt.executeBatch();
-        } catch (SQLException | JsonProcessingException e) {
-            throw new RuntimeException(String.format("encounter exception when inserting data. Error message: %s", e.getLocalizedMessage()));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
-    private void checkColumnMap(Map<String, String> columnMap) {
-        // check column map must contain all REQUIRED_COLUMN_MAP_KEYS
-        for (String requiredKey : REQUIRED_COLUMN_MAP_KEYS) {
-            if (!columnMap.containsKey(requiredKey)) {
-                throw illegalArgument("columnMap must contains key %s", requiredKey);
+    private void createTable() {
+        final String TEMPLATE = "%s Nullable(%s)";
+        List<String> metadataColumns = new ArrayList<>();
+        if (settings.containsMetadata()) {
+            for (Map.Entry<String, ClickHouseDataType> entry : settings.getMetadataTypeMap().entrySet()) {
+                metadataColumns.add(String.format(TEMPLATE, entry.getKey(), entry.getValue().name()));
             }
         }
-    }
+        String metadataCreateSql = metadataColumns.isEmpty() ? "" : String.join(",", metadataColumns) + ", ";
 
-    private String buildCreateTableSql() {
-        // init metadata column if exist
-        String metadataColumn = "";
-        if (settings.getColumnMap().containsKey("metadata")) {
-            metadataColumn = String.format("%s Nullable(String),", settings.getColumnMap().get("metadata"));
-        }
-        return String.format("CREATE TABLE IF NOT EXISTS %s.%s(" +
+        String createTableSql = String.format("CREATE TABLE IF NOT EXISTS %s.%s(" +
                         "%s String," +
                         "%s Nullable(String)," +
-                        "%s Array(Float32)," +
+                        "%s Array(Float64)," +
                         "%s" +
                         "CONSTRAINT cons_vec_len CHECK length(%s) = %d," +
                         "INDEX vec_idx %s TYPE vector_similarity('hnsw', 'cosineDistance') GRANULARITY 1000" +
-                        ") ENGINE = MergeTree ORDER BY id SETTINGS index_granularity = 8192 " +
-                        "SETTINGS allow_experimental_vector_similarity_index = 1",
-                settings.getDatabase(), settings.getTable(), settings.getColumnMap().get("id"),
-                settings.getColumnMap().get("text"), settings.getColumnMap().get("embedding"),
-                metadataColumn, settings.getColumnMap().get("embedding"),
-                settings.getDimension(), settings.getColumnMap().get("embedding"));
+                        ") ENGINE = MergeTree ORDER BY id SETTINGS index_granularity = 8192",
+                settings.getDatabase(), settings.getTable(), settings.getColumnMapping(ID_MAPPING_KEY),
+                settings.getColumnMapping(TEXT_MAPPING_KEY), settings.getColumnMapping(EMBEDDING_MAPPING_KEY),
+                metadataCreateSql, settings.getColumnMapping(EMBEDDING_MAPPING_KEY), settings.getDimension(),
+                settings.getColumnMapping(EMBEDDING_MAPPING_KEY));
+
+        try {
+            client.execute(createTableSql).get(settings.getTimeout(), TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private String buildInsertSql() {
-        List<String> insertColumnList = new ArrayList<>(Arrays.asList(settings.getColumnMap().get("id"), settings.getColumnMap().get("text"), settings.getColumnMap().get("embedding")));
-        if (settings.getColumnMap().containsKey("metadata")) {
-            insertColumnList.add(settings.getColumnMap().get("metadata"));
-        }
-        return String.format("INSERT INTO %s.%s(%s) VALUES (?, ?, ?, ?)",
-                settings.getDatabase(), settings.getTable(), String.join(",", insertColumnList));
-    }
+    private String buildQuerySql(EmbeddingSearchRequest request) {
+        Embedding refEmbedding = request.queryEmbedding();
+        int maxResults = request.maxResults();
+        Filter filter = request.filter();
+        String whereClause = filter == null ? "" : String.format("WHERE %s", filterMapper.map(filter));
 
-    private String buildQuerySql(Embedding refEmbedding, int maxResults) {
-        String refEmbeddingStr = "[" + refEmbedding.vectorAsList().stream()
-                .map(String::valueOf)
-                .collect(Collectors.joining(",")) + "]";
-        List<String> queryColumnList = new ArrayList<>(Arrays.asList(settings.getColumnMap().get("id"), settings.getColumnMap().get("text"), settings.getColumnMap().get("embedding")));
-        if (settings.getColumnMap().containsKey("metadata")) {
-            queryColumnList.add(settings.getColumnMap().get("metadata"));
+        String refEmbeddingStr = "[" + refEmbedding.vectorAsList().stream().map(String::valueOf).collect(Collectors.joining(",")) + "]";
+        List<String> queryColumnList = new ArrayList<>(Arrays.asList(settings.getColumnMapping(ID_MAPPING_KEY), settings.getColumnMapping(TEXT_MAPPING_KEY), settings.getColumnMapping(EMBEDDING_MAPPING_KEY)));
+        if (settings.containsMetadata()) {
+            queryColumnList.addAll(settings.getMetadataTypeMap().keySet());
         }
-        return String.format(
-                "SELECT %s, dist " +
+
+        return String.format("WITH %s AS reference_vector " +
+                        "SELECT %s, dist " +
                         "FROM %s.%s " +
-                        "ORDER BY cosineDistance(%s, %s) AS dist ASC " +
+                        "%s " +
+                        "ORDER BY cosineDistance(%s, reference_vector) AS %s ASC " +
                         "LIMIT %d",
-                String.join(",", queryColumnList), settings.getDatabase(), settings.getTable(),
-                settings.getColumnMap().get("embedding"), refEmbeddingStr, maxResults);
+                refEmbeddingStr, String.join(",", queryColumnList), settings.getDatabase(), settings.getTable(),
+                whereClause, settings.getColumnMapping(EMBEDDING_MAPPING_KEY), DISTANCE_COLUMN_NAME, maxResults);
     }
 
-    private Connection createConnection() throws SQLException {
-        String username = this.settings.getUsername();
-        return username == null ? this.dataSource.getConnection() :
-                this.dataSource.getConnection(username, this.settings.getPassword());
+    private EmbeddingMatch<TextSegment> toEmbeddingMatch(GenericRecord r) {
+        String id = r.getString(settings.getColumnMapping(ID_MAPPING_KEY));
+        String text = r.getString(settings.getColumnMapping(TEXT_MAPPING_KEY));
+        double[] doubleEmbedding = r.getDoubleArray(settings.getColumnMapping(EMBEDDING_MAPPING_KEY));
+        float[] embedding = new float[doubleEmbedding.length];
+
+        for (int i = 0; i < doubleEmbedding.length; i++) {
+            embedding[i] = (float) doubleEmbedding[i];
+        }
+
+        TextSegment textSegment = null;
+        if (text != null) {
+            Metadata metadata = new Metadata();
+            if (settings.containsMetadata()) {
+                Map<String, Object> searchedMetadata = new HashMap<>();
+                for (String metadataKey : settings.getMetadataTypeMap().keySet()) {
+                    Object val = r.getObject(metadataKey);
+                    if (val != null) {
+                        searchedMetadata.put(metadataKey, val);
+                    }
+                }
+                metadata = Metadata.from(searchedMetadata);
+            }
+            textSegment = TextSegment.from(text, metadata);
+        }
+        double cosineDistance = r.getDouble(DISTANCE_COLUMN_NAME);
+        return new EmbeddingMatch<>(RelevanceScore.fromCosineSimilarity(1 - cosineDistance), id, Embedding.from(embedding), textSegment);
+    }
+
+    private Map<String, Object> toInsertData(String id, Embedding embedding, TextSegment segment) {
+        Map<String, Object> data = new HashMap<>(4);
+        Float[] insertEmbedding = embedding.vectorAsList().toArray(new Float[0]);
+        Map<String, Object> metadata = segment == null ? null : segment.metadata().toMap();
+
+        data.put(settings.getColumnMapping(ID_MAPPING_KEY), id);
+        data.put(settings.getColumnMapping(EMBEDDING_MAPPING_KEY), insertEmbedding);
+        data.put(settings.getColumnMapping(TEXT_MAPPING_KEY), segment == null ? null : segment.text());
+
+        // We need to set all column, including null.
+        if (settings.containsMetadata()) {
+            Map<String, ClickHouseDataType> meatadataColumnMap = settings.getMetadataTypeMap();
+            for (String key : meatadataColumnMap.keySet()) {
+                data.put(key, Optional.ofNullable(metadata).map(m -> m.get(key)).orElse(null));
+            }
+        }
+
+        return data;
     }
 }
