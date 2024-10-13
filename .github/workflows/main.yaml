@@ -60,6 +60,7 @@ jobs:
             ${{ matrix.included_modules }}
 
       - name: Integration test with JDK ${{ matrix.java_version }}
+        if: ${{ github.repository == 'langchain4j/langchain4j' }}
         run: |
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
