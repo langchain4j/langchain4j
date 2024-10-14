@@ -18,7 +18,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -52,7 +52,7 @@ class Neo4jGraphIT {
 
         neo4jGraph.refreshSchema();
         String expectedSchema = "Node properties are the following:\n\n\nRelationship properties are the following:\n\n\nThe relationships are the following:\n";
-        assertEquals(expectedSchema, neo4jGraph.getSchema());
+        assertThat(neo4jGraph.getSchema()).isEqualTo(expectedSchema);
     }
 
     @Test
@@ -62,7 +62,7 @@ class Neo4jGraphIT {
         String query = "CREATE (n:Person {name: 'John'})";
         ResultSummary resultSummary = neo4jGraph.executeWrite(query);
 
-        assertEquals(1, resultSummary.counters().nodesCreated());
+        assertThat(resultSummary.counters().nodesCreated()).isEqualTo(1);
     }
 
     @Test
@@ -72,7 +72,7 @@ class Neo4jGraphIT {
         String query = "MATCH (n:Person) RETURN n";
         List<Record> records = neo4jGraph.executeRead(query);
 
-        assertEquals("John", records.get(0).get("n").asNode().get("name").asString());
+        assertThat(records.get(0).get("n").asNode().get("name").asString()).isEqualTo("John");
     }
 
     @Test
@@ -89,6 +89,6 @@ class Neo4jGraphIT {
                                 
                 The relationships are the following:
                 """;
-        assertEquals(expectedSchema, neo4jGraph.getSchema());
+        assertThat(neo4jGraph.getSchema()).isEqualTo(expectedSchema);
     }
 }

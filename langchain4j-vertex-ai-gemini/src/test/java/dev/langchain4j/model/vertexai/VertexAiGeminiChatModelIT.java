@@ -406,7 +406,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
 
         List<ToolExecutionRequest> executionRequests = messageResponse.content().toolExecutionRequests();
-        assertThat(executionRequests.size()).isEqualTo(2); // ie. parallel function execution requests
+        assertThat(executionRequests).hasSize(2); // ie. parallel function execution requests
 
         String inventoryStock = executionRequests.stream()
             .map(ToolExecutionRequest::arguments)
