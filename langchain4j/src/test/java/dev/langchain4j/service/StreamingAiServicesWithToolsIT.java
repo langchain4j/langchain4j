@@ -17,6 +17,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +34,7 @@ import java.util.stream.Stream;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
+import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherService.TEMPERATURE;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -165,10 +168,12 @@ class StreamingAiServicesWithToolsIT {
                         .build())
                 .build();
 
+        static final int TEMPERATURE = 19;
+
         @Tool
         int currentTemperature(String city, TemperatureUnit unit) {
             System.out.printf("called currentTemperature(%s, %s)%n", city, unit);
-            return 19;
+            return TEMPERATURE;
         }
     }
 
@@ -206,7 +211,7 @@ class StreamingAiServicesWithToolsIT {
         Response<AiMessage> response = future.get(60, SECONDS);
 
         // then
-        assertThat(response.content().text()).contains("19");
+        assertThat(response.content().text()).contains(String.valueOf(TEMPERATURE));
 
         verify(weatherService).currentTemperature("Munich", CELSIUS);
         verifyNoMoreInteractions(weatherService);
@@ -285,6 +290,55 @@ class StreamingAiServicesWithToolsIT {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    void should_invoke_tool_execution_handler() throws Exception {
+
+        // given
+        WeatherService weatherService = spy(new WeatherService());
+
+        StreamingChatLanguageModel spyModel = spy(models().findFirst().get());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatLanguageModel(spyModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(weatherService)
+                .build();
+
+        String userMessage = "What is the temperature in Munich and London, in Celsius?";
+
+        List<ToolExecution> toolExecutions = new ArrayList<>();
+        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+
+        // when
+        assistant.chat(userMessage)
+                .onNext(token -> {
+                })
+                .onToolExecuted(toolExecutions::add)
+                .onComplete(future::complete)
+                .onError(future::completeExceptionally)
+                .start();
+        Response<AiMessage> response = future.get(60, SECONDS);
+
+        // then
+        assertThat(response.content().text()).contains(String.valueOf(WeatherService.TEMPERATURE));
+
+        // then
+        verify(weatherService).currentTemperature("Munich", CELSIUS);
+        verify(weatherService).currentTemperature("London", CELSIUS);
+        verifyNoMoreInteractions(weatherService);
+
+        // then
+        assertThat(toolExecutions).hasSize(2);
+
+        assertThat(toolExecutions.get(0).request().name()).isEqualTo("currentTemperature");
+        assertThat(toolExecutions.get(0).request().arguments()).isEqualToIgnoringWhitespace("{\"arg1\":\"CELSIUS\",\"arg0\":\"Munich\"}");
+        assertThat(toolExecutions.get(0).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
+
+        assertThat(toolExecutions.get(1).request().name()).isEqualTo("currentTemperature");
+        assertThat(toolExecutions.get(1).request().arguments()).isEqualToIgnoringWhitespace("{\"arg1\":\"CELSIUS\",\"arg0\":\"London\"}");
+        assertThat(toolExecutions.get(1).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
     }
 
     // TODO all other tests from sync version

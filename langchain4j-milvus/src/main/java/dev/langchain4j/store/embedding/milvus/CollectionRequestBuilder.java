@@ -54,6 +54,7 @@ class CollectionRequestBuilder {
     }
 
     static SearchParam buildSearchRequest(String collectionName,
+                                          FieldDefinition fieldDefinition,
                                           List<Float> vector,
                                           Filter filter,
                                           int maxResults,
@@ -62,27 +63,28 @@ class CollectionRequestBuilder {
         SearchParam.Builder builder = SearchParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withVectors(singletonList(vector))
-                .withVectorFieldName(VECTOR_FIELD_NAME)
+                .withVectorFieldName(fieldDefinition.getVectorFieldName())
                 .withTopK(maxResults)
                 .withMetricType(metricType)
                 .withConsistencyLevel(consistencyLevel)
-                .withOutFields(asList(ID_FIELD_NAME, TEXT_FIELD_NAME, METADATA_FIELD_NAME));
+                .withOutFields(asList(fieldDefinition.getIdFieldName(), fieldDefinition.getTextFieldName(), fieldDefinition.getMetadataFieldName()));
 
         if (filter != null) {
-            builder.withExpr(MilvusMetadataFilterMapper.map(filter));
+            builder.withExpr(MilvusMetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
         }
 
         return builder.build();
     }
 
     static QueryParam buildQueryRequest(String collectionName,
+                                        FieldDefinition fieldDefinition,
                                         List<String> rowIds,
                                         ConsistencyLevelEnum consistencyLevel) {
         return QueryParam.newBuilder()
                 .withCollectionName(collectionName)
-                .withExpr(buildQueryExpression(rowIds))
+                .withExpr(buildQueryExpression(rowIds, fieldDefinition.getIdFieldName()))
                 .withConsistencyLevel(consistencyLevel)
-                .withOutFields(singletonList(VECTOR_FIELD_NAME))
+                .withOutFields(singletonList(fieldDefinition.getVectorFieldName()))
                 .build();
     }
 
@@ -94,9 +96,9 @@ class CollectionRequestBuilder {
                 .build();
     }
 
-    private static String buildQueryExpression(List<String> rowIds) {
+    private static String buildQueryExpression(List<String> rowIds, String idFieldName) {
         return rowIds.stream()
-                .map(id -> format("%s == '%s'", ID_FIELD_NAME, id))
+                .map(id -> format("%s == '%s'", idFieldName, id))
                 .collect(joining(" || "));
     }
 }
