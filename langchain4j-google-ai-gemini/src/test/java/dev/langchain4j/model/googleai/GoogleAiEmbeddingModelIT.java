@@ -82,8 +82,9 @@ public class GoogleAiEmbeddingModelIT {
 
         // then
         List<Embedding> embeddings = embed.content();
-        assertThat(embeddings).isNotNull();
-        assertThat(embeddings).hasSize(2);
+        assertThat(embeddings)
+                .isNotNull()
+                .hasSize(2);
         assertThat(embeddings.get(0).vector()).isNotNull();
         assertThat(embeddings.get(0).vector()).hasSize(512);
         assertThat(embeddings.get(1).vector()).isNotNull();

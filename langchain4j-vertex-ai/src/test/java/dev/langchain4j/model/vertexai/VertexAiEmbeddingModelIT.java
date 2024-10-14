@@ -13,7 +13,7 @@ import java.util.*;
 import static dev.langchain4j.model.vertexai.VertexAiEmbeddingModel.TaskType.*;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 class VertexAiEmbeddingModelIT {
 

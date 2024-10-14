@@ -5,7 +5,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -18,6 +17,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.workersai.WorkersAiChatModelName.LLAMA2_7B_FULL;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
@@ -51,9 +51,9 @@ class WorkersAiChatModelIT {
                 "just the name of the city"));
         conversation.add(userMessage("France"));
         Response<AiMessage> response = chatModel.generate(conversation);
-        Assertions.assertNotNull(response);
+        assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
-        Assertions.assertEquals("PARIS", chatModel.generate(conversation).content().text().toUpperCase());
+        assertThat(chatModel.generate(conversation).content().text().toUpperCase()).isEqualTo("PARIS");
     }
 
     @Test
@@ -62,7 +62,7 @@ class WorkersAiChatModelIT {
         toolSpecifications.add(ToolSpecification.builder().build());
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(userMessage("hello, how are you?"));
-        Assertions.assertThrows(UnsupportedOperationException.class, () -> {
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> {
             chatModel.generate(messages, toolSpecifications);
         });
     }
