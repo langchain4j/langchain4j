@@ -24,7 +24,7 @@
         <azure.storage-blob.version>12.28.1</azure.storage-blob.version>
         <azure.storage-common.version>12.27.1</azure.storage-common.version>
         <azure.identity.version>1.14.0</azure.identity.version>
-        <retrofit.version>2.9.0</retrofit.version>
+        <retrofit.version>2.11.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.1.0</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
