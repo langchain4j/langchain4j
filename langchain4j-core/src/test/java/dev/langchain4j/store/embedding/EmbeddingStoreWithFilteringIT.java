@@ -1263,7 +1263,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_filter_by_metadata_not(Filter metadataFilter,
+    protected void should_filter_by_metadata_not(Filter metadataFilter,
                                        List<Metadata> matchingMetadatas,
                                        List<Metadata> notMatchingMetadatas) {
         // given
