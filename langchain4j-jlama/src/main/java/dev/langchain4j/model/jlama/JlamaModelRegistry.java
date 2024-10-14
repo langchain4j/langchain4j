@@ -90,7 +90,7 @@ class JlamaModelRegistry {
             name = parts[1];
         }
 
-        File modelDir = SafeTensorSupport.maybeDownloadModel(modelCachePath.toString(), Optional.ofNullable(owner), name, Optional.empty(), authToken, Optional.empty());
+        File modelDir = SafeTensorSupport.maybeDownloadModel(modelCachePath.toString(), Optional.ofNullable(owner), name, true, Optional.empty(), authToken, Optional.empty());
 
         File config = new File(modelDir, "config.json");
         ModelSupport.ModelType type = SafeTensorSupport.detectModel(config);

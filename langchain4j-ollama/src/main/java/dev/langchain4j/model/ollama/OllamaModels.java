@@ -1,7 +1,6 @@
 package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
@@ -14,13 +13,11 @@ public class OllamaModels {
     private final OllamaClient client;
     private final Integer maxRetries;
 
-    @Builder
     public OllamaModels(String baseUrl,
                         Duration timeout,
                         Integer maxRetries,
                         Boolean logRequests,
-                        Boolean logResponses
-                        ) {
+                        Boolean logResponses) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout((getOrDefault(timeout, Duration.ofSeconds(60))))
@@ -28,6 +25,10 @@ public class OllamaModels {
                 .logResponses(logResponses)
                 .build();
         this.maxRetries = getOrDefault(maxRetries, 3);
+    }
+
+    public static OllamaModelsBuilder builder() {
+        return new OllamaModelsBuilder();
     }
 
     public Response<List<OllamaModel>> availableModels() {
@@ -58,5 +59,48 @@ public class OllamaModels {
                         .name(ollamaModelName)
                         .build()
         ), maxRetries);
+    }
+
+    public Response<List<RunningOllamaModel>> runningModels() {
+        RunningModelsListResponse response = withRetry(client::listRunningModels, maxRetries);
+        return Response.from(response.getModels());
+    }
+
+    public static class OllamaModelsBuilder {
+
+        private String baseUrl;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
+        public OllamaModelsBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OllamaModelsBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OllamaModelsBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public OllamaModelsBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OllamaModelsBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public OllamaModels build() {
+            return new OllamaModels(baseUrl, timeout, maxRetries, logRequests, logResponses);
+        }
     }
 }

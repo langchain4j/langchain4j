@@ -4,11 +4,18 @@ import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.ModelSupport;
 import com.github.tjake.jlama.safetensors.DType;
 import com.github.tjake.jlama.safetensors.SafeTensorSupport;
+import com.github.tjake.jlama.safetensors.prompt.Function;
+import com.github.tjake.jlama.safetensors.prompt.Parameters;
+import com.github.tjake.jlama.safetensors.prompt.Tool;
+import dev.langchain4j.agent.tool.ToolParameters;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import lombok.Getter;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -53,6 +60,7 @@ class JlamaModel {
                 registry.getModelCachePath().toString(),
                 owner,
                 modelName,
+                true,
                 Optional.empty(),
                 authToken,
                 Optional.empty());
@@ -60,6 +68,7 @@ class JlamaModel {
 
     public class Loader {
         private Path workingDirectory;
+        private DType workingQuantizationType = DType.I8;
         private DType quantizationType;
         private Integer threadCount;
         private AbstractModel.InferenceType inferenceType = AbstractModel.InferenceType.FULL_GENERATION;
@@ -68,8 +77,16 @@ class JlamaModel {
         }
 
         public Loader quantized() {
-            //For now only allow Q4 quantization at load time
+            //For now only allow Q4 quantization at runtime
             this.quantizationType = DType.Q4;
+            return this;
+        }
+
+        /**
+         * Set the working quantization type. This is the type that the model will use for working inference memory.
+         */
+        public Loader workingQuantizationType(DType workingQuantizationType) {
+            this.workingQuantizationType = workingQuantizationType;
             return this;
         }
 
@@ -94,10 +111,23 @@ class JlamaModel {
                     new File(registry.getModelCachePath().toFile(), modelName),
                     workingDirectory == null ? null : workingDirectory.toFile(),
                     DType.F32,
-                    DType.I8,
+                    workingQuantizationType,
                     Optional.ofNullable(quantizationType),
                     Optional.ofNullable(threadCount),
-                    Optional.empty());
+                    Optional.empty(),
+                    SafeTensorSupport::loadWeights);
         }
+    }
+
+    public static Tool toTool(ToolSpecification toolSpecification) {
+        Function.Builder builder = Function.builder()
+                .name(toolSpecification.name())
+                .description(toolSpecification.description());
+
+        for (Map.Entry<String, Map<String, Object>> p : toolSpecification.parameters().properties().entrySet()) {
+            builder.addParameter(p.getKey(), p.getValue(), toolSpecification.parameters().required().contains(p.getKey()));
+        }
+
+        return Tool.from(builder.build());
     }
 }

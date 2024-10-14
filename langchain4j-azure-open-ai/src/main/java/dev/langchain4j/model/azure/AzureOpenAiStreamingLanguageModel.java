@@ -116,10 +116,11 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              Integer maxRetries,
                                              ProxyOptions proxyOptions,
                                              boolean logRequestsAndResponses,
-                                             String userAgentSuffix) {
+                                             String userAgentSuffix,
+                                             Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty);
-        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
     public AzureOpenAiStreamingLanguageModel(String endpoint,
@@ -142,10 +143,11 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              Integer maxRetries,
                                              ProxyOptions proxyOptions,
                                              boolean logRequestsAndResponses,
-                                             String userAgentSuffix) {
+                                             String userAgentSuffix,
+                                             Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty);
-        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
     public AzureOpenAiStreamingLanguageModel(String endpoint,
@@ -168,10 +170,11 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              Integer maxRetries,
                                              ProxyOptions proxyOptions,
                                              boolean logRequestsAndResponses,
-                                             String userAgentSuffix) {
+                                             String userAgentSuffix,
+                                             Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty);
-        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
     private AzureOpenAiStreamingLanguageModel(String deploymentName,
@@ -303,6 +306,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
         private String userAgentSuffix;
+        private Map<String, String> customHeaders;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -467,6 +471,11 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             return this;
         }
 
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
         public AzureOpenAiStreamingLanguageModel build() {
             if (openAIClient == null) {
                 if (tokenCredential != null) {
@@ -491,7 +500,8 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            userAgentSuffix
+                            userAgentSuffix,
+                            customHeaders
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiStreamingLanguageModel(
@@ -515,7 +525,8 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            userAgentSuffix
+                            userAgentSuffix,
+                            customHeaders
                     );
                 }
                 return new AzureOpenAiStreamingLanguageModel(
@@ -539,7 +550,8 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         maxRetries,
                         proxyOptions,
                         logRequestsAndResponses,
-                        userAgentSuffix
+                        userAgentSuffix,
+                        customHeaders
                 );
             } else {
                 return new AzureOpenAiStreamingLanguageModel(

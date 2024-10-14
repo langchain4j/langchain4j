@@ -53,7 +53,7 @@ public class Metadata {
      * Construct a Metadata object with an empty map of key-value pairs.
      */
     public Metadata() {
-        this(new HashMap<>());
+        this.metadata = new HashMap<>();
     }
 
     /**

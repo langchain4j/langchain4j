@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.34.0-SNAPSHOT</version>
+    <version>0.36.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -18,21 +18,20 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
-        <openai4j.version>0.18.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.10</azure-ai-openai.version>
-        <azure-ai-search.version>11.7.0</azure-ai-search.version>
-        <azure.storage-blob.version>12.27.0</azure.storage-blob.version>
-        <azure.storage-common.version>12.26.0</azure.storage-common.version>
-        <azure.identity.version>1.13.2</azure.identity.version>
+        <openai4j.version>0.22.0</openai4j.version>
+        <azure-ai-openai.version>1.0.0-beta.11</azure-ai-openai.version>
+        <azure-ai-search.version>11.7.2</azure-ai-search.version>
+        <azure.storage-blob.version>12.28.1</azure.storage-blob.version>
+        <azure.storage-common.version>12.27.1</azure.storage-common.version>
+        <azure.identity.version>1.14.0</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.1.0</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
-        <jsoup.veresion>1.16.1</jsoup.veresion>
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.10.0</junit.version>
-        <testcontainers.version>1.20.0</testcontainers.version>
+        <testcontainers.version>1.20.2</testcontainers.version>
         <bytebuddy.version>1.14.10</bytebuddy.version>
         <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>
@@ -42,12 +41,12 @@
         <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
         <aws-opensearch.version>2.20.161</aws-opensearch.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
-        <elastic.version>8.14.3</elastic.version>
+        <elastic.version>8.15.2</elastic.version>
         <jackson.version>2.16.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
-        <milvus-sdk-java.version>2.3.6</milvus-sdk-java.version>
+        <milvus-sdk-java.version>2.3.9</milvus-sdk-java.version>
         <netty.version>4.1.111.Final</netty.version>
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
@@ -71,6 +70,14 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-core</artifactId>
+                <version>${project.version}</version>
+                <classifier>tests</classifier>
+                <type>test-jar</type>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j</artifactId>
                 <version>${project.version}</version>
                 <classifier>tests</classifier>
                 <type>test-jar</type>
@@ -143,6 +150,12 @@
             </dependency>
 
             <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-transformer-jsoup</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>com.squareup.retrofit2</groupId>
                 <artifactId>retrofit</artifactId>
                 <version>${retrofit.version}</version>
@@ -160,16 +173,46 @@
                 <version>${retrofit.version}</version>
             </dependency>
 
+            <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (START) -->
+
+            <!-- To resolve version conflicts inside the 'okhttp' library, we are excluding the transitive -->
+            <!-- dependencies causing version divergence errors and including them explicitly. This ensures a consistent -->
+            <!-- version to be used in the project and satisfies Maven Enforcer requirements to avoid version divergence -->
+            <!-- in the project. -->
+
+            <!-- Please check whether version conflicts are gone after upgrading  this library as this will make it -->
+            <!-- possible to remove these exclusions and explicit inclusions below. -->
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp</artifactId>
                 <version>${okhttp.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-stdlib-jdk8</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
+
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp-sse</artifactId>
                 <version>${okhttp.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-stdlib-jdk8</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
+
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-stdlib-jdk8</artifactId>
+                <version>1.9.10</version>
+            </dependency>
+            <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (END)  -->
+
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>mockwebserver</artifactId>
@@ -186,12 +229,6 @@
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.jsoup</groupId>
-                <artifactId>jsoup</artifactId>
-                <version>${jsoup.veresion}</version>
             </dependency>
 
             <dependency>
@@ -623,6 +660,10 @@
                                 <license>
                                     <name>Eclipse Public License v2.0</name>
                                     <url>https?://www.eclipse.org/legal/epl-v20\.html</url>
+                                </license>
+                                <license>
+                                    <name>Eclipse Public License 2.0</name>
+                                    <url>https://projects.eclipse.org/license/epl-2.0</url>
                                 </license>
                                 <!-- for tencent-cos document loader -->
                                 <license>

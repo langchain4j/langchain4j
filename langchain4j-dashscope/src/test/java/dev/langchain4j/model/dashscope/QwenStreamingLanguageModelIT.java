@@ -23,7 +23,6 @@ public class QwenStreamingLanguageModelIT {
         TestStreamingResponseHandler<String> handler = new TestStreamingResponseHandler<>();
         model.generate("Please say 'hello' to me", handler);
         Response<String> response = handler.get();
-        System.out.println(response);
 
         assertThat(response.content()).containsIgnoringCase("hello");
     }
