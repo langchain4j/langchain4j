@@ -37,4 +37,34 @@ class VertexAiChatModelIT {
 
         assertThat(response.finishReason()).isNull();
     }
+
+    @Test
+    void testChatModelWithApiKey() {
+
+            VertexAiChatModel vertexAiChatModel = VertexAiChatModel.builder()
+                    .apiKey(System.getenv("GCP_API_KEY"))
+                    .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+                    .project(System.getenv("GCP_PROJECT_ID"))
+                    .location(System.getenv("GCP_LOCATION"))
+                    .publisher("google")
+                    .modelName("chat-bison")
+                    .temperature(1.0)
+                    .maxOutputTokens(50)
+                    .topK(0)
+                    .topP(0.0)
+                    .maxRetries(3)
+                    .build();
+
+            Response<AiMessage> response = vertexAiChatModel.generate(UserMessage.from("hi, how are you doing?"));
+
+            assertThat(response.content().text()).isNotBlank();
+
+            TokenUsage tokenUsage = response.tokenUsage();
+            assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
+            assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
+            assertThat(tokenUsage.totalTokenCount()).isGreaterThan(8);
+
+            assertThat(response.finishReason()).isNull();
+    }
+
 }
