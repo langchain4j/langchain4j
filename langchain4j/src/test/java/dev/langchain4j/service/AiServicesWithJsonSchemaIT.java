@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
@@ -227,18 +228,16 @@ public abstract class AiServicesWithJsonSchemaIT {
 
     interface MaritalStatusExtractor {
 
-
         enum MaritalStatus {
 
             SINGLE, MARRIED
         }
 
-
         List<MaritalStatus> extractMaritalStatusFrom(String text);
     }
 
     @Test
-    void should_extract_set_of_enums() {
+    void should_extract_list_of_enums() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -257,7 +256,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             // then
             assertThat(statuses).hasSize(3);
 
-            // Use assertThat with filters to ensure each person is in the set
+            // Use assertThat with filters to ensure each marital status is in the list
             ArrayList<MaritalStatusExtractor.MaritalStatus> maritalStatuses = new ArrayList<>();
             maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.SINGLE);
             maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.MARRIED);
@@ -275,6 +274,51 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                     .enumValues("SINGLE", "MARRIED")
                                                     .build()))
                                             .required("array")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+
+    interface StatusExtractor {
+
+        enum MaritalStatus {
+
+            SINGLE, MARRIED
+        }
+
+        MaritalStatus extractMaritalStatusFrom(String text);
+    }
+
+    @Test
+    void should_extract_enum() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            StatusExtractor personExtractor = AiServices.create(StatusExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single.";
+
+            // when
+            StatusExtractor.MaritalStatus status = personExtractor.extractMaritalStatusFrom(text);
+
+            // then
+            Assertions.assertSame(status, StatusExtractor.MaritalStatus.SINGLE);
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("MaritalStatus")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addEnumProperty("MaritalStatus", "SINGLE", "MARRIED")
                                             .build())
                                     .build())
                             .build())
