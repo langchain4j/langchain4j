@@ -1,9 +1,11 @@
 package dev.langchain4j.service.output;
 
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.output.structured.Description;
 
 import java.lang.reflect.Field;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -20,6 +22,9 @@ class EnumOutputParser implements OutputParser<Enum> {
     @Override
     public Enum parse(String string) {
         string = trimAndRemoveBracketsIfPresent(string);
+        if (string.startsWith("{")) {
+            string = (String) Json.fromJson(string, Map.class).values().stream().findFirst().get();
+        }
         for (Enum enumConstant : enumClass.getEnumConstants()) {
             if (enumConstant.name().equalsIgnoreCase(string)) {
                 return enumConstant;
