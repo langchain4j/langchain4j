@@ -65,7 +65,7 @@ class QdrantFilterConverterTest {
 
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
-        assertThat(1).isEqualTo(convertedFilter.getMust(0).getField().getRange().getGt());
+        assertThat(convertedFilter.getMust(0).getField().getRange().getGt()).isEqualTo(1);
     }
 
     @Test
@@ -75,7 +75,7 @@ class QdrantFilterConverterTest {
 
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
-        assertThat(10).isEqualTo(convertedFilter.getMust(0).getField().getRange().getLt());
+        assertThat(convertedFilter.getMust(0).getField().getRange().getLt()).isEqualTo(10);
     }
 
     @Test
@@ -85,7 +85,7 @@ class QdrantFilterConverterTest {
 
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
-        assertThat(1).isEqualTo(convertedFilter.getMust(0).getField().getRange().getGte());
+        assertThat(convertedFilter.getMust(0).getField().getRange().getGte()).isEqualTo(1);
     }
 
     @Test
@@ -95,7 +95,7 @@ class QdrantFilterConverterTest {
 
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
-        assertThat(10).isEqualTo(convertedFilter.getMust(0).getField().getRange().getLte());
+        assertThat(convertedFilter.getMust(0).getField().getRange().getLte()).isEqualTo(10.0);
     }
 
     @Test
