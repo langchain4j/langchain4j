@@ -333,11 +333,11 @@ class StreamingAiServicesWithToolsIT {
         assertThat(toolExecutions).hasSize(2);
 
         assertThat(toolExecutions.get(0).request().name()).isEqualTo("currentTemperature");
-        assertThat(toolExecutions.get(0).request().arguments()).isEqualToIgnoringWhitespace("{\"arg1\":\"CELSIUS\",\"arg0\":\"Munich\"}");
+        assertThat(toolExecutions.get(0).request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\":\"Munich\", \"arg1\": \"CELSIUS\"}");
         assertThat(toolExecutions.get(0).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
 
         assertThat(toolExecutions.get(1).request().name()).isEqualTo("currentTemperature");
-        assertThat(toolExecutions.get(1).request().arguments()).isEqualToIgnoringWhitespace("{\"arg1\":\"CELSIUS\",\"arg0\":\"London\"}");
+        assertThat(toolExecutions.get(1).request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\":\"London\", \"arg1\":\"CELSIUS\"}");
         assertThat(toolExecutions.get(1).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
     }
 
