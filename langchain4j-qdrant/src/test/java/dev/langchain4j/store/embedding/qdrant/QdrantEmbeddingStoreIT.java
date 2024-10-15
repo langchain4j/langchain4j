@@ -36,8 +36,7 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 
 @Testcontainers
 class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
-    protected static final UUID TEST_UUID = UUID.randomUUID();
-    static final UUID TEST_UUID2 = UUID.randomUUID();
+
     private static String collectionName = "langchain4j-" + randomUUID();
     private static int dimension = 384;
     private static Distance distance = Distance.Cosine;
