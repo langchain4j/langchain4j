@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Iterator;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class StringSetOutputParserTest {
 
@@ -21,15 +21,15 @@ class StringSetOutputParserTest {
 
         // Then
         Iterator<String> setIterator = parsedSet.iterator();
-        assertEquals(setIterator.next(), "one");
-        assertEquals(setIterator.next(), "two");
-        assertEquals(setIterator.next(), "three");
-        assertEquals(setIterator.next(), "four");
-        assertEquals(setIterator.next(), "five");
-        assertEquals(setIterator.next(), "six");
-        assertEquals(setIterator.next(), "seven");
-        assertEquals(setIterator.next(), "eight");
-        assertEquals(setIterator.next(), "nine");
-        assertEquals(setIterator.next(), "ten");
+        assertThat("one").isEqualTo(setIterator.next());
+        assertThat("two").isEqualTo(setIterator.next());
+        assertThat("three").isEqualTo(setIterator.next());
+        assertThat("four").isEqualTo(setIterator.next());
+        assertThat("five").isEqualTo(setIterator.next());
+        assertThat("six").isEqualTo(setIterator.next());
+        assertThat("seven").isEqualTo(setIterator.next());
+        assertThat("eight").isEqualTo(setIterator.next());
+        assertThat("nine").isEqualTo(setIterator.next());
+        assertThat("ten").isEqualTo(setIterator.next());
     }
 }

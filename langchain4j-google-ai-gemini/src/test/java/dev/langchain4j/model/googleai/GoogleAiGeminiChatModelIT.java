@@ -391,7 +391,7 @@ public class GoogleAiGeminiChatModelIT {
         assertThat(response.content().hasToolExecutionRequests()).isTrue();
 
         List<ToolExecutionRequest> executionRequests = response.content().toolExecutionRequests();
-        assertThat(executionRequests.size()).isEqualTo(2);
+        assertThat(executionRequests).hasSize(2);
 
         String allArgs = executionRequests.stream()
             .map(ToolExecutionRequest::arguments)

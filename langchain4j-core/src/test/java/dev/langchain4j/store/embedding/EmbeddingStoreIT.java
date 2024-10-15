@@ -46,7 +46,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
         assertThat(match.embedded().text()).isEqualTo(segment.text());
 
-        assertThat(match.embedded().metadata().getString("string_empty")).isEqualTo("");
+        assertThat(match.embedded().metadata().getString("string_empty")).isEmpty();
         assertThat(match.embedded().metadata().getString("string_space")).isEqualTo(" ");
         assertThat(match.embedded().metadata().getString("string_abc")).isEqualTo("abc");
 

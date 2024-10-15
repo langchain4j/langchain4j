@@ -70,6 +70,6 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // then
         ModelsListResponse afterDeleteModelList = ollamaClient.listModels();
-        assertThat(afterDeleteModelList.getModels().size()).isZero();
+        assertThat(afterDeleteModelList.getModels()).isEmpty();
     }
 }

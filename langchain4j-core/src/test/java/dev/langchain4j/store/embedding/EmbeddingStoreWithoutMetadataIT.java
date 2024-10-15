@@ -15,7 +15,6 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 public abstract class EmbeddingStoreWithoutMetadataIT {

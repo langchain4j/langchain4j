@@ -12,11 +12,12 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.Arrays;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_ENDPOINT", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_INSTANCE_NAME", matches = ".+")
@@ -97,11 +98,11 @@ class TablestoreEmbeddingStoreExampleIT {
             TextSegment embedded = match.embedded();
             String text = embedded.text();
             Metadata metadata = embedded.metadata();
-            Assertions.assertNotNull(embeddingId);
-            Assertions.assertNotNull(score);
-            Assertions.assertNotNull(embedding);
-            Assertions.assertNotNull(text);
-            Assertions.assertNotNull(metadata);
+            assertThat(embeddingId).isNotNull();
+            assertThat(score).isNotNull();
+            assertThat(embedding).isNotNull();
+            assertThat(text).isNotNull();
+            assertThat(metadata).isNotNull();
         }
 
         /*
