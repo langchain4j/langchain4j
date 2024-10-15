@@ -54,15 +54,10 @@ public class JsonEnumSchema implements JsonSchemaElement {
             return enumValues(asList(enumValues));
         }
 
-        public Builder enumValues(Class<?> enumClass) {
-            if (!enumClass.isEnum()) {
-                throw new RuntimeException("Class " + enumClass.getName() + " must be enum");
-            }
-
+        public Builder enumValues(Class<? extends Enum<?>> enumClass) {
             List<String> enumValues = stream(enumClass.getEnumConstants())
                     .map(Object::toString)
                     .collect(toList());
-
             return enumValues(enumValues);
         }
 

@@ -371,7 +371,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
                 .name("currentTemperature")
                 .description("returns current temperature")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("arg0", JsonStringSchema.builder().build())
+                        .addProperty("arg0", new JsonStringSchema())
                         .addProperty("arg1", JsonEnumSchema.builder()
                                 .description("a temperature unit 2")
                                 .enumValues("CELSIUS", "fahrenheit", "Kelvin")

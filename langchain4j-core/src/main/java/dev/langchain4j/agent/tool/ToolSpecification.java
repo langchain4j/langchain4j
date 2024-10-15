@@ -171,7 +171,18 @@ public class ToolSpecification {
          *
          * @param parameters the {@code parameters}
          * @return {@code this}
-         * @deprecated please use {@link #parameters(JsonObjectSchema)} instead
+         * @deprecated please use {@link #parameters(JsonObjectSchema)} instead. Example:
+         * <pre>
+         * ToolSpecification.builder()
+         *     .name("weather")
+         *     .description("Returns the current weather in the specified city")
+         *     .parameters(JsonObjectSchema.builder()
+         *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
+         *         .addEnumProperty("units", TemperatureUnit.class)
+         *         .required("city") // please specify the required properties explicitly
+         *         .build())
+         *     .build();
+         * </pre>
          */
         @Deprecated
         public Builder parameters(ToolParameters parameters) {
@@ -185,7 +196,18 @@ public class ToolSpecification {
          * @param name                 the name of the parameter.
          * @param jsonSchemaProperties the properties of the parameter.
          * @return {@code this}
-         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead
+         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead. Example:
+         * <pre>
+         * ToolSpecification.builder()
+         *     .name("weather")
+         *     .description("Returns the current weather in the specified city")
+         *     .parameters(JsonObjectSchema.builder()
+         *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
+         *         .addEnumProperty("units", TemperatureUnit.class)
+         *         .required("city") // please specify the required properties explicitly
+         *         .build())
+         *     .build();
+         * </pre>
          */
         @Deprecated
         public Builder addParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
@@ -198,7 +220,18 @@ public class ToolSpecification {
          * @param name                 the name of the parameter.
          * @param jsonSchemaProperties the properties of the parameter.
          * @return {@code this}
-         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead
+         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead. Example:
+         * <pre>
+         * ToolSpecification.builder()
+         *     .name("weather")
+         *     .description("Returns the current weather in the specified city")
+         *     .parameters(JsonObjectSchema.builder()
+         *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
+         *         .addEnumProperty("units", TemperatureUnit.class)
+         *         .required("city") // please specify the required properties explicitly
+         *         .build())
+         *     .build();
+         * </pre>
          */
         @Deprecated
         public Builder addParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
@@ -213,7 +246,18 @@ public class ToolSpecification {
          * @param name                 the name of the parameter.
          * @param jsonSchemaProperties the properties of the parameter.
          * @return {@code this}
-         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead
+         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead. Example:
+         * <pre>
+         * ToolSpecification.builder()
+         *     .name("weather")
+         *     .description("Returns the current weather in the specified city")
+         *     .parameters(JsonObjectSchema.builder()
+         *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
+         *         .addEnumProperty("units", TemperatureUnit.class)
+         *         .required("city") // please specify the required properties explicitly
+         *         .build())
+         *     .build();
+         * </pre>
          */
         @Deprecated
         public Builder addOptionalParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
@@ -226,7 +270,18 @@ public class ToolSpecification {
          * @param name                 the name of the parameter.
          * @param jsonSchemaProperties the properties of the parameter.
          * @return {@code this}
-         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead
+         * @deprecated please use {@link Builder#parameters(JsonObjectSchema)} instead. Example:
+         * <pre>
+         * ToolSpecification.builder()
+         *     .name("weather")
+         *     .description("Returns the current weather in the specified city")
+         *     .parameters(JsonObjectSchema.builder()
+         *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
+         *         .addEnumProperty("units", TemperatureUnit.class)
+         *         .required("city") // please specify the required properties explicitly
+         *         .build())
+         *     .build();
+         * </pre>
          */
         @Deprecated
         public Builder addOptionalParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {

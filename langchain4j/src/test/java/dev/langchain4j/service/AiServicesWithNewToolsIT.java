@@ -210,9 +210,9 @@ public abstract class AiServicesWithNewToolsIT {
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
                 .properties(singletonMap("arg0", JsonObjectSchema.builder()
-                        .addProperty("name", JsonStringSchema.builder().build())
+                        .addProperty("name", new JsonStringSchema())
                         .addProperty("address", JsonObjectSchema.builder()
-                                .addProperty("city", JsonStringSchema.builder().build())
+                                .addProperty("city", new JsonStringSchema())
                                 .required("city")
                                 .build())
                         .required("name", "address")
@@ -279,7 +279,7 @@ public abstract class AiServicesWithNewToolsIT {
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
                 .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                    put("name", JsonStringSchema.builder().build());
+                    put("name", new JsonStringSchema());
                     put("children", JsonArraySchema.builder()
                             .items(JsonReferenceSchema.builder()
                                     .reference(REFERENCE)
@@ -412,7 +412,7 @@ public abstract class AiServicesWithNewToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("currentTemperature")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("arg0", JsonStringSchema.builder().build())
+                        .addProperty("arg0", new JsonStringSchema())
                         .addProperty("arg1", JsonEnumSchema.builder()
                                 .enumValues("CELSIUS", "fahrenheit", "Kelvin")
                                 .build())

@@ -50,7 +50,7 @@ public class JsonSchemaElementHelper {
 
         if (clazz.isEnum()) {
             return JsonEnumSchema.builder()
-                    .enumValues(clazz)
+                    .enumValues((Class<? extends Enum<?>>) clazz)
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
                     .build();
         }

@@ -30,7 +30,7 @@ public class JsonSchemaProperty {
     /**
      * A property with key "type" and value "string".
      *
-     * @deprecated please use {@link JsonStringSchema#builder()} instead
+     * @deprecated please use {@link JsonStringSchema#JsonStringSchema()} instead
      */
     @Deprecated
     public static final JsonSchemaProperty STRING = type("string");
@@ -38,7 +38,7 @@ public class JsonSchemaProperty {
     /**
      * A property with key "type" and value "integer".
      *
-     * @deprecated please use {@link JsonIntegerSchema#builder()} instead
+     * @deprecated please use {@link JsonIntegerSchema#JsonIntegerSchema()} instead
      */
     @Deprecated
     public static final JsonSchemaProperty INTEGER = type("integer");
@@ -46,7 +46,7 @@ public class JsonSchemaProperty {
     /**
      * A property with key "type" and value "number".
      *
-     * @deprecated please use {@link JsonNumberSchema#builder()} instead
+     * @deprecated please use {@link JsonNumberSchema#JsonNumberSchema()} instead
      */
     @Deprecated
     public static final JsonSchemaProperty NUMBER = type("number");
@@ -70,7 +70,7 @@ public class JsonSchemaProperty {
     /**
      * A property with key "type" and value "boolean".
      *
-     * @deprecated please use {@link JsonBooleanSchema#builder()} instead
+     * @deprecated please use {@link JsonBooleanSchema#JsonBooleanSchema()} instead
      */
     @Deprecated
     public static final JsonSchemaProperty BOOLEAN = type("boolean");
@@ -78,6 +78,7 @@ public class JsonSchemaProperty {
     /**
      * A property with key "type" and value "null".
      */
+    @Deprecated
     public static final JsonSchemaProperty NULL = type("null");
 
     private final String key;

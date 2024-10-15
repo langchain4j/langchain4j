@@ -11,6 +11,10 @@ public class JsonIntegerSchema implements JsonSchemaElement {
 
     private final String description;
 
+    public JsonIntegerSchema() {
+        this.description = null;
+    }
+
     public JsonIntegerSchema(Builder builder) {
         this.description = builder.description;
     }

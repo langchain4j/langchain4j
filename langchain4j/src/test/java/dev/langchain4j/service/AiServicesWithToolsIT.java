@@ -384,7 +384,7 @@ class AiServicesWithToolsIT {
                 .parameters(JsonObjectSchema.builder()
                         .properties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("List of strings to process")
-                                .items(JsonStringSchema.builder().build())
+                                .items(new JsonStringSchema())
                                 .build()))
                         .required("arg0")
                         .build())
@@ -498,7 +498,7 @@ class AiServicesWithToolsIT {
                 .parameters(JsonObjectSchema.builder()
                         .properties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("Array of strings to process")
-                                .items(JsonStringSchema.builder().build())
+                                .items(new JsonStringSchema())
                                 .build()))
                         .required("arg0")
                         .build())
@@ -553,7 +553,7 @@ class AiServicesWithToolsIT {
                 .name("currentTemperature")
                 .parameters(JsonObjectSchema.builder()
                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                            put("arg0", JsonStringSchema.builder().build());
+                            put("arg0", new JsonStringSchema());
                             put("arg1", JsonEnumSchema.builder()
                                     .enumValues("CELSIUS", "fahrenheit", "Kelvin")
                                     .build());
@@ -695,7 +695,7 @@ class AiServicesWithToolsIT {
                 .name("get_booking_details")
                 .description("Returns booking details")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("bookingNumber", JsonStringSchema.builder().build()))
+                        .properties(singletonMap("bookingNumber", new JsonStringSchema()))
                         .build())
                 .build();
 

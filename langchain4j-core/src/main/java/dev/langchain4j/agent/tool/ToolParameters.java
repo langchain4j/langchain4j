@@ -13,7 +13,19 @@ import static dev.langchain4j.internal.Utils.quoted;
 /**
  * Represents the parameters of a tool.
  *
- * @deprecated please use the new {@link JsonObjectSchema} API instead to define the schema for tool parameters
+ * @deprecated please use the new {@link JsonObjectSchema} API instead to define the schema for tool parameters.
+ * Example:
+ * <pre>
+ * ToolSpecification.builder()
+ *     .name("weather")
+ *     .description("Returns the current weather in the specified city")
+ *     .parameters(JsonObjectSchema.builder()
+ *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
+ *         .addEnumProperty("units", TemperatureUnit.class)
+ *         .required("city") // please specify the required properties explicitly
+ *         .build())
+ *     .build();
+ * </pre>
  */
 @Deprecated
 public class ToolParameters {

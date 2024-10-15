@@ -11,6 +11,10 @@ public class JsonNumberSchema implements JsonSchemaElement {
 
     private final String description;
 
+    public JsonNumberSchema() {
+        this.description = null;
+    }
+
     public JsonNumberSchema(Builder builder) {
         this.description = builder.description;
     }

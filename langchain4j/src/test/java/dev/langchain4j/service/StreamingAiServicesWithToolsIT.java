@@ -74,7 +74,7 @@ class StreamingAiServicesWithToolsIT {
                 .description("returns amounts of transactions")
                 .parameters(JsonObjectSchema.builder()
                         .addProperty("arg0", JsonArraySchema.builder()
-                                .items(JsonStringSchema.builder().build())
+                                .items(new JsonStringSchema())
                                 .description("IDs of transactions")
                                 .build())
                         .required("arg0")

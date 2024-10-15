@@ -301,7 +301,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .description("a name")
                                                     .build());
                                             put("favouriteColors", JsonArraySchema.builder()
-                                                    .items(JsonStringSchema.builder().build())
+                                                    .items(new JsonStringSchema())
                                                     .description("favourite colors")
                                                     .build());
                                         }})
@@ -357,7 +357,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .description("a name")
                                                     .build());
                                             put("favouriteColors", JsonArraySchema.builder()
-                                                    .items(JsonStringSchema.builder().build())
+                                                    .items(new JsonStringSchema())
                                                     .description("favourite colors")
                                                     .build());
                                         }})
@@ -413,7 +413,7 @@ public class AiServicesJsonSchemaWithDescriptionsIT {
                                                     .description("a name")
                                                     .build());
                                             put("favouriteColors", JsonArraySchema.builder()
-                                                    .items(JsonStringSchema.builder().build())
+                                                    .items(new JsonStringSchema())
                                                     .description("favourite colors")
                                                     .build());
                                         }})

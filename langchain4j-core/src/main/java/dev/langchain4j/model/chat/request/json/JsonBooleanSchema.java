@@ -11,6 +11,10 @@ public class JsonBooleanSchema implements JsonSchemaElement {
 
     private final String description;
 
+    public JsonBooleanSchema() {
+        this.description = null;
+    }
+
     public JsonBooleanSchema(Builder builder) {
         this.description = builder.description;
     }
