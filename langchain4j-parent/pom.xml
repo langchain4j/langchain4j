@@ -487,7 +487,17 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>analyze</id>
+                        <id>detect-unused-dependencies</id>
+                        <goals>
+                            <goal>analyze-only</goal>
+                        </goals>
+                        <configuration>
+                            <ignoredUsedUndeclaredDependencies>true</ignoredUsedUndeclaredDependencies>
+                            <failOnWarning>false</failOnWarning><!-- todo: fix dependencies and set to true -->
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>analyze-all</id>
                         <goals>
                             <goal>analyze-only</goal>
                         </goals>
