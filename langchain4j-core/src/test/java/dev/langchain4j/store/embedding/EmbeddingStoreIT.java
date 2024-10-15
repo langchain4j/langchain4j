@@ -17,7 +17,7 @@ import static org.assertj.core.data.Percentage.withPercentage;
 public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
     protected static final UUID TEST_UUID = UUID.randomUUID();
-    static final UUID TEST_UUID2 = UUID.randomUUID();
+    protected static final UUID TEST_UUID2 = UUID.randomUUID();
 
     @Test
     void should_add_embedding_with_segment_with_metadata() {
@@ -46,7 +46,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
         assertThat(match.embedded().text()).isEqualTo(segment.text());
 
-        assertThat(match.embedded().metadata().getString("string_empty")).isEqualTo("");
+        assertThat(match.embedded().metadata().getString("string_empty")).isEmpty();
         assertThat(match.embedded().metadata().getString("string_space")).isEqualTo(" ");
         assertThat(match.embedded().metadata().getString("string_abc")).isEqualTo("abc");
 

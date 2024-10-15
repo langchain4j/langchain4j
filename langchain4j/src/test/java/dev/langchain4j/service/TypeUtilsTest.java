@@ -3,7 +3,6 @@ package dev.langchain4j.service;
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
-import org.assertj.core.api.AssertionsForClassTypes;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Type;
@@ -111,7 +110,7 @@ class TypeUtilsTest {
         });
 
         // Then
-        AssertionsForClassTypes.assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'List' of the method 'ask' must be parameterized with a concrete type, for example: List<String> or List<MyCustomPojo>");
+        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'List' of the method 'ask' must be parameterized with a concrete type, for example: List<String> or List<MyCustomPojo>");
     }
 
 
@@ -132,7 +131,7 @@ class TypeUtilsTest {
         });
 
         // Then
-        AssertionsForClassTypes.assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Set' of the method 'ask' must be parameterized with a concrete type, for example: Set<String> or Set<MyCustomPojo>");
+        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Set' of the method 'ask' must be parameterized with a concrete type, for example: Set<String> or Set<MyCustomPojo>");
     }
 
     interface ResultNoParametrizedTypeInvalidServiceDefinition {
@@ -152,7 +151,7 @@ class TypeUtilsTest {
         });
 
         // Then
-        AssertionsForClassTypes.assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result' of the method 'ask' must be parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
+        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result' of the method 'ask' must be parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
     }
 
     interface ResultListNoParametrizedTypeInvalidServiceDefinition {
@@ -172,7 +171,7 @@ class TypeUtilsTest {
         });
 
         // Then
-        AssertionsForClassTypes.assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result<List>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
+        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result<List>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
     }
 
     interface ListWildcardTypeInvalidServiceDefinition {
@@ -192,7 +191,7 @@ class TypeUtilsTest {
         });
 
         // Then
-        AssertionsForClassTypes.assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'List<?>' of the method 'ask' must be parameterized with a concrete type, for example: List<String> or List<MyCustomPojo>");
+        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'List<?>' of the method 'ask' must be parameterized with a concrete type, for example: List<String> or List<MyCustomPojo>");
     }
 
     interface ResultListWildcardTypeInvalidServiceDefinition {
@@ -212,7 +211,7 @@ class TypeUtilsTest {
         });
 
         // Then
-        AssertionsForClassTypes.assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result<List<?>>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
+        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result<List<?>>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
     }
 
     interface ResultListTypeParamTypeInvalidServiceDefinition<MY_TYPE extends Object> {
@@ -232,7 +231,7 @@ class TypeUtilsTest {
         });
 
         // Then
-        AssertionsForClassTypes.assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result<List<MY_TYPE>>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
+        assertThat(illegalArgumentException.getMessage()).isEqualTo("The return type 'Result<List<MY_TYPE>>' of the method 'ask' must be parameterized with a concrete type, for example: Result<List<String>> or Result<List<MyCustomPojo>>");
     }
 
 }
