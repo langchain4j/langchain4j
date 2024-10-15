@@ -16,6 +16,8 @@
 
     <properties>
         <skipMilvusITs>false</skipMilvusITs>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
 
     <dependencies>

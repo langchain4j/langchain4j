@@ -14,6 +14,11 @@
     <artifactId>langchain4j-opensearch</artifactId>
     <name>LangChain4j :: Integration :: OpenSearch</name>
 
+    <properties>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>

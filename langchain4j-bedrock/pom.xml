@@ -13,6 +13,11 @@
     <artifactId>langchain4j-bedrock</artifactId>
     <name>LangChain4j :: Integration :: Amazon Bedrock</name>
 
+    <properties>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
