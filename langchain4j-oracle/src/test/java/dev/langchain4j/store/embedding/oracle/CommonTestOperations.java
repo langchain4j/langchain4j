@@ -71,8 +71,8 @@ final class CommonTestOperations {
                 // The Ryuk component is relied upon to stop this container.
                 OracleContainer oracleContainer =
                     new OracleContainer(ORACLE_IMAGE_NAME)
-                        .withStartupTimeout(Duration.ofSeconds(60))
-                        .withConnectTimeoutSeconds(60)
+                        .withStartupTimeout(Duration.ofSeconds(600))
+                        .withConnectTimeoutSeconds(600)
                         .withDatabaseName("pdb1")
                         .withUsername("testuser")
                         .withPassword("testpwd");
