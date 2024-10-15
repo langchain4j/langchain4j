@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
@@ -38,7 +39,7 @@ public class InternalQianfanHelper {
     private static Function toFunction(ToolSpecification toolSpecification) {
         return Function.builder()
                 .name(toolSpecification.name())
-                .description(toolSpecification.description())
+                .description(getOrDefault(toolSpecification.description(), toolSpecification.name()))
                 .parameters(toOpenAiParameters(toolSpecification))
                 .build();
     }

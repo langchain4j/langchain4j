@@ -18,7 +18,7 @@ class QianfanAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
                         .apiKey(System.getenv("QIANFAN_API_KEY"))
                         .secretKey(System.getenv("QIANFAN_SECRET_KEY"))
                         .modelName("ERNIE-Bot 4.0")
-                        .temperature(0.0)
+                        .temperature(0.01)
                         .logRequests(true)
                         .logResponses(true)
                         .build()
