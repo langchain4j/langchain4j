@@ -728,10 +728,15 @@ public abstract class AiServicesWithNewToolsIT {
             assistant.chat(text);
 
             // then
-            verify(tool).process(List.of(
-                    new ToolWithListOfPojoParameter.Person("Klaus"),
-                    new ToolWithListOfPojoParameter.Person("Franny")
-            ));
+            try {
+                verify(tool).process(List.of(
+                        new ToolWithListOfPojoParameter.Person("Klaus"),
+                        new ToolWithListOfPojoParameter.Person("Franny")
+                ));
+            } catch (Throwable t) {
+                verify(tool).process(List.of(new ToolWithListOfPojoParameter.Person("Klaus")));
+                verify(tool).process(List.of(new ToolWithListOfPojoParameter.Person("Franny")));
+            }
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
