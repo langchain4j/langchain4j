@@ -53,11 +53,11 @@ public class FunctionMapperTest {
         System.out.println("\ntoolSpecifications = " + toolSpecifications);
 
         // then
-        assertThat(toolSpecifications.size()).isEqualTo(1);
+        assertThat(toolSpecifications).hasSize(1);
         assertThat(toolSpecifications.get(0).name()).isEqualTo("distanceBetween");
         assertThat(toolSpecifications.get(0).description()).isEqualTo("Get the distance between the user and the ISS.");
         assertThat(toolSpecifications.get(0).parameters().type()).isEqualTo("object");
-        assertThat(toolSpecifications.get(0).parameters().properties().size()).isEqualTo(2);
+        assertThat(toolSpecifications.get(0).parameters().properties()).hasSize(2);
         assertThat(toolSpecifications.get(0).parameters().properties().keySet()).containsAll(Arrays.asList("userCoordinates", "issCoordinates"));
 
         // when
@@ -66,7 +66,7 @@ public class FunctionMapperTest {
 
         // then
         List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.getFunctionDeclarations();
-        assertThat(allGFnDecl.size()).isEqualTo(1);
+        assertThat(allGFnDecl).hasSize(1);
 
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
         assertThat(gFnDecl.getName()).isEqualTo("distanceBetween");
@@ -74,7 +74,7 @@ public class FunctionMapperTest {
         assertThat(gFnDecl.getParameters().getType()).isEqualTo(GeminiType.OBJECT);
         Map<String, GeminiSchema> props = gFnDecl.getParameters().getProperties();
 
-        assertThat(props.size()).isEqualTo(2);
+        assertThat(props).hasSize(2);
         assertThat(props.keySet()).containsAll(Arrays.asList("userCoordinates", "issCoordinates"));
 
         GeminiSchema userCoord = props.get("userCoordinates");
@@ -83,8 +83,8 @@ public class FunctionMapperTest {
         GeminiSchema issCoord = props.get("issCoordinates");
         assertThat(issCoord.getType()).isEqualTo(GeminiType.OBJECT);
 
-        assertThat(userCoord.getProperties().size()).isEqualTo(3);
-        assertThat(issCoord.getProperties().size()).isEqualTo(3);
+        assertThat(userCoord.getProperties()).hasSize(3);
+        assertThat(issCoord.getProperties()).hasSize(3);
 
         assertThat(userCoord.getProperties().keySet()).containsAll(Arrays.asList("latitude", "longitude", "projection"));
         assertThat(issCoord.getProperties().keySet()).containsAll(Arrays.asList("latitude", "longitude", "projection"));
@@ -173,19 +173,19 @@ public class FunctionMapperTest {
 
         // then
         List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.getFunctionDeclarations();
-        assertThat(allGFnDecl.size()).isEqualTo(1);
+        assertThat(allGFnDecl).hasSize(1);
 
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
         assertThat(gFnDecl.getName()).isEqualTo("makeOrder");
         assertThat(gFnDecl.getParameters().getType()).isEqualTo(GeminiType.OBJECT);
 
         Map<String, GeminiSchema> props = gFnDecl.getParameters().getProperties();
-        assertThat(props.size()).isEqualTo(1);
+        assertThat(props).hasSize(1);
         assertThat(props.keySet()).containsExactly("order");
 
         GeminiSchema orderSchema = props.get("order");
         assertThat(orderSchema.getType()).isEqualTo(GeminiType.OBJECT);
-        assertThat(orderSchema.getProperties().size()).isEqualTo(3);
+        assertThat(orderSchema.getProperties()).hasSize(3);
         assertThat(orderSchema.getProperties().keySet()).containsAll(Arrays.asList("totalAmount", "lineItems", "customer"));
 
         GeminiSchema totalAmount = orderSchema.getProperties().get("totalAmount");
@@ -196,22 +196,22 @@ public class FunctionMapperTest {
 
         GeminiSchema lineItemsItems = lineItems.getItems();
         assertThat(lineItemsItems.getType()).isEqualTo(GeminiType.OBJECT);
-        assertThat(lineItemsItems.getProperties().size()).isEqualTo(2);
+        assertThat(lineItemsItems.getProperties()).hasSize(2);
         assertThat(lineItemsItems.getProperties().keySet()).containsAll(Arrays.asList("product", "quantity"));
 
         GeminiSchema product = lineItemsItems.getProperties().get("product");
         assertThat(product.getType()).isEqualTo(GeminiType.OBJECT);
-        assertThat(product.getProperties().size()).isEqualTo(3);
+        assertThat(product.getProperties()).hasSize(3);
         assertThat(product.getProperties().keySet()).containsAll(Arrays.asList("name", "description", "price"));
 
         GeminiSchema customer = orderSchema.getProperties().get("customer");
         assertThat(customer.getType()).isEqualTo(GeminiType.OBJECT);
-        assertThat(customer.getProperties().size()).isEqualTo(3);
+        assertThat(customer.getProperties()).hasSize(3);
         assertThat(customer.getProperties().keySet()).containsAll(Arrays.asList("firstname", "lastname", "shippingAddress"));
 
         GeminiSchema shippingAddress = customer.getProperties().get("shippingAddress");
         assertThat(shippingAddress.getType()).isEqualTo(GeminiType.OBJECT);
-        assertThat(shippingAddress.getProperties().size()).isEqualTo(3);
+        assertThat(shippingAddress.getProperties()).hasSize(3);
         assertThat(shippingAddress.getProperties().keySet()).containsAll(Arrays.asList("street", "zipCode", "city"));
     }
 
@@ -232,14 +232,14 @@ public class FunctionMapperTest {
 
         // then
         List<GeminiFunctionDeclaration> allGFnDecl = geminiTool.getFunctionDeclarations();
-        assertThat(allGFnDecl.size()).isEqualTo(1);
+        assertThat(allGFnDecl).hasSize(1);
         GeminiFunctionDeclaration gFnDecl = allGFnDecl.get(0);
         assertThat(gFnDecl.getName()).isEqualTo("toolName");
         assertThat(gFnDecl.getParameters().getType()).isEqualTo(GeminiType.OBJECT);
 
         Map<String, GeminiSchema> props = gFnDecl.getParameters().getProperties();
         System.out.println("props = " + withoutNullValues(props.toString()));
-        assertThat(props.size()).isEqualTo(1);
+        assertThat(props).hasSize(1);
         assertThat(props.keySet()).containsExactly("arrayParameter");
 
         GeminiSchema arrayParameter = props.get("arrayParameter");
