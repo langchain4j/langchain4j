@@ -16,9 +16,8 @@
     <description>Implementation of JavaScript and Python code execution engines and tools using GraalVM Polyglot/Truffle</description>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <graalvm.version>23.1.1</graalvm.version>
+        <graalvm.version>24.1.0</graalvm.version>
     </properties>
 
     <dependencies>
