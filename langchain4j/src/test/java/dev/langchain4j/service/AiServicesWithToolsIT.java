@@ -1015,38 +1015,4 @@ class AiServicesWithToolsIT {
 
         verify(spyChatLanguageModel, times(3)).generate(anyList(), anyList());
     }
-
-    static class EnumTools {
-
-        public enum Color {
-            Red, Blue, Green, Yellow
-        }
-
-        @Tool
-        public void processColors(List<Color> colors) {
-            System.out.println(colors);
-        }
-    }
-
-    @Test
-    public void test() {
-
-        // given
-        EnumTools enumTools = spy(new EnumTools());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        ChatLanguageModel spyChatLanguageModel = spy(models().findFirst().get());
-
-        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
-                .chatLanguageModel(spyChatLanguageModel)
-                .chatMemory(chatMemory)
-                .tools(enumTools)
-                .build();
-
-        String userMessage = "Process these colors: reg, yellow";
-
-        // when
-        Result<AiMessage> result = assistant.chat(userMessage);
-    }
 }

@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -23,15 +24,17 @@ import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
-import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithListOfEnumsParameter.Color.GREEN;
-import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithListOfEnumsParameter.Color.RED;
+import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithSetOfEnumsParameter.Color.GREEN;
+import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithSetOfEnumsParameter.Color.RED;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
@@ -54,7 +57,7 @@ public abstract class AiServicesWithNewToolsIT {
         return models();
     }
 
-    // TODO single argument: List/Set/Array of primitives, List/Set/Array of enums, List/Set/Array of POJOs, map?
+    // TODO single argument: array of primitives, array of enums, array of POJOs, map?
     // TODO up-wrap single POJO and Map? (remove one level of object nesting) Make sure descriptions still work.
 
     interface Assistant {
@@ -515,7 +518,58 @@ public abstract class AiServicesWithNewToolsIT {
         }
     }
 
-    static class ToolWithListOfEnumsParameter {
+    static class ToolWithListOfStringsParameter {
+
+        @Tool
+        void processNames(List<String> names) {
+        }
+
+        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
+                .name("processNames")
+                .parameters(JsonObjectSchema.builder()
+                        .addArrayProperty("arg0", new JsonStringSchema())
+                        .required("arg0")
+                        .build())
+                .build();
+    }
+
+    @Test
+    void should_execute_tool_with_list_of_strings_parameter() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            ToolWithListOfStringsParameter tool = spy(new ToolWithListOfStringsParameter());
+
+            Assistant assistant = AiServices.builder(Assistant.class)
+                    .chatLanguageModel(model)
+                    .tools(tool)
+                    .build();
+
+            String text = "Process the following names: Klaus and Franny";
+
+            // when
+            assistant.chat(text);
+
+            // then
+            verify(tool).processNames(asList("Klaus", "Franny"));
+            verifyNoMoreInteractions(tool);
+
+            if (verifyModelInteractions()) {
+                verify(model).supportedCapabilities();
+                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verifyNoMoreInteractions(model);
+
+                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                assertThat(toolSpecifications).hasSize(1);
+                assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfStringsParameter.EXPECTED_SPECIFICATION);
+            }
+        }
+    }
+
+    static class ToolWithSetOfEnumsParameter {
 
         enum Color {
 
@@ -523,7 +577,7 @@ public abstract class AiServicesWithNewToolsIT {
         }
 
         @Tool
-        void process(List<Color> colors) {
+        void process(Set<Color> colors) {
         }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
@@ -540,14 +594,14 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_list_of_enums_parameter() {
+    void should_execute_tool_with_set_of_enums_parameter() {
 
         for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            ToolWithListOfEnumsParameter tool = spy(new ToolWithListOfEnumsParameter());
+            ToolWithSetOfEnumsParameter tool = spy(new ToolWithSetOfEnumsParameter());
 
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
@@ -560,7 +614,7 @@ public abstract class AiServicesWithNewToolsIT {
             assistant.chat(text);
 
             // then
-            verify(tool).process(asList(RED, GREEN));
+            verify(tool).process(Set.of(RED, GREEN));
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
@@ -570,7 +624,124 @@ public abstract class AiServicesWithNewToolsIT {
 
                 List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
                 assertThat(toolSpecifications).hasSize(1);
-                assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfEnumsParameter.EXPECTED_SPECIFICATION);
+                assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithSetOfEnumsParameter.EXPECTED_SPECIFICATION);
+            }
+        }
+    }
+
+    static class ToolWithCollectionOfIntegersParameter {
+
+        @Tool
+        void processNumbers(Collection<Integer> names) {
+        }
+
+        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
+                .name("processNumbers")
+                .parameters(JsonObjectSchema.builder()
+                        .addArrayProperty("arg0", new JsonIntegerSchema())
+                        .required("arg0")
+                        .build())
+                .build();
+    }
+
+    @Test
+    void should_execute_tool_with_collection_of_integers_parameter() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            ToolWithCollectionOfIntegersParameter tool = spy(new ToolWithCollectionOfIntegersParameter());
+
+            Assistant assistant = AiServices.builder(Assistant.class)
+                    .chatLanguageModel(model)
+                    .tools(tool)
+                    .build();
+
+            String text = "Process the following integers: 37, 73";
+
+            // when
+            assistant.chat(text);
+
+            // then
+            verify(tool).processNumbers(List.of(37, 73));
+            verifyNoMoreInteractions(tool);
+
+            if (verifyModelInteractions()) {
+                verify(model).supportedCapabilities();
+                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verifyNoMoreInteractions(model);
+
+                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                assertThat(toolSpecifications).hasSize(1);
+                assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithCollectionOfIntegersParameter.EXPECTED_SPECIFICATION);
+            }
+        }
+    }
+
+    static class ToolWithListOfPojoParameter {
+
+        @ToString
+        @AllArgsConstructor
+        @EqualsAndHashCode
+        static class Person {
+
+            String name;
+        }
+
+        @Tool
+        void process(List<Person> people) {
+
+        }
+
+        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
+                .name("process")
+                .parameters(JsonObjectSchema.builder()
+                        .addArrayProperty("arg0", JsonObjectSchema.builder()
+                                .addStringProperty("name")
+                                .required("name")
+                                .build())
+                        .required("arg0")
+                        .build())
+                .build();
+    }
+
+    @Test
+    void should_execute_tool_with_list_of_POJOs_parameter() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            ToolWithListOfPojoParameter tool = spy(new ToolWithListOfPojoParameter());
+
+            Assistant assistant = AiServices.builder(Assistant.class)
+                    .chatLanguageModel(model)
+                    .tools(tool)
+                    .build();
+
+            String text = "Process the following people: Klaus and Franny";
+
+            // when
+            assistant.chat(text);
+
+            // then
+            verify(tool).process(List.of(
+                    new ToolWithListOfPojoParameter.Person("Klaus"),
+                    new ToolWithListOfPojoParameter.Person("Franny")
+            ));
+            verifyNoMoreInteractions(tool);
+
+            if (verifyModelInteractions()) {
+                verify(model).supportedCapabilities();
+                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verifyNoMoreInteractions(model);
+
+                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                assertThat(toolSpecifications).hasSize(1);
+                assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfPojoParameter.EXPECTED_SPECIFICATION);
             }
         }
     }
