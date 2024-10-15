@@ -3,12 +3,8 @@ package dev.langchain4j.data.document;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
@@ -65,24 +61,43 @@ public class Metadata {
      * Constructs a Metadata object from a map of key-value pairs.
      *
      * @param metadata the map of key-value pairs; must not be {@code null}. {@code null} values are not permitted.
-     *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}
+     *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}, {@link List}
      */
     public Metadata(Map<String, ?> metadata) {
         ensureNotNull(metadata, "metadata").forEach((key, value) -> {
-            validate(key, value);
-            if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
-                throw illegalArgument("The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. " +
-                        "Currently, the supported types are: %s",
-                    key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
-                );
+            validateParameter(key, value);
+            if (value instanceof List<?>) {
+                validateValueList(key, (List<?>) value);
+            } else {
+                validateValue(key, value);
             }
         });
         this.metadata = new HashMap<>(metadata);
     }
 
-    private static void validate(String key, Object value) {
+    private static void validateParameter(String key, Object value) {
         ensureNotBlank(key, "The metadata key with the value '" + value + "'");
         ensureNotNull(value, "The metadata value for the key '" + key + "'");
+    }
+
+    private static void validateValue(String key, Object value) {
+        if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
+            throw illegalArgument("The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. " +
+                            "Currently, the supported types are: %s",
+                    key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
+            );
+        }
+    }
+
+    private static void validateValueList(String key, List<?> values) {
+        values.forEach(value -> {
+            if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
+                throw illegalArgument("The metadata key '%s' list contains a value '%s', which is of the unsupported type '%s'. " +
+                                "Currently, the supported types are: %s",
+                        key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
+                );
+            }
+        });
     }
 
     /**
@@ -125,6 +140,30 @@ public class Metadata {
     }
 
     /**
+     * Returns the list of {@code String} values associated with the given key.
+     *
+     * @param key the key
+     * @return the list of {@code String} values associated with the given key, or an empty list if the key is not present.
+     * @throws RuntimeException if the value is not of type List
+     */
+    public List<String> getStrings(String key) {
+        if (!containsKey(key)) {
+            return Collections.emptyList();
+        }
+
+        Object values = metadata.get(key);
+        if (values instanceof List<?>) {
+            return ((List<?>) values).stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .collect(Collectors.toList());
+        }
+
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
+                "It cannot be returned as a List<String>.", key, values, values.getClass().getName());
+    }
+
+    /**
      * Returns the {@code UUID} value associated with the given key.
      *
      * @param key the key
@@ -146,6 +185,38 @@ public class Metadata {
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
             "It cannot be returned as a UUID.", key, value, value.getClass().getName());
+    }
+
+    /**
+     * Returns the list of {@code UUID} values associated with the given key.
+     *
+     * @param key the key
+     * @return the list of {@code UUID} values associated with the given key, or an empty list if the key is not present.
+     * @throws RuntimeException if the value is not of type List
+     */
+    public List<UUID> getUUIDs(String key) {
+        if (!containsKey(key)) {
+            return Collections.emptyList();
+        }
+
+        Object values = metadata.get(key);
+        if (values instanceof List<?>) {
+            return ((List<?>) values).stream()
+                    .map(value -> {
+                        if (value instanceof UUID) {
+                            return (UUID) value;
+                        }
+                        if (value instanceof String) {
+                            return UUID.fromString((String)value);
+                        }
+                        return null;
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
+                "It cannot be returned as a List<UUID>.", key, values, values.getClass().getName());
     }
 
     /**
@@ -311,7 +382,7 @@ public class Metadata {
      */
     @Deprecated(forRemoval = true)
     public Metadata add(String key, String value) {
-        validate(key, value);
+        validateParameter(key, value);
         this.metadata.put(key, value);
         return this;
     }
@@ -324,7 +395,7 @@ public class Metadata {
      * @return {@code this}
      */
     public Metadata put(String key, String value) {
-        validate(key, value);
+        validateParameter(key, value);
         this.metadata.put(key, value);
         return this;
     }
@@ -337,7 +408,7 @@ public class Metadata {
      * @return {@code this}
      */
     public Metadata put(String key, UUID value) {
-        validate(key, value);
+        validateParameter(key, value);
         this.metadata.put(key, value);
         return this;
     }
@@ -350,7 +421,7 @@ public class Metadata {
      * @return {@code this}
      */
     public Metadata put(String key, int value) {
-        validate(key, value);
+        validateParameter(key, value);
         this.metadata.put(key, value);
         return this;
     }
@@ -363,7 +434,7 @@ public class Metadata {
      * @return {@code this}
      */
     public Metadata put(String key, long value) {
-        validate(key, value);
+        validateParameter(key, value);
         this.metadata.put(key, value);
         return this;
     }
@@ -376,7 +447,7 @@ public class Metadata {
      * @return {@code this}
      */
     public Metadata put(String key, float value) {
-        validate(key, value);
+        validateParameter(key, value);
         this.metadata.put(key, value);
         return this;
     }
@@ -389,8 +460,22 @@ public class Metadata {
      * @return {@code this}
      */
     public Metadata put(String key, double value) {
-        validate(key, value);
+        validateParameter(key, value);
         this.metadata.put(key, value);
+        return this;
+    }
+
+    /**
+     * Adds a key-values pair to the metadata.
+     *
+     * @param key    the key
+     * @param values the values
+     * @return {@code this}
+     */
+    public Metadata put(String key, List<?> values) {
+        validateParameter(key, values);
+        validateValueList(key, values);
+        this.metadata.put(key, values);
         return this;
     }
 
