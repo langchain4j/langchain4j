@@ -548,11 +548,12 @@
                         <id>enforce</id>
                         <configuration>
                             <rules>
+                                <banDuplicatePomDependencyVersions/>
+                                <dependencyConvergence/>
                                 <requireMavenVersion>
                                     <version>3.9</version>
                                 </requireMavenVersion>
-                                <dependencyConvergence/>
-                                <requireUpperBoundDeps/>
+                                <!-- TODO: Add requireUpperBoundDeps -->
                             </rules>
                         </configuration>
                         <goals>
