@@ -95,7 +95,7 @@ class QdrantFilterConverterTest {
 
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);
-        assertThat(convertedFilter.getMust(0).getField().getRange().getLte()).isEqualTo(10.0);
+        assertThat(convertedFilter.getMust(0).getField().getRange().getLte()).isEqualTo(10);
     }
 
     @Test
