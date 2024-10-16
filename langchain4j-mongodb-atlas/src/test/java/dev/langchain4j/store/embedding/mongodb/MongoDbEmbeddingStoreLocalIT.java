@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 import org.testcontainers.shaded.com.google.common.collect.Sets;
 
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
