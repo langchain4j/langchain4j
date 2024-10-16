@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -85,7 +84,7 @@ public class FileSystemDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a file.
      */
     public static Document loadDocument(String filePath, DocumentParser documentParser) {
-        return loadDocument(Paths.get(filePath), documentParser);
+        return loadDocument(Path.of(filePath), documentParser);
     }
 
     /**
@@ -159,7 +158,7 @@ public class FileSystemDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a directory.
      */
     public static List<Document> loadDocuments(String directoryPath, DocumentParser documentParser) {
-        return loadDocuments(Paths.get(directoryPath), documentParser);
+        return loadDocuments(Path.of(directoryPath), documentParser);
     }
 
     /**
@@ -255,7 +254,7 @@ public class FileSystemDocumentLoader {
     public static List<Document> loadDocuments(String directoryPath,
                                                PathMatcher pathMatcher,
                                                DocumentParser documentParser) {
-        return loadDocuments(Paths.get(directoryPath), pathMatcher, documentParser);
+        return loadDocuments(Path.of(directoryPath), pathMatcher, documentParser);
     }
 
     /**
@@ -335,7 +334,7 @@ public class FileSystemDocumentLoader {
      * @throws IllegalArgumentException If specified path is not a directory.
      */
     public static List<Document> loadDocumentsRecursively(String directoryPath, DocumentParser documentParser) {
-        return loadDocumentsRecursively(Paths.get(directoryPath), documentParser);
+        return loadDocumentsRecursively(Path.of(directoryPath), documentParser);
     }
 
     /**
@@ -440,7 +439,7 @@ public class FileSystemDocumentLoader {
     public static List<Document> loadDocumentsRecursively(String directoryPath,
                                                           PathMatcher pathMatcher,
                                                           DocumentParser documentParser) {
-        return loadDocumentsRecursively(Paths.get(directoryPath), pathMatcher, documentParser);
+        return loadDocumentsRecursively(Path.of(directoryPath), pathMatcher, documentParser);
     }
 
     /**

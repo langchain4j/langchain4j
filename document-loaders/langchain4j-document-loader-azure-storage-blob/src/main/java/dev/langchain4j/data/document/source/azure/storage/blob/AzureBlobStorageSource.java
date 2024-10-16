@@ -8,7 +8,6 @@ import java.io.InputStream;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.lang.String.format;
 
 public class AzureBlobStorageSource implements DocumentSource {
 
@@ -36,7 +35,7 @@ public class AzureBlobStorageSource implements DocumentSource {
     @Override
     public Metadata metadata() {
         Metadata metadata = new Metadata();
-        metadata.put(SOURCE, format("https://%s.blob.core.windows.net/%s/%s", accountName, containerName, blobName));
+        metadata.put(SOURCE, "https://%s.blob.core.windows.net/%s/%s".formatted(accountName, containerName, blobName));
         metadata.add("azure_storage_blob_creation_time", properties.getCreationTime());
         metadata.add("azure_storage_blob_last_modified", properties.getLastModified());
         metadata.put("azure_storage_blob_content_length", String.valueOf(properties.getBlobSize()));

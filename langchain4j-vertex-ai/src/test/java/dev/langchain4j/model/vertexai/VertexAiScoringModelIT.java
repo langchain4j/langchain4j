@@ -29,10 +29,11 @@ public class VertexAiScoringModelIT {
                     "Sunlight is comprised of all the colors of the rainbow. Blue light has shorter " +
                     "wavelengths than other colors, and is thus scattered more easily.",
 
-                "A canvas stretched across the day,\n" +
-                    "Where sunlight learns to dance and play.\n" +
-                    "Blue, a hue of scattered light,\n" +
-                    "A gentle whisper, soft and bright."
+                """
+A canvas stretched across the day,
+Where sunlight learns to dance and play.
+Blue, a hue of scattered light,
+A gentle whisper, soft and bright."""
             ).map(TextSegment::from).collect(Collectors.toList()),
             "Why is the sky blue?");
 

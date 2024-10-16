@@ -4,7 +4,7 @@ import dev.langchain4j.service.AiServicesWithNewToolsIT;
 
 abstract class AbstractOllamaToolsLanguageModelInfrastructure extends AiServicesWithNewToolsIT {
 
-    private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, OllamaImage.TOOL_MODEL);
+    private static final String LOCAL_OLLAMA_IMAGE = "tc-%s-%s".formatted(OllamaImage.OLLAMA_IMAGE, OllamaImage.TOOL_MODEL);
 
     static LangChain4jOllamaContainer ollama;
 

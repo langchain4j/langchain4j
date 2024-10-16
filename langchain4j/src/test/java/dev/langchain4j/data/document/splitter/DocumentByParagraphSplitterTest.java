@@ -15,7 +15,6 @@ import java.util.List;
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
-import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DocumentByParagraphSplitterTest {
@@ -42,7 +41,7 @@ class DocumentByParagraphSplitterTest {
         assertThat(firstParagraph + separator + secondParagraph).hasSizeGreaterThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s %s %s ", firstParagraph, separator, secondParagraph),
+                " %s %s %s ".formatted(firstParagraph, separator, secondParagraph),
                 metadata("document", "0")
         );
 
@@ -82,7 +81,7 @@ class DocumentByParagraphSplitterTest {
                 .hasSizeGreaterThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s %s %s %s %s ", firstParagraph, separator, secondParagraph, separator, thirdParagraph),
+                " %s %s %s %s %s ".formatted(firstParagraph, separator, secondParagraph, separator, thirdParagraph),
                 metadata("document", "0")
         );
 
@@ -127,7 +126,7 @@ class DocumentByParagraphSplitterTest {
         assertThat(thirdParagraph).hasSizeLessThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s %s %s %s %s ", firstParagraph, separator, secondParagraph, separator, thirdParagraph),
+                " %s %s %s %s %s ".formatted(firstParagraph, separator, secondParagraph, separator, thirdParagraph),
                 metadata("document", "0")
         );
 
@@ -199,7 +198,7 @@ class DocumentByParagraphSplitterTest {
         assertThat(tokenizer.estimateTokenCountInText(p7)).isEqualTo(23);
 
         Document document = Document.from(
-                format("%s\n\n%s %s\n\n%s\n\n%s %s\n\n%s\n\n%s\n\n%s", p1, p2p1, p2p2, p3, p4p1, p4p2, p5, p6, p7),
+                "%s\n\n%s %s\n\n%s\n\n%s %s\n\n%s\n\n%s\n\n%s".formatted(p1, p2p1, p2p2, p3, p4p1, p4p2, p5, p6, p7),
                 metadata("document", "0")
         );
 
@@ -263,7 +262,7 @@ class DocumentByParagraphSplitterTest {
         String s29 = "They defy definition.";
 
         Document document = Document.from(
-                format("%s %s %s %s\n\n%s %s %s %s %s %s %s\n\n%s %s %s %s\n\n%s %s %s %s %s %s %s %s %s\n\n%s %s %s %s %s",
+                "%s %s %s %s\n\n%s %s %s %s %s %s %s\n\n%s %s %s %s\n\n%s %s %s %s %s %s %s %s %s\n\n%s %s %s %s %s".formatted(
                         s1, s2, s3, s4,
                         s5, s6, s7, s8, s9, s10, s11,
                         s12, s13, s14, s15,
@@ -280,14 +279,14 @@ class DocumentByParagraphSplitterTest {
         segments.forEach(segment ->
                 assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment(format("%s %s %s %s", s1, s2, s3, s4), metadata("index", "0").put("document", "0")),
-                textSegment(format("%s %s %s %s", s5, s6, s7, s8), metadata("index", "1").put("document", "0")),
-                textSegment(format("%s %s %s %s", s8, s9, s10, s11), metadata("index", "2").put("document", "0")),
-                textSegment(format("%s\n\n%s %s %s %s", s11, s12, s13, s14, s15), metadata("index", "3").put("document", "0")),
-                textSegment(format("%s %s %s %s", s15, s16, s17, s18), metadata("index", "4").put("document", "0")),
-                textSegment(format("%s %s %s %s %s %s", s19, s20, s21, s22, s23, s24), metadata("index", "5").put("document", "0")),
-                textSegment(format("%s %s %s %s %s %s", s22, s23, s24, s25, s26, s27), metadata("index", "6").put("document", "0")),
-                textSegment(format("%s %s %s", s27, s28, s29), metadata("index", "7").put("document", "0"))
+                textSegment("%s %s %s %s".formatted(s1, s2, s3, s4), metadata("index", "0").put("document", "0")),
+                textSegment("%s %s %s %s".formatted(s5, s6, s7, s8), metadata("index", "1").put("document", "0")),
+                textSegment("%s %s %s %s".formatted(s8, s9, s10, s11), metadata("index", "2").put("document", "0")),
+                textSegment("%s\n\n%s %s %s %s".formatted(s11, s12, s13, s14, s15), metadata("index", "3").put("document", "0")),
+                textSegment("%s %s %s %s".formatted(s15, s16, s17, s18), metadata("index", "4").put("document", "0")),
+                textSegment("%s %s %s %s %s %s".formatted(s19, s20, s21, s22, s23, s24), metadata("index", "5").put("document", "0")),
+                textSegment("%s %s %s %s %s %s".formatted(s22, s23, s24, s25, s26, s27), metadata("index", "6").put("document", "0")),
+                textSegment("%s %s %s".formatted(s27, s28, s29), metadata("index", "7").put("document", "0"))
         );
     }
 
@@ -334,7 +333,7 @@ class DocumentByParagraphSplitterTest {
                 "They defy definition.";
 
         Document document = Document.from(
-                format("%s %s %s %s", segment1, segment2, segment3, segment4),
+                "%s %s %s %s".formatted(segment1, segment2, segment3, segment4),
                 metadata("document", "0")
         );
 

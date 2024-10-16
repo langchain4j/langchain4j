@@ -125,8 +125,7 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
             `this.textProperty (default "textProperty")`,
             `this.embeddingProperty (default "embedding")`
         */
-        String defaultRetrievalQuery = String.format(
-                "RETURN properties(node) AS metadata, node.%1$s AS %1$s, node.%2$s AS %2$s, node.%3$s AS %3$s, score",
+        String defaultRetrievalQuery = "RETURN properties(node) AS metadata, node.%1$s AS %1$s, node.%2$s AS %2$s, node.%3$s AS %3$s, score".formatted(
                 this.sanitizedIdProperty, this.sanitizedText, this.sanitizedEmbeddingProperty
         );
         this.retrievalQuery = getOrDefault(retrievalQuery, defaultRetrievalQuery);
@@ -249,8 +248,7 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private void createUniqueConstraint() {
         try (var session = session()) {
-            String query = String.format(
-                    "CREATE CONSTRAINT IF NOT EXISTS FOR (n:%s) REQUIRE n.%s IS UNIQUE",
+            String query = "CREATE CONSTRAINT IF NOT EXISTS FOR (n:%s) REQUIRE n.%s IS UNIQUE".formatted(
                     this.sanitizedLabel,
                     this.sanitizedIdProperty
             );
@@ -274,10 +272,10 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
             boolean isIndexDifferent = !idxLabels.equals(singletonList(this.label)) 
                                        || !idxProps.equals(singletonList(this.embeddingProperty));
             if (isIndexDifferent) {
-                String errMessage = String.format("""
+                String errMessage = """
                                 It's not possible to create an index for the label `%s` and the property `%s`,
                                 as there is another index with name `%s` with different labels: `%s` and properties `%s`.
-                                Please provide another indexName to create the vector index, or delete the existing one""",
+                                Please provide another indexName to create the vector index, or delete the existing one""".formatted(
                         this.label,
                         this.embeddingProperty,
                         this.indexName,

@@ -35,17 +35,18 @@ class HtmlToTextDocumentTransformerTest {
         Document transformedDocument = transformer.transform(htmlDocument);
 
         assertThat(transformedDocument.text()).isEqualTo(
-                "Title\n" +
-                        "\n" +
-                        "Paragraph 1\n" +
-                        "Something\n" +
-                        "\n" +
-                        "Paragraph 2\n" +
-                        "\n" +
-                        "More details here.\n" +
-                        "List:\n" +
-                        " * Item one\n" +
-                        " * Item two"
+                """
+                Title
+                
+                Paragraph 1
+                Something
+                
+                Paragraph 2
+                
+                More details here.
+                List:
+                 * Item one
+                 * Item two"""
         );
     }
 
@@ -87,17 +88,18 @@ class HtmlToTextDocumentTransformerTest {
         Document transformedDocument = transformer.transform(htmlDocument);
 
         assertThat(transformedDocument.text()).isEqualTo(
-                "Title\n" +
-                        "\n" +
-                        "Paragraph 1\n" +
-                        "Something\n" +
-                        "\n" +
-                        "Paragraph 2\n" +
-                        "\n" +
-                        "More details here <http://example.org>.\n" +
-                        "List:\n" +
-                        " * Item one\n" +
-                        " * Item two"
+                """
+                Title
+                
+                Paragraph 1
+                Something
+                
+                Paragraph 2
+                
+                More details here <http://example.org>.
+                List:
+                 * Item one
+                 * Item two"""
         );
         assertThat(transformedDocument.metadata().toMap()).isEmpty();
     }
@@ -127,17 +129,18 @@ class HtmlToTextDocumentTransformerTest {
         Document transformedDocument = transformer.transform(htmlDocument);
 
         assertThat(transformedDocument.text()).isEqualTo(
-                "Title\n" +
-                        "\n" +
-                        "Paragraph 1\n" +
-                        "Something\n" +
-                        "\n" +
-                        "Paragraph 2\n" +
-                        "\n" +
-                        "More details here <http://example.org>.\n" +
-                        "List:\n" +
-                        " * Item one\n" +
-                        " * Item two"
+                """
+                Title
+                
+                Paragraph 1
+                Something
+                
+                Paragraph 2
+                
+                More details here <http://example.org>.
+                List:
+                 * Item one
+                 * Item two"""
         );
         assertThat(transformedDocument.metadata().asMap())
                 .containsEntry(Document.URL, "https://other.example.org/page.html")

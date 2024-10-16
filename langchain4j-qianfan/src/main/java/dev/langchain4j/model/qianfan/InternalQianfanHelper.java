@@ -64,8 +64,7 @@ public class InternalQianfanHelper {
 
     public static Message toQianfanMessage(ChatMessage message) {
 
-        if (message instanceof UserMessage) {
-            UserMessage userMessage = (UserMessage) message;
+        if (message instanceof UserMessage userMessage) {
             return Message.builder()
                     .role(Role.USER)
                     .content(userMessage.text())
@@ -73,8 +72,7 @@ public class InternalQianfanHelper {
                     .build();
         }
 
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
 
             if (!aiMessage.hasToolExecutionRequests()) {
 
@@ -99,8 +97,7 @@ public class InternalQianfanHelper {
             }
 
         }
-        if (message instanceof ToolExecutionResultMessage) {
-            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+        if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
 
                 FunctionCall functionCall = FunctionCall.builder()
                         .name(toolExecutionResultMessage.toolName())

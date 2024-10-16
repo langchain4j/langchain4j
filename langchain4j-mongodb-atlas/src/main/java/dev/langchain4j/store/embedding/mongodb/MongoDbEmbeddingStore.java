@@ -327,7 +327,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         InsertManyResult result = collection.insertMany(documents);
         if (!result.wasAcknowledged() && log.isWarnEnabled()) {
-            String errMsg = String.format("[MongoDbEmbeddingStore] Add document failed, Document=%s", documents);
+            String errMsg = "[MongoDbEmbeddingStore] Add document failed, Document=%s".formatted(documents);
             log.warn(errMsg);
             throw new RuntimeException(errMsg);
         }

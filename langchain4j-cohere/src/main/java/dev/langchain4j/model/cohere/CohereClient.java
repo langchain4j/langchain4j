@@ -92,7 +92,7 @@ class CohereClient {
     private static RuntimeException toException(retrofit2.Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();
-        String errorMessage = String.format("status code: %s; body: %s", code, body);
+        String errorMessage = "status code: %s; body: %s".formatted(code, body);
         return new RuntimeException(errorMessage);
     }
 }

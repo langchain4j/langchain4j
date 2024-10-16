@@ -120,16 +120,16 @@ public class SqlFilterParser implements FilterParser {
     }
 
     private Filter mapParenthesis(Expression expression) {
-        if (expression instanceof BinaryExpression) {
-            return mapBinaryExpression((BinaryExpression) expression);
-        } else if (expression instanceof NotExpression) {
-            return new Not(mapParenthesis(((NotExpression) expression).getExpression()));
-        } else if (expression instanceof Parenthesis) {
-            return mapParenthesis(((Parenthesis) expression).getExpression());
-        } else if (expression instanceof InExpression) {
-            return mapInExpression(((InExpression) expression));
-        } else if (expression instanceof Between) {
-            return mapBetween(((Between) expression));
+        if (expression instanceof BinaryExpression binaryExpression) {
+            return mapBinaryExpression(binaryExpression);
+        } else if (expression instanceof NotExpression notExpression) {
+            return new Not(mapParenthesis(notExpression.getExpression()));
+        } else if (expression instanceof Parenthesis parenthesis) {
+            return mapParenthesis(parenthesis.getExpression());
+        } else if (expression instanceof InExpression inExpression) {
+            return mapInExpression(inExpression);
+        } else if (expression instanceof Between between) {
+            return mapBetween(between);
         } else {
             throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
         }
@@ -212,14 +212,13 @@ public class SqlFilterParser implements FilterParser {
     }
 
     private Comparable<?> getValue(Expression expression) {
-        if (expression instanceof StringValue) {
-            return ((StringValue) expression).getValue();
-        } else if (expression instanceof LongValue) {
-            return ((LongValue) expression).getValue();
-        } else if (expression instanceof DoubleValue) {
-            return ((DoubleValue) expression).getValue();
-        } else if (expression instanceof SignedExpression) {
-            SignedExpression signedExpression = (SignedExpression) expression;
+        if (expression instanceof StringValue value) {
+            return value.getValue();
+        } else if (expression instanceof LongValue value) {
+            return value.getValue();
+        } else if (expression instanceof DoubleValue value) {
+            return value.getValue();
+        } else if (expression instanceof SignedExpression signedExpression) {
             if (signedExpression.getSign() == '-') {
                 if (signedExpression.getExpression() instanceof LongValue) {
                     String stringValue = signedExpression.getExpression().toString();
@@ -229,8 +228,7 @@ public class SqlFilterParser implements FilterParser {
                     return Double.parseDouble("-" + stringValue);
                 }
             }
-        } else if (expression instanceof Function) {
-            Function function = (Function) expression;
+        } else if (expression instanceof Function function) {
             if (function.getName().equalsIgnoreCase("YEAR")) {
                 ExpressionList<?> parameters = function.getParameters();
                 if (parameters.size() == 1 && parameters.get(0) instanceof Function) {
@@ -249,8 +247,7 @@ public class SqlFilterParser implements FilterParser {
                 }
             }
             // TODO add other
-        } else if (expression instanceof ExtractExpression) {
-            ExtractExpression extractExpression = (ExtractExpression) expression;
+        } else if (expression instanceof ExtractExpression extractExpression) {
             if (extractExpression.getExpression() instanceof TimeKeyExpression) {
                 TimeKeyExpression timeKeyExpression = (TimeKeyExpression) extractExpression.getExpression();
                 if (timeKeyExpression.getStringValue().equalsIgnoreCase("CURRENT_DATE")
@@ -280,37 +277,37 @@ public class SqlFilterParser implements FilterParser {
                     // TODO parse timestamp?
                 }
             }
-        } else if (expression instanceof Addition) {
-            Comparable<?> left = getValue(((Addition) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Addition) expression).getRightExpression());
-            if (left instanceof Long && right instanceof Long) {
-                return (Long) left + (Long) right;
-            } else if (left instanceof Double && right instanceof Double) {
-                return (Double) left + (Double) right;
+        } else if (expression instanceof Addition addition) {
+            Comparable<?> left = getValue(addition.getLeftExpression());
+            Comparable<?> right = getValue(addition.getRightExpression());
+            if (left instanceof Long long1 && right instanceof Long long2) {
+                return long1 + long2;
+            } else if (left instanceof Double double1 && right instanceof Double double2) {
+                return double1 + double2;
             }
-        } else if (expression instanceof Subtraction) {
-            Comparable<?> left = getValue(((Subtraction) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Subtraction) expression).getRightExpression());
-            if (left instanceof Long && right instanceof Long) {
-                return (Long) left - (Long) right;
-            } else if (left instanceof Double && right instanceof Double) {
-                return (Double) left - (Double) right;
+        } else if (expression instanceof Subtraction subtraction) {
+            Comparable<?> left = getValue(subtraction.getLeftExpression());
+            Comparable<?> right = getValue(subtraction.getRightExpression());
+            if (left instanceof Long long1 && right instanceof Long long2) {
+                return long1 - long2;
+            } else if (left instanceof Double double1 && right instanceof Double double2) {
+                return double1 - double2;
             }
-        } else if (expression instanceof Multiplication) {
-            Comparable<?> left = getValue(((Multiplication) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Multiplication) expression).getRightExpression());
-            if (left instanceof Long && right instanceof Long) {
-                return (Long) left * (Long) right;
-            } else if (left instanceof Double && right instanceof Double) {
-                return (Double) left * (Double) right;
+        } else if (expression instanceof Multiplication multiplication) {
+            Comparable<?> left = getValue(multiplication.getLeftExpression());
+            Comparable<?> right = getValue(multiplication.getRightExpression());
+            if (left instanceof Long long1 && right instanceof Long long2) {
+                return long1 * long2;
+            } else if (left instanceof Double double1 && right instanceof Double double2) {
+                return double1 * double2;
             }
-        } else if (expression instanceof Division) {
-            Comparable<?> left = getValue(((Division) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Division) expression).getRightExpression());
-            if (left instanceof Long && right instanceof Long) {
-                return (Long) left / (Long) right;
-            } else if (left instanceof Double && right instanceof Double) {
-                return (Double) left / (Double) right;
+        } else if (expression instanceof Division division) {
+            Comparable<?> left = getValue(division.getLeftExpression());
+            Comparable<?> right = getValue(division.getRightExpression());
+            if (left instanceof Long long1 && right instanceof Long long2) {
+                return long1 / long2;
+            } else if (left instanceof Double double1 && right instanceof Double double2) {
+                return double1 / double2;
             }
         }
 

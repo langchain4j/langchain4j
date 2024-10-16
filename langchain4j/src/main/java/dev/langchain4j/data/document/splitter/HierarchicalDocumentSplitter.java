@@ -144,9 +144,9 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
             // Enforce that we have a sub-splitter defined.
             if (subSplitter == null) {
-                throw new RuntimeException(String.format(
+                throw new RuntimeException((
                         "The text \"%s...\" (%s %s long) doesn't fit into the maximum segment size (%s %s), " +
-                                "and there is no subSplitter defined to split it further.",
+                                "and there is no subSplitter defined to split it further.").formatted(
                         firstChars(part, 30),
                         estimateSize(part), tokenizer == null ? "characters" : "tokens",
                         maxSegmentSize, tokenizer == null ? "characters" : "tokens"

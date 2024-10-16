@@ -43,7 +43,6 @@ import static dev.langchain4j.store.embedding.milvus.MilvusMetadataFilterMapper.
 import static io.milvus.common.clientenum.ConsistencyLevelEnum.EVENTUALLY;
 import static io.milvus.param.IndexType.FLAT;
 import static io.milvus.param.MetricType.COSINE;
-import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -228,7 +227,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
-        removeForVector(this.milvusClient, this.collectionName, format("%s in %s", this.fieldDefinition.getIdFieldName(), formatValues(ids)));
+        removeForVector(this.milvusClient, this.collectionName, "%s in %s".formatted(this.fieldDefinition.getIdFieldName(), formatValues(ids)));
     }
 
 
@@ -271,7 +270,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public void removeAll() {
-        removeForVector(this.milvusClient, this.collectionName, format("%s != \"\"", this.fieldDefinition.getIdFieldName()));
+        removeForVector(this.milvusClient, this.collectionName, "%s != \"\"".formatted(this.fieldDefinition.getIdFieldName()));
     }
 
     public static class Builder {

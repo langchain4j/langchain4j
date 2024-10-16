@@ -66,14 +66,14 @@ class PineconeEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         return EmbeddingStoreWithFilteringIT.should_filter_by_metadata()
                 .filter(arguments -> {
                             Filter filter = (Filter) arguments.get()[0];
-                            if (filter instanceof IsLessThan) {
-                                return ((IsLessThan) filter).comparisonValue() instanceof Number;
-                            } else if (filter instanceof IsLessThanOrEqualTo) {
-                                return ((IsLessThanOrEqualTo) filter).comparisonValue() instanceof Number;
-                            } else if (filter instanceof IsGreaterThan) {
-                                return ((IsGreaterThan) filter).comparisonValue() instanceof Number;
-                            } else if (filter instanceof IsGreaterThanOrEqualTo) {
-                                return ((IsGreaterThanOrEqualTo) filter).comparisonValue() instanceof Number;
+                            if (filter instanceof IsLessThan than) {
+                                return than.comparisonValue() instanceof Number;
+                            } else if (filter instanceof IsLessThanOrEqualTo to) {
+                                return to.comparisonValue() instanceof Number;
+                            } else if (filter instanceof IsGreaterThan than) {
+                                return than.comparisonValue() instanceof Number;
+                            } else if (filter instanceof IsGreaterThanOrEqualTo to) {
+                                return to.comparisonValue() instanceof Number;
                             } else {
                                 return true;
                             }

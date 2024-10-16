@@ -37,7 +37,7 @@ public class AzureBlobStorageDocumentLoaderIT {
         StorageSharedKeyCredential credential = new StorageSharedKeyCredential(storageAccountName, storageAccountKey);
 
         blobServiceClient = new BlobServiceClientBuilder()
-                .endpoint(String.format("https://%s.blob.core.windows.net/", storageAccountName))
+                .endpoint("https://%s.blob.core.windows.net/".formatted(storageAccountName))
                 .credential(credential)
                 .buildClient();
 

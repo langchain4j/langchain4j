@@ -27,28 +27,28 @@ class ChromaMetadataFilterMapper {
     static Map<String, Object> map(Filter filter) {
         if (filter == null) {
             return null;
-        } else if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
-        } else if (filter instanceof IsNotEqualTo) {
-            return mapNotEqual((IsNotEqualTo) filter);
-        } else if (filter instanceof IsGreaterThan) {
-            return mapIsGreaterThan((IsGreaterThan) filter);
-        } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            return mapIsGreaterThanOrEqualTo((IsGreaterThanOrEqualTo) filter);
-        } else if (filter instanceof IsLessThan) {
-            return mapIsLessThan((IsLessThan) filter);
-        } else if (filter instanceof IsLessThanOrEqualTo) {
-            return mapIsLessThanOrEqualTo((IsLessThanOrEqualTo) filter);
-        } else if (filter instanceof IsIn) {
-            return mapIsIn((IsIn) filter);
-        } else if (filter instanceof IsNotIn) {
-            return mapIsNotIn((IsNotIn) filter);
-        } else if (filter instanceof And) {
-            return mapAnd((And) filter);
-        } else if (filter instanceof Or) {
-            return mapOr((Or) filter);
-        } else if (filter instanceof Not) {
-            return mapNot((Not) filter);
+        } else if (filter instanceof IsEqualTo to) {
+            return mapEqual(to);
+        } else if (filter instanceof IsNotEqualTo to) {
+            return mapNotEqual(to);
+        } else if (filter instanceof IsGreaterThan than) {
+            return mapIsGreaterThan(than);
+        } else if (filter instanceof IsGreaterThanOrEqualTo to) {
+            return mapIsGreaterThanOrEqualTo(to);
+        } else if (filter instanceof IsLessThan than) {
+            return mapIsLessThan(than);
+        } else if (filter instanceof IsLessThanOrEqualTo to) {
+            return mapIsLessThanOrEqualTo(to);
+        } else if (filter instanceof IsIn in) {
+            return mapIsIn(in);
+        } else if (filter instanceof IsNotIn in) {
+            return mapIsNotIn(in);
+        } else if (filter instanceof And and) {
+            return mapAnd(and);
+        } else if (filter instanceof Or or) {
+            return mapOr(or);
+        } else if (filter instanceof Not not) {
+            return mapNot(not);
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
@@ -99,26 +99,26 @@ class ChromaMetadataFilterMapper {
      */
     private static Map<String, Object> mapNot(Not not) {
         Filter expression = not.expression();
-        if (expression instanceof IsEqualTo) {
-            expression = new IsNotEqualTo(((IsEqualTo) expression).key(), ((IsEqualTo) expression).comparisonValue());
-        } else if (expression instanceof IsNotEqualTo) {
-            expression = new IsEqualTo(((IsNotEqualTo) expression).key(), ((IsNotEqualTo) expression).comparisonValue());
-        } else if (expression instanceof IsGreaterThan) {
-            expression = new IsLessThanOrEqualTo(((IsGreaterThan) expression).key(), ((IsGreaterThan) expression).comparisonValue());
-        } else if (expression instanceof IsGreaterThanOrEqualTo) {
-            expression = new IsLessThan(((IsGreaterThanOrEqualTo) expression).key(), ((IsGreaterThanOrEqualTo) expression).comparisonValue());
-        } else if (expression instanceof IsLessThan) {
-            expression = new IsGreaterThanOrEqualTo(((IsLessThan) expression).key(), ((IsLessThan) expression).comparisonValue());
-        } else if (expression instanceof IsLessThanOrEqualTo) {
-            expression = new IsGreaterThan(((IsLessThanOrEqualTo) expression).key(), ((IsLessThanOrEqualTo) expression).comparisonValue());
-        } else if (expression instanceof IsIn) {
-            expression = new IsNotIn(((IsIn) expression).key(), ((IsIn) expression).comparisonValues());
-        } else if (expression instanceof IsNotIn) {
-            expression = new IsIn(((IsNotIn) expression).key(), ((IsNotIn) expression).comparisonValues());
-        } else if (expression instanceof And) {
-            expression = new Or(Filter.not(((And) expression).left()), Filter.not(((And) expression).right()));
-        } else if (expression instanceof Or) {
-            expression = new And(Filter.not(((Or) expression).left()), Filter.not(((Or) expression).right()));
+        if (expression instanceof IsEqualTo to) {
+            expression = new IsNotEqualTo(to.key(), to.comparisonValue());
+        } else if (expression instanceof IsNotEqualTo to) {
+            expression = new IsEqualTo(to.key(), to.comparisonValue());
+        } else if (expression instanceof IsGreaterThan than) {
+            expression = new IsLessThanOrEqualTo(than.key(), than.comparisonValue());
+        } else if (expression instanceof IsGreaterThanOrEqualTo to) {
+            expression = new IsLessThan(to.key(), to.comparisonValue());
+        } else if (expression instanceof IsLessThan than) {
+            expression = new IsGreaterThanOrEqualTo(than.key(), than.comparisonValue());
+        } else if (expression instanceof IsLessThanOrEqualTo to) {
+            expression = new IsGreaterThan(to.key(), to.comparisonValue());
+        } else if (expression instanceof IsIn in) {
+            expression = new IsNotIn(in.key(), in.comparisonValues());
+        } else if (expression instanceof IsNotIn in) {
+            expression = new IsIn(in.key(), in.comparisonValues());
+        } else if (expression instanceof And and) {
+            expression = new Or(Filter.not(and.left()), Filter.not(and.right()));
+        } else if (expression instanceof Or or) {
+            expression = new And(Filter.not(or.left()), Filter.not(or.right()));
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + expression.getClass().getName());
         }

@@ -113,40 +113,35 @@ public class SchemaHelper {
     }
 
     public static Schema from(JsonSchemaElement jsonSchemaElement) {
-        if (jsonSchemaElement instanceof JsonStringSchema) {
-            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchemaElement;
+        if (jsonSchemaElement instanceof JsonStringSchema jsonStringSchema) {
             Schema.Builder builder = Schema.newBuilder()
                     .setType(Type.STRING);
             if (jsonStringSchema.description() != null) {
                 builder.setDescription(jsonStringSchema.description());
             }
             return builder.build();
-        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
-            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonBooleanSchema jsonBooleanSchema) {
             Schema.Builder builder = Schema.newBuilder()
                     .setType(Type.BOOLEAN);
             if (jsonBooleanSchema.description() != null) {
                 builder.setDescription(jsonBooleanSchema.description());
             }
             return builder.build();
-        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
-            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
             Schema.Builder builder = Schema.newBuilder()
                     .setType(Type.INTEGER);
             if (jsonIntegerSchema.description() != null) {
                 builder.setDescription(jsonIntegerSchema.description());
             }
             return builder.build();
-        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
-            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonNumberSchema jsonNumberSchema) {
             Schema.Builder builder = Schema.newBuilder()
                     .setType(Type.NUMBER);
             if (jsonNumberSchema.description() != null) {
                 builder.setDescription(jsonNumberSchema.description());
             }
             return builder.build();
-        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
-            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
             Schema.Builder builder = Schema.newBuilder()
                     .setType(Type.STRING)
                     .addAllEnum(jsonEnumSchema.enumValues());
@@ -154,8 +149,7 @@ public class SchemaHelper {
                 builder.setDescription(jsonEnumSchema.description());
             }
             return builder.build();
-        } else if (jsonSchemaElement instanceof JsonArraySchema) {
-            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonArraySchema jsonArraySchema) {
             Schema.Builder builder = Schema.newBuilder()
                     .setType(Type.ARRAY)
                     .setItems(from(jsonArraySchema.items()));
@@ -163,8 +157,7 @@ public class SchemaHelper {
                 builder.setDescription(jsonArraySchema.description());
             }
             return builder.build();
-        } else if (jsonSchemaElement instanceof JsonObjectSchema) {
-            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
             Map<String, Schema> properties = new LinkedHashMap<>();
             jsonObjectSchema.properties()
                     .forEach((property, value) -> properties.put(property, from(value)));

@@ -9,6 +9,7 @@ import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.TypeUtils;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
@@ -25,7 +26,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static java.lang.String.format;
 
 public class ServiceOutputParser {
 
@@ -143,11 +143,11 @@ public class ServiceOutputParser {
         jsonSchema.append("{\n");
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
-            if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+            if (name.equals("__$hits$__") || Modifier.isStatic(field.getModifiers())) {
                 // Skip coverage instrumentation field.
                 continue;
             }
-            jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field, visited)));
+            jsonSchema.append("\"%s\": (%s),\n".formatted(name, descriptionFor(field, visited)));
         }
 
         int trailingCommaIndex = jsonSchema.lastIndexOf(",");
@@ -170,16 +170,15 @@ public class ServiceOutputParser {
     private static String typeOf(Field field, Set<Class<?>> visited) {
         Type type = field.getGenericType();
 
-        if (type instanceof ParameterizedType) {
-            ParameterizedType parameterizedType = (ParameterizedType) type;
+        if (type instanceof ParameterizedType parameterizedType) {
             Type[] typeArguments = parameterizedType.getActualTypeArguments();
 
             if (parameterizedType.getRawType().equals(List.class)
                     || parameterizedType.getRawType().equals(Set.class)) {
-                return format("array of %s", simpleNameOrJsonStructure((Class<?>) typeArguments[0], visited));
+                return "array of %s".formatted(simpleNameOrJsonStructure((Class<?>) typeArguments[0], visited));
             }
         } else if (field.getType().isArray()) {
-            return format("array of %s", simpleNameOrJsonStructure(field.getType().getComponentType(), visited));
+            return "array of %s".formatted(simpleNameOrJsonStructure(field.getType().getComponentType(), visited));
         } else if (((Class<?>) type).isEnum()) {
             return "enum, must be one of " + Arrays.toString(((Class<?>) type).getEnumConstants());
         }

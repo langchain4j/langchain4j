@@ -97,7 +97,7 @@ public class MessageWindowChatMemory implements ChatMemory {
             ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
             log.trace("Evicting the following message to comply with the capacity requirement: {}", evictedMessage);
 
-            if (evictedMessage instanceof AiMessage && ((AiMessage) evictedMessage).hasToolExecutionRequests()) {
+            if (evictedMessage instanceof AiMessage message && message.hasToolExecutionRequests()) {
                 while (messages.size() > messageToEvictIndex
                         && messages.get(messageToEvictIndex) instanceof ToolExecutionResultMessage) {
                     // Some LLMs (e.g. OpenAI) prohibit ToolExecutionResultMessage(s) without corresponding AiMessage,

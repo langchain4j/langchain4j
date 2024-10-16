@@ -28,11 +28,13 @@ class JsonTest {
 
     assertThat(json)
       .isEqualTo(
-        "{\n" +
-        "  \"sampleDate\": \"2023-01-15\",\n" +
-        "  \"sampleDateTime\": \"2023-01-15T10:20:00\",\n" +
-        "  \"some_value\": \"value\"\n" +
-        "}"
+        """
+        {
+          "sampleDate": "2023-01-15",
+          "sampleDateTime": "2023-01-15T10:20:00",
+          "some_value": "value"
+        }\
+        """
       );
 
     TestData deserializedData = Json.fromJson(json, TestData.class);

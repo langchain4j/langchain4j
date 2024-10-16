@@ -8,7 +8,7 @@ class JSONFilterMapper extends PgVectorFilterMapper {
     }
 
     String formatKey(String key, Class<?> valueType) {
-        return String.format("(%s->>'%s')::%s", metadataColumn, key, SQL_TYPE_MAP.get(valueType));
+        return "(%s->>'%s')::%s".formatted(metadataColumn, key, SQL_TYPE_MAP.get(valueType));
     }
 
     String formatKeyAsString(String key) {

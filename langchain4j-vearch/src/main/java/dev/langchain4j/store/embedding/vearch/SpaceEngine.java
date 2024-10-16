@@ -41,7 +41,7 @@ public class SpaceEngine {
         Class<? extends RetrievalParam> clazz = retrievalType.getParamClass();
         if (!clazz.isInstance(retrievalParam)) {
             throw new UnsupportedOperationException(
-                    String.format("can't assign unknown param of engine %s, please use class %s to assign engine param",
+                    "can't assign unknown param of engine %s, please use class %s to assign engine param".formatted(
                             retrievalType.name(), clazz.getSimpleName()));
         }
         this.retrievalParam = retrievalParam;

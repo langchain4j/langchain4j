@@ -19,28 +19,28 @@ import static java.util.stream.Collectors.toList;
 class ElasticsearchMetadataFilterMapper {
 
     static Query map(Filter filter) {
-        if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
-        } else if (filter instanceof IsNotEqualTo) {
-            return mapNotEqual((IsNotEqualTo) filter);
-        } else if (filter instanceof IsGreaterThan) {
-            return mapGreaterThan((IsGreaterThan) filter);
-        } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
-        } else if (filter instanceof IsLessThan) {
-            return mapLessThan((IsLessThan) filter);
-        } else if (filter instanceof IsLessThanOrEqualTo) {
-            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
-        } else if (filter instanceof IsIn) {
-            return mapIn((IsIn) filter);
-        } else if (filter instanceof IsNotIn) {
-            return mapNotIn((IsNotIn) filter);
-        } else if (filter instanceof And) {
-            return mapAnd((And) filter);
-        } else if (filter instanceof Not) {
-            return mapNot((Not) filter);
-        } else if (filter instanceof Or) {
-            return mapOr((Or) filter);
+        if (filter instanceof IsEqualTo to) {
+            return mapEqual(to);
+        } else if (filter instanceof IsNotEqualTo to) {
+            return mapNotEqual(to);
+        } else if (filter instanceof IsGreaterThan than) {
+            return mapGreaterThan(than);
+        } else if (filter instanceof IsGreaterThanOrEqualTo to) {
+            return mapGreaterThanOrEqual(to);
+        } else if (filter instanceof IsLessThan than) {
+            return mapLessThan(than);
+        } else if (filter instanceof IsLessThanOrEqualTo to) {
+            return mapLessThanOrEqual(to);
+        } else if (filter instanceof IsIn in) {
+            return mapIn(in);
+        } else if (filter instanceof IsNotIn in) {
+            return mapNotIn(in);
+        } else if (filter instanceof And and) {
+            return mapAnd(and);
+        } else if (filter instanceof Not not) {
+            return mapNot(not);
+        } else if (filter instanceof Or or) {
+            return mapOr(or);
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }

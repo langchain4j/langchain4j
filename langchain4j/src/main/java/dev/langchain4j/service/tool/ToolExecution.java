@@ -40,8 +40,8 @@ public class ToolExecution {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolExecution
-                && equalTo((ToolExecution) another);
+        return another instanceof ToolExecution te
+                && equalTo(te);
     }
 
     private boolean equalTo(ToolExecution another) {

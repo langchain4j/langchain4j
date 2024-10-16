@@ -19,7 +19,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -94,8 +93,8 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     Boolean avoidDups
   ) {
     this.url = url;
-    this.keyPath = Paths.get(keyPath);
-    this.certPath = Paths.get(certPath);
+    this.keyPath = Path.of(keyPath);
+    this.certPath = Path.of(certPath);
     this.timeout = timeout != null ? timeout : DEFAULT_TIMEOUT;
     this.namespace = namespace != null ? namespace : DEFAULT_NAMESPACE;
     this.documentType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;

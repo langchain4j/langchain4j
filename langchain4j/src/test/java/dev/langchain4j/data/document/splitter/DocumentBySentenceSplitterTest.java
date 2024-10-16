@@ -11,7 +11,6 @@ import java.util.List;
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
-import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DocumentBySentenceSplitterTest {
@@ -30,7 +29,7 @@ class DocumentBySentenceSplitterTest {
         assertThat(firstSentence + " " + secondSentence).hasSizeGreaterThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s  %s ", firstSentence, secondSentence),
+                " %s  %s ".formatted(firstSentence, secondSentence),
                 metadata("document", "0")
         );
 
@@ -60,7 +59,7 @@ class DocumentBySentenceSplitterTest {
                 .hasSizeGreaterThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s  %s  %s ", firstSentence, secondSentence, thirdSentence),
+                " %s  %s  %s ".formatted(firstSentence, secondSentence, thirdSentence),
                 metadata("document", "0")
         );
 
@@ -91,7 +90,7 @@ class DocumentBySentenceSplitterTest {
         assertThat(thirdSentence).hasSizeLessThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s  %s  %s ", firstSentence, secondSentence, thirdSentence),
+                " %s  %s  %s ".formatted(firstSentence, secondSentence, thirdSentence),
                 metadata("document", "0")
         );
 
@@ -144,8 +143,7 @@ class DocumentBySentenceSplitterTest {
         String s18 = "Embrace them.";
 
         Document document = Document.from(
-                format(
-                        "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
+                "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s".formatted(
                         s1, s2, s3, s4, s5p1, s5p2, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18
                 ),
                 metadata("document", "0")

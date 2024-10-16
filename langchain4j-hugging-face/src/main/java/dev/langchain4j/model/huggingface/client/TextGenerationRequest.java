@@ -40,8 +40,8 @@ public class TextGenerationRequest {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof TextGenerationRequest
-                && equalTo((TextGenerationRequest) another);
+        return another instanceof TextGenerationRequest tgr
+                && equalTo(tgr);
     }
 
     private boolean equalTo(TextGenerationRequest another) {

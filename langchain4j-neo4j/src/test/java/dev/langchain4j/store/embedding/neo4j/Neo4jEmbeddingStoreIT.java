@@ -412,7 +412,7 @@ class Neo4jEmbeddingStoreIT {
                     .build();
             fail("Should fail due to idx conflict");
         } catch (RuntimeException e) {
-            String errMsg = String.format("It's not possible to create an index for the label `%s` and the property `%s`",
+            String errMsg = "It's not possible to create an index for the label `%s` and the property `%s`".formatted(
                     secondLabel,
                     DEFAULT_EMBEDDING_PROP);
             assertThat(e.getMessage()).contains(errMsg);

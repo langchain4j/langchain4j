@@ -12,7 +12,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.lang.String.format;
 import static java.util.AbstractMap.SimpleEntry;
 
 abstract class PgVectorFilterMapper {
@@ -30,28 +29,28 @@ abstract class PgVectorFilterMapper {
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     public String map(Filter filter) {
-        if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
-        } else if (filter instanceof IsNotEqualTo) {
-            return mapNotEqual((IsNotEqualTo) filter);
-        } else if (filter instanceof IsGreaterThan) {
-            return mapGreaterThan((IsGreaterThan) filter);
-        } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
-        } else if (filter instanceof IsLessThan) {
-            return mapLessThan((IsLessThan) filter);
-        } else if (filter instanceof IsLessThanOrEqualTo) {
-            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
-        } else if (filter instanceof IsIn) {
-            return mapIn((IsIn) filter);
-        } else if (filter instanceof IsNotIn) {
-            return mapNotIn((IsNotIn) filter);
-        } else if (filter instanceof And) {
-            return mapAnd((And) filter);
-        } else if (filter instanceof Not) {
-            return mapNot((Not) filter);
-        } else if (filter instanceof Or) {
-            return mapOr((Or) filter);
+        if (filter instanceof IsEqualTo to) {
+            return mapEqual(to);
+        } else if (filter instanceof IsNotEqualTo to) {
+            return mapNotEqual(to);
+        } else if (filter instanceof IsGreaterThan than) {
+            return mapGreaterThan(than);
+        } else if (filter instanceof IsGreaterThanOrEqualTo to) {
+            return mapGreaterThanOrEqual(to);
+        } else if (filter instanceof IsLessThan than) {
+            return mapLessThan(than);
+        } else if (filter instanceof IsLessThanOrEqualTo to) {
+            return mapLessThanOrEqual(to);
+        } else if (filter instanceof IsIn in) {
+            return mapIn(in);
+        } else if (filter instanceof IsNotIn in) {
+            return mapNotIn(in);
+        } else if (filter instanceof And and) {
+            return mapAnd(and);
+        } else if (filter instanceof Not not) {
+            return mapNot(not);
+        } else if (filter instanceof Or or) {
+            return mapOr(or);
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
@@ -59,55 +58,55 @@ abstract class PgVectorFilterMapper {
 
     private String mapEqual(IsEqualTo isEqualTo) {
         String key = formatKey(isEqualTo.key(), isEqualTo.comparisonValue().getClass());
-        return format("%s is not null and %s = %s", key, key,
+        return "%s is not null and %s = %s".formatted(key, key,
                 formatValue(isEqualTo.comparisonValue()));
     }
 
     private String mapNotEqual(IsNotEqualTo isNotEqualTo) {
         String key = formatKey(isNotEqualTo.key(), isNotEqualTo.comparisonValue().getClass());
-        return format("%s is null or %s != %s", key, key,
+        return "%s is null or %s != %s".formatted(key, key,
                 formatValue(isNotEqualTo.comparisonValue()));
     }
 
     private String mapGreaterThan(IsGreaterThan isGreaterThan) {
-        return format("%s > %s", formatKey(isGreaterThan.key(), isGreaterThan.comparisonValue().getClass()),
+        return "%s > %s".formatted(formatKey(isGreaterThan.key(), isGreaterThan.comparisonValue().getClass()),
                 formatValue(isGreaterThan.comparisonValue()));
     }
 
     private String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
-        return format("%s >= %s", formatKey(isGreaterThanOrEqualTo.key(), isGreaterThanOrEqualTo.comparisonValue().getClass()),
+        return "%s >= %s".formatted(formatKey(isGreaterThanOrEqualTo.key(), isGreaterThanOrEqualTo.comparisonValue().getClass()),
                 formatValue(isGreaterThanOrEqualTo.comparisonValue()));
     }
 
     private String mapLessThan(IsLessThan isLessThan) {
-        return format("%s < %s", formatKey(isLessThan.key(), isLessThan.comparisonValue().getClass()),
+        return "%s < %s".formatted(formatKey(isLessThan.key(), isLessThan.comparisonValue().getClass()),
                 formatValue(isLessThan.comparisonValue()));
     }
 
     private String mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
-        return format("%s <= %s", formatKey(isLessThanOrEqualTo.key(), isLessThanOrEqualTo.comparisonValue().getClass()),
+        return "%s <= %s".formatted(formatKey(isLessThanOrEqualTo.key(), isLessThanOrEqualTo.comparisonValue().getClass()),
                 formatValue(isLessThanOrEqualTo.comparisonValue()));
     }
 
     private String mapIn(IsIn isIn) {
-        return format("%s in %s", formatKeyAsString(isIn.key()), formatValuesAsString(isIn.comparisonValues()));
+        return "%s in %s".formatted(formatKeyAsString(isIn.key()), formatValuesAsString(isIn.comparisonValues()));
     }
 
     private String mapNotIn(IsNotIn isNotIn) {
         String key = formatKeyAsString(isNotIn.key());
-        return format("%s is null or %s not in %s", key, key, formatValuesAsString(isNotIn.comparisonValues()));
+        return "%s is null or %s not in %s".formatted(key, key, formatValuesAsString(isNotIn.comparisonValues()));
     }
 
     private String mapAnd(And and) {
-        return format("%s and %s", map(and.left()), map(and.right()));
+        return "%s and %s".formatted(map(and.left()), map(and.right()));
     }
 
     private String mapNot(Not not) {
-        return format("not(%s)", map(not.expression()));
+        return "not(%s)".formatted(map(not.expression()));
     }
 
     private String mapOr(Or or) {
-        return format("(%s or %s)", map(or.left()), map(or.right()));
+        return "(%s or %s)".formatted(map(or.left()), map(or.right()));
     }
 
     abstract String formatKey(String key, Class<?> valueType);
@@ -123,7 +122,7 @@ abstract class PgVectorFilterMapper {
     }
 
     String formatValuesAsString(Collection<?> values) {
-        return "(" + values.stream().map(v -> String.format("'%s'", v))
+        return "(" + values.stream().map(v -> "'%s'".formatted(v))
                 .collect(Collectors.joining(",")) + ")";
     }
 }

@@ -84,8 +84,7 @@ class AzureOpenAiStreamingResponseBuilder {
                         throw new IllegalStateException("Function without an id defined in the tool call");
                     }
                 }
-                if (toolCall instanceof ChatCompletionsFunctionToolCall) {
-                    ChatCompletionsFunctionToolCall functionCall = (ChatCompletionsFunctionToolCall) toolCall;
+                if (toolCall instanceof ChatCompletionsFunctionToolCall functionCall) {
                     if (functionCall.getFunction().getName() != null) {
                         toolExecutionRequestBuilder.nameBuilder.append(functionCall.getFunction().getName());
                     }

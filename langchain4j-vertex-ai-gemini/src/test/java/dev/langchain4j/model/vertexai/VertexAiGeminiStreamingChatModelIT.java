@@ -26,7 +26,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junitpioneer.jupiter.RetryingTest;
 
 import java.io.File;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -715,7 +715,7 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(file).exists();
 
         UserMessage msg = UserMessage.from(
-            AudioContent.from(Paths.get("src/test/resources/fingers.mp4").toUri()),
+            AudioContent.from(Path.of("src/test/resources/fingers.mp4").toUri()),
             TextContent.from("What's in this video?")
         );
 
@@ -741,7 +741,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         UserMessage msg = UserMessage.from(
-            PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+            PdfFileContent.from(Path.of("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
             TextContent.from("Provide a summary of the document")
         );
 

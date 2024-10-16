@@ -17,25 +17,16 @@ class ObjectFactory {
 	}
 
     public static Object object(Value value) {
-		switch (value.getKindCase()) {
-			case INTEGER_VALUE:
-				return value.getIntegerValue();
-			case STRING_VALUE:
-				return value.getStringValue();
-			case DOUBLE_VALUE:
-				return value.getDoubleValue();
-			case BOOL_VALUE:
-				return value.getBoolValue();
-			case LIST_VALUE:
-				return object(value.getListValue());
-			case STRUCT_VALUE:
-				return objectMap(value.getStructValue().getFieldsMap());
-			case NULL_VALUE:
-				return null;
-			case KIND_NOT_SET:
-			default:
-				throw new IllegalArgumentException("Unknown value type: " + value.getKindCase());
-		}
+        return switch (value.getKindCase()) {
+            case INTEGER_VALUE -> value.getIntegerValue();
+            case STRING_VALUE -> value.getStringValue();
+            case DOUBLE_VALUE -> value.getDoubleValue();
+            case BOOL_VALUE -> value.getBoolValue();
+            case LIST_VALUE -> object(value.getListValue());
+            case STRUCT_VALUE -> objectMap(value.getStructValue().getFieldsMap());
+            case NULL_VALUE -> null;
+            default -> throw new IllegalArgumentException("Unknown value type: " + value.getKindCase());
+        };
 	}
 
 	private static Map<String, Object> objectMap(Map<String, Value> payload) {

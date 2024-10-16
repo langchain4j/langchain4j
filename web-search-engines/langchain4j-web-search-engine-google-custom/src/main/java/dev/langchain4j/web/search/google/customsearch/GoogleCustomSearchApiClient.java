@@ -82,8 +82,8 @@ class GoogleCustomSearchApiClient {
     Search searchResults(Search.Queries.Request requestQuery) {
         try {
             Search searchPerformed;
-            if (customSearchRequest instanceof CustomSearchAPI.Cse.Siterestrict.List) {
-                searchPerformed = ((CustomSearchAPI.Cse.Siterestrict.List) customSearchRequest)
+            if (customSearchRequest instanceof CustomSearchAPI.Cse.Siterestrict.List list) {
+                searchPerformed = list
                         .setPrettyPrint(true)
                         .setQ(requestQuery.getSearchTerms())
                         .setNum(maxResultsAllowed(getDefaultNaturalNumber(requestQuery.getCount())))
@@ -118,8 +118,8 @@ class GoogleCustomSearchApiClient {
                         ).longValue())
                         .setFilter(requestQuery.getFilter())
                         .execute();
-            } else if (customSearchRequest instanceof CustomSearchAPI.Cse.List) {
-                searchPerformed = ((CustomSearchAPI.Cse.List) customSearchRequest)
+            } else if (customSearchRequest instanceof CustomSearchAPI.Cse.List list) {
+                searchPerformed = list
                         .setPrettyPrint(true)
                         .setQ(requestQuery.getSearchTerms())
                         .setNum(maxResultsAllowed(getDefaultNaturalNumber(requestQuery.getCount())))

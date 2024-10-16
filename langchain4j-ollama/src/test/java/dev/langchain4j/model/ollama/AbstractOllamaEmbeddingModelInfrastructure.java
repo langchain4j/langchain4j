@@ -5,7 +5,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 
 class AbstractOllamaEmbeddingModelInfrastructure {
 
-    private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OLLAMA_IMAGE, ALL_MINILM_MODEL);
+    private static final String LOCAL_OLLAMA_IMAGE = "tc-%s-%s".formatted(OLLAMA_IMAGE, ALL_MINILM_MODEL);
 
     static LangChain4jOllamaContainer ollama;
 

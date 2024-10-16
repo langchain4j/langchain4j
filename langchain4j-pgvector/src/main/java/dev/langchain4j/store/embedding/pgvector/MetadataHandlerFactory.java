@@ -23,7 +23,7 @@ class MetadataHandlerFactory {
             case COLUMN_PER_KEY:
                 return new ColumnsMetadataHandler(config);
             default:
-                throw new RuntimeException(String.format("Type %s not handled.", config.storageMode()));
+                throw new RuntimeException("Type %s not handled.".formatted(config.storageMode()));
         }
     }
 }

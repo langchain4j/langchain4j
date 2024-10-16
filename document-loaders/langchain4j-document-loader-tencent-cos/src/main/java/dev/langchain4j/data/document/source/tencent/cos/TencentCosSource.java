@@ -7,7 +7,6 @@ import java.io.InputStream;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.lang.String.format;
 
 public class TencentCosSource implements DocumentSource {
 
@@ -30,6 +29,6 @@ public class TencentCosSource implements DocumentSource {
 
     @Override
     public Metadata metadata() {
-        return Metadata.from(SOURCE, format("cos://%s/%s", bucket, key));
+        return Metadata.from(SOURCE, "cos://%s/%s".formatted(bucket, key));
     }
 }

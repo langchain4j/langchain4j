@@ -21,12 +21,13 @@ class EnumOutputParserTest {
         String instruction = sut.formatInstructions();
 
         // Then
-        assertThat(instruction).isEqualTo("\n" +
-                "You must answer strictly with one of these enums:\n" +
-                "SUNNY\n" +
-                "CLOUDY\n" +
-                "RAINY\n" +
-                "SNOWY");
+        assertThat(instruction).isEqualTo("""
+                
+                You must answer strictly with one of these enums:
+                SUNNY
+                CLOUDY
+                RAINY
+                SNOWY""");
     }
 
     @Test

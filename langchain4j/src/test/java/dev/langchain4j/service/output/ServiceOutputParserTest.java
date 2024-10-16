@@ -207,12 +207,13 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(Weather.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\n" +
-                        "You must answer strictly with one of these enums:\n" +
-                        "SUNNY\n" +
-                        "CLOUDY\n" +
-                        "RAINY\n" +
-                        "SNOWY");
+                """
+                
+                You must answer strictly with one of these enums:
+                SUNNY
+                CLOUDY
+                RAINY
+                SNOWY""");
     }
 
     @Test
@@ -220,12 +221,13 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(WeatherWithDescription.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\n" +
-                        "You must answer strictly with one of these enums:\n" +
-                        "SUNNY - A clear day with bright sunlight and few or no clouds\n" +
-                        "CLOUDY - The sky is covered with clouds, often creating a gray and overcast appearance\n" +
-                        "RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions\n" +
-                        "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions");
+                """
+                
+                You must answer strictly with one of these enums:
+                SUNNY - A clear day with bright sunlight and few or no clouds
+                CLOUDY - The sky is covered with clouds, often creating a gray and overcast appearance
+                RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions
+                SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions""");
     }
 
     @Test
@@ -234,11 +236,14 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(Person.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31))\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "birthDate": (type: date string (2023-12-31))
+                }\
+                """);
     }
 
     static class PersonWithFirstNameList {
@@ -252,11 +257,14 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonWithFirstNameList.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: array of string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31))\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: array of string),
+                "lastName": (type: string),
+                "birthDate": (type: date string (2023-12-31))
+                }\
+                """);
     }
 
     static class PersonWithFirstNameArray {
@@ -270,11 +278,14 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonWithFirstNameArray.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: array of string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31))\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: array of string),
+                "lastName": (type: string),
+                "birthDate": (type: date string (2023-12-31))
+                }\
+                """);
     }
 
     static class PersonWithCalendarDate {
@@ -288,11 +299,14 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonWithCalendarDate.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: java.util.Calendar)\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "birthDate": (type: java.util.Calendar)
+                }\
+                """);
     }
 
     static class PersonWithStaticField implements Serializable {
@@ -307,11 +321,14 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonWithStaticField.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31))\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "birthDate": (type: date string (2023-12-31))
+                }\
+                """);
     }
 
     static class Address {
@@ -332,16 +349,19 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonAndAddress.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
-                        "\"streetNumber\": (type: integer),\n" +
-                        "\"street\": (type: string),\n" +
-                        "\"city\": (type: string)\n" +
-                        "})\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "birthDate": (type: date string (2023-12-31)),
+                "address": (type: dev.langchain4j.service.output.ServiceOutputParserTest$Address: {
+                "streetNumber": (type: integer),
+                "street": (type: string),
+                "city": (type: string)
+                })
+                }\
+                """);
     }
 
     static class PersonAndAddressList {
@@ -356,16 +376,19 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonAndAddressList.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
-                        "\"streetNumber\": (type: integer),\n" +
-                        "\"street\": (type: string),\n" +
-                        "\"city\": (type: string)\n" +
-                        "})\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "birthDate": (type: date string (2023-12-31)),
+                "address": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {
+                "streetNumber": (type: integer),
+                "street": (type: string),
+                "city": (type: string)
+                })
+                }\
+                """);
     }
 
     static class PersonAndAddressArray {
@@ -380,16 +403,19 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonAndAddressArray.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
-                        "\"streetNumber\": (type: integer),\n" +
-                        "\"street\": (type: string),\n" +
-                        "\"city\": (type: string)\n" +
-                        "})\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "birthDate": (type: date string (2023-12-31)),
+                "address": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {
+                "streetNumber": (type: integer),
+                "street": (type: string),
+                "city": (type: string)
+                })
+                }\
+                """);
     }
 
     static class PersonWithFinalFields {
@@ -409,11 +435,14 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonWithFinalFields.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31))\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "birthDate": (type: date string (2023-12-31))
+                }\
+                """);
     }
 
     static class PersonWithParents {
@@ -427,15 +456,18 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonWithParents.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents)\n" +
-                        "})\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "parents": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "parents": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents)
+                })
+                }\
+                """);
     }
 
     static class PersonWithParentArray {
@@ -449,15 +481,18 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonWithParentArray.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray)\n" +
-                        "})\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "parents": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "parents": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray)
+                })
+                }\
+                """);
     }
 
     static class PersonWithMotherAndFather {
@@ -472,17 +507,20 @@ class ServiceOutputParserTest {
         String formatInstructions = sut.outputFormatInstructions(PersonWithMotherAndFather.class);
 
         assertThat(formatInstructions).isEqualTo(
-                "\nYou must answer strictly in the following JSON format: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"mother\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"mother\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
-                        "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
-                        "}),\n" +
-                        "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
-                        "}");
+                """
+                
+                You must answer strictly in the following JSON format: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "mother": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather: {
+                "firstName": (type: string),
+                "lastName": (type: string),
+                "mother": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather),
+                "father": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)
+                }),
+                "father": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)
+                }\
+                """);
     }
 
     static class ClassWithNoFields {

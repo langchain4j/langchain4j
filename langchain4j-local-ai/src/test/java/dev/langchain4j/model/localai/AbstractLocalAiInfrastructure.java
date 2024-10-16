@@ -19,7 +19,7 @@ public class AbstractLocalAiInfrastructure {
 
     private static final String LOCAL_IMAGE_NAME = "tc-local-ai";
 
-    private static final String LOCAL_LOCAL_AI_IMAGE = String.format("%s:%s", LOCAL_IMAGE_NAME, DockerImageName.parse(LOCAL_AI_IMAGE).getVersionPart());
+    private static final String LOCAL_LOCAL_AI_IMAGE = "%s:%s".formatted(LOCAL_IMAGE_NAME, DockerImageName.parse(LOCAL_AI_IMAGE).getVersionPart());
 
     private static final List<String[]> CMDS = Arrays.asList(
             new String[]{"curl", "-o", "/build/models/ggml-gpt4all-j", "https://gpt4all.io/models/ggml-gpt4all-j.bin"},

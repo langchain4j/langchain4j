@@ -32,7 +32,7 @@ class OpenSearchEmbeddingStoreAwsIT extends EmbeddingStoreIT {
             .withEnv("LOCALSTACK_HOST", "localhost.localstack.cloud");
 
     EmbeddingStore<TextSegment> embeddingStore = OpenSearchEmbeddingStore.builder()
-            .serverUrl(String.format("testcontainers-domain.%s.opensearch.localhost.localstack.cloud:%s", localstack.getRegion(), localstack.getMappedPort(4566)))
+            .serverUrl("testcontainers-domain.%s.opensearch.localhost.localstack.cloud:%s".formatted(localstack.getRegion(), localstack.getMappedPort(4566)))
             .serviceName("opensearch")
             .region(localstack.getRegion())
             .options(AwsSdk2TransportOptions.builder()

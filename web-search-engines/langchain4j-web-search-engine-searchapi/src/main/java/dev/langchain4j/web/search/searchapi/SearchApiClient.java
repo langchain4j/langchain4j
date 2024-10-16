@@ -65,10 +65,10 @@ class SearchApiClient {
             int code = response.code();
             if (responseBody != null) {
                 String body = responseBody.string();
-                String errorMessage = String.format("status code: %s; body: %s", code, body);
+                String errorMessage = "status code: %s; body: %s".formatted(code, body);
                 return new RuntimeException(errorMessage);
             } else {
-                return new RuntimeException(String.format("status code: %s;", code));
+                return new RuntimeException("status code: %s;".formatted(code));
             }
         }
     }

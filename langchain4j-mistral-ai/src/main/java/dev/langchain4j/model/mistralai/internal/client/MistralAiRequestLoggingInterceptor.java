@@ -39,7 +39,7 @@ class MistralAiRequestLoggingInterceptor implements Interceptor {
             if (headerKey.equals("Authorization")) {
                 headerValue = maskAuthorizationHeaderValue(headerValue);
             }
-            return String.format("[%s: %s]", headerKey, headerValue);
+            return "[%s: %s]".formatted(headerKey, headerValue);
         }).collect(Collectors.joining(", "));
     }
 

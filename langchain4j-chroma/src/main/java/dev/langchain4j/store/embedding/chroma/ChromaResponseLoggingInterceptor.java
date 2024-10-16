@@ -45,7 +45,7 @@ class ChromaResponseLoggingInterceptor implements Interceptor {
             .map(header -> {
                 String headerKey = header.component1();
                 String headerValue = header.component2();
-                return String.format("[%s: %s]", headerKey, headerValue);
+                return "[%s: %s]".formatted(headerKey, headerValue);
             })
             .collect(Collectors.joining(", "));
     }

@@ -114,19 +114,21 @@ class InternalAzureOpenAiHelperTest {
 
         String functionName = "current_time";
         String functionArguments = "{}";
-        String responseJson = "{\n" +
-                "        \"role\": \"ASSISTANT\",\n" +
-                "        \"content\": \"Hello\",\n" +
-                "        \"tool_calls\": [\n" +
-                "          {\n" +
-                "            \"type\": \"function\",\n" +
-                "            \"function\": {\n" +
-                "              \"name\": \"current_time\",\n" +
-                "              \"arguments\": \"{}\"\n" +
-                "            }\n" +
-                "          }\n" +
-                "        ]\n" +
-                "      }";
+        String responseJson = """
+                {
+                        "role": "ASSISTANT",
+                        "content": "Hello",
+                        "tool_calls": [
+                          {
+                            "type": "function",
+                            "function": {
+                              "name": "current_time",
+                              "arguments": "{}"
+                            }
+                          }
+                        ]
+                      }\
+                """;
         ChatResponseMessage responseMessage;
         try (JsonReader jsonReader = DefaultJsonReader.fromString(responseJson, new JsonOptions())) {
             responseMessage = ChatResponseMessage.fromJson(jsonReader);

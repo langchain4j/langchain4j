@@ -9,8 +9,6 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-import static java.lang.String.format;
-
 /**
  * Maps {@link Filter} objects to Azure AI Search filter strings.
  * Use the default structure of the Azure AI Search Index.
@@ -32,9 +30,9 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
     
     
     private String mapLogicalOperator(Filter operator) {
-        if (operator instanceof And) return  format(getLogicalFormat(operator), map(((And) operator).left()), map(((And) operator).right()));
-        if (operator instanceof Or) return format(getLogicalFormat(operator), map(((Or) operator).left()), map(((Or) operator).right()));
-        if (operator instanceof Not) return format(getLogicalFormat(operator), map(((Not) operator).expression()));
+        if (operator instanceof And and) return  getLogicalFormat(operator).formatted(map(and.left()), map(and.right()));
+        if (operator instanceof Or or) return getLogicalFormat(operator).formatted(map(or.left()), map(or.right()));
+        if (operator instanceof Not not) return getLogicalFormat(operator).formatted(map(not.expression()));
         throw new IllegalArgumentException("Unsupported operator: " + operator);
     }
 
@@ -43,14 +41,14 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
     }
 
     private String mapComparisonFilter(Filter filter) {
-        if (filter instanceof IsEqualTo) return mapIsEqualTo((IsEqualTo) filter);
-        if (filter instanceof IsNotEqualTo) return mapIsNotEqualTo((IsNotEqualTo) filter);
-        if (filter instanceof IsGreaterThan) return mapIsGreaterThan((IsGreaterThan) filter);
-        if (filter instanceof IsGreaterThanOrEqualTo) return mapIsGreaterThanOrEqualTo((IsGreaterThanOrEqualTo) filter);
-        if (filter instanceof IsLessThan) return mapIsLessThan((IsLessThan) filter);
-        if (filter instanceof IsLessThanOrEqualTo) return mapIsLessThanOrEqualTo((IsLessThanOrEqualTo) filter);
-        if (filter instanceof IsIn) return mapIsIn((IsIn) filter);
-        if (filter instanceof IsNotIn) return mapIsNotIn((IsNotIn) filter);
+        if (filter instanceof IsEqualTo to) return mapIsEqualTo(to);
+        if (filter instanceof IsNotEqualTo to) return mapIsNotEqualTo(to);
+        if (filter instanceof IsGreaterThan than) return mapIsGreaterThan(than);
+        if (filter instanceof IsGreaterThanOrEqualTo to) return mapIsGreaterThanOrEqualTo(to);
+        if (filter instanceof IsLessThan than) return mapIsLessThan(than);
+        if (filter instanceof IsLessThanOrEqualTo to) return mapIsLessThanOrEqualTo(to);
+        if (filter instanceof IsIn in) return mapIsIn(in);
+        if (filter instanceof IsNotIn in) return mapIsNotIn(in);
         throw new IllegalArgumentException("Unsupported filter: " + filter);
     }
 
@@ -112,6 +110,6 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
     }
 
     private String formatComparisonFilter(String key, String value, String format) {
-        return format("metadata/attributes/any(k: k/key eq '%s' and " + format + ")", key, value);
+        return ("metadata/attributes/any(k: k/key eq '%s' and " + format + ")").formatted(key, value);
     }
 }

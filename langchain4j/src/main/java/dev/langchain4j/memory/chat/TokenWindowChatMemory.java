@@ -106,7 +106,7 @@ public class TokenWindowChatMemory implements ChatMemory {
                     tokenCountOfEvictedMessage, evictedMessage);
             currentTokenCount -= tokenCountOfEvictedMessage;
 
-            if (evictedMessage instanceof AiMessage && ((AiMessage) evictedMessage).hasToolExecutionRequests()) {
+            if (evictedMessage instanceof AiMessage message && message.hasToolExecutionRequests()) {
                 while (messages.size() > messageToEvictIndex
                         && messages.get(messageToEvictIndex) instanceof ToolExecutionResultMessage) {
                     // Some LLMs (e.g. OpenAI) prohibit ToolExecutionResultMessage(s) without corresponding AiMessage,

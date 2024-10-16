@@ -400,8 +400,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             Object value = entry.getValue();
 
             // Metadata does not store null values
-            if (value instanceof Number) {
-                Number number = (Number)value;
+            if (value instanceof Number number) {
                 if (number instanceof Integer)
                     object.put(key, number.intValue());
                 else if (number instanceof Long)
@@ -484,8 +483,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return Unchecked exception to throw from the EmbeddingStore API. Not null.
      */
     private static RuntimeException uncheckSQLException(SQLException sqlException) {
-        return sqlException instanceof BatchUpdateException
-            ? uncheckSQLException((BatchUpdateException) sqlException)
+        return sqlException instanceof BatchUpdateException bue
+            ? uncheckSQLException(bue)
             : new RuntimeException(sqlException);
     }
 

@@ -18,10 +18,10 @@ public class TypeUtils {
             throw new NullPointerException("Type should not be null.");
         }
 
-        if (type instanceof Class<?>) {
-            return (Class<?>) type;
-        } else if (type instanceof ParameterizedType) {
-            return (Class<?>) ((ParameterizedType) type).getRawType();
+        if (type instanceof Class<?> class1) {
+            return class1;
+        } else if (type instanceof ParameterizedType parameterizedType) {
+            return (Class<?>) parameterizedType.getRawType();
         } else {
             throw new IllegalArgumentException("Unable to extract raw class.");
         }
@@ -43,10 +43,10 @@ public class TypeUtils {
         }
 
         Type firstTypeArgument = typeArguments[0];
-        if (firstTypeArgument instanceof Class<?>) {
-            return (Class<?>) firstTypeArgument;
-        } else if (firstTypeArgument instanceof ParameterizedType) {
-            return (Class<?>) ((ParameterizedType) firstTypeArgument).getRawType();
+        if (firstTypeArgument instanceof Class<?> class1) {
+            return class1;
+        } else if (firstTypeArgument instanceof ParameterizedType type) {
+            return (Class<?>) type.getRawType();
         }
 
         return null;
@@ -101,9 +101,7 @@ public class TypeUtils {
     }
 
     private static void validateReturnTypesAreProperlyParametrized(String methodName, Type type, List<Type> typeChain) {
-        if (type instanceof ParameterizedType) {
-            // Recursively check all parametrized types
-            ParameterizedType parameterizedType = (ParameterizedType) type;
+        if (type instanceof ParameterizedType parameterizedType) {
             for (Type actualTypeArgument : parameterizedType.getActualTypeArguments()) {
                 typeChain.add(parameterizedType);
                 validateReturnTypesAreProperlyParametrized(methodName, actualTypeArgument, typeChain);
@@ -116,8 +114,7 @@ public class TypeUtils {
             // Type variable: Result<T> ask(String question)
             typeChain.add(type);
             throw genericNotProperlySpecifiedException(methodName, typeChain);
-        } else if (type instanceof Class<?>) {
-            Class<?> clazz = (Class<?>) type;
+        } else if (type instanceof Class<?> clazz) {
             if (clazz.getTypeParameters().length > 0) {
                 //  Raw type:  Result ask(String question)
                 typeChain.add(type);

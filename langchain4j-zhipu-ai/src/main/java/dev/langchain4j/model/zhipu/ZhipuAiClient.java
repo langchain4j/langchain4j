@@ -246,7 +246,7 @@ public class ZhipuAiClient {
             try (ResponseBody errorBody = retrofitResponse.errorBody()) {
                 if (errorBody != null) {
                     String errorBodyString = errorBody.string();
-                    String errorMessage = String.format("status code: %s; body: %s", code, errorBodyString);
+                    String errorMessage = "status code: %s; body: %s".formatted(code, errorBodyString);
                     log.error("Error response: {}", errorMessage);
                     return new RuntimeException(errorMessage);
                 }

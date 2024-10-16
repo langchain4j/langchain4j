@@ -24,8 +24,8 @@ public class Responses {
         if (this == another) {
             return true;
         } else {
-            return another instanceof Responses
-                    && this.equalTo((Responses)another);
+            return another instanceof Responses r
+                    && this.equalTo(r);
         }
     }
 

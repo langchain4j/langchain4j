@@ -228,12 +228,12 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         Optional<Map.Entry<String, Map>> resGetPart =
                 ((Map<String, Map>) result.getResult().getData()).entrySet().stream().findFirst();
-        if (!resGetPart.isPresent()) {
+        if (resGetPart.isEmpty()) {
             return emptyList();
         }
 
         Optional resItemsPart = resGetPart.get().getValue().entrySet().stream().findFirst();
-        if (!resItemsPart.isPresent()) {
+        if (resItemsPart.isEmpty()) {
             return emptyList();
         }
 

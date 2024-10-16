@@ -79,12 +79,13 @@ class ConversationalRetrievalChainTest {
 
         verify(chatLanguageModel).generate(messagesCaptor.capture());
         UserMessage expectedUserMessage = UserMessage.from(
-                "query\n" +
-                        "\n" +
-                        "Answer using the following information:\n" +
-                        "Segment 1\n" +
-                        "\n" +
-                        "Segment 2");
+                """
+                query
+                
+                Answer using the following information:
+                Segment 1
+                
+                Segment 2""");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
 
         assertThat(chatMemory.messages()).containsExactly(
@@ -157,12 +158,13 @@ class ConversationalRetrievalChainTest {
 
         verify(chatLanguageModel).generate(messagesCaptor.capture());
         UserMessage expectedUserMessage = UserMessage.from(
-                "Answer the following question to the best of your ability: query\n" +
-                        "\n" +
-                        "Base your answer on the following information:\n" +
-                        "Segment 1\n" +
-                        "\n" +
-                        "Segment 2");
+                """
+                Answer the following question to the best of your ability: query
+                
+                Base your answer on the following information:
+                Segment 1
+                
+                Segment 2""");
         assertThat(messagesCaptor.getValue()).containsExactly(expectedUserMessage);
 
         assertThat(chatMemory.messages()).containsExactly(

@@ -23,7 +23,6 @@ import java.util.List;
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.*;
 import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore.*;
 import static io.milvus.grpc.DataType.*;
-import static java.lang.String.format;
 
 class CollectionOperationsExecutor {
 
@@ -139,7 +138,7 @@ class CollectionOperationsExecutor {
         if (response == null) {
             throw new RequestToMilvusFailedException("Request to Milvus DB failed. Response is null");
         } else if (response.getStatus() != R.Status.Success.getCode()) {
-            String message = format("Request to Milvus DB failed. Response status:'%d'.%n", response.getStatus());
+            String message = "Request to Milvus DB failed. Response status:'%d'.%n".formatted(response.getStatus());
             throw new RequestToMilvusFailedException(message, response.getException());
         }
     }

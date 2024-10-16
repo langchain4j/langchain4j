@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 import static dev.langchain4j.data.document.Document.URL;
-import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 import static org.jsoup.internal.StringUtil.in;
 import static org.jsoup.select.NodeTraversor.traverse;
@@ -112,8 +111,8 @@ public class HtmlToTextDocumentTransformer implements DocumentTransformer {
         @Override
         public void head(Node node, int depth) { // hit when the node is first seen
             String name = node.nodeName();
-            if (node instanceof TextNode)
-                textBuilder.append(((TextNode) node).text());
+            if (node instanceof TextNode textNode)
+                textBuilder.append(textNode.text());
             else if (name.equals("li"))
                 textBuilder.append("\n * ");
             else if (name.equals("dt"))
@@ -132,7 +131,7 @@ public class HtmlToTextDocumentTransformer implements DocumentTransformer {
                 if (link.isEmpty() && node.baseUri().isEmpty()) {
                     log.warn("No 'URL' metadata found for document. Link will be empty");
                 }
-                textBuilder.append(format(" <%s>", link));
+                textBuilder.append(" <%s>".formatted(link));
             }
         }
 

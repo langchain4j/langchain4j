@@ -9,7 +9,7 @@ import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 import ai.onnxruntime.OrtSession.Result;
 
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.*;
 
 import static ai.onnxruntime.OnnxTensor.createTensor;
@@ -33,7 +33,7 @@ class OnnxScoringBertCrossEncoder {
                 put("modelMaxLength", String.valueOf(modelMaxLength - 2));
             }};
             this.normalize = normalize;
-            this.tokenizer = HuggingFaceTokenizer.newInstance(Paths.get(pathToTokenizer), tokenizerOptions);
+            this.tokenizer = HuggingFaceTokenizer.newInstance(Path.of(pathToTokenizer), tokenizerOptions);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

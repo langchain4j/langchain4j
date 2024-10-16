@@ -21,29 +21,23 @@ class SchemaMapper {
     static GeminiSchema fromJsonSchemaToGSchema(JsonSchemaElement jsonSchema) {
         GeminiSchema.GeminiSchemaBuilder schemaBuilder = GeminiSchema.builder();
 
-        if (jsonSchema instanceof JsonStringSchema) {
-            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchema;
+        if (jsonSchema instanceof JsonStringSchema jsonStringSchema) {
             schemaBuilder.description(jsonStringSchema.description());
             schemaBuilder.type(GeminiType.STRING);
-        } else if (jsonSchema instanceof JsonBooleanSchema) {
-            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchema;
+        } else if (jsonSchema instanceof JsonBooleanSchema jsonBooleanSchema) {
             schemaBuilder.description(jsonBooleanSchema.description());
             schemaBuilder.type(GeminiType.BOOLEAN);
-        } else if (jsonSchema instanceof JsonNumberSchema) {
-            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchema;
+        } else if (jsonSchema instanceof JsonNumberSchema jsonNumberSchema) {
             schemaBuilder.description(jsonNumberSchema.description());
             schemaBuilder.type(GeminiType.NUMBER);
-        } else if (jsonSchema instanceof JsonIntegerSchema) {
-            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchema;
+        } else if (jsonSchema instanceof JsonIntegerSchema jsonIntegerSchema) {
             schemaBuilder.description(jsonIntegerSchema.description());
             schemaBuilder.type(GeminiType.INTEGER);
-        } else if (jsonSchema instanceof JsonEnumSchema) {
-            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchema;
+        } else if (jsonSchema instanceof JsonEnumSchema jsonEnumSchema) {
             schemaBuilder.description(jsonEnumSchema.description());
             schemaBuilder.type(GeminiType.STRING);
             schemaBuilder.enumeration(jsonEnumSchema.enumValues());
-        } else if (jsonSchema instanceof JsonObjectSchema) {
-            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchema;
+        } else if (jsonSchema instanceof JsonObjectSchema jsonObjectSchema) {
             schemaBuilder.description(jsonObjectSchema.description());
             schemaBuilder.type(GeminiType.OBJECT);
 
@@ -60,8 +54,7 @@ class SchemaMapper {
             if (jsonObjectSchema.required() != null) {
                 schemaBuilder.required(jsonObjectSchema.required());
             }
-        } else if (jsonSchema instanceof JsonArraySchema) {
-            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchema;
+        } else if (jsonSchema instanceof JsonArraySchema jsonArraySchema) {
             schemaBuilder.description(jsonArraySchema.description());
             schemaBuilder.type(GeminiType.ARRAY);
 

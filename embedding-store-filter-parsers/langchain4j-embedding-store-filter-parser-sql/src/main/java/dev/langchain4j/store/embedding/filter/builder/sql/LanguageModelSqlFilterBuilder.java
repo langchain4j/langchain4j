@@ -88,21 +88,22 @@ public class LanguageModelSqlFilterBuilder {
     private static final Logger log = LoggerFactory.getLogger(LanguageModelSqlFilterBuilder.class);
 
     private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "### Instructions:\n" +
-                    "Your task is to convert a question into a SQL query, given a Postgres database schema.\n" +
-                    "Adhere to these rules:\n" +
-                    "- **Deliberately go through the question and database schema word by word** to appropriately answer the question\n" +
-                    "- **Use Table Aliases** to prevent ambiguity. For example, `SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id`.\n" +
-                    "- When creating a ratio, always cast the numerator as float\n" +
-                    "\n" +
-                    "### Input:\n" +
-                    "Generate a SQL query that answers the question `{{query}}`.\n" +
-                    "This query will run on a database whose schema is represented in this string:\n" +
-                    "{{create_table_statement}}\n" +
-                    "\n" +
-                    "### Response:\n" +
-                    "Based on your instructions, here is the SQL query I have generated to answer the question `{{query}}`:\n" +
-                    "```sql"
+            """
+            ### Instructions:
+            Your task is to convert a question into a SQL query, given a Postgres database schema.
+            Adhere to these rules:
+            - **Deliberately go through the question and database schema word by word** to appropriately answer the question
+            - **Use Table Aliases** to prevent ambiguity. For example, `SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id`.
+            - When creating a ratio, always cast the numerator as float
+            
+            ### Input:
+            Generate a SQL query that answers the question `{{query}}`.
+            This query will run on a database whose schema is represented in this string:
+            {{create_table_statement}}
+            
+            ### Response:
+            Based on your instructions, here is the SQL query I have generated to answer the question `{{query}}`:
+            ```sql"""
     );
 
     protected final ChatLanguageModel chatLanguageModel;
@@ -214,17 +215,17 @@ public class LanguageModelSqlFilterBuilder {
 
     protected String format(TableDefinition tableDefinition) {
         StringBuilder createTableStatement = new StringBuilder();
-        createTableStatement.append(String.format("CREATE TABLE %s (\n", tableDefinition.name()));
+        createTableStatement.append("CREATE TABLE %s (\n".formatted(tableDefinition.name()));
         for (ColumnDefinition columnDefinition : tableDefinition.columns()) {
-            createTableStatement.append(String.format("    %s %s,", columnDefinition.name(), columnDefinition.type()));
+            createTableStatement.append("    %s %s,".formatted(columnDefinition.name(), columnDefinition.type()));
             if (!isNullOrBlank(columnDefinition.description())) {
-                createTableStatement.append(String.format(" -- %s", columnDefinition.description()));
+                createTableStatement.append(" -- %s".formatted(columnDefinition.description()));
             }
             createTableStatement.append("\n");
         }
         createTableStatement.append(")");
         if (!isNullOrBlank(tableDefinition.description())) {
-            createTableStatement.append(String.format(" COMMENT='%s'", tableDefinition.description()));
+            createTableStatement.append(" COMMENT='%s'".formatted(tableDefinition.description()));
         }
         createTableStatement.append(";");
         return createTableStatement.toString();

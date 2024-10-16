@@ -67,7 +67,7 @@ public class VertexAiScoringModel implements ScoringModel {
                     .setProject(projectId)
                     .setLocation(location)
                     .setRankingConfig(
-                        String.format("projects/%s/locations/%s/rankingConfigs/default_ranking_config.", projectNumber, location))
+                            "projects/%s/locations/%s/rankingConfigs/default_ranking_config.".formatted(projectNumber, location))
                     .build().getRankingConfig())
                 .setQuery(query)
                 .setIgnoreRecordDetailsInResponse(true)

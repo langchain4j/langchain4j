@@ -55,19 +55,19 @@ class ColumnsMetadataHandler implements MetadataHandler {
         String indexTypeSql = indexType == null ? "" : "USING " + indexType;
         this.indexes.stream().map(String::trim)
                 .forEach(index -> {
-                    String indexSql = String.format("create index if not exists %s_%s on %s %s ( %s )",
+                    String indexSql = "create index if not exists %s_%s on %s %s ( %s )".formatted(
                             table, index, table, indexTypeSql, index);
                     try {
                         statement.executeUpdate(indexSql);
                     } catch (SQLException e) {
-                        throw new RuntimeException(String.format("Cannot create indexes %s: %s", index, e));
+                        throw new RuntimeException("Cannot create indexes %s: %s".formatted(index, e));
                     }
                 });
     }
 
     @Override
     public String insertClause() {
-        return this.columnsName.stream().map(c -> String.format("%s = EXCLUDED.%s", c, c))
+        return this.columnsName.stream().map(c -> "%s = EXCLUDED.%s".formatted(c, c))
                 .collect(Collectors.joining(","));
     }
 

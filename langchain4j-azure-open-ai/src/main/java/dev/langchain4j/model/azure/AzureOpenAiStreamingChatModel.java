@@ -328,8 +328,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     private void handleResponseException(Throwable throwable, StreamingResponseHandler<AiMessage> handler) {
-        if (throwable instanceof HttpResponseException) {
-            HttpResponseException httpResponseException = (HttpResponseException) throwable;
+        if (throwable instanceof HttpResponseException httpResponseException) {
             logger.info("Error generating response, {}", httpResponseException.getValue());
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
             if (exceptionFinishReason == FinishReason.CONTENT_FILTER) {

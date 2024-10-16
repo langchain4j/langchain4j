@@ -40,8 +40,8 @@ public class SQLFilterTest {
                 () -> SQLFilters.create(filter, (key, type) -> ""))
                 .getMessage();
 
-        Collection<?> objects = filter instanceof IsIn
-                ? ((IsIn)filter).comparisonValues()
+        Collection<?> objects = filter instanceof IsIn ii
+                ? ii.comparisonValues()
                 : ((IsNotIn)filter).comparisonValues(); // <-- Need to add a new case if testing a new Filter class
 
         for (Object object : objects) {

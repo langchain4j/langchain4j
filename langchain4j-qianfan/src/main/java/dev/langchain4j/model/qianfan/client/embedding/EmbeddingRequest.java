@@ -32,8 +32,8 @@ public final class EmbeddingRequest {
         if (this == another) {
             return true;
         } else {
-            return another instanceof EmbeddingRequest
-                    && this.equalTo((EmbeddingRequest)another);
+            return another instanceof EmbeddingRequest er
+                    && this.equalTo(er);
         }
     }
 
