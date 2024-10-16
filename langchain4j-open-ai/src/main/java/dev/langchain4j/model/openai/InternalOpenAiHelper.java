@@ -240,7 +240,7 @@ public class InternalOpenAiHelper {
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
                     .properties(toOpenAiProperties(parameters.properties(), strict))
                     .required(parameters.required())
-                    .defs(toOpenAiProperties(parameters.definitions(), strict));
+                    .definitions(toOpenAiProperties(parameters.definitions(), strict));
             if (strict) {
                 builder
                         // when strict, all fields must be required:
@@ -305,7 +305,7 @@ public class InternalOpenAiHelper {
                     .description(jsonObjectSchema.description())
                     .properties(toOpenAiProperties(jsonObjectSchema.properties(), strict))
                     .additionalProperties(strict ? Boolean.FALSE : jsonObjectSchema.additionalProperties())
-                    .defs(toOpenAiProperties(jsonObjectSchema.definitions(), strict));
+                    .definitions(toOpenAiProperties(jsonObjectSchema.definitions(), strict));
             if (jsonObjectSchema.required() != null) {
                 builder.required(jsonObjectSchema.required());
             }
@@ -353,8 +353,8 @@ public class InternalOpenAiHelper {
                     .build();
         } else if (jsonSchemaElement instanceof JsonReferenceSchema) {
             JsonReferenceSchema jsonReferenceSchema = (JsonReferenceSchema) jsonSchemaElement;
-            return dev.ai4j.openai4j.chat.JsonRefSchema.builder()
-                    .ref("#/$defs/" + jsonReferenceSchema.reference())
+            return dev.ai4j.openai4j.chat.JsonReferenceSchema.builder()
+                    .reference("#/$defs/" + jsonReferenceSchema.reference())
                     .build();
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
