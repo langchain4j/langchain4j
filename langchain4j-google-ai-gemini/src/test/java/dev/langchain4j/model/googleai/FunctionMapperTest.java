@@ -1,6 +1,9 @@
 package dev.langchain4j.model.googleai;
 
-import dev.langchain4j.agent.tool.*;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.Test;
 
@@ -8,7 +11,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class FunctionMapperTest {
@@ -39,8 +45,8 @@ public class FunctionMapperTest {
     static class IssTool {
         @Tool("Get the distance between the user and the ISS.")
         int distanceBetween(
-            @P("user coordinates") Coordinates userCoordinates,
-            @P("ISS coordinates") Coordinates issCoordinates
+                @P("user coordinates") Coordinates userCoordinates,
+                @P("ISS coordinates") Coordinates issCoordinates
         ) {
             return 3456;
         }
@@ -54,11 +60,9 @@ public class FunctionMapperTest {
 
         // then
         assertThat(toolSpecifications).hasSize(1);
-        assertThat(toolSpecifications.get(0).name()).isEqualTo("distanceBetween");
-        assertThat(toolSpecifications.get(0).description()).isEqualTo("Get the distance between the user and the ISS.");
-        assertThat(toolSpecifications.get(0).parameters().type()).isEqualTo("object");
-        assertThat(toolSpecifications.get(0).parameters().properties()).hasSize(2);
-        assertThat(toolSpecifications.get(0).parameters().properties().keySet()).containsAll(Arrays.asList("userCoordinates", "issCoordinates"));
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("distanceBetween");
+        assertThat(toolSpecification.description()).isEqualTo("Get the distance between the user and the ISS.");
 
         // when
         GeminiTool geminiTool = FunctionMapper.fromToolSepcsToGTool(toolSpecifications, false);
@@ -219,10 +223,10 @@ public class FunctionMapperTest {
     void testArray() {
         // given
         ToolSpecification spec = ToolSpecification.builder()
-            .name("toolName")
-            .description("tool description")
-            .addParameter("arrayParameter", ARRAY, items(STRING), description("an array"))
-            .build();
+                .name("toolName")
+                .description("tool description")
+                .addParameter("arrayParameter", ARRAY, items(STRING), description("an array"))
+                .build();
 
         System.out.println("\nspec = " + spec);
 
@@ -252,7 +256,7 @@ public class FunctionMapperTest {
 
     private static String withoutNullValues(String toString) {
         return toString
-            .replaceAll("(, )?(?<=(, |\\())[^\\s(]+?=null(?:, )?", " ")
-            .replaceFirst(", \\)$", ")");
+                .replaceAll("(, )?(?<=(, |\\())[^\\s(]+?=null(?:, )?", " ")
+                .replaceFirst(", \\)$", ")");
     }
 }

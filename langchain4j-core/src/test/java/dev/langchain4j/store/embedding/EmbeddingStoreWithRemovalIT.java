@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -150,14 +151,6 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
         // then
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).isEmpty());
-    }
-
-    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
-        Awaitility.await()
-                .atMost(Duration.ofSeconds(60))
-                .pollDelay(Duration.ofSeconds(0))
-                .pollInterval(Duration.ofMillis(300))
-                .untilAsserted(assertion);
     }
 
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {
