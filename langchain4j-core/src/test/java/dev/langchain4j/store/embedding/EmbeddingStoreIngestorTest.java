@@ -220,11 +220,13 @@ class EmbeddingStoreIngestorTest {
         Document document = Document.from(text);
 
         TextSegment expectedTextSegment = TextSegment.from(text, Metadata.from("index", "0"));
-        Embedding expectedEmbedding = Embedding.from(new float[]{1});
+        List<Embedding> expectedEmbedding = singletonList(Embedding.from(new float[]{1}));
+        Metadata metadata = Metadata.from("dummyKey", "dummyValue");
+        TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
 
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
         when(embeddingModel.embedAll(singletonList(expectedTextSegment)))
-                .thenReturn(Response.from(singletonList(expectedEmbedding)));
+                .thenReturn(Response.from(expectedEmbedding, tokenUsage, FinishReason.STOP, metadata.toMap()));
 
         EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
 
@@ -234,10 +236,14 @@ class EmbeddingStoreIngestorTest {
                 .build();
 
         // when
-        ingestor.ingest(document);
+        IngestionResult ingestionResult = ingestor.ingest(document);
 
         // then
-        verify(embeddingStore).addAll(singletonList(expectedEmbedding), singletonList(expectedTextSegment));
+        verify(embeddingStore).addAll(expectedEmbedding, singletonList(expectedTextSegment));
         verifyNoMoreInteractions(embeddingStore);
+
+        assertThat(ingestionResult.content()).isEqualTo(expectedEmbedding);
+        assertThat(ingestionResult.tokenUsage()).isEqualTo(tokenUsage);
+        assertThat(ingestionResult.metadata()).isEqualTo(metadata.toMap());
     }
 }
