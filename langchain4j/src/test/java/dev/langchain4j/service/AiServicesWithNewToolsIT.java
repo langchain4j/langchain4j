@@ -500,10 +500,10 @@ public abstract class AiServicesWithNewToolsIT {
             assistant.chat(text);
 
             // then
-            verify(tool).process(new HashMap<String, Integer>() {{
-                put("Klaus", 42);
-                put("Francine", 47);
-            }});
+            verify(tool).process(Map.of(
+                    "Klaus", 42,
+                    "Francine", 47
+            ));
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
