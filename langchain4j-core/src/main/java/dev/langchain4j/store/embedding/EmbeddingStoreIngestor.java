@@ -197,15 +197,14 @@ public class EmbeddingStoreIngestor {
         // TODO handle failures, parallelize
         log.debug("Starting to embed {} text segments", segments.size());
         Response<List<Embedding>> embeddingsResponse = embeddingModel.embedAll(segments);
-        List<Embedding> embeddings = embeddingsResponse.content();
         log.debug("Finished embedding {} text segments", segments.size());
 
         // TODO handle failures, parallelize
         log.debug("Starting to store {} text segments into the embedding store", segments.size());
-        embeddingStore.addAll(embeddings, segments);
+        embeddingStore.addAll(embeddingsResponse.content(), segments);
         log.debug("Finished storing {} text segments into the embedding store", segments.size());
 
-        return new IngestionResult(embeddings, embeddingsResponse.tokenUsage(), embeddingsResponse.metadata());
+        return new IngestionResult(embeddingsResponse.tokenUsage());
     }
 
     /**

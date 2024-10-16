@@ -8,12 +8,9 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
@@ -76,49 +73,37 @@ class EmbeddingStoreIngestorTest {
                 textSegment("Transformed sixth sentence.")));
 
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
-        Metadata metadata = Metadata.from("dummyKey", "dummyValue");
-        List<Embedding> firstEmbeddings =  singletonList(Embedding.from(new float[]{1}));
         TokenUsage firstTokenUsage = new TokenUsage(1, 2, 3);
-
-        List<Embedding> secondEmbeddings =  asList(
-                Embedding.from(new float[]{2}),
-                Embedding.from(new float[]{3}),
-                Embedding.from(new float[]{4})
-        );
         TokenUsage secondTokenUsage = new TokenUsage(3, 5, 8);
-
-        List<Embedding> thirdEmbeddings =  asList(
-                Embedding.from(new float[]{5}),
-                Embedding.from(new float[]{6})
-        );
         TokenUsage thirdTokenUsage = new TokenUsage(8, 10, 12);
 
         when(embeddingModel.embedAll(singletonList(
                 textSegment("Transformed first sentence.")
         ))).thenReturn(Response.from(
-                firstEmbeddings,
-                firstTokenUsage,
-                FinishReason.STOP,
-                metadata.toMap()
+                singletonList(Embedding.from(new float[]{1})),
+                firstTokenUsage
         ));
         when(embeddingModel.embedAll(asList(
                 textSegment("Transformed second sentence."),
                 textSegment("Transformed third sentence."),
                 textSegment("Transformed fourth sentence.")
         ))).thenReturn(Response.from(
-                secondEmbeddings,
-                secondTokenUsage,
-                FinishReason.STOP,
-                metadata.toMap()
+                asList(
+                        Embedding.from(new float[]{2}),
+                        Embedding.from(new float[]{3}),
+                        Embedding.from(new float[]{4})
+                ),
+                secondTokenUsage
         ));
         when(embeddingModel.embedAll(asList(
                 textSegment("Transformed fifth sentence."),
                 textSegment("Transformed sixth sentence.")
         ))).thenReturn(Response.from(
-                thirdEmbeddings,
-                thirdTokenUsage,
-                FinishReason.STOP,
-                metadata.toMap()
+                asList(
+                        Embedding.from(new float[]{5}),
+                        Embedding.from(new float[]{6})
+                ),
+                thirdTokenUsage
         ));
 
         @SuppressWarnings("unchecked")
@@ -138,17 +123,9 @@ class EmbeddingStoreIngestorTest {
         IngestionResult ingestionResult3 = ingestor.ingest(asList(fourthDocument, fifthDocument));
 
         // Assertions.
-        assertThat(ingestionResult1.content()).isEqualTo(firstEmbeddings);
         assertThat(ingestionResult1.tokenUsage()).isEqualTo(firstTokenUsage);
-        assertThat(ingestionResult1.metadata()).isEqualTo(metadata.toMap());
-
-        assertThat(ingestionResult2.content()).isEqualTo(secondEmbeddings);
         assertThat(ingestionResult2.tokenUsage()).isEqualTo(secondTokenUsage);
-        assertThat(ingestionResult2.metadata()).isEqualTo(metadata.toMap());
-
-        assertThat(ingestionResult3.content()).isEqualTo(thirdEmbeddings);
         assertThat(ingestionResult3.tokenUsage()).isEqualTo(thirdTokenUsage);
-        assertThat(ingestionResult3.metadata()).isEqualTo(metadata.toMap());
 
         verify(documentTransformer).transformAll(singletonList(firstDocument));
         verify(documentTransformer).transformAll(asList(secondDocument, thirdDocument));
@@ -220,13 +197,11 @@ class EmbeddingStoreIngestorTest {
         Document document = Document.from(text);
 
         TextSegment expectedTextSegment = TextSegment.from(text, Metadata.from("index", "0"));
-        List<Embedding> expectedEmbedding = singletonList(Embedding.from(new float[]{1}));
-        Metadata metadata = Metadata.from("dummyKey", "dummyValue");
         TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
 
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
         when(embeddingModel.embedAll(singletonList(expectedTextSegment)))
-                .thenReturn(Response.from(expectedEmbedding, tokenUsage, FinishReason.STOP, metadata.toMap()));
+                .thenReturn(Response.from(singletonList(Embedding.from(new float[]{1})), tokenUsage));
 
         EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
 
@@ -239,11 +214,9 @@ class EmbeddingStoreIngestorTest {
         IngestionResult ingestionResult = ingestor.ingest(document);
 
         // then
-        verify(embeddingStore).addAll(expectedEmbedding, singletonList(expectedTextSegment));
+        verify(embeddingStore).addAll(singletonList(Embedding.from(new float[]{1})), singletonList(expectedTextSegment));
         verifyNoMoreInteractions(embeddingStore);
 
-        assertThat(ingestionResult.content()).isEqualTo(expectedEmbedding);
         assertThat(ingestionResult.tokenUsage()).isEqualTo(tokenUsage);
-        assertThat(ingestionResult.metadata()).isEqualTo(metadata.toMap());
     }
 }
