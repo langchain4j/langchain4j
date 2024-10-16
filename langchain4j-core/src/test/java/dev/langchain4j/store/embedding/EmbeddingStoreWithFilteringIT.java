@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.Filter.and;
 import static dev.langchain4j.store.embedding.filter.Filter.not;
 import static dev.langchain4j.store.embedding.filter.Filter.or;
