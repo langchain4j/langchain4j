@@ -148,7 +148,7 @@ ToolSpecification toolSpecification = ToolSpecification.builder()
     .parameters(JsonObjectSchema.builder()
         .addStringProperty("city", s -> s.description("The city for which the weather forecast should be returned"))
         .addEnumProperty("temperatureUnit", TemperatureUnit.class) // enum TemperatureUnit { CELSIUS, FAHRENHEIT }
-        .required("city")
+        .required("city") // the required properties should be specified explicitly
         .build())
     .build();
 ```
