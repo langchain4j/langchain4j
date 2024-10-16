@@ -290,6 +290,9 @@ This means that the LLM will have to produce a value for such a parameter.
 A parameter can be made optional by annotating it with `@P(required = false)`.
 Declaring fields of POJO parameters as optional is not supported yet.
 
+Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
+are currently supported only by OpenAI.
+
 ### Tool Method Return Types
 Methods annotated with `@Tool` can return any type, including `void`.
 If the method has a `void` return type, "Success" string is sent to the LLM if the method returns successfully.
