@@ -1,8 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -22,11 +20,12 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
+import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
-import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -35,7 +34,6 @@ import java.util.function.Function;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
@@ -304,6 +302,9 @@ public abstract class AiServices<T> {
      * @see Tool
      */
     public AiServices<T> tools(Object... objectsWithTools) {
+        if (context.toolProvider != null) {
+            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
+        }
         return tools(asList(objectsWithTools));
     }
 
@@ -344,6 +345,20 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures the tool provider that the LLM can use
+     *
+     * @param toolProvider Decides which tools the LLM could use to handle the request
+     * @return builder
+     */
+    public AiServices<T> toolProvider(ToolProvider toolProvider) {
+        if (context.toolSpecifications != null | context.toolExecutors != null) {
+            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
+        }
+        context.toolProvider = toolProvider;
+        return this;
+    }
+
+    /**
      * Configures the tools that the LLM can use.
      *
      * @param tools A map of {@link ToolSpecification} to {@link ToolExecutor} entries.
@@ -353,7 +368,9 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools) {
-
+        if (context.toolProvider != null) {
+            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
+        }
         if (context.toolSpecifications == null) {
             context.toolSpecifications = new ArrayList<>();
         }
@@ -442,14 +459,6 @@ public abstract class AiServices<T> {
     protected void performBasicValidation() {
         if (context.chatModel == null && context.streamingChatModel == null) {
             throw illegalConfiguration("Please specify either chatLanguageModel or streamingChatLanguageModel");
-        }
-    }
-
-    protected void validateResultReturnType(Method method) {
-        AnnotatedType annotatedType = method.getAnnotatedReturnType();
-        if (!(annotatedType.getType() instanceof ParameterizedType)) {
-            throw illegalArgument("The return type 'Result' of the method '%s' must be parameterized with a type, " +
-                    "for example: Result<String> or Result<MyCustomPojo>", method.getName());
         }
     }
 

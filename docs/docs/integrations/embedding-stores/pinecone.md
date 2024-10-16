@@ -1,5 +1,5 @@
 ---
-sidebar_position: 14
+sidebar_position: 15
 ---
 
 # Pinecone
@@ -13,7 +13,7 @@ https://www.pinecone.io/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-pinecone</artifactId>
-    <version>0.32.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 

@@ -9,17 +9,13 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static java.util.Collections.*;
+import static org.assertj.core.api.Assertions.*;
 
 @SuppressWarnings({"ObviousNullCheck", "ConstantValue"})
 class UtilsTest {
@@ -100,7 +96,7 @@ class UtilsTest {
 
     @Test
     public void test_repeat() {
-        assertThat(Utils.repeat("foo", 0)).isEqualTo("");
+        assertThat(Utils.repeat("foo", 0)).isEmpty();
         assertThat(Utils.repeat("foo", 1)).isEqualTo("foo");
         assertThat(Utils.repeat("foo", 2)).isEqualTo("foofoo");
         assertThat(Utils.repeat("foo", 3)).isEqualTo("foofoofoo");
@@ -215,10 +211,26 @@ class UtilsTest {
     }
 
     @Test
-    void test_copyIfNotNull() {
-        assertThat(Utils.copyIfNotNull(null)).isNull();
+    void test_copyIfNotNull_List() {
+        assertThat(Utils.copyIfNotNull((List<?>) null)).isNull();
         assertThat(Utils.copyIfNotNull(emptyList())).isEmpty();
         assertThat(Utils.copyIfNotNull(singletonList("one"))).containsExactly("one");
         assertThat(Utils.copyIfNotNull(asList("one", "two"))).containsExactly("one", "two");
+    }
+
+    @Test
+    void test_copyIfNotNull_Map() {
+        assertThat(Utils.copyIfNotNull((Map<?, ?>)null)).isNull();
+        assertThat(Utils.copyIfNotNull(emptyMap())).isEmpty();
+        assertThat(Utils.copyIfNotNull(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void test_ensureTrailingForwardSlash() {
+        assertThat(Utils.ensureTrailingForwardSlash("https://example.com")).isEqualTo("https://example.com/");
+        assertThat(Utils.ensureTrailingForwardSlash("https://example.com/")).isEqualTo("https://example.com/");
+        assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a")).isEqualTo("https://example.com/a/");
+        assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a/")).isEqualTo("https://example.com/a/");
+        assertThat(Utils.ensureTrailingForwardSlash("https://example.com/a/b")).isEqualTo("https://example.com/a/b/");
     }
 }

@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
+import com.google.cloud.vertexai.api.Type;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
@@ -13,15 +14,18 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
+import java.io.File;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -36,6 +40,7 @@ import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
@@ -58,6 +63,14 @@ class VertexAiGeminiChatModelIT {
             .logResponses(true)
             .build();
 
+    ChatLanguageModel imageModel = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(false) // images are huge in logs
+            .logResponses(true)
+            .build();
+
     @Test
     void should_generate_response() {
 
@@ -66,7 +79,6 @@ class VertexAiGeminiChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).contains("Berlin");
@@ -156,7 +168,6 @@ class VertexAiGeminiChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).isNotBlank();
@@ -184,7 +195,6 @@ class VertexAiGeminiChatModelIT {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).contains("Berlin");
@@ -200,7 +210,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -216,7 +226,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -233,7 +243,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -250,7 +260,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -269,7 +279,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -290,7 +300,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -310,7 +320,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -339,7 +349,6 @@ class VertexAiGeminiChatModelIT {
         List<ChatMessage> allMessages = new ArrayList<>();
 
         UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
-        System.out.println("Question: " + weatherQuestion.text());
         allMessages.add(weatherQuestion);
 
         // when
@@ -362,11 +371,10 @@ class VertexAiGeminiChatModelIT {
         Response<AiMessage> weatherResponse = model.generate(allMessages);
 
         // then
-        System.out.println("Answer: " + weatherResponse.content().text());
         assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
     }
 
-    @Test
+    @RetryingTest(5)
     void should_handle_parallel_function_calls() {
         // given
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
@@ -389,25 +397,20 @@ class VertexAiGeminiChatModelIT {
         List<ChatMessage> allMessages = new ArrayList<>();
 
         UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789?");
-        System.out.println("Question: " + inventoryQuestion.text());
         allMessages.add(inventoryQuestion);
 
         // when
         Response<AiMessage> messageResponse = model.generate(allMessages, stockInventoryToolSpec);
 
-        System.out.println("inventory response = " + messageResponse.content().text());
-
         // then
         assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
 
         List<ToolExecutionRequest> executionRequests = messageResponse.content().toolExecutionRequests();
-        assertThat(executionRequests.size()).isEqualTo(2); // ie. parallel function execution requests
+        assertThat(executionRequests).hasSize(2); // ie. parallel function execution requests
 
         String inventoryStock = executionRequests.stream()
             .map(ToolExecutionRequest::arguments)
             .collect(Collectors.joining(","));
-
-        System.out.println("inventoryStock = " + inventoryStock);
 
         assertThat(inventoryStock).containsIgnoringCase("ABC123");
         assertThat(inventoryStock).containsIgnoringCase("XYZ789");
@@ -421,8 +424,6 @@ class VertexAiGeminiChatModelIT {
             "{\"product_id\":\"XYZ789\", \"stock\": 5}"));
 
         messageResponse = model.generate(allMessages, stockInventoryToolSpec);
-
-        System.out.println("Final response = " + messageResponse.content().text());
 
         // then
         String text = messageResponse.content().text();
@@ -554,7 +555,6 @@ class VertexAiGeminiChatModelIT {
 
         @Tool("Get the status of a payment transaction identified by its transaction ID.")
         public String paymentStatus(@P("The ID of the payment transaction") String transactionId) {
-            System.out.println("PAYMENT STATUS FOR TRANSACTION " + transactionId + " CALLED");
             return "Transaction " + transactionId + " is " + DATASET.get(new Transaction(transactionId));
         }
     }
@@ -588,7 +588,6 @@ class VertexAiGeminiChatModelIT {
 
         // when
         String response = assistant.chat("What is the status of my payment transactions 001 and 002?");
-        System.out.println(response);
 
         // then
         assertThat(response).contains("001");
@@ -600,7 +599,6 @@ class VertexAiGeminiChatModelIT {
 
         // when
         response = assistant.chat("What is the status of transactions 003?");
-        System.out.println(response);
 
         // then
         assertThat(response).doesNotContain("001");
@@ -627,7 +625,6 @@ class VertexAiGeminiChatModelIT {
             "Why is the sky blue?");
 
         // then
-        System.out.println("Google Search powered response = " + resp);
         assertThat(resp).contains("scatter");
     }
 
@@ -656,7 +653,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
-    @Test
+    @RetryingTest(10)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
@@ -670,13 +667,17 @@ class VertexAiGeminiChatModelIT {
             .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-1.5-flash-001")
             .safetySettings(safetySettings)
+            .temperature(0.0f)
+            .topP(0.0f)
+            .topK(1)
+            .seed(1234)
             .logRequests(true)
             .logResponses(true)
             .build();
 
         // when
         Exception exception = assertThrows(RuntimeException.class, () -> {
-            model.generate("You're a dumb bastard!!!");
+            model.generate("You're a dumb fucking bastard!!! I'm gonna kill you!");
         });
 
         // then
@@ -717,7 +718,6 @@ class VertexAiGeminiChatModelIT {
         messages.add(UserMessage.from("Anna is a 23 year old artist from New York City. She's got a dog and a cat."));
 
         Response<AiMessage> response = model.generate(messages);
-        System.out.println("response = " + response.content().text());
 
         // then
         Artist artist = new Gson().fromJson(response.content().text(), Artist.class);
@@ -783,5 +783,154 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(answer.content().hasToolExecutionRequests()).isEqualTo(false);
+    }
+
+    @Test
+    void should_accept_audio_input() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            AudioContent.from("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3"),
+            TextContent.from("Give a summary of the audio")
+        );
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(msg));
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("Pixel");
+    }
+
+    @Test
+    void should_accept_video_input() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(false) // videos are huge in logs
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            AudioContent.from("gs://cloud-samples-data/video/animals.mp4"),
+            TextContent.from("What is in this video?")
+        );
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(msg));
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("animal");
+    }
+
+    @Test
+    void should_accept_local_file() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(false) // videos are huge in logs
+            .logResponses(true)
+            .build();
+
+        // when
+        File file = new File("src/test/resources/fingers.mp4");
+        assertThat(file).exists();
+
+        UserMessage msg = UserMessage.from(
+            AudioContent.from(Paths.get("src/test/resources/fingers.mp4").toUri()),
+            TextContent.from("What's in this video?")
+        );
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(msg));
+
+        // then
+        assertThat(response.content().text()).containsAnyOf("finger", "hand");
+    }
+
+    @Test
+    void should_accept_PDF_documents() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+            TextContent.from("Provide a summary of the document")
+        );
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(msg));
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("Gemini");
+    }
+
+    @Test
+    void should_support_enum_structured_output() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .responseSchema(Schema.newBuilder()
+                .setType(Type.STRING)
+                .addAllEnum(Arrays.asList("POSITIVE", "NEUTRAL", "NEGATIVE"))
+                .build())
+            .build();
+
+
+        // when
+        String instruction = "What is the sentiment expressed in the following sentence: ";
+        String response = model.generate(
+            instruction + "This is super exciting news, congratulations!"
+        );
+
+        // then
+        assertThat(response).isEqualTo("POSITIVE");
+
+        // when
+        response = model.generate(
+            instruction + "The sky is blue."
+        );
+
+        // then
+        assertThat(response).isEqualTo("NEUTRAL");
+
+        // when
+        response = model.generate(
+            instruction + "This is the worst movie I've ever watched! Boring!"
+        );
+
+        // then
+        assertThat(response).isEqualTo("NEGATIVE");
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

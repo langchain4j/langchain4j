@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.milvus;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -36,6 +36,10 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
             .password(System.getenv("MILVUS_PASSWORD"))
             .dimension(384)
             .retrieveEmbeddingsOnSearch(true)
+            .idFieldName("id_field")
+            .textFieldName("text_field")
+            .metadataFieldName("metadata_field")
+            .vectorFieldName("vector_field")
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
@@ -65,6 +69,10 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .consistencyLevel(STRONG)
                 .dimension(384)
                 .retrieveEmbeddingsOnSearch(false)
+                .idFieldName("id_field")
+                .textFieldName("text_field")
+                .metadataFieldName("metadata_field")
+                .vectorFieldName("vector_field")
                 .build();
 
         Embedding firstEmbedding = embeddingModel.embed("hello").content();

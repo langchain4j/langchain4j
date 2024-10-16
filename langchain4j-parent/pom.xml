@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.33.0-SNAPSHOT</version>
+    <version>0.36.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -14,27 +14,26 @@
     <url>https://github.com/langchain4j/langchain4j</url>
 
     <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <java.version>17</java.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
-        <openai4j.version>0.17.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.10</azure-ai-openai.version>
-        <azure-ai-search.version>11.6.6</azure-ai-search.version>
-        <azure.storage-blob.version>12.26.1</azure.storage-blob.version>
-        <azure.storage-common.version>12.25.1</azure.storage-common.version>
-        <azure.identity.version>1.13.0</azure.identity.version>
+        <openai4j.version>0.23.0</openai4j.version>
+        <azure-ai-openai.version>1.0.0-beta.11</azure-ai-openai.version>
+        <azure-ai-search.version>11.7.2</azure-ai-search.version>
+        <azure.storage-blob.version>12.28.1</azure.storage-blob.version>
+        <azure.storage-common.version>12.27.1</azure.storage-common.version>
+        <azure.identity.version>1.14.0</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
-        <jtokkit.version>1.0.0</jtokkit.version>
+        <jtokkit.version>1.1.0</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
-        <jsoup.veresion>1.16.1</jsoup.veresion>
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
-        <junit.version>5.10.0</junit.version>
-        <testcontainers.version>1.19.7</testcontainers.version>
+        <junit.version>5.11.2</junit.version>
+        <testcontainers.version>1.20.2</testcontainers.version>
         <bytebuddy.version>1.14.10</bytebuddy.version>
-        <mockito.version>4.11.0</mockito.version>
+        <mockito.version>5.14.1</mockito.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
         <httpclient5.version>5.2.1</httpclient5.version>
@@ -42,13 +41,13 @@
         <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
         <aws-opensearch.version>2.20.161</aws-opensearch.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
-        <elastic.version>8.9.0</elastic.version>
+        <elastic.version>8.15.2</elastic.version>
         <jackson.version>2.16.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
-        <milvus-sdk-java.version>2.3.6</milvus-sdk-java.version>
-        <netty.version>4.1.104.Final</netty.version>
+        <milvus-sdk-java.version>2.3.9</milvus-sdk-java.version>
+        <netty.version>4.1.111.Final</netty.version>
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
@@ -56,7 +55,6 @@
 
     <dependencyManagement>
         <dependencies>
-
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j</artifactId>
@@ -65,6 +63,14 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j</artifactId>
+                <version>${project.version}</version>
+                <classifier>tests</classifier>
+                <type>test-jar</type>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -72,6 +78,14 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-core</artifactId>
+                <version>${project.version}</version>
+                <classifier>tests</classifier>
+                <type>test-jar</type>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j</artifactId>
                 <version>${project.version}</version>
                 <classifier>tests</classifier>
                 <type>test-jar</type>
@@ -144,6 +158,12 @@
             </dependency>
 
             <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-transformer-jsoup</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>com.squareup.retrofit2</groupId>
                 <artifactId>retrofit</artifactId>
                 <version>${retrofit.version}</version>
@@ -161,14 +181,49 @@
                 <version>${retrofit.version}</version>
             </dependency>
 
+            <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (START) -->
+
+            <!-- To resolve version conflicts inside the 'okhttp' library, we are excluding the transitive -->
+            <!-- dependencies causing version divergence errors and including them explicitly. This ensures a consistent -->
+            <!-- version to be used in the project and satisfies Maven Enforcer requirements to avoid version divergence -->
+            <!-- in the project. -->
+
+            <!-- Please check whether version conflicts are gone after upgrading  this library as this will make it -->
+            <!-- possible to remove these exclusions and explicit inclusions below. -->
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp</artifactId>
                 <version>${okhttp.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-stdlib-jdk8</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
+
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp-sse</artifactId>
+                <version>${okhttp.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-stdlib-jdk8</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-stdlib-jdk8</artifactId>
+                <version>1.9.10</version>
+            </dependency>
+            <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (END)  -->
+
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>mockwebserver</artifactId>
                 <version>${okhttp.version}</version>
             </dependency>
 
@@ -182,12 +237,6 @@
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.jsoup</groupId>
-                <artifactId>jsoup</artifactId>
-                <version>${jsoup.veresion}</version>
             </dependency>
 
             <dependency>
@@ -390,9 +439,7 @@
                 <artifactId>logback-classic</artifactId>
                 <version>1.3.14</version>
             </dependency>
-
         </dependencies>
-
     </dependencyManagement>
 
     <build>
@@ -416,7 +463,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.12.1</version>
+                    <version>3.13.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -433,9 +480,44 @@
                     <artifactId>maven-clean-plugin</artifactId>
                     <version>3.3.2</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>3.8.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
             </plugins>
         </pluginManagement>
+
         <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>detect-unused-dependencies</id>
+                        <goals>
+                            <goal>analyze-only</goal>
+                        </goals>
+                        <configuration>
+                            <ignoredUsedUndeclaredDependencies>true</ignoredUsedUndeclaredDependencies>
+                            <failOnWarning>false</failOnWarning><!-- todo: fix dependencies and set to true -->
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>analyze-all</id>
+                        <goals>
+                            <goal>analyze-only</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -495,6 +577,30 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce</id>
+                        <configuration>
+                            <rules>
+                                <banDuplicatePomDependencyVersions/>
+                                <dependencyConvergence/>
+                                <requireMavenVersion>
+                                    <version>3.8</version>
+                                </requireMavenVersion>
+                                <!-- TODO: Add requireUpperBoundDeps -->
+                            </rules>
+                        </configuration>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 
@@ -544,15 +650,6 @@
     </repositories>
 
     <profiles>
-        <profile>
-            <id>java11+</id>
-            <activation>
-                <jdk>[11,)</jdk>
-            </activation>
-            <properties>
-                <maven.compiler.release>8</maven.compiler.release>
-            </properties>
-        </profile>
         <profile>
             <id>sign</id>
             <activation>
@@ -621,6 +718,10 @@
                                 <license>
                                     <name>Eclipse Public License v2.0</name>
                                     <url>https?://www.eclipse.org/legal/epl-v20\.html</url>
+                                </license>
+                                <license>
+                                    <name>Eclipse Public License 2.0</name>
+                                    <url>https://projects.eclipse.org/license/epl-2.0</url>
                                 </license>
                                 <!-- for tencent-cos document loader -->
                                 <license>

@@ -8,6 +8,7 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -68,6 +69,37 @@ class CohereEmbeddingModelIT {
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(2);
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(2);
+
+        assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    public void should_embed_any_number_of_segments()
+    {
+        EmbeddingModel model = CohereEmbeddingModel.builder()
+                .baseUrl("https://api.cohere.ai/v1/")
+                .apiKey(System.getenv("COHERE_API_KEY"))
+                .modelName("embed-english-light-v3.0")
+                .inputType("search_document")
+                .timeout(Duration.ofSeconds(60))
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        List<TextSegment> segments = new ArrayList<>();
+        for (int i = 0; i < 97; i++) {
+            segments.add(TextSegment.from("text"));
+        }
+
+        // when
+        Response<List<Embedding>> response = model.embedAll(segments);
+
+        // then
+        assertThat(response.content()).hasSize(97);
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(97);
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(97);
 
         assertThat(response.finishReason()).isNull();
     }

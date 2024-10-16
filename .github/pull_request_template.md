@@ -1,17 +1,17 @@
-<!-- Thank you so much for your contribution! -->
-<!-- Please fill in all the sections below. -->
+<!--
+Thank you so much for your contribution!
 
-<!-- Please open the PR as a draft initially. Once it is reviewed and approved, we will ask you to add documentation and examples. -->
-<!-- Please note that PRs with breaking changes will be rejected. -->
-<!-- Please note that PRs without tests will be rejected. -->
+Please fill in all the sections below.
+Please open the PR as a draft initially. Once it is reviewed and approved, we will ask you to add documentation and examples.
+Please note that PRs with breaking changes or without tests will be rejected.
 
-<!-- Please note that PRs will be reviewed based on the priority of the issues they address. -->
-<!-- We ask for your patience. We are doing our best to review your PR as quickly as possible. -->
-<!-- Please refrain from pinging and asking when it will be reviewed. Thank you for understanding! -->
-
+Please note that PRs will be reviewed based on the priority of the issues they address.
+We ask for your patience. We are doing our best to review your PR as quickly as possible.
+Please refrain from pinging and asking when it will be reviewed. Thank you for understanding!
+-->
 
 ## Issue
-<!-- Please specify the ID of the issue this PR is addressing. For example: "Closes #1234" -->
+<!-- Please specify the ID of the issue this PR is addressing. For example: "Closes #1234" or "Fixes #1234" -->
 Closes #
 
 ## Change
@@ -29,16 +29,16 @@ Closes #
 - [ ] I have added an example in the [examples repo](https://github.com/langchain4j/langchain4j-examples) (only for "big" features)
 - [ ] I have added/updated [Spring Boot starter(s)](https://github.com/langchain4j/langchain4j-spring) (if applicable)
 
-## Checklist for adding new model integration
+
+## Checklist for adding new maven module
 <!-- Please double-check the following points and mark them like this: [X] -->
-- [ ] I have added my new module in the [BOM](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-bom/pom.xml)
+- [ ] I have added my new module in the root `pom.xml` and `langchain4j-bom/pom.xml`
 
 
 ## Checklist for adding new embedding store integration
 <!-- Please double-check the following points and mark them like this: [X] -->
 - [ ] I have added a `{NameOfIntegration}EmbeddingStoreIT` that extends from either `EmbeddingStoreIT` or `EmbeddingStoreWithFilteringIT`
-- [ ] I have added my new module in the [BOM](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-bom/pom.xml)
-
+- [ ] I have added a `{NameOfIntegration}EmbeddingStoreRemovalIT` that extends from `EmbeddingStoreWithRemovalIT`
 
 ## Checklist for changing existing embedding store integration
 <!-- Please double-check the following points and mark them like this: [X] -->

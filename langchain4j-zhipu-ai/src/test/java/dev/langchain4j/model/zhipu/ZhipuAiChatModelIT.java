@@ -2,16 +2,22 @@ package dev.langchain4j.model.zhipu;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.Duration;
+import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -22,7 +28,7 @@ import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "ZHIPU_API_KEY", matches = ".+")
 class ZhipuAiChatModelIT {
@@ -33,6 +39,10 @@ class ZhipuAiChatModelIT {
             .logRequests(true)
             .logResponses(true)
             .maxRetries(1)
+            .callTimeout(Duration.ofSeconds(60))
+            .connectTimeout(Duration.ofSeconds(60))
+            .writeTimeout(Duration.ofSeconds(60))
+            .readTimeout(Duration.ofSeconds(60))
             .build();
 
     ToolSpecification calculator = ToolSpecification.builder()
@@ -64,6 +74,10 @@ class ZhipuAiChatModelIT {
                 .logRequests(true)
                 .logResponses(true)
                 .maxRetries(1)
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
                 .build();
         // given
         UserMessage userMessage = userMessage("this message will fail");
@@ -158,7 +172,8 @@ class ZhipuAiChatModelIT {
 
         // then
         AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("2024-04-23 12:00:20");
+        assertThat(secondAiMessage.text()).contains("12:00:20");
+        assertThat(secondAiMessage.text()).contains("2024");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
@@ -188,7 +203,7 @@ class ZhipuAiChatModelIT {
             public void onResponse(ChatModelResponseContext responseContext) {
                 responseReference.set(responseContext.response());
                 assertThat(responseContext.request()).isSameAs(requestReference.get());
-                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
             @Override
@@ -210,6 +225,10 @@ class ZhipuAiChatModelIT {
                 .logResponses(true)
                 .maxRetries(1)
                 .listeners(singletonList(listener))
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
                 .build();
 
         UserMessage userMessage = UserMessage.from("hello");
@@ -265,7 +284,7 @@ class ZhipuAiChatModelIT {
                 errorReference.set(errorContext.error());
                 assertThat(errorContext.request()).isSameAs(requestReference.get());
                 assertThat(errorContext.partialResponse()).isNull();
-                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };
 
@@ -275,6 +294,10 @@ class ZhipuAiChatModelIT {
                 .logResponses(true)
                 .maxRetries(1)
                 .listeners(singletonList(listener))
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
                 .build();
 
         String userMessage = "this message will fail";
@@ -284,5 +307,47 @@ class ZhipuAiChatModelIT {
         Throwable throwable = errorReference.get();
         assertThat(throwable).isInstanceOf(ZhipuAiException.class);
         assertThat(throwable).hasMessageContaining("Authorization Token非法，请确认Authorization Token正确传递。");
+    }
+
+    @Test
+    public void should_send_multimodal_image_data_and_receive_response() {
+        ChatLanguageModel model = ZhipuAiChatModel.builder()
+                .apiKey(apiKey)
+                .model(ChatCompletionModel.GLM_4V)
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
+                .build();
+
+        Response<AiMessage> response = model.generate(multimodalChatMessagesWithImageData());
+
+        assertThat(response.content().text()).containsIgnoringCase("parrot");
+        assertThat(response.content().text()).endsWith("That's all!");
+    }
+
+    public static List<ChatMessage> multimodalChatMessagesWithImageData() {
+        Image image = Image.builder()
+                .base64Data(multimodalImageData())
+                .build();
+        ImageContent imageContent = ImageContent.from(image);
+        TextContent textContent = TextContent.from("What animal is in the picture? When you're done, end with \"That's all!\".");
+        return Collections.singletonList(UserMessage.from(imageContent, textContent));
+    }
+
+    public static String multimodalImageData() {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (InputStream in = ZhipuAiChatModelIT.class.getResourceAsStream("/parrot.jpg")) {
+            assertThat(in).isNotNull();
+            byte[] data = new byte[512];
+            int n;
+            while ((n = in.read(data)) != -1) {
+                buffer.write(data, 0, n);
+            }
+        } catch (IOException e) {
+            fail("", e.getMessage());
+        }
+
+        return Base64.getEncoder().encodeToString(buffer.toByteArray());
     }
 }

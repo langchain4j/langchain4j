@@ -1,24 +1,28 @@
 package dev.langchain4j.model.nomic;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import dev.langchain4j.internal.Utils;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class NomicClient {
 
-    private static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
-            .setPrettyPrinting()
-            .create();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private final NomicApi nomicApi;
     private final String authorizationHeader;
@@ -40,9 +44,9 @@ class NomicClient {
         }
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClientBuilder.build())
-                .addConverterFactory(GsonConverterFactory.create(GSON))
+                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();
 
         this.nomicApi = retrofit.create(NomicApi.class);

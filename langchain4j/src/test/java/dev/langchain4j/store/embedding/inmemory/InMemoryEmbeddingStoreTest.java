@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.inmemory;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -36,8 +36,9 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
         String json = originalEmbeddingStore.serializeToJson();
         InMemoryEmbeddingStore<TextSegment> deserializedEmbeddingStore = InMemoryEmbeddingStore.fromJson(json);
 
-        assertThat(deserializedEmbeddingStore.entries).isEqualTo(originalEmbeddingStore.entries);
-        assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
+        assertThat(deserializedEmbeddingStore.entries)
+                .isEqualTo(originalEmbeddingStore.entries)
+                .isInstanceOf(CopyOnWriteArrayList.class);
     }
 
     @Test
@@ -72,8 +73,9 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
             originalEmbeddingStore.serializeToFile(filePath.toString());
             InMemoryEmbeddingStore<TextSegment> deserializedEmbeddingStore = InMemoryEmbeddingStore.fromFile(filePath);
 
-            assertThat(deserializedEmbeddingStore.entries).isEqualTo(originalEmbeddingStore.entries);
-            assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
+            assertThat(deserializedEmbeddingStore.entries)
+                    .isEqualTo(originalEmbeddingStore.entries)
+                    .isInstanceOf(CopyOnWriteArrayList.class);
         }
     }
 

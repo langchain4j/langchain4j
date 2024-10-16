@@ -3,7 +3,6 @@ package dev.langchain4j.rag.content.retriever.azure.search;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.util.Context;
-import com.azure.search.documents.SearchDocument;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import com.azure.search.documents.models.*;
 import com.azure.search.documents.util.SearchPagedIterable;
@@ -247,47 +246,11 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
     private List<Content> mapResultsToContentList(SearchPagedIterable searchResults, AzureAiSearchQueryType azureAiSearchQueryType, double minScore) {
         List<Content> result = new ArrayList<>();
-        for (SearchResult searchResult : searchResults) {
-            double score = fromAzureScoreToRelevanceScore(searchResult, azureAiSearchQueryType);
-            if (score < minScore) {
-                continue;
-            }
-            SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
-            String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
-            Content content = Content.from(embeddedContent);
+        getEmbeddingMatches(searchResults, minScore, azureAiSearchQueryType).forEach(embeddingMatch -> {
+            Content content = Content.from(embeddingMatch.embedded());
             result.add(content);
-        }
+        });
         return result;
-    }
-
-    /**
-     * Calculates LangChain4j's RelevanceScore from Azure AI Search's score, for the 4 types of search.
-     */
-    static double fromAzureScoreToRelevanceScore(SearchResult searchResult, AzureAiSearchQueryType azureAiSearchQueryType) {
-        if (azureAiSearchQueryType == AzureAiSearchQueryType.VECTOR) {
-            // Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
-
-            //  Score in Azure AI Search is transformed into a cosine similarity as described here:
-            // https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
-
-            // RelevanceScore in LangChain4j is a derivative of cosine similarity,
-            // but it compresses it into 0..1 range (instead of -1..1) for ease of use.
-            double score = searchResult.getScore();
-            return AbstractAzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(score);
-        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.FULL_TEXT) {
-            // Search score is into 0..1 range already
-            return searchResult.getScore();
-        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID) {
-            // Search score is into 0..1 range already
-            return searchResult.getScore();
-        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID_WITH_RERANKING) {
-            // Re-ranker score is into 0..4 range, so we need to divide the re-reranker score by 4 to fit in the 0..1 range.
-            // The re-ranker score is a separate result from the original search score.
-            // See https://azuresdkdocs.blob.core.windows.net/$web/java/azure-search-documents/11.6.2/com/azure/search/documents/models/SearchResult.html#getSemanticSearch()
-            return searchResult.getSemanticSearch().getRerankerScore() / 4.0;
-        } else {
-            throw new AzureAiSearchRuntimeException("Unknown Azure AI Search Query Type: " + azureAiSearchQueryType);
-        }
     }
 
     public static Builder builder() {

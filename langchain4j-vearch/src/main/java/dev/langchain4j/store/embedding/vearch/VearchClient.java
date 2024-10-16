@@ -1,14 +1,14 @@
 package dev.langchain4j.store.embedding.vearch;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.Utils;
 import lombok.Builder;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import retrofit2.Response;
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -16,14 +16,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.store.embedding.vearch.VearchApi.OK;
 
 class VearchClient {
 
-    private static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
-            .create();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final VearchApi vearchApi;
 
@@ -37,9 +35,9 @@ class VearchClient {
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
                 .client(okHttpClient)
-                .addConverterFactory(GsonConverterFactory.create(GSON))
+                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();
 
         vearchApi = retrofit.create(VearchApi.class);
@@ -132,7 +130,7 @@ class VearchClient {
                         fieldsExceptId.put(fieldName, value);
                     }
                 }
-                bodyString.append(GSON.toJson(fieldsExceptId)).append("\n");
+                bodyString.append(OBJECT_MAPPER.writeValueAsString(fieldsExceptId)).append("\n");
             }
             RequestBody body = RequestBody.create(bodyString.toString(), MediaType.parse("application/json; charset=utf-8"));
             Response<List<BulkResponse>> response = vearchApi.bulk(dbName, spaceName, body).execute();

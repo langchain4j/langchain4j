@@ -12,9 +12,11 @@ import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
@@ -23,11 +25,12 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.zhipu.ZhipuAiChatModelIT.multimodalChatMessagesWithImageData;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "ZHIPU_API_KEY", matches = ".+")
 public class ZhipuAiStreamingChatModelIT {
@@ -37,6 +40,10 @@ public class ZhipuAiStreamingChatModelIT {
             .apiKey(apiKey)
             .logRequests(true)
             .logResponses(true)
+            .callTimeout(Duration.ofSeconds(60))
+            .connectTimeout(Duration.ofSeconds(60))
+            .writeTimeout(Duration.ofSeconds(60))
+            .readTimeout(Duration.ofSeconds(60))
             .build();
 
     ToolSpecification calculator = ToolSpecification.builder()
@@ -89,6 +96,10 @@ public class ZhipuAiStreamingChatModelIT {
                 .apiKey(apiKey + 1)
                 .logRequests(true)
                 .logResponses(true)
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
                 .build();
         model.generate("this message will fail", handler);
 
@@ -196,7 +207,8 @@ public class ZhipuAiStreamingChatModelIT {
         // then
         Response<AiMessage> secondResponse = secondHandler.get();
         AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("2024-04-23 12:00:20");
+        assertThat(secondAiMessage.text()).contains("12:00:20");
+        assertThat(secondAiMessage.text()).contains("2024");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
@@ -225,7 +237,7 @@ public class ZhipuAiStreamingChatModelIT {
             public void onResponse(ChatModelResponseContext responseContext) {
                 responseReference.set(responseContext.response());
                 assertThat(responseContext.request()).isSameAs(requestReference.get());
-                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
             @Override
@@ -246,6 +258,10 @@ public class ZhipuAiStreamingChatModelIT {
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
                 .build();
 
         UserMessage userMessage = UserMessage.from("hello");
@@ -303,7 +319,7 @@ public class ZhipuAiStreamingChatModelIT {
                 errorReference.set(errorContext.error());
                 assertThat(errorContext.request()).isSameAs(requestReference.get());
                 assertThat(errorContext.partialResponse()).isNull(); // can be non-null if it fails in the middle of streaming
-                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };
 
@@ -312,6 +328,10 @@ public class ZhipuAiStreamingChatModelIT {
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
                 .build();
 
         String userMessage = "this message will fail";
@@ -343,5 +363,23 @@ public class ZhipuAiStreamingChatModelIT {
         assertThat(content).contains("Authorization Token非法，请确认Authorization Token正确传递。");
 
         assertThat(errorReference.get()).isInstanceOf(ZhipuAiException.class);
+    }
+
+    @Test
+    public void should_send_multimodal_image_data_and_receive_response() {
+        StreamingChatLanguageModel model = ZhipuAiStreamingChatModel.builder()
+                .apiKey(apiKey)
+                .model(ChatCompletionModel.GLM_4V)
+                .callTimeout(Duration.ofSeconds(60))
+                .connectTimeout(Duration.ofSeconds(60))
+                .writeTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(60))
+                .build();
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(multimodalChatMessagesWithImageData(), handler);
+        Response<AiMessage> response = handler.get();
+
+        assertThat(response.content().text()).containsIgnoringCase("parrot");
+        assertThat(response.content().text()).endsWith("That's all!");
     }
 }

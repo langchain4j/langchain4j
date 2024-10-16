@@ -4,19 +4,23 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.zhipu.chat.Content;
 import dev.langchain4j.model.zhipu.chat.*;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
 import dev.langchain4j.model.zhipu.shared.ErrorResponse;
 import dev.langchain4j.model.zhipu.shared.Usage;
-import lombok.Cleanup;
 import okhttp3.ResponseBody;
 
 import java.io.IOException;
@@ -27,6 +31,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.*;
 
 class DefaultZhipuAiHelper {
@@ -50,20 +55,27 @@ class DefaultZhipuAiHelper {
         return Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toFunctionParameters(toolSpecification.parameters()))
+                .parameters(toFunctionParameters(toolSpecification))
                 .build();
     }
 
-    private static Parameters toFunctionParameters(ToolParameters toolParameters) {
-        if (toolParameters == null) {
+    private static Parameters toFunctionParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            JsonObjectSchema parameters = toolSpecification.parameters();
+            return Parameters.builder()
+                    .properties(toMap(parameters.properties()))
+                    .required(parameters.required())
+                    .build();
+        } else if (toolSpecification.toolParameters() != null) {
+            ToolParameters toolParameters = toolSpecification.toolParameters();
+            return Parameters.builder()
+                    .properties(toolParameters.properties())
+                    .required(toolParameters.required())
+                    .build();
+        } else {
             return Parameters.builder().build();
         }
-        return Parameters.builder()
-                .properties(toolParameters.properties())
-                .required(toolParameters.required())
-                .build();
     }
-
 
     static List<Message> toZhipuAiMessages(List<ChatMessage> messages) {
         return messages.stream()
@@ -82,9 +94,27 @@ class DefaultZhipuAiHelper {
 
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
-            return dev.langchain4j.model.zhipu.chat.UserMessage.builder()
-                    .content(userMessage.singleText())
-                    .build();
+            if (userMessage.hasSingleText()) {
+                return dev.langchain4j.model.zhipu.chat.UserMessage.from(userMessage.singleText());
+            }
+            List<Content> contents = new ArrayList<>(userMessage.contents().size());
+            userMessage.contents().forEach(content -> {
+                if (content instanceof TextContent) {
+                    TextContent textContent = (TextContent) content;
+                    contents.add(dev.langchain4j.model.zhipu.chat.TextContent.builder()
+                            .text(textContent.text())
+                            .build());
+                }
+                if (content instanceof ImageContent) {
+                    Image image = ((ImageContent) content).image();
+                    contents.add(dev.langchain4j.model.zhipu.chat.ImageContent.builder()
+                            .imageUrl(dev.langchain4j.model.zhipu.chat.Image.builder()
+                                    .url(image.url() != null ? image.url().toString() : image.base64Data())
+                                    .build())
+                            .build());
+                }
+            });
+            return dev.langchain4j.model.zhipu.chat.UserMessage.from(contents);
         }
 
         if (message instanceof AiMessage) {
@@ -190,7 +220,7 @@ class DefaultZhipuAiHelper {
                     .finishReason(FINISH_REASON_OTHER)
                     .build();
         }
-        @Cleanup ResponseBody errorBody = ((retrofit2.Response<?>) object).errorBody();
+        ResponseBody errorBody = ((retrofit2.Response<?>) object).errorBody();
 
         if (errorBody == null) {
             return ChatCompletionChoice.builder()
@@ -210,6 +240,8 @@ class DefaultZhipuAiHelper {
                     .message(AssistantMessage.builder().content(e.getMessage()).build())
                     .finishReason(FINISH_REASON_OTHER)
                     .build();
+        } finally {
+            errorBody.close();
         }
     }
 

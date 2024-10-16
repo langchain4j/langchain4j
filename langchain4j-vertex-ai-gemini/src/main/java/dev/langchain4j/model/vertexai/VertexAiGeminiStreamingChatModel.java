@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiStreamingChatModelBuilderFactory;
 import lombok.Builder;
@@ -26,10 +27,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.emptyList;
 
 /**
  * Represents a Google Vertex AI Gemini language model with a stream chat completion interface, such as gemini-pro.
@@ -54,6 +57,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
 
     private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
 
+    private final List<ChatModelListener> listeners;
+
     @Builder
     public VertexAiGeminiStreamingChatModel(String project,
                                             String location,
@@ -70,7 +75,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             ToolCallingMode toolCallingMode,
                                             List<String> allowedFunctionNames,
                                             Boolean logRequests,
-                                            Boolean logResponses) {
+                                            Boolean logResponses,
+                                            List<ChatModelListener> listeners) {
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
@@ -88,7 +94,11 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             generationConfigBuilder.setResponseMimeType(responseMimeType);
         }
         if (responseSchema != null) {
-            generationConfigBuilder.setResponseMimeType("application/json");
+            if (responseSchema.getEnumCount() > 0) {
+                generationConfigBuilder.setResponseMimeType("text/x.enum");
+            } else {
+                generationConfigBuilder.setResponseMimeType("application/json");
+            }
             generationConfigBuilder.setResponseSchema(responseSchema);
         }
         this.generationConfig = generationConfigBuilder.build();
@@ -146,9 +156,11 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             ).build();
         }
 
-        this.vertexAI = new VertexAI(
-            ensureNotBlank(project, "project"),
-            ensureNotBlank(location, "location"));
+        this.vertexAI = new VertexAI.Builder()
+            .setProjectId(ensureNotBlank(project, "project"))
+            .setLocation(ensureNotBlank(location, "location"))
+            .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
+            .build();
 
         this.generativeModel = new GenerativeModel(
             ensureNotBlank(modelName, "modelName"), vertexAI)
@@ -164,6 +176,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         } else {
             this.logResponses = false;
         }
+
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
@@ -182,6 +196,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         this.allowedFunctionNames = Collections.emptyList();
         this.logRequests = false;
         this.logResponses = false;
+        this.listeners = Collections.emptyList();
     }
 
     @Override
@@ -225,6 +240,24 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             logger.debug("GEMINI ({}) request: {} tools: {}", modelName, instructionAndContent, tools);
         }
 
+        ChatModelRequest chatModelRequest = ChatModelRequest.builder()
+            .model(modelName)
+            .temperature((double) generationConfig.getTemperature())
+            .topP((double) generationConfig.getTopP())
+            .maxTokens(generationConfig.getMaxOutputTokens())
+            .messages(messages)
+            .toolSpecifications(toolSpecifications)
+            .build();
+        ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, listenerAttributes);
+        listeners.forEach((listener) -> {
+            try {
+                listener.onRequest(chatModelRequestContext);
+            } catch (Exception e) {
+                logger.warn("Exception while calling model listener (onRequest)", e);
+            }
+        });
+
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
 
         try {
@@ -239,10 +272,36 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             Response<AiMessage> fullResponse = responseBuilder.build();
             handler.onComplete(fullResponse);
 
+            ChatModelResponse chatModelResponse = ChatModelResponse.builder()
+                .model(modelName)
+                .tokenUsage(fullResponse.tokenUsage())
+                .finishReason(fullResponse.finishReason())
+                .aiMessage(fullResponse.content())
+                .build();
+            ChatModelResponseContext chatModelResponseContext = new ChatModelResponseContext(
+                chatModelResponse, chatModelRequest, listenerAttributes);
+            listeners.forEach((listener) -> {
+                try {
+                    listener.onResponse(chatModelResponseContext);
+                } catch (Exception e) {
+                    logger.warn("Exception while calling model listener (onResponse)", e);
+                }
+            });
+
             if (this.logResponses && logger.isDebugEnabled()) {
                 logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);
             }
         } catch (Exception exception) {
+            listeners.forEach((listener) -> {
+                try {
+                    ChatModelErrorContext chatModelErrorContext =
+                        new ChatModelErrorContext(exception, chatModelRequest, null, listenerAttributes);
+                    listener.onError(chatModelErrorContext);
+                } catch (Exception t) {
+                    logger.warn("Exception while calling model listener (onError)", t);
+                }
+            });
+
             handler.onError(exception);
         }
     }
