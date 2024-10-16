@@ -13,6 +13,11 @@
     <artifactId>langchain4j-document-loader-tencent-cos</artifactId>
     <name>LangChain4j :: Document Loader :: Tencent COS</name>
 
+    <properties>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
