@@ -52,7 +52,7 @@ public class JsonSchemas {
                         .name("Collection_of_" + rawClass.getSimpleName())
                         .rootElement(JsonObjectSchema.builder()
                                 .addArrayProperty("array", a -> a.items(JsonEnumSchema.builder()
-                                        .enumValues(finalRawClass)
+                                        .enumValues((Class<? extends Enum<?>>)finalRawClass)
                                         .build()))
                                 .required("array")
                                 .build())
@@ -73,7 +73,7 @@ public class JsonSchemas {
                         .name(returnTypeClass.getSimpleName())
                         .rootElement(JsonObjectSchema.builder()
                                 .addProperty(returnTypeClass.getSimpleName(), JsonEnumSchema.builder()
-                                        .enumValues(returnTypeClass)
+                                        .enumValues((Class<? extends Enum<?>>)returnTypeClass)
                                         .build())
                                 .build())
                         .build();
