@@ -17,6 +17,8 @@
 
     <properties>
         <apache-tika.version>2.9.1</apache-tika.version>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
 
     <dependencies>

@@ -17,6 +17,11 @@
         https://github.com/weaviate/java-client/blob/main/LICENSE
     </description>
 
+    <properties>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
+
     <dependencies>
 
         <dependency>
