@@ -6,7 +6,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import java.util.Map;
-import lombok.Builder;
 
 /**
  * Represents the result of a {@link EmbeddingStoreIngestor} ingest process.
@@ -27,7 +26,6 @@ public class IngestionResult {
      */
     private final Map<String, Object> metadata;
 
-    @Builder
     public IngestionResult(List<Embedding> content, TokenUsage tokenUsage, Map<String, Object> metadata) {
         this.content = ensureNotNull(content, "content");
         this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");

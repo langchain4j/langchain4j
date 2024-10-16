@@ -204,11 +204,11 @@ public class EmbeddingStoreIngestor {
         embeddingStore.addAll(embeddingsResponse.content(), segments);
         log.debug("Finished storing {} text segments into the embedding store", segments.size());
 
-        return IngestionResult.builder()
-            .content(embeddingsResponse.content())
-            .metadata(embeddingsResponse.metadata())
-            .tokenUsage(embeddingsResponse.tokenUsage())
-            .build();
+        return new IngestionResult(
+                embeddingsResponse.content(),
+                embeddingsResponse.tokenUsage(),
+                embeddingsResponse.metadata()
+                );
     }
 
     /**
