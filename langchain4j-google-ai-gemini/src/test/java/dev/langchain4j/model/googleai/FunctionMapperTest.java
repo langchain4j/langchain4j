@@ -59,7 +59,7 @@ public class FunctionMapperTest {
         System.out.println("\ntoolSpecifications = " + toolSpecifications);
 
         // then
-        assertThat(toolSpecifications.size()).isEqualTo(1);
+        assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("distanceBetween");
         assertThat(toolSpecification.description()).isEqualTo("Get the distance between the user and the ISS.");
