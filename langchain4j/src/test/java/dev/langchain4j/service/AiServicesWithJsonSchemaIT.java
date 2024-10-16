@@ -753,18 +753,18 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                 put("name", new JsonStringSchema());
                                                 put("birthDate", JsonObjectSchema.builder()
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("year", JsonIntegerSchema.builder().build());
-                                                            put("month", JsonIntegerSchema.builder().build());
-                                                            put("day", JsonIntegerSchema.builder().build());
+                                                            put("year", new JsonIntegerSchema());
+                                                            put("month", new JsonIntegerSchema());
+                                                            put("day", new JsonIntegerSchema());
                                                         }})
                                                         .required("year", "month", "day")
                                                         .build());
                                                 put("birthTime", JsonObjectSchema.builder()
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("hour", JsonIntegerSchema.builder().build());
-                                                            put("minute", JsonIntegerSchema.builder().build());
-                                                            put("second", JsonIntegerSchema.builder().build());
-                                                            put("nano", JsonIntegerSchema.builder().build());
+                                                            put("hour", new JsonIntegerSchema());
+                                                            put("minute", new JsonIntegerSchema());
+                                                            put("second", new JsonIntegerSchema());
+                                                            put("nano", new JsonIntegerSchema());
                                                         }})
                                                         .required("hour", "minute", "second", "nano")
                                                         .build());
@@ -772,18 +772,18 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                                             put("date", JsonObjectSchema.builder()
                                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                        put("year", JsonIntegerSchema.builder().build());
-                                                                        put("month", JsonIntegerSchema.builder().build());
-                                                                        put("day", JsonIntegerSchema.builder().build());
+                                                                        put("year", new JsonIntegerSchema());
+                                                                        put("month", new JsonIntegerSchema());
+                                                                        put("day", new JsonIntegerSchema());
                                                                     }})
                                                                     .required("year", "month", "day")
                                                                     .build());
                                                             put("time", JsonObjectSchema.builder()
                                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                        put("hour", JsonIntegerSchema.builder().build());
-                                                                        put("minute", JsonIntegerSchema.builder().build());
-                                                                        put("second", JsonIntegerSchema.builder().build());
-                                                                        put("nano", JsonIntegerSchema.builder().build());
+                                                                        put("hour", new JsonIntegerSchema());
+                                                                        put("minute", new JsonIntegerSchema());
+                                                                        put("second", new JsonIntegerSchema());
+                                                                        put("nano", new JsonIntegerSchema());
                                                                     }})
                                                                     .required("hour", "minute", "second", "nano")
                                                                     .build());

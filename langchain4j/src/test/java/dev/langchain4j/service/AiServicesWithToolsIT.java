@@ -441,7 +441,7 @@ class AiServicesWithToolsIT {
                 .parameters(JsonObjectSchema.builder()
                         .properties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("List of integers to process")
-                                .items(JsonIntegerSchema.builder().build())
+                                .items(new JsonIntegerSchema())
                                 .build()))
                         .required("arg0")
                         .build())

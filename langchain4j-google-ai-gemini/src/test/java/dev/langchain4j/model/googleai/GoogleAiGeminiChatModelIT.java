@@ -547,7 +547,7 @@ public class GoogleAiGeminiChatModelIT {
                 .type(JSON)
                 .jsonSchema(JsonSchema.builder()
                     .rootElement(JsonArraySchema.builder()
-                        .items(JsonIntegerSchema.builder().build())
+                        .items(new JsonIntegerSchema())
                         .build())
                     .build())
                 .build())
