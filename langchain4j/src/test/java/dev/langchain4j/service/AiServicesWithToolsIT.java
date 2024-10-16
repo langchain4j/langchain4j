@@ -60,8 +60,8 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.data.MapEntry.entry;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.spy;
@@ -770,40 +770,36 @@ class AiServicesWithToolsIT {
         ChatLanguageModel chatLanguageModel = new ChatModelMock("mocked");
 
         // First provider then tools
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
                         .toolProvider((ToolProviderRequest request) -> null)
                         .tools(new HashMap<>())
-                        .build()
-        );
+                        .build());
 
         // First provider then static tools
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
                         .toolProvider((ToolProviderRequest request) -> null)
                         .tools(new StringArrayProcessor())
-                        .build()
-        );
+                        .build());
 
         // First tools then provider
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
                         .tools(new HashMap<>())
                         .toolProvider((ToolProviderRequest request) -> null)
-                        .build()
-        );
+                        .build());
 
         // First static tools then provider
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() ->
                 AiServices.builder(Assistant.class)
                         .chatLanguageModel(chatLanguageModel)
                         .tools(new StringArrayProcessor())
                         .toolProvider((ToolProviderRequest request) -> null)
-                        .build()
-        );
+                        .build());
     }
 
     private static Map<String, Object> toMap(String arguments) {

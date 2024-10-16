@@ -25,8 +25,8 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_FIELD_ID;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
 public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
@@ -108,7 +108,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
                 new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
                         new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, null, null);
 
-        assertEquals(providedIndexName, store.searchClient.getIndexName());
+        assertThat(store.searchClient.getIndexName()).isEqualTo(providedIndexName);
 
         try {
             new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
@@ -116,7 +116,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
 
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("index and indexName cannot be both defined", e.getMessage());
+            assertThat(e.getMessage()).isEqualTo("index and indexName cannot be both defined");
         }
 
         // Clear index
@@ -135,6 +135,6 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
                 null
         );
 
-        assertEquals(DEFAULT_INDEX_NAME, store.searchClient.getIndexName());
+        assertThat(store.searchClient.getIndexName()).isEqualTo(DEFAULT_INDEX_NAME);
     }
 }

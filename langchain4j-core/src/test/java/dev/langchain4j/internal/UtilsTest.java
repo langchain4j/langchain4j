@@ -96,7 +96,7 @@ class UtilsTest {
 
     @Test
     public void test_repeat() {
-        assertThat(Utils.repeat("foo", 0)).isEqualTo("");
+        assertThat(Utils.repeat("foo", 0)).isEmpty();
         assertThat(Utils.repeat("foo", 1)).isEqualTo("foo");
         assertThat(Utils.repeat("foo", 2)).isEqualTo("foofoo");
         assertThat(Utils.repeat("foo", 3)).isEqualTo("foofoofoo");

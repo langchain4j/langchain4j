@@ -36,8 +36,9 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
         String json = originalEmbeddingStore.serializeToJson();
         InMemoryEmbeddingStore<TextSegment> deserializedEmbeddingStore = InMemoryEmbeddingStore.fromJson(json);
 
-        assertThat(deserializedEmbeddingStore.entries).isEqualTo(originalEmbeddingStore.entries);
-        assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
+        assertThat(deserializedEmbeddingStore.entries)
+                .isEqualTo(originalEmbeddingStore.entries)
+                .isInstanceOf(CopyOnWriteArrayList.class);
     }
 
     @Test
@@ -72,8 +73,9 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
             originalEmbeddingStore.serializeToFile(filePath.toString());
             InMemoryEmbeddingStore<TextSegment> deserializedEmbeddingStore = InMemoryEmbeddingStore.fromFile(filePath);
 
-            assertThat(deserializedEmbeddingStore.entries).isEqualTo(originalEmbeddingStore.entries);
-            assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
+            assertThat(deserializedEmbeddingStore.entries)
+                    .isEqualTo(originalEmbeddingStore.entries)
+                    .isInstanceOf(CopyOnWriteArrayList.class);
         }
     }
 

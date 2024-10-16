@@ -38,7 +38,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelIT {
@@ -190,7 +189,7 @@ class BedrockChatModelIT {
         List<ToolSpecification> toolSpecifications = asList(calculator, currentTemperature);
 
         assertThat(currentTemperature).isNotNull();
-        assertEquals(2, toolSpecifications.size());
+        assertThat(toolSpecifications).hasSize(2);
 
         UserMessage userMessageCalc = UserMessage.from("2+2=?");
 
@@ -495,7 +494,7 @@ class BedrockChatModelIT {
                 "Expected generate() to throw, but it didn't"
         );
 
-        assertEquals("Tools are currently not supported by this model", exception.getMessage());
+        assertThat(exception.getMessage()).isEqualTo("Tools are currently not supported by this model");
     }
 
     @ParameterizedTest
@@ -507,7 +506,7 @@ class BedrockChatModelIT {
                 "Expected validateModelIdWithToolsSupport() to throw, but it didn't"
         );
 
-        assertEquals("Tools are currently not supported by this model", illegalArgumentException.getMessage());
+        assertThat(illegalArgumentException.getMessage()).isEqualTo("Tools are currently not supported by this model");
     }
 
     static Stream<String> anthropicModelsWithoutToolSupport() {

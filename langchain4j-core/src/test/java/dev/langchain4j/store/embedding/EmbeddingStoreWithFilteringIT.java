@@ -94,7 +94,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         metadataKey("key").isEqualTo(TEST_UUID),
                         asList(
                                 new Metadata().put("key", TEST_UUID),
-                                new Metadata().put("key", TEST_UUID).put("key2", "b")
+                                new Metadata().put("key", TEST_UUID).put("key2", UUID.randomUUID())
                         ),
                         asList(
                                 new Metadata().put("key", UUID.randomUUID()),
@@ -1263,7 +1263,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_filter_by_metadata_not(Filter metadataFilter,
+    protected void should_filter_by_metadata_not(Filter metadataFilter,
                                        List<Metadata> matchingMetadatas,
                                        List<Metadata> notMatchingMetadatas) {
         // given
