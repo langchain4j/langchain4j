@@ -74,6 +74,10 @@ In a Quarkus or Spring Boot application, this can be a bean that you can then in
 wherever you need AI Services.
 :::
 
+:::note
+The `AiServices.create` method implements the factory pattern, allowing other libraries built on langchain4j to provide their own factory methods. If you require direct access to the default constructor, consider using `new DefaultAiServices()`.
+:::
+
 Now we can use `Assistant`:
 ```java
 String answer = assistant.chat("Hello");
