@@ -58,7 +58,7 @@ import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-class DefaultAiServices<T> extends AiServices<T> {
+public class DefaultAiServices<T> extends AiServices<T> {
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 100;
 
