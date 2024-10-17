@@ -23,6 +23,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -39,6 +40,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlock
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -215,14 +217,26 @@ public class AnthropicMapper {
     }
 
     public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification) {
-        ToolParameters parameters = toolSpecification.parameters();
-        return AnthropicTool.builder()
-                .name(toolSpecification.name())
-                .description(toolSpecification.description())
-                .inputSchema(AnthropicToolSchema.builder()
-                        .properties(parameters != null ? parameters.properties() : emptyMap())
-                        .required(parameters != null ? parameters.required() : emptyList())
-                        .build())
-                .build();
+        if (toolSpecification.parameters() != null) {
+            JsonObjectSchema parameters = toolSpecification.parameters();
+            return AnthropicTool.builder()
+                    .name(toolSpecification.name())
+                    .description(toolSpecification.description())
+                    .inputSchema(AnthropicToolSchema.builder()
+                            .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
+                            .required(parameters != null ? parameters.required() : emptyList())
+                            .build())
+                    .build();
+        } else {
+            ToolParameters parameters = toolSpecification.toolParameters();
+            return AnthropicTool.builder()
+                    .name(toolSpecification.name())
+                    .description(toolSpecification.description())
+                    .inputSchema(AnthropicToolSchema.builder()
+                            .properties(parameters != null ? parameters.properties() : emptyMap())
+                            .required(parameters != null ? parameters.required() : emptyList())
+                            .build())
+                    .build();
+        }
     }
 }

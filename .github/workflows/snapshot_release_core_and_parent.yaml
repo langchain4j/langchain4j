@@ -31,4 +31,10 @@ jobs:
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
         # Notes:
         #  - tests already run in a separate action (main)
-        run: mvn -B -U --fail-at-end -DskipTests -DskipAnthropicITs -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs -pl langchain4j-core,langchain4j-parent clean deploy
+        run: |
+          mvn -B -U --fail-at-end \
+            -DskipTests -DskipAnthropicITs -DskipLocalAiITs -DskipMilvusITs \
+            -DskipMongoDbAtlasITs -DskipOllamaITs \
+            -DskipVearchITs -DskipVertexAiGeminiITs \
+            -pl langchain4j-core,langchain4j-parent \
+            clean deploy
