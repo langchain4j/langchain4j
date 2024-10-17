@@ -7,18 +7,27 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import redis.clients.jedis.JedisPooled;
+import redis.clients.jedis.search.schemafields.NumericField;
+import redis.clients.jedis.search.schemafields.SchemaField;
+import redis.clients.jedis.search.schemafields.TagField;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
+class RedisEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
 
-    EmbeddingStore<TextSegment> embeddingStore;
+    RedisEmbeddingStore embeddingStore;
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -38,13 +47,30 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
             jedis.flushDB(); // TODO fix: why redis returns embeddings from different indexes?
         }
 
+        Map<String, SchemaField> schemaFieldMap = new HashMap<>();
+        Map<String, Object> metadataMap = createMetadata().toMap();
+
+        List<String> numericPrefix = Arrays.asList("integer", "float", "double", "long");
+        metadataMap.forEach((key, value) -> {
+            if (numericPrefix.stream().anyMatch(key::startsWith)) {
+                schemaFieldMap.put(key, NumericField.of("$." + key).as(key));
+            } else {
+                schemaFieldMap.put(key, TagField.of("$." + key).as(key));
+            }
+        });
+
         embeddingStore = RedisEmbeddingStore.builder()
                 .host(redis.getHost())
                 .port(redis.getFirstMappedPort())
                 .indexName(randomUUID())
-                .dimension(384)
-                .metadataKeys(createMetadata().toMap().keySet())
+                .dimension(embeddingModel.dimension())
+                .schemaFiledMap(schemaFieldMap)
                 .build();
+    }
+
+    @AfterEach
+    void afterEach() {
+        embeddingStore.close();
     }
 
     @Override
