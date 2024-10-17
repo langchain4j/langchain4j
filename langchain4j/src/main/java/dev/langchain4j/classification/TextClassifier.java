@@ -4,13 +4,42 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.segment.TextSegment;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Classifies given text according to specified enum.
  *
- * @param <E> Enum that is the result of classification.
+ * @param <L> Label type that is the result of classification.
  */
-public interface TextClassifier<E extends Enum<E>> {
+public interface TextClassifier<L> {
+
+    /**
+     * Classify the given text with score.
+     *
+     * @param text Text to classify.
+     * @return A list of classification categories and detailed results
+     */
+    ClassificationResult<L> classifyWithDetail(String text);
+
+    /**
+     * Classify the given {@link TextSegment}.
+     *
+     * @param textSegment {@link TextSegment} to classify.
+     * @return A list of classification categories and detailed results
+     */
+    default ClassificationResult<L> classifyWithDetail(TextSegment textSegment) {
+        return classifyWithDetail(textSegment.text());
+    }
+
+    /**
+     * Classify the given {@link Document}.
+     *
+     * @param document {@link Document} to classify.
+     * @return A list of classification categories and detailed results
+     */
+    default ClassificationResult<L> classifyWithDetail(Document document) {
+        return classifyWithDetail(document.text());
+    }
 
     /**
      * Classify the given text.
@@ -18,7 +47,11 @@ public interface TextClassifier<E extends Enum<E>> {
      * @param text Text to classify.
      * @return A list of classification categories.
      */
-    List<E> classify(String text);
+    default List<L> classify(String text) {
+        return classifyWithDetail(text).scoredLabels().stream()
+                .map(ScoredLabel::label)
+                .collect(Collectors.toList());
+    }
 
     /**
      * Classify the given {@link TextSegment}.
@@ -26,7 +59,7 @@ public interface TextClassifier<E extends Enum<E>> {
      * @param textSegment {@link TextSegment} to classify.
      * @return A list of classification categories.
      */
-    default List<E> classify(TextSegment textSegment) {
+    default List<L> classify(TextSegment textSegment) {
         return classify(textSegment.text());
     }
 
@@ -36,7 +69,7 @@ public interface TextClassifier<E extends Enum<E>> {
      * @param document {@link Document} to classify.
      * @return A list of classification categories.
      */
-    default List<E> classify(Document document) {
+    default List<L> classify(Document document) {
         return classify(document.text());
     }
 }
