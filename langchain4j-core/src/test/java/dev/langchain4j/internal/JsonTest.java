@@ -2,6 +2,7 @@ package dev.langchain4j.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.gson.reflect.TypeToken;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.google.gson.annotations.SerializedName;
@@ -40,6 +42,27 @@ class JsonTest {
     assertThat(deserializedData.getSampleDate()).isEqualTo(testData.getSampleDate());
     assertThat(deserializedData.getSampleDateTime()).isEqualTo(testData.getSampleDateTime());
     assertThat(deserializedData.getSomeValue()).isEqualTo(testData.getSomeValue());
+  }
+
+  @Test
+  void conversionFromJsonStringToMapWorks() {
+    String json = "{" +
+        "  \"name\"       : \"Foo\"," +
+        "  \"description\": \"Bar\"," +
+        "  \"theArray\"   : [1,2,3,4]," +
+        "  \"nullable\"   : true," +
+        "  \"other\"   : null" +
+        "}";
+
+    Map<String, Object> map = Json.fromJson(json, new TypeToken<Map<String, Object>>() {}.getType());
+
+    assertThat(map)
+        .hasSize(5)
+        .containsEntry("name", "Foo")
+        .containsEntry("description", "Bar")
+        .containsEntry("theArray", Arrays.asList(1d, 2d, 3d, 4d))
+        .containsEntry("nullable", true)
+        .containsEntry("other", null);
   }
 
   @Test
