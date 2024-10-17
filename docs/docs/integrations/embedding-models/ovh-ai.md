@@ -1,3 +1,7 @@
+---
+sidebar_position: 15
+---
+
 # OVHcloud AI Endpoints
 
 - [OVHclous AI Endpoints Documentation](https://labs.ovhcloud.com/en/ai-endpoints/)
@@ -13,7 +17,7 @@
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ovh-ai</artifactId>
-    <version>0.34.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 

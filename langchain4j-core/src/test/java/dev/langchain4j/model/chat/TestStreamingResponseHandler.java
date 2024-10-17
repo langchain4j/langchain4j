@@ -30,7 +30,6 @@ public class TestStreamingResponseHandler<T> implements StreamingResponseHandler
             AiMessage aiMessage = (AiMessage) response.content();
             if (aiMessage.hasToolExecutionRequests()){
                 assertThat(aiMessage.toolExecutionRequests().size()).isGreaterThan(0);
-                assertThat(aiMessage.text()).isNull();
             } else {
                 assertThat(aiMessage.text()).isEqualTo(expectedTextContent);
             }

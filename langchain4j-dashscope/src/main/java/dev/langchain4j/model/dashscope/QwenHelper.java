@@ -10,15 +10,27 @@ import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationR
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
 import com.alibaba.dashscope.common.Role;
-import com.alibaba.dashscope.tools.*;
+import com.alibaba.dashscope.tools.FunctionDefinition;
+import com.alibaba.dashscope.tools.ToolBase;
+import com.alibaba.dashscope.tools.ToolCallBase;
+import com.alibaba.dashscope.tools.ToolCallFunction;
+import com.alibaba.dashscope.tools.ToolFunction;
 import com.alibaba.dashscope.utils.JsonUtils;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import com.google.gson.JsonObject;
-import dev.langchain4j.agent.tool.ToolParameters;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
@@ -33,15 +45,30 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.data.message.ChatMessageType.*;
+import static dev.langchain4j.data.message.ChatMessageType.AI;
+import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
+import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
+import static dev.langchain4j.data.message.ChatMessageType.USER;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.stream.Collectors.toList;
 
 @Slf4j
@@ -80,7 +107,7 @@ class QwenHelper {
                         .map(TextContent::text)
                         .collect(Collectors.joining("\n"));
             case AI:
-                return ((AiMessage) message).hasToolExecutionRequests() ? "" : ((AiMessage) message).text();
+                return ((AiMessage) message).text();
             case SYSTEM:
                 return ((SystemMessage) message).text();
             case TOOL_EXECUTION_RESULT:
@@ -353,21 +380,31 @@ class QwenHelper {
     static ToolBase toToolFunction(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = FunctionDefinition.builder()
                 .name(toolSpecification.name())
-                .description(toolSpecification.description())
-                .parameters(toParameters(toolSpecification.parameters()))
+                .description(getOrDefault(toolSpecification.description(), ""))
+                .parameters(toParameters(toolSpecification))
                 .build();
         return ToolFunction.builder().function(functionDefinition).build();
     }
 
-    private static JsonObject toParameters(ToolParameters toolParameters) {
-        return toolParameters == null ?
-                JsonUtils.toJsonObject(Collections.emptyMap()) :
-                JsonUtils.toJsonObject(toolParameters);
+    private static JsonObject toParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            return JsonUtils.toJsonObject(toMap(toolSpecification.parameters()));
+        } else if (toolSpecification.toolParameters() != null) {
+            return JsonUtils.toJsonObject(toolSpecification.toolParameters());
+        } else {
+            return JsonUtils.toJsonObject(Collections.emptyMap());
+        }
     }
 
     static AiMessage aiMessageFrom(GenerationResult result) {
-        return isFunctionToolCalls(result) ?
-                new AiMessage(functionToolCallsFrom(result)) : new AiMessage(answerFrom(result));
+        if (isFunctionToolCalls(result)) {
+            String text = answerFrom(result);
+            return isNullOrBlank(text) ?
+                    new AiMessage(functionToolCallsFrom(result)) :
+                    new AiMessage(text, functionToolCallsFrom(result));
+        } else {
+            return new AiMessage(answerFrom(result));
+        }
     }
 
     private static List<ToolExecutionRequest> functionToolCallsFrom(GenerationResult result) {
@@ -436,7 +473,7 @@ class QwenHelper {
                 .reduce(new LinkedList<>(), messageAccumulator(), messageCombiner());
 
         // Ensure the last message is a user/tool_execution_result message
-        while(!sanitizedMessages.isEmpty() && !isInputMessageType(sanitizedMessages.getLast().type())) {
+        while (!sanitizedMessages.isEmpty() && !isInputMessageType(sanitizedMessages.getLast().type())) {
             ChatMessage removedMessage = sanitizedMessages.removeLast();
             log.warn("The last message should be a user/tool_execution_result message, but found: {}", removedMessage);
         }

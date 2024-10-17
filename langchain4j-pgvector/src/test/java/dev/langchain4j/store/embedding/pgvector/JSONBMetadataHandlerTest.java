@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.AdditionalAnswers;
 
@@ -11,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 class JSONBMetadataHandlerTest {
@@ -31,9 +31,9 @@ class JSONBMetadataHandlerTest {
         JSONBMetadataHandler jsonbMetadataHandler = new JSONBMetadataHandler(metadataStorageConfig);
         jsonbMetadataHandler.createMetadataIndexes(statement, "embeddings");
 
-        Assertions.assertEquals(1, sqlStatementQueries.size());
-        Assertions.assertEquals("create index if not exists embeddings_metadata on embeddings " +
-                "USING GIN (metadata)", sqlStatementQueries.get(0));
+        assertThat(sqlStatementQueries).hasSize(1);
+        assertThat(sqlStatementQueries.get(0)).isEqualTo("create index if not exists embeddings_metadata on embeddings " +
+                "USING GIN (metadata)");
     }
 
     @Test
@@ -52,9 +52,9 @@ class JSONBMetadataHandlerTest {
         JSONBMetadataHandler jsonbMetadataHandler = new JSONBMetadataHandler(metadataStorageConfig);
         jsonbMetadataHandler.createMetadataIndexes(statement, "embeddings");
 
-        Assertions.assertEquals(1, sqlStatementQueries.size());
-        Assertions.assertEquals("create index if not exists embeddings_metadata_jsonb_path_ops on embeddings " +
-                "USING GIN (metadata jsonb_path_ops)", sqlStatementQueries.get(0));
+        assertThat(sqlStatementQueries).hasSize(1);
+        assertThat(sqlStatementQueries.get(0)).isEqualTo("create index if not exists embeddings_metadata_jsonb_path_ops on embeddings " +
+                "USING GIN (metadata jsonb_path_ops)");
     }
 
     @Test
@@ -73,10 +73,10 @@ class JSONBMetadataHandlerTest {
         JSONBMetadataHandler jsonbMetadataHandler = new JSONBMetadataHandler(metadataStorageConfig);
         jsonbMetadataHandler.createMetadataIndexes(statement, "embeddings");
 
-        Assertions.assertEquals(2, sqlStatementQueries.size());
-        Assertions.assertEquals("create index if not exists embeddings_metadata_key1 on embeddings " +
-                "USING GIN ((metadata->key1))", sqlStatementQueries.get(0));
-        Assertions.assertEquals("create index if not exists embeddings_metadata_key2 on embeddings " +
-                "USING GIN ((metadata->key2))", sqlStatementQueries.get(1));
+        assertThat(sqlStatementQueries).hasSize(2);
+        assertThat(sqlStatementQueries.get(0)).isEqualTo("create index if not exists embeddings_metadata_key1 on embeddings " +
+                "USING GIN ((metadata->key1))");
+        assertThat(sqlStatementQueries.get(1)).isEqualTo("create index if not exists embeddings_metadata_key2 on embeddings " +
+                "USING GIN ((metadata->key2))");
     }
 }

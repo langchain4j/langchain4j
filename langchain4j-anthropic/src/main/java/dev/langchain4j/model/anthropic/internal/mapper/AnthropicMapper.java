@@ -6,8 +6,24 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.anthropic.internal.api.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -16,11 +32,19 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.OTHER;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.joining;
@@ -130,12 +154,12 @@ public class AnthropicMapper {
     public static AiMessage toAiMessage(List<AnthropicContent> contents) {
 
         String text = contents.stream()
-                .filter(content -> "text".equals(content.type))
+                .filter(content -> content.type == TEXT)
                 .map(content -> content.text)
                 .collect(joining("\n"));
 
         List<ToolExecutionRequest> toolExecutionRequests = contents.stream()
-                .filter(content -> "tool_use".equals(content.type))
+                .filter(content -> content.type == TOOL_USE)
                 .map(content -> {
                     try {
                         return ToolExecutionRequest.builder()
@@ -150,7 +174,7 @@ public class AnthropicMapper {
                 .collect(toList());
 
         if (isNotNullOrBlank(text) && !isNullOrEmpty(toolExecutionRequests)) {
-            return new AiMessage(text, toolExecutionRequests);
+            return AiMessage.from(text, toolExecutionRequests);
         } else if (!isNullOrEmpty(toolExecutionRequests)) {
             return AiMessage.from(toolExecutionRequests);
         } else {
@@ -193,14 +217,26 @@ public class AnthropicMapper {
     }
 
     public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification) {
-        ToolParameters parameters = toolSpecification.parameters();
-        return AnthropicTool.builder()
-                .name(toolSpecification.name())
-                .description(toolSpecification.description())
-                .inputSchema(AnthropicToolSchema.builder()
-                        .properties(parameters != null ? parameters.properties() : emptyMap())
-                        .required(parameters != null ? parameters.required() : emptyList())
-                        .build())
-                .build();
+        if (toolSpecification.parameters() != null) {
+            JsonObjectSchema parameters = toolSpecification.parameters();
+            return AnthropicTool.builder()
+                    .name(toolSpecification.name())
+                    .description(toolSpecification.description())
+                    .inputSchema(AnthropicToolSchema.builder()
+                            .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
+                            .required(parameters != null ? parameters.required() : emptyList())
+                            .build())
+                    .build();
+        } else {
+            ToolParameters parameters = toolSpecification.toolParameters();
+            return AnthropicTool.builder()
+                    .name(toolSpecification.name())
+                    .description(toolSpecification.description())
+                    .inputSchema(AnthropicToolSchema.builder()
+                            .properties(parameters != null ? parameters.properties() : emptyMap())
+                            .required(parameters != null ? parameters.required() : emptyList())
+                            .build())
+                    .build();
+        }
     }
 }

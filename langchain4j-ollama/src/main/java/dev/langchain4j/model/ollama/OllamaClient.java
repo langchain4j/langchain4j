@@ -1,8 +1,11 @@
 package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import okhttp3.Interceptor;
@@ -22,10 +25,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.*;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.getObjectMapper;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 import static java.lang.Boolean.TRUE;
@@ -109,50 +112,6 @@ class OllamaClient {
             @Override
             public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
                 try (InputStream inputStream = retrofitResponse.body().byteStream()) {
-                    StringBuilder contentBuilder = new StringBuilder();
-                    while (true) {
-                        byte[] bytes = new byte[1024];
-                        int len = inputStream.read(bytes);
-                        String partialResponse = new String(bytes, 0, len);
-
-                        if (logStreamingResponses) {
-                            log.debug("Streaming partial response: {}", partialResponse);
-                        }
-
-                        CompletionResponse completionResponse = toObject(partialResponse, CompletionResponse.class);
-                        contentBuilder.append(completionResponse.getResponse());
-                        handler.onNext(completionResponse.getResponse());
-
-                        if (TRUE.equals(completionResponse.getDone())) {
-                            Response<String> response = Response.from(
-                                    contentBuilder.toString(),
-                                    new TokenUsage(
-                                            completionResponse.getPromptEvalCount(),
-                                            completionResponse.getEvalCount()
-                                    )
-                            );
-                            handler.onComplete(response);
-                            return;
-                        }
-                    }
-                } catch (Exception e) {
-                    handler.onError(e);
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ResponseBody> call, Throwable throwable) {
-                handler.onError(throwable);
-            }
-        });
-    }
-
-    public void streamingChat(ChatRequest request, StreamingResponseHandler<AiMessage> handler) {
-        ollamaApi.streamingChat(request).enqueue(new Callback<ResponseBody>() {
-
-            @Override
-            public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
-                try (InputStream inputStream = retrofitResponse.body().byteStream()) {
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                         StringBuilder contentBuilder = new StringBuilder();
                         while (true) {
@@ -162,17 +121,16 @@ class OllamaClient {
                                 log.debug("Streaming partial response: {}", partialResponse);
                             }
 
-                            ChatResponse chatResponse = toObject(partialResponse, ChatResponse.class);
-                            String content = chatResponse.getMessage().getContent();
-                            contentBuilder.append(content);
-                            handler.onNext(content);
+                            CompletionResponse completionResponse = toObject(partialResponse, CompletionResponse.class);
+                            contentBuilder.append(completionResponse.getResponse());
+                            handler.onNext(completionResponse.getResponse());
 
-                            if (TRUE.equals(chatResponse.getDone())) {
-                                Response<AiMessage> response = Response.from(
-                                        AiMessage.from(contentBuilder.toString()),
+                            if (TRUE.equals(completionResponse.getDone())) {
+                                Response<String> response = Response.from(
+                                        contentBuilder.toString(),
                                         new TokenUsage(
-                                                chatResponse.getPromptEvalCount(),
-                                                chatResponse.getEvalCount()
+                                                completionResponse.getPromptEvalCount(),
+                                                completionResponse.getEvalCount()
                                         )
                                 );
                                 handler.onComplete(response);
@@ -187,6 +145,57 @@ class OllamaClient {
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable throwable) {
+                handler.onError(throwable);
+            }
+        });
+    }
+
+    public void streamingChat(ChatRequest request, StreamingResponseHandler<AiMessage> handler,
+                              List<ChatModelListener> listeners, List<ChatMessage> messages) {
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, new ArrayList<>());
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        onListenRequest(listeners, modelListenerRequest, attributes);
+
+        OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder();
+        ollamaApi.streamingChat(request).enqueue(new Callback<ResponseBody>() {
+
+            @Override
+            public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
+                try (InputStream inputStream = retrofitResponse.body().byteStream()) {
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                        while (true) {
+                            String partialResponse = reader.readLine();
+
+                            if (logStreamingResponses) {
+                                log.debug("Streaming partial response: {}", partialResponse);
+                            }
+
+                            ChatResponse chatResponse = toObject(partialResponse, ChatResponse.class);
+                            String content = chatResponse.getMessage().getContent();
+                            responseBuilder.append(chatResponse);
+                            handler.onNext(content);
+
+                            if (TRUE.equals(chatResponse.getDone())) {
+                                Response<AiMessage> response = responseBuilder.build();
+                                handler.onComplete(response);
+
+                                onListenResponse(listeners, response, modelListenerRequest, attributes);
+
+                                return;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    onListenError(listeners, e, modelListenerRequest, responseBuilder.build(), attributes);
+
+                    handler.onError(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable throwable) {
+                onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), attributes);
+
                 handler.onError(throwable);
             }
         });
@@ -256,6 +265,7 @@ class OllamaClient {
             throw new RuntimeException(e);
         }
     }
+
 
     private RuntimeException toException(retrofit2.Response<?> response) throws IOException {
         int code = response.code();

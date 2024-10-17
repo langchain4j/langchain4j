@@ -4,12 +4,9 @@ import com.dtsx.astra.sdk.AstraDBAdmin;
 import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
-import dev.langchain4j.data.document.loader.UrlDocumentLoader;
-import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.source.UrlSource;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
-import dev.langchain4j.data.document.transformer.HtmlTextExtractor;
+import dev.langchain4j.data.document.transformer.jsoup.HtmlToTextDocumentTransformer;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.segment.TextSegment;
@@ -22,16 +19,12 @@ import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.cassandra.CassandraEmbeddingStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +64,7 @@ public class WebPageLoaderAndRagWIthAstraTest {
 
         //Document document = UrlDocumentLoader.load("https://beta.goodbards.ai", new HtmlDocumentParser());;
 
-        HtmlTextExtractor transformer = new HtmlTextExtractor();
+        HtmlToTextDocumentTransformer transformer = new HtmlToTextDocumentTransformer();
 
         UrlSource.from("https://beta.goodbards.ai").inputStream();
 

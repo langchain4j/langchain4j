@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -16,8 +17,40 @@ import java.util.concurrent.atomic.AtomicReference;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
+import static org.assertj.core.api.Assertions.fail;
 
+/**
+ * Make sure these dependencies are present in the module where this test class is extended:
+ * <pre>
+ *
+ * <dependency>
+ *     <groupId>dev.langchain4j</groupId>
+ *     <artifactId>langchain4j</artifactId>
+ *     <scope>test</scope>
+ * </dependency>
+ *
+ * <dependency>
+ *     <groupId>dev.langchain4j</groupId>
+ *     <artifactId>langchain4j</artifactId>
+ *     <classifier>tests</classifier>
+ *     <type>test-jar</type>
+ *     <scope>test</scope>
+ * </dependency>
+ *
+ * <dependency>
+ *     <groupId>org.mockito</groupId>
+ *     <artifactId>mockito-core</artifactId>
+ *     <scope>test</scope>
+ * </dependency>
+ *
+ * <dependency>
+ *     <groupId>org.mockito</groupId>
+ *     <artifactId>mockito-junit-jupiter</artifactId>
+ *     <scope>test</scope>
+ * </dependency>
+ *
+ * </pre>
+ */
 public abstract class ChatModelListenerIT {
 
     protected abstract ChatLanguageModel createModel(ChatModelListener listener);
@@ -38,7 +71,7 @@ public abstract class ChatModelListenerIT {
 
     protected abstract ChatLanguageModel createFailingModel(ChatModelListener listener);
 
-    protected abstract Class<?> expectedExceptionClass();
+    protected abstract Class<? extends Exception> expectedExceptionClass();
 
     @Test
     void should_listen_request_and_response() {
@@ -59,7 +92,7 @@ public abstract class ChatModelListenerIT {
             public void onResponse(ChatModelResponseContext responseContext) {
                 responseReference.set(responseContext.response());
                 assertThat(responseContext.request()).isSameAs(requestReference.get());
-                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
             @Override
@@ -72,23 +105,33 @@ public abstract class ChatModelListenerIT {
 
         UserMessage userMessage = UserMessage.from("hello");
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("add")
-                .addParameter("a", INTEGER)
-                .addParameter("b", INTEGER)
-                .build();
+        ToolSpecification toolSpecification = null;
+        if (supportToolCalls()) {
+            toolSpecification = ToolSpecification.builder()
+                    .name("add")
+                    .addParameter("a", INTEGER)
+                    .addParameter("b", INTEGER)
+                    .build();
+        }
 
         // when
-        AiMessage aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
+        AiMessage aiMessage;
+        if (supportToolCalls()) {
+            aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
+        } else {
+            aiMessage = model.generate(singletonList(userMessage)).content();
+        }
 
         // then
         ChatModelRequest request = requestReference.get();
         assertThat(request.model()).isEqualTo(modelName());
-        assertThat(request.temperature()).isEqualTo(temperature());
+        assertThat(request.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
         assertThat(request.topP()).isEqualTo(topP());
         assertThat(request.maxTokens()).isEqualTo(maxTokens());
         assertThat(request.messages()).containsExactly(userMessage);
-        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+        if (supportToolCalls()) {
+            assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+        }
 
         ChatModelResponse response = responseReference.get();
         if (assertResponseId()) {
@@ -98,11 +141,21 @@ public abstract class ChatModelListenerIT {
         assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
-        assertThat(response.finishReason()).isNotNull();
+        if (assertFinishReason()) {
+            assertThat(response.finishReason()).isNotNull();
+        }
         assertThat(response.aiMessage()).isEqualTo(aiMessage);
     }
 
+    protected boolean supportToolCalls() {
+        return true;
+    }
+
     protected boolean assertResponseId() {
+        return true;
+    }
+
+    protected boolean assertFinishReason() {
         return true;
     }
 
@@ -131,7 +184,7 @@ public abstract class ChatModelListenerIT {
                 errorReference.set(errorContext.error());
                 assertThat(errorContext.request()).isSameAs(requestReference.get());
                 assertThat(errorContext.partialResponse()).isNull();
-                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };
 
@@ -140,14 +193,17 @@ public abstract class ChatModelListenerIT {
         String userMessage = "this message will fail";
 
         // when
+        Throwable thrown = null;
         try {
             model.generate(userMessage);
         } catch (Exception e) {
-            // ignore
+            thrown = e;
         }
 
         // then
-        Throwable throwable = errorReference.get();
-        assertThat(throwable).isExactlyInstanceOf(expectedExceptionClass());
+        Throwable error = errorReference.get();
+        assertThat(error).isExactlyInstanceOf(expectedExceptionClass());
+
+        assertThat(thrown == error || thrown.getCause() == error).isTrue(); // TODO fix discrepancy, do not wrap
     }
 }

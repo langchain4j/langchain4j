@@ -41,7 +41,7 @@ class AzureOpenAiChatModelListenerIT extends ChatModelListenerIT {
     }
 
     @Override
-    protected Class<?> expectedExceptionClass() {
+    protected Class<? extends Exception> expectedExceptionClass() {
         return ClientAuthenticationException.class;
     }
 }

@@ -7,6 +7,7 @@ import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 
 import java.util.ArrayList;
@@ -31,12 +32,14 @@ public class AiServiceTokenStream implements TokenStream {
 
     private Consumer<String> tokenHandler;
     private Consumer<List<Content>> contentsHandler;
+    private Consumer<ToolExecution> toolExecutionHandler;
     private Consumer<Throwable> errorHandler;
     private Consumer<Response<AiMessage>> completionHandler;
 
     private int onNextInvoked;
     private int onCompleteInvoked;
     private int onRetrievedInvoked;
+    private int onToolExecutedInvoked;
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
 
@@ -70,6 +73,13 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
+    public TokenStream onToolExecuted(Consumer<ToolExecution> toolExecutionHandler) {
+        this.toolExecutionHandler = toolExecutionHandler;
+        this.onToolExecutedInvoked++;
+        return this;
+    }
+
+    @Override
     public TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler) {
         this.completionHandler = completionHandler;
         this.onCompleteInvoked++;
@@ -98,6 +108,7 @@ public class AiServiceTokenStream implements TokenStream {
                 context,
                 memoryId,
                 tokenHandler,
+                toolExecutionHandler,
                 completionHandler,
                 errorHandler,
                 initTemporaryMemory(context, messages),
@@ -121,15 +132,15 @@ public class AiServiceTokenStream implements TokenStream {
         if (onNextInvoked != 1) {
             throw new IllegalConfigurationException("onNext must be invoked exactly 1 time");
         }
-
         if (onCompleteInvoked > 1) {
             throw new IllegalConfigurationException("onComplete must be invoked at most 1 time");
         }
-
         if (onRetrievedInvoked > 1) {
             throw new IllegalConfigurationException("onRetrieved must be invoked at most 1 time");
         }
-
+        if (onToolExecutedInvoked > 1) {
+            throw new IllegalConfigurationException("onToolExecuted must be invoked at most 1 time");
+        }
         if (onErrorInvoked + ignoreErrorsInvoked != 1) {
             throw new IllegalConfigurationException("One of onError or ignoreErrors must be invoked exactly 1 time");
         }

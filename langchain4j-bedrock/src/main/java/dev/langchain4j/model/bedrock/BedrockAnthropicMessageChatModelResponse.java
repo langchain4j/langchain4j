@@ -15,7 +15,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class BedrockAnthropicMessageChatModelResponse implements BedrockChatModelResponse {
-    
+
     private String id;
     private String model;
     private String type;
@@ -24,7 +24,7 @@ public class BedrockAnthropicMessageChatModelResponse implements BedrockChatMode
     private String stop_reason;
     private String stop_sequence;
     private BedrockAnthropicUsage usage;
-    
+
     @Getter
     @Setter
     public static class BedrockAnthropicUsage {
@@ -45,6 +45,8 @@ public class BedrockAnthropicMessageChatModelResponse implements BedrockChatMode
             return FinishReason.STOP;
           case "max_tokens":
                 return FinishReason.LENGTH;
+            case "tool_use":
+                return FinishReason.TOOL_EXECUTION;
             default:
                 throw new IllegalArgumentException("Unknown stop reason: " + stop_reason);
         }
