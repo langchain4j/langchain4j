@@ -19,7 +19,7 @@ public interface TextClassifier<L> {
      * @param text Text to classify.
      * @return A list of classification categories and detailed results
      */
-    List<ClassifyResult<L>> classifyWithDetail(String text);
+    ClassificationResult<L> classifyWithDetail(String text);
 
     /**
      * Classify the given {@link TextSegment}.
@@ -27,7 +27,7 @@ public interface TextClassifier<L> {
      * @param textSegment {@link TextSegment} to classify.
      * @return A list of classification categories and detailed results
      */
-    default List<ClassifyResult<L>> classifyWithDetail(TextSegment textSegment) {
+    default ClassificationResult<L> classifyWithDetail(TextSegment textSegment) {
         return classifyWithDetail(textSegment.text());
     }
 
@@ -37,7 +37,7 @@ public interface TextClassifier<L> {
      * @param document {@link Document} to classify.
      * @return A list of classification categories and detailed results
      */
-    default List<ClassifyResult<L>> classifyWithDetail(Document document) {
+    default ClassificationResult<L> classifyWithDetail(Document document) {
         return classifyWithDetail(document.text());
     }
 
@@ -48,8 +48,8 @@ public interface TextClassifier<L> {
      * @return A list of classification categories.
      */
     default List<L> classify(String text) {
-        return classifyWithDetail(text).stream()
-                .map(ClassifyResult::label)
+        return classifyWithDetail(text).scoredLabels().stream()
+                .map(ScoredLabel::label)
                 .collect(Collectors.toList());
     }
 

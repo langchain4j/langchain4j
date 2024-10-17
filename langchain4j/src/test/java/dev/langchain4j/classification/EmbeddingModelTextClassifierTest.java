@@ -260,13 +260,13 @@ class EmbeddingModelTextClassifierTest {
                 0.5
         );
 
-        List<ClassifyResult<CustomerServiceCategory>> results = classifier.classifyWithDetail("Bro, this product is crap");
+        ClassificationResult<CustomerServiceCategory> results = classifier.classifyWithDetail("Bro, this product is crap");
 
-        assertThat(results.stream().map(ClassifyResult::label))
+        assertThat(results.scoredLabels().stream().map(ScoredLabel::label))
                 .containsExactly(RETURNS_AND_EXCHANGES);
-        assertThat(results.stream().map(ClassifyResult::score))
+        assertThat(results.scoredLabels().stream().map(ScoredLabel::score))
                 .allMatch(score -> score > minScore);
-        assertThat(results.stream().map(ClassifyResult::score).findFirst().orElse(null))
+        assertThat(results.scoredLabels().stream().map(ScoredLabel::score).findFirst().orElse(null))
                 .isCloseTo(minScore, offset(0.1));
     }
 }

@@ -105,11 +105,11 @@ public class EmbeddingModelTextClassifier<L> implements TextClassifier<L> {
     }
 
     @Override
-    public List<ClassifyResult<L>> classifyWithDetail(String text) {
+    public ClassificationResult<L> classifyWithDetail(String text) {
 
         Embedding textEmbedding = embeddingModel.embed(text).content();
 
-        List<ClassifyResult<L>> labelsWithScores = new ArrayList<>();
+        List<ScoredLabel<L>> scoredLabels = new ArrayList<>();
         exampleEmbeddingsByLabel.forEach((label, exampleEmbeddings) -> {
 
             double meanScore = 0;
@@ -122,15 +122,17 @@ public class EmbeddingModelTextClassifier<L> implements TextClassifier<L> {
             }
             meanScore /= exampleEmbeddings.size();
 
-            labelsWithScores.add(new ClassifyResult<>(label, aggregatedScore(meanScore, maxScore)));
+            scoredLabels.add(ScoredLabel.from(label, aggregatedScore(meanScore, maxScore)));
         });
 
-        return labelsWithScores.stream()
-                .filter(it -> it.score() >= minScore)
-                // sorting in descending order to return highest score first
-                .sorted(comparingDouble(classifyResult -> 1 - classifyResult.score()))
-                .limit(maxResults)
-                .collect(toList());
+        return ClassificationResult.fromScoredLabels(
+                scoredLabels.stream()
+                        .filter(it -> it.score() >= minScore)
+                        // sorting in descending order to return highest score first
+                        .sorted(comparingDouble(classificationResult -> 1 - classificationResult.score()))
+                        .limit(maxResults)
+                        .collect(toList())
+        );
     }
 
     private double aggregatedScore(double meanScore, double maxScore) {
