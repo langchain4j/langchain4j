@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -270,6 +271,15 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     context.chatMemory(memoryId).add(toolExecutionResultMessage);
                                 } else {
                                     messages.add(toolExecutionResultMessage);
+                                }
+                                boolean returnAsFinalAnswer = method.getAnnotation(Tool.class).returnAsFinalAnswer();
+                                if (returnAsFinalAnswer) {
+                                    if (context.hasChatMemory()) {
+                                        context.chatMemory(memoryId).add(AiMessage.aiMessage(toolExecutionResult));
+                                    } else {
+                                        messages.add(AiMessage.aiMessage(toolExecutionResult));
+                                    }
+                                    return toolExecutionResult;
                                 }
                             }
 
