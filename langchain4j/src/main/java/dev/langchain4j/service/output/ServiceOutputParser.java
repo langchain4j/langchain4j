@@ -74,7 +74,11 @@ public class ServiceOutputParser {
         }
 
         try {
-            return Json.fromJson(text, returnType);
+            if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
+                return Json.fromJson(Json.toJson(Json.fromJson(text, Map.class).get("array")), returnType);
+            } else {
+                return Json.fromJson(text, returnType);
+            }
         } catch (Exception e) {
             String jsonBlock = extractJsonBlock(text);
             return Json.fromJson(jsonBlock, returnType);
