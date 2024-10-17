@@ -9,12 +9,11 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.TestUtils;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 
 import java.time.Duration;
 import java.util.List;
@@ -28,25 +27,17 @@ import static org.assertj.core.data.Percentage.withPercentage;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-class MongoDbEmbeddingStoreNativeFilterIT {
+class MongoDbEmbeddingStoreMiscIT {
 
-    public static class ContainerIT extends MongoDbEmbeddingStoreNativeFilterIT {
-        static MongoDBAtlasLocalContainer mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
-
+    public static class ContainerIT extends MongoDbEmbeddingStoreMiscIT {
         @BeforeAll
         static void start() {
             MongoDbTestFixture.assertDoContainerTests();
-            mongodb.start();
-        }
-
-        @AfterAll
-        static void stop() {
-            mongodb.stop();
         }
 
         @Override
         MongoClient createClient() {
-            return createClientFromContainer(mongodb);
+            return createClientFromContainer();
         }
     }
 
@@ -113,10 +104,7 @@ class MongoDbEmbeddingStoreNativeFilterIT {
                 .queryEmbedding(EMBEDDING_MODEL.embed("dummy").content())
                 .maxResults(1)
                 .build();
-        Awaitility.await()
-                .atMost(Duration.ofSeconds(60))
-                .pollDelay(Duration.ofSeconds(0))
-                .pollInterval(Duration.ofMillis(300))
-                .untilAsserted(() -> assertThatNoException().isThrownBy(() -> embeddingStore().search(embeddingSearchRequest)));
+        TestUtils.awaitUntilAsserted(
+                () -> assertThatNoException().isThrownBy(() -> embeddingStore().search(embeddingSearchRequest)));
     }
 }
