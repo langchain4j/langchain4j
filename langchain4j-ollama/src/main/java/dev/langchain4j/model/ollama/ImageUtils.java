@@ -7,7 +7,6 @@ import dev.langchain4j.internal.Utils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -43,7 +42,7 @@ class ImageUtils {
     }
 
     private static String fileScheme(Image image) {
-        byte[] fileBytes = readAllBytes(Paths.get(image.url()));
+        byte[] fileBytes = readAllBytes(Path.of(image.url()));
         return Base64.getEncoder().encodeToString(fileBytes);
 
     }

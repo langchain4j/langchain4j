@@ -36,10 +36,10 @@ public class MessageSanitizer {
         List<ChatMessage> toRemove = new ArrayList<>();
 
         for (ChatMessage message : messages) {
-            if (message instanceof UserMessage) {
+            if (message instanceof UserMessage userMessage) {
                 if (lastWasUserMessage) {
                     toRemove.add(message);
-                    log.warn("Removing consecutive UserMessage: {}", ((UserMessage) message).singleText());
+                    log.warn("Removing consecutive UserMessage: {}", userMessage.singleText());
                 } else {
                     lastWasUserMessage = true;
                 }

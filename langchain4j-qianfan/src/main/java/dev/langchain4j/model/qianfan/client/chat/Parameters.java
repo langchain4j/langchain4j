@@ -29,8 +29,8 @@ public class Parameters {
         if (this == another) {
             return true;
         } else {
-            return another instanceof Parameters
-                    && this.equalTo((Parameters)another);
+            return another instanceof Parameters p
+                    && this.equalTo(p);
         }
     }
 

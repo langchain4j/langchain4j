@@ -39,8 +39,8 @@ public class Parameters {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof Parameters
-                && equalTo((Parameters) another);
+        return another instanceof Parameters p
+                && equalTo(p);
     }
 
     private boolean equalTo(Parameters another) {

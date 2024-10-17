@@ -30,8 +30,8 @@ public class JsonSchemaProperty {
         if (this == another) {
             return true;
         } else {
-            return another instanceof JsonSchemaProperty
-                    && this.equalTo((JsonSchemaProperty)another);
+            return another instanceof JsonSchemaProperty jsp
+                    && this.equalTo(jsp);
         }
     }
 

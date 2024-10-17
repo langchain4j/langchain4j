@@ -15,7 +15,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.lang.String.format;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
@@ -65,7 +64,7 @@ public class ToolSpecifications {
         Set<String> names = new HashSet<>();
         for (ToolSpecification toolSpecification : toolSpecifications) {
             if (!names.add(toolSpecification.name())) {
-                throw new IllegalArgumentException(format("Tool names must be unique. The tool '%s' appears several times", toolSpecification.name()));
+                throw new IllegalArgumentException("Tool names must be unique. The tool '%s' appears several times".formatted(toolSpecification.name()));
             }
         }
     }

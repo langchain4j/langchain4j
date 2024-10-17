@@ -45,28 +45,20 @@ class ValueMapFactory {
 			return value((Map<String, Object>) value);
 		}
 
-		switch (value.getClass().getSimpleName()) {
-      case "UUID":
-        return ValueFactory.value(value.toString());
-			case "String":
-				return ValueFactory.value((String) value);
-			case "Integer":
-        return ValueFactory.value((Integer) value);
-      case "Long":
-				return ValueFactory.value((Long) value);
-			case "Double":
-				return ValueFactory.value((Double) value);
-			case "Float":
-				return ValueFactory.value((Float) value);
-			case "Boolean":
-				return ValueFactory.value((Boolean) value);
-			default:
-				throw new IllegalArgumentException("Unsupported Qdrant value type: " + value.getClass());
-		}
+        return switch (value.getClass().getSimpleName()) {
+            case "UUID" -> ValueFactory.value(value.toString());
+            case "String" -> ValueFactory.value((String) value);
+            case "Integer" -> ValueFactory.value((Integer) value);
+            case "Long" -> ValueFactory.value((Long) value);
+            case "Double" -> ValueFactory.value((Double) value);
+            case "Float" -> ValueFactory.value((Float) value);
+            case "Boolean" -> ValueFactory.value((Boolean) value);
+            default -> throw new IllegalArgumentException("Unsupported Qdrant value type: " + value.getClass());
+        };
 	}
 
 	private static Value value(Object[] elements) {
-		List<Value> values = new ArrayList<Value>(elements.length);
+		List<Value> values = new ArrayList<>(elements.length);
 
 		for (Object element : elements) {
 			values.add(value(element));

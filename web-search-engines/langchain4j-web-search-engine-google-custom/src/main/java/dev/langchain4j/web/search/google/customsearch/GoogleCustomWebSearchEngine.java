@@ -171,8 +171,8 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         if (!result.getPagemap().isEmpty()) {
             result.getPagemap().forEach((key, value) -> {
                 if (key.equals("metatags")) {
-                    if (value instanceof List) {
-                        metadata.put(key, ((List<?>) value).stream().map(Object::toString).reduce((a, b) -> a + ", " + b).orElse(""));
+                    if (value instanceof List<?> list) {
+                        metadata.put(key, list.stream().map(Object::toString).reduce((a, b) -> a + ", " + b).orElse(""));
                     } else {
                         metadata.put(key, value.toString());
                     }
@@ -200,16 +200,13 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
     }
 
     private static Integer calculatePageNumberFromQueries(GenericJson query) {
-        if (query instanceof Queries.PreviousPage) {
-            Queries.PreviousPage previousPage = (Queries.PreviousPage) query;
+        if (query instanceof Queries.PreviousPage previousPage) {
             return calculatePageNumber(previousPage.getStartIndex());
         }
-        if (query instanceof Queries.Request) {
-            Queries.Request currentPage = (Queries.Request) query;
+        if (query instanceof Queries.Request currentPage) {
             return calculatePageNumber(getOrDefault(currentPage.getStartIndex(), 1));
         }
-        if (query instanceof Queries.NextPage) {
-            Queries.NextPage nextPage = (Queries.NextPage) query;
+        if (query instanceof Queries.NextPage nextPage) {
             return calculatePageNumber(nextPage.getStartIndex());
         }
         return null;

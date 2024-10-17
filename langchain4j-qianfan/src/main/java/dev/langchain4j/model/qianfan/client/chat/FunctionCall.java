@@ -46,8 +46,8 @@ public class FunctionCall<T> {
         if (this == another) {
             return true;
         } else {
-            return another instanceof FunctionCall
-                    && this.equalTo((FunctionCall)another);
+            return another instanceof FunctionCall<?> fc
+                    && this.equalTo(fc);
         }
     }
 

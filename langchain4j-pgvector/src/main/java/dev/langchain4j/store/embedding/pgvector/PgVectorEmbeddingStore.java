@@ -150,11 +150,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         String query = "init";
         try (Connection connection = getConnection(); Statement statement = connection.createStatement()) {
             if (dropTableFirst) {
-                statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
+                statement.executeUpdate("DROP TABLE IF EXISTS %s".formatted(table));
             }
             if (createTable) {
-                query = String.format("CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, " +
-                                "embedding vector(%s), text TEXT NULL, %s )",
+                query = ("CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, " +
+                        "embedding vector(%s), text TEXT NULL, %s )").formatted(
                         table, ensureGreaterThanZero(dimension, "dimension"),
                         metadataHandler.columnDefinitionsString());
                 statement.executeUpdate(query);
@@ -162,15 +162,15 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             if (useIndex) {
                 final String indexName = table + "_ivfflat_index";
-                query = String.format(
+                query = (
                         "CREATE INDEX IF NOT EXISTS %s ON %s " +
                                 "USING ivfflat (embedding vector_cosine_ops) " +
-                                "WITH (lists = %s)",
+                                "WITH (lists = %s)").formatted(
                         indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
                 statement.executeUpdate(query);
             }
         } catch (SQLException e) {
-            throw new RuntimeException(String.format("Failed to execute '%s'", query), e);
+            throw new RuntimeException("Failed to execute '%s'".formatted(query), e);
         }
     }
 
@@ -242,7 +242,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
-        String sql = String.format("DELETE FROM %s WHERE embedding_id = ANY (?)", table);
+        String sql = "DELETE FROM %s WHERE embedding_id = ANY (?)".formatted(table);
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             Array array = connection.createArrayOf("uuid", ids.stream().map(UUID::fromString).toArray());
@@ -257,7 +257,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
         String whereClause = metadataHandler.whereClause(filter);
-        String sql = String.format("DELETE FROM %s WHERE %s", table, whereClause);
+        String sql = "DELETE FROM %s WHERE %s".formatted(table, whereClause);
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.executeUpdate();
@@ -270,7 +270,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll() {
         try (Connection connection = getConnection();
              Statement statement = connection.createStatement()) {
-            statement.executeUpdate(String.format("TRUNCATE TABLE %s", table));
+            statement.executeUpdate("TRUNCATE TABLE %s".formatted(table));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -298,9 +298,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
             String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
             whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause;
-            String query = String.format(
+            String query = (
                     "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, " +
-                            "%s FROM %s %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
+                            "%s FROM %s %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;").formatted(
                     referenceVector, join(",", metadataHandler.columnsNames()), table, whereClause, minScore, maxResults);
             try (PreparedStatement selectStmt = connection.prepareStatement(query)) {
                 try (ResultSet resultSet = selectStmt.executeQuery()) {
@@ -345,12 +345,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 "embeddings size is not equal to embedded size");
 
         try (Connection connection = getConnection()) {
-            String query = String.format(
+            String query = (
                     "INSERT INTO %s (embedding_id, embedding, text, %s) VALUES (?, ?, ?, %s)" +
                             "ON CONFLICT (embedding_id) DO UPDATE SET " +
                             "embedding = EXCLUDED.embedding," +
                             "text = EXCLUDED.text," +
-                            "%s;",
+                            "%s;").formatted(
                     table, join(",", metadataHandler.columnsNames()),
                     join(",", nCopies(metadataHandler.columnsNames().size(), "?")),
                     metadataHandler.insertClause());

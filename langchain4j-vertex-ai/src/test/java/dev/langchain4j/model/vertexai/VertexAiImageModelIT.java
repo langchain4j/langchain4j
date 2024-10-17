@@ -12,7 +12,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
@@ -112,7 +111,7 @@ public class VertexAiImageModelIT {
         URI maskFileUri = Objects.requireNonNull(getClass().getClassLoader().getResource("mask.png")).toURI();
 
         Response<Image> compositeResp = model.edit(
-                forestResp.content(), fromPath(Paths.get(maskFileUri)), "red trees"
+                forestResp.content(), fromPath(Path.of(maskFileUri)), "red trees"
         );
 
         assertThat(compositeResp.content().base64Data()).isNotNull();
@@ -120,7 +119,7 @@ public class VertexAiImageModelIT {
 
     @Test
     public void should_use_persistTo_and_image_upscaling() {
-        Path defaultTempDirPath = Paths.get(System.getProperty("java.io.tmpdir"));
+        Path defaultTempDirPath = Path.of(System.getProperty("java.io.tmpdir"));
 
         VertexAiImageModel imagenModel = VertexAiImageModel.builder()
                 .endpoint(ENDPOINT)

@@ -11,7 +11,6 @@ import java.util.List;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
-import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DocumentByRegexSplitterTest {
@@ -20,7 +19,7 @@ class DocumentByRegexSplitterTest {
     @ValueSource(strings = {" ", ",", "\n", "\n\n"})
     void should_split_by(String separator) {
 
-        String text = format("one%stwo%sthree", separator, separator);
+        String text = "one%stwo%sthree".formatted(separator, separator);
         Document document = Document.from(text, metadata("document", "0"));
 
         int maxSegmentSize = 5;

@@ -44,15 +44,14 @@ public class MistralAiMapper {
     }
 
     static MistralAiChatMessage toMistralAiMessage(ChatMessage message) {
-        if (message instanceof SystemMessage) {
+        if (message instanceof SystemMessage systemMessage) {
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.SYSTEM)
-                    .content(((SystemMessage) message).text())
+                    .content(systemMessage.text())
                     .build();
         }
 
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
 
             if (!aiMessage.hasToolExecutionRequests()) {
                 return MistralAiChatMessage.builder()
@@ -87,11 +86,11 @@ public class MistralAiMapper {
                     .build();
         }
 
-        if (message instanceof ToolExecutionResultMessage) {
+        if (message instanceof ToolExecutionResultMessage resultMessage) {
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.TOOL)
-                    .name(((ToolExecutionResultMessage) message).toolName())
-                    .content(((ToolExecutionResultMessage) message).text())
+                    .name(resultMessage.toolName())
+                    .content(resultMessage.text())
                     .build();
         }
 

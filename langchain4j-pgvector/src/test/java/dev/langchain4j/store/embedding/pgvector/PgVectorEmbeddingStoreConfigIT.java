@@ -50,7 +50,7 @@ public abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithF
     @BeforeEach
     void beforeEach() {
         try (Connection connection = dataSource.getConnection()) {
-            connection.createStatement().executeUpdate(String.format("TRUNCATE TABLE %s", TABLE_NAME));
+            connection.createStatement().executeUpdate("TRUNCATE TABLE %s".formatted(TABLE_NAME));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

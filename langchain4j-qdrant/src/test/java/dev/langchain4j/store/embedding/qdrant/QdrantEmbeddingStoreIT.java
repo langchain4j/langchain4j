@@ -99,9 +99,8 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         return EmbeddingStoreWithFilteringIT.should_filter_by_metadata_not()
             .filter(arguments -> {
                 Filter filter = (Filter) arguments.get()[0];
-                if (filter instanceof IsNotIn) {
+                if (filter instanceof IsNotIn notIn) {
                     try {
-                        IsNotIn notIn = (IsNotIn) filter;
                         Method method = notIn.getClass().getMethod("key");
                         String key = (String) method.invoke(filter);
 
@@ -122,8 +121,7 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
-                } else if (filter instanceof IsNotEqualTo) {
-                    IsNotEqualTo notEqualTo = (IsNotEqualTo) filter;
+                } else if (filter instanceof IsNotEqualTo notEqualTo) {
                     return notEqualTo.comparisonValue() instanceof String ||
                         notEqualTo.comparisonValue() instanceof UUID ||
                         notEqualTo.comparisonValue() instanceof Integer ||
@@ -138,30 +136,24 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         return EmbeddingStoreWithFilteringIT.should_filter_by_metadata()
             .filter(arguments -> {
                 Filter filter = (Filter) arguments.get()[0];
-                if (filter instanceof IsLessThan) {
-                    IsLessThan lessThan = (IsLessThan) filter;
+                if (filter instanceof IsLessThan lessThan) {
                     return lessThan.comparisonValue() instanceof Integer ||
                         lessThan.comparisonValue() instanceof Long;
-                } else if (filter instanceof IsLessThanOrEqualTo) {
-                    IsLessThanOrEqualTo lessThanOrEqualTo = (IsLessThanOrEqualTo) filter;
+                } else if (filter instanceof IsLessThanOrEqualTo lessThanOrEqualTo) {
                     return lessThanOrEqualTo.comparisonValue() instanceof Integer ||
                         lessThanOrEqualTo.comparisonValue() instanceof Long;
-                } else if (filter instanceof IsGreaterThan) {
-                    IsGreaterThan greaterThan = (IsGreaterThan) filter;
+                } else if (filter instanceof IsGreaterThan greaterThan) {
                     return greaterThan.comparisonValue() instanceof Integer ||
                         greaterThan.comparisonValue() instanceof Long;
-                } else if (filter instanceof IsGreaterThanOrEqualTo) {
-                    IsGreaterThanOrEqualTo greaterThanOrEqualTo = (IsGreaterThanOrEqualTo) filter;
+                } else if (filter instanceof IsGreaterThanOrEqualTo greaterThanOrEqualTo) {
                     return greaterThanOrEqualTo.comparisonValue() instanceof Integer ||
                         greaterThanOrEqualTo.comparisonValue() instanceof Long;
-                } else if (filter instanceof IsEqualTo) {
-                    IsEqualTo equalTo = (IsEqualTo) filter;
+                } else if (filter instanceof IsEqualTo equalTo) {
                     return equalTo.comparisonValue() instanceof String ||
                         equalTo.comparisonValue() instanceof UUID ||
                         equalTo.comparisonValue() instanceof Integer ||
                         equalTo.comparisonValue() instanceof Long;
-                } else if (filter instanceof IsIn) {
-                    IsIn in = (IsIn) filter;
+                } else if (filter instanceof IsIn in) {
                     Object firstValue = in .comparisonValues().stream().findFirst().get();
                     return firstValue instanceof String ||
                         firstValue instanceof UUID ||

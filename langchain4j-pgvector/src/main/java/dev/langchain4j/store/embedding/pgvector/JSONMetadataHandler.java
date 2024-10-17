@@ -76,7 +76,7 @@ class JSONMetadataHandler implements MetadataHandler {
 
     @Override
     public String insertClause() {
-        return String.format("%s = EXCLUDED.%s", this.columnName, this.columnName);
+        return "%s = EXCLUDED.%s".formatted(this.columnName, this.columnName);
     }
 
     @Override

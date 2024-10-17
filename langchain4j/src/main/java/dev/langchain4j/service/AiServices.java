@@ -465,7 +465,7 @@ public abstract class AiServices<T> {
     public static List<ChatMessage> removeToolMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(it -> !(it instanceof ToolExecutionResultMessage))
-                .filter(it -> !(it instanceof AiMessage && ((AiMessage) it).hasToolExecutionRequests()))
+                .filter(it -> !(it instanceof AiMessage am && am.hasToolExecutionRequests()))
                 .collect(toList());
     }
 
@@ -474,7 +474,7 @@ public abstract class AiServices<T> {
             try {
                 Moderation moderation = moderationFuture.get();
                 if (moderation.flagged()) {
-                    throw new ModerationException(String.format("Text \"%s\" violates content policy", moderation.flaggedText()));
+                    throw new ModerationException("Text \"%s\" violates content policy".formatted(moderation.flaggedText()));
                 }
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);

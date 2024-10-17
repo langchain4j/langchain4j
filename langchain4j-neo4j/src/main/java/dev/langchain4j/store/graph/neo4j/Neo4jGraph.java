@@ -103,7 +103,7 @@ public class Neo4jGraph implements AutoCloseable {
 
         return records.stream()
                 .map(this::getOutput)
-                .map(r -> String.format("%s %s", r.asMap().get("labels"), formatMap(r.get("properties").asList(Value::asMap))))
+                .map(r -> "%s %s".formatted(r.asMap().get("labels"), formatMap(r.get("properties").asList(Value::asMap))))
                 .toList();
     }
 
@@ -111,7 +111,7 @@ public class Neo4jGraph implements AutoCloseable {
 
         return records.stream()
                 .map(this::getOutput)
-                .map(r -> String.format("%s %s", r.get("type"), formatMap(r.get("properties").asList(Value::asMap))))
+                .map(r -> "%s %s".formatted(r.get("type"), formatMap(r.get("properties").asList(Value::asMap))))
                 .toList();
     }
 
@@ -119,7 +119,7 @@ public class Neo4jGraph implements AutoCloseable {
 
         return records.stream()
                 .map(r -> getOutput(r).asMap())
-                .map(r -> String.format("(:%s)-[:%s]->(:%s)", r.get("start"), r.get("type"), r.get("end")))
+                .map(r -> "(:%s)-[:%s]->(:%s)".formatted(r.get("start"), r.get("type"), r.get("end")))
                 .toList();
     }
 

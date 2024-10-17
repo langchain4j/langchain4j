@@ -107,12 +107,10 @@ class VespaQueryClient {
     try (PEMParser parser = new PEMParser(Files.newBufferedReader(file))) {
       Object pemObject;
       while ((pemObject = parser.readObject()) != null) {
-        if (pemObject instanceof PrivateKeyInfo) {
-          PrivateKeyInfo keyInfo = (PrivateKeyInfo) pemObject;
+        if (pemObject instanceof PrivateKeyInfo keyInfo) {
           PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyInfo.getEncoded());
           return createKeyFactory(keyInfo).generatePrivate(keySpec);
-        } else if (pemObject instanceof PEMKeyPair) {
-          PEMKeyPair pemKeypair = (PEMKeyPair) pemObject;
+        } else if (pemObject instanceof PEMKeyPair pemKeypair) {
           PrivateKeyInfo keyInfo = pemKeypair.getPrivateKeyInfo();
           return createKeyFactory(keyInfo).generatePrivate(new PKCS8EncodedKeySpec(keyInfo.getEncoded()));
         }
@@ -122,11 +120,11 @@ class VespaQueryClient {
   }
 
   private static X509Certificate toX509Certificate(Object pemObject) throws IOException, GeneralSecurityException {
-    if (pemObject instanceof X509Certificate) return (X509Certificate) pemObject;
-    if (pemObject instanceof X509CertificateHolder) {
+    if (pemObject instanceof X509Certificate certificate) return certificate;
+    if (pemObject instanceof X509CertificateHolder holder) {
       return new JcaX509CertificateConverter()
         .setProvider(bcProvider)
-        .getCertificate((X509CertificateHolder) pemObject);
+        .getCertificate(holder);
     }
     throw new IOException("Invalid type of PEM object: " + pemObject);
   }

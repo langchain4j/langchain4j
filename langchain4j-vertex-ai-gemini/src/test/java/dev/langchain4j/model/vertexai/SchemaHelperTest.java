@@ -42,37 +42,39 @@ public class SchemaHelperTest {
     void should_convert_json_schema_string_into_schema() {
 
         // when
-        Schema schema = SchemaHelper.fromJsonSchema("{\n" +
-            "  \"type\": \"OBJECT\",\n" +
-            "  \"properties\": {\n" +
-            "    \"artist-name\": {\n" +
-            "      \"type\": \"STRING\"\n" +
-            "    },\n" +
-            "    \"artist-age\": {\n" +
-            "      \"type\": \"INTEGER\"\n" +
-            "    },\n" +
-            "    \"artist-adult\": {\n" +
-            "      \"type\": \"BOOLEAN\"\n" +
-            "    },\n" +
-            "    \"artist-pets\": {\n" +
-            "      \"type\": \"ARRAY\",\n" +
-            "      \"items\": \n" +
-            "        {\n" +
-            "          \"type\": \"STRING\"\n" +
-            "        }\n" +
-            "    },\n" +
-            "    \"artist-address\": {\n" +
-            "      \"type\": \"STRING\"\n" +
-            "    }\n" +
-            "  },\n" +
-            "  \"required\": [\n" +
-            "    \"artist-name\",\n" +
-            "    \"artist-age\",\n" +
-            "    \"artist-adult\",\n" +
-            "    \"artist-pets\",\n" +
-            "    \"artist-address\"\n" +
-            "  ]\n" +
-            "}");
+        Schema schema = SchemaHelper.fromJsonSchema("""
+            {
+              "type": "OBJECT",
+              "properties": {
+                "artist-name": {
+                  "type": "STRING"
+                },
+                "artist-age": {
+                  "type": "INTEGER"
+                },
+                "artist-adult": {
+                  "type": "BOOLEAN"
+                },
+                "artist-pets": {
+                  "type": "ARRAY",
+                  "items":\s
+                    {
+                      "type": "STRING"
+                    }
+                },
+                "artist-address": {
+                  "type": "STRING"
+                }
+              },
+              "required": [
+                "artist-name",
+                "artist-age",
+                "artist-adult",
+                "artist-pets",
+                "artist-address"
+              ]
+            }\
+            """);
 
         // then
         assertThat(schema.getRequiredList()).contains("artist-name", "artist-age", "artist-adult", "artist-pets", "artist-address");

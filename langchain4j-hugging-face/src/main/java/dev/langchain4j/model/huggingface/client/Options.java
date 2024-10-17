@@ -25,8 +25,8 @@ public class Options {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof Options
-                && equalTo((Options) another);
+        return another instanceof Options o
+                && equalTo(o);
     }
 
     private boolean equalTo(Options another) {

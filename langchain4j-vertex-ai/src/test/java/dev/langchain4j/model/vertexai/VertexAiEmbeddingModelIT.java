@@ -286,13 +286,15 @@ class VertexAiEmbeddingModelIT {
             .build();
 
         Response<Embedding> codeRetrivalQuery = model.embed(TextSegment.from(
-            "        List<Double> distances = (List<Double>) _calculateCosineDistances(sentences)[0];\n" +
-            "        sentences = (List<Sentence>) _calculateCosineDistances(sentences)[1];\n" +
-            "\n" +
-            "        int breakpointPercentileThreshold = 65;\n" +
-            "        Percentile percentile = new Percentile();\n" +
-            "        percentile.setData(Doubles.toArray(distances));\n" +
-            "        double breakpointDistanceThreshold = percentile.evaluate(breakpointPercentileThreshold);"));
+            """
+                    List<Double> distances = (List<Double>) _calculateCosineDistances(sentences)[0];
+                    sentences = (List<Sentence>) _calculateCosineDistances(sentences)[1];
+            
+                    int breakpointPercentileThreshold = 65;
+                    Percentile percentile = new Percentile();
+                    percentile.setData(Doubles.toArray(distances));
+                    double breakpointDistanceThreshold = percentile.evaluate(breakpointPercentileThreshold);\
+            """));
 
         assertThat(codeRetrivalQuery.content().dimension()).isEqualTo(768);
     }

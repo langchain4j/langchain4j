@@ -43,7 +43,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Base64;
 import java.util.Collection;
@@ -237,7 +236,7 @@ class QwenHelper {
             }
         }
 
-        Path tmpFilePath = Paths.get(tmpDir, tmpFileName);
+        Path tmpFilePath = Path.of(tmpDir, tmpFileName);
         byte[] data = Base64.getDecoder().decode(base64Data);
         try {
             Files.copy(new ByteArrayInputStream(data), tmpFilePath, StandardCopyOption.REPLACE_EXISTING);

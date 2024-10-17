@@ -30,6 +30,6 @@ class GoogleSearchApiHttpResponseLoggingInterceptor implements HttpResponseInter
 
     private static String getHeaders(HttpHeaders headers) {
         return headers.entrySet().stream()
-                .map(entry -> String.format("[%s: %s]", entry.getKey(), entry.getValue())).collect(Collectors.joining(", "));
+                .map(entry -> "[%s: %s]".formatted(entry.getKey(), entry.getValue())).collect(Collectors.joining(", "));
     }
 }

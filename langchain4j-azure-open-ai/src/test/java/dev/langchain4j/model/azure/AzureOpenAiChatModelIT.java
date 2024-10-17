@@ -134,7 +134,7 @@ public class AzureOpenAiChatModelIT {
         WeatherLocation weatherLocation = BinaryData.fromString(toolExecutionRequest.arguments()).toObject(WeatherLocation.class);
         int currentWeather = getCurrentWeather(weatherLocation);
 
-        String weather = String.format("The weather in %s is %d degrees %s.",
+        String weather = "The weather in %s is %d degrees %s.".formatted(
                 weatherLocation.getLocation(), currentWeather, weatherLocation.getUnit());
 
         assertThat(weather).isEqualTo("The weather in Paris, France is 35 degrees celsius.");

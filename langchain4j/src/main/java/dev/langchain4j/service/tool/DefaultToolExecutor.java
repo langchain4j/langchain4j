@@ -46,7 +46,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         throw new IllegalArgumentException(
-                String.format("Method '%s' is not found in object '%s'",
+                "Method '%s' is not found in object '%s'".formatted(
                         requestedMethodName, object.getClass().getName()));
     }
 
@@ -140,8 +140,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                 Class<Enum> enumClass = (Class<Enum>) parameterClass;
                 return Enum.valueOf(enumClass, Objects.requireNonNull(argument.toString()));
             } catch (Exception | Error e) {
-                throw new IllegalArgumentException(String.format(
-                        "Argument \"%s\" is not a valid enum value for %s: <%s>",
+                throw new IllegalArgumentException("Argument \"%s\" is not a valid enum value for %s: <%s>".formatted(
                         parameterName, parameterClass.getName(), argument), e);
             }
         }
@@ -150,8 +149,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             if (argument instanceof Boolean) {
                 return argument;
             }
-            throw new IllegalArgumentException(String.format(
-                    "Argument \"%s\" is not convertable to %s, got %s: <%s>",
+            throw new IllegalArgumentException("Argument \"%s\" is not convertable to %s, got %s: <%s>".formatted(
                     parameterName, parameterClass.getName(), argument.getClass().getName(), argument));
         }
 
@@ -227,8 +225,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             }
         }
         if (!(argument instanceof Number)) {
-            throw new IllegalArgumentException(String.format(
-                    "Argument \"%s\" is not convertable to %s, got %s: <%s>",
+            throw new IllegalArgumentException("Argument \"%s\" is not convertable to %s, got %s: <%s>".formatted(
                     parameterName, parameterType.getName(), argument.getClass().getName(), argument));
         }
         return ((Number) argument).doubleValue();
@@ -241,8 +238,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     ) {
         double doubleValue = getDoubleValue(argument, parameterName, parameterType);
         if (!hasNoFractionalPart(doubleValue)) {
-            throw new IllegalArgumentException(String.format(
-                    "Argument \"%s\" has non-integer value for %s: <%s>",
+            throw new IllegalArgumentException("Argument \"%s\" has non-integer value for %s: <%s>".formatted(
                     parameterName, parameterType.getName(), argument));
         }
         return doubleValue;
@@ -256,8 +252,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             double maxValue
     ) {
         if (doubleValue < minValue || doubleValue > maxValue) {
-            throw new IllegalArgumentException(String.format(
-                    "Argument \"%s\" is out of range for %s: <%s>",
+            throw new IllegalArgumentException("Argument \"%s\" is out of range for %s: <%s>".formatted(
                     parameterName, parameterType.getName(), doubleValue));
         }
     }

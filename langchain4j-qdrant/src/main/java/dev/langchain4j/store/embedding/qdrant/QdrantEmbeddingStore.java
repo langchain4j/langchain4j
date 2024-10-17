@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a <a href="https://qdrant.tech/">Qdrant</a> collection as an
@@ -189,7 +189,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     if (results.isEmpty()) {
-      return new EmbeddingSearchResult<TextSegment>(emptyList());
+      return new EmbeddingSearchResult<>(emptyList());
     }
 
     List<EmbeddingMatch<TextSegment>> matches = results.stream()
@@ -200,7 +200,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     Collections.reverse(matches);
 
-    return new EmbeddingSearchResult<TextSegment>(matches);
+    return new EmbeddingSearchResult<>(matches);
   }
 
   @Override
@@ -316,7 +316,6 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * @param port The GRPC port of the Qdrant instance. Defaults to 6334.
-     * @return
      */
     public Builder port(int port) {
       this.port = port;
@@ -325,7 +324,6 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * @param useTls Whether to use TLS(HTTPS). Defaults to false.
-     * @return
      */
     public Builder useTls(boolean useTls) {
       this.useTls = useTls;
@@ -336,7 +334,6 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param payloadTextKey The field name of the text segment in the payload.
      *                       Defaults to
      *                       "text_segment".
-     * @return
      */
     public Builder payloadTextKey(String payloadTextKey) {
       this.payloadTextKey = payloadTextKey;

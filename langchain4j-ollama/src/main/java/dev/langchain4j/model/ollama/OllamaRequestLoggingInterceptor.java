@@ -48,7 +48,7 @@ class OllamaRequestLoggingInterceptor implements Interceptor {
         if (COMMON_SECRET_HEADERS.contains(headerKey.toLowerCase())) {
             headerValue = maskSecretKey(headerValue);
         }
-        return String.format("[%s: %s]", headerKey, headerValue);
+        return "[%s: %s]".formatted(headerKey, headerValue);
     }
 
     private static String maskSecretKey(String key) {

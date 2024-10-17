@@ -10,7 +10,6 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
@@ -115,8 +114,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         ensureNotNull(filter, "filter");
 
         entries.removeIf(entry -> {
-            if (entry.embedded instanceof TextSegment) {
-                return filter.test(((TextSegment) entry.embedded).metadata());
+            if (entry.embedded instanceof TextSegment segment) {
+                return filter.test(segment.metadata());
             } else if (entry.embedded == null) {
                 return false;
             } else {
@@ -140,8 +139,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
         for (Entry<Embedded> entry : entries) {
 
-            if (filter != null && entry.embedded instanceof TextSegment) {
-                Metadata metadata = ((TextSegment) entry.embedded).metadata();
+            if (filter != null && entry.embedded instanceof TextSegment segment) {
+                Metadata metadata = segment.metadata();
                 if (!filter.test(metadata)) {
                     continue;
                 }
@@ -178,7 +177,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     public void serializeToFile(String filePath) {
-        serializeToFile(Paths.get(filePath));
+        serializeToFile(Path.of(filePath));
     }
 
     public static InMemoryEmbeddingStore<TextSegment> fromJson(String json) {
@@ -195,7 +194,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     public static InMemoryEmbeddingStore<TextSegment> fromFile(String filePath) {
-        return fromFile(Paths.get(filePath));
+        return fromFile(Path.of(filePath));
     }
 
     /**

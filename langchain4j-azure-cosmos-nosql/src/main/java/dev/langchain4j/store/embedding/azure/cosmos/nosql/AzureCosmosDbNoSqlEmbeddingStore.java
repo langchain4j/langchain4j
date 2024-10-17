@@ -126,13 +126,13 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
                 .map(Object::toString)
                 .collect(Collectors.joining(","));
 
-        String query = String.format("SELECT TOP %d c.id, c.%s, c.text, c.metadata, VectorDistance(c.%s,[%s]) AS score FROM c ORDER By " +
-                "VectorDistance(c.%s,[%s])", maxResults, embeddingKey, embeddingKey, referenceEmbeddingString, embeddingKey, referenceEmbeddingString);
+        String query = ("SELECT TOP %d c.id, c.%s, c.text, c.metadata, VectorDistance(c.%s,[%s]) AS score FROM c ORDER By " +
+                "VectorDistance(c.%s,[%s])").formatted(maxResults, embeddingKey, embeddingKey, referenceEmbeddingString, embeddingKey, referenceEmbeddingString);
 
         CosmosPagedIterable<AzureCosmosDbNoSqlMatchedDocument> results = this.container.queryItems(query,
                 new CosmosQueryRequestOptions(), AzureCosmosDbNoSqlMatchedDocument.class);
 
-        if (!results.stream().findAny().isPresent()) {
+        if (results.stream().findAny().isEmpty()) {
             return new ArrayList<>();
         }
         return results.stream()

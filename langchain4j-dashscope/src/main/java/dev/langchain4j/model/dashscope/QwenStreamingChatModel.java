@@ -225,8 +225,8 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
                 }
             });
 
-            throw e instanceof RuntimeException ?
-                    (RuntimeException) e : new RuntimeException(e);
+            throw e instanceof RuntimeException re ?
+                    re : new RuntimeException(e);
         }
     }
 
@@ -341,8 +341,8 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
                 }
             });
 
-            throw e instanceof RuntimeException ?
-                    (RuntimeException) e : new RuntimeException(e);
+            throw e instanceof RuntimeException re ?
+                    re : new RuntimeException(e);
         }
     }
 

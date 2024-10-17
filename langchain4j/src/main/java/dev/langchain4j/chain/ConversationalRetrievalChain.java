@@ -185,10 +185,12 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
         }
 
         return PromptTemplate.from(
-                "Answer the following question to the best of your ability: {{userMessage}}\n" +
-                        "\n" +
-                        "Base your answer on the following information:\n" +
-                        "{{contents}}"
+                """
+                Answer the following question to the best of your ability: {{userMessage}}
+                
+                Base your answer on the following information:
+                {{contents}}\
+                """
         );
     }
 }

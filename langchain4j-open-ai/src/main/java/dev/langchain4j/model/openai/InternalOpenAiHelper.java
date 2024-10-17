@@ -61,7 +61,6 @@ import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -81,12 +80,11 @@ public class InternalOpenAiHelper {
     }
 
     public static Message toOpenAiMessage(ChatMessage message) {
-        if (message instanceof SystemMessage) {
-            return dev.ai4j.openai4j.chat.SystemMessage.from(((SystemMessage) message).text());
+        if (message instanceof SystemMessage systemMessage) {
+            return dev.ai4j.openai4j.chat.SystemMessage.from(systemMessage.text());
         }
 
-        if (message instanceof UserMessage) {
-            UserMessage userMessage = (UserMessage) message;
+        if (message instanceof UserMessage userMessage) {
 
             if (userMessage.hasSingleText()) {
                 return dev.ai4j.openai4j.chat.UserMessage.builder()
@@ -103,8 +101,7 @@ public class InternalOpenAiHelper {
             }
         }
 
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
 
             if (!aiMessage.hasToolExecutionRequests()) {
                 return AssistantMessage.from(aiMessage.text());
@@ -139,8 +136,7 @@ public class InternalOpenAiHelper {
                     .build();
         }
 
-        if (message instanceof ToolExecutionResultMessage) {
-            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+        if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
 
             if (toolExecutionResultMessage.id() == null) {
                 return FunctionMessage.from(toolExecutionResultMessage.toolName(), toolExecutionResultMessage.text());
@@ -153,10 +149,10 @@ public class InternalOpenAiHelper {
     }
 
     private static dev.ai4j.openai4j.chat.Content toOpenAiContent(Content content) {
-        if (content instanceof TextContent) {
-            return toOpenAiContent((TextContent) content);
-        } else if (content instanceof ImageContent) {
-            return toOpenAiContent((ImageContent) content);
+        if (content instanceof TextContent textContent) {
+            return toOpenAiContent(textContent);
+        } else if (content instanceof ImageContent imageContent) {
+            return toOpenAiContent(imageContent);
         } else {
             throw illegalArgument("Unknown content type: " + content);
         }
@@ -183,7 +179,7 @@ public class InternalOpenAiHelper {
         if (image.url() != null) {
             return image.url().toString();
         }
-        return format("data:%s;base64,%s", image.mimeType(), image.base64Data());
+        return "data:%s;base64,%s".formatted(image.mimeType(), image.base64Data());
     }
 
     private static ImageDetail toDetail(ImageContent.DetailLevel detailLevel) {
@@ -299,8 +295,7 @@ public class InternalOpenAiHelper {
             JsonSchemaElement jsonSchemaElement,
             boolean strict) {
 
-        if (jsonSchemaElement instanceof JsonObjectSchema) {
-            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
+        if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
                     .description(jsonObjectSchema.description())
                     .properties(toOpenAiProperties(jsonObjectSchema.properties(), strict))
@@ -319,40 +314,33 @@ public class InternalOpenAiHelper {
                         .additionalProperties(false);
             }
             return builder.build();
-        } else if (jsonSchemaElement instanceof JsonArraySchema) {
-            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonArraySchema jsonArraySchema) {
             return dev.ai4j.openai4j.chat.JsonArraySchema.builder()
                     .description(jsonArraySchema.description())
                     .items(toOpenAiJsonSchemaElement(jsonArraySchema.items(), strict))
                     .build();
-        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
-            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
             return dev.ai4j.openai4j.chat.JsonEnumSchema.builder()
                     .description(jsonEnumSchema.description())
                     .enumValues(jsonEnumSchema.enumValues())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonStringSchema) {
-            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonStringSchema jsonStringSchema) {
             return dev.ai4j.openai4j.chat.JsonStringSchema.builder()
                     .description(jsonStringSchema.description())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
-            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
             return dev.ai4j.openai4j.chat.JsonIntegerSchema.builder()
                     .description(jsonIntegerSchema.description())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
-            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonNumberSchema jsonNumberSchema) {
             return dev.ai4j.openai4j.chat.JsonNumberSchema.builder()
                     .description(jsonNumberSchema.description())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
-            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonBooleanSchema jsonBooleanSchema) {
             return dev.ai4j.openai4j.chat.JsonBooleanSchema.builder()
                     .description(jsonBooleanSchema.description())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonReferenceSchema) {
-            JsonReferenceSchema jsonReferenceSchema = (JsonReferenceSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonReferenceSchema jsonReferenceSchema) {
             return dev.ai4j.openai4j.chat.JsonReferenceSchema.builder()
                     .reference("#/$defs/" + jsonReferenceSchema.reference())
                     .build();

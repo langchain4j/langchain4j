@@ -366,8 +366,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     }
 
     private List<BedrockAnthropicContent> getAnthropicContent(ChatMessage message) {
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
             List<BedrockAnthropicContent> contents = new ArrayList<>();
 
             if (isNotNullOrBlank(aiMessage.text())) {
@@ -388,12 +387,11 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             }
 
             return contents;
-        } else if (message instanceof UserMessage) {
-            return ((UserMessage) message).contents().stream()
+        } else if (message instanceof UserMessage userMessage) {
+            return userMessage.contents().stream()
                     .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
                     .collect(Collectors.toList());
-        } else if (message instanceof ToolExecutionResultMessage) {
-            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+        } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             return Collections.singletonList(
                     BedrockAnthropicContent.builder()
                             .type("tool_result")
@@ -415,10 +413,9 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     }
 
     private static BedrockAnthropicContent mapContentToAnthropic(Content content) {
-        if (content instanceof TextContent) {
-            return new BedrockAnthropicContent("text", ((TextContent) content).text());
-        } else if (content instanceof ImageContent) {
-            ImageContent imageContent = (ImageContent) content;
+        if (content instanceof TextContent textContent) {
+            return new BedrockAnthropicContent("text", textContent.text());
+        } else if (content instanceof ImageContent imageContent) {
             if (imageContent.image().url() != null) {
                 throw new IllegalArgumentException("Anthropic does not support images as URLs, only as Base64-encoded strings");
             }
