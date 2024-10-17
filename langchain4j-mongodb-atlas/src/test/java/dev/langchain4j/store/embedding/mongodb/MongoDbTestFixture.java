@@ -28,6 +28,7 @@ class MongoDbTestFixture {
     private static final String PASSWORD = getenv("MONGODB_ATLAS_PASSWORD");
     private static final String HOST = getenv("MONGODB_ATLAS_HOST");
     private static final String CONNECTION_STRING = getenv("MONGODB_CONNECTION_STRING");
+    private static MongoDBAtlasLocalContainer mongodb;
 
     private final String dbName;
     private final MongoClient client;
@@ -55,9 +56,20 @@ class MongoDbTestFixture {
         return embeddingStore;
     }
 
-    static MongoClient createClientFromContainer(MongoDBAtlasLocalContainer mongodb) {
+    private static MongoDBAtlasLocalContainer getContainer() {
+        if (mongodb == null) {
+            mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
+
+            long t1 = System.currentTimeMillis();
+            mongodb.start();
+            System.out.println(">>> " + (System.currentTimeMillis() - t1));
+        }
+        return mongodb;
+    }
+
+    static MongoClient createClientFromContainer() {
         MongoClientSettings.Builder builder = MongoClientSettings.builder()
-                .applyConnectionString(new ConnectionString(mongodb.getConnectionString()));
+                .applyConnectionString(new ConnectionString(getContainer().getConnectionString()));
         return createClientFromBuilder(builder);
     }
 

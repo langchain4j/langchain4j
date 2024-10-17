@@ -18,22 +18,14 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 public class MongoDbEmbeddingStoreIT extends EmbeddingStoreIT {
 
     public static class ContainerIT extends MongoDbEmbeddingStoreIT {
-        static MongoDBAtlasLocalContainer mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
-
         @BeforeAll
         static void start() {
             MongoDbTestFixture.assertDoContainerTests();
-            mongodb.start();
-        }
-
-        @AfterAll
-        static void stop() {
-            mongodb.stop();
         }
 
         @Override
         MongoClient createClient() {
-            return createClientFromContainer(mongodb);
+            return createClientFromContainer();
         }
     }
 
