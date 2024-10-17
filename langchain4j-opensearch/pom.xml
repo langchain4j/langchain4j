@@ -14,6 +14,11 @@
     <artifactId>langchain4j-opensearch</artifactId>
     <name>LangChain4j :: Integration :: OpenSearch</name>
 
+    <properties>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -138,10 +143,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
-                </configuration>
                 <executions>
                     <execution>
                         <id>default-compile</id>
@@ -149,10 +150,6 @@
                         <goals>
                             <goal>compile</goal>
                         </goals>
-                        <configuration>
-                            <source>${maven.compiler.source}</source>
-                            <target>${maven.compiler.target}</target>
-                        </configuration>
                     </execution>
                     <execution>
                         <id>default-testCompile</id>

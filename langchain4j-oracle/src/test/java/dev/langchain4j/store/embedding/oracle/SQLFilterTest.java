@@ -10,7 +10,9 @@ import java.util.Collection;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Verifies that {@link SQLFilter} behaves as specified in its JavaDoc. The
@@ -43,7 +45,7 @@ public class SQLFilterTest {
                 : ((IsNotIn)filter).comparisonValues(); // <-- Need to add a new case if testing a new Filter class
 
         for (Object object : objects) {
-            assertTrue(message.contains(object == null ? "null" : object.getClass().getSimpleName()));
+            assertThat(message).contains(object == null ? "null" : object.getClass().getSimpleName());
         }
     }
 
@@ -53,52 +55,40 @@ public class SQLFilterTest {
      */
     @Test
     public void testSQLType() {
-        assertEquals(
-                "NVL(x = ?, false)",
-                SQLFilters.create(new IsEqualTo("x", Integer.MIN_VALUE), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(JDBCType.INTEGER, type);
-                    return key;
-                }).toSQL());
+        assertThat(SQLFilters.create(new IsEqualTo("x", Integer.MIN_VALUE), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(JDBCType.INTEGER, type);
+            return key;
+        }).toSQL()).isEqualTo("NVL(x = ?, false)");
 
-        assertEquals(
-                "NVL(x <> ?, true)",
-                SQLFilters.create(new IsNotEqualTo("x", Long.MAX_VALUE), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(JDBCType.NUMERIC, type);
-                    return key;
-                }).toSQL());
+        assertThat(SQLFilters.create(new IsNotEqualTo("x", Long.MAX_VALUE), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(JDBCType.NUMERIC, type);
+            return key;
+        }).toSQL()).isEqualTo("NVL(x <> ?, true)");
 
-        assertEquals(
-                "NVL(x > ?, false)",
-                SQLFilters.create(new IsGreaterThan("x", 0.0f), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(JDBCType.REAL, type); // REAL is 32-bit floating point
-                    return key;
-                }).toSQL());
+        assertThat(SQLFilters.create(new IsGreaterThan("x", 0.0f), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(JDBCType.REAL, type); // REAL is 32-bit floating point
+            return key;
+        }).toSQL()).isEqualTo("NVL(x > ?, false)");
 
-        assertEquals(
-                "NVL(x < ?, false)",
-                SQLFilters.create(new IsLessThan("x", 0.0d), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(JDBCType.FLOAT, type); // FLOAT is 64-bit floating point
-                    return key;
-                }).toSQL());
+        assertThat(SQLFilters.create(new IsLessThan("x", 0.0d), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(JDBCType.FLOAT, type); // FLOAT is 64-bit floating point
+            return key;
+        }).toSQL()).isEqualTo("NVL(x < ?, false)");
 
-        assertEquals(
-                "NVL(x IN (?, ?), false)",
-                SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isIn(0, 1), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(JDBCType.INTEGER, type);
-                    return key;
-                }).toSQL());
+        assertThat(SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isIn(0, 1), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(JDBCType.INTEGER, type);
+            return key;
+        }).toSQL()).isEqualTo("NVL(x IN (?, ?), false)");
 
-        assertEquals(
-                "NVL(x NOT IN (?, ?), true)",
-                SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isNotIn("a", "b"), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(JDBCType.VARCHAR, type);
-                    return key;
-                }).toSQL());
+        assertThat(SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isNotIn("a", "b"), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(JDBCType.VARCHAR, type);
+            return key;
+        }).toSQL()).isEqualTo("NVL(x NOT IN (?, ?), true)");
     }
 }

@@ -9,8 +9,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.*;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests which verify all possible configurations of {@link OracleEmbeddingStore.Builder#vectorIndex(CreateOption)}
@@ -53,9 +52,9 @@ public class VectorIndexTest {
              )) {
 
             if (createOption == CreateOption.CREATE_NONE)
-                assertFalse(resultSet.next());
+                assertThat(resultSet.next()).isFalse();
             else
-                assertTrue(resultSet.next());
+                assertThat(resultSet.next()).isTrue();
         }
     }
 
