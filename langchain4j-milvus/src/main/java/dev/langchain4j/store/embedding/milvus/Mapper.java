@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.milvus;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.document.Metadata;
@@ -22,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.google.gson.ToNumberPolicy.LONG_OR_DOUBLE;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.queryForVectors;
@@ -31,7 +33,10 @@ import static java.util.stream.Collectors.toList;
 
 class Mapper {
 
-    private static final Gson GSON = new Gson();
+    private static final Gson GSON = new GsonBuilder()
+            .setObjectToNumberStrategy(LONG_OR_DOUBLE)
+            .create();
+
     private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
     }.getType();
 

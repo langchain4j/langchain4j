@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.chroma;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
+import static com.google.gson.ToNumberPolicy.LONG_OR_DOUBLE;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -32,7 +33,10 @@ class ChromaClient {
             httpClientBuilder.addInterceptor(new ChromaResponseLoggingInterceptor());
         }
 
-        Gson gson = new GsonBuilder().setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES).create();
+        Gson gson = new GsonBuilder()
+                .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
+                .setObjectToNumberStrategy(LONG_OR_DOUBLE)
+                .create();
 
         Retrofit retrofit = new Retrofit.Builder()
             .baseUrl(Utils.ensureTrailingForwardSlash(builder.baseUrl))
