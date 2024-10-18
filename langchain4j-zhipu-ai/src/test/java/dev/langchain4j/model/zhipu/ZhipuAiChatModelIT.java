@@ -39,10 +39,6 @@ class ZhipuAiChatModelIT {
             .logRequests(true)
             .logResponses(true)
             .maxRetries(1)
-            .callTimeout(Duration.ofSeconds(60))
-            .connectTimeout(Duration.ofSeconds(60))
-            .writeTimeout(Duration.ofSeconds(60))
-            .readTimeout(Duration.ofSeconds(60))
             .build();
 
     ToolSpecification calculator = ToolSpecification.builder()
@@ -74,10 +70,6 @@ class ZhipuAiChatModelIT {
                 .logRequests(true)
                 .logResponses(true)
                 .maxRetries(1)
-                .callTimeout(Duration.ofSeconds(60))
-                .connectTimeout(Duration.ofSeconds(60))
-                .writeTimeout(Duration.ofSeconds(60))
-                .readTimeout(Duration.ofSeconds(60))
                 .build();
         // given
         UserMessage userMessage = userMessage("this message will fail");
@@ -225,10 +217,6 @@ class ZhipuAiChatModelIT {
                 .logResponses(true)
                 .maxRetries(1)
                 .listeners(singletonList(listener))
-                .callTimeout(Duration.ofSeconds(60))
-                .connectTimeout(Duration.ofSeconds(60))
-                .writeTimeout(Duration.ofSeconds(60))
-                .readTimeout(Duration.ofSeconds(60))
                 .build();
 
         UserMessage userMessage = UserMessage.from("hello");
@@ -294,10 +282,6 @@ class ZhipuAiChatModelIT {
                 .logResponses(true)
                 .maxRetries(1)
                 .listeners(singletonList(listener))
-                .callTimeout(Duration.ofSeconds(60))
-                .connectTimeout(Duration.ofSeconds(60))
-                .writeTimeout(Duration.ofSeconds(60))
-                .readTimeout(Duration.ofSeconds(60))
                 .build();
 
         String userMessage = "this message will fail";
