@@ -18,7 +18,7 @@ class SchemaMapper {
         return fromJsonSchemaToGSchema(jsonSchema.rootElement());
     }
 
-    private static GeminiSchema fromJsonSchemaToGSchema(JsonSchemaElement jsonSchema) {
+    static GeminiSchema fromJsonSchemaToGSchema(JsonSchemaElement jsonSchema) {
         GeminiSchema.GeminiSchemaBuilder schemaBuilder = GeminiSchema.builder();
 
         if (jsonSchema instanceof JsonStringSchema) {

@@ -10,6 +10,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
@@ -17,6 +18,7 @@ import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "MILVUS_API_KEY", matches = ".+")
 class MilvusEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
 
     private static final String COLLECTION_NAME = "test_collection";

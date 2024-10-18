@@ -7,6 +7,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.spi.data.document.splitter.DocumentSplitterFactory;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -122,9 +123,10 @@ public class EmbeddingStoreIngestor {
      * <br>
      * For the "Easy RAG", import {@code langchain4j-easy-rag} module,
      * which contains a {@code DocumentSplitterFactory} and {@code EmbeddingModelFactory} implementations.
+     * @return result including information related to ingestion process.
      */
-    public static void ingest(Document document, EmbeddingStore<TextSegment> embeddingStore) {
-        builder().embeddingStore(embeddingStore).build().ingest(document);
+    public static IngestionResult ingest(Document document, EmbeddingStore<TextSegment> embeddingStore) {
+        return builder().embeddingStore(embeddingStore).build().ingest(document);
     }
 
     /**
@@ -135,9 +137,10 @@ public class EmbeddingStoreIngestor {
      * <br>
      * For the "Easy RAG", import {@code langchain4j-easy-rag} module,
      * which contains a {@code DocumentSplitterFactory} and {@code EmbeddingModelFactory} implementations.
+     * @return result including information related to ingestion process.
      */
-    public static void ingest(List<Document> documents, EmbeddingStore<TextSegment> embeddingStore) {
-        builder().embeddingStore(embeddingStore).build().ingest(documents);
+    public static IngestionResult ingest(List<Document> documents, EmbeddingStore<TextSegment> embeddingStore) {
+        return builder().embeddingStore(embeddingStore).build().ingest(documents);
     }
 
     /**
@@ -145,9 +148,10 @@ public class EmbeddingStoreIngestor {
      * during the creation of this {@code EmbeddingStoreIngestor}.
      *
      * @param document the document to ingest.
+     * @return result including information related to ingestion process.
      */
-    public void ingest(Document document) {
-        ingest(singletonList(document));
+    public IngestionResult ingest(Document document) {
+        return ingest(singletonList(document));
     }
 
     /**
@@ -155,9 +159,10 @@ public class EmbeddingStoreIngestor {
      * during the creation of this {@code EmbeddingStoreIngestor}.
      *
      * @param documents the documents to ingest.
+     * @return result including information related to ingestion process.
      */
-    public void ingest(Document... documents) {
-        ingest(asList(documents));
+    public IngestionResult ingest(Document... documents) {
+        return ingest(asList(documents));
     }
 
     /**
@@ -165,8 +170,9 @@ public class EmbeddingStoreIngestor {
      * during the creation of this {@code EmbeddingStoreIngestor}.
      *
      * @param documents the documents to ingest.
+     * @return result including information related to ingestion process.
      */
-    public void ingest(List<Document> documents) {
+    public IngestionResult ingest(List<Document> documents) {
 
         log.debug("Starting to ingest {} documents", documents.size());
 
@@ -190,13 +196,15 @@ public class EmbeddingStoreIngestor {
 
         // TODO handle failures, parallelize
         log.debug("Starting to embed {} text segments", segments.size());
-        List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
+        Response<List<Embedding>> embeddingsResponse = embeddingModel.embedAll(segments);
         log.debug("Finished embedding {} text segments", segments.size());
 
         // TODO handle failures, parallelize
         log.debug("Starting to store {} text segments into the embedding store", segments.size());
-        embeddingStore.addAll(embeddings, segments);
+        embeddingStore.addAll(embeddingsResponse.content(), segments);
         log.debug("Finished storing {} text segments into the embedding store", segments.size());
+
+        return new IngestionResult(embeddingsResponse.tokenUsage());
     }
 
     /**

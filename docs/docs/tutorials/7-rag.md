@@ -528,8 +528,12 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
 
 ingestor.ingest(document1);
 ingestor.ingest(document2, document3);
-ingestor.ingest(List.of(document4, document5, document6));
+IngestionResult ingestionResult = ingestor.ingest(List.of(document4, document5, document6));
 ```
+
+All `ingest()` methods in `EmbeddingStoreIngestor` return an `IngestionResult`.
+The `IngestionResult` contains useful information, including `TokenUsage`,
+which shows how many tokens were used for embedding.
 
 Optionally, the `EmbeddingStoreIngestor` can transform `Document`s using a specified `DocumentTransformer`.
 This can be useful if you want to clean, enrich, or format `Document`s before embedding them.

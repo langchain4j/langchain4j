@@ -4,11 +4,21 @@ import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Type;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -99,6 +109,75 @@ public class SchemaHelper {
             });
             schemaBuilder.addAllRequired(propertyNames);
             return schemaBuilder.build();
+        }
+    }
+
+    public static Schema from(JsonSchemaElement jsonSchemaElement) {
+        if (jsonSchemaElement instanceof JsonStringSchema) {
+            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchemaElement;
+            Schema.Builder builder = Schema.newBuilder()
+                    .setType(Type.STRING);
+            if (jsonStringSchema.description() != null) {
+                builder.setDescription(jsonStringSchema.description());
+            }
+            return builder.build();
+        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
+            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
+            Schema.Builder builder = Schema.newBuilder()
+                    .setType(Type.BOOLEAN);
+            if (jsonBooleanSchema.description() != null) {
+                builder.setDescription(jsonBooleanSchema.description());
+            }
+            return builder.build();
+        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
+            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchemaElement;
+            Schema.Builder builder = Schema.newBuilder()
+                    .setType(Type.INTEGER);
+            if (jsonIntegerSchema.description() != null) {
+                builder.setDescription(jsonIntegerSchema.description());
+            }
+            return builder.build();
+        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
+            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
+            Schema.Builder builder = Schema.newBuilder()
+                    .setType(Type.NUMBER);
+            if (jsonNumberSchema.description() != null) {
+                builder.setDescription(jsonNumberSchema.description());
+            }
+            return builder.build();
+        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
+            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchemaElement;
+            Schema.Builder builder = Schema.newBuilder()
+                    .setType(Type.STRING)
+                    .addAllEnum(jsonEnumSchema.enumValues());
+            if (jsonEnumSchema.description() != null) {
+                builder.setDescription(jsonEnumSchema.description());
+            }
+            return builder.build();
+        } else if (jsonSchemaElement instanceof JsonArraySchema) {
+            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchemaElement;
+            Schema.Builder builder = Schema.newBuilder()
+                    .setType(Type.ARRAY)
+                    .setItems(from(jsonArraySchema.items()));
+            if (jsonArraySchema.description() != null) {
+                builder.setDescription(jsonArraySchema.description());
+            }
+            return builder.build();
+        } else if (jsonSchemaElement instanceof JsonObjectSchema) {
+            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
+            Map<String, Schema> properties = new LinkedHashMap<>();
+            jsonObjectSchema.properties()
+                    .forEach((property, value) -> properties.put(property, from(value)));
+            Schema.Builder builder = Schema.newBuilder()
+                    .setType(Type.OBJECT)
+                    .putAllProperties(properties)
+                    .addAllRequired(jsonObjectSchema.required());
+            if (jsonObjectSchema.description() != null) {
+                builder.setDescription(jsonObjectSchema.description());
+            }
+            return builder.build();
+        } else {
+            throw new RuntimeException("Unknown type: " + jsonSchemaElement.getClass());
         }
     }
 }
