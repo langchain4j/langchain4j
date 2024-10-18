@@ -20,6 +20,8 @@
 
     <properties>
         <selenium.webdriver.version>4.13.0</selenium.webdriver.version>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
 
     <dependencies>

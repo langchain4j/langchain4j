@@ -8,7 +8,7 @@ import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 
 class PineconeMetadataFilterMapperTest {
@@ -20,7 +20,7 @@ class PineconeMetadataFilterMapperTest {
         String should = "{\"key\":{\"$gt\":1.0}}";
         Filter key = new IsGreaterThan("key", 1);
         Struct map = PineconeMetadataFilterMapper.map(key);
-        assertEquals(should, printer.print(map));
+        assertThat(printer.print(map)).isEqualTo(should);
     }
 
     @Test
@@ -29,7 +29,7 @@ class PineconeMetadataFilterMapperTest {
         Filter filter = new IsGreaterThan("key", 1)
                 .and(new IsLessThan("key", 10));
         Struct map = PineconeMetadataFilterMapper.map(filter);
-        assertEquals(should, printer.print(map));
+        assertThat(printer.print(map)).isEqualTo(should);
     }
 
     @Test
@@ -38,7 +38,7 @@ class PineconeMetadataFilterMapperTest {
         Filter filter = new IsGreaterThan("key", 1)
                 .or(new IsLessThan("key", 10));
         Struct map = PineconeMetadataFilterMapper.map(filter);
-        assertEquals(should, printer.print(map));
+        assertThat(printer.print(map)).isEqualTo(should);
     }
 
     @Test
@@ -46,7 +46,7 @@ class PineconeMetadataFilterMapperTest {
         String should = "{\"key\":{\"$lte\":1.0}}";
         Filter filter = new IsGreaterThan("key", 1);
         Struct map = PineconeMetadataFilterMapper.map(Filter.not(filter));
-        assertEquals(should, printer.print(map));
+        assertThat(printer.print(map)).isEqualTo(should);
     }
 
     @Test
@@ -55,7 +55,7 @@ class PineconeMetadataFilterMapperTest {
         Filter filter = new IsGreaterThan("key", 1)
                 .or(new IsLessThan("key", 10));
         Struct map = PineconeMetadataFilterMapper.map(Filter.not(filter));
-        assertEquals(should, printer.print(map));
+        assertThat(printer.print(map)).isEqualTo(should);
     }
 
     @Test
@@ -64,7 +64,7 @@ class PineconeMetadataFilterMapperTest {
         Filter filter = new IsGreaterThan("key", 1)
                 .and(new IsLessThan("key", 10));
         Struct map = PineconeMetadataFilterMapper.map(Filter.not(filter));
-        assertEquals(should, printer.print(map));
+        assertThat(printer.print(map)).isEqualTo(should);
     }
 
 }

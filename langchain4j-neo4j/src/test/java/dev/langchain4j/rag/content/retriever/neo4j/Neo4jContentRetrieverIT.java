@@ -19,7 +19,7 @@ import org.testcontainers.junit.jupiter.Container;
 import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -86,7 +86,7 @@ class Neo4jContentRetrieverIT {
         List<Content> contents = retriever.retrieve(query);
 
         // Then
-        assertEquals(1, contents.size());
+        assertThat(contents).hasSize(1);
     }
 
     @Test
@@ -99,7 +99,7 @@ class Neo4jContentRetrieverIT {
         List<Content> contents = retriever.retrieve(query);
 
         // Then
-        assertEquals(1, contents.size());
+        assertThat(contents).hasSize(1);
     }
 
     @Test
@@ -127,7 +127,7 @@ class Neo4jContentRetrieverIT {
         List<Content> contents = neo4jContentRetriever.retrieve(query);
 
         // Then
-        assertEquals(1, contents.size());
+        assertThat(contents).hasSize(1);
     }
 
     @Test
@@ -140,6 +140,6 @@ class Neo4jContentRetrieverIT {
         List<Content> contents = retriever.retrieve(query);
 
         // Then
-        assertEquals(0, contents.size());
+        assertThat(contents).isEmpty();
     }
 }

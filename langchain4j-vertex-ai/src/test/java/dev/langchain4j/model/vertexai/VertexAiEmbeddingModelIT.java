@@ -13,7 +13,7 @@ import java.util.*;
 import static dev.langchain4j.model.vertexai.VertexAiEmbeddingModel.TaskType.*;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 class VertexAiEmbeddingModelIT {
 
@@ -76,7 +76,7 @@ class VertexAiEmbeddingModelIT {
     void testRandomSegments() {
         List<TextSegment> segments = createRandomSegments(10, 100);
 
-        assertThat(segments.size()).isEqualTo(10);
+        assertThat(segments).hasSize(10);
         for (TextSegment segment : segments) {
             assertThat(segment.text()).hasSizeLessThan(100);
         }
@@ -130,7 +130,7 @@ class VertexAiEmbeddingModelIT {
 
         List<Embedding> embeddings = model.embedAll(segments).content();
 
-        assertThat(embeddings.size()).isEqualTo(1234);
+        assertThat(embeddings).hasSize(1234);
     }
 
     @Test
@@ -158,7 +158,7 @@ class VertexAiEmbeddingModelIT {
 
         List<Embedding> embeddings = model.embedAll(segments).content();
 
-        assertThat(embeddings.size()).isEqualTo(1234);
+        assertThat(embeddings).hasSize(1234);
     }
 
     @Test
