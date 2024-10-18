@@ -43,7 +43,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -633,7 +632,7 @@ class AiServicesWithRagIT {
 
     private Path toPath(String fileName) {
         try {
-            return Paths.get(getClass().getClassLoader().getResource(fileName).toURI());
+            return Path.of(getClass().getClassLoader().getResource(fileName).toURI());
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }

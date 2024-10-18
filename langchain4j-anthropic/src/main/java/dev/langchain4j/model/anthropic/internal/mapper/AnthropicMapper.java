@@ -61,19 +61,19 @@ public class AnthropicMapper {
 
         for (ChatMessage message : messages) {
 
-            if (message instanceof ToolExecutionResultMessage) {
-                toolContents.add(toAnthropicToolResultContent((ToolExecutionResultMessage) message));
+            if (message instanceof ToolExecutionResultMessage resultMessage) {
+                toolContents.add(toAnthropicToolResultContent(resultMessage));
             } else {
                 if (!toolContents.isEmpty()) {
                     anthropicMessages.add(new AnthropicMessage(USER, toolContents));
                     toolContents = new ArrayList<>();
                 }
 
-                if (message instanceof UserMessage) {
-                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message);
+                if (message instanceof UserMessage userMessage) {
+                    List<AnthropicMessageContent> contents = toAnthropicMessageContents(userMessage);
                     anthropicMessages.add(new AnthropicMessage(USER, contents));
-                } else if (message instanceof AiMessage) {
-                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((AiMessage) message);
+                } else if (message instanceof AiMessage aiMessage) {
+                    List<AnthropicMessageContent> contents = toAnthropicMessageContents(aiMessage);
                     anthropicMessages.add(new AnthropicMessage(ASSISTANT, contents));
                 }
             }
@@ -93,10 +93,10 @@ public class AnthropicMapper {
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
         return message.contents().stream()
                 .map(content -> {
-                    if (content instanceof TextContent) {
-                        return new AnthropicTextContent(((TextContent) content).text());
-                    } else if (content instanceof ImageContent) {
-                        Image image = ((ImageContent) content).image();
+                    if (content instanceof TextContent textContent) {
+                        return new AnthropicTextContent(textContent.text());
+                    } else if (content instanceof ImageContent imageContent) {
+                        Image image = imageContent.image();
                         if (image.url() != null) {
                             throw illegalArgument("Anthropic does not support images as URLs, " +
                                     "only as Base64-encoded strings");

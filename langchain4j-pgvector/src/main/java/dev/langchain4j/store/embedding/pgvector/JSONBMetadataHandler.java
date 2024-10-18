@@ -29,11 +29,11 @@ class JSONBMetadataHandler extends JSONMetadataHandler {
             String index = str.trim();
             String indexName = formatIndex(index);
             try {
-                String indexSql = String.format("create index if not exists %s_%s on %s %s (%s)",
+                String indexSql = "create index if not exists %s_%s on %s %s (%s)".formatted(
                         table, indexName, table, indexTypeSql, index);
                 statement.executeUpdate(indexSql);
             } catch (SQLException e) {
-                throw new RuntimeException(String.format("Cannot create index %s: %s", index, e));
+                throw new RuntimeException("Cannot create index %s: %s".formatted(index, e));
             }
         }
     }

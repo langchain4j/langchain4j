@@ -9,7 +9,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import static dev.langchain4j.data.document.Document.ABSOLUTE_DIRECTORY_PATH;
 import static dev.langchain4j.data.document.Document.FILE_NAME;
@@ -40,11 +39,11 @@ public class FileSystemSource implements DocumentSource {
     }
 
     public static FileSystemSource from(String filePath) {
-        return new FileSystemSource(Paths.get(filePath));
+        return new FileSystemSource(Path.of(filePath));
     }
 
     public static FileSystemSource from(URI fileUri) {
-        return new FileSystemSource(Paths.get(fileUri));
+        return new FileSystemSource(Path.of(fileUri));
     }
 
     public static FileSystemSource from(File file) {

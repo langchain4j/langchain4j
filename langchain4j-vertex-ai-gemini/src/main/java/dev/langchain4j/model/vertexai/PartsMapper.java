@@ -86,8 +86,7 @@ class PartsMapper {
     }
 
     static List<Part> map(ChatMessage message) {
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
 
             List<Part> parts = new ArrayList<>();
 
@@ -109,16 +108,15 @@ class PartsMapper {
             }
 
             return parts;
-        } else if (message instanceof UserMessage) {
-            return ((UserMessage) message).contents().stream()
+        } else if (message instanceof UserMessage userMessage) {
+            return userMessage.contents().stream()
                 .map(PartsMapper::map)
                 .collect(toList());
-        } else if (message instanceof SystemMessage) {
+        } else if (message instanceof SystemMessage systemMessage) {
             return singletonList(Part.newBuilder()
-                .setText(((SystemMessage) message).text())
+                .setText(systemMessage.text())
                 .build());
-        } else if (message instanceof ToolExecutionResultMessage) {
-            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+        } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             String functionResponseText = toolExecutionResultMessage.text();
 
             Struct.Builder structBuilder = Struct.newBuilder();
@@ -152,16 +150,16 @@ class PartsMapper {
     }
 
     private static Part map(Content content) {
-        if (content instanceof TextContent) {
-            return map((TextContent) content);
-        } else if (content instanceof ImageContent) {
-            return map((ImageContent) content);
-        } else if (content instanceof AudioContent) {
-            return map((AudioContent) content);
-        } else if (content instanceof VideoContent) {
-            return map((VideoContent) content);
-        } else if (content instanceof PdfFileContent) {
-            return map((PdfFileContent) content);
+        if (content instanceof TextContent textContent) {
+            return map(textContent);
+        } else if (content instanceof ImageContent imageContent) {
+            return map(imageContent);
+        } else if (content instanceof AudioContent audioContent) {
+            return map(audioContent);
+        } else if (content instanceof VideoContent videoContent) {
+            return map(videoContent);
+        } else if (content instanceof PdfFileContent fileContent) {
+            return map(fileContent);
         } else {
             throw illegalArgument("Unknown content type: " + content);
         }

@@ -92,9 +92,10 @@ public class AiServicesIT {
         int count = eggCounter.count(sentence);
         assertThat(count).isEqualTo(13);
 
-        verify(chatLanguageModel).generate(singletonList(userMessage("Count the number of eggs mentioned in this sentence:\n" +
-                "|||I have ten eggs in my basket and three in my pocket.|||\n" +
-                "You must answer strictly in the following format: integer number")));
+        verify(chatLanguageModel).generate(singletonList(userMessage("""
+                Count the number of eggs mentioned in this sentence:
+                |||I have ten eggs in my basket and three in my pocket.|||
+                You must answer strictly in the following format: integer number""")));
         verify(chatLanguageModel).supportedCapabilities();
     }
 
@@ -509,13 +510,15 @@ public class AiServicesIT {
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
-                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: {\n" +
-                        "\"title\": (type: string),\n" +
-                        "\"description\": (type: string),\n" +
-                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")));
+                """
+                Create recipe using only [cucumber, tomato, feta, onion, olives]
+                You must answer strictly in the following JSON format: {
+                "title": (type: string),
+                "description": (type: string),
+                "steps": (each step should be described in 4 words, steps should rhyme; type: array of string),
+                "preparationTimeMinutes": (type: integer)
+                }\
+                """)));
         verify(chatLanguageModel).supportedCapabilities();
     }
 
@@ -532,13 +535,15 @@ public class AiServicesIT {
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
-                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: {\n" +
-                        "\"title\": (type: string),\n" +
-                        "\"description\": (type: string),\n" +
-                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")));
+                """
+                Create recipe using only [cucumber, tomato, feta, onion, olives]
+                You must answer strictly in the following JSON format: {
+                "title": (type: string),
+                "description": (type: string),
+                "steps": (each step should be described in 4 words, steps should rhyme; type: array of string),
+                "preparationTimeMinutes": (type: integer)
+                }\
+                """)));
         verify(chatLanguageModel).supportedCapabilities();
     }
 
@@ -555,13 +560,15 @@ public class AiServicesIT {
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
-                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: {\n" +
-                        "\"title\": (type: string),\n" +
-                        "\"description\": (type: string),\n" +
-                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")));
+                """
+                Create recipe using only [cucumber, tomato, feta, onion, olives]
+                You must answer strictly in the following JSON format: {
+                "title": (type: string),
+                "description": (type: string),
+                "steps": (each step should be described in 4 words, steps should rhyme; type: array of string),
+                "preparationTimeMinutes": (type: integer)
+                }\
+                """)));
         verify(chatLanguageModel).supportedCapabilities();
     }
 
@@ -578,13 +585,15 @@ public class AiServicesIT {
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
-                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: {\n" +
-                        "\"title\": (type: string),\n" +
-                        "\"description\": (type: string),\n" +
-                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")));
+                """
+                Create recipe using only [cucumber, tomato, feta, onion, olives]
+                You must answer strictly in the following JSON format: {
+                "title": (type: string),
+                "description": (type: string),
+                "steps": (each step should be described in 4 words, steps should rhyme; type: array of string),
+                "preparationTimeMinutes": (type: integer)
+                }\
+                """)));
         verify(chatLanguageModel).supportedCapabilities();
     }
 
@@ -654,13 +663,15 @@ public class AiServicesIT {
         assertThat(recipe.preparationTimeMinutes).isPositive();
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
-                "Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: {\n" +
-                        "\"title\": (type: string),\n" +
-                        "\"description\": (type: string),\n" +
-                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")));
+                """
+                Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]
+                You must answer strictly in the following JSON format: {
+                "title": (type: string),
+                "description": (type: string),
+                "steps": (each step should be described in 4 words, steps should rhyme; type: array of string),
+                "preparationTimeMinutes": (type: integer)
+                }\
+                """)));
         verify(chatLanguageModel).supportedCapabilities();
     }
 
@@ -684,13 +695,15 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(asList(
                 systemMessage("You are very funny chef"),
-                userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: {\n" +
-                        "\"title\": (type: string),\n" +
-                        "\"description\": (type: string),\n" +
-                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")
+                userMessage("""
+                        Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]
+                        You must answer strictly in the following JSON format: {
+                        "title": (type: string),
+                        "description": (type: string),
+                        "steps": (each step should be described in 4 words, steps should rhyme; type: array of string),
+                        "preparationTimeMinutes": (type: integer)
+                        }\
+                        """)
         ));
         verify(chatLanguageModel).supportedCapabilities();
     }
@@ -715,13 +728,15 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(asList(
                 systemMessage("You are very funny chef"),
-                userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: {\n" +
-                        "\"title\": (type: string),\n" +
-                        "\"description\": (type: string),\n" +
-                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer)\n" +
-                        "}")
+                userMessage("""
+                        Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]
+                        You must answer strictly in the following JSON format: {
+                        "title": (type: string),
+                        "description": (type: string),
+                        "steps": (each step should be described in 4 words, steps should rhyme; type: array of string),
+                        "preparationTimeMinutes": (type: integer)
+                        }\
+                        """)
         ));
         verify(chatLanguageModel).supportedCapabilities();
     }
@@ -910,11 +925,13 @@ public class AiServicesIT {
         assertThat(result.sources()).isNull();
 
         verify(chatLanguageModel).generate(singletonList(
-                userMessage("Give me an example of a booking\n" +
-                        "You must answer strictly in the following JSON format: {\n" +
-                        "\"userId\": (type: string),\n" +
-                        "\"bookingId\": (type: string)\n" +
-                        "}")
+                userMessage("""
+                        Give me an example of a booking
+                        You must answer strictly in the following JSON format: {
+                        "userId": (type: string),
+                        "bookingId": (type: string)
+                        }\
+                        """)
         ));
         verify(chatLanguageModel).supportedCapabilities();
     }

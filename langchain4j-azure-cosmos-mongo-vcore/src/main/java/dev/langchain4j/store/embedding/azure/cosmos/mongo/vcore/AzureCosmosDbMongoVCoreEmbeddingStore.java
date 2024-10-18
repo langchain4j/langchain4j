@@ -317,7 +317,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
         InsertManyResult result = collection.insertMany(documents);
         if (!result.wasAcknowledged()) {
-            String errMsg = String.format("[AzureCosmosDbMongoVCoreEmbeddingStore] Add document failed, Document=%s", documents);
+            String errMsg = "[AzureCosmosDbMongoVCoreEmbeddingStore] Add document failed, Document=%s".formatted(documents);
             throw new RuntimeException(errMsg);
         }
     }

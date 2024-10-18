@@ -106,36 +106,32 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
             // Override for test: exclude the use of incorrect field types in base class testing
             @Override
             protected Query mapFilterToQuery(Filter filter) {
-                if (filter instanceof IsEqualTo) {
-                    if (((IsEqualTo) filter).comparisonValue() instanceof Number) {
+                if (filter instanceof IsEqualTo to) {
+                    if (to.comparisonValue() instanceof Number) {
                         Assumptions.abort("keyword not support number");
                     }
                 }
-                if (filter instanceof IsNotEqualTo) {
-                    if (((IsNotEqualTo) filter).comparisonValue() instanceof Number) {
+                if (filter instanceof IsNotEqualTo to) {
+                    if (to.comparisonValue() instanceof Number) {
                         Assumptions.abort("keyword not support number");
                     }
                 }
-                if (filter instanceof IsLessThan) {
-                    IsLessThan t = (IsLessThan) filter;
+                if (filter instanceof IsLessThan t) {
                     if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
                         Assumptions.abort("keyword not support number");
                     }
                 }
-                if (filter instanceof IsLessThanOrEqualTo) {
-                    IsLessThanOrEqualTo t = (IsLessThanOrEqualTo) filter;
+                if (filter instanceof IsLessThanOrEqualTo t) {
                     if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
                         Assumptions.abort("keyword not support number");
                     }
                 }
-                if (filter instanceof IsGreaterThan) {
-                    IsGreaterThan t = (IsGreaterThan) filter;
+                if (filter instanceof IsGreaterThan t) {
                     if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
                         Assumptions.abort("keyword not support number");
                     }
                 }
-                if (filter instanceof IsGreaterThanOrEqualTo) {
-                    IsGreaterThanOrEqualTo t = (IsGreaterThanOrEqualTo) filter;
+                if (filter instanceof IsGreaterThanOrEqualTo t) {
                     if (t.key().contains("key") && t.comparisonValue() instanceof Number) {
                         Assumptions.abort("keyword not support number");
                     }

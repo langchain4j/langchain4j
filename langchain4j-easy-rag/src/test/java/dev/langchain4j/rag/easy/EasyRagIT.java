@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -62,7 +61,7 @@ class EasyRagIT {
 
     private Path toPath(String fileName) {
         try {
-            return Paths.get(getClass().getClassLoader().getResource(fileName).toURI());
+            return Path.of(getClass().getClassLoader().getResource(fileName).toURI());
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }

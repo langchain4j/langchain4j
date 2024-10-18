@@ -404,10 +404,12 @@ class DefaultToolExecutorTest implements WithAssertions {
         DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new PersonTool(), request);
 
         String result = toolExecutor.execute(request, "DEFAULT");
-        assertThat(result).isEqualTo("{\n" +
-                "  \"name\": \"Klaus\",\n" +
-                "  \"age\": 42\n" +
-                "}");
+        assertThat(result).isEqualTo("""
+                {
+                  "name": "Klaus",
+                  "age": 42
+                }\
+                """);
 
         ToolExecutionRequest request2 = ToolExecutionRequest.builder()
                 .id("2")
@@ -416,16 +418,17 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
         String result2 = toolExecutor2.execute(request2, "DEFAULT");
-        assertThat(result2).isEqualTo("[\n" +
-                "  {\n" +
-                "    \"name\": \"Klaus\",\n" +
-                "    \"age\": 42\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"name\": \"Peter\",\n" +
-                "    \"age\": 43\n" +
-                "  }\n" +
-                "]");
+        assertThat(result2).isEqualTo("""
+                [
+                  {
+                    "name": "Klaus",
+                    "age": 42
+                  },
+                  {
+                    "name": "Peter",
+                    "age": 43
+                  }
+                ]""");
 
         ToolExecutionRequest request3 = ToolExecutionRequest.builder()
                 .id("3")
@@ -434,16 +437,17 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
         String result3 = toolExecutor3.execute(request3, "DEFAULT");
-        assertThat(result3).isEqualTo("[\n" +
-                "  {\n" +
-                "    \"name\": \"Klaus\",\n" +
-                "    \"age\": 42\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"name\": \"Peter\",\n" +
-                "    \"age\": 43\n" +
-                "  }\n" +
-                "]");
+        assertThat(result3).isEqualTo("""
+                [
+                  {
+                    "name": "Klaus",
+                    "age": 42
+                  },
+                  {
+                    "name": "Peter",
+                    "age": 43
+                  }
+                ]""");
 
         ToolExecutionRequest request4 = ToolExecutionRequest.builder()
                 .id("4")
@@ -452,16 +456,18 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
         String result4 = toolExecutor4.execute(request4, "DEFAULT");
-        assertThat(result4).isEqualTo("{\n" +
-                "  \"p1\": {\n" +
-                "    \"name\": \"Klaus\",\n" +
-                "    \"age\": 42\n" +
-                "  },\n" +
-                "  \"p2\": {\n" +
-                "    \"name\": \"Peter\",\n" +
-                "    \"age\": 43\n" +
-                "  }\n" +
-                "}");
+        assertThat(result4).isEqualTo("""
+                {
+                  "p1": {
+                    "name": "Klaus",
+                    "age": 42
+                  },
+                  "p2": {
+                    "name": "Peter",
+                    "age": 43
+                  }
+                }\
+                """);
 
         ToolExecutionRequest request5 = ToolExecutionRequest.builder()
                 .id("5")
@@ -470,15 +476,16 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
         String result5 = toolExecutor5.execute(request5, "DEFAULT");
-        assertThat(result5).isEqualTo("[\n" +
-                "  {\n" +
-                "    \"name\": \"Klaus\",\n" +
-                "    \"age\": 42\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"name\": \"Peter\",\n" +
-                "    \"age\": 43\n" +
-                "  }\n" +
-                "]");
+        assertThat(result5).isEqualTo("""
+                [
+                  {
+                    "name": "Klaus",
+                    "age": 42
+                  },
+                  {
+                    "name": "Peter",
+                    "age": 43
+                  }
+                ]""");
     }
 }

@@ -433,10 +433,10 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
                     if (this.embeddingField.equals(key)) {
                         throw Exceptions.illegalArgument("there is a metadata(%s,%s) that is consistent with the name of the vector field:%s", key, value, this.embeddingField);
                     }
-                    if (value instanceof Float) {
-                        rowPutChange.addColumn(new Column(key, ColumnValue.fromDouble((Float) value)));
-                    } else if (value instanceof UUID) {
-                        rowPutChange.addColumn(new Column(key, ColumnValue.fromString(((UUID) value).toString())));
+                    if (value instanceof Float float1) {
+                        rowPutChange.addColumn(new Column(key, ColumnValue.fromDouble(float1)));
+                    } else if (value instanceof UUID iD) {
+                        rowPutChange.addColumn(new Column(key, ColumnValue.fromString(iD.toString())));
                     } else {
                         rowPutChange.addColumn(new Column(key, ValueUtil.toColumnValue(value)));
                     }
@@ -449,7 +449,7 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
                 log.debug("add id:{}, textSegment:{}, embedding:{}", id, textSegment, TablestoreUtils.maxLogOrNull(embedding.toString()));
             }
         } catch (Exception e) {
-            throw new RuntimeException(String.format("add embedding data failed, id:%s, textSegment:%s,embedding:%s", id, textSegment, embedding), e);
+            throw new RuntimeException("add embedding data failed, id:%s, textSegment:%s,embedding:%s".formatted(id, textSegment, embedding), e);
         }
     }
 
@@ -462,7 +462,7 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
             client.deleteRow(new DeleteRowRequest(rowDeleteChange));
             log.debug("delete id:{}", id);
         } catch (Exception e) {
-            throw new RuntimeException(String.format("delete embedding data failed, id:%s", id), e);
+            throw new RuntimeException("delete embedding data failed, id:%s".formatted(id), e);
         }
     }
 

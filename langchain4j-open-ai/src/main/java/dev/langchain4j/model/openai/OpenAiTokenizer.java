@@ -97,14 +97,14 @@ public class OpenAiTokenizer implements Tokenizer {
         int tokenCount = 1; // 1 token for role
         tokenCount += extraTokensPerMessage();
 
-        if (message instanceof SystemMessage) {
-            tokenCount += estimateTokenCountIn((SystemMessage) message);
-        } else if (message instanceof UserMessage) {
-            tokenCount += estimateTokenCountIn((UserMessage) message);
-        } else if (message instanceof AiMessage) {
-            tokenCount += estimateTokenCountIn((AiMessage) message);
-        } else if (message instanceof ToolExecutionResultMessage) {
-            tokenCount += estimateTokenCountIn((ToolExecutionResultMessage) message);
+        if (message instanceof SystemMessage systemMessage) {
+            tokenCount += estimateTokenCountIn(systemMessage);
+        } else if (message instanceof UserMessage userMessage) {
+            tokenCount += estimateTokenCountIn(userMessage);
+        } else if (message instanceof AiMessage aiMessage) {
+            tokenCount += estimateTokenCountIn(aiMessage);
+        } else if (message instanceof ToolExecutionResultMessage resultMessage) {
+            tokenCount += estimateTokenCountIn(resultMessage);
         } else {
             throw new IllegalArgumentException("Unknown message type: " + message);
         }
@@ -120,8 +120,8 @@ public class OpenAiTokenizer implements Tokenizer {
         int tokenCount = 0;
 
         for (Content content : userMessage.contents()) {
-            if (content instanceof TextContent) {
-                tokenCount += estimateTokenCountInText(((TextContent) content).text());
+            if (content instanceof TextContent textContent) {
+                tokenCount += estimateTokenCountInText(textContent.text());
             } else if (content instanceof ImageContent) {
                 tokenCount += 85; // TODO implement for HIGH/AUTO detail level
             } else {

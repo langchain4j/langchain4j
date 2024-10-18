@@ -85,28 +85,25 @@ class DefaultZhipuAiHelper {
 
     private static Message toZhipuAiMessage(ChatMessage message) {
 
-        if (message instanceof SystemMessage) {
-            SystemMessage systemMessage = (SystemMessage) message;
+        if (message instanceof SystemMessage systemMessage) {
             return dev.langchain4j.model.zhipu.chat.SystemMessage.builder()
                     .content(systemMessage.text())
                     .build();
         }
 
-        if (message instanceof UserMessage) {
-            UserMessage userMessage = (UserMessage) message;
+        if (message instanceof UserMessage userMessage) {
             if (userMessage.hasSingleText()) {
                 return dev.langchain4j.model.zhipu.chat.UserMessage.from(userMessage.singleText());
             }
             List<Content> contents = new ArrayList<>(userMessage.contents().size());
             userMessage.contents().forEach(content -> {
-                if (content instanceof TextContent) {
-                    TextContent textContent = (TextContent) content;
+                if (content instanceof TextContent textContent) {
                     contents.add(dev.langchain4j.model.zhipu.chat.TextContent.builder()
                             .text(textContent.text())
                             .build());
                 }
-                if (content instanceof ImageContent) {
-                    Image image = ((ImageContent) content).image();
+                if (content instanceof ImageContent imageContent) {
+                    Image image = imageContent.image();
                     contents.add(dev.langchain4j.model.zhipu.chat.ImageContent.builder()
                             .imageUrl(dev.langchain4j.model.zhipu.chat.Image.builder()
                                     .url(image.url() != null ? image.url().toString() : image.base64Data())
@@ -117,8 +114,7 @@ class DefaultZhipuAiHelper {
             return dev.langchain4j.model.zhipu.chat.UserMessage.from(contents);
         }
 
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
             if (!aiMessage.hasToolExecutionRequests()) {
                 return AssistantMessage.builder()
                         .content(aiMessage.text())
@@ -144,8 +140,7 @@ class DefaultZhipuAiHelper {
                     .build();
         }
 
-        if (message instanceof ToolExecutionResultMessage) {
-            ToolExecutionResultMessage resultMessage = (ToolExecutionResultMessage) message;
+        if (message instanceof ToolExecutionResultMessage resultMessage) {
             return ToolMessage.builder()
                     .content(resultMessage.text())
                     .build();
@@ -213,8 +208,7 @@ class DefaultZhipuAiHelper {
      * error code see <a href="https://open.bigmodel.cn/dev/api#error-code-v3">error codes document</a>
      */
     private static ChatCompletionChoice toChatErrorChoice(Object object) {
-        if (object instanceof Throwable) {
-            Throwable throwable = (Throwable) object;
+        if (object instanceof Throwable throwable) {
             return ChatCompletionChoice.builder()
                     .message(AssistantMessage.builder().content(throwable.getMessage()).build())
                     .finishReason(FINISH_REASON_OTHER)
@@ -252,8 +246,7 @@ class DefaultZhipuAiHelper {
                 return FINISH_REASON_SENSITIVE;
             }
         }
-        if (o instanceof ZhipuAiException) {
-            ZhipuAiException exception = (ZhipuAiException) o;
+        if (o instanceof ZhipuAiException exception) {
             if ("1301".equals(exception.getCode())) {
                 return FINISH_REASON_SENSITIVE;
             }

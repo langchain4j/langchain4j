@@ -11,7 +11,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
-import java.nio.file.*;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.util.List;
 
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.*;
@@ -22,19 +25,19 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
     @Test
     void load_bad_file() {
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> loadDocument(Paths.get("bad_file"), new TextDocumentParser()))
+                .isThrownBy(() -> loadDocument(Path.of("bad_file"), new TextDocumentParser()))
                 .withMessageContaining("'bad_file' is not a file");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> loadDocument(Paths.get("bad_file")))
+                .isThrownBy(() -> loadDocument(Path.of("bad_file")))
                 .withMessageContaining("'bad_file' is not a file");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> loadDocument(Paths.get("/"), new TextDocumentParser()))
+                .isThrownBy(() -> loadDocument(Path.of("/"), new TextDocumentParser()))
                 .withMessageContaining("is not a file");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> loadDocument(Paths.get("/")))
+                .isThrownBy(() -> loadDocument(Path.of("/")))
                 .withMessageContaining("is not a file");
     }
 
@@ -45,7 +48,7 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
         assertThat(document.metadata("file_name")).isEqualTo("test-file-utf8.txt");
-        assertThat(Paths.get(document.metadata("absolute_directory_path"))).isAbsolute();
+        assertThat(Path.of(document.metadata("absolute_directory_path"))).isAbsolute();
 
         assertThat(loadDocument(path.toString(), new TextDocumentParser())).isEqualTo(document);
 
@@ -57,12 +60,12 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
     void load_bad_directory() {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocuments(
-                        Paths.get("bad_directory"), new TextDocumentParser()))
+                        Path.of("bad_directory"), new TextDocumentParser()))
                 .withMessageContaining("'bad_directory' is not a directory");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocuments(
-                        Paths.get("bad_directory")))
+                        Path.of("bad_directory")))
                 .withMessageContaining("'bad_directory' is not a directory");
     }
 
@@ -257,16 +260,16 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
 
     private static Path resourceDirectory() {
         String userDir = System.getProperty("user.dir");
-        Path resourceDirectory = Paths.get(userDir, "langchain4j/src/test/resources");
+        Path resourceDirectory = Path.of(userDir, "langchain4j/src/test/resources");
         if (Files.exists(resourceDirectory)) {
             return resourceDirectory;
         }
-        return Paths.get(userDir, "src/test/resources");
+        return Path.of(userDir, "src/test/resources");
     }
 
     private Path toPath(String fileName) {
         try {
-            return Paths.get(getClass().getClassLoader().getResource(fileName).toURI());
+            return Path.of(getClass().getClassLoader().getResource(fileName).toURI());
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }

@@ -91,7 +91,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
         int code = response.code();
         String body = response.errorBody().string();
 
-        String errorMessage = String.format("status code: %s; body: %s", code, body);
+        String errorMessage = "status code: %s; body: %s".formatted(code, body);
         return new RuntimeException(errorMessage);
     }
 }

@@ -37,8 +37,7 @@ class ContentsMapper {
             ChatMessage message = messages.get(msgIdx);
             boolean isLastMessage = msgIdx == messages.size() - 1;
 
-            if (message instanceof ToolExecutionResultMessage) {
-                ToolExecutionResultMessage toolResult = (ToolExecutionResultMessage) message;
+            if (message instanceof ToolExecutionResultMessage toolResult) {
                 if (isLastMessage) {
                     // if there's no accumulated tool results, add it right away to the list of messages
                     if (executionResultMessages.isEmpty()) {

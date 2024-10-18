@@ -111,9 +111,9 @@ class Mapper {
     private static Metadata toMetadata(JsonObject metadata) {
         Map<String, Object> metadataMap = GSON.fromJson(metadata, MAP_TYPE);
         metadataMap.forEach((key, value) -> {
-            if (value instanceof BigDecimal) {
+            if (value instanceof BigDecimal decimal) {
                 // It is safe to convert. No information is lost, the "biggest" type allowed in Metadata is double.
-                metadataMap.put(key, ((BigDecimal) value).doubleValue());
+                metadataMap.put(key, decimal.doubleValue());
             }
         });
         return Metadata.from(metadataMap);

@@ -121,14 +121,16 @@ public class WebPageLoaderAndRagWIthAstraTest {
 
         // Create a prompt for the model that includes question and relevant embeddings
         PromptTemplate promptTemplate = PromptTemplate.from(
-                "Answer the following question to the best of your ability:\n"
-                        + "\n"
-                        + "Question:\n"
-                        + "{{question}}\n"
-                        + "\n"
-                        + "Base your answer on the following information:\n"
-                        + "{{information}}\n"
-                        + "Put each sentence on a different line:\n"
+                """
+                Answer the following question to the best of your ability:
+                
+                Question:
+                {{question}}
+                
+                Base your answer on the following information:
+                {{information}}
+                Put each sentence on a different line:
+                """
         );
 
         String information = relevantEmbeddings.stream()

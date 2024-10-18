@@ -29,11 +29,13 @@ class RequestLoggingInterceptor implements Interceptor {
 
     private void log(Request request) {
         log.debug(
-                "Request:\n" +
-                        "- method: {}\n" +
-                        "- url: {}\n" +
-                        "- headers: {}\n" +
-                        "- body: {}",
+                """
+                Request:
+                - method: {}
+                - url: {}
+                - headers: {}
+                - body: {}\
+                """,
                 request.method(),
                 request.url(),
                 inOneLine(request.headers()),
@@ -49,7 +51,7 @@ class RequestLoggingInterceptor implements Interceptor {
                     if (headerKey.equals("Authorization")) {
                         headerValue = maskAuthorizationHeaderValue(headerValue);
                     }
-                    return String.format("[%s: %s]", headerKey, headerValue);
+                    return "[%s: %s]".formatted(headerKey, headerValue);
                 }).collect(Collectors.joining(", "));
     }
 

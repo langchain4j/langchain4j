@@ -46,7 +46,7 @@ public class RequestLoggingInterceptor implements Interceptor {
                 headerValue = maskApiKeyHeaderValue(headerValue);
             }
 
-            return String.format("[%s: %s]", headerKey, headerValue);
+            return "[%s: %s]".formatted(headerKey, headerValue);
         }).collect(Collectors.joining(", "));
     }
 

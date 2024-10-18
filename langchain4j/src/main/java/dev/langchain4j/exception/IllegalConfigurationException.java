@@ -1,7 +1,5 @@
 package dev.langchain4j.exception;
 
-import static java.lang.String.format;
-
 public class IllegalConfigurationException extends RuntimeException {
 
     public IllegalConfigurationException(String message) {
@@ -13,6 +11,6 @@ public class IllegalConfigurationException extends RuntimeException {
     }
 
     public static IllegalConfigurationException illegalConfiguration(String format, Object... args) {
-        return new IllegalConfigurationException(format(format, args));
+        return new IllegalConfigurationException(format.formatted(args));
     }
 }

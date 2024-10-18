@@ -35,7 +35,7 @@ public final class Message {
         if (this == another) {
             return true;
         } else {
-            return another instanceof Message && this.equalTo((Message)another);
+            return another instanceof Message m && this.equalTo(m);
         }
     }
 

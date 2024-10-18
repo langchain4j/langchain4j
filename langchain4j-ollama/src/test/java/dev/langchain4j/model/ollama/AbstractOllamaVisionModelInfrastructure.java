@@ -2,7 +2,7 @@ package dev.langchain4j.model.ollama;
 
 class AbstractOllamaVisionModelInfrastructure {
 
-    private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, OllamaImage.BAKLLAVA_MODEL);
+    private static final String LOCAL_OLLAMA_IMAGE = "tc-%s-%s".formatted(OllamaImage.OLLAMA_IMAGE, OllamaImage.BAKLLAVA_MODEL);
 
     static LangChain4jOllamaContainer ollama;
 

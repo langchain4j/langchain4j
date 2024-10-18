@@ -135,12 +135,12 @@ class InternalAzureOpenAiHelper {
                 .httpLogOptions(httpLogOptions)
                 .retryOptions(retryOptions);
 
-        if (credential instanceof String) {
-            openAIClientBuilder.credential(new AzureKeyCredential((String) credential));
-        } else if (credential instanceof KeyCredential) {
-            openAIClientBuilder.credential((KeyCredential) credential);
-        } else if (credential instanceof TokenCredential) {
-            openAIClientBuilder.credential((TokenCredential) credential);
+        if (credential instanceof String string) {
+            openAIClientBuilder.credential(new AzureKeyCredential(string));
+        } else if (credential instanceof KeyCredential keyCredential) {
+            openAIClientBuilder.credential(keyCredential);
+        } else if (credential instanceof TokenCredential tokenCredential) {
+            openAIClientBuilder.credential(tokenCredential);
         } else {
             throw new IllegalArgumentException("Unsupported credential type: " + credential.getClass());
         }
@@ -171,30 +171,25 @@ class InternalAzureOpenAiHelper {
     }
 
     public static ChatRequestMessage toOpenAiMessage(ChatMessage message) {
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
             ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
             chatRequestAssistantMessage.setToolCalls(toolExecutionRequestsFrom(message));
             return chatRequestAssistantMessage;
-        } else if (message instanceof ToolExecutionResultMessage) {
-            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+        } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
-        } else if (message instanceof SystemMessage) {
-            SystemMessage systemMessage = (SystemMessage) message;
+        } else if (message instanceof SystemMessage systemMessage) {
             return new ChatRequestSystemMessage(systemMessage.text());
-        } else if (message instanceof UserMessage) {
-            UserMessage userMessage = (UserMessage) message;
+        } else if (message instanceof UserMessage userMessage) {
             ChatRequestUserMessage chatRequestUserMessage;
             if (userMessage.hasSingleText()) {
                 chatRequestUserMessage = new ChatRequestUserMessage(((TextContent) userMessage.contents().get(0)).text());
             } else {
                 chatRequestUserMessage = new ChatRequestUserMessage(userMessage.contents().stream()
                         .map(content -> {
-                            if (content instanceof TextContent) {
-                                String text = ((TextContent) content).text();
+                            if (content instanceof TextContent textContent) {
+                                String text = textContent.text();
                                 return new ChatMessageTextContentItem(text);
-                            } else if (content instanceof ImageContent) {
-                                ImageContent imageContent = (ImageContent) content;
+                            } else if (content instanceof ImageContent imageContent) {
                                 if (imageContent.image().url() == null) {
                                     throw new IllegalArgumentException("Image URL is not present. Base64 encoded images are not supported at the moment.");
                                 }
@@ -214,20 +209,19 @@ class InternalAzureOpenAiHelper {
     }
 
     private static String nameFrom(ChatMessage message) {
-        if (message instanceof UserMessage) {
-            return ((UserMessage) message).name();
+        if (message instanceof UserMessage userMessage) {
+            return userMessage.name();
         }
 
-        if (message instanceof ToolExecutionResultMessage) {
-            return ((ToolExecutionResultMessage) message).toolName();
+        if (message instanceof ToolExecutionResultMessage resultMessage) {
+            return resultMessage.toolName();
         }
 
         return null;
     }
 
     private static List<ChatCompletionsToolCall> toolExecutionRequestsFrom(ChatMessage message) {
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
             if (aiMessage.hasToolExecutionRequests()) {
                 return aiMessage.toolExecutionRequests().stream()
                         .map(toolExecutionRequest -> new ChatCompletionsFunctionToolCall(toolExecutionRequest.id(), new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments())))
@@ -404,8 +398,7 @@ class InternalAzureOpenAiHelper {
                 if (errorMap instanceof Map) {
                     Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
                     Object errorCode = errorDetails.get("code");
-                    if (errorCode instanceof String) {
-                        String code = (String) errorCode;
+                    if (errorCode instanceof String code) {
                         if (contentFilterCode.equals(code)) {
                             // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
                             exceptionFinishReason = FinishReason.CONTENT_FILTER;

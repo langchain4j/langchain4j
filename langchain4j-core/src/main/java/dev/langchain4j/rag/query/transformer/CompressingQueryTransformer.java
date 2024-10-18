@@ -34,18 +34,19 @@ import static java.util.stream.Collectors.joining;
 public class CompressingQueryTransformer implements QueryTransformer {
 
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "Read and understand the conversation between the User and the AI. " +
-                    "Then, analyze the new query from the User. " +
-                    "Identify all relevant details, terms, and context from both the conversation and the new query. " +
-                    "Reformulate this query into a clear, concise, and self-contained format suitable for information retrieval.\n" +
-                    "\n" +
-                    "Conversation:\n" +
-                    "{{chatMemory}}\n" +
-                    "\n" +
-                    "User query: {{query}}\n" +
-                    "\n" +
-                    "It is very important that you provide only reformulated query and nothing else! " +
-                    "Do not prepend a query with anything!"
+            """
+            Read and understand the conversation between the User and the AI. \
+            Then, analyze the new query from the User. \
+            Identify all relevant details, terms, and context from both the conversation and the new query. \
+            Reformulate this query into a clear, concise, and self-contained format suitable for information retrieval.
+            
+            Conversation:
+            {{chatMemory}}
+            
+            User query: {{query}}
+            
+            It is very important that you provide only reformulated query and nothing else! \
+            Do not prepend a query with anything!"""
     );
 
     protected final PromptTemplate promptTemplate;
@@ -88,8 +89,7 @@ public class CompressingQueryTransformer implements QueryTransformer {
     protected String format(ChatMessage message) {
         if (message instanceof UserMessage) {
             return "User: " + message.text();
-        } else if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        } else if (message instanceof AiMessage aiMessage) {
             if (aiMessage.hasToolExecutionRequests()) {
                 return null;
             }

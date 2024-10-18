@@ -93,7 +93,7 @@ public class TablestoreChatMemoryStore implements ChatMemoryStore {
                 } catch (Exception e) {
                     String id = row.getPrimaryKey().getPrimaryKeyColumn(pkName1).getValue().asString();
                     long seqNo = row.getPrimaryKey().getPrimaryKeyColumn(pkName2).getValue().asLong();
-                    throw new RuntimeException(String.format("unable to parse message body, memoryId:%s, seqNo:%s", id, seqNo), e);
+                    throw new RuntimeException("unable to parse message body, memoryId:%s, seqNo:%s".formatted(id, seqNo), e);
                 }
             }
         });
@@ -147,7 +147,7 @@ public class TablestoreChatMemoryStore implements ChatMemoryStore {
             client.deleteRow(new DeleteRowRequest(rowDeleteChange));
             log.debug("delete memoryId:{}, seqNo:{}", memoryId, seqNo);
         } catch (Exception e) {
-            throw new RuntimeException(String.format("delete embedding data failed, memoryId:%s, seqNo:%s", memoryId, seqNo), e);
+            throw new RuntimeException("delete embedding data failed, memoryId:%s, seqNo:%s".formatted(memoryId, seqNo), e);
         }
     }
 
@@ -167,7 +167,7 @@ public class TablestoreChatMemoryStore implements ChatMemoryStore {
                 log.debug("add memoryId:{}, seqNo:{}, chatMessage:{}", memoryId, seqNo, chatMessage);
             }
         } catch (Exception e) {
-            throw new RuntimeException(String.format("add embedding data failed, memoryId:%s, seqNo:%s, chatMessage:%s", memoryId, seqNo, chatMessage), e);
+            throw new RuntimeException("add embedding data failed, memoryId:%s, seqNo:%s, chatMessage:%s".formatted(memoryId, seqNo, chatMessage), e);
         }
     }
 

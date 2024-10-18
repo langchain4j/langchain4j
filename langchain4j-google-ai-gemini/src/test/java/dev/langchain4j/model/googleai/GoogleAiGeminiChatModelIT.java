@@ -105,8 +105,10 @@ public class GoogleAiGeminiChatModelIT {
 
         // when
         Response<AiMessage> response = gemini.generate(
-            UserMessage.from("What is the firstname of the John Doe?\n" +
-                "Reply in JSON following with the following format: {\"firstname\": string}"));
+            UserMessage.from("""
+                What is the firstname of the John Doe?
+                Reply in JSON following with the following format: {"firstname": string}\
+                """));
 
         // then
         String jsonText = response.content().text();

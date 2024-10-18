@@ -99,8 +99,7 @@ public class QianfanClient {
         refreshToken();
 
         return new RequestExecutor(this.qianfanApi.chatCompletions(endpoint,request, this.token), (r) -> {
-            if (r instanceof ChatCompletionResponse && ((ChatCompletionResponse) r).getErrorCode() != null) {
-                ChatCompletionResponse response = (ChatCompletionResponse) r;
+            if (r instanceof ChatCompletionResponse response && response.getErrorCode() != null) {
                 throw new QianfanApiException(response.getErrorCode(), response.getErrorMsg());
             }
             return r;

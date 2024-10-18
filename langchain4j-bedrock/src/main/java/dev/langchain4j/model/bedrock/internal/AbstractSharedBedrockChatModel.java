@@ -99,7 +99,7 @@ public abstract class AbstractSharedBedrockChatModel {
                 .map(this::chatMessageToString)
                 .collect(joining("\n"));
 
-        final String prompt = String.format("%s\n\n%s\n%s", context, userMessages, ASSISTANT_PROMPT);
+        final String prompt = "%s\n\n%s\n%s".formatted(context, userMessages, ASSISTANT_PROMPT);
         final Map<String, Object> requestParameters = getRequestParameters(prompt);
         final String body = Json.toJson(requestParameters);
         return body;

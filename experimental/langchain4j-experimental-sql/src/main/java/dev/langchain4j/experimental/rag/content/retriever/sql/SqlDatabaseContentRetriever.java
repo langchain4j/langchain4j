@@ -51,11 +51,12 @@ import static java.util.Collections.singletonList;
 public class SqlDatabaseContentRetriever implements ContentRetriever {
 
     private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "You are an expert in writing SQL queries.\n" +
-                    "You have access to a {{sqlDialect}} database with the following structure:\n" +
-                    "{{databaseStructure}}\n" +
-                    "If a user asks a question that can be answered by querying this database, generate an SQL SELECT query.\n" +
-                    "Do not output anything else aside from a valid SQL statement!"
+            """
+            You are an expert in writing SQL queries.
+            You have access to a {{sqlDialect}} database with the following structure:
+            {{databaseStructure}}
+            If a user asks a question that can be answered by querying this database, generate an SQL SELECT query.
+            Do not output anything else aside from a valid SQL statement!"""
     );
 
     private final DataSource dataSource;
@@ -346,6 +347,6 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
     }
 
     private static Content format(String result, String sqlQuery) {
-        return Content.from(String.format("Result of executing '%s':\n%s", sqlQuery, result));
+        return Content.from("Result of executing '%s':\n%s".formatted(sqlQuery, result));
     }
 }

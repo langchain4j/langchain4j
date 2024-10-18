@@ -45,12 +45,14 @@ public class LanguageModelQueryRouter implements QueryRouter {
     private static final Logger log = LoggerFactory.getLogger(LanguageModelQueryRouter.class);
 
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "Based on the user query, determine the most suitable data source(s) " +
-                    "to retrieve relevant information from the following options:\n" +
-                    "{{options}}\n" +
-                    "It is very important that your answer consists of either a single number " +
-                    "or multiple numbers separated by commas and nothing else!\n" +
-                    "User query: {{query}}"
+            """
+            Based on the user query, determine the most suitable data source(s) \
+            to retrieve relevant information from the following options:
+            {{options}}
+            It is very important that your answer consists of either a single number \
+            or multiple numbers separated by commas and nothing else!
+            User query: {{query}}\
+            """
     );
 
     protected final ChatLanguageModel chatLanguageModel;

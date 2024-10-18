@@ -20,7 +20,6 @@ import java.util.*;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.store.embedding.redis.RedisSchema.SCORE_FIELD_NAME;
-import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -117,7 +116,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         String queryTemplate = "*=>[ KNN %d @%s $BLOB AS %s ]";
         List<String> returnFields = new ArrayList<>(schema.metadataKeys());
         returnFields.addAll(asList(schema.vectorFieldName(), schema.scalarFieldName(), SCORE_FIELD_NAME));
-        Query query = new Query(format(queryTemplate, maxResults, schema.vectorFieldName(), SCORE_FIELD_NAME))
+        Query query = new Query(queryTemplate.formatted(maxResults, schema.vectorFieldName(), SCORE_FIELD_NAME))
                 .addParam("BLOB", ToByteArray(referenceEmbedding.vector()))
                 .returnFields(returnFields.toArray(new String[0]))
                 .setSortBy(SCORE_FIELD_NAME, true)

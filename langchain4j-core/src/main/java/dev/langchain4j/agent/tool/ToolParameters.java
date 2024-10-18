@@ -75,8 +75,8 @@ public class ToolParameters {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolParameters
-                && equalTo((ToolParameters) another);
+        return another instanceof ToolParameters tp
+                && equalTo(tp);
     }
 
     /**

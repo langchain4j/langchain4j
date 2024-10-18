@@ -165,7 +165,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 if (t != null) {
                     handler.onError(t);
                 } else {
-                    handler.onError(new RuntimeException(String.format("status code: %s; body: %s", response.code(), response.body())));
+                    handler.onError(new RuntimeException("status code: %s; body: %s".formatted(response.code(), response.body())));
                 }
             }
 
@@ -219,7 +219,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
             ResponseBody errorBody = retrofitResponse.errorBody();
             if (errorBody != null) {
                 String errorBodyString = errorBody.string();
-                String errorMessage = String.format("status code: %s; body: %s", code, errorBodyString);
+                String errorMessage = "status code: %s; body: %s".formatted(code, errorBodyString);
                 LOGGER.error("Error response: {}", errorMessage);
                 return new RuntimeException(errorMessage);
             }

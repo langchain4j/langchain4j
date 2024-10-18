@@ -56,7 +56,7 @@ class VoyageAiEmbeddingDeserializerTest {
         String base64_1 = encodeFloatArrayToBase64(new float[]{1.1f, 2.2f, 3.3f});
         String base64_2 = encodeFloatArrayToBase64(new float[]{4.4f, 5.5f, 6.6f});
 
-        JsonNode dataNode = OBJECT_MAPPER.readTree(String.format("[{\"object\":\"embedding\",\"embedding\": \"%s\",\"index\":0},{\"object\":\"embedding\",\"embedding\":\"%s\",\"index\":1}]", base64_1, base64_2));
+        JsonNode dataNode = OBJECT_MAPPER.readTree("[{\"object\":\"embedding\",\"embedding\": \"%s\",\"index\":0},{\"object\":\"embedding\",\"embedding\":\"%s\",\"index\":1}]".formatted(base64_1, base64_2));
         doReturn(objectCodec).when(jsonParser).getCodec();
         doReturn(dataNode).when(objectCodec).readTree(jsonParser);
         VoyageAiEmbeddingDeserializer deserializer = new VoyageAiEmbeddingDeserializer();

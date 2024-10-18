@@ -22,10 +22,12 @@ class ResponseLoggingInterceptor implements Interceptor {
 
     void log(Response response) {
         log.debug(
-                "Response:\n" +
-                        "- status code: {}\n" +
-                        "- headers: {}\n" +
-                        "- body: {}",
+                """
+                Response:
+                - status code: {}
+                - headers: {}
+                - body: {}\
+                """,
                 response.code(),
                 inOneLine(response.headers()),
                 getBody(response)

@@ -29,7 +29,7 @@ public final class Usage {
         if (this == another) {
             return true;
         } else {
-            return another instanceof Usage && this.equalTo((Usage)another);
+            return another instanceof Usage u && this.equalTo(u);
         }
     }
 

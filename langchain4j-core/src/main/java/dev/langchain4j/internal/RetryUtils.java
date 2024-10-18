@@ -6,8 +6,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Random;
 import java.util.concurrent.Callable;
 
-import static java.lang.String.format;
-
 /**
  * Utility class for retrying actions.
  */
@@ -195,7 +193,7 @@ public final class RetryUtils {
                         throw new RuntimeException(e);
                     }
 
-                    log.warn(format("Exception was thrown on attempt %s of %s", attempt, maxAttempts), e);
+                    log.warn("Exception was thrown on attempt %s of %s".formatted(attempt, maxAttempts), e);
 
                     sleep(attempt);
                 }

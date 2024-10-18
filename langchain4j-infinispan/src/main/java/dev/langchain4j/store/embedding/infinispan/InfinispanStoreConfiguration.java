@@ -19,14 +19,15 @@ public record InfinispanStoreConfiguration(String cacheName,
     * Default Cache Config
     */
    public static final String DEFAULT_CACHE_CONFIG =
-         "<distributed-cache name=\"CACHE_NAME\">\n"
-               + "<indexing storage=\"local-heap\">\n"
-               + "<indexed-entities>\n"
-               + "<indexed-entity>LANGCHAINITEM</indexed-entity>\n"
-               + "<indexed-entity>LANGCHAIN_METADATA</indexed-entity>\n"
-               + "</indexed-entities>\n"
-               + "</indexing>\n"
-               + "</distributed-cache>";
+         """
+         <distributed-cache name="CACHE_NAME">
+         <indexing storage="local-heap">
+         <indexed-entities>
+         <indexed-entity>LANGCHAINITEM</indexed-entity>
+         <indexed-entity>LANGCHAIN_METADATA</indexed-entity>
+         </indexed-entities>
+         </indexing>
+         </distributed-cache>""";
 
    /**
     * Default package of the schema

@@ -15,7 +15,6 @@ import io.milvus.param.dml.SearchParam;
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore.*;
-import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
@@ -98,7 +97,7 @@ class CollectionRequestBuilder {
 
     private static String buildQueryExpression(List<String> rowIds, String idFieldName) {
         return rowIds.stream()
-                .map(id -> format("%s == '%s'", idFieldName, id))
+                .map(id -> "%s == '%s'".formatted(idFieldName, id))
                 .collect(joining(" || "));
     }
 }

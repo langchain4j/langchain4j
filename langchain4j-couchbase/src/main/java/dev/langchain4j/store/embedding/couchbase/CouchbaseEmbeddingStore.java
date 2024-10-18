@@ -145,7 +145,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
         type.put("enabled", true);
         type.put("properties", properties(dimensions));
 
-        types.put(String.format("%s.%s", collection.scopeName(), collection.name()), type);
+        types.put("%s.%s".formatted(collection.scopeName(), collection.name()), type);
         return types;
     }
 
@@ -272,7 +272,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll() {
-        cluster.query(String.format(REMOVE_QUERY_PATTERN, collection.bucketName(), collection.scopeName(), collection.name(), "true"));
+        cluster.query(REMOVE_QUERY_PATTERN.formatted(collection.bucketName(), collection.scopeName(), collection.name(), "true"));
     }
 
     @Override
@@ -291,7 +291,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .map(row -> {
                     Document data = collection.get(row.id()).contentAs(Document.class);
                     if (data == null) {
-                        throw new IllegalStateException(String.format("document with id '%s' not found", row.id()));
+                        throw new IllegalStateException("document with id '%s' not found".formatted(row.id()));
                     }
                     Embedding embedding = new Embedding(data.getVector());
                     return new EmbeddingMatch<>(

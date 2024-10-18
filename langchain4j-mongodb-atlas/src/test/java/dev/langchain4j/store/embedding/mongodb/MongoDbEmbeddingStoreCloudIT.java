@@ -18,7 +18,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariables;
 
-import static java.lang.String.format;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
@@ -49,7 +48,7 @@ class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
         String username = System.getenv("MONGODB_ATLAS_USERNAME");
         String password = System.getenv("MONGODB_ATLAS_PASSWORD");
         String host = System.getenv("MONGODB_ATLAS_HOST");
-        String connectionString = format("mongodb+srv://%s:%s@%s/?retryWrites=true&w=majority", username, password, host);
+        String connectionString = "mongodb+srv://%s:%s@%s/?retryWrites=true&w=majority".formatted(username, password, host);
         client = MongoClients.create(connectionString);
     }
 
