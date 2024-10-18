@@ -14,6 +14,11 @@
     <artifactId>langchain4j-qdrant</artifactId>
     <name>LangChain4j :: Integration :: Qdrant</name>
 
+    <properties>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
+
     <dependencies>
 
         <dependency>
