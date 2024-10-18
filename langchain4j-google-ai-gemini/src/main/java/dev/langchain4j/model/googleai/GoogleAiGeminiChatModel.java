@@ -116,9 +116,9 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
 
-        this.geminiService = GeminiService.getGeminiService(
-            getOrDefault(logRequestsAndResponses, false) ? this.log : null,
-            getOrDefault(timeout, ofSeconds(60))
+        this.geminiService = new GeminiService(
+                getOrDefault(logRequestsAndResponses, false) ? log : null,
+                getOrDefault(timeout, ofSeconds(60))
         );
 
         this.geminiTokenizer = GoogleAiGeminiTokenizer.builder()
@@ -229,40 +229,14 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
             }
         });
 
-        Call<GeminiGenerateContentResponse> responseCall =
-            withRetry(() -> this.geminiService.generateContent(this.modelName, this.apiKey, request), this.maxRetries);
-
         GeminiGenerateContentResponse geminiResponse;
         try {
-            retrofit2.Response<GeminiGenerateContentResponse> executed = responseCall.execute();
-            geminiResponse = executed.body();
-
-            if (executed.code() >= 300) {
-                try (ResponseBody errorBody = executed.errorBody()) {
-                    GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
-
-                    RuntimeException runtimeException = new RuntimeException(
-                        String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
-
-                    ChatModelErrorContext chatModelErrorContext = new ChatModelErrorContext(
-                        runtimeException, chatModelRequest, null, listenerAttributes
-                    );
-                    listeners.forEach((listener) -> {
-                        try {
-                            listener.onError(chatModelErrorContext);
-                        } catch (Exception e) {
-                            log.warn("Exception while calling model listener (onError)", e);
-                        }
-                    });
-
-                    throw runtimeException;
-                }
-            }
-        } catch (IOException e) {
+            geminiResponse = withRetry(() -> this.geminiService.generateContent(this.modelName, this.apiKey, request), this.maxRetries);
+        } catch (RuntimeException e) {
             RuntimeException runtimeException = new RuntimeException("An error occurred when calling the Gemini API endpoint.", e);
 
             ChatModelErrorContext chatModelErrorContext = new ChatModelErrorContext(
-                e, chatModelRequest, null, listenerAttributes
+                    e, chatModelRequest, null, listenerAttributes
             );
             listeners.forEach((listener) -> {
                 try {
