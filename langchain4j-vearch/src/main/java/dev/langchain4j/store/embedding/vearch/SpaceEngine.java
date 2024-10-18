@@ -4,13 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.Getter;
-import lombok.Setter;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
-@Getter
-@Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
@@ -22,7 +18,6 @@ public class SpaceEngine {
     private RetrievalParam retrievalParam;
 
     public SpaceEngine() {
-
     }
 
     public SpaceEngine(String name, Long indexSize, RetrievalType retrievalType, RetrievalParam retrievalParam) {
@@ -34,6 +29,34 @@ public class SpaceEngine {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Long getIndexSize() {
+        return indexSize;
+    }
+
+    public void setIndexSize(Long indexSize) {
+        this.indexSize = indexSize;
+    }
+
+    public RetrievalType getRetrievalType() {
+        return retrievalType;
+    }
+
+    public void setRetrievalType(RetrievalType retrievalType) {
+        this.retrievalType = retrievalType;
+    }
+
+    public RetrievalParam getRetrievalParam() {
+        return retrievalParam;
     }
 
     public void setRetrievalParam(RetrievalParam retrievalParam) {
