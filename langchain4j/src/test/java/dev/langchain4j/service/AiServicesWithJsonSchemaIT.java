@@ -5,10 +5,14 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,13 +23,11 @@ import java.util.List;
 import java.util.Set;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.chat.request.json.JsonBooleanSchema.JSON_BOOLEAN_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonNumberSchema.JSON_NUMBER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -75,14 +77,11 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("age", JSON_INTEGER_SCHEMA);
-                                                put("height", JSON_NUMBER_SCHEMA);
-                                                put("married", JSON_BOOLEAN_SCHEMA);
-                                            }})
+                                            .addStringProperty("name")
+                                            .addIntegerProperty("age")
+                                            .addNumberProperty("height")
+                                            .addBooleanProperty("married")
                                             .required("name", "age", "height", "married")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -97,7 +96,8 @@ public abstract class AiServicesWithJsonSchemaIT {
         class Person {
 
             String name;
-            Address address;
+            Address shippingAddress;
+            Address billingAddress;
         }
 
         class Address {
@@ -118,14 +118,15 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             PersonExtractor2 personExtractor = AiServices.create(PersonExtractor2.class, model);
 
-            String text = "Klaus lives in Langley Falls";
+            String text = "Klaus wants a delivery to Langley Falls, but his company is in New York";
 
             // when
             PersonExtractor2.Person person = personExtractor.extractPersonFrom(text);
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.address.city).isEqualTo("Langley Falls");
+            assertThat(person.shippingAddress.city).isEqualTo("Langley Falls");
+            assertThat(person.billingAddress.city).isEqualTo("New York");
 
             verify(model).chat(ChatRequest.builder()
                     .messages(singletonList(userMessage(text)))
@@ -134,18 +135,10 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("address", JsonObjectSchema.builder()
-                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("city", JSON_STRING_SCHEMA);
-                                                        }})
-                                                        .required("city")
-                                                        .additionalProperties(false)
-                                                        .build());
-                                            }})
-                                            .required("name", "address")
-                                            .additionalProperties(false)
+                                            .addStringProperty("name")
+                                            .addObjectProperty("shippingAddress", o -> o.addStringProperty("city").required("city"))
+                                            .addObjectProperty("billingAddress", o -> o.addStringProperty("city").required("city"))
+                                            .required("name", "shippingAddress", "billingAddress")
                                             .build())
                                     .build())
                             .build())
@@ -197,14 +190,9 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("maritalStatus", JsonEnumSchema.builder()
-                                                        .enumValues("SINGLE", "MARRIED")
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addEnumProperty("maritalStatus", "SINGLE", "MARRIED")
                                             .required("name", "maritalStatus")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -251,14 +239,9 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("favouriteColors", JsonArraySchema.builder()
-                                                        .items(JSON_STRING_SCHEMA)
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("favouriteColors", new JsonStringSchema())
                                             .required("name", "favouriteColors")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -304,14 +287,9 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("favouriteColors", JsonArraySchema.builder()
-                                                        .items(JSON_STRING_SCHEMA)
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("favouriteColors", new JsonStringSchema())
                                             .required("name", "favouriteColors")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -358,14 +336,9 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("favouriteColors", JsonArraySchema.builder()
-                                                        .items(JSON_STRING_SCHEMA)
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("favouriteColors", new JsonStringSchema())
                                             .required("name", "favouriteColors")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -419,20 +392,12 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("pets", JsonArraySchema.builder()
-                                                        .items(JsonObjectSchema.builder()
-                                                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("name", JSON_STRING_SCHEMA);
-                                                                }})
-                                                                .required("name")
-                                                                .additionalProperties(false)
-                                                                .build())
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("pets", a -> a.items(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .required("name")
+                                                    .build()))
                                             .required("name", "pets")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -486,20 +451,12 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("pets", JsonArraySchema.builder()
-                                                        .items(JsonObjectSchema.builder()
-                                                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("name", JSON_STRING_SCHEMA);
-                                                                }})
-                                                                .required("name")
-                                                                .additionalProperties(false)
-                                                                .build())
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("pets", a -> a.items(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .required("name")
+                                                    .build()))
                                             .required("name", "pets")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -554,20 +511,12 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
-                                                put("pets", JsonArraySchema.builder()
-                                                        .items(JsonObjectSchema.builder()
-                                                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                    put("name", JSON_STRING_SCHEMA);
-                                                                }})
-                                                                .required("name")
-                                                                .additionalProperties(false)
-                                                                .build())
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addArrayProperty("pets", a -> a.items(JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .required("name")
+                                                    .build()))
                                             .required("name", "pets")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -621,7 +570,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", new JsonStringSchema());
                                                 put("groups", JsonArraySchema.builder()
                                                         .items(JsonEnumSchema.builder()
                                                                 .enumValues("A", "B", "C")
@@ -629,7 +578,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .build());
                                             }})
                                             .required("name", "groups")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -682,7 +630,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", new JsonStringSchema());
                                                 put("groups", JsonArraySchema.builder()
                                                         .items(JsonEnumSchema.builder()
                                                                 .enumValues("A", "B", "C")
@@ -690,7 +638,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .build());
                                             }})
                                             .required("name", "groups")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -743,7 +690,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", new JsonStringSchema());
                                                 put("groups", JsonArraySchema.builder()
                                                         .items(JsonEnumSchema.builder()
                                                                 .enumValues("A", "B", "C")
@@ -751,7 +698,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                         .build());
                                             }})
                                             .required("name", "groups")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -804,54 +750,48 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", new JsonStringSchema());
                                                 put("birthDate", JsonObjectSchema.builder()
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("year", JSON_INTEGER_SCHEMA);
-                                                            put("month", JSON_INTEGER_SCHEMA);
-                                                            put("day", JSON_INTEGER_SCHEMA);
+                                                            put("year", new JsonIntegerSchema());
+                                                            put("month", new JsonIntegerSchema());
+                                                            put("day", new JsonIntegerSchema());
                                                         }})
                                                         .required("year", "month", "day")
-                                                        .additionalProperties(false)
                                                         .build());
                                                 put("birthTime", JsonObjectSchema.builder()
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("hour", JSON_INTEGER_SCHEMA);
-                                                            put("minute", JSON_INTEGER_SCHEMA);
-                                                            put("second", JSON_INTEGER_SCHEMA);
-                                                            put("nano", JSON_INTEGER_SCHEMA);
+                                                            put("hour", new JsonIntegerSchema());
+                                                            put("minute", new JsonIntegerSchema());
+                                                            put("second", new JsonIntegerSchema());
+                                                            put("nano", new JsonIntegerSchema());
                                                         }})
                                                         .required("hour", "minute", "second", "nano")
-                                                        .additionalProperties(false)
                                                         .build());
                                                 put("birthDateTime", JsonObjectSchema.builder()
                                                         .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
                                                             put("date", JsonObjectSchema.builder()
                                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                        put("year", JSON_INTEGER_SCHEMA);
-                                                                        put("month", JSON_INTEGER_SCHEMA);
-                                                                        put("day", JSON_INTEGER_SCHEMA);
+                                                                        put("year", new JsonIntegerSchema());
+                                                                        put("month", new JsonIntegerSchema());
+                                                                        put("day", new JsonIntegerSchema());
                                                                     }})
                                                                     .required("year", "month", "day")
-                                                                    .additionalProperties(false)
                                                                     .build());
                                                             put("time", JsonObjectSchema.builder()
                                                                     .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                        put("hour", JSON_INTEGER_SCHEMA);
-                                                                        put("minute", JSON_INTEGER_SCHEMA);
-                                                                        put("second", JSON_INTEGER_SCHEMA);
-                                                                        put("nano", JSON_INTEGER_SCHEMA);
+                                                                        put("hour", new JsonIntegerSchema());
+                                                                        put("minute", new JsonIntegerSchema());
+                                                                        put("second", new JsonIntegerSchema());
+                                                                        put("nano", new JsonIntegerSchema());
                                                                     }})
                                                                     .required("hour", "minute", "second", "nano")
-                                                                    .additionalProperties(false)
                                                                     .build());
                                                         }})
                                                         .required("date", "time")
-                                                        .additionalProperties(false)
                                                         .build());
                                             }})
                                             .required("name", "birthDate", "birthTime", "birthDateTime")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
@@ -898,15 +838,90 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", JSON_STRING_SCHEMA);
+                                                put("name", new JsonStringSchema());
                                             }})
                                             .required("name")
-                                            .additionalProperties(false)
                                             .build())
                                     .build())
                             .build())
                     .build());
             verify(model).supportedCapabilities();
         }
+    }
+
+    interface PersonExtractor15 {
+
+        class Person {
+
+            String name;
+            List<Person> children;
+        }
+
+        Person extractPersonFrom(String text);
+    }
+
+    @Test
+    @EnabledIf("supportsRecursion")
+    void should_execute_tool_with_pojo_with_recursion() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            PersonExtractor15 personExtractor = AiServices.create(PersonExtractor15.class, model);
+
+            String text = "Francine has 2 children: Steve and Hayley";
+
+            // when
+            PersonExtractor15.Person person = personExtractor.extractPersonFrom(text);
+
+            // then
+            assertThat(person.name).isEqualTo("Francine");
+            assertThat(person.children).hasSize(2);
+            assertThat(person.children.get(0).name).isEqualTo("Steve");
+            assertThat(person.children.get(0).children).isNullOrEmpty();
+            assertThat(person.children.get(1).name).isEqualTo("Hayley");
+            assertThat(person.children.get(1).children).isNullOrEmpty();
+
+            String reference = generateUUIDFrom(PersonExtractor15.Person.class.getName());
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Person")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                                put("name", new JsonStringSchema());
+                                                put("children", JsonArraySchema.builder()
+                                                        .items(JsonReferenceSchema.builder()
+                                                                .reference(reference)
+                                                                .build())
+                                                        .build());
+                                            }})
+                                            .required("name", "children")
+                                            .definitions(singletonMap(reference, JsonObjectSchema.builder()
+                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                                        put("name", new JsonStringSchema());
+                                                        put("children", JsonArraySchema.builder()
+                                                                .items(JsonReferenceSchema.builder()
+                                                                        .reference(reference)
+                                                                        .build())
+                                                                .build());
+                                                    }})
+                                                    .required("name", "children")
+                                                    .build()))
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    protected boolean supportsRecursion() {
+        return false;
     }
 }

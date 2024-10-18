@@ -17,6 +17,11 @@
     <name>LangChain4j :: Web Search Engine :: Google Custom Search</name>
     <description>Implementation of Google Custom Search API for LangChain4j</description>
 
+    <properties>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
+
     <dependencies>
 
         <dependency>

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.UUID;
 
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
@@ -17,7 +18,7 @@ import static org.assertj.core.data.Percentage.withPercentage;
 public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
     protected static final UUID TEST_UUID = UUID.randomUUID();
-    static final UUID TEST_UUID2 = UUID.randomUUID();
+    protected static final UUID TEST_UUID2 = UUID.randomUUID();
 
     @Test
     void should_add_embedding_with_segment_with_metadata() {
@@ -46,7 +47,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
         assertThat(match.embedded().text()).isEqualTo(segment.text());
 
-        assertThat(match.embedded().metadata().getString("string_empty")).isEqualTo("");
+        assertThat(match.embedded().metadata().getString("string_empty")).isEmpty();
         assertThat(match.embedded().metadata().getString("string_space")).isEqualTo(" ");
         assertThat(match.embedded().metadata().getString("string_abc")).isEqualTo("abc");
 
