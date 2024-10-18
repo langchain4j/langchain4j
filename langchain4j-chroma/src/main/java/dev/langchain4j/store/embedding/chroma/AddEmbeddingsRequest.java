@@ -18,6 +18,22 @@ class AddEmbeddingsRequest {
         this.metadatas = builder.metadatas;
     }
 
+    public List<String> getIds() {
+        return ids;
+    }
+
+    public List<float[]> getEmbeddings() {
+        return embeddings;
+    }
+
+    public List<String> getDocuments() {
+        return documents;
+    }
+
+    public List<Map<String, Object>> getMetadatas() {
+        return metadatas;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
