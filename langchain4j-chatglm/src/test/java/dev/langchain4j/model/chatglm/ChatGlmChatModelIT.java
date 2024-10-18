@@ -5,8 +5,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,11 +14,13 @@ import java.util.List;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("need local deployment of ChatGLM, see https://github.com/THUDM/ChatGLM-6B")
+@EnabledIfEnvironmentVariable(named = "CHATGLM_BASE_URL", matches = ".+")
 class ChatGlmChatModelIT {
 
     ChatLanguageModel model = ChatGlmChatModel.builder()
-            .baseUrl("http://localhost:8000")
+            .baseUrl(System.getenv("CHATGLM_BASE_URL"))
+            .logRequests(true)
+            .logResponses(true)
             .build();
 
     @Test
