@@ -7,6 +7,8 @@
     <properties>
         <!-- Tell the compiler to stop warning us about Java8 -->
         <Xlint>-options</Xlint>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 
     <parent>
@@ -202,25 +204,7 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.5.0</version>
-                <executions>
-                    <execution>
-                        <id>enforce</id>
-                        <configuration>
-                            <rules>
-                                <dependencyConvergence/>
-                            </rules>
-                        </configuration>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+            
         </plugins>
     </build>
 

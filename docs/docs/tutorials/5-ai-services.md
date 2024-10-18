@@ -513,9 +513,11 @@ Assistant assistant = AiServices.create(Assistant.class, model);
 
 TokenStream tokenStream = assistant.chat("Tell me a joke");
 
-tokenStream.onNext(System.out::println)
-    .onComplete(System.out::println)
-    .onError(Throwable::printStackTrace)
+tokenStream.onNext((String token) -> System.out.println(token))
+    .onRetrieved((List<Content> contents) -> System.out.println(contents))
+    .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
+    .onComplete((Response<AiMessage> response) -> System.out.println(response))
+    .onError((Throwable error) -> error.printStackTrace())
     .start();
 ```
 
@@ -606,7 +608,9 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 String answer = assistant.chat("What is 1+2 and 3*4?");
 ```
-In this scenario, LLM will execute `add(1, 2)` and `multiply(3, 4)` methods before providing an answer.
+In this scenario, the LLM will request to execute the `add(1, 2)` and `multiply(3, 4)` methods
+before providing a final answer.
+LangChain4j will execute these methods automatically.
 
 More details about tools can be found [here](/tutorials/tools#high-level-tool-api).
 
