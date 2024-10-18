@@ -2,7 +2,6 @@ package dev.langchain4j.model.chatglm;
 
 import dev.langchain4j.internal.Utils;
 import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
@@ -20,7 +19,8 @@ class ChatGlmClient {
 
     public ChatGlmClient(String baseUrl,
                          Duration timeout,
-                         boolean logRequestsAndResponses) {
+                         boolean logRequests,
+                         boolean logResponses) {
         baseUrl = ensureNotNull(baseUrl, "baseUrl");
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -30,10 +30,11 @@ class ChatGlmClient {
                 .readTimeout(timeout)
                 .writeTimeout(timeout);
 
-        if (logRequestsAndResponses) {
-            HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
-            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-            okHttpClientBuilder.addInterceptor(loggingInterceptor);
+        if (logRequests) {
+            okHttpClientBuilder.addInterceptor(new ChatGlmRequestLoggingInterceptor());
+        }
+        if (logResponses) {
+            okHttpClientBuilder.addInterceptor(new ChatGlmResponseLoggingInterceptor());
         }
 
         OkHttpClient okHttpClient = okHttpClientBuilder.build();
@@ -79,7 +80,8 @@ class ChatGlmClient {
 
         private String baseUrl;
         private Duration timeout;
-        private boolean logRequestsAndResponses;
+        private boolean logRequests;
+        private boolean logResponses;
 
         Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -91,13 +93,18 @@ class ChatGlmClient {
             return this;
         }
 
-        Builder logRequestsAndResponses(boolean logRequestsAndResponses) {
-            this.logRequestsAndResponses = logRequestsAndResponses;
+        Builder logRequests(boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        Builder logResponses(boolean logResponses) {
+            this.logResponses = logResponses;
             return this;
         }
 
         ChatGlmClient build() {
-            return new ChatGlmClient(baseUrl, timeout, logRequestsAndResponses);
+            return new ChatGlmClient(baseUrl, timeout, logRequests, logResponses);
         }
     }
 }

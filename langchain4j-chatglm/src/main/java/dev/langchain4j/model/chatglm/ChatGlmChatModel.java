@@ -36,7 +36,8 @@ public class ChatGlmChatModel implements ChatLanguageModel {
                             Integer maxRetries,
                             Double topP,
                             Integer maxLength,
-                            boolean logRequestsAndResponses) {
+                            boolean logRequests,
+                            boolean logResponses) {
         baseUrl = ensureNotNull(baseUrl, "baseUrl");
         timeout = getOrDefault(timeout, ofSeconds(60));
         this.temperature = getOrDefault(temperature, 0.7);
@@ -47,7 +48,8 @@ public class ChatGlmChatModel implements ChatLanguageModel {
         this.client = ChatGlmClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(timeout)
-                .logRequestsAndResponses(logRequestsAndResponses)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
     }
 
@@ -110,7 +112,8 @@ public class ChatGlmChatModel implements ChatLanguageModel {
         private Integer maxRetries;
         private Double topP;
         private Integer maxLength;
-        private boolean logRequestsAndResponses;
+        private boolean logRequests;
+        private boolean logResponses;
 
         public ChatGlmChatModelBuilder() {
             // This is public so it can be extended
@@ -147,13 +150,18 @@ public class ChatGlmChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public ChatGlmChatModelBuilder logRequestsAndResponses(boolean logRequestsAndResponses) {
-            this.logRequestsAndResponses = logRequestsAndResponses;
+        public ChatGlmChatModelBuilder logRequests(boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public ChatGlmChatModelBuilder logResponses(boolean logResponses) {
+            this.logResponses = logResponses;
             return this;
         }
 
         public ChatGlmChatModel build() {
-            return new ChatGlmChatModel(baseUrl, timeout, temperature, maxRetries, topP, maxLength, logRequestsAndResponses);
+            return new ChatGlmChatModel(baseUrl, timeout, temperature, maxRetries, topP, maxLength, logRequests, logResponses);
         }
     }
 }
