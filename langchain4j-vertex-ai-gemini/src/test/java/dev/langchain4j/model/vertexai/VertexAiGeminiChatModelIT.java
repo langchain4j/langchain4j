@@ -92,6 +92,36 @@ class VertexAiGeminiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
+
+    @Test
+    void should_generate_response_for_apikey() {
+
+        // given
+        ChatLanguageModel modelWithApiKey = VertexAiGeminiChatModel.builder()
+                .apiKey(System.getenv("GCP_API_KEY"))
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName(GEMINI_1_5_PRO)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        Response<AiMessage> response = modelWithApiKey.generate(userMessage);
+
+        // then
+        assertThat(response.content().text()).contains("Berlin");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
     @ParameterizedTest
     @MethodSource
     void should_support_system_instructions(List<ChatMessage> messages) {
