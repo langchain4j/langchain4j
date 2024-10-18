@@ -5,7 +5,12 @@ import com.google.protobuf.Value;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.CosineSimilarity;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import io.pinecone.clients.Index;
 import io.pinecone.clients.Pinecone;
 import io.pinecone.unsigned_indices_model.QueryResponseWithUnsignedIndices;
@@ -14,7 +19,12 @@ import io.pinecone.unsigned_indices_model.VectorWithUnsignedIndices;
 import org.openapitools.client.model.IndexList;
 import org.openapitools.client.model.IndexModel;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
@@ -22,14 +32,19 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.metadataToStruct;
 import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.structToMetadata;
 import static io.pinecone.commons.IndexInterface.buildUpsertVectorWithUnsignedIndices;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
 /**
  * Represents a <a href="https://www.pinecone.io/">Pinecone</a> index as an embedding store.
- * <p>Current implementation assumes the index uses the cosine distance metric.</p>
+ * <p>
+ * Current implementation assumes the index uses the cosine distance metric.
+ * <p>
+ * <b>WARNING! There is a known <a href="https://github.com/langchain4j/langchain4j/issues/1948">bug</a>:
+ * Pinecone stores all numbers as floating-point values,
+ * which means {@link Integer} and {@link Long} values (e.g., 1746714878034235396) stored in {@link Metadata}
+ * may be corrupted and returned as incorrect numbers!</b>
  */
 public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
