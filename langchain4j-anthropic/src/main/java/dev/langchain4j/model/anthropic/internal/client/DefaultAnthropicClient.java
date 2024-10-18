@@ -132,6 +132,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
     }
 
     private String toBeta(AnthropicCreateMessageRequest request) {
+        if (beta != null) {
+            return beta;
+        }
         return hasTools(request) ? beta : null;
     }
 

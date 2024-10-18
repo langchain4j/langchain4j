@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -29,6 +30,7 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20240620;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -204,6 +206,42 @@ class AnthropicChatModelIT {
         assertThat(response.content().text()).doesNotContainIgnoringCase("world");
 
         assertThat(response.finishReason()).isEqualTo(OTHER);
+    }
+
+    @Test
+    void test_all_parameters_with_cache() {
+        AnthropicCacheType cacheType = AnthropicCacheType.builder()
+                .cacheType(AnthropicCacheType.CacheType.EPHEMERAL)
+                .messageTypeApplyCache(AnthropicCacheType.MessageTypeApplyCache.ALL)
+                .build();
+
+        // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+                .baseUrl("https://api.anthropic.com/v1/")
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .version("2023-06-01")
+                .beta("prompt-caching-2024-07-31")
+                .modelName(CLAUDE_3_HAIKU_20240307)
+                .temperature(1.0)
+                .topP(1.0)
+                .topK(1)
+                .maxTokens(100)
+                .stopSequences(asList("hello", "world"))
+                .timeout(Duration.ofSeconds(30))
+                .maxRetries(1)
+                .logRequests(true)
+                .logResponses(true)
+                .cacheType(cacheType)
+                .build();
+
+        SystemMessage systemMessage = SystemMessage.from("You are a professional translator");
+        UserMessage userMessage = new UserMessage(TextContent.from("How say: java is very slow on spanish ?"));
+
+        // when
+        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+
+        // then
+        assertThat(response.content().text()).isNotBlank();
     }
 
     @Test

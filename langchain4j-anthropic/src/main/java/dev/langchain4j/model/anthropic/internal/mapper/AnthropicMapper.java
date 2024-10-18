@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
@@ -33,7 +34,6 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
@@ -54,7 +54,7 @@ public class AnthropicMapper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
+    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages, AnthropicCacheType cacheType) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
@@ -70,7 +70,7 @@ public class AnthropicMapper {
                 }
 
                 if (message instanceof UserMessage) {
-                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message);
+                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message, cacheType);
                     anthropicMessages.add(new AnthropicMessage(USER, contents));
                 } else if (message instanceof AiMessage) {
                     List<AnthropicMessageContent> contents = toAnthropicMessageContents((AiMessage) message);
@@ -90,11 +90,15 @@ public class AnthropicMapper {
         return new AnthropicToolResultContent(message.id(), message.text(), null); // TODO propagate isError
     }
 
-    private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
+    private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message, AnthropicCacheType cacheType) {
         return message.contents().stream()
                 .map(content -> {
                     if (content instanceof TextContent) {
-                        return new AnthropicTextContent(((TextContent) content).text());
+                        TextContent textContent = (TextContent) content;
+                        if (cacheType.isApplyCache() && cacheType.isApplyUserMessage()) {
+                            return new AnthropicTextContent(textContent.text(), cacheType.cacheControl());
+                        }
+                        return new AnthropicTextContent(textContent.text());
                     } else if (content instanceof ImageContent) {
                         Image image = ((ImageContent) content).image();
                         if (image.url() != null) {
@@ -138,17 +142,18 @@ public class AnthropicMapper {
         return contents;
     }
 
-    public static String toAnthropicSystemPrompt(List<ChatMessage> messages) {
-        String systemPrompt = messages.stream()
-                .filter(message -> message instanceof SystemMessage)
-                .map(message -> ((SystemMessage) message).text())
-                .collect(joining("\n\n"));
 
-        if (isNullOrBlank(systemPrompt)) {
-            return null;
-        } else {
-            return systemPrompt;
-        }
+    public static List<AnthropicTextContent> toAnthropicSystemPrompt(List<ChatMessage> messages, AnthropicCacheType cacheType) {
+        return messages.stream()
+                .filter(message -> message instanceof SystemMessage)
+                .map(message -> {
+                    SystemMessage systemMessage = (SystemMessage) message;
+                    if (cacheType.isApplyCache() && cacheType.isApplySystemMessage()) {
+                        return new AnthropicTextContent(systemMessage.text(), cacheType.cacheControl());
+                    }
+                    return new AnthropicTextContent(systemMessage.text());
+                })
+                .collect(toList());
     }
 
     public static AiMessage toAiMessage(List<AnthropicContent> contents) {
