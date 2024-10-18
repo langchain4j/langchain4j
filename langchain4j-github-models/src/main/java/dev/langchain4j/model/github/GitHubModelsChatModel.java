@@ -256,6 +256,8 @@ public class GitHubModelsChatModel implements ChatLanguageModel {
         private String userAgentSuffix;
         private List<ChatModelListener> listeners;
         private Map<String, String> customHeaders;
+        private Boolean strictJsonSchema;
+        private Boolean strictTools;
 
         /**
          * Sets the GitHub Models endpoint. The default endpoint will be used if this isn't set.
