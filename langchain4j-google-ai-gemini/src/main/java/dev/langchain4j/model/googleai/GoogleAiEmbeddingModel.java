@@ -64,31 +64,17 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
 
         boolean logRequestsAndResponses1 = logRequestsAndResponses != null && logRequestsAndResponses;
 
-        this.geminiService = GeminiService.getGeminiService(logRequestsAndResponses1 ? log : null, timeout1);
+        this.geminiService = new GeminiService(logRequestsAndResponses1 ? log : null, timeout1);
     }
 
     @Override
     public Response<Embedding> embed(TextSegment textSegment) {
         GoogleAiEmbeddingRequest embeddingRequest = getGoogleAiEmbeddingRequest(textSegment);
 
-        Call<GoogleAiEmbeddingResponse> geminiEmbeddingResponseCall =
-            withRetry(() -> this.geminiService.embed(this.modelName, this.apiKey, embeddingRequest), this.maxRetries);
-
         GoogleAiEmbeddingResponse geminiResponse;
         try {
-            retrofit2.Response<GoogleAiEmbeddingResponse> executed = geminiEmbeddingResponseCall.execute();
-            geminiResponse = executed.body();
-
-            if (executed.code() >= 300) {
-                try (ResponseBody errorBody = executed.errorBody()) {
-                    GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
-
-                    throw new RuntimeException(
-                        String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
-                }
-            }
-        } catch (IOException e) {
-
+            geminiResponse = withRetry(() -> this.geminiService.embed(this.modelName, this.apiKey, embeddingRequest), this.maxRetries);
+        } catch (RuntimeException e) {
             throw new RuntimeException("An error occurred when calling the Gemini API endpoint (embed).", e);
         }
 
@@ -123,23 +109,10 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
             GoogleAiBatchEmbeddingRequest batchEmbeddingRequest = new GoogleAiBatchEmbeddingRequest();
             batchEmbeddingRequest.setRequests(embeddingRequests.subList(startIndex, lastIndex));
 
-            Call<GoogleAiBatchEmbeddingResponse> geminiBatchEmbeddingResponseCall =
-                withRetry(() -> this.geminiService.batchEmbed(this.modelName, this.apiKey, batchEmbeddingRequest));
-
             GoogleAiBatchEmbeddingResponse geminiResponse;
             try {
-                retrofit2.Response<GoogleAiBatchEmbeddingResponse> executed = geminiBatchEmbeddingResponseCall.execute();
-                geminiResponse = executed.body();
-
-                if (executed.code() >= 300) {
-                    try (ResponseBody errorBody = executed.errorBody()) {
-                        GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
-
-                        throw new RuntimeException(
-                            String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
-                    }
-                }
-            } catch (IOException e) {
+                geminiResponse = withRetry(() -> this.geminiService.batchEmbed(this.modelName, this.apiKey, batchEmbeddingRequest));
+            } catch (RuntimeException e) {
                 throw new RuntimeException("An error occurred when calling the Gemini API endpoint (embedAll).", e);
             }
 
