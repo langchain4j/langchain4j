@@ -44,7 +44,9 @@ import static java.util.stream.Collectors.toList;
  * <b>WARNING! There is a known <a href="https://github.com/langchain4j/langchain4j/issues/1948">bug</a>:
  * Pinecone stores all numbers as floating-point values,
  * which means {@link Integer} and {@link Long} values (e.g., 1746714878034235396) stored in {@link Metadata}
- * may be corrupted and returned as incorrect numbers!</b>
+ * may be corrupted and returned as incorrect numbers!
+ * Possible workaround: convert integer/double values to {@link String} before storing them in {@link Metadata}.
+ * Please note that in this case metadata filtering might not work properly!</b>
  */
 public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
