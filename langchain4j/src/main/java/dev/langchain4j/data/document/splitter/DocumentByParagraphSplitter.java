@@ -30,26 +30,34 @@ public class DocumentByParagraphSplitter extends HierarchicalDocumentSplitter {
 
     public DocumentByParagraphSplitter(int maxSegmentSizeInChars,
                                        int maxOverlapSizeInChars) {
-        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null, false);
     }
 
     public DocumentByParagraphSplitter(int maxSegmentSizeInChars,
                                        int maxOverlapSizeInChars,
                                        DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter, false);
     }
 
     public DocumentByParagraphSplitter(int maxSegmentSizeInTokens,
                                        int maxOverlapSizeInTokens,
                                        Tokenizer tokenizer) {
-        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null, false);
     }
 
     public DocumentByParagraphSplitter(int maxSegmentSizeInTokens,
                                        int maxOverlapSizeInTokens,
                                        Tokenizer tokenizer,
                                        DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter, false);
+    }
+
+    public DocumentByParagraphSplitter(int maxSegmentSizeInTokens,
+                                       int maxOverlapSizeInTokens,
+                                       Tokenizer tokenizer,
+                                       DocumentSplitter subSplitter,
+                                       Boolean addCharacterStartIndex) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter, addCharacterStartIndex);
     }
 
     @Override
@@ -64,6 +72,6 @@ public class DocumentByParagraphSplitter extends HierarchicalDocumentSplitter {
 
     @Override
     protected DocumentSplitter defaultSubSplitter() {
-        return new DocumentBySentenceSplitter(maxSegmentSize, maxOverlapSize, tokenizer);
+        return new DocumentBySentenceSplitter(maxSegmentSize, maxOverlapSize, tokenizer, addCharacterStartIndex);
     }
 }
