@@ -50,7 +50,9 @@ public enum MistralAiChatModelName {
 
     MISTRAL_MEDIUM_LATEST("mistral-medium-latest"), // aka mistral-medium-2312
 
-    MISTRAL_LARGE_LATEST("mistral-large-latest"); // aka mistral-large-2402
+    MISTRAL_LARGE_LATEST("mistral-large-latest"), // aka mistral-large-2407
+
+    OPEN_MISTRAL_NEMO("open-mistral-nemo"); // aka open-mistral-nemo-2407
 
     private final String value;
 
