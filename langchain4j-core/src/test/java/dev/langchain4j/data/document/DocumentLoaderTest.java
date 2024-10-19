@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 
 class DocumentLoaderTest implements WithAssertions {
+
     public static final class StringSource implements DocumentSource {
         private final String content;
         private final Metadata metadata;
@@ -54,7 +55,7 @@ class DocumentLoaderTest implements WithAssertions {
         }
     }
 
-    public static final class TrivialParser implements DocumentParser {
+    public static final class TrivialParser implements DocumentParser<Document> {
         @Override
         public Document parse(InputStream inputStream) {
             String str;

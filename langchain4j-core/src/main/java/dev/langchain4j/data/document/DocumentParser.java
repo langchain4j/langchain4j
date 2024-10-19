@@ -6,7 +6,7 @@ import java.io.InputStream;
  * Defines the interface for parsing an {@link InputStream} into a {@link Document}.
  * Different document types require specialized parsing logic.
  */
-public interface DocumentParser {
+public interface DocumentParser<T extends Document> {
 
     /**
      * Parses a given {@link InputStream} into a {@link Document}.
@@ -16,5 +16,5 @@ public interface DocumentParser {
      * @return The parsed {@link Document}.
      * @throws BlankDocumentException when the parsed {@link Document} is blank/empty.
      */
-    Document parse(InputStream inputStream);
+    T parse(InputStream inputStream);
 }
