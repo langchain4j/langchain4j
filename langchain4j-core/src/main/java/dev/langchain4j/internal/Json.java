@@ -52,14 +52,6 @@ public class Json {
         <T> T fromJson(String json, Type type);
 
         /**
-         * Convert the given JSON string to the object of the given type. Use this instead of {@link Json.JsonCodec#fromJson(String, Class)} in cases where generics are involved.
-         * @param json the json string
-         * @param type the type of object
-         * @return the converted object
-         */
-        <T> T fromJson(String json, Type type);
-
-        /**
          * Convert the given object to an {@link InputStream}.
          *
          * @param o    the object to convert.
@@ -118,17 +110,6 @@ public class Json {
     public static <T> T fromJson(String json, Type type) {
         return CODEC.fromJson(json, type);
     }
-
-    /**
-     * Convert the given JSON string to the object of the given type. Use this instead of {@link Json#fromJson(String, Class)} in cases where generics are involved.
-     * @param json the json string
-     * @param type the type of object
-     * @return the converted object
-     */
-    public static <T> T fromJson(String json, Type type) {
-        return CODEC.fromJson(json, type);
-    }
-
     /**
      * Convert the given object to an {@link InputStream}.
      *
