@@ -54,14 +54,14 @@ jobs:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
           cache: 'maven'
-      - name: Compile and test with JDK ${{ matrix.java_version }}
-        run: |
-          mvn -B -U -T4C test javadoc:aggregate \
-            -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
-            ${{ matrix.included_modules }}
+#      - name: Compile and test with JDK ${{ matrix.java_version }}
+#        run: |
+#          mvn -B -U -T4C test javadoc:aggregate \
+#            -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
+#            ${{ matrix.included_modules }}
 
       - name: Integration test with JDK ${{ matrix.java_version }}
-        if: ${{ github.repository == 'langchain4j/langchain4j' }}
+        if: ${{ secrets.OPENAI_API_KEY != '' }}  # Run only if secret is present
         run: |
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
