@@ -80,7 +80,7 @@ public class TextSegment {
     public String toString() {
         return "TextSegment {" +
                 " text = " + quoted(text) + //todo: Be careful with PII here
-                " metadata = " + metadata.asMap() +
+                " metadata = " + metadata.toMap() +
                 " }";
     }
 
