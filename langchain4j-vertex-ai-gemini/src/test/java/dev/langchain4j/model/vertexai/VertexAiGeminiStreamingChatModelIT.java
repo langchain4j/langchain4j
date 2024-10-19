@@ -462,7 +462,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         AiMessage aiMsg = (AiMessage) chatMemory.messages().get(2);
         assertThat(aiMsg.hasToolExecutionRequests()).isTrue();
-        assertThat(aiMsg.toolExecutionRequests().size()).isEqualTo(2);
+        assertThat(aiMsg.toolExecutionRequests()).hasSize(2);
         assertThat(aiMsg.toolExecutionRequests().get(0).name()).isEqualTo("getStockInventory");
         assertThat(aiMsg.toolExecutionRequests().get(0).arguments()).isEqualTo("{\"product\":\"ABC\"}");
         assertThat(aiMsg.toolExecutionRequests().get(1).name()).isEqualTo("getStockInventory");
@@ -681,7 +681,7 @@ class VertexAiGeminiStreamingChatModelIT {
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
+            .logRequests(false) // videos are huge in logs
             .logResponses(true)
             .build();
 
@@ -706,7 +706,7 @@ class VertexAiGeminiStreamingChatModelIT {
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
+            .logRequests(false) // videos are huge in logs
             .logResponses(true)
             .build();
 

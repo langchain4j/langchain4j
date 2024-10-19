@@ -1,14 +1,5 @@
 package dev.langchain4j.model.bedrock;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Collections.singletonList;
-import static java.util.Objects.nonNull;
-import static java.util.stream.Collectors.joining;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static java.util.Collections.emptyList;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -27,13 +18,22 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
+import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
 import dev.langchain4j.model.output.Response;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.experimental.SuperBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -46,18 +46,20 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.joining;
 
-@Slf4j
 @Getter
 @SuperBuilder
 public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<BedrockAnthropicMessageChatModelResponse> {
+
+    private static final Logger log = LoggerFactory.getLogger(BedrockAnthropicMessageChatModel.class);
 
     private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
 
@@ -69,9 +71,9 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     private final String model = Types.AnthropicClaude3SonnetV1.getValue();
     @Builder.Default
     private final ObjectMapper objectMapper = new ObjectMapper()
-        .enable(INDENT_OUTPUT)
-        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-        .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+            .enable(INDENT_OUTPUT)
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
     @Override
     protected String getModelId() {
@@ -248,13 +250,34 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
                 .map(toolSpecification -> BedrockAntropicToolSpecification.builder()
                         .name(toolSpecification.name())
                         .description(toolSpecification.description())
-                        .input_schema(toAnthropicToolParameters(toolSpecification.parameters()))
+                        .input_schema(toAnthropicToolParameters(toolSpecification))
                         .build())
                 .collect(Collectors.toList());
     }
 
-    private Object toAnthropicToolParameters(ToolParameters toolParameters) {
-        if (toolParameters == null) {
+    private Object toAnthropicToolParameters(ToolSpecification toolSpecification) {
+
+        if (toolSpecification.parameters() != null) {
+            return JsonSchemaElementHelper.toMap(toolSpecification.parameters());
+        } else if (toolSpecification.toolParameters() != null) {
+            ToolParameters toolParameters = toolSpecification.toolParameters();
+            ObjectNode propertiesNode = new ObjectMapper().createObjectNode();
+            if (toolParameters.properties() != null) {
+                propertiesNode.setAll(toAnthropicParameterProperties(toolParameters.properties()));
+            }
+
+            ArrayNode requiredNode = new ObjectMapper().createArrayNode();
+            if (toolParameters.required() != null) {
+                toolParameters.required().forEach(requiredNode::add);
+            }
+
+            ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
+            inputSchemaNode.put("type", "object");
+            inputSchemaNode.set("properties", propertiesNode);
+            inputSchemaNode.set("required", requiredNode);
+
+            return inputSchemaNode;
+        } else {
             ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
             inputSchemaNode.put("type", "object");
             inputSchemaNode.set("properties", new ObjectMapper().createObjectNode());
@@ -262,23 +285,6 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
 
             return inputSchemaNode;
         }
-
-        ObjectNode propertiesNode = new ObjectMapper().createObjectNode();
-        if (toolParameters.properties() != null) {
-            propertiesNode.setAll(toAnthropicParameterProperties(toolParameters.properties()));
-        }
-
-        ArrayNode requiredNode = new ObjectMapper().createArrayNode();
-        if (toolParameters.required() != null) {
-            toolParameters.required().forEach(requiredNode::add);
-        }
-
-        ObjectNode inputSchemaNode = new ObjectMapper().createObjectNode();
-        inputSchemaNode.put("type", "object");
-        inputSchemaNode.set("properties", propertiesNode);
-        inputSchemaNode.set("required", requiredNode);
-
-        return inputSchemaNode;
     }
 
     private ObjectNode toAnthropicParameterProperties(Map<String, Map<String, Object>> properties) {
@@ -384,8 +390,8 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             return contents;
         } else if (message instanceof UserMessage) {
             return ((UserMessage) message).contents().stream()
-                .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
-                .collect(Collectors.toList());
+                    .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
+                    .collect(Collectors.toList());
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             return Collections.singletonList(
@@ -417,9 +423,9 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
                 throw new IllegalArgumentException("Anthropic does not support images as URLs, only as Base64-encoded strings");
             }
             BedrockAnthropicImageSource imageSource = new BedrockAnthropicImageSource(
-                "base64",
-                ensureNotBlank(imageContent.image().mimeType(), "mimeType"),
-                ensureNotBlank(imageContent.image().base64Data(), "base64Data")
+                    "base64",
+                    ensureNotBlank(imageContent.image().mimeType(), "mimeType"),
+                    ensureNotBlank(imageContent.image().base64Data(), "base64Data")
             );
             return new BedrockAnthropicContent("image", imageSource);
         } else {
@@ -429,9 +435,9 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
 
     private String getAnthropicSystemPrompt(List<ChatMessage> messages) {
         return messages.stream()
-            .filter(message -> message.type() == ChatMessageType.SYSTEM)
-            .map(ChatMessage::text)
-            .collect(joining("\n"));
+                .filter(message -> message.type() == ChatMessageType.SYSTEM)
+                .map(ChatMessage::text)
+                .collect(joining("\n"));
     }
 
     private String getAnthropicRole(ChatMessage message) {
