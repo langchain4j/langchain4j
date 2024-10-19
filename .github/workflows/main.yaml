@@ -57,10 +57,9 @@ jobs:
           cache: 'maven'
       - name: Compile and test with JDK ${{ matrix.java_version }}
         run: |
-          echo "Success"
-#          mvn -B -U -T4C test javadoc:aggregate \
-#            -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
-#            ${{ matrix.included_modules }}
+          mvn -B -U -T8C test javadoc:aggregate \
+            -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
+            ${{ matrix.included_modules }}
 
       - name: Integration test with JDK ${{ matrix.java_version }}
         ## allow builds to run only:
