@@ -5,10 +5,7 @@ import java.io.InputStream;
 /**
  * Utility class for loading documents.
  */
-public class DocumentLoader {
-
-    private DocumentLoader() {
-    }
+public interface DocumentLoader {
 
     /**
      * Loads a document from the given source using the given parser.
@@ -20,10 +17,10 @@ public class DocumentLoader {
      * @return The loaded document.
      * @throws BlankDocumentException when the parsed {@link Document} is blank/empty.
      */
-    public static Document load(DocumentSource source, DocumentParser parser) {
+    static Document load(DocumentSource source, DocumentParser parser) {
         try (InputStream inputStream = source.inputStream()) {
             Document document = parser.parse(inputStream);
-            source.metadata().asMap().forEach((key, value) -> document.metadata().add(key, value));
+            source.metadata().toMap().forEach((key, value) -> document.metadata().add(key, value));
             return document;
         } catch (BlankDocumentException e) {
             throw e;
