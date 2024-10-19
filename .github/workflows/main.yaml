@@ -61,8 +61,12 @@ jobs:
 #            ${{ matrix.included_modules }}
 
       - name: Integration test with JDK ${{ matrix.java_version }}
-        if: ${{ secrets.OPENAI_API_KEY != '' }}  # Run only if secret is present
+        # allow builds to run on the main branch when it is not a pull request,
+        # and also allow builds for pull requests from the same repository
+        if: (github.event_name == 'pull_request' && github.head_repo.full_name == github.repository) || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         run: |
+          if {{ env.OPENAI_API_KEY
+          
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             ${{ matrix.included_modules }}
