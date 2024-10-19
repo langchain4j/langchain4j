@@ -7,8 +7,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,11 @@ import com.google.gson.annotations.SerializedName;
 import org.junit.jupiter.api.Test;
 
 class JsonTest {
+
+  static class TimeHolder {
+    Instant time;
+    ZonedDateTime zoned;
+  }
 
   @Test
   void conversionToJsonAndFromJsonWorks() {
@@ -63,6 +70,47 @@ class JsonTest {
         .containsEntry("theArray", Arrays.asList(1d, 2d, 3d, 4d))
         .containsEntry("nullable", true)
         .containsEntry("other", null);
+  }
+
+  @Test
+  void convertsIsoStringToInstant() {
+    String json = "{ \"time\": \"2024-10-19T20:19:48.192242Z\" }";
+
+    TimeHolder timeHolder = Json.fromJson(json, TimeHolder.class);
+    assertThat(timeHolder.time).isEqualTo(Instant.parse("2024-10-19T20:19:48.192242Z"));
+  }
+
+  @Test
+  void convertEpochNumberToInstant() {
+    String json = "{ \"time\": 1729369188192 }";
+
+    TimeHolder timeHolder = Json.fromJson(json, TimeHolder.class);
+    assertThat(timeHolder.time.toEpochMilli()).isEqualTo(1729369188192L);
+  }
+
+  @Test
+  void convertsIsoStringToZonedDateTime() {
+    String json = "{ \"zoned\": \"2024-10-19T22:31:50.941666+02:00[Europe/Stockholm]\" }";
+
+    TimeHolder timeHolder = Json.fromJson(json, TimeHolder.class);
+    assertThat(timeHolder.zoned).isEqualTo(ZonedDateTime.parse("2024-10-19T22:31:50.941666+02:00[Europe/Stockholm]"));
+  }
+
+  @Test
+  void convertsObjectStringToZonedDateTime() {
+    String json = "{ \"zoned\": {\n" +
+          "  \"year\": 2024,\n" +
+          "  \"month\": 10,\n" +
+          "  \"day\": 13,\n" +
+          "  \"hour\": 14,\n" +
+          "  \"minute\": 27,\n" +
+          "  \"second\": 4,\n" +
+          "  \"zone\": \"Europe/Stockholm\"\n" +
+          "}\n" +
+        " }";
+
+    TimeHolder timeHolder = Json.fromJson(json, TimeHolder.class);
+    assertThat(timeHolder.zoned).isEqualTo(ZonedDateTime.parse("2024-10-13T14:27:04+02:00[Europe/Stockholm]"));
   }
 
   @Test
