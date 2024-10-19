@@ -251,7 +251,7 @@ UserMessage msg = UserMessage.from(
     TextContent.from("Provide a summary of the document")
 );
 
-Response<AiMessage> response = model.generate(singletonList(msg));
+Response<AiMessage> response = model.generate(List.of(msg));
 ```
 
 ### Tool calling

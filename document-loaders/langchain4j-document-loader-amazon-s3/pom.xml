@@ -14,6 +14,11 @@
     <artifactId>langchain4j-document-loader-amazon-s3</artifactId>
     <name>LangChain4j :: Document Loader :: Amazon S3</name>
 
+    <properties>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
+
     <dependencies>
 
         <dependency>

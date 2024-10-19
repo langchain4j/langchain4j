@@ -18,6 +18,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -38,8 +39,6 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
@@ -435,16 +434,8 @@ public class GoogleAiGeminiChatModelIT {
                 .type(JSON)
                 .jsonSchema(JsonSchema.builder()
                     .rootElement(JsonObjectSchema.builder()
-                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                            put("name", JSON_STRING_SCHEMA);
-                            put("address", JsonObjectSchema.builder()
-                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                    put("city", JSON_STRING_SCHEMA);
-                                }})
-                                .required("city")
-                                .additionalProperties(false)
-                                .build());
-                        }})
+                        .addStringProperty("name")
+                        .addObjectProperty("address", o -> o.addStringProperty("city").required("city"))
                         .required("name", "address")
                         .additionalProperties(false)
                         .build())
@@ -556,7 +547,7 @@ public class GoogleAiGeminiChatModelIT {
                 .type(JSON)
                 .jsonSchema(JsonSchema.builder()
                     .rootElement(JsonArraySchema.builder()
-                        .items(JSON_INTEGER_SCHEMA)
+                        .items(new JsonIntegerSchema())
                         .build())
                     .build())
                 .build())
