@@ -117,7 +117,6 @@ jobs:
         run: mvn -P compliance org.honton.chas:license-maven-plugin:compliance
 
 # TODO's
-# - enable JDK 17 unit tests for langchain4j-code-execution-engine-graalvm-polyglot
 # - setup integration tests
 # - these require an openAI (and hugging face, etc) token
 # - do so that they always run for commits on main
