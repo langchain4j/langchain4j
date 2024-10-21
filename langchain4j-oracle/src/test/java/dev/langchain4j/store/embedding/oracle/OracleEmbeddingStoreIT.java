@@ -8,7 +8,7 @@ import org.junit.jupiter.api.AfterAll;
 
 import java.sql.SQLException;
 
-public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
+public class OracleEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final OracleEmbeddingStore EMBEDDING_STORE = CommonTestOperations.newEmbeddingStore();
 

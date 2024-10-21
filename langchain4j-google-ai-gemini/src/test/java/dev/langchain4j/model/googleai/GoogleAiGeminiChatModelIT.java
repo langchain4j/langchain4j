@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -17,6 +18,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -31,13 +33,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.RetryingTest;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.chat.request.json.JsonIntegerSchema.JSON_INTEGER_SCHEMA;
-import static dev.langchain4j.model.chat.request.json.JsonStringSchema.JSON_STRING_SCHEMA;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
@@ -390,7 +391,7 @@ public class GoogleAiGeminiChatModelIT {
         assertThat(response.content().hasToolExecutionRequests()).isTrue();
 
         List<ToolExecutionRequest> executionRequests = response.content().toolExecutionRequests();
-        assertThat(executionRequests.size()).isEqualTo(2);
+        assertThat(executionRequests).hasSize(2);
 
         String allArgs = executionRequests.stream()
             .map(ToolExecutionRequest::arguments)
@@ -433,16 +434,8 @@ public class GoogleAiGeminiChatModelIT {
                 .type(JSON)
                 .jsonSchema(JsonSchema.builder()
                     .rootElement(JsonObjectSchema.builder()
-                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                            put("name", JSON_STRING_SCHEMA);
-                            put("address", JsonObjectSchema.builder()
-                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                    put("city", JSON_STRING_SCHEMA);
-                                }})
-                                .required("city")
-                                .additionalProperties(false)
-                                .build());
-                        }})
+                        .addStringProperty("name")
+                        .addObjectProperty("address", o -> o.addStringProperty("city").required("city"))
                         .required("name", "address")
                         .additionalProperties(false)
                         .build())
@@ -554,7 +547,7 @@ public class GoogleAiGeminiChatModelIT {
                 .type(JSON)
                 .jsonSchema(JsonSchema.builder()
                     .rootElement(JsonArraySchema.builder()
-                        .items(JSON_INTEGER_SCHEMA)
+                        .items(new JsonIntegerSchema())
                         .build())
                     .build())
                 .build())
@@ -707,55 +700,45 @@ public class GoogleAiGeminiChatModelIT {
         assertThat(listOfMsgTokenCount).isGreaterThan(0);
     }
 
-    static class Calculator {
-        @Tool
-        public int add(int a, int b) {
-            System.out.println("ADD " + a + " + " + b);
-            return a + b;
-        }
-
-        @Tool
-        public int subtract(int a, int b) {
-            System.out.println("SUBTRACT " + a + " - " + b);
-            return a - b;
-        }
-
-        @Tool
-        public int multiply(int a, int b) {
-            System.out.println("MULTIPLY " + a + " * " + b);
-            return a * b;
-        }
-
-        @Tool
-        public int divide(int a, int b) {
-            System.out.println("DIVIDE " + a + " / " + b);
-            return a / b;
+    static class Transactions {
+        @Tool("returns amount of a given transaction")
+        double getTransactionAmount(@P("ID of a transaction") String id) {
+            System.out.printf("called getTransactionAmount(%s)%n", id);
+            switch (id) {
+                case "T001":
+                    return 11.1;
+                case "T002":
+                    return 22.2;
+                default:
+                    throw new IllegalArgumentException("Unknown transaction ID: " + id);
+            }
         }
     }
 
+
     interface Assistant {
-        @dev.langchain4j.service.SystemMessage(
-            "When asked to evaluate some math expressions, " +
-            "you MUST use the `add`, `substract`, `multiply`, and `divide` tool functions."
-        )
         String chat(String userMessage);
     }
 
-    @RetryingTest(3)
+    @RetryingTest(10)
     void should_work_with_tools_with_AiServices() {
         // given
         GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-pro")
             .logRequestsAndResponses(true)
+            .timeout(Duration.ofMinutes(2))
+            .temperature(0.0)
+            .topP(0.0)
+            .topK(1)
             .build();
 
         // when
-        Calculator spyCalculator = spy(new Calculator());
+        Transactions spyTransactions = spy(new Transactions());
 
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
         Assistant assistant = AiServices.builder(Assistant.class)
-            .tools(spyCalculator)
+            .tools(spyTransactions)
             .chatMemory(chatMemory)
             .chatLanguageModel(gemini)
             .build();
@@ -763,17 +746,15 @@ public class GoogleAiGeminiChatModelIT {
         // then
         String response = "";
 
-        response = assistant.chat("How much is 3 + 4?");
-        assertThat(response).containsIgnoringCase("7");
-        verify(spyCalculator).add(3, 4);
+        response = assistant.chat("What is the amount of transaction T001?");
+        assertThat(response).containsIgnoringCase("11.1");
+        verify(spyTransactions).getTransactionAmount("T001");
 
-        response = assistant.chat("How much is 7 * 11?");
-        assertThat(response).containsIgnoringCase("77");
-        verify(spyCalculator).multiply(7, 11);
+        response = assistant.chat("What is the amount of transaction T002?");
+        assertThat(response).containsIgnoringCase("22.2");
+        verify(spyTransactions).getTransactionAmount("T002");
 
-        verifyNoMoreInteractions(spyCalculator);
-
-        System.out.println("chatMemory = " + chatMemory.messages());
+        verifyNoMoreInteractions(spyTransactions);
     }
 
     @AfterEach

@@ -1,11 +1,9 @@
-package dev.langchain4j.data.document.source;
+package dev.langchain4j.data.document.source.gcs;
 
-import com.google.cloud.ReadChannel;
 import com.google.cloud.storage.Blob;
 import dev.langchain4j.data.document.DocumentSource;
 import dev.langchain4j.data.document.Metadata;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 
@@ -15,12 +13,12 @@ public class GcsSource implements DocumentSource {
     private final Metadata metadata;
 
     public GcsSource(Blob blob) {
-        this.metadata = getMetadataForBlob(blob);
         this.inputStream = Channels.newInputStream(blob.reader());
+        this.metadata = getMetadataForBlob(blob);
     }
 
     @Override
-    public InputStream inputStream() throws IOException {
+    public InputStream inputStream() {
         return inputStream;
     }
 

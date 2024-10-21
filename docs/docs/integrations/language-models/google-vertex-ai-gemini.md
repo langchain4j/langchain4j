@@ -1,5 +1,5 @@
 ---
-sidebar_position: 7
+sidebar_position: 8
 ---
 
 # Google Vertex AI Gemini
@@ -68,14 +68,14 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai-gemini</artifactId>
-  <version>0.34.0</version>
+  <version>0.35.0</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:0.34.0'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:0.35.0'
 ```
 
 ### Try out an example code:
@@ -251,7 +251,7 @@ UserMessage msg = UserMessage.from(
     TextContent.from("Provide a summary of the document")
 );
 
-Response<AiMessage> response = model.generate(singletonList(msg));
+Response<AiMessage> response = model.generate(List.of(msg));
 ```
 
 ### Tool calling

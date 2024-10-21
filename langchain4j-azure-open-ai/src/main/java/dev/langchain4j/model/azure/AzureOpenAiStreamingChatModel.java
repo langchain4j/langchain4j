@@ -148,10 +148,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
-        if(useAsyncClient)
+        if(useAsyncClient) {
             this.asyncClient = setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
-        else
-            this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);  }
+        } else {
+            this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+        }
+    }
 
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
@@ -330,12 +332,16 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             HttpResponseException httpResponseException = (HttpResponseException) throwable;
             logger.info("Error generating response, {}", httpResponseException.getValue());
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
-            Response<AiMessage> response =  Response.from(
-                    aiMessage(httpResponseException.getMessage()),
-                    null,
-                    exceptionFinishReason
-            );
-            handler.onComplete(response);
+            if (exceptionFinishReason == FinishReason.CONTENT_FILTER) {
+                Response<AiMessage> response = Response.from(
+                        aiMessage(httpResponseException.getMessage()),
+                        null,
+                        exceptionFinishReason
+                );
+                handler.onComplete(response);
+            } else {
+                handler.onError(throwable);
+            }
         } else {
             handler.onError(throwable);
         }

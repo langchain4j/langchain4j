@@ -96,7 +96,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.34.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
@@ -331,7 +331,8 @@ to be later included in each `TextSegment` (which we will cover below) to potent
 
 `Metadata` entries can also be added, modified, or removed at this stage.
 
-Currently, the only implementation provided out-of-the-box is `HtmlTextExtractor` in the `langchain4j` module,
+Currently, the only implementation provided out-of-the-box is `HtmlToTextDocumentTransformer`
+in the `langchain4j-document-transformer-jsoup` module,
 which can extract desired text content and metadata entries from the raw HTML.
 
 Since there is no one-size-fits-all solution, we recommend implementing your own `DocumentTransformer`,
@@ -527,8 +528,12 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
 
 ingestor.ingest(document1);
 ingestor.ingest(document2, document3);
-ingestor.ingest(List.of(document4, document5, document6));
+IngestionResult ingestionResult = ingestor.ingest(List.of(document4, document5, document6));
 ```
+
+All `ingest()` methods in `EmbeddingStoreIngestor` return an `IngestionResult`.
+The `IngestionResult` contains useful information, including `TokenUsage`,
+which shows how many tokens were used for embedding.
 
 Optionally, the `EmbeddingStoreIngestor` can transform `Document`s using a specified `DocumentTransformer`.
 This can be useful if you want to clean, enrich, or format `Document`s before embedding them.

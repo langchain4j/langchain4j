@@ -1,5 +1,5 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 # Google AI Gemini
@@ -13,7 +13,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>0.34.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
@@ -180,16 +180,10 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
         .type(JSON)
         .jsonSchema(JsonSchema.builder()
             .rootElement(JsonObjectSchema.builder()
-                .properties(Map.of(
-                    "title", JSON_STRING_SCHEMA,
-                    "preparationTimeMinutes", JSON_INTEGER_SCHEMA,
-                    "ingredients", JsonArraySchema.builder()
-                        .items(JSON_STRING_SCHEMA)
-                        .build(),
-                    "steps", JsonArraySchema.builder()
-                        .items(JSON_STRING_SCHEMA)
-                        .build()
-                    ))
+                .addStringProperty("title")
+                .addIntegerProperty("preparationTimeMinutes")
+                .addArrayProperty("ingredients", new JsonStringSchema())
+                .addArrayProperty("steps", new JsonStringSchema())
                 .build())
             .build())
         .build())

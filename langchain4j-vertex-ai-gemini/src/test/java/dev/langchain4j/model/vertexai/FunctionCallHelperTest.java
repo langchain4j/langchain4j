@@ -29,7 +29,7 @@ public class FunctionCallHelperTest {
         assertThat(unwrapProtoValue(Value.newBuilder().setStringValue("hello").build())).isEqualTo("hello");
         assertThat(unwrapProtoValue(Value.newBuilder().setBoolValue(false).build())).isEqualTo(false);
         assertThat(unwrapProtoValue(Value.newBuilder().setNumberValue(1.23).build())).isEqualTo(1.23);
-        assertThat(unwrapProtoValue(Value.newBuilder().setNullValue(NullValue.NULL_VALUE).build())).isEqualTo(null);
+        assertThat(unwrapProtoValue(Value.newBuilder().setNullValue(NullValue.NULL_VALUE).build())).isNull();
 
         // check list unwrapping
         ListValue listValue = ListValue.newBuilder()

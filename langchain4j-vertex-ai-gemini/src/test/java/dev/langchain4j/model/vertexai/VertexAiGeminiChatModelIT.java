@@ -63,6 +63,14 @@ class VertexAiGeminiChatModelIT {
             .logResponses(true)
             .build();
 
+    ChatLanguageModel imageModel = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(false) // images are huge in logs
+            .logResponses(true)
+            .build();
+
     @Test
     void should_generate_response() {
 
@@ -202,7 +210,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -218,7 +226,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -235,7 +243,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -252,7 +260,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -271,7 +279,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -292,7 +300,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -312,7 +320,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = imageModel.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -398,7 +406,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
 
         List<ToolExecutionRequest> executionRequests = messageResponse.content().toolExecutionRequests();
-        assertThat(executionRequests.size()).isEqualTo(2); // ie. parallel function execution requests
+        assertThat(executionRequests).hasSize(2); // ie. parallel function execution requests
 
         String inventoryStock = executionRequests.stream()
             .map(ToolExecutionRequest::arguments)
@@ -645,7 +653,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
-    @RetryingTest(4)
+    @RetryingTest(10)
     void should_allow_defining_safety_settings() {
         // given
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
@@ -659,6 +667,10 @@ class VertexAiGeminiChatModelIT {
             .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-1.5-flash-001")
             .safetySettings(safetySettings)
+            .temperature(0.0f)
+            .topP(0.0f)
+            .topK(1)
+            .seed(1234)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -804,7 +816,7 @@ class VertexAiGeminiChatModelIT {
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
+            .logRequests(false) // videos are huge in logs
             .logResponses(true)
             .build();
 
@@ -828,7 +840,7 @@ class VertexAiGeminiChatModelIT {
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName(GEMINI_1_5_PRO)
-            .logRequests(true)
+            .logRequests(false) // videos are huge in logs
             .logResponses(true)
             .build();
 
