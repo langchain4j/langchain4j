@@ -27,7 +27,6 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>bedrock</artifactId>
-            <version>2.20.162</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.netty</groupId>
@@ -44,7 +43,6 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>bedrockruntime</artifactId>
-            <version>2.20.162</version>
         </dependency>
 
         <dependency>
