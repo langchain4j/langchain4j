@@ -31,14 +31,14 @@ import java.util.Set;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.service.AiServicesJsonSchemaWithDescriptionsIT.PersonExtractor3.MaritalStatus.SINGLE;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaWithDescriptionsIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
-public class AiServicesJsonSchemaWithDescriptionsIT {
+public class AiServicesWithJsonSchemaWithDescriptionsIT {
 
     @Spy
     ChatLanguageModel model = OpenAiChatModel.builder()

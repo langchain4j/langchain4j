@@ -63,6 +63,9 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         assertThat(match.embedded().metadata().getLong("long_minus_1")).isEqualTo(-1L);
         assertThat(match.embedded().metadata().getLong("long_0")).isEqualTo(0L);
         assertThat(match.embedded().metadata().getLong("long_1")).isEqualTo(1L);
+        if (testLong1746714878034235396()) {
+            assertThat(match.embedded().metadata().getLong("long_1746714878034235396")).isEqualTo(1746714878034235396L);
+        }
         assertThat(match.embedded().metadata().getLong("long_max")).isEqualTo(Long.MAX_VALUE);
 
         assertThat(match.embedded().metadata().getFloat("float_min")).isEqualTo(-Float.MAX_VALUE);
@@ -82,6 +85,10 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
                 .queryEmbedding(embedding)
                 .maxResults(1)
                 .build()).matches()).isEqualTo(relevant);
+    }
+
+    protected boolean testLong1746714878034235396() {
+        return true;
     }
 
     protected Metadata createMetadata() {
@@ -104,6 +111,9 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         metadata.put("long_minus_1", -1L);
         metadata.put("long_0", 0L);
         metadata.put("long_1", 1L);
+        if (testLong1746714878034235396()) {
+            metadata.put("long_1746714878034235396", 1746714878034235396L);
+        }
         metadata.put("long_max", Long.MAX_VALUE);
 
         metadata.put("float_min", -Float.MAX_VALUE);
