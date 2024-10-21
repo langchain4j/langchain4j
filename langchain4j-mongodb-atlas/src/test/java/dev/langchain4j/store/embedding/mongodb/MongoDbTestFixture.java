@@ -28,14 +28,16 @@ class MongoDbTestFixture {
     private static final String PASSWORD = getenv("MONGODB_ATLAS_PASSWORD");
     private static final String HOST = getenv("MONGODB_ATLAS_HOST");
     private static final String CONNECTION_STRING = getenv("MONGODB_CONNECTION_STRING");
+
+    private static final String DATABASE_NAME = "test_database";
     private static MongoDBAtlasLocalContainer mongodb;
 
-    private final String dbName;
+    private final String collectionName;
     private final MongoClient client;
     private MongoDbEmbeddingStore embeddingStore;
 
     MongoDbTestFixture(MongoClient client) {
-        this.dbName = "test_database_" + ThreadLocalRandom.current().nextInt(0, Integer.MAX_VALUE);
+        this.collectionName = "test_collection_" + ThreadLocalRandom.current().nextInt(0, Integer.MAX_VALUE);
         this.client = client;
     }
 
@@ -101,20 +103,20 @@ class MongoDbTestFixture {
                 .build();
         return MongoDbEmbeddingStore.builder()
                 .fromClient(client)
-                .databaseName(dbName)
-                .collectionName("test_collection")
+                .databaseName(DATABASE_NAME)
+                .collectionName(collectionName)
                 .indexName("test_index")
                 .indexMapping(indexMapping)
                 .createIndex(true);
     }
 
     void afterTests() {
-        getDatabase().drop();
+        getDatabase().getCollection(collectionName).drop();
         client.close();
     }
 
     MongoDatabase getDatabase() {
-        return client.getDatabase(dbName);
+        return client.getDatabase(DATABASE_NAME);
     }
 
     private static String getenv(String name) {
