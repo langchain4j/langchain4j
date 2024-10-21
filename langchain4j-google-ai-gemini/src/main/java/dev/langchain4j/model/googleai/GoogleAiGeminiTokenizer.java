@@ -9,10 +9,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
@@ -25,8 +22,6 @@ import static java.util.Collections.singletonList;
 
 @Slf4j
 public class GoogleAiGeminiTokenizer implements Tokenizer {
-    private static final Gson GSON = new Gson();
-
     private final GeminiService geminiService;
     private final String modelName;
     private final String apiKey;

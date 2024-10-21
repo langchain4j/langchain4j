@@ -19,10 +19,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
@@ -49,8 +46,6 @@ import static java.util.Collections.emptyList;
 @Experimental
 @Slf4j
 public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEstimator {
-    private static final Gson GSON = new Gson();
-
     private final GeminiService geminiService;
 
     private final String apiKey;

@@ -8,10 +8,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,8 +25,6 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
     private static final int MAX_NUMBER_OF_SEGMENTS_PER_BATCH = 100;
 
     private final GeminiService geminiService;
-
-    private final Gson GSON = new Gson();
 
     private final String modelName;
     private final String apiKey;
