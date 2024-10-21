@@ -38,6 +38,7 @@ import static java.util.stream.Collectors.joining;
  * <br>
  * - {@link #promptTemplate}: The prompt template that defines how the original {@code userMessage}
  * and {@code contents} are combined into the resulting {@link UserMessage}.
+ * The text of the template should contain the {@code {{userMessage}}} and {@code {{contents}}} variables.
  * <br>
  * - {@link #metadataKeysToInclude}: A list of {@link Metadata} keys that should be included
  * with each {@link Content#textSegment()}.
