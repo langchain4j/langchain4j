@@ -41,7 +41,6 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -125,7 +124,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.3.0</version>
                 <executions>
                     <execution>
                         <goals>
