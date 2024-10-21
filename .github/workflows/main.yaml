@@ -68,8 +68,6 @@ jobs:
         ## - when triggered manually
         if: (github.event_name == 'pull_request' && github.head_repo.full_name == github.repository) || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
         run: |
-          if {{ env.OPENAI_API_KEY
-          
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             ${{ matrix.included_modules }}
