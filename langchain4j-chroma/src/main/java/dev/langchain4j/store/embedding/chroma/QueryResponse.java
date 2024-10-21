@@ -11,23 +11,23 @@ class QueryResponse {
     private List<List<Map<String, Object>>> metadatas;
     private List<List<Double>> distances;
 
-    public List<List<String>> ids() {
+    public List<List<String>> getIds() {
         return ids;
     }
 
-    public List<List<List<Float>>> embeddings() {
+    public List<List<List<Float>>> getEmbeddings() {
         return embeddings;
     }
 
-    public List<List<String>> documents() {
+    public List<List<String>> getDocuments() {
         return documents;
     }
 
-    public List<List<Map<String, Object>>> metadatas() {
+    public List<List<Map<String, Object>>> getMetadatas() {
         return metadatas;
     }
 
-    public List<List<Double>> distances() {
+    public List<List<Double>> getDistances() {
         return distances;
     }
 }
