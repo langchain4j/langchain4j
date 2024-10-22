@@ -3,7 +3,6 @@ package dev.langchain4j.data.document.loader.selenium;
 import static java.util.Objects.requireNonNull;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
 import java.io.ByteArrayInputStream;
 import java.time.Duration;
@@ -20,7 +19,7 @@ import org.slf4j.LoggerFactory;
  * Returns a {@link Document} object containing the content of the web page.
  *
  */
-public class SeleniumDocumentLoader implements DocumentLoader {
+public class SeleniumDocumentLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(SeleniumDocumentLoader.class);
     private static final Duration DEFAULT_TIMEOUT_DURATION = Duration.ofSeconds(30);
@@ -40,7 +39,7 @@ public class SeleniumDocumentLoader implements DocumentLoader {
      * @param documentParser The parser to be used for parsing text from the URL.
      * @return document
      */
-    public Document load(String url, DocumentParser<Document> documentParser) {
+    public Document load(String url, DocumentParser documentParser) {
         logger.info("Loading document from URL: {}", url);
         String pageContent;
         try {
