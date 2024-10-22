@@ -24,22 +24,10 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class MongoDbEmbeddingStoreMiscIT {
 
-    public static class ContainerIT extends MongoDbEmbeddingStoreMiscIT {
-        @BeforeAll
-        static void start() {
-            MongoDbTestFixture.assertDoContainerTests();
-        }
-
-        @Override
-        MongoClient createClient() {
-            return createClientFromContainer();
-        }
-    }
-
     MongoDbTestFixture helper;
 
     MongoClient createClient() {
-        return createClientFromEnv();
+        return createDefaultClient();
     }
 
     protected EmbeddingStore<TextSegment> embeddingStore() {

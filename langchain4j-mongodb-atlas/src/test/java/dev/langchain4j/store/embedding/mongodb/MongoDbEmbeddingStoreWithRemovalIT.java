@@ -12,32 +12,11 @@ import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 
 import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.*;
 
-public class MongoDbEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
-
-    public static class ContainerIT extends MongoDbEmbeddingStoreWithRemovalIT {
-        static MongoDBAtlasLocalContainer mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
-
-        @BeforeAll
-        static void start() {
-            MongoDbTestFixture.assertDoContainerTests();
-            mongodb.start();
-        }
-
-        @AfterAll
-        static void stop() {
-            mongodb.stop();
-        }
-
-        @Override
-        MongoClient createClient() {
-            return createClientFromContainer(mongodb);
-        }
-    }
-
+class MongoDbEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
     private MongoDbTestFixture helper = new MongoDbTestFixture(createClient()).initialize();
 
     MongoClient createClient() {
-        return createClientFromEnv();
+        return createDefaultClient();
     }
 
     @Override

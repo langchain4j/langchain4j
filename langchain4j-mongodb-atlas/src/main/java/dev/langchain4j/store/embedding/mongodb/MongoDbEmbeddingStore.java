@@ -42,6 +42,7 @@ import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.store.embedding.mongodb.IndexMapping.defaultIndexMapping;
 import static dev.langchain4j.store.embedding.mongodb.MappingUtils.*;
 import static dev.langchain4j.store.embedding.mongodb.MongoDbMetadataFilterMapper.map;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -81,7 +82,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
  * -&gt; Next -&gt; Create Search Index
  */
 public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
-    private static final int SECONDS_TO_WAIT_FOR_INDEX = 5;
+    private static final int SECONDS_TO_WAIT_FOR_INDEX = 20;
 
     private static final Logger log = LoggerFactory.getLogger(MongoDbEmbeddingStore.class);
 
@@ -89,7 +90,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final String indexName;
     private final long maxResultRatio;
-    private final Bson filter;
+    private final Bson globalPrefilter;
 
     public MongoDbEmbeddingStore(MongoClient mongoClient,
                                  String databaseName,
@@ -118,7 +119,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         this.collection = database.getCollection(collectionName, MongoDbDocument.class).withCodecRegistry(codecRegistry);
-        this.filter = filter;
+        this.globalPrefilter = filter;
 
         if (!indexExists(this.indexName)) {
             if (createIndex) {
@@ -277,7 +278,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll() {
-        collection.deleteMany(new Document());
+        collection.deleteMany(Filters.empty());
     }
 
     @Override
@@ -299,18 +300,18 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .collect(toList());
         long numCandidates = request.maxResults() * maxResultRatio;
 
-        Bson filter = null;
+        Bson postFilter = null;
         if (request.minScore() > 0) {
-            filter = Filters.gte("score", request.minScore());
+            postFilter = Filters.gte("score", request.minScore());
         }
         if (request.filter() != null) {
             Bson newFilter = map(request.filter());
-            filter = filter == null ? newFilter : Filters.and(filter, newFilter);
+            postFilter = postFilter == null ? newFilter : Filters.and(postFilter, newFilter);
         }
 
-        VectorSearchOptions vectorSearchOptions = this.filter == null
+        VectorSearchOptions vectorSearchOptions = this.globalPrefilter == null
                 ? approximateVectorSearchOptions(numCandidates)
-                : approximateVectorSearchOptions(numCandidates).filter(this.filter);
+                : approximateVectorSearchOptions(numCandidates).filter(this.globalPrefilter);
 
         ArrayList<Bson> pipeline = new ArrayList<>();
         pipeline.add(vectorSearch(
@@ -322,8 +323,8 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         pipeline.add(project(fields(
                 metaVectorSearchScore("score"),
                 include("embedding", "metadata", "text"))));
-        if (filter != null) {
-            Bson match = match(filter);
+        if (postFilter != null) {
+            Bson match = match(postFilter);
             pipeline.add(match);
         }
 
@@ -334,9 +335,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .collect(toList());
             return new EmbeddingSearchResult<>(result);
         } catch (MongoCommandException e) {
-            if (log.isErrorEnabled()) {
-                log.error("Error in MongoDBEmbeddingStore.search", e);
-            }
+            log.error("Error in MongoDBEmbeddingStore.search", e);
             throw new RuntimeException(e);
         }
     }
@@ -363,9 +362,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         InsertManyResult result = collection.insertMany(documents);
         if (!result.wasAcknowledged()) {
             String errMsg = String.format("[MongoDbEmbeddingStore] Add document failed, Document=%s", documents);
-            if (log.isErrorEnabled()) {
-                log.error(errMsg);
-            }
+            log.error(errMsg);
             throw new RuntimeException(errMsg);
         }
     }
@@ -380,34 +377,38 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private boolean indexExists(String indexName) {
-        return indexExistsAndNot(indexName, "DOES_NOT_EXIST");
+        Document indexRecord = indexRecord(collection, indexName);
+        return indexRecord != null && !indexRecord.getString("status").equals("DOES_NOT_EXIST");
     }
 
-    private boolean indexExistsAndNot(String indexName, String... status) {
+    private static Document indexRecord(
+            MongoCollection<MongoDbDocument> collection, String indexName) {
         return StreamSupport.stream(collection.listSearchIndexes().spliterator(), false)
-                .anyMatch(index -> {
-                    boolean sameName = indexName.equals(index.getString("name"));
-                    boolean hasStatus = Arrays.asList(status).contains(index.getString("status"));
-                    return sameName && !hasStatus;
-                });
+                .filter(index -> indexName.equals(index.getString("name")))
+                .findAny().orElse(null);
     }
 
     private void createIndex(String indexName, IndexMapping indexMapping) {
-        collection.createSearchIndexes(Arrays.asList(new SearchIndexModel(
+        collection.createSearchIndexes(List.of(new SearchIndexModel(
                 indexName,
                 fromIndexMapping(indexMapping),
                 SearchIndexType.vectorSearch())));
 
-        waitForIndex(indexName);
+        waitForIndex(collection, indexName);
     }
 
-
-    private void waitForIndex(String indexName) {
+    static void waitForIndex(MongoCollection<MongoDbDocument> collection, String indexName) {
         long startTime = System.nanoTime();
         long timeoutNanos = TimeUnit.SECONDS.toNanos(SECONDS_TO_WAIT_FOR_INDEX);
         while (System.nanoTime() - startTime < timeoutNanos) {
-            if (indexExistsAndNot(indexName, "INITIAL_SYNC", "PENDING", "BUILDING")) {
-                return;
+            Document indexRecord = indexRecord(collection, indexName);
+            if (indexRecord != null) {
+                if ("FAILED".equals(indexRecord.getString("status"))) {
+                    throw new RuntimeException("Search index has failed status.");
+                }
+                if (indexRecord.getBoolean("queryable")) {
+                    return;
+                }
             }
             try {
                 Thread.sleep(100);
@@ -416,6 +417,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                 throw new RuntimeException(e);
             }
         }
-        log.warn("Index {} was not created or did not exit INITIAL_SYNC within {} seconds", indexName, SECONDS_TO_WAIT_FOR_INDEX);
+        log.warn("Index {} was not created or did not exit INITIAL_SYNC within {} seconds",
+                indexName, SECONDS_TO_WAIT_FOR_INDEX);
     }
 }
