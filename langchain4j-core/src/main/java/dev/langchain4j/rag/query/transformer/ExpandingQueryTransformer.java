@@ -36,13 +36,15 @@ import static java.util.stream.Collectors.toList;
 public class ExpandingQueryTransformer implements QueryTransformer {
 
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "Generate {{n}} different versions of a provided user query. " +
-                    "Each version should be worded differently, using synonyms or alternative sentence structures, " +
-                    "but they should all retain the original meaning. " +
-                    "These versions will be used to retrieve relevant documents. " +
-                    "It is very important to provide each query version on a separate line, " +
-                    "without enumerations, hyphens, or any additional formatting!\n" +
-                    "User query: {{query}}"
+            """
+            Generate {{n}} different versions of a provided user query. \
+            Each version should be worded differently, using synonyms or alternative sentence structures, \
+            but they should all retain the original meaning. \
+            These versions will be used to retrieve relevant documents. \
+            It is very important to provide each query version on a separate line, \
+            without enumerations, hyphens, or any additional formatting!
+            User query: {{query}}\
+            """
     );
     public static final int DEFAULT_N = 3;
 
