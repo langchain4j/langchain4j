@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.vearch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.Utils;
-import lombok.Builder;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
@@ -16,7 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.store.embedding.vearch.VearchApi.OK;
 
 class VearchClient {
@@ -25,7 +23,6 @@ class VearchClient {
 
     private final VearchApi vearchApi;
 
-    @Builder
     public VearchClient(String baseUrl, Duration timeout) {
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -177,6 +174,30 @@ class VearchClient {
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    static VearchClientBuilder builder() {
+        return new VearchClientBuilder();
+    }
+
+    static final class VearchClientBuilder {
+
+        private String baseUrl;
+        private Duration timeout;
+
+        VearchClientBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        VearchClientBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        VearchClient build() {
+            return new VearchClient(baseUrl, timeout);
         }
     }
 

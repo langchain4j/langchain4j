@@ -4,9 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
@@ -15,105 +12,159 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
  *
  * @see CreateSpaceRequest
  */
-@Getter
-@Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 public abstract class SpacePropertyParam {
 
     protected SpacePropertyType type;
+    /**
+     * Whether to create a index or not.
+     */
+    protected Boolean index;
 
-    SpacePropertyParam(SpacePropertyType type) {
-        this.type = type;
+    public SpacePropertyParam() {
     }
 
-    @Getter
-    @Setter
+    protected SpacePropertyParam(SpacePropertyType type, Boolean index) {
+        this.type = type;
+        this.index = index;
+    }
+
+    public SpacePropertyType getType() {
+        return type;
+    }
+
+    public Boolean getIndex() {
+        return index;
+    }
+
+    protected abstract static class SpacePropertyParamBuilder<C extends SpacePropertyParam, B extends SpacePropertyParamBuilder<C, B>> {
+
+        protected Boolean index;
+
+        public B index(Boolean index) {
+            this.index = index;
+            return self();
+        }
+
+        protected abstract B self();
+
+        public abstract C build();
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonInclude(NON_NULL)
     @JsonNaming(SnakeCaseStrategy.class)
     public static class StringParam extends SpacePropertyParam {
 
         /**
-         * whether to create an index
-         */
-        private Boolean index;
-        /**
          * whether to allow multipart value
          */
         private Boolean array;
 
         public StringParam() {
-            super(SpacePropertyType.STRING);
         }
 
-        @Builder
         public StringParam(Boolean index, Boolean array) {
-            this();
-            this.index = index;
+            super(SpacePropertyType.STRING, index);
             this.array = array;
+        }
+
+        public Boolean getArray() {
+            return array;
+        }
+
+        public static StringParamBuilder builder() {
+            return new StringParamBuilder();
+        }
+
+        public static class StringParamBuilder extends SpacePropertyParamBuilder<StringParam, StringParamBuilder> {
+
+            private Boolean array;
+
+            public StringParamBuilder array(Boolean array) {
+                this.array = array;
+                return this;
+            }
+
+            @Override
+            protected StringParamBuilder self() {
+                return this;
+            }
+
+            @Override
+            public StringParam build() {
+                return new StringParam(index, array);
+            }
         }
     }
 
-    @Getter
-    @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonInclude(NON_NULL)
     @JsonNaming(SnakeCaseStrategy.class)
     public static class IntegerParam extends SpacePropertyParam {
 
-        /**
-         * whether to create an index
-         *
-         * <p>set to true to support the use of numeric range filtering queries <b>(not supported in langchain4j now)</b></p>
-         */
-        private Boolean index;
-
         public IntegerParam() {
-            super(SpacePropertyType.INTEGER);
         }
 
-        @Builder
         public IntegerParam(Boolean index) {
-            this();
-            this.index = index;
+            super(SpacePropertyType.INTEGER, index);
+        }
+
+        public static IntegerParamBuilder builder() {
+            return new IntegerParamBuilder();
+        }
+
+        public static class IntegerParamBuilder extends SpacePropertyParamBuilder<IntegerParam, IntegerParamBuilder> {
+
+            @Override
+            protected IntegerParamBuilder self() {
+                return this;
+            }
+
+            @Override
+            public IntegerParam build() {
+                return new IntegerParam(index);
+            }
         }
     }
 
-    @Getter
-    @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonInclude(NON_NULL)
     @JsonNaming(SnakeCaseStrategy.class)
     public static class FloatParam extends SpacePropertyParam {
 
-        /**
-         * whether to create an index
-         *
-         * <p>set to true to support the use of numeric range filtering queries <b>(not supported in langchain4j now)</b></p>
-         */
-        private Boolean index;
-
         public FloatParam() {
-            super(SpacePropertyType.FLOAT);
         }
 
-        @Builder
         public FloatParam(Boolean index) {
-            this();
-            this.index = index;
+            super(SpacePropertyType.FLOAT, index);
+        }
+
+        public static FloatParamBuilder builder() {
+            return new FloatParamBuilder();
+        }
+
+        public static class FloatParamBuilder extends SpacePropertyParamBuilder<FloatParam, FloatParamBuilder> {
+
+            @Override
+            protected FloatParamBuilder self() {
+                return this;
+            }
+
+            @Override
+            public FloatParam build() {
+                return new FloatParam(index);
+            }
         }
     }
 
-    @Getter
-    @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonInclude(NON_NULL)
     @JsonNaming(SnakeCaseStrategy.class)
     public static class VectorParam extends SpacePropertyParam {
 
-        private Boolean index;
         private Integer dimension;
         /**
          * "RocksDB" or "MemoryOnly". For HNSW and IVFFLAT and FLAT, it can only be run in MemoryOnly mode.
@@ -129,19 +180,84 @@ public abstract class SpacePropertyParam {
         private String format;
 
         public VectorParam() {
-            super(SpacePropertyType.VECTOR);
         }
 
-        @Builder
         public VectorParam(Boolean index, Integer dimension, SpaceStoreType storeType,
                            SpaceStoreParam storeParam, String modelId, String format) {
-            this();
-            this.index = index;
+            super(SpacePropertyType.VECTOR, index);
             this.dimension = dimension;
             this.storeType = storeType;
             this.storeParam = storeParam;
             this.modelId = modelId;
             this.format = format;
+        }
+
+        public Integer getDimension() {
+            return dimension;
+        }
+
+        public SpaceStoreType getStoreType() {
+            return storeType;
+        }
+
+        public SpaceStoreParam getStoreParam() {
+            return storeParam;
+        }
+
+        public String getModelId() {
+            return modelId;
+        }
+
+        public String getFormat() {
+            return format;
+        }
+
+        public static VectorParamBuilder builder() {
+            return new VectorParamBuilder();
+        }
+
+        public static class VectorParamBuilder extends SpacePropertyParamBuilder<VectorParam, VectorParamBuilder> {
+
+            private Integer dimension;
+            private SpaceStoreType storeType;
+            private SpaceStoreParam storeParam;
+            private String modelId;
+            private String format;
+
+            public VectorParamBuilder dimension(Integer dimension) {
+                this.dimension = dimension;
+                return this;
+            }
+
+            public VectorParamBuilder storeType(SpaceStoreType storeType) {
+                this.storeType = storeType;
+                return this;
+            }
+
+            public VectorParamBuilder storeParam(SpaceStoreParam storeParam) {
+                this.storeParam = storeParam;
+                return this;
+            }
+
+            public VectorParamBuilder modelId(String modelId) {
+                this.modelId = modelId;
+                return this;
+            }
+
+            public VectorParamBuilder format(String format) {
+                this.format = format;
+                return this;
+            }
+
+            @Override
+            protected VectorParamBuilder self() {
+                return this;
+            }
+
+            @Override
+            public VectorParam build() {
+                return new VectorParam(index, dimension, storeType, storeParam, modelId, format);
+            }
         }
     }
 }
