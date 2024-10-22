@@ -20,14 +20,12 @@ public class DocumentSplitters {
      */
     public static DocumentSplitter recursive(int maxSegmentSizeInTokens,
                                              int maxOverlapSizeInTokens,
-                                             Tokenizer tokenizer) {
-        return new DocumentByParagraphSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer,
-                new DocumentByLineSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer,
-                        new DocumentBySentenceSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer,
-                                new DocumentByWordSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer)
-                        )
-                )
-        );
+                                             Tokenizer tokenizer,
+                                             Boolean addCharacterStartIndex) {
+        DocumentByWordSplitter wordSplitter = new DocumentByWordSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, addCharacterStartIndex);
+        DocumentBySentenceSplitter sentenceSplitter = new DocumentBySentenceSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, wordSplitter, addCharacterStartIndex);
+        DocumentByLineSplitter lineSplitter = new DocumentByLineSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, sentenceSplitter, addCharacterStartIndex);
+        return new DocumentByParagraphSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, lineSplitter, addCharacterStartIndex);
     }
 
     /**
@@ -43,6 +41,10 @@ public class DocumentSplitters {
      * @return recursive document splitter
      */
     public static DocumentSplitter recursive(int maxSegmentSizeInChars, int maxOverlapSizeInChars) {
-        return recursive(maxSegmentSizeInChars, maxOverlapSizeInChars, null);
+        return recursive(maxSegmentSizeInChars, maxOverlapSizeInChars, null, false);
+    }
+
+    public static DocumentSplitter recursive(int maxSegmentSizeInChars, int maxOverlapSizeInChars, Boolean addCharacterStartIndex) {
+        return recursive(maxSegmentSizeInChars, maxOverlapSizeInChars, null, addCharacterStartIndex);
     }
 }
