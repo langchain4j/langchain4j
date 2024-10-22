@@ -6,14 +6,21 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithoutMetadataIT;
+import dev.langchain4j.store.embedding.vearch.field.*;
+import dev.langchain4j.store.embedding.vearch.index.HNSWParam;
+import dev.langchain4j.store.embedding.vearch.index.Index;
+import dev.langchain4j.store.embedding.vearch.index.IndexType;
+import dev.langchain4j.store.embedding.vearch.index.search.HNSWSearchParam;
 import org.junit.jupiter.api.*;
 
-import java.lang.reflect.Method;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static java.util.Collections.singletonList;
+import static dev.langchain4j.store.embedding.vearch.TestUtils.isMethodFromClass;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
@@ -62,19 +69,6 @@ class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
         }
     }
 
-    private boolean isMethodFromClass(TestInfo testInfo, Class<?> clazz) {
-        try {
-            Optional<Method> method = testInfo.getTestMethod();
-            if (method.isPresent()) {
-                String methodName = method.get().getName();
-                return clazz.getDeclaredMethod(methodName) != null;
-            }
-            return false;
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
-    }
-
     private void buildEmbeddingStoreWithMetadata() {
         buildEmbeddingStore(true);
     }
@@ -88,50 +82,57 @@ class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
         String textFieldName = "text";
         Map<String, Object> metadata = createMetadata().toMap();
 
-        // init properties
-        Map<String, SpacePropertyParam> properties = new HashMap<>(4);
-        properties.put(embeddingFieldName, SpacePropertyParam.VectorParam.builder()
-                .index(true)
-                .storeType(SpaceStoreType.MEMORY_ONLY)
-                .dimension(384)
-                .build());
-        properties.put(textFieldName, SpacePropertyParam.StringParam.builder().build());
+        // init fields
+        List<Field> fields = new ArrayList<>(4);
+        List<String> metadataFieldNames = new ArrayList<>();
+        fields.add(VectorField.builder()
+                .name(embeddingFieldName)
+                .dimension(embeddingModel.dimension())
+                .index(Index.builder()
+                        .name("gamma")
+                        .type(IndexType.HNSW)
+                        .params(HNSWParam.builder()
+                                .metricType(MetricType.INNER_PRODUCT)
+                                .efConstruction(100)
+                                .nLinks(32)
+                                .efSearch(64)
+                                .build())
+                        .build())
+                .build()
+        );
+        fields.add(StringField.builder().name(textFieldName).fieldType(FieldType.STRING).build());
         if (withMetadata) {
             // metadata
             for (Map.Entry<String, Object> entry : metadata.entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue();
                 if (value instanceof String || value instanceof UUID) {
-                    properties.put(key, SpacePropertyParam.StringParam.builder().build());
+                    fields.add(StringField.builder().name(key).fieldType(FieldType.STRING).build());
                 } else if (value instanceof Integer) {
-                    properties.put(key, SpacePropertyParam.IntegerParam.builder().build());
+                    fields.add(NumericField.builder().name(key).fieldType(FieldType.INTEGER).build());
+                } else if (value instanceof Long) {
+                    fields.add(NumericField.builder().name(key).fieldType(FieldType.LONG).build());
                 } else if (value instanceof Float) {
-                    properties.put(key, SpacePropertyParam.FloatParam.builder().build());
-                } else {
-                    properties.put(key, SpacePropertyParam.StringParam.builder().build());
+                    fields.add(NumericField.builder().name(key).fieldType(FieldType.FLOAT).build());
+                } else if (value instanceof Double) {
+                    fields.add(NumericField.builder().name(key).fieldType(FieldType.DOUBLE).build());
                 }
             }
         }
 
         // init vearch config
+        spaceName = "embedding_space_" + ThreadLocalRandom.current().nextInt(0, Integer.MAX_VALUE);
         VearchConfig vearchConfig = VearchConfig.builder()
-                .spaceEngine(SpaceEngine.builder()
-                        .name("gamma")
-                        .indexSize(1L)
-                        .retrievalType(RetrievalType.FLAT)
-                        .retrievalParam(RetrievalParam.FLAT.builder()
-                                .build())
-                        .build())
-                .properties(properties)
-                .embeddingFieldName(embeddingFieldName)
-                .textFieldName(textFieldName)
                 .databaseName(databaseName)
                 .spaceName(spaceName)
-                .modelParams(singletonList(ModelParam.builder()
-                        .modelId("vgg16")
-                        .fields(singletonList("string"))
-                        .out("feature")
-                        .build()))
+                .textFieldName(textFieldName)
+                .embeddingFieldName(embeddingFieldName)
+                .fields(fields)
+                .metadataFieldNames(metadataFieldNames)
+                .searchIndexParam(HNSWSearchParam.builder()
+                        .metricType(MetricType.INNER_PRODUCT)
+                        .efSearch(64)
+                        .build())
                 .build();
         if (withMetadata) {
             vearchConfig.setMetadataFieldNames(new ArrayList<>(metadata.keySet()));
@@ -141,6 +142,8 @@ class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
         embeddingStore = VearchEmbeddingStore.builder()
                 .vearchConfig(vearchConfig)
                 .baseUrl(baseUrl)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
@@ -154,19 +157,28 @@ class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
         return embeddingModel;
     }
 
+    @Override
     protected void clearStore() {
         vearchClient.deleteSpace(databaseName, spaceName);
+
+        buildEmbeddingStoreWithMetadata();
     }
 
+    @Override
     protected void ensureStoreIsEmpty() {
-        // This method should be blocked because the @BeforeEach method of the parent class is called before the beforeEach method of the child class
+        // This method should be skipped because the @BeforeEach method of the parent class is called before the @BeforeEach method of the child class
         // This test manually create Space at @BeforeEach, so it's guaranteed that the EmbeddingStore is empty
+    }
+
+    @Override
+    protected boolean testFloatAndDoubleExactly() {
+        return false;
     }
 
     @Test
     void should_delete_space() {
         embeddingStore.deleteSpace();
-        List<ListSpaceResponse> actual = vearchClient.listSpace(databaseName);
+        List<ListSpaceResponse> actual = vearchClient.listSpaceOfDatabase(databaseName);
         assertThat(actual.stream().map(ListSpaceResponse::getName)).doesNotContain(spaceName);
     }
 

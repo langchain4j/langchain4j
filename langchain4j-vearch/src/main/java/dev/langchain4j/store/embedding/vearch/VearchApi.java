@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.vearch;
 
-import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.http.*;
 
@@ -8,37 +7,39 @@ import java.util.List;
 
 interface VearchApi {
 
-    int OK = 200;
+    int OK = 0;
 
     /* Database Operation */
 
-    @GET("list/db")
+    @GET("dbs")
+    @Headers({"accept: application/json"})
     Call<ResponseWrapper<List<ListDatabaseResponse>>> listDatabase();
 
-    @PUT("db/_create")
-    Call<ResponseWrapper<CreateDatabaseResponse>> createDatabase(@Body CreateDatabaseRequest request);
+    @POST("dbs/{dbName}")
+    @Headers({"accept: application/json", "content-type: application/json"})
+    Call<ResponseWrapper<CreateDatabaseResponse>> createDatabase(@Path("dbName") String dbName);
 
-    @GET("list/space")
-    Call<ResponseWrapper<List<ListSpaceResponse>>> listSpaceOfDatabase(@Query("db") String dbName);
+    @GET("dbs/{dbName}/spaces")
+    @Headers({"accept: application/json"})
+    Call<ResponseWrapper<List<ListSpaceResponse>>> listSpaceOfDatabase(@Path("dbName") String dbName);
 
     /* Space (like a table in relational database) Operation */
 
-    @PUT("space/{db}/_create")
-    Call<ResponseWrapper<CreateSpaceResponse>> createSpace(@Path("db") String dbName,
+    @POST("dbs/{dbName}/spaces")
+    @Headers({"accept: application/json", "content-type: application/json"})
+    Call<ResponseWrapper<CreateSpaceResponse>> createSpace(@Path("dbName") String dbName,
                                                            @Body CreateSpaceRequest request);
+
+    @DELETE("dbs/{dbName}/spaces/{spaceName}")
+    Call<Void> deleteSpace(@Path("dbName") String dbName, @Path("spaceName") String spaceName);
 
     /* Document Operation */
 
-    @POST("{db}/{space}/_bulk")
-    Call<List<BulkResponse>> bulk(@Path("db") String db,
-                                  @Path("space") String space,
-                                  @Body RequestBody requestBody);
+    @POST("document/upsert")
+    @Headers({"accept: application/json", "content-type: application/json"})
+    Call<ResponseWrapper<UpsertResponse>> upsert(@Body UpsertRequest request);
 
-    @POST("{db}/{space}/_search")
-    Call<SearchResponse> search(@Path("db") String db,
-                                @Path("space") String space,
-                                @Body SearchRequest request);
-
-    @DELETE("space/{db}/{space}")
-    Call<Void> deleteSpace(@Path("db") String dbName, @Path("space") String spaceName);
+    @POST("document/search")
+    @Headers({"accept: application/json", "content-type: application/json"})
+    Call<ResponseWrapper<SearchResponse>> search(@Body SearchRequest request);
 }

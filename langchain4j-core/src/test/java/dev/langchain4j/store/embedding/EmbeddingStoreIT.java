@@ -68,17 +68,31 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         }
         assertThat(match.embedded().metadata().getLong("long_max")).isEqualTo(Long.MAX_VALUE);
 
-        assertThat(match.embedded().metadata().getFloat("float_min")).isEqualTo(-Float.MAX_VALUE);
-        assertThat(match.embedded().metadata().getFloat("float_minus_1")).isEqualTo(-1f);
-        assertThat(match.embedded().metadata().getFloat("float_0")).isEqualTo(Float.MIN_VALUE);
-        assertThat(match.embedded().metadata().getFloat("float_1")).isEqualTo(1f);
-        assertThat(match.embedded().metadata().getFloat("float_123")).isEqualTo(1.23456789f);
-        assertThat(match.embedded().metadata().getFloat("float_max")).isEqualTo(Float.MAX_VALUE);
+        if (testFloatAndDoubleExactly()) {
+            assertThat(match.embedded().metadata().getFloat("float_min")).isEqualTo(-Float.MAX_VALUE);
+            assertThat(match.embedded().metadata().getFloat("float_minus_1")).isEqualTo(-1f);
+            assertThat(match.embedded().metadata().getFloat("float_0")).isEqualTo(Float.MIN_VALUE);
+            assertThat(match.embedded().metadata().getFloat("float_1")).isEqualTo(1f);
+            assertThat(match.embedded().metadata().getFloat("float_123")).isEqualTo(1.23456789f);
+            assertThat(match.embedded().metadata().getFloat("float_max")).isEqualTo(Float.MAX_VALUE);
 
-        assertThat(match.embedded().metadata().getDouble("double_minus_1")).isEqualTo(-1d);
-        assertThat(match.embedded().metadata().getDouble("double_0")).isEqualTo(Double.MIN_VALUE);
-        assertThat(match.embedded().metadata().getDouble("double_1")).isEqualTo(1d);
-        assertThat(match.embedded().metadata().getDouble("double_123")).isEqualTo(1.23456789d);
+            assertThat(match.embedded().metadata().getDouble("double_minus_1")).isEqualTo(-1d);
+            assertThat(match.embedded().metadata().getDouble("double_0")).isEqualTo(Double.MIN_VALUE);
+            assertThat(match.embedded().metadata().getDouble("double_1")).isEqualTo(1d);
+            assertThat(match.embedded().metadata().getDouble("double_123")).isEqualTo(1.23456789d);
+        } else {
+            assertThat(match.embedded().metadata().getFloat("float_min")).isCloseTo(-Float.MAX_VALUE, withPercentage(0.01));
+            assertThat(match.embedded().metadata().getFloat("float_minus_1")).isCloseTo(-1f, withPercentage(0.01));
+            assertThat(match.embedded().metadata().getFloat("float_0")).isCloseTo(Float.MIN_VALUE, withPercentage(0.01));
+            assertThat(match.embedded().metadata().getFloat("float_1")).isCloseTo(1f, withPercentage(0.01));
+            assertThat(match.embedded().metadata().getFloat("float_123")).isCloseTo(1.23456789f, withPercentage(0.01));
+            assertThat(match.embedded().metadata().getFloat("float_max")).isCloseTo(Float.MAX_VALUE, withPercentage(0.01));
+
+            assertThat(match.embedded().metadata().getDouble("double_minus_1")).isCloseTo(-1d, withPercentage(0.01));
+            assertThat(match.embedded().metadata().getDouble("double_0")).isCloseTo(Double.MIN_VALUE, withPercentage(0.01));
+            assertThat(match.embedded().metadata().getDouble("double_1")).isCloseTo(1d, withPercentage(0.01));
+            assertThat(match.embedded().metadata().getDouble("double_123")).isCloseTo(1.23456789d, withPercentage(0.01));
+        }
 
         // new API
         assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
@@ -88,6 +102,10 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
     }
 
     protected boolean testLong1746714878034235396() {
+        return true;
+    }
+
+    protected boolean testFloatAndDoubleExactly() {
         return true;
     }
 

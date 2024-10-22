@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import dev.langchain4j.store.embedding.vearch.index.search.SearchIndexParam;
 
 import java.util.List;
 
@@ -14,29 +15,53 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 @JsonNaming(SnakeCaseStrategy.class)
 class SearchRequest {
 
-    private QueryParam query;
-    private Integer size;
+    private String dbName;
+    private String spaceName;
+    private List<Vector> vectors;
     private List<String> fields;
+    private Boolean vectorValue;
+    private Integer limit;
+    private SearchIndexParam indexParams;
 
     SearchRequest() {
     }
 
-    SearchRequest(QueryParam query, Integer size, List<String> fields) {
-        this.query = query;
-        this.size = size;
-        this.fields = fields;
+    SearchRequest(Builder builder) {
+        this.dbName = builder.dbName;
+        this.spaceName = builder.spaceName;
+        this.vectors = builder.vectors;
+        this.fields = builder.fields;
+        this.vectorValue = builder.vectorValue;
+        this.limit = builder.limit;
+        this.indexParams = builder.indexParams;
     }
 
-    public QueryParam getQuery() {
-        return query;
+    public String getDbName() {
+        return dbName;
     }
 
-    public Integer getSize() {
-        return size;
+    public String getSpaceName() {
+        return spaceName;
+    }
+
+    public List<Vector> getVectors() {
+        return vectors;
     }
 
     public List<String> getFields() {
         return fields;
+    }
+
+    public Boolean getVectorValue() {
+        return vectorValue;
+    }
+
+    public Integer getLimit() {
+        return limit;
+    }
+
+    public SearchIndexParam getIndexParams() {
+        return indexParams;
     }
 
     static Builder builder() {
@@ -45,17 +70,26 @@ class SearchRequest {
 
     static class Builder {
 
-        private QueryParam query;
-        private Integer size;
+        private String dbName;
+        private String spaceName;
+        private List<Vector> vectors;
         private List<String> fields;
+        private Boolean vectorValue;
+        private Integer limit;
+        private SearchIndexParam indexParams;
 
-        Builder query(QueryParam query) {
-            this.query = query;
+        Builder dbName(String dbName) {
+            this.dbName = dbName;
             return this;
         }
 
-        Builder size(Integer size) {
-            this.size = size;
+        Builder spaceName(String spaceName) {
+            this.spaceName = spaceName;
+            return this;
+        }
+
+        Builder vectors(List<Vector> vectors) {
+            this.vectors = vectors;
             return this;
         }
 
@@ -64,61 +98,39 @@ class SearchRequest {
             return this;
         }
 
+        Builder vectorValue(Boolean vectorValue) {
+            this.vectorValue = vectorValue;
+            return this;
+        }
+
+        Builder limit(Integer limit) {
+            this.limit = limit;
+            return this;
+        }
+
+        Builder indexParams(SearchIndexParam indexParams) {
+            this.indexParams = indexParams;
+            return this;
+        }
+
         SearchRequest build() {
-            return new SearchRequest(query, size, fields);
+            return new SearchRequest(this);
         }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonInclude(NON_NULL)
     @JsonNaming(SnakeCaseStrategy.class)
-    static class QueryParam {
-
-        private List<VectorParam> sum;
-
-        QueryParam() {
-        }
-
-        QueryParam(List<VectorParam> sum) {
-            this.sum = sum;
-        }
-
-        public List<VectorParam> getSum() {
-            return sum;
-        }
-
-        static Builder builder() {
-            return new Builder();
-        }
-
-        static class Builder {
-
-            private List<VectorParam> sum;
-
-            Builder sum(List<VectorParam> sum) {
-                this.sum = sum;
-                return this;
-            }
-
-            QueryParam build() {
-                return new QueryParam(sum);
-            }
-        }
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonInclude(NON_NULL)
-    @JsonNaming(SnakeCaseStrategy.class)
-    static class VectorParam {
+    static class Vector {
 
         private String field;
         private List<Float> feature;
         private Double minScore;
 
-        VectorParam() {
+        Vector() {
         }
 
-        VectorParam(String field, List<Float> feature, Double minScore) {
+        Vector(String field, List<Float> feature, Double minScore) {
             this.field = field;
             this.feature = feature;
             this.minScore = minScore;
@@ -161,8 +173,57 @@ class SearchRequest {
                 return this;
             }
 
-            VectorParam build() {
-                return new VectorParam(field, feature, minScore);
+            Vector build() {
+                return new Vector(field, feature, minScore);
+            }
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(NON_NULL)
+    @JsonNaming(SnakeCaseStrategy.class)
+    static class RankerParam {
+
+        private String type;
+        private List<Double> params;
+
+        RankerParam() {
+        }
+
+        RankerParam(String type, List<Double> params) {
+            this.type = type;
+            this.params = params;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public List<Double> getParams() {
+            return params;
+        }
+
+        static Builder builder() {
+            return new Builder();
+        }
+
+        static class Builder {
+
+            private String type;
+            private List<Double> params;
+
+            Builder type(String type) {
+                this.type = type;
+                return this;
+            }
+
+            Builder params(List<Double> params) {
+                this.params = params;
+                return this;
+            }
+
+            RankerParam build() {
+                return new RankerParam(type, params);
             }
         }
     }

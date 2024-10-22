@@ -4,9 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import dev.langchain4j.store.embedding.vearch.field.Field;
 
 import java.util.List;
-import java.util.Map;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
@@ -18,20 +18,16 @@ class CreateSpaceRequest {
     private String name;
     private Integer partitionNum;
     private Integer replicaNum;
-    private SpaceEngine engine;
-    private Map<String, SpacePropertyParam> properties;
-    private List<ModelParam> models;
+    private List<Field> fields;
 
     CreateSpaceRequest() {
     }
 
-    CreateSpaceRequest(String name, Integer partitionNum, Integer replicaNum, SpaceEngine engine, Map<String, SpacePropertyParam> properties, List<ModelParam> models) {
+    CreateSpaceRequest(String name, Integer partitionNum, Integer replicaNum, List<Field> fields) {
         this.name = name;
         this.partitionNum = partitionNum;
         this.replicaNum = replicaNum;
-        this.engine = engine;
-        this.properties = properties;
-        this.models = models;
+        this.fields = fields;
     }
 
     public String getName() {
@@ -46,16 +42,8 @@ class CreateSpaceRequest {
         return replicaNum;
     }
 
-    public SpaceEngine getEngine() {
-        return engine;
-    }
-
-    public Map<String, SpacePropertyParam> getProperties() {
-        return properties;
-    }
-
-    public List<ModelParam> getModels() {
-        return models;
+    public List<Field> getFields() {
+        return fields;
     }
 
     static Builder builder() {
@@ -67,9 +55,7 @@ class CreateSpaceRequest {
         private String name;
         private Integer partitionNum;
         private Integer replicaNum;
-        private SpaceEngine engine;
-        private Map<String, SpacePropertyParam> properties;
-        private List<ModelParam> models;
+        private List<Field> fields;
 
         Builder name(String name) {
             this.name = name;
@@ -86,23 +72,13 @@ class CreateSpaceRequest {
             return this;
         }
 
-        Builder engine(SpaceEngine engine) {
-            this.engine = engine;
-            return this;
-        }
-
-        Builder properties(Map<String, SpacePropertyParam> properties) {
-            this.properties = properties;
-            return this;
-        }
-
-        Builder models(List<ModelParam> models) {
-            this.models = models;
+        Builder fields(List<Field> fields) {
+            this.fields = fields;
             return this;
         }
 
         CreateSpaceRequest build() {
-            return new CreateSpaceRequest(name, partitionNum, replicaNum, engine, properties, models);
+            return new CreateSpaceRequest(name, partitionNum, replicaNum, fields);
         }
     }
 }

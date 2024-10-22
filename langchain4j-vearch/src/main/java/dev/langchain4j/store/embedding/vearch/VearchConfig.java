@@ -1,41 +1,73 @@
 package dev.langchain4j.store.embedding.vearch;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import dev.langchain4j.store.embedding.vearch.field.Field;
+import dev.langchain4j.store.embedding.vearch.field.FieldType;
+import dev.langchain4j.store.embedding.vearch.field.StringField;
+import dev.langchain4j.store.embedding.vearch.field.VectorField;
+import dev.langchain4j.store.embedding.vearch.index.HNSWParam;
+import dev.langchain4j.store.embedding.vearch.index.Index;
+import dev.langchain4j.store.embedding.vearch.index.IndexType;
+import dev.langchain4j.store.embedding.vearch.index.search.SearchIndexParam;
 
-import static java.util.Collections.singletonList;
+import java.util.List;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 public class VearchConfig {
 
+    static final String DEFAULT_ID_FIELD_NAME = "_id";
+    static final String DEFAULT_EMBEDDING_FIELD_NAME = "embedding";
+    static final String DEFAULT_TEXT_FIELD_NAME = "text";
+    static final String DEFAULT_SCORE_FILED_NAME = "_score";
+
+    static final List<Field> DEFAULT_FIELDS = List.of(
+            VectorField.builder()
+                    .name(DEFAULT_EMBEDDING_FIELD_NAME)
+                    .dimension(384)
+                    .index(Index.builder()
+                            .name("gamma")
+                            .type(IndexType.HNSW)
+                            .params(HNSWParam.builder()
+                                    .metricType(MetricType.INNER_PRODUCT)
+                                    .efSearch(64)
+                                    .build())
+                            .build()).build(),
+            StringField.builder()
+                    .fieldType(FieldType.STRING)
+                    .name(DEFAULT_TEXT_FIELD_NAME)
+                    .build()
+    );
+
     private String databaseName;
     private String spaceName;
-    private SpaceEngine spaceEngine;
+    private Index index;
+    /**
+     * Index param when searching, if not set, will use {@link Index}.
+     *
+     * @see Index
+     */
+    private SearchIndexParam searchIndexParam;
     /**
      * This attribute's key set should contain
      * {@link VearchConfig#embeddingFieldName}, {@link VearchConfig#textFieldName} and {@link VearchConfig#metadataFieldNames}
      */
-    private Map<String, SpacePropertyParam> properties;
+    private List<Field> fields;
     private String embeddingFieldName;
     private String textFieldName;
-    private List<ModelParam> modelParams;
     /**
-     * This attribute should be the subset of {@link VearchConfig#properties}'s key set
+     * This attribute should be the subset of {@link VearchConfig#fields}'s key set
      */
     private List<String> metadataFieldNames;
 
-    public VearchConfig() {
-    }
-
-    public VearchConfig(String databaseName, String spaceName, SpaceEngine spaceEngine, Map<String, SpacePropertyParam> properties, String embeddingFieldName, String textFieldName, List<ModelParam> modelParams, List<String> metadataFieldNames) {
-        this.databaseName = databaseName;
-        this.spaceName = spaceName;
-        this.spaceEngine = spaceEngine;
-        this.properties = properties;
-        this.embeddingFieldName = embeddingFieldName;
-        this.textFieldName = textFieldName;
-        this.modelParams = modelParams;
-        this.metadataFieldNames = metadataFieldNames;
+    public VearchConfig(Builder builder) {
+        this.databaseName = ensureNotNull(builder.databaseName, "databaseName");
+        this.spaceName = ensureNotNull(builder.spaceName, "spaceName");
+        this.searchIndexParam = builder.searchIndexParam;
+        this.fields = getOrDefault(builder.fields, DEFAULT_FIELDS);
+        this.embeddingFieldName = getOrDefault(builder.embeddingFieldName, DEFAULT_EMBEDDING_FIELD_NAME);
+        this.textFieldName = getOrDefault(builder.textFieldName, DEFAULT_TEXT_FIELD_NAME);
+        this.metadataFieldNames = builder.metadataFieldNames;
     }
 
     public String getDatabaseName() {
@@ -54,20 +86,20 @@ public class VearchConfig {
         this.spaceName = spaceName;
     }
 
-    public SpaceEngine getSpaceEngine() {
-        return spaceEngine;
+    public SearchIndexParam getSearchIndexParam() {
+        return searchIndexParam;
     }
 
-    public void setSpaceEngine(SpaceEngine spaceEngine) {
-        this.spaceEngine = spaceEngine;
+    public void setSearchIndexParam(SearchIndexParam searchIndexParam) {
+        this.searchIndexParam = searchIndexParam;
     }
 
-    public Map<String, SpacePropertyParam> getProperties() {
-        return properties;
+    public List<Field> getFields() {
+        return fields;
     }
 
-    public void setProperties(Map<String, SpacePropertyParam> properties) {
-        this.properties = properties;
+    public void setFields(List<Field> fields) {
+        this.fields = fields;
     }
 
     public String getEmbeddingFieldName() {
@@ -86,14 +118,6 @@ public class VearchConfig {
         this.textFieldName = textFieldName;
     }
 
-    public List<ModelParam> getModelParams() {
-        return modelParams;
-    }
-
-    public void setModelParams(List<ModelParam> modelParams) {
-        this.modelParams = modelParams;
-    }
-
     public List<String> getMetadataFieldNames() {
         return metadataFieldNames;
     }
@@ -102,92 +126,57 @@ public class VearchConfig {
         this.metadataFieldNames = metadataFieldNames;
     }
 
-    public static VearchConfigBuilder builder() {
-        return new VearchConfigBuilder();
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public static class VearchConfigBuilder {
+    public static class Builder {
 
         private String databaseName;
         private String spaceName;
-        private SpaceEngine spaceEngine;
-        private Map<String, SpacePropertyParam> properties;
-        private String embeddingFieldName = "embedding";
-        private String textFieldName = "text";
-        private List<ModelParam> modelParams;
+        private SearchIndexParam searchIndexParam;
+        private List<Field> fields;
+        private String embeddingFieldName;
+        private String textFieldName;
         private List<String> metadataFieldNames;
 
-        public VearchConfigBuilder databaseName(String databaseName) {
+        public Builder databaseName(String databaseName) {
             this.databaseName = databaseName;
             return this;
         }
 
-        public VearchConfigBuilder spaceName(String spaceName) {
+        public Builder spaceName(String spaceName) {
             this.spaceName = spaceName;
             return this;
         }
 
-        public VearchConfigBuilder spaceEngine(SpaceEngine spaceEngine) {
-            this.spaceEngine = spaceEngine;
+        public Builder searchIndexParam(SearchIndexParam searchIndexParam) {
+            this.searchIndexParam = searchIndexParam;
             return this;
         }
 
-        public VearchConfigBuilder properties(Map<String, SpacePropertyParam> properties) {
-            this.properties = properties;
+        public Builder fields(List<Field> fields) {
+            this.fields = fields;
             return this;
         }
 
-        public VearchConfigBuilder embeddingFieldName(String embeddingFieldName) {
+        public Builder embeddingFieldName(String embeddingFieldName) {
             this.embeddingFieldName = embeddingFieldName;
             return this;
         }
 
-        public VearchConfigBuilder textFieldName(String textFieldName) {
+        public Builder textFieldName(String textFieldName) {
             this.textFieldName = textFieldName;
             return this;
         }
 
-        public VearchConfigBuilder modelParams(List<ModelParam> modelParams) {
-            this.modelParams = modelParams;
-            return this;
-        }
-
-        public VearchConfigBuilder metadataFieldNames(List<String> metadataFieldNames) {
+        public Builder metadataFieldNames(List<String> metadataFieldNames) {
             this.metadataFieldNames = metadataFieldNames;
             return this;
         }
 
         public VearchConfig build() {
-            return new VearchConfig(databaseName, spaceName, spaceEngine, properties, embeddingFieldName, textFieldName, modelParams, metadataFieldNames);
+            return new VearchConfig(this);
         }
-    }
-
-    public static VearchConfig getDefaultConfig() {
-        // init properties
-        Map<String, SpacePropertyParam> properties = new HashMap<>(4);
-        properties.put("embedding", SpacePropertyParam.VectorParam.builder()
-                .index(true)
-                .storeType(SpaceStoreType.MEMORY_ONLY)
-                .dimension(384)
-                .build());
-        properties.put("text", SpacePropertyParam.StringParam.builder().build());
-
-        return VearchConfig.builder()
-                .spaceEngine(SpaceEngine.builder()
-                        .name("gamma")
-                        .indexSize(1L)
-                        .retrievalType(RetrievalType.FLAT)
-                        .retrievalParam(RetrievalParam.FLAT.builder()
-                                .build())
-                        .build())
-                .properties(properties)
-                .databaseName("embedding_db")
-                .spaceName("embedding_space")
-                .modelParams(singletonList(ModelParam.builder()
-                        .modelId("vgg16")
-                        .fields(singletonList("string"))
-                        .out("feature")
-                        .build()))
-                .build();
     }
 }
