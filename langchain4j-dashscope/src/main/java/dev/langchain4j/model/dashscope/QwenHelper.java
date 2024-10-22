@@ -32,8 +32,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -573,5 +572,62 @@ class QwenHelper {
                 .finishReason(response.finishReason())
                 .aiMessage(response.content())
                 .build();
+    }
+
+    static void onListenRequest(List<ChatModelListener> listeners,
+                                ChatModelRequest modelListenerRequest,
+                                Map<Object, Object> attributes) {
+        ChatModelRequestContext context = new ChatModelRequestContext(modelListenerRequest, attributes);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(context);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
+    }
+
+    static void onListenResponse(List<ChatModelListener> listeners,
+                                 String responseId,
+                                 Response<AiMessage> response,
+                                 ChatModelRequest modelListenerRequest,
+                                 Map<Object, Object> attributes) {
+        ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                responseId, modelListenerRequest.model(), response);
+
+        ChatModelResponseContext context = new ChatModelResponseContext(
+                modelListenerResponse,
+                modelListenerRequest,
+                attributes
+        );
+        listeners.forEach(listener -> {
+            try {
+                listener.onResponse(context);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
+    }
+
+    static void onListenError(List<ChatModelListener> listeners,
+                              String responseId,
+                              Throwable error,
+                              ChatModelRequest modelListenerRequest,
+                              Response<AiMessage> partialResponse, Map<Object, Object> attributes) {
+        ChatModelResponse partialModelListenerResponse = createModelListenerResponse(
+                responseId, modelListenerRequest.model(), partialResponse);
+        ChatModelErrorContext context = new ChatModelErrorContext(
+                error,
+                modelListenerRequest,
+                partialModelListenerResponse,
+                attributes
+        );
+        listeners.forEach(listener -> {
+            try {
+                listener.onError(context);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
     }
 }
