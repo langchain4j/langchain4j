@@ -50,7 +50,7 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GoogleAiBatchEmbeddingResponse.class);
     }
 
-    public Stream<GeminiGenerateContentResponse> generateContentStream(String modelName, String apiKey, GeminiGenerateContentRequest request) throws InterruptedException, IOException {
+    public Stream<GeminiGenerateContentResponse> generateContentStream(String modelName, String apiKey, GeminiGenerateContentRequest request) throws IOException {
         String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", GEMINI_AI_ENDPOINT, modelName);
         return streamRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
     }

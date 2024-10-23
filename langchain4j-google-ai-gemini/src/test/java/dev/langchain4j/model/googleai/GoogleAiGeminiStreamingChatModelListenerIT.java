@@ -5,6 +5,8 @@ import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.AfterEach;
 
+import java.io.IOException;
+
 import static java.util.Collections.singletonList;
 
 class GoogleAiGeminiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
@@ -45,7 +47,7 @@ class GoogleAiGeminiStreamingChatModelListenerIT extends StreamingChatModelListe
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return IOException.class;
     }
 
 
