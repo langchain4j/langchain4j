@@ -40,13 +40,13 @@ import static java.util.stream.Collectors.toList;
 public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final String ADDITIONALS = "_additional";
-    private static final String METADATA = "_metadata";
     private static final String NULL_VALUE = "<null>";
 
     private final WeaviateClient client;
     private final String objectClass;
     private final boolean avoidDups;
     private final String consistencyLevel;
+    private final String metadataFieldName;
     private final Collection<String> metadataKeys;
     private final String textFieldName;
 
@@ -63,6 +63,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
      *                          provided text segment, which avoids duplicated entries in DB.
      *                          If false, then random ID will be generated.
      * @param consistencyLevel  Consistency level: ONE, QUORUM (default) or ALL. Find more details <a href="https://weaviate.io/developers/weaviate/concepts/replication-architecture/consistency#tunable-write-consistency">here</a>.
+     * @param metadataFieldName The key in metadata that contains the metadata. Default is "_metadata". If set to empty string, then metadata will be stored in the root of the object.
      * @param metadataKeys      Metadata keys that should be persisted (optional)
      * @param useGrpcForInserts Use GRPC instead of HTTP for batch inserts only. <b>You still need HTTP configured for search</b>
      * @param securedGrpc       The GRPC connection is secured
@@ -81,6 +82,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             String objectClass,
             Boolean avoidDups,
             String consistencyLevel,
+            String metadataFieldName,
             Collection<String> metadataKeys,
             String textFieldName
     ) {
@@ -105,6 +107,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.objectClass = getOrDefault(objectClass, "Default");
         this.avoidDups = getOrDefault(avoidDups, true);
         this.consistencyLevel = getOrDefault(consistencyLevel, QUORUM);
+        this.metadataFieldName = getOrDefault(metadataFieldName, "_metadata");
         this.metadataKeys = getOrDefault(metadataKeys, Collections.emptyList());
         this.textFieldName = getOrDefault(textFieldName, "text");
     }
@@ -198,7 +201,11 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             for (String property : metadataKeys) {
                 metadataFields.add(Field.builder().name(property).build());
             }
-            fields.add(Field.builder().name(METADATA).fields(metadataFields.toArray(new Field[0])).build());
+            if (metadataFieldName != null && !metadataFieldName.isEmpty()) {
+                fields.add(Field.builder().name(metadataFieldName).fields(metadataFields.toArray(new Field[0])).build());
+            } else {
+                fields.addAll(metadataFields);
+            }
         }
         Result<GraphQLResponse> result = client
                 .graphQL()
@@ -293,7 +300,11 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     
     private void setMetadata(Map<String, Object> props, Map<String, Object> metadata) {
         if (metadata != null && !metadata.isEmpty()) {
-            props.put(METADATA, metadata);
+            if(metadataFieldName != null && !metadataFieldName.isEmpty()) {
+                props.put(metadataFieldName, metadata);
+            } else {
+              props.putAll(metadata);
+            }
         }
     }
 
@@ -308,13 +319,26 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     private EmbeddingMatch<TextSegment> toEmbeddingMatch(Map<String, ?> item) {
         Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
         final Metadata metadata = new Metadata();
-        if (item.get(METADATA) != null && item.get(METADATA) instanceof Map) {
-            Map<String, ?> resultingMetadata = (Map<String, ?>) item.get(METADATA);
-            for (Map.Entry<String, ?> entry : resultingMetadata.entrySet()) {
-                if (entry.getValue() != null && !NULL_VALUE.equals(entry.getValue())) {
-                    metadata.add(entry.getKey(), entry.getValue());
-                }
+        Map<String, ?> metadataMap = new HashMap();
+        if (metadataFieldName == null || metadataFieldName.isEmpty()) {
+          metadataKeys.stream().forEach(key -> {
+              if(item.get(key) != null && !NULL_VALUE.equals(item.get(key))) {
+                // TODO: Remove or replace use of deprecated method
+                metadata.add(key, item.get(key));
+              }
             }
+          );
+        } 
+        else if (item.get(metadataFieldName) != null && item.get(metadataFieldName) instanceof Map) {
+          metadataMap = (Map<String, ?>) item.get(metadataFieldName);
+        }
+        if(metadataMap != null) {
+          for (Map.Entry<String, ?> entry : metadataMap.entrySet()) {
+              if (entry.getValue() != null && !NULL_VALUE.equals(entry.getValue())) {
+                  // TODO: Remove or replace use of deprecated method
+                  metadata.add(entry.getKey(), entry.getValue());
+              }
+          }
         }
         String text = (String) item.get(textFieldName);
 
