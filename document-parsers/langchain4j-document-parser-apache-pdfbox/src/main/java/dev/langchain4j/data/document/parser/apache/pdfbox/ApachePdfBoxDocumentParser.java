@@ -16,7 +16,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 /**
  * Parses PDF file into a {@link Document} using Apache PDFBox library
  */
-public class ApachePdfBoxDocumentParser implements DocumentParser {
+public class ApachePdfBoxDocumentParser implements DocumentParser<Document> {
 
     private final boolean includeMetadata;
 

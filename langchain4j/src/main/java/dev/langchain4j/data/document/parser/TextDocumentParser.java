@@ -12,7 +12,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class TextDocumentParser implements DocumentParser {
+public class TextDocumentParser implements DocumentParser<Document> {
 
     private final Charset charset;
 
@@ -36,7 +36,7 @@ public class TextDocumentParser implements DocumentParser {
             }
             buffer.flush();
 
-            String text = new String(buffer.toByteArray(), charset);
+            String text = buffer.toString(charset);
 
             if (isNullOrBlank(text)) {
                 throw new BlankDocumentException();

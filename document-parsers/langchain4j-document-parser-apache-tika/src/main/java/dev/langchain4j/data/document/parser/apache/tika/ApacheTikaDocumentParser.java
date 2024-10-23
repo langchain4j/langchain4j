@@ -23,7 +23,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
  * For detailed information on supported formats,
  * please refer to the <a href="https://tika.apache.org/2.9.1/formats.html">Apache Tika documentation</a>.
  */
-public class ApacheTikaDocumentParser implements DocumentParser {
+public class ApacheTikaDocumentParser implements DocumentParser<Document> {
 
     private static final int NO_WRITE_LIMIT = -1;
     public static final Supplier<Parser> DEFAULT_PARSER_SUPPLIER = AutoDetectParser::new;

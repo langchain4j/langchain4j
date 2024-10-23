@@ -79,8 +79,8 @@ public class TextSegment {
     @Override
     public String toString() {
         return "TextSegment {" +
-                " text = " + quoted(text) +
-                " metadata = " + metadata.asMap() +
+                " text = " + quoted(text) + //todo: Be careful with PII here
+                " metadata = " + metadata.toMap() +
                 " }";
     }
 

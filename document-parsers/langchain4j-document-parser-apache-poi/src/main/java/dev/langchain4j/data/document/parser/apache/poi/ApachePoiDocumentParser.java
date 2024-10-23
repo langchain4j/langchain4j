@@ -18,7 +18,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
  * For detailed information on supported formats,
  * please refer to the <a href="https://poi.apache.org/">official Apache POI website</a>.
  */
-public class ApachePoiDocumentParser implements DocumentParser {
+public class ApachePoiDocumentParser implements DocumentParser<Document> {
 
     @Override
     public Document parse(InputStream inputStream) {

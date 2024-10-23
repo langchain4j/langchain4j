@@ -11,10 +11,10 @@ class ContentTest {
     void test_create_from_string() {
 
         // given
-        String contentText = "content";
+        final var contentText = "content";
 
         // when
-        Content content = Content.from(contentText);
+        final var content = Content.from(contentText);
 
         // then
         assertThat(content.textSegment().text()).isEqualTo(contentText);
@@ -24,10 +24,10 @@ class ContentTest {
     void test_create_from_text_segment() {
 
         // given
-        TextSegment segment = TextSegment.from("text");
+        final var segment = TextSegment.from("text");
 
         // when
-        Content content = Content.from(segment);
+        final var content = Content.from(segment);
 
         // then
         assertThat(content.textSegment()).isSameAs(segment);
@@ -37,9 +37,9 @@ class ContentTest {
     void test_equals_hashCode() {
 
         // given
-        Content content1 = Content.from("content");
-        Content content2 = Content.from("content 2");
-        Content content3 = Content.from("content");
+        final var content1 = Content.from("content");
+        final var content2 = Content.from("content 2");
+        final var content3 = Content.from("content");
 
         // then
         assertThat(content1)
@@ -53,15 +53,11 @@ class ContentTest {
 
     @Test
     void test_toString() {
-
         // given
-        Content content = Content.from("content");
-
-        // when
-        String toString = content.toString();
+        final var content = Content.from("content");
 
         // then
-        assertThat(toString)
-                .isEqualTo("Content { textSegment = TextSegment { text = \"content\" metadata = {} } }");
+        assertThat(content)
+                .hasToString("Content { textSegment = TextSegment { text = \"content\" metadata = {} } }");
     }
 }
