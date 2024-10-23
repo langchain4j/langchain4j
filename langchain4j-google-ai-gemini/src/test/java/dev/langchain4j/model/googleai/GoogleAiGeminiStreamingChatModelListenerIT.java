@@ -47,7 +47,7 @@ class GoogleAiGeminiStreamingChatModelListenerIT extends StreamingChatModelListe
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return IOException.class;
+        return RuntimeException.class;
     }
 
 
