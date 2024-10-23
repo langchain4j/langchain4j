@@ -25,6 +25,7 @@
         <dependency>
             <groupId>org.apache.opennlp</groupId>
             <artifactId>opennlp-tools</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
