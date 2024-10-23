@@ -45,8 +45,14 @@ class JsonSchemaElementHelperTest {
 
         // then
         assertThat(jsonSchemaElement).isEqualTo(JsonObjectSchema.builder()
-                .addObjectProperty("billingAddress", o -> o.addStringProperty("city").required("city"))
-                .addObjectProperty("shippingAddress", o -> o.addStringProperty("city").required("city"))
+                .addProperty("billingAddress", JsonObjectSchema.builder()
+                        .addStringProperty("city")
+                        .required("city")
+                        .build())
+                .addProperty("shippingAddress", JsonObjectSchema.builder()
+                        .addStringProperty("city")
+                        .required("city")
+                        .build())
                 .required("billingAddress", "shippingAddress")
                 .build());
     }

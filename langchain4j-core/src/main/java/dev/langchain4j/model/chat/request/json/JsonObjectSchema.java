@@ -7,7 +7,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.quoted;
@@ -76,19 +75,15 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #addProperty(String, JsonSchemaElement)
          * @see #addStringProperty(String)
-         * @see #addStringProperty(String, Consumer)
+         * @see #addStringProperty(String, String)
          * @see #addIntegerProperty(String)
-         * @see #addIntegerProperty(String, Consumer)
+         * @see #addIntegerProperty(String, String)
          * @see #addNumberProperty(String)
-         * @see #addNumberProperty(String, Consumer)
+         * @see #addNumberProperty(String, String)
          * @see #addBooleanProperty(String)
-         * @see #addBooleanProperty(String, Consumer)
-         * @see #addEnumProperty(String, Class)
-         * @see #addEnumProperty(String, String...)
-         * @see #addEnumProperty(String, Consumer)
-         * @see #addArrayProperty(String, JsonSchemaElement)
-         * @see #addArrayProperty(String, Consumer)
-         * @see #addObjectProperty(String, Consumer)
+         * @see #addBooleanProperty(String, String)
+         * @see #addEnumProperty(String, List)
+         * @see #addEnumProperty(String, List, String)
          */
         public Builder properties(Map<String, JsonSchemaElement> properties) {
             this.properties = properties;
@@ -101,19 +96,15 @@ public class JsonObjectSchema implements JsonSchemaElement {
          *
          * @see #properties(Map)
          * @see #addStringProperty(String)
-         * @see #addStringProperty(String, Consumer)
+         * @see #addStringProperty(String, String)
          * @see #addIntegerProperty(String)
-         * @see #addIntegerProperty(String, Consumer)
+         * @see #addIntegerProperty(String, String)
          * @see #addNumberProperty(String)
-         * @see #addNumberProperty(String, Consumer)
+         * @see #addNumberProperty(String, String)
          * @see #addBooleanProperty(String)
-         * @see #addBooleanProperty(String, Consumer)
-         * @see #addEnumProperty(String, Class)
-         * @see #addEnumProperty(String, String...)
-         * @see #addEnumProperty(String, Consumer)
-         * @see #addArrayProperty(String, JsonSchemaElement)
-         * @see #addArrayProperty(String, Consumer)
-         * @see #addObjectProperty(String, Consumer)
+         * @see #addBooleanProperty(String, String)
+         * @see #addEnumProperty(String, List)
+         * @see #addEnumProperty(String, List, String)
          */
         public Builder addProperty(String name, JsonSchemaElement jsonSchemaElement) {
             this.properties.put(name, jsonSchemaElement);
@@ -124,8 +115,9 @@ public class JsonObjectSchema implements JsonSchemaElement {
          * Adds a single string property to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addStringProperty(String, String)
          * @see #addProperty(String, JsonSchemaElement)
+         * @see #properties(Map)
          */
         public Builder addStringProperty(String name) {
             this.properties.put(name, new JsonStringSchema());
@@ -133,16 +125,15 @@ public class JsonObjectSchema implements JsonSchemaElement {
         }
 
         /**
-         * Adds a single string property to the properties of this JSON object.
+         * Adds a single string property with a description to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addStringProperty(String)
          * @see #addProperty(String, JsonSchemaElement)
+         * @see #properties(Map)
          */
-        public Builder addStringProperty(String name, Consumer<JsonStringSchema.Builder> builderConsumer) {
-            JsonStringSchema.Builder builder = JsonStringSchema.builder();
-            builderConsumer.accept(builder);
-            this.properties.put(name, builder.build());
+        public Builder addStringProperty(String name, String description) {
+            this.properties.put(name, JsonStringSchema.builder().description(description).build());
             return this;
         }
 
@@ -150,8 +141,9 @@ public class JsonObjectSchema implements JsonSchemaElement {
          * Adds a single integer property to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addIntegerProperty(String, String)
          * @see #addProperty(String, JsonSchemaElement)
+         * @see #properties(Map)
          */
         public Builder addIntegerProperty(String name) {
             this.properties.put(name, new JsonIntegerSchema());
@@ -159,16 +151,15 @@ public class JsonObjectSchema implements JsonSchemaElement {
         }
 
         /**
-         * Adds a single integer property to the properties of this JSON object.
+         * Adds a single integer property with a description to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addIntegerProperty(String)
          * @see #addProperty(String, JsonSchemaElement)
+         * @see #properties(Map)
          */
-        public Builder addIntegerProperty(String name, Consumer<JsonIntegerSchema.Builder> builderConsumer) {
-            JsonIntegerSchema.Builder builder = JsonIntegerSchema.builder();
-            builderConsumer.accept(builder);
-            this.properties.put(name, builder.build());
+        public Builder addIntegerProperty(String name, String description) {
+            this.properties.put(name, JsonIntegerSchema.builder().description(description).build());
             return this;
         }
 
@@ -176,8 +167,9 @@ public class JsonObjectSchema implements JsonSchemaElement {
          * Adds a single number property to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addNumberProperty(String, String)
          * @see #addProperty(String, JsonSchemaElement)
+         * @see #properties(Map)
          */
         public Builder addNumberProperty(String name) {
             this.properties.put(name, new JsonNumberSchema());
@@ -185,16 +177,15 @@ public class JsonObjectSchema implements JsonSchemaElement {
         }
 
         /**
-         * Adds a single number property to the properties of this JSON object.
+         * Adds a single number property with a description to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addNumberProperty(String)
          * @see #addProperty(String, JsonSchemaElement)
+         * @see #properties(Map)
          */
-        public Builder addNumberProperty(String name, Consumer<JsonNumberSchema.Builder> builderConsumer) {
-            JsonNumberSchema.Builder builder = JsonNumberSchema.builder();
-            builderConsumer.accept(builder);
-            this.properties.put(name, builder.build());
+        public Builder addNumberProperty(String name, String description) {
+            this.properties.put(name, JsonNumberSchema.builder().description(description).build());
             return this;
         }
 
@@ -202,8 +193,9 @@ public class JsonObjectSchema implements JsonSchemaElement {
          * Adds a single boolean property to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addBooleanProperty(String, String)
          * @see #addProperty(String, JsonSchemaElement)
+         * @see #properties(Map)
          */
         public Builder addBooleanProperty(String name) {
             this.properties.put(name, new JsonBooleanSchema());
@@ -211,16 +203,15 @@ public class JsonObjectSchema implements JsonSchemaElement {
         }
 
         /**
-         * Adds a single boolean property to the properties of this JSON object.
+         * Adds a single boolean property with a description to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addBooleanProperty(String)
          * @see #addProperty(String, JsonSchemaElement)
+         * @see #properties(Map)
          */
-        public Builder addBooleanProperty(String name, Consumer<JsonBooleanSchema.Builder> builderConsumer) {
-            JsonBooleanSchema.Builder builder = JsonBooleanSchema.builder();
-            builderConsumer.accept(builder);
-            this.properties.put(name, builder.build());
+        public Builder addBooleanProperty(String name, String description) {
+            this.properties.put(name, JsonBooleanSchema.builder().description(description).build());
             return this;
         }
 
@@ -228,77 +219,25 @@ public class JsonObjectSchema implements JsonSchemaElement {
          * Adds a single enum property to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addEnumProperty(String, List, String)
          * @see #addProperty(String, JsonSchemaElement)
-         */
-        public Builder addEnumProperty(String name, Class<? extends Enum<?>> enumClass) {
-            this.properties.put(name, JsonEnumSchema.builder().enumValues(enumClass).build());
-            return this;
-        }
-
-        /**
-         * Adds a single enum property to the properties of this JSON object.
-         * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
-         *
          * @see #properties(Map)
-         * @see #addProperty(String, JsonSchemaElement)
          */
-        public Builder addEnumProperty(String name, String... enumValues) {
+        public Builder addEnumProperty(String name, List<String> enumValues) {
             this.properties.put(name, JsonEnumSchema.builder().enumValues(enumValues).build());
             return this;
         }
 
         /**
-         * Adds a single enum property to the properties of this JSON object.
+         * Adds a single enum property with a description to the properties of this JSON object.
          * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
          *
-         * @see #properties(Map)
+         * @see #addEnumProperty(String, List)
          * @see #addProperty(String, JsonSchemaElement)
-         */
-        public Builder addEnumProperty(String name, Consumer<JsonEnumSchema.Builder> builderConsumer) {
-            JsonEnumSchema.Builder builder = JsonEnumSchema.builder();
-            builderConsumer.accept(builder);
-            this.properties.put(name, builder.build());
-            return this;
-        }
-
-        /**
-         * Adds a single array property to the properties of this JSON object.
-         * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
-         *
          * @see #properties(Map)
-         * @see #addProperty(String, JsonSchemaElement)
          */
-        public Builder addArrayProperty(String name, Consumer<JsonArraySchema.Builder> builderConsumer) {
-            JsonArraySchema.Builder builder = JsonArraySchema.builder();
-            builderConsumer.accept(builder);
-            this.properties.put(name, builder.build());
-            return this;
-        }
-
-        /**
-         * Adds a single array property to the properties of this JSON object.
-         * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
-         *
-         * @see #properties(Map)
-         * @see #addProperty(String, JsonSchemaElement)
-         */
-        public Builder addArrayProperty(String name, JsonSchemaElement items) {
-            this.properties.put(name, JsonArraySchema.builder().items(items).build());
-            return this;
-        }
-
-        /**
-         * Adds a single object property to the properties of this JSON object.
-         * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
-         *
-         * @see #properties(Map)
-         * @see #addProperty(String, JsonSchemaElement)
-         */
-        public Builder addObjectProperty(String name, Consumer<JsonObjectSchema.Builder> builderConsumer) {
-            JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
-            builderConsumer.accept(builder);
-            this.properties.put(name, builder.build());
+        public Builder addEnumProperty(String name, List<String> enumValues, String description) {
+            this.properties.put(name, JsonEnumSchema.builder().enumValues(enumValues).description(description).build());
             return this;
         }
 
