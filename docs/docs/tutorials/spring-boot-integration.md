@@ -4,31 +4,59 @@ sidebar_position: 27
 
 # Spring Boot Integration
 
-## Spring Boot Starters for Popular Integrations
+LangChain4j provides [Spring Boot starters](https://github.com/langchain4j/langchain4j-spring) for:
+- popular integrations
+- declarative [AI Services](/tutorials/ai-services)
 
-LangChain4j provides [Spring Boot starters](https://github.com/langchain4j/langchain4j-spring) for popular integrations.
 
-To use one of the Spring Boot starters, first import the corresponding dependency:
+## Spring Boot starters for popular integrations
 
+Spring Boot starters help with creating and configuring
+[language models](/category/language-models),
+[embedding models](/category/embedding-models),
+[embedding stores](/category/embedding-stores),
+and other core LangChain4j components through properties.
+
+To use one of the Spring Boot starters, import the corresponding dependency.
+
+The naming convention for the Spring Boot starter dependency is: `langchain4j-{integration-name}-spring-boot-starter`.
+
+For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `langchain4j-open-ai-spring-boot-starter`:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.31.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
 Then, you can configure model parameters in the `application.properties` file as follows:
 ```
 langchain4j.open-ai.chat-model.api-key=${OPENAI_API_KEY}
+langchain4j.open-ai.chat-model.model-name=gpt-4o
+langchain4j.open-ai.chat-model.log-requests=true
+langchain4j.open-ai.chat-model.log-responses=true
 ...
 ```
 
-The complete list of supported properties can be found
-[here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-open-ai-spring-boot-starter/src/main/java/dev/langchain4j/openai/spring/AutoConfig.java).
-
 In this case, an instance of `OpenAiChatModel` (an implementation of a `ChatLanguageModel`) will be automatically created,
-and you can autowire it where needed.
+and you can autowire it where needed:
+```java
+@RestController
+public class ChatController {
+
+    ChatLanguageModel chatLanguageModel;
+
+    public ChatController(ChatLanguageModel chatLanguageModel) {
+        this.chatLanguageModel = chatLanguageModel;
+    }
+
+    @GetMapping("/chat")
+    public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
+        return chatLanguageModel.generate(message);
+    }
+}
+```
 
 If you need an instance of a `StreamingChatLanguageModel`,
 use the `streaming-chat-model` instead of the `chat-model` properties:
@@ -37,7 +65,8 @@ langchain4j.open-ai.streaming-chat-model.api-key=${OPENAI_API_KEY}
 ...
 ```
 
-## LangChain4j Spring Boot Starter
+
+## Spring Boot starter for declarative AI Services
 
 LangChain4j provides a Spring Boot starter for auto-configuring
 [AI Services](/tutorials/ai-services), [RAG](/tutorials/rag), [Tools](/tutorials/tools) etc.
@@ -48,7 +77,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>0.31.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
@@ -82,8 +111,59 @@ class AssistantController {
     }
 }
 ```
-More details [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
 
+### Automatic Component Wiring
+The following components will be automatically wired into the AI Service if available in the application context:
+- `ChatLanguageModel`
+- `StreamingChatLanguageModel`
+- `ChatMemory`
+- `ChatMemoryProvider`
+- `ContentRetriever`
+- `RetrievalAugmentor`
+- All methods annotated with `@Tool` (note that these methods must be defined in a class that is a Spring **bean**)
+
+:::note
+If multiple components of the same type are present in the application context, the application will fail to start.
+In this case, use the explicit wiring mode (explained below).
+:::
+
+### Explicit Component Wiring
+
+If you have multiple AI Services and want to wire different LangChain4j components into each of them,
+you can specify which components to use with explicit wiring mode (`@AiService(wiringMode = EXPLICIT)`).
+
+Let's say we have two `ChatLanguageModel`s configured:
+```properties
+# OpenAI
+langchain4j.open-ai.chat-model.api-key=${OPENAI_API_KEY}
+langchain4j.open-ai.chat-model.model-name=gpt-4o-mini
+
+# Ollama
+langchain4j.ollama.chat-model.base-url=http://localhost:11434
+langchain4j.ollama.chat-model.model-name=llama3.1
+```
+
+```java
+@AiService(wiringMode = EXPLICIT, chatModel = "openAiChatModel")
+interface OpenAiAssistant {
+
+    @SystemMessage("You are a polite assistant")
+    String chat(String userMessage);
+}
+
+@AiService(wiringMode = EXPLICIT, chatModel = "ollamaChatModel")
+interface OllamaAssistant {
+
+    @SystemMessage("You are a polite assistant")
+    String chat(String userMessage);
+}
+```
+
+:::note
+In this case, you must explicitly specify **all** components.
+:::
+
+More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
 
 ## Supported versions
 

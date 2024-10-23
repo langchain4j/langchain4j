@@ -9,7 +9,7 @@ interface ChatGlmApi {
 
     int OK = 200;
 
-    @POST("/")
+    @POST(".")
     @Headers({"Content-Type: application/json"})
     Call<ChatCompletionResponse> chatCompletion(@Body ChatCompletionRequest chatCompletionRequest);
 }

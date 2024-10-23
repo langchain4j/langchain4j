@@ -43,12 +43,12 @@ Close, but not correct.
 An example of a message exchange with the following tools:
 ```java
 @Tool("Sums 2 given numbers")
-public double sum(double a, double b) {
+double sum(double a, double b) {
     return a + b;
 }
 
 @Tool("Returns a square root of a given number")
-public double squareRoot(double x) {
+double squareRoot(double x) {
     return Math.sqrt(x);
 }
 ```
@@ -112,23 +112,20 @@ Some models can even call multiple tools at once, for example,
 
 :::note
 Please note that not all models support tools.
-Currently, the following models have tool support:
-- `OpenAiChatModel`
-- `AzureOpenAiChatModel`
-- `MistralAiChatModel`
-- `LocalAiChatModel`
-- `QianfanChatModel`
+To see which models support tools, refer to the "Tools" column on [this](https://docs.langchain4j.dev/integrations/language-models/) page.
 :::
 
 :::note
 Please note that tools/function calling is not the same as [JSON mode](/tutorials/ai-services#json-mode).
 :::
 
-## 2 levels of abstraction
+# 2 levels of abstraction
 
-LangChain4j provides two levels of abstraction for using tools.
+LangChain4j provides two levels of abstraction for using tools:
+- Low-level, using the `ChatLanguageModel` and `ToolSpecification` APIs
+- High-level, using [AI Services](/tutorials/ai-services) and `@Tool`-annotated Java methods
 
-### Low level Tool API
+## Low Level Tool API
 
 At the low level, you can use the `generate(List<ChatMessage>, List<ToolSpecification>)` method
 of the `ChatLanguageModel`. A similar method is also present in the `StreamingChatLanguageModel`.
@@ -136,7 +133,7 @@ of the `ChatLanguageModel`. A similar method is also present in the `StreamingCh
 `ToolSpecification` is an object that contains all the information about the tool:
 - The `name` of the tool
 - The `description` of the tool
-- The `parameters` (arguments) of the tool and their descriptions
+- The `parameters` of the tool and their descriptions
 
 It is recommended to provide as much information about the tool as possible:
 a clear name, a comprehensive description, and a description for each parameter, etc.
@@ -148,10 +145,55 @@ There are two ways to create a `ToolSpecification`:
 ToolSpecification toolSpecification = ToolSpecification.builder()
     .name("getWeather")
     .description("Returns the weather forecast for a given city")
-    .addParameter("city", type("string"), description("The city for which the weather forecast should be returned"))
-    .addParameter("temperatureUnit", enums(TemperatureUnit.class)) // enum TemperatureUnit { CELSIUS, FAHRENHEIT }
+    .parameters(JsonObjectSchema.builder()
+        .addStringProperty("city", "The city for which the weather forecast should be returned")
+        .addEnumProperty("temperatureUnit", List.of("CELSIUS", "FAHRENHEIT"))
+        .required("city") // the required properties should be specified explicitly
+        .build())
     .build();
 ```
+
+<details>
+<summary>More details</summary>
+
+There are several ways to add properties to a `JsonObjectSchema`:
+1. You can add all the properties at once using the `properties(Map<String, JsonSchemaElement> properties)` method:
+```java
+JsonObjectSchema.builder()
+    .properties(Map.of(
+        "city", JsonStringSchema.builder()
+                    .description("The city for which the weather forecast should be returned")
+                    .build(),
+        "temperatureUnit", JsonEnumSchema.builder()
+                    .enumValues("CELSIUS", "FAHRENHEIT")
+                    .build()
+    ))
+    .required("city")
+    .build();
+```
+2. You can add properties individually using the `addProperty(String name, JsonSchemaElement jsonSchemaElement)` method:
+```java
+JsonObjectSchema.builder()
+    .addProperty("city", JsonStringSchema.builder()
+        .description("The city for which the weather forecast should be returned")
+        .build())
+    .addProperty("temperatureUnit", JsonEnumSchema.builder()
+        .enumValues("CELSIUS", "FAHRENHEIT")
+        .build())
+    .required("city")
+    .build();
+```
+3. You can add properties individually using one of the `add{Type}Property(String name)` or `add{Type}Property(String name, String description)` methods:
+```java
+JsonObjectSchema.builder()
+    .addStringProperty("city", "The city for which the weather forecast should be returned")
+    .addEnumProperty("temperatureUnit", List.of("CELSIUS", "FAHRENHEIT"))
+    .required("city")
+    .build();
+```
+
+Please refer to the Javadoc of the `JsonObjectSchema` for more details.
+</details>
 
 2. Using helper methods:
 - `ToolSpecifications.toolSpecificationsFrom(Class)`
@@ -176,7 +218,7 @@ List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificatio
 Once you have a `List<ToolSpecification>`, you can call the model:
 ```java
 UserMessage userMessage = UserMessage.from("What will the weather be like in London tomorrow?");
-Response<AiMessage> response = model.generate(singletoneList(userMessage), toolSpecifications);
+Response<AiMessage> response = model.generate(List.of(userMessage), toolSpecifications);
 AiMessage aiMessage = response.content();
 ```
 
@@ -203,24 +245,15 @@ List<ChatMessage> messages = List.of(userMessage, aiMessage, toolExecutionResult
 Response<AiMessage> response2 = model.generate(messages, toolSpecifications);
 ```
 
-### High Level Tool API
-At a high level, you can annotate any Java method with the `@Tool` annotation
-and use it with [AI Services](/tutorials/ai-services).
+## High Level Tool API
+At a high level of abstraction, you can annotate any Java method with the `@Tool` annotation
+and specify them when creating [AI Service](/tutorials/ai-services).
 
-AI Services will automatically convert such methods into `ToolSpecification`s
+AI Service will automatically convert such methods into `ToolSpecification`s
 and include them in the request for each interaction with the LLM.
 When the LLM decides to call the tool, the AI Service will automatically execute the appropriate method,
 and the return value of the method (if any) will be sent back to the LLM.
 You can find implementation details in `DefaultToolExecutor`.
-
-Methods annotated with `@Tool` can accept any number of parameters of various types.
-
-They can also return any type, including `void`. If the method has a `void` return type,
-"Success" string is sent to the LLM if the method returns successfully.
-
-If the method has a `String` return type, the returned value is sent to the LLM as is, without any conversions.
-
-For other return types, the returned value is converted into a JSON before being sent to the LLM.
 
 A few tool examples:
 ```java
@@ -236,6 +269,38 @@ public String getWebPageContent(@P("URL of the page") String url) {
 }
 ```
 
+### Tool Method Restrictions
+Methods annotated with `@Tool`:
+- can be either static or non-static
+- can have any visibility (public, private, etc.).
+
+### Tool Method Parameters
+Methods annotated with `@Tool` can accept any number of parameters of various types:
+- Primitive types: `int`, `double`, etc
+- Object types: `String`, `Integer`, `Double`, etc
+- Custom POJOs (can contain nested POJOs)
+- Enums
+- `List`/`Set` of above-mentioned types
+- `Map<K,V>` (you need to manually specify the types of `K` and `V` in the parameter description)
+
+Methods without parameters are supported as well.
+
+By default, all method parameters are considered mandatory/required.
+This means that the LLM will have to produce a value for such a parameter.
+A parameter can be made optional by annotating it with `@P(required = false)`.
+Declaring fields of POJO parameters as optional is not supported yet.
+
+Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
+are currently supported only by OpenAI.
+
+### Tool Method Return Types
+Methods annotated with `@Tool` can return any type, including `void`.
+If the method has a `void` return type, "Success" string is sent to the LLM if the method returns successfully.
+
+If the method has a `String` return type, the returned value is sent to the LLM as is, without any conversions.
+
+For other return types, the returned value is converted into a JSON string before being sent to the LLM.
+
 ### `@Tool`
 Any Java method annotated with `@Tool`
 and _explicitly_ specified during the build of an AI Service can be executed by the LLM:
@@ -248,12 +313,12 @@ interface MathGenius {
 class Calculator {
     
     @Tool
-    public double add(int a, int b) {
+    double add(int a, int b) {
         return a + b;
     }
 
     @Tool
-    public double squareRoot(double x) {
+    double squareRoot(double x) {
         return Math.sqrt(x);
     }
 }
@@ -282,7 +347,30 @@ This way, the LLM has more information to decide whether or not to call the give
 
 ### `@P`
 Method parameters can optionally be annotated with `@P`.
-`@P` has a single mandatory field (`value`) for providing a description of the parameter.
+
+The `@P` annotation has 2 fields
+- `value`: description of the parameter. Mandatory field.
+- `required`: whether the parameter is required, default is `true`. Optional field.
+
+### `@Description`
+The description of classes and fields can be specified using the `@Description` annotation:
+
+```java
+@Description("Query to execute")
+class Query {
+
+  @Description("Fields to select")
+  private List<String> select;
+
+  @Description("Conditions to filter on")
+  private List<Condition> where;
+}
+
+@Tool
+Result executeQuery(Query query) {
+  ...
+}
+```
 
 ### `@ToolMemoryId`
 If your AI Service method has a parameter annotated with `@MemoryId`,
@@ -290,6 +378,96 @@ you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`.
 The value provided to the AI Service method will be automatically passed to the `@Tool` method.
 This feature is useful if you have multiple users and/or multiple chats/memories per user
 and wish to distinguish between them inside the `@Tool` method.
+
+### Accessing Executed Tools
+If you wish to access tools executed during the invocation of an AI Service,
+you can easily do so by wrapping the return type in the `Result` class:
+```java
+interface Assistant {
+
+    Result<String> chat(String userMessage);
+}
+
+Result<String> result = assistant.chat("Cancel my booking 123-456");
+
+String answer = result.content();
+List<ToolExecution> toolExecutions = result.toolExecutions();
+```
+
+### Specifying Tools Programmatically
+
+When using AI Services, tools can also be specified programmatically.
+This approach offers a lot of flexibility, as tools can be loaded
+from external sources such as databases and configuration files.
+
+Tool names, descriptions, parameter names, and descriptions
+can all be configured using `ToolSpecification`:
+```java
+ToolSpecification toolSpecification = ToolSpecification.builder()
+        .name("get_booking_details")
+        .description("Returns booking details")
+        .parameters(JsonObjectSchema.builder()
+                .properties(Map.of(
+                        "bookingNumber", JsonStringSchema.builder()
+                                .description("Booking number in B-12345 format")
+                                .build()
+                ))
+                .build())
+        .build();
+```
+
+For each `ToolSpecification`, one needs to provide a `ToolExecutor` implementation
+that will be handling tool execution requests generated by the LLM:
+```java
+ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
+    Map<String, Object> arguments = fromJson(toolExecutionRequest.arguments());
+    String bookingNumber = arguments.get("bookingNumber").toString();
+    Booking booking = getBooking(bookingNumber);
+    return booking.toString();
+};
+```
+
+Once we have one or multiple (`ToolSpecification`, `ToolExecutor`) pairs,
+we can specify them when creating an AI Service:
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatLanguageModel(chatLanguageModel)
+    .tools(Map.of(toolSpecification, toolExecutor))
+    .build();
+```
+
+### Specifying Tools Dynamically
+
+When using AI services, tools can also be specified dynamically for each invocation.
+One can configure a `ToolProvider` that will be called each time the AI service is invoked
+and will provide the tools that should be included in the current request to the LLM.
+The `ToolProvider` accepts a `ToolProviderRequest` that contains the `UserMessage` and chat memory ID
+and returns a `ToolProviderResult` that contains tools in a form of a `Map` from `ToolSpecification` to `ToolExecutor`.
+
+Here is an example of how to add the `get_booking_details` tool only when the user's message contains the word "booking":
+```java
+ToolProvider toolProvider = (toolProviderRequest) -> {
+    if (toolProviderRequest.userMessage().singleText().contains("booking")) {
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+            .name("get_booking_details")
+            .description("Returns booking details")
+            .parameters(JsonObjectSchema.builder()
+                .addStringProperty("bookingNumber")
+                .build())
+            .build();
+        return ToolProviderResult.builder()
+            .add(toolSpecification, toolExecutor)
+            .build();
+    } else {
+        return null;
+    }
+};
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatLanguageModel(model)
+    .toolProvider(toolProvider)
+    .build();
+```
 
 ## Related Tutorials
 

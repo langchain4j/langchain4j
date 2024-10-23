@@ -3,18 +3,19 @@ package dev.langchain4j.model.dashscope;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
@@ -25,6 +26,8 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".+")
 public class QwenChatModelIT {
@@ -38,7 +41,6 @@ public class QwenChatModelIT {
                 .build();
 
         Response<AiMessage> response = model.generate(QwenTestHelper.chatMessages());
-        System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("rain");
     }
@@ -117,7 +119,7 @@ public class QwenChatModelIT {
         Response<AiMessage> secondResponse = model.generate(messages, singletonList(hasArgToolSpec));
 
         AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("rainy");
+        assertThat(secondAiMessage.text()).contains("rain");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
@@ -210,7 +212,7 @@ public class QwenChatModelIT {
     }
 
     @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#multimodalChatModelNameProvider")
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#vlChatModelNameProvider")
     public void should_send_multimodal_image_url_and_receive_response(String modelName) {
         ChatLanguageModel model = QwenChatModel.builder()
                 .apiKey(apiKey())
@@ -218,13 +220,12 @@ public class QwenChatModelIT {
                 .build();
 
         Response<AiMessage> response = model.generate(multimodalChatMessagesWithImageUrl());
-        System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("dog");
     }
 
     @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#multimodalChatModelNameProvider")
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#vlChatModelNameProvider")
     public void should_send_multimodal_image_data_and_receive_response(String modelName) {
         ChatLanguageModel model = QwenChatModel.builder()
                 .apiKey(apiKey())
@@ -232,8 +233,95 @@ public class QwenChatModelIT {
                 .build();
 
         Response<AiMessage> response = model.generate(multimodalChatMessagesWithImageData());
-        System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("parrot");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#audioChatModelNameProvider")
+    public void should_send_multimodal_audio_url_and_receive_response(String modelName) {
+        ChatLanguageModel model = QwenChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        Response<AiMessage> response = model.generate(multimodalChatMessagesWithAudioUrl());
+
+        assertThat(response.content().text()).containsIgnoringCase("阿里云");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#audioChatModelNameProvider")
+    public void should_send_multimodal_audio_data_and_receive_response(String modelName) {
+        ChatLanguageModel model = QwenChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        Response<AiMessage> response = model.generate(multimodalChatMessagesWithAudioData());
+
+        assertThat(response.content().text()).containsIgnoringCase("阿里云");
+    }
+
+    @Test
+    public void should_sanitize_messages() {
+        List<ChatMessage> messages = new LinkedList<>();
+
+        // 1. The system message should be the first message.
+        // 2. User/Tool-execution-result messages and AI messages should alternate.
+        // 3. The last message in the message list should be a user message. This serves as the model query/input for the current round.
+
+        messages.add(SystemMessage.from("System message 1, which should be discarded"));
+        messages.add(UserMessage.from("User message 1, which should be discarded"));
+        messages.add(SystemMessage.from("System message 2"));
+
+        messages.add(AiMessage.from("AI message 1, which should be discarded"));
+        messages.add(ToolExecutionResultMessage.from(ToolExecutionRequest.builder().build(),
+                "Tool execution result 1, which should be discards"));
+        messages.add(UserMessage.from("User message 2, which should be discarded"));
+        messages.add(UserMessage.from("User message 3"));
+
+        messages.add(AiMessage.from("AI message 2, which should be discarded"));
+        messages.add(AiMessage.from("AI message 3"));
+
+        messages.add(ToolExecutionResultMessage.from(ToolExecutionRequest.builder().build(),
+                "Tool execution result 2, which should be discards"));
+        messages.add(ToolExecutionResultMessage.from(ToolExecutionRequest.builder().build(),
+                "Tool execution result 3"));
+
+        messages.add(AiMessage.from("AI message 4"));
+
+        messages.add(UserMessage.from("User message 4, which should be discards"));
+        messages.add(UserMessage.from("User message 5"));
+
+        messages.add(AiMessage.from("AI message 5, which should be discards"));
+
+        // The result should be in the following order:
+        // 1. System message
+        // 2. User message
+        // 3. AI message
+        // 4. Tool execution result message
+        // 5. AI message
+        // 6. User message
+        List<ChatMessage> sanitizedMessages = QwenHelper.sanitizeMessages(messages);
+        assertThat(sanitizedMessages).hasSize(6);
+
+        assertThat(sanitizedMessages.get(0)).isInstanceOf(SystemMessage.class);
+        assertThat(((SystemMessage) sanitizedMessages.get(0)).text()).isEqualTo("System message 2");
+
+        assertThat(sanitizedMessages.get(1)).isInstanceOf(UserMessage.class);
+        assertThat(((UserMessage) sanitizedMessages.get(1)).singleText()).isEqualTo("User message 3");
+
+        assertThat(sanitizedMessages.get(2)).isInstanceOf(AiMessage.class);
+        assertThat(((AiMessage) sanitizedMessages.get(2)).text()).isEqualTo("AI message 3");
+
+        assertThat(sanitizedMessages.get(3)).isInstanceOf(ToolExecutionResultMessage.class);
+        assertThat(((ToolExecutionResultMessage) sanitizedMessages.get(3)).text()).isEqualTo("Tool execution result 3");
+
+        assertThat(sanitizedMessages.get(4)).isInstanceOf(AiMessage.class);
+        assertThat(((AiMessage) sanitizedMessages.get(4)).text()).isEqualTo("AI message 4");
+
+        assertThat(sanitizedMessages.get(5)).isInstanceOf(UserMessage.class);
+        assertThat(((UserMessage) sanitizedMessages.get(5)).singleText()).isEqualTo("User message 5");
     }
 }

@@ -1,7 +1,7 @@
 package dev.langchain4j.rag.query.router;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.classification.TextClassifier;
+import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -15,8 +15,10 @@ import java.util.Collection;
  * <br>
  * Some potential approaches include:
  * <pre>
- * - Utilizing a Large Language Model (LLM) (see {@link LanguageModelQueryRouter})
- * - Employing a {@link TextClassifier} (aka "semantic routing")
+ * - Using an LLM (see {@link LanguageModelQueryRouter})
+ * - Using an {@link EmbeddingModel} (aka "semantic routing", see {@code EmbeddingModelTextClassifier} in the {@code langchain4j} module)
+ * - Using keyword-based routing
+ * - Route depending on the user ({@code query.metadata().chatMemoryId()}) and/or permissions
  * </pre>
  *
  * @see DefaultQueryRouter

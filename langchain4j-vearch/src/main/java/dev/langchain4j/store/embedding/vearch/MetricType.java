@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.vearch;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * if metric type is not set when searching, it will use the parameter specified when building the space
@@ -12,6 +12,6 @@ public enum MetricType {
     /**
      * Inner Product
      */
-    @SerializedName("InnerProduct")
+    @JsonProperty("InnerProduct")
     INNER_PRODUCT
 }

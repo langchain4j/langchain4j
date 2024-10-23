@@ -1,28 +1,28 @@
 package dev.langchain4j.agent.tool;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
-
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import lombok.Data;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.*;
-
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
-import static java.util.Arrays.asList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 class ToolSpecificationsTest implements WithAssertions {
-
-    @Test
-    public void test_removeNulls() {
-        assertThat(ToolSpecifications.removeNulls(null, JsonSchemaProperty.STRING, null))
-                .containsExactly(JsonSchemaProperty.STRING);
-    }
 
     @Data
     public static class Person {
@@ -75,12 +75,10 @@ class ToolSpecificationsTest implements WithAssertions {
                 List<Integer> p22,
                 Set<BigDecimal> p23,
                 Collection<String> p24,
-                List p25,
-                Set p26,
-                Collection p27,
-                E p28,
-                Person p29
-                ) {
+                E p25,
+                Person p26,
+                @P(value = "optional", required = false) int p27,
+                @P(value = "required") int p28) {
             return 42;
         }
 
@@ -90,6 +88,34 @@ class ToolSpecificationsTest implements WithAssertions {
         }
 
         public int unused(int i) {
+            return 42;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class InvalidToolsWithDuplicateMethodNames {
+
+        @Tool
+        public int duplicateMethod(String typeString) {
+            return 42;
+        }
+
+        @Tool
+        public int duplicateMethod(int typeInt) {
+            return 42;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class InvalidToolsWithDuplicateNames {
+
+        @Tool(name = "duplicate_name")
+        public int oneMethod(String typeString) {
+            return 42;
+        }
+
+        @Tool(name = "duplicate_name")
+        public int aDifferentMethod(int typeInt) {
             return 42;
         }
     }
@@ -121,11 +147,10 @@ class ToolSpecificationsTest implements WithAssertions {
                 List.class,
                 Set.class,
                 Collection.class,
-                List.class,//25
-                Set.class,
-                Collection.class,
-                E.class,
-                Person.class);
+                E.class,// 25
+                Person.class,
+                int.class,
+                int.class);
     }
 
     public static <K, V> Map<K, V> mapOf(K k1, V v1) {
@@ -149,7 +174,7 @@ class ToolSpecificationsTest implements WithAssertions {
         return map;
     }
 
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5, K k6, V v6, K k7, V v7 ) {
+    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5, K k6, V v6, K k7, V v7) {
         Map<K, V> map = new HashMap<>();
         map.put(k1, v1);
         map.put(k2, v2);
@@ -171,13 +196,32 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     @Test
+    public void test_toolSpecificationsFrom_with_duplicate_method_names() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new InvalidToolsWithDuplicateMethodNames()))
+                .withMessage("Tool names must be unique. The tool 'duplicateMethod' appears several times")
+                .withNoCause();
+
+    }
+
+    @Test
+    public void test_toolSpecificationsFrom_with_duplicate_names() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new InvalidToolsWithDuplicateNames()))
+                .withMessage("Tool names must be unique. The tool 'duplicate_name' appears several times")
+                .withNoCause();
+
+    }
+
+    @Test
     public void test_toolName_memoryId() throws NoSuchMethodException {
         Method method = Wrapper.class.getMethod("g", String.class);
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
 
         assertThat(ts.name()).isEqualTo("func_name");
-        assertThat(ts.description()).isEmpty();
+        assertThat(ts.description()).isNull();
         assertThat(ts.parameters()).isNull();
+        assertThat(ts.toolParameters()).isNull();
     }
 
     @Test
@@ -188,54 +232,40 @@ class ToolSpecificationsTest implements WithAssertions {
 
         assertThat(ts.name()).isEqualTo("f");
         assertThat(ts.description()).isEqualTo("line1\nline2");
-        assertThat(ts.parameters().type()).isEqualTo("object");
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
 
-        Map<String, Map<String, Object>> properties = ts.parameters().properties();
+        Map<String, JsonSchemaElement> properties = ts.parameters().properties();
 
-        assertThat(properties).hasSize(30);
+        assertThat(properties).hasSize(29);
         assertThat(properties)
-                .containsEntry("arg0", mapOf("type", "string", "description", "foo"))
-                        .containsEntry("arg1", mapOf("type", "boolean"))
-                        .containsEntry("arg2", mapOf("type", "boolean", "description", "b2"))
-                        .containsEntry("arg3", mapOf("type", "integer"))
-                        .containsEntry("arg4", mapOf("type", "integer"))
-                        .containsEntry("arg5", mapOf("type", "integer"))
-                        .containsEntry("arg6", mapOf("type", "integer"))
-                        .containsEntry("arg7", mapOf("type", "integer"))
-                        .containsEntry("arg8", mapOf("type", "integer"))
-                        .containsEntry("arg9", mapOf("type", "integer"))
-                        .containsEntry("arg10", mapOf("type", "integer"))
-                        .containsEntry("arg11", mapOf("type", "integer", "description", "biggy"))
-                        .containsEntry("arg12", mapOf("type", "number"))
-                        .containsEntry("arg13", mapOf("type", "number"))
-                        .containsEntry("arg14", mapOf("type", "number"))
-                        .containsEntry("arg15", mapOf("type", "number"))
-                        .containsEntry("arg16", mapOf("type", "number", "description", "bigger"))
-                        .containsEntry("arg17", mapOf("type", "array", "items", mapOf("type", "string")))
-                        .containsEntry("arg18", mapOf("type", "array", "items", mapOf("type", "integer")))
-                        .containsEntry("arg19", mapOf("type", "array", "items", mapOf("type", "boolean")))
-                        .containsEntry("arg20", mapOf("type", "array", "items", mapOf("type", "integer")))
-                        .containsEntry("arg21", mapOf("type", "array", "items", mapOf("type", "boolean")))
-                        .containsEntry("arg22", mapOf("type", "array", "items", mapOf("type", "integer")))
-                        .containsEntry("arg23", mapOf("type", "array", "items", mapOf("type", "number")))
-                        .containsEntry("arg24", mapOf("type", "array", "items", mapOf("type", "string")))
-                        .containsEntry("arg25", mapOf("type", "array", "items", mapOf("type", "object")))
-                        .containsEntry("arg26", mapOf("type", "array", "items", mapOf("type", "object")))
-                        .containsEntry("arg27", mapOf("type", "array", "items", mapOf("type", "object")))
-                        .containsEntry("arg29", mapOf("type", "object", "properties", mapOf(
-                                "name" , mapOf("description", "Name of the person", "type", "string"),
-                                "active", mapOf( "type","boolean" ),
-                                "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-                                "currentAddress", mapOf("type", "object", "properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string"))),
-                                "parent", mapOf("type", "object"),
-                                "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-                                "previousAddresses", mapOf("type", "array", "items", mapOf("type", "object","properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string")) )))));
-
-
-
-
-        assertThat(properties.get("arg28")).containsEntry("type", "string");
-        assertThat(properties.get("arg28").get("enum")).isEqualTo(asList("A", "B", "C"));
+                .containsEntry("arg0", JsonStringSchema.builder().description("foo").build())
+                .containsEntry("arg1", new JsonBooleanSchema())
+                .containsEntry("arg2", JsonBooleanSchema.builder().description("b2").build())
+                .containsEntry("arg3", new JsonIntegerSchema())
+                .containsEntry("arg4", new JsonIntegerSchema())
+                .containsEntry("arg5", new JsonIntegerSchema())
+                .containsEntry("arg6", new JsonIntegerSchema())
+                .containsEntry("arg7", new JsonIntegerSchema())
+                .containsEntry("arg8", new JsonIntegerSchema())
+                .containsEntry("arg9", new JsonIntegerSchema())
+                .containsEntry("arg10", new JsonIntegerSchema())
+                .containsEntry("arg11", JsonIntegerSchema.builder().description("biggy").build())
+                .containsEntry("arg12", new JsonNumberSchema())
+                .containsEntry("arg13", new JsonNumberSchema())
+                .containsEntry("arg14", new JsonNumberSchema())
+                .containsEntry("arg15", new JsonNumberSchema())
+                .containsEntry("arg16", JsonNumberSchema.builder().description("bigger").build())
+                .containsEntry("arg17", JsonArraySchema.builder().items(new JsonStringSchema()).build())
+                .containsEntry("arg18", JsonArraySchema.builder().items(new JsonIntegerSchema()).build())
+                .containsEntry("arg19", JsonArraySchema.builder().items(new JsonBooleanSchema()).build())
+                .containsEntry("arg20", JsonArraySchema.builder().items(new JsonIntegerSchema()).build())
+                .containsEntry("arg21", JsonArraySchema.builder().items(new JsonBooleanSchema()).build())
+                .containsEntry("arg22", JsonArraySchema.builder().items(new JsonIntegerSchema()).build())
+                .containsEntry("arg23", JsonArraySchema.builder().items(new JsonNumberSchema()).build())
+                .containsEntry("arg24", JsonArraySchema.builder().items(new JsonStringSchema()).build())
+                .containsEntry("arg25", JsonEnumSchema.builder().enumValues("A", "B", "C").build())
+                .containsEntry("arg27", JsonIntegerSchema.builder().description("optional").build())
+                .containsEntry("arg28", JsonIntegerSchema.builder().description("required").build());
 
         assertThat(ts.parameters().required())
                 .containsExactly("arg0",
@@ -265,88 +295,53 @@ class ToolSpecificationsTest implements WithAssertions {
                         "arg24",
                         "arg25",
                         "arg26",
-                        "arg27",
-                        "arg28",
-                        "arg29"
+                        // "arg27", params with @P(required = false) are optional
+                        "arg28"
                 );
     }
 
-    @Test
-    public void test_toJsonSchemaProperties() throws NoSuchMethodException {
-        Method method = getF();
+    @Data
+    public static class Customer {
+        public String name;
+        public Address billingAddress;
+        public Address shippingAddress;
+    }
 
-        Parameter[] ps = method.getParameters();
-
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[0]))
-                .containsExactly(JsonSchemaProperty.STRING,
-                        JsonSchemaProperty.description("foo"));
-
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[1]))
-                .containsExactly(JsonSchemaProperty.BOOLEAN);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[2]))
-                .containsExactly(JsonSchemaProperty.BOOLEAN,
-                        JsonSchemaProperty.description("b2")
-                );
-
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[3]))
-                .containsExactly(JsonSchemaProperty.INTEGER);
-
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[4]))
-                .containsExactly(JsonSchemaProperty.INTEGER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[5]))
-                .containsExactly(JsonSchemaProperty.INTEGER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[6]))
-                .containsExactly(JsonSchemaProperty.INTEGER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[7]))
-                .containsExactly(JsonSchemaProperty.INTEGER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[8]))
-                .containsExactly(JsonSchemaProperty.INTEGER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[9]))
-                .containsExactly(JsonSchemaProperty.INTEGER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[10]))
-                .containsExactly(JsonSchemaProperty.INTEGER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[11]))
-                .containsExactly(JsonSchemaProperty.INTEGER,
-                        JsonSchemaProperty.description("biggy"));
-
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[12]))
-                .containsExactly(JsonSchemaProperty.NUMBER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[13]))
-                .containsExactly(JsonSchemaProperty.NUMBER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[14]))
-                .containsExactly(JsonSchemaProperty.NUMBER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[15]))
-                .containsExactly(JsonSchemaProperty.NUMBER);
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[16]))
-                .containsExactly(JsonSchemaProperty.NUMBER,
-                        JsonSchemaProperty.description("bigger"));
-
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[17]))
-                .containsExactly(JsonSchemaProperty.ARRAY, items(JsonSchemaProperty.STRING));
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[18]))
-                .containsExactly(JsonSchemaProperty.ARRAY, items(JsonSchemaProperty.INTEGER));
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[19]))
-                .containsExactly(JsonSchemaProperty.ARRAY, items(JsonSchemaProperty.BOOLEAN));
-
-        {
-            List<JsonSchemaProperty> properties = new ArrayList<>();
-            ToolSpecifications.toJsonSchemaProperties(ps[28]).forEach(properties::add);
-
-            assertThat(properties.get(0))
-                    .isEqualTo(JsonSchemaProperty.STRING);
-
-            assertThat(properties.get(1).value()).isEqualTo(asList("A", "B", "C"));
+    public static class CustomerRegistration {
+        @Tool("register a new customer")
+        boolean registerCustomer(Customer customer) {
+            return true;
         }
+    }
 
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[29]))
-                .containsExactly(JsonSchemaProperty.OBJECT, JsonSchemaProperty.from(
-                        "properties", mapOf("name" , mapOf("description", "Name of the person", "type", "string"),
-                "active", mapOf( "type","boolean" ),
-                "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-                "currentAddress", mapOf("type", "object", "properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string"))),
-                "parent", mapOf("type", "object"),
-                "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-                "previousAddresses", mapOf("type", "array", "items", mapOf("type", "object","properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string")) )))));
+    @Test
+    void test_object_used_multiple_times() {
 
+        // when
+        List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(CustomerRegistration.class);
+
+        // then
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("registerCustomer");
+        assertThat(toolSpecification.description()).isEqualTo("register a new customer");
+        assertThat(toolSpecification.parameters()).isEqualTo(JsonObjectSchema.builder()
+                .addProperty("arg0", JsonObjectSchema.builder()
+                        .addStringProperty("name")
+                        .addProperty("billingAddress", JsonObjectSchema.builder()
+                                .addStringProperty("street")
+                                .addStringProperty("city")
+                                .required("street", "city")
+                                .build())
+                        .addProperty("shippingAddress", JsonObjectSchema.builder()
+                                .addStringProperty("street")
+                                .addStringProperty("city")
+                                .required("street", "city")
+                                .build())
+                        .required("name", "billingAddress", "shippingAddress")
+                        .build())
+                .required("arg0")
+                .build());
+        assertThat(toolSpecification.toolParameters()).isNull();
     }
 }

@@ -7,16 +7,18 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.32.0-SNAPSHOT</version>
+        <version>0.36.0-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-document-parser-apache-tika</artifactId>
-    <name>LangChain4j :: Document parser :: Apache Tika</name>
+    <name>LangChain4j :: Document Parser :: Apache Tika</name>
     <packaging>jar</packaging>
 
     <properties>
         <apache-tika.version>2.9.1</apache-tika.version>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
 
     <dependencies>

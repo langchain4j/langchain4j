@@ -4,8 +4,8 @@ import com.azure.core.credential.AzureKeyCredential;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 public class AzureAiSearchEmbeddingStoreTest {
 
@@ -18,20 +18,20 @@ public class AzureAiSearchEmbeddingStoreTest {
     @Test
     public void empty_endpoint_should_not_be_allowed() {
         try {
-            new AzureAiSearchEmbeddingStore(null, keyCredential, false, dimensions, null);
+            new AzureAiSearchEmbeddingStore(null, keyCredential, false, dimensions, null, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("endpoint cannot be null", e.getMessage());
+            assertThat(e.getMessage()).isEqualTo("endpoint cannot be null");
         }
     }
 
     @Test
     public void index_and_index_name_should_not_both_be_defined() {
         try {
-            new AzureAiSearchEmbeddingStore(endpoint, keyCredential, false, index, indexName);
+            new AzureAiSearchEmbeddingStore(endpoint, keyCredential, false, index, indexName, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("index and indexName cannot be both defined", e.getMessage());
+            assertThat(e.getMessage()).isEqualTo("index and indexName cannot be both defined");
         }
     }
 }

@@ -1,14 +1,11 @@
 package dev.langchain4j.web.search.google.customsearch;
 
 import dev.langchain4j.web.search.*;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.web.search.google.customsearch.GoogleCustomWebSearchEngine.ImageSearchResult;
 import static java.util.Collections.singletonMap;
@@ -40,7 +37,6 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
     }
 
     @Test
-    @Disabled("fails")
     void should_return_google_safe_web_results_in_spanish_language() {
         // given
         String query = "Who won the FIFA World Cup 2022?";
@@ -133,11 +129,8 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
         List<WebSearchOrganicResult> results = googleSearchEngine.search(webSearchRequest).results();
 
         // then
-        assertThat(results)
-                .as("At least one result should be contains 'Java' and 'AI' ignoring case")
-                .anySatisfy(result -> assertThat(result.snippet())
-                        .containsIgnoringCase("Java")
-                        .containsIgnoringCase("github.com/langchain4j/langchain4j"));
+        assertThat(results).anySatisfy(result ->
+                assertThat(result.snippet()).containsIgnoringCase("github.com/langchain4j/langchain4j"));
     }
 
     @Test
@@ -160,7 +153,7 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
         WebSearchResults webSearchResults = googleSearchEngine.search(webSearchRequest);
 
         // then
-        assertThat(webSearchResults.searchMetadata().get("searchType").toString()).isEqualTo("web"); // searchType: web
+        assertThat(webSearchResults.searchMetadata().get("searchType")).hasToString("web"); // searchType: web
         assertThat(webSearchResults.searchInformation().metadata().get("images")).isOfAnyClassIn(ArrayList.class, List.class); // should add images related to the query
         assertThat((List<ImageSearchResult>) webSearchResults.searchInformation().metadata().get("images")) // Get images from searchInformation.metadata
                 .as("At least one image result should be contains title, link, contextLink and thumbnailLink")
@@ -191,7 +184,7 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
         WebSearchResults webSearchResults = googleSearchEngine.search(webSearchRequest);
 
         // then
-        assertThat(webSearchResults.searchMetadata().get("searchType").toString()).isEqualTo("images"); // searchType: images
+        assertThat(webSearchResults.searchMetadata().get("searchType")).hasToString("images"); // searchType: images
         assertThat(webSearchResults.results()) // Get images as search results
                 .as("At least the snippet should be contains 'weather' and 'Porto' ignoring case")
                 .anySatisfy(result -> assertThat(result.title())
@@ -201,8 +194,7 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
                         .startsWith("http"))
                 .anySatisfy(result -> assertThat(result.metadata().get("mimeType"))
                         .startsWith("image"))
-                .anySatisfy(result -> assertThat(result.metadata().get("imageLink"))
-                        .isEqualTo(result.url().toString()))
+                .anySatisfy(result -> assertThat(result.metadata()).containsEntry("imageLink", result.url().toString()))
                 .anySatisfy(result -> assertThat(result.metadata().get("contextLink"))
                         .startsWith("http"))
                 .anySatisfy(result -> assertThat(result.metadata().get("thumbnailLink"))
@@ -227,6 +219,22 @@ class GoogleCustomWebSearchEngineIT extends WebSearchEngineIT {
                 .as("At least one result should be contains 'Emmanuel Macro' ignoring case")
                 .anySatisfy(result -> assertThat(result.title())
                         .containsIgnoringCase("Emmanuel Macro"));
+    }
+
+    @Test
+    void bugfix_1458_allow_empty_web_search_results() {
+        // given a user query that will not generate any search results
+        Random random = new Random();
+        String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        String randomQuery = random.ints(10, 0, alphabet.length()).mapToObj(alphabet::charAt).map(Object::toString).collect(Collectors.joining());
+
+        // when
+        WebSearchResults results = googleSearchEngine.search(randomQuery);
+
+        // then
+        assertThat(results.searchMetadata()).isNotNull();
+        assertThat(results.searchInformation().totalResults()).isEqualTo(0);
+        assertThat(results.results()).isEmpty();
     }
 
     @Override

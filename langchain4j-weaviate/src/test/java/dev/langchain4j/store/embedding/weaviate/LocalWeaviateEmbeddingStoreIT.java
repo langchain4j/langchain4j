@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.weaviate;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
@@ -37,6 +37,7 @@ class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
             "long_minus_1",
             "long_0",
             "long_1",
+            "long_1746714878034235396",
             "long_max",
             "float_min",
             "float_minus_1",

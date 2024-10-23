@@ -26,7 +26,6 @@ class VertexAiLanguageModelIT {
         Response<String> response = vertexAiLanguageModel.generate("hi, what is java?");
 
         assertThat(response.content()).containsIgnoringCase("java");
-        System.out.println(response);
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(6);

@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -145,13 +144,16 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          boolean logRequestsAndResponses,
                                          boolean useAsyncClient,
                                          List<ChatModelListener> listeners,
-                                         String userAgentSuffix) {
+                                         String userAgentSuffix,
+                                         Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
-        if(useAsyncClient)
-            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
-        else
-            this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);  }
+        if(useAsyncClient) {
+            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+        } else {
+            this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
+        }
+    }
 
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
@@ -177,13 +179,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          boolean logRequestsAndResponses,
                                          boolean useAsyncClient,
                                          List<ChatModelListener> listeners,
-                                         String userAgentSuffix) {
+                                         String userAgentSuffix,
+                                         Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
         if(useAsyncClient)
-            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
         else
-            this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);    }
+            this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);    }
 
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
@@ -209,13 +212,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          boolean logRequestsAndResponses,
                                          boolean useAsyncClient,
                                          List<ChatModelListener> listeners,
-                                         String userAgentSuffix) {
+                                         String userAgentSuffix,
+                                         Map<String, String> customHeaders) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat, listeners);
         if(useAsyncClient)
-            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
         else
-            this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);    }
+            this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);    }
 
 
     private AzureOpenAiStreamingChatModel(String deploymentName,
@@ -236,7 +240,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                           List<ChatModelListener> listeners) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
-        this.tokenizer = tokenizer;
+        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -290,12 +294,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 .setSeed(seed)
                 .setResponseFormat(responseFormat);
 
-        Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
+        int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
 
         if (toolThatMustBeExecuted != null) {
             options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
             options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
-            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
+             inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
         }
         if (!isNullOrEmpty(toolSpecifications)) {
             options.setTools(toToolDefinitions(toolSpecifications));
@@ -328,12 +332,16 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             HttpResponseException httpResponseException = (HttpResponseException) throwable;
             logger.info("Error generating response, {}", httpResponseException.getValue());
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
-            Response<AiMessage> response =  Response.from(
-                    aiMessage(httpResponseException.getMessage()),
-                    null,
-                    exceptionFinishReason
-            );
-            handler.onComplete(response);
+            if (exceptionFinishReason == FinishReason.CONTENT_FILTER) {
+                Response<AiMessage> response = Response.from(
+                        aiMessage(httpResponseException.getMessage()),
+                        null,
+                        exceptionFinishReason
+                );
+                handler.onComplete(response);
+            } else {
+                handler.onError(throwable);
+            }
         } else {
             handler.onError(throwable);
         }
@@ -453,10 +461,9 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         if (choices == null || choices.isEmpty()) {
             return;
         }
-        com.azure.ai.openai.models.ChatResponseMessage delta = choices.get(0).getDelta();
-        String content = delta.getContent();
-        if (content != null) {
-            handler.onNext(content);
+        ChatResponseMessage delta = choices.get(0).getDelta();
+        if (delta != null && delta.getContent() != null) {
+            handler.onNext(delta.getContent());
         }
     }
 
@@ -503,6 +510,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         private boolean useAsyncClient = true;
         private String userAgentSuffix;
         private List<ChatModelListener> listeners;
+        private Map<String, String> customHeaders;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -707,6 +715,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
         public AzureOpenAiStreamingChatModel build() {
             if (openAIClient == null) {
                 if (tokenCredential != null) {
@@ -735,7 +748,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                             logRequestsAndResponses,
                             useAsyncClient,
                             listeners,
-                            userAgentSuffix
+                            userAgentSuffix,
+                            customHeaders
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiStreamingChatModel(
@@ -763,7 +777,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                             logRequestsAndResponses,
                             useAsyncClient,
                             listeners,
-                            userAgentSuffix
+                            userAgentSuffix,
+                            customHeaders
                     );
                 }
                 return new AzureOpenAiStreamingChatModel(
@@ -791,7 +806,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         logRequestsAndResponses,
                         useAsyncClient,
                         listeners,
-                        userAgentSuffix
+                        userAgentSuffix,
+                        customHeaders
                 );
             } else {
                 return new AzureOpenAiStreamingChatModel(

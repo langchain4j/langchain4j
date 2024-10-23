@@ -1,5 +1,6 @@
 package dev.langchain4j.model.dashscope;
 
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import org.junit.jupiter.params.provider.Arguments;
@@ -34,7 +35,14 @@ public class QwenTestHelper {
                 Arguments.of(QwenModelName.QWEN2_1_5B_INSTRUCT),
                 Arguments.of(QwenModelName.QWEN2_7B_INSTRUCT),
                 Arguments.of(QwenModelName.QWEN2_72B_INSTRUCT),
-                Arguments.of(QwenModelName.QWEN2_57B_A14B_INSTRUCT)
+                Arguments.of(QwenModelName.QWEN2_57B_A14B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_0_5B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_1_5B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_3B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_7B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_14B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_32B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_72B_INSTRUCT)
         );
     }
 
@@ -55,7 +63,14 @@ public class QwenTestHelper {
                 Arguments.of(QwenModelName.QWEN2_1_5B_INSTRUCT),
                 Arguments.of(QwenModelName.QWEN2_7B_INSTRUCT),
                 Arguments.of(QwenModelName.QWEN2_72B_INSTRUCT),
-                Arguments.of(QwenModelName.QWEN2_57B_A14B_INSTRUCT)
+                Arguments.of(QwenModelName.QWEN2_57B_A14B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_0_5B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_1_5B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_3B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_7B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_14B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_32B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_5_72B_INSTRUCT)
         );
     }
 
@@ -65,17 +80,25 @@ public class QwenTestHelper {
         );
     }
 
-    public static Stream<Arguments> multimodalChatModelNameProvider() {
+    public static Stream<Arguments> vlChatModelNameProvider() {
         return Stream.of(
                 Arguments.of(QwenModelName.QWEN_VL_PLUS),
                 Arguments.of(QwenModelName.QWEN_VL_MAX)
         );
     }
 
+    public static Stream<Arguments> audioChatModelNameProvider() {
+        return Stream.of(
+                Arguments.of(QwenModelName.QWEN_AUDIO_CHAT),
+                Arguments.of(QwenModelName.QWEN2_AUDIO_INSTRUCT)
+        );
+    }
+
     public static Stream<Arguments> embeddingModelNameProvider() {
         return Stream.of(
                 Arguments.of(QwenModelName.TEXT_EMBEDDING_V1),
-                Arguments.of(QwenModelName.TEXT_EMBEDDING_V2)
+                Arguments.of(QwenModelName.TEXT_EMBEDDING_V2),
+                Arguments.of(QwenModelName.TEXT_EMBEDDING_V3)
         );
     }
 
@@ -88,7 +111,7 @@ public class QwenTestHelper {
         messages.add(SystemMessage.from("Your name is Jack." +
                 " You like to answer other people's questions briefly." +
                 " It's rainy today." +
-                " When you're done, end with \"That's all!\"."));
+                " Your reply should end with \"That's all!\"."));
         messages.add(UserMessage.from("Hello. What's your name?"));
         messages.add(AiMessage.from("Jack. That's all!"));
         messages.add(UserMessage.from("How about the weather today?"));
@@ -100,22 +123,58 @@ public class QwenTestHelper {
                 .url("https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg")
                 .build();
         ImageContent imageContent = ImageContent.from(image);
-        TextContent textContent = TextContent.from("What animal is in the picture? When you're done, end with \"That's all!\".");
+        TextContent textContent = TextContent.from("What animal is in the picture?");
         return Collections.singletonList(UserMessage.from(imageContent, textContent));
     }
 
     public static List<ChatMessage> multimodalChatMessagesWithImageData() {
         Image image = Image.builder()
                 .base64Data(multimodalImageData())
+                .mimeType("image/jpeg")
                 .build();
         ImageContent imageContent = ImageContent.from(image);
-        TextContent textContent = TextContent.from("What animal is in the picture? When you're done, end with \"That's all!\".");
+        TextContent textContent = TextContent.from("What animal is in the picture?");
         return Collections.singletonList(UserMessage.from(imageContent, textContent));
     }
 
     public static String multimodalImageData() {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         try (InputStream in = QwenTestHelper.class.getResourceAsStream("/parrot.jpg")) {
+            assertThat(in).isNotNull();
+            byte[] data = new byte[512];
+            int n;
+            while ((n = in.read(data)) != -1) {
+                buffer.write(data, 0, n);
+            }
+        } catch (IOException e) {
+            fail("", e.getMessage());
+        }
+
+        return Base64.getEncoder().encodeToString(buffer.toByteArray());
+    }
+
+    public static List<ChatMessage> multimodalChatMessagesWithAudioUrl() {
+        Audio audio = Audio.builder()
+                .url("https://dashscope.oss-cn-beijing.aliyuncs.com/audios/welcome.mp3")
+                .build();
+        AudioContent audioContent = AudioContent.from(audio);
+        TextContent textContent = TextContent.from("What is this audio saying? Please note that the audio language is Chinese.");
+        return Collections.singletonList(UserMessage.from(audioContent, textContent));
+    }
+
+    public static List<ChatMessage> multimodalChatMessagesWithAudioData() {
+        Audio audio = Audio.builder()
+                .base64Data(multimodalAudioData())
+                .mimeType("audio/mp3")
+                .build();
+        AudioContent audioContent = AudioContent.from(audio);
+        TextContent textContent = TextContent.from("What is this audio saying? Please note that the audio language is Chinese.");
+        return Collections.singletonList(UserMessage.from(audioContent, textContent));
+    }
+
+    public static String multimodalAudioData() {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (InputStream in = QwenTestHelper.class.getResourceAsStream("/welcome.mp3")) {
             assertThat(in).isNotNull();
             byte[] data = new byte[512];
             int n;

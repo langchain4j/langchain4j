@@ -1,10 +1,28 @@
 ---
-sidebar_position: 9
+sidebar_position: 10
 ---
 
 # Milvus
 
-[Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/milvus-example/src/main/java/MilvusEmbeddingStoreExample.java)
-with [Milvus](https://milvus.io/)
+https://milvus.io/
 
-Tutorial coming soon
+
+## Maven Dependency
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-milvus</artifactId>
+    <version>0.35.0</version>
+</dependency>
+```
+
+
+## APIs
+
+- `MilvusEmbeddingStore`
+
+
+## Examples
+
+- [MilvusEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/milvus-example/src/main/java/MilvusEmbeddingStoreExample.java)

@@ -40,7 +40,10 @@ and `String` for `StreamingLanguageModel`. The `Response` object contains the co
 
 Below is an example of how to implement streaming with `StreamingChatLanguageModel`:
 ```java
-StreamingChatLanguageModel model = OpenAiStreamingChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
+StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
 
 String userMessage = "Tell me a joke";
 
@@ -61,4 +64,23 @@ model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
         error.printStackTrace();
     }
 });
+```
+
+A more compact way to stream the response is to use the `LambdaStreamingResponseHandler` class.
+This utility class provides static methods to create a `StreamingResponseHandler` using lambda expressions.
+The way to use lambdas to stream the response is quite simple. 
+You just call the `onNext()` static method with a lambda expression that defines what to do with the token:
+
+```java
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNext;
+
+model.generate("Tell me a joke", onNext(System.out::print));
+```
+
+The `onNextAndError()` method allows you to define actions for both the `onNext()` and `onError()` events:
+
+```java
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNextAndError;
+
+model.generate("Tell me a joke", onNextAndError(System.out::print, Throwable::printStackTrace));
 ```

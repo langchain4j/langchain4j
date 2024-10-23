@@ -28,20 +28,20 @@ public class QwenEmbeddingModel extends DimensionAwareEmbeddingModel {
     public static final String TYPE_KEY = "type";
     public static final String TYPE_QUERY = "query";
     public static final String TYPE_DOCUMENT = "document";
-    private static final int BATCH_SIZE = 25;
+    private static final int BATCH_SIZE = 6;
 
     private final String apiKey;
     private final String modelName;
     private final TextEmbedding embedding;
 
     @Builder
-    public QwenEmbeddingModel(String apiKey, String modelName) {
+    public QwenEmbeddingModel(String baseUrl, String apiKey, String modelName) {
         if (Utils.isNullOrBlank(apiKey)) {
             throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
         }
         this.modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.TEXT_EMBEDDING_V2 : modelName;
         this.apiKey = apiKey;
-        this.embedding = new TextEmbedding();
+        this.embedding = Utils.isNullOrBlank(baseUrl) ? new TextEmbedding() : new TextEmbedding(baseUrl);
     }
 
     private boolean containsDocuments(List<TextSegment> textSegments) {

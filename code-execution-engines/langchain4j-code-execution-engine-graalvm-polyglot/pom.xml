@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.32.0-SNAPSHOT</version>
+        <version>0.36.0-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -16,9 +16,8 @@
     <description>Implementation of JavaScript and Python code execution engines and tools using GraalVM Polyglot/Truffle</description>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <graalvm.version>23.1.1</graalvm.version>
+        <graalvm.version>24.1.0</graalvm.version>
     </properties>
 
     <dependencies>
@@ -90,6 +89,17 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.tinylog</groupId>
+            <artifactId>tinylog-impl</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.tinylog</groupId>
+            <artifactId>slf4j-tinylog</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -102,6 +112,7 @@
                     <skipCompliance>true</skipCompliance>
                 </configuration>
             </plugin>
+            
         </plugins>
     </build>
 
