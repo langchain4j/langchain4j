@@ -52,12 +52,11 @@ class DefaultContentInjectorTest {
         UserMessage injected = injector.inject(contents, userMessage);
 
         // then
-        assertThat(injected.text()).isEqualTo(
-                """
+        assertThat(injected.text()).isEqualTo("""
                 Tell me about bananas.
                 
                 Answer using the following information:
-                Bananas are awesome!"""
+                Bananas are awesome!""".stripIndent()
         );
     }
 
@@ -76,10 +75,10 @@ class DefaultContentInjectorTest {
         // then
         assertThat(injected.text()).isEqualTo(
                 """
-                Tell me about bananas.
-                
-                Answer using the following information:
-                Bananas are awesome!"""
+                        Tell me about bananas.
+                        
+                        Answer using the following information:
+                        Bananas are awesome!"""
         );
         assertThat(injected.name()).isEqualTo("ape");
     }
@@ -106,11 +105,11 @@ class DefaultContentInjectorTest {
         // then
         assertThat(injected.text()).isEqualTo(
                 """
-                Tell me about bananas.
-                
-                Answer using the following information:
-                content: Bananas are awesome!
-                source: trust me bro"""
+                        Tell me about bananas.
+                        
+                        Answer using the following information:
+                        content: Bananas are awesome!
+                        source: trust me bro"""
         );
     }
 
@@ -133,12 +132,12 @@ class DefaultContentInjectorTest {
         // then
         assertThat(injected.text()).isEqualTo(
                 """
-                Tell me about bananas.
-                
-                Answer using the following information:
-                Bananas are awesome!
-                
-                Bananas are healthy!"""
+                        Tell me about bananas.
+                        
+                        Answer using the following information:
+                        Bananas are awesome!
+                        
+                        Bananas are healthy!"""
         );
     }
 
@@ -173,16 +172,16 @@ class DefaultContentInjectorTest {
         // then
         assertThat(injected.text()).isEqualTo(
                 """
-                Tell me about bananas.
-                
-                Answer using the following information:
-                content: Bananas are awesome!
-                source: trust me bro
-                date: today
-                
-                content: Bananas are healthy!
-                source: my doctor
-                reliability: 100%"""
+                        Tell me about bananas.
+                        
+                        Answer using the following information:
+                        content: Bananas are awesome!
+                        source: trust me bro
+                        date: today
+                        
+                        content: Bananas are healthy!
+                        source: my doctor
+                        reliability: 100%"""
         );
     }
 
@@ -221,10 +220,10 @@ class DefaultContentInjectorTest {
         // then
         assertThat(injected.text()).isEqualTo(
                 """
-                Tell me about bananas.
-                Bananas are awesome!
-                
-                Bananas are healthy!"""
+                        Tell me about bananas.
+                        Bananas are awesome!
+                        
+                        Bananas are healthy!"""
         );
     }
 

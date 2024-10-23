@@ -50,8 +50,7 @@ public class DefaultContentInjector implements ContentInjector {
             {{userMessage}}
             
             Answer using the following information:
-            {{contents}}
-            """
+            {{contents}}"""
     );
 
     private final PromptTemplate promptTemplate;

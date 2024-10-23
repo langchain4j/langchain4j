@@ -43,8 +43,7 @@ public class ExpandingQueryTransformer implements QueryTransformer {
             These versions will be used to retrieve relevant documents. \
             It is very important to provide each query version on a separate line, \
             without enumerations, hyphens, or any additional formatting!
-            User query: {{query}}
-            """
+            User query: {{query}}"""
     );
     public static final int DEFAULT_N = 3;
 

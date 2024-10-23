@@ -26,6 +26,7 @@ class JsonTest {
 
     String json = Json.toJson(testData);
 
+    // language=json
     assertThat(json)
       .isEqualTo(
         """
@@ -33,8 +34,7 @@ class JsonTest {
           "sampleDate": "2023-01-15",
           "sampleDateTime": "2023-01-15T10:20:00",
           "some_value": "value"
-        }
-        """
+        }"""
       );
 
     TestData deserializedData = Json.fromJson(json, TestData.class);
@@ -51,6 +51,7 @@ class JsonTest {
             new TestObject("Jane", LocalDate.of(2021, 8, 16), LocalDateTime.of(2021, 8, 16, 13, 19))
     );
 
+    // language=json
     String expectedJson = "[{" +
             "\"name\":\"John\"," +
             "\"date\":\"2021-08-17\"," +
