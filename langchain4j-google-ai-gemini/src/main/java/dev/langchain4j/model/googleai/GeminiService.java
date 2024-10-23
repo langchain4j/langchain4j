@@ -10,6 +10,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 class GeminiService {
@@ -83,7 +84,18 @@ class GeminiService {
         logRequest(jsonBody);
 
         try {
-            Stream<T> responseStream = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofLines()).body()
+            HttpResponse<Stream<String>> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofLines());
+
+            if (httpResponse.statusCode() >= 300) {
+                String errorBody = httpResponse.body()
+                        .collect(Collectors.joining("\n"));
+
+                throw new IOException(String.format("HTTP error (%d): %s",
+                        httpResponse.statusCode(),
+                        errorBody));
+            }
+
+            Stream<T> responseStream = httpResponse.body()
                     .filter(line -> line.startsWith("data: "))
                     .map(line -> line.substring(6)) // Remove "data: " prefix
                     .map(jsonString -> gson.fromJson(jsonString, responseType));
