@@ -97,14 +97,8 @@ public class QwenTestHelper {
     public static Stream<Arguments> embeddingModelNameProvider() {
         return Stream.of(
                 Arguments.of(QwenModelName.TEXT_EMBEDDING_V1),
-                Arguments.of(QwenModelName.TEXT_EMBEDDING_V2)
-        );
-    }
-
-    public static Stream<Arguments> listenableModelNameProvider() {
-        return Stream.of(
-                Arguments.of(QwenModelName.QWEN_MAX, true),  // non-multimodal, support tools
-                Arguments.of(QwenModelName.QWEN_VL_MAX, false)  // multimodal, don't support tools yet
+                Arguments.of(QwenModelName.TEXT_EMBEDDING_V2),
+                Arguments.of(QwenModelName.TEXT_EMBEDDING_V3)
         );
     }
 

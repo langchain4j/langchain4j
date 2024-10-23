@@ -20,8 +20,8 @@ import static dev.langchain4j.internal.Utils.quoted;
  *     .name("weather")
  *     .description("Returns the current weather in the specified city")
  *     .parameters(JsonObjectSchema.builder()
- *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
- *         .addEnumProperty("units", TemperatureUnit.class)
+ *         .addStringProperty("city", "The name of the city, e.g., Munich")
+ *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
  *         .required("city") // please specify the required properties explicitly
  *         .build())
  *     .build();
