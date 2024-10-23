@@ -19,10 +19,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
@@ -49,8 +46,6 @@ import static java.util.Collections.emptyList;
 @Experimental
 @Slf4j
 public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEstimator {
-    private static final Gson GSON = new Gson();
-
     private final GeminiService geminiService;
 
     private final String apiKey;
@@ -116,18 +111,18 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
 
-        this.geminiService = GeminiService.getGeminiService(
-            getOrDefault(logRequestsAndResponses, false) ? this.log : null,
-            getOrDefault(timeout, ofSeconds(60))
+        this.geminiService = new GeminiService(
+                getOrDefault(logRequestsAndResponses, false) ? log : null,
+                getOrDefault(timeout, ofSeconds(60))
         );
 
         this.geminiTokenizer = GoogleAiGeminiTokenizer.builder()
-            .modelName(this.modelName)
-            .apiKey(this.apiKey)
-            .timeout(getOrDefault(timeout, ofSeconds(60)))
-            .maxRetries(this.maxRetries)
-            .logRequestsAndResponses(this.logRequestsAndResponses)
-            .build();
+                .modelName(this.modelName)
+                .apiKey(this.apiKey)
+                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .maxRetries(this.maxRetries)
+                .logRequestsAndResponses(this.logRequestsAndResponses)
+                .build();
     }
 
     private static String computeMimeType(ResponseFormat responseFormat) {
@@ -136,9 +131,9 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
         }
 
         if (ResponseFormatType.JSON.equals(responseFormat.type()) &&
-            responseFormat.jsonSchema() != null &&
-            responseFormat.jsonSchema().rootElement() != null &&
-            responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
+                responseFormat.jsonSchema() != null &&
+                responseFormat.jsonSchema().rootElement() != null &&
+                responseFormat.jsonSchema().rootElement() instanceof JsonEnumSchema) {
 
             return "text/x.enum";
         }
@@ -149,14 +144,14 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         ChatRequest request = ChatRequest.builder()
-            .messages(messages)
-            .build();
+                .messages(messages)
+                .build();
 
         ChatResponse response = chat(request);
 
         return Response.from(response.aiMessage(),
-            response.tokenUsage(),
-            response.finishReason());
+                response.tokenUsage(),
+                response.finishReason());
     }
 
     @Override
@@ -167,15 +162,15 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         ChatRequest request = ChatRequest.builder()
-            .messages(messages)
-            .toolSpecifications(toolSpecifications)
-            .build();
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
 
         ChatResponse response = chat(request);
 
         return Response.from(response.aiMessage(),
-            response.tokenUsage(),
-            response.finishReason());
+                response.tokenUsage(),
+                response.finishReason());
     }
 
     @Override
@@ -194,31 +189,31 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
         }
 
         GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
-            .contents(geminiContentList)
-            .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
-            .generationConfig(GeminiGenerationConfig.builder()
-                .candidateCount(this.candidateCount)
-                .maxOutputTokens(this.maxOutputTokens)
-                .responseMimeType(responseMimeType)
-                .responseSchema(schema)
-                .stopSequences(this.stopSequences)
-                .temperature(this.temperature)
-                .topK(this.topK)
-                .topP(this.topP)
-                .build())
-            .safetySettings(this.safetySettings)
-            .tools(FunctionMapper.fromToolSepcsToGTool(toolSpecifications, this.allowCodeExecution))
-            .toolConfig(new GeminiToolConfig(this.toolConfig))
-            .build();
+                .contents(geminiContentList)
+                .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
+                .generationConfig(GeminiGenerationConfig.builder()
+                        .candidateCount(this.candidateCount)
+                        .maxOutputTokens(this.maxOutputTokens)
+                        .responseMimeType(responseMimeType)
+                        .responseSchema(schema)
+                        .stopSequences(this.stopSequences)
+                        .temperature(this.temperature)
+                        .topK(this.topK)
+                        .topP(this.topP)
+                        .build())
+                .safetySettings(this.safetySettings)
+                .tools(FunctionMapper.fromToolSepcsToGTool(toolSpecifications, this.allowCodeExecution))
+                .toolConfig(new GeminiToolConfig(this.toolConfig))
+                .build();
 
         ChatModelRequest chatModelRequest = ChatModelRequest.builder()
-            .model(modelName)
-            .temperature(temperature)
-            .topP(topP)
-            .maxTokens(maxOutputTokens)
-            .messages(chatRequest.messages())
-            .toolSpecifications(chatRequest.toolSpecifications())
-            .build();
+                .model(modelName)
+                .temperature(temperature)
+                .topP(topP)
+                .maxTokens(maxOutputTokens)
+                .messages(chatRequest.messages())
+                .toolSpecifications(chatRequest.toolSpecifications())
+                .build();
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
         ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, listenerAttributes);
         listeners.forEach((listener) -> {
@@ -229,40 +224,12 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
             }
         });
 
-        Call<GeminiGenerateContentResponse> responseCall =
-            withRetry(() -> this.geminiService.generateContent(this.modelName, this.apiKey, request), this.maxRetries);
-
         GeminiGenerateContentResponse geminiResponse;
         try {
-            retrofit2.Response<GeminiGenerateContentResponse> executed = responseCall.execute();
-            geminiResponse = executed.body();
-
-            if (executed.code() >= 300) {
-                try (ResponseBody errorBody = executed.errorBody()) {
-                    GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
-
-                    RuntimeException runtimeException = new RuntimeException(
-                        String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
-
-                    ChatModelErrorContext chatModelErrorContext = new ChatModelErrorContext(
-                        runtimeException, chatModelRequest, null, listenerAttributes
-                    );
-                    listeners.forEach((listener) -> {
-                        try {
-                            listener.onError(chatModelErrorContext);
-                        } catch (Exception e) {
-                            log.warn("Exception while calling model listener (onError)", e);
-                        }
-                    });
-
-                    throw runtimeException;
-                }
-            }
-        } catch (IOException e) {
-            RuntimeException runtimeException = new RuntimeException("An error occurred when calling the Gemini API endpoint.", e);
-
+            geminiResponse = withRetry(() -> this.geminiService.generateContent(this.modelName, this.apiKey, request), this.maxRetries);
+        } catch (RuntimeException e) {
             ChatModelErrorContext chatModelErrorContext = new ChatModelErrorContext(
-                e, chatModelRequest, null, listenerAttributes
+                    e, chatModelRequest, null, listenerAttributes
             );
             listeners.forEach((listener) -> {
                 try {
@@ -272,7 +239,7 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
                 }
             });
 
-            throw runtimeException;
+            throw e;
         }
 
         if (geminiResponse != null) {
@@ -284,23 +251,23 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
             FinishReason finishReason = fromGFinishReasonToFinishReason(firstCandidate.getFinishReason());
             if (firstCandidate.getContent() == null) {
                 aiMessage = AiMessage.from("No text was returned by the model. " +
-                    "The model finished generating because of the following reason: " + finishReason);
+                        "The model finished generating because of the following reason: " + finishReason);
             } else {
                 aiMessage = fromGPartsToAiMessage(firstCandidate.getContent().getParts(), this.includeCodeExecutionOutput);
             }
 
             TokenUsage tokenUsage = new TokenUsage(tokenCounts.getPromptTokenCount(),
-                tokenCounts.getCandidatesTokenCount(),
-                tokenCounts.getTotalTokenCount());
+                    tokenCounts.getCandidatesTokenCount(),
+                    tokenCounts.getTotalTokenCount());
 
             ChatModelResponse chatModelResponse = ChatModelResponse.builder()
-                .model(modelName)
-                .tokenUsage(tokenUsage)
-                .finishReason(finishReason)
-                .aiMessage(aiMessage)
-                .build();
+                    .model(modelName)
+                    .tokenUsage(tokenUsage)
+                    .finishReason(finishReason)
+                    .aiMessage(aiMessage)
+                    .build();
             ChatModelResponseContext chatModelResponseContext = new ChatModelResponseContext(
-                chatModelResponse, chatModelRequest, listenerAttributes);
+                    chatModelResponse, chatModelRequest, listenerAttributes);
             listeners.forEach((listener) -> {
                 try {
                     listener.onResponse(chatModelResponseContext);
@@ -310,10 +277,10 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
             });
 
             return ChatResponse.builder()
-                .aiMessage(aiMessage)
-                .finishReason(finishReason)
-                .tokenUsage(tokenUsage)
-                .build();
+                    .aiMessage(aiMessage)
+                    .finishReason(finishReason)
+                    .tokenUsage(tokenUsage)
+                    .build();
         } else {
             throw new RuntimeException("Gemini response was null");
         }
@@ -342,8 +309,8 @@ public class GoogleAiGeminiChatModel implements ChatLanguageModel, TokenCountEst
 
         public GoogleAiGeminiChatModelBuilder safetySettings(Map<GeminiHarmCategory, GeminiHarmBlockThreshold> safetySettingMap) {
             this.safetySettings = safetySettingMap.entrySet().stream()
-                .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue())
-            ).collect(Collectors.toList());
+                    .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue())
+                    ).collect(Collectors.toList());
             return this;
         }
     }

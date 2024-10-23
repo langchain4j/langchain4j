@@ -146,8 +146,8 @@ ToolSpecification toolSpecification = ToolSpecification.builder()
     .name("getWeather")
     .description("Returns the weather forecast for a given city")
     .parameters(JsonObjectSchema.builder()
-        .addStringProperty("city", s -> s.description("The city for which the weather forecast should be returned"))
-        .addEnumProperty("temperatureUnit", TemperatureUnit.class) // enum TemperatureUnit { CELSIUS, FAHRENHEIT }
+        .addStringProperty("city", "The city for which the weather forecast should be returned")
+        .addEnumProperty("temperatureUnit", List.of("CELSIUS", "FAHRENHEIT"))
         .required("city") // the required properties should be specified explicitly
         .build())
     .build();
@@ -183,11 +183,11 @@ JsonObjectSchema.builder()
     .required("city")
     .build();
 ```
-3. You can add properties individually using one of the `add{Type}Property(String name)` or `add{Type}Property(String name, Consumer<Json{Type}Schema.Builder> consumer)` methods:
+3. You can add properties individually using one of the `add{Type}Property(String name)` or `add{Type}Property(String name, String description)` methods:
 ```java
 JsonObjectSchema.builder()
-    .addStringProperty("city", s -> s.description("The city for which the weather forecast should be returned"))
-    .addEnumProperty("temperatureUnit", e -> e.enumValues(TemperatureUnit.class))
+    .addStringProperty("city", "The city for which the weather forecast should be returned")
+    .addEnumProperty("temperatureUnit", List.of("CELSIUS", "FAHRENHEIT"))
     .required("city")
     .build();
 ```

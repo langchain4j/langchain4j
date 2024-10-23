@@ -17,6 +17,7 @@ import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
 import static dev.langchain4j.internal.TypeUtils.isJsonString;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
+import static java.util.Arrays.stream;
 
 public class JsonSchemaElementHelper {
 
@@ -50,7 +51,7 @@ public class JsonSchemaElementHelper {
 
         if (clazz.isEnum()) {
             return JsonEnumSchema.builder()
-                    .enumValues((Class<? extends Enum<?>>) clazz)
+                    .enumValues(stream(clazz.getEnumConstants()).map(Object::toString).toList())
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
                     .build();
         }

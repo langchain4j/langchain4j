@@ -9,6 +9,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.dashscope.QwenHelper.*;
 
 public class QwenStreamingResponseBuilder {
@@ -73,10 +74,15 @@ public class QwenStreamingResponseBuilder {
     }
 
     public Response<AiMessage> build() {
-        return Response.from(
-                AiMessage.from(generatedContent.toString()),
-                new TokenUsage(inputTokenCount, outputTokenCount),
-                finishReason
-        );
+        String text = generatedContent.toString();
+        if (!isNullOrBlank(text)) {
+            return Response.from(
+                    AiMessage.from(text),
+                    new TokenUsage(inputTokenCount, outputTokenCount),
+                    finishReason
+            );
+        }
+
+        return null;
     }
 }
