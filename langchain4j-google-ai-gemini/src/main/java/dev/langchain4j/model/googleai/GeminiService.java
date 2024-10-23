@@ -92,9 +92,7 @@ class GeminiService {
                 String errorBody = httpResponse.body()
                         .collect(Collectors.joining("\n"));
 
-                throw new IOException(String.format("HTTP error (%d): %s",
-                        httpResponse.statusCode(),
-                        errorBody));
+                throw new RuntimeException(String.format("HTTP error (%d): %s", httpResponse.statusCode(), errorBody));
             }
 
             Stream<T> responseStream = httpResponse.body()
