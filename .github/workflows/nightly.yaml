@@ -10,12 +10,14 @@ jobs:
     if: github.repository == 'langchain4j/langchain4j'
     strategy:
       matrix:
-        java_version: [17, 21 ]
+        java_version:
+          - 17
+          - 21
         include:
           - java_version: '17'
-            included_modules: '-pl !langchain4j-ollama,!langchain4j-jlama,!langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
+            included_modules: '-pl !langchain4j-jlama'
           - java_version: '21'
-            included_modules: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
+            included_modules: ''
       max-parallel: 1
     runs-on: ubuntu-latest
     steps:
@@ -38,12 +40,15 @@ jobs:
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
           ## compile and verify javadocs on ALL modules
-          mvn -B -U -T4C process-test-classes javadoc:aggregate
+          mvn -B -U -T8C test javadoc:aggregate \
+            --fail-at-end \
+            {{ matrix.included_modules }}
           
           ## run tests for some modules
-          mvn -B -U --fail-at-end \
+          mvn -B -U verify \
+              --fail-at-end \
               -Dmaven.test.failure.ignore=true \
-              ${{ matrix.included_modules }} verify
+              ${{ matrix.included_modules }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
