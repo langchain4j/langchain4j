@@ -52,7 +52,7 @@ class GeminiStreamingResponseBuilder {
         updateTokenUsage(partialResponse.getUsageMetadata());
 
         GeminiContent content = firstCandidate.getContent();
-        if (content == null) {
+        if (content == null || content.getParts() == null) {
             return Optional.empty();
         }
 
