@@ -51,7 +51,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
             {{options}}
             It is very important that your answer consists of either a single number \
             or multiple numbers separated by commas and nothing else!
-            User query: {{query}}\
+            User query: {{query}}
             """
     );
 
