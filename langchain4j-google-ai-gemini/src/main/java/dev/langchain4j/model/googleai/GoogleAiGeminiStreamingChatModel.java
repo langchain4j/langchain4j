@@ -159,7 +159,7 @@ public class GoogleAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             handler.onComplete(fullResponse);
 
             notifyListenersOnResponse(fullResponse, chatModelRequest, listenerAttributes);
-        } catch (Exception exception) {
+        } catch (RuntimeException exception) {
             notifyListenersOnError(exception, chatModelRequest, listenerAttributes);
             handler.onError(exception);
         }

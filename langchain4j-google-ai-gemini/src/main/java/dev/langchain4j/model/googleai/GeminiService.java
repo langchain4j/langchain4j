@@ -50,7 +50,7 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GoogleAiBatchEmbeddingResponse.class);
     }
 
-    public Stream<GeminiGenerateContentResponse> generateContentStream(String modelName, String apiKey, GeminiGenerateContentRequest request) throws IOException {
+    Stream<GeminiGenerateContentResponse> generateContentStream(String modelName, String apiKey, GeminiGenerateContentRequest request) {
         String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", GEMINI_AI_ENDPOINT, modelName);
         return streamRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
     }
@@ -79,7 +79,7 @@ class GeminiService {
         }
     }
 
-    private <T> Stream<T> streamRequest(String url, String apiKey, Object requestBody, Class<T> responseType) throws IOException {
+    private <T> Stream<T> streamRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
         String jsonBody = gson.toJson(requestBody);
         HttpRequest httpRequest = buildHttpRequest(url, apiKey, jsonBody);
 
@@ -107,9 +107,11 @@ class GeminiService {
             }
 
             return responseStream;
+        } catch (IOException e) {
+            throw new RuntimeException("An error occurred while streaming the request", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IOException("Stream request was interrupted", e);
+            throw new RuntimeException("Streaming the request was interrupted", e);
         }
     }
 
