@@ -70,16 +70,7 @@ class JsonTest {
     }
   }
 
-  private static class TestObject {
-    private final String name;
-    private final LocalDate date;
-    private final LocalDateTime dateTime;
-
-    public TestObject(String name, LocalDate date, LocalDateTime dateTime) {
-      this.name = name;
-      this.date = date;
-      this.dateTime = dateTime;
-    }
+  private record TestObject(String name, LocalDate date, LocalDateTime dateTime) {
   }
 
   private static class TestData {
