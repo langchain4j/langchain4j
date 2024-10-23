@@ -2,6 +2,7 @@ package dev.langchain4j.service.output;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -21,6 +22,7 @@ import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.js
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
+import static java.util.Arrays.stream;
 
 @Experimental
 public class JsonSchemas {
@@ -51,9 +53,11 @@ public class JsonSchemas {
                 jsonSchema = JsonSchema.builder()
                         .name("Collection_of_" + rawClass.getSimpleName())
                         .rootElement(JsonObjectSchema.builder()
-                                .addArrayProperty("array", a -> a.items(JsonEnumSchema.builder()
-                                        .enumValues((Class<? extends Enum<?>>)finalRawClass)
-                                        .build()))
+                                .addProperty("array", JsonArraySchema.builder()
+                                        .items(JsonEnumSchema.builder()
+                                                .enumValues(stream(finalRawClass.getEnumConstants()).map(Object::toString).toList())
+                                                .build())
+                                        .build())
                                 .required("array")
                                 .build())
                         .build();
@@ -61,7 +65,9 @@ public class JsonSchemas {
                 jsonSchema = JsonSchema.builder()
                         .name("Collection_of_" + rawClass.getSimpleName())
                         .rootElement(JsonObjectSchema.builder()
-                                .addArrayProperty("array", a -> a.items(jsonObjectOrReferenceSchemaFrom(finalRawClass, null, new LinkedHashMap<>(), true)))
+                                .addProperty("array", JsonArraySchema.builder()
+                                        .items(jsonObjectOrReferenceSchemaFrom(finalRawClass, null, new LinkedHashMap<>(), true))
+                                        .build())
                                 .required("array")
                                 .build())
                         .build();
@@ -69,12 +75,11 @@ public class JsonSchemas {
         } else {
             Class<?> returnTypeClass = (Class<?>) returnType;
             if (returnTypeClass.isEnum()) {
+                List<String> enumValues = stream(returnTypeClass.getEnumConstants()).map(Object::toString).toList();
                 jsonSchema = JsonSchema.builder()
                         .name(returnTypeClass.getSimpleName())
                         .rootElement(JsonObjectSchema.builder()
-                                .addProperty(returnTypeClass.getSimpleName(), JsonEnumSchema.builder()
-                                        .enumValues((Class<? extends Enum<?>>)returnTypeClass)
-                                        .build())
+                                .addEnumProperty(returnTypeClass.getSimpleName(), enumValues)
                                 .build())
                         .build();
             } else {
