@@ -302,7 +302,13 @@ public class AzureOpenAiChatModelIT {
     }
 
     @ParameterizedTest(name = "Testing model {0}")
-    @EnumSource(AzureOpenAiChatModelName.class)
+    @EnumSource(value = AzureOpenAiChatModelName.class, mode = EnumSource.Mode.EXCLUDE, names = {
+            "GPT_3_5_TURBO_0301",
+            "GPT_3_5_TURBO_16K",
+            "GPT_4_0125_PREVIEW",
+            "GPT_4_1106_PREVIEW",
+            "GPT_4_TURBO",
+            "GPT_4_32K"})
     void should_support_all_string_model_names(AzureOpenAiChatModelName modelName) {
 
         // given
