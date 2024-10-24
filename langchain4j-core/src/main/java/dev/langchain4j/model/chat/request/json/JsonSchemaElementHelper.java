@@ -171,12 +171,6 @@ public class JsonSchemaElementHelper {
         return true;
     }
 
-    public static Map<String, Map<String, Object>> toMap(Map<String, JsonSchemaElement> properties) {
-        Map<String, Map<String, Object>> map = new LinkedHashMap<>();
-        properties.forEach((property, value) -> map.put(property, toMap(value)));
-        return map;
-    }
-
     public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement) {
         if (jsonSchemaElement instanceof JsonObjectSchema) {
             JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
@@ -185,7 +179,7 @@ public class JsonSchemaElementHelper {
             if (jsonObjectSchema.description() != null) {
                 properties.put("description", jsonObjectSchema.description());
             }
-            properties.put("properties", toMap(jsonObjectSchema.properties()));
+            properties.put("properties", jsonObjectSchema.properties());
             if (jsonObjectSchema.required() != null) {
                 properties.put("required", jsonObjectSchema.required());
             }

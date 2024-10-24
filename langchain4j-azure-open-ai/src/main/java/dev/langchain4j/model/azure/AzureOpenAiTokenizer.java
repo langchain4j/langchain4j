@@ -17,6 +17,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.chat.request.json.*;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -220,18 +221,18 @@ public class AzureOpenAiTokenizer implements Tokenizer {
                 tokenCount += 2;
                 tokenCount += estimateTokenCountInText(toolSpecification.description());
             }
-            tokenCount += estimateTokenCountInToolParameters(toolSpecification.toolParameters());
+            tokenCount += estimateTokenCountInToolParameters(toolSpecification.parameters());
         }
         return tokenCount;
     }
 
-    private int estimateTokenCountInToolParameters(ToolParameters parameters) {
+    private int estimateTokenCountInToolParameters(JsonObjectSchema parameters) {
         if (parameters == null) {
             return 0;
         }
 
         int tokenCount = 3;
-        Map<String, Map<String, Object>> properties = parameters.properties();
+        Map<String, JsonSchemaElement> properties = parameters.properties();
         if (isOneOfLatestModels()) {
             tokenCount += properties.size() - 1;
         }
@@ -242,28 +243,35 @@ public class AzureOpenAiTokenizer implements Tokenizer {
                 tokenCount += 3;
             }
             tokenCount += estimateTokenCountInText(property);
-            for (Map.Entry<String, Object> entry : properties.get(property).entrySet()) {
-                if ("type".equals(entry.getKey())) {
-                    if ("array".equals(entry.getValue()) && isOneOfLatestModels()) {
-                        tokenCount += 1;
-                    }
-                    // TODO object
-                } else if ("description".equals(entry.getKey())) {
-                    tokenCount += 2;
-                    tokenCount += estimateTokenCountInText(entry.getValue().toString());
-                    if (isOneOfLatestModels() && parameters.required().contains(property)) {
-                        tokenCount += 1;
-                    }
-                } else if ("enum".equals(entry.getKey())) {
-                    if (isOneOfLatestModels()) {
-                        tokenCount -= 2;
-                    } else {
-                        tokenCount -= 3;
-                    }
-                    for (Object enumValue : (Object[]) entry.getValue()) {
-                        tokenCount += 3;
-                        tokenCount += estimateTokenCountInText(enumValue.toString());
-                    }
+
+            JsonSchemaElement element = properties.get(property);
+            if (element instanceof JsonArraySchema && isOneOfLatestModels()) {
+                tokenCount += 1;
+            } else if (element instanceof JsonBooleanSchema || element instanceof JsonIntegerSchema || element instanceof JsonNumberSchema || element instanceof JsonStringSchema) {
+                tokenCount += 2;
+                String value;
+                if (element instanceof JsonBooleanSchema) {
+                    value = ((JsonBooleanSchema) element).description();
+                } else if (element instanceof JsonIntegerSchema) {
+                    value = ((JsonIntegerSchema) element).description();
+                } else if(element instanceof JsonNumberSchema) {
+                    value = ((JsonNumberSchema) element).description();
+                } else {
+                    value = ((JsonStringSchema) element).description();
+                }
+                tokenCount += estimateTokenCountInText(value);
+                if (isOneOfLatestModels() && parameters.required().contains(property)) {
+                    tokenCount += 1;
+                }
+            } else if (element instanceof JsonEnumSchema) {
+                if (isOneOfLatestModels()) {
+                    tokenCount -= 2;
+                } else {
+                    tokenCount -= 3;
+                }
+                for (String value : ((JsonEnumSchema) element).enumValues()) {
+                    tokenCount += 3;
+                    tokenCount += estimateTokenCountInText(value);
                 }
             }
         }

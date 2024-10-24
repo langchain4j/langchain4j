@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
@@ -25,7 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -182,8 +182,11 @@ class AzureOpenAiStreamingChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name(toolName)
                 .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("first")
+                        .addIntegerProperty("second")
+                        .required("first", "second")
+                        .build())
                 .build();
 
         model.generate(singletonList(userMessage), toolSpecification, new StreamingResponseHandler<AiMessage>() {
@@ -282,18 +285,27 @@ class AzureOpenAiStreamingChatModelIT {
                 ToolSpecification.builder()
                         .name("sum")
                         .description("returns a sum of two numbers")
-                        .addParameter("first", INTEGER)
-                        .addParameter("second", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("first")
+                                .addIntegerProperty("second")
+                                .required("first", "second")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("square")
                         .description("returns the square of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("cube")
                         .description("returns the cube of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .required("number")
+                                .build())
                         .build()
         );
 
@@ -392,8 +404,11 @@ class AzureOpenAiStreamingChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("calculator")
                 .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("first")
+                        .addIntegerProperty("second")
+                        .required("first", "second")
+                        .build())
                 .build();
 
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
