@@ -32,7 +32,6 @@
         <module>langchain4j-cohere</module>
         <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
-        <module>langchain4j-jlama</module>
         <module>langchain4j-jina</module>
         <module>langchain4j-local-ai</module>
         <module>langchain4j-mistral-ai</module>
@@ -173,6 +172,15 @@
     </reporting>
 
     <profiles>
+        <profile>
+            <id>jdk21</id>
+            <activation>
+                <jdk>[21,)</jdk>
+            </activation>
+            <modules>
+                <module>langchain4j-jlama</module>
+            </modules>
+        </profile>
         <profile>
             <id>openrewrite</id>
             <!-- `mvn -P openrewrite org.openrewrite.maven:rewrite-maven-plugin:run` -->
