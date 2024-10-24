@@ -36,12 +36,13 @@ jobs:
           - 17
           - 21
           - 23
-        experimental: [false]
         include:
           - java_version: 17
             included_modules: '-pl !langchain4j-jlama'
+            experimental: false
           - java_version: 21
             included_modules: ''
+            experimental: false
           - java_version: 23
             included_modules: ''
             experimental: true
