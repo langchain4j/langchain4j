@@ -27,17 +27,25 @@ on:
 
 jobs:
   java_build:
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
+      fail-fast: false
       matrix:
         java_version:
           - 17
           - 21
+          - 23
         include:
-          - java_version: '17'
+          - java_version: 17
             included_modules: '-pl !langchain4j-jlama'
-          - java_version: '21'
+            experimental: false
+          - java_version: 21
             included_modules: ''
-    runs-on: ubuntu-latest
+            experimental: false
+          - java_version: 23
+            included_modules: ''
+            experimental: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -58,7 +66,6 @@ jobs:
       - name: Compile and test with JDK ${{ matrix.java_version }}
         run: |
           mvn -B -U -T8C test javadoc:aggregate \
-            -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             ${{ matrix.included_modules }}
 
       - name: Integration test with JDK ${{ matrix.java_version }}
@@ -66,7 +73,7 @@ jobs:
         ## - on the main branch when it is not a pull request,
         ## - for pull requests from the same repository
         ## - when triggered manually
-        if: (github.event_name == 'pull_request' && github.head_repo.full_name == github.repository) || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+        if: ${{ !matrix.experimental }} && (github.event_name == 'pull_request' && github.head_repo.full_name == github.repository) || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
         run: |
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
