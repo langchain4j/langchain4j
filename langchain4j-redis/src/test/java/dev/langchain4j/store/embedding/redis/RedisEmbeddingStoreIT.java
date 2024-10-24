@@ -9,6 +9,14 @@ import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import redis.clients.jedis.JedisPooled;
+import redis.clients.jedis.search.schemafields.NumericField;
+import redis.clients.jedis.search.schemafields.SchemaField;
+import redis.clients.jedis.search.schemafields.TextField;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
@@ -38,12 +46,24 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
             jedis.flushDB(); // TODO fix: why redis returns embeddings from different indexes?
         }
 
+        Map<String, SchemaField> schemaFieldMap = new HashMap<>();
+        Map<String, Object> metadataMap = createMetadata().toMap();
+
+        List<String> numericPrefix = Arrays.asList("integer", "float", "double", "long");
+        metadataMap.forEach((key, value) -> {
+            if (numericPrefix.stream().anyMatch(key::startsWith)) {
+                schemaFieldMap.put(key, NumericField.of("$." + key).as(key));
+            } else {
+                schemaFieldMap.put(key, TextField.of("$." + key).as(key).weight(1.0));
+            }
+        });
+
         embeddingStore = RedisEmbeddingStore.builder()
                 .host(redis.getHost())
                 .port(redis.getFirstMappedPort())
                 .indexName(randomUUID())
-                .dimension(384)
-                .metadataKeys(createMetadata().toMap().keySet())
+                .dimension(embeddingModel.dimension())
+                .schemaFiledMap(schemaFieldMap)
                 .build();
     }
 
