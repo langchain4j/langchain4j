@@ -21,6 +21,8 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -140,6 +142,12 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     public String modelName() {
         return modelName;
+    }
+
+    @Override
+    public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        // TODO
+        StreamingChatLanguageModel.super.chat(chatRequest, handler);
     }
 
     @Override
