@@ -52,7 +52,6 @@ public class GoogleAiGeminiStreamingChatModel implements StreamingChatLanguageMo
 
     @Builder
     public GoogleAiGeminiStreamingChatModel(String apiKey, String modelName,
-                                            Integer maxRetries,
                                             Double temperature, Integer topK, Double topP,
                                             Integer maxOutputTokens, Integer candidateCount,
                                             Duration timeout,
@@ -71,8 +70,8 @@ public class GoogleAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         this.candidateCount = getOrDefault(candidateCount, 1);
         this.stopSequences = getOrDefault(stopSequences, emptyList());
         this.toolConfig = toolConfig;
-        this.allowCodeExecution = allowCodeExecution != null ? allowCodeExecution : false;
-        this.includeCodeExecutionOutput = includeCodeExecutionOutput != null ? includeCodeExecutionOutput : false;
+        this.allowCodeExecution = getOrDefault(allowCodeExecution, false);
+        this.includeCodeExecutionOutput = getOrDefault(includeCodeExecutionOutput, false);
         this.logRequestsAndResponses = getOrDefault(logRequestsAndResponses, false);
         this.safetySettings = copyIfNotNull(safetySettings);
         this.responseFormat = responseFormat;

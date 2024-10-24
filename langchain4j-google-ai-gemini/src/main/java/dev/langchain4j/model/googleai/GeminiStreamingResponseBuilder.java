@@ -96,14 +96,16 @@ class GeminiStreamingResponseBuilder {
     private AiMessage createAiMessage() {
         String text = contentBuilder.toString();
         boolean hasText = !text.isEmpty() && !text.isBlank();
+        boolean hasFunctionCall = !functionCalls.isEmpty();
 
-        if (hasText && !functionCalls.isEmpty()) {
+        if (hasText && hasFunctionCall) {
             return new AiMessage(text, functionCalls);
         } else if (hasText) {
             return new AiMessage(text);
-        } else if (!functionCalls.isEmpty()) {
+        } else if (hasFunctionCall) {
             return new AiMessage(functionCalls);
         }
-        return new AiMessage("No valid return.");
+
+        throw new RuntimeException("Gemini has responded neither with text nor with a function call.");
     }
 }
