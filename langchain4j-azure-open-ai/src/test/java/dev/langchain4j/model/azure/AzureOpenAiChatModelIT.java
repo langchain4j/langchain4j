@@ -121,7 +121,7 @@ public class AzureOpenAiChatModelIT {
                 .description("Get the current weather")
                 .parameters(JsonObjectSchema.builder()
                         .addStringProperty("location", "The city and state, e.g. San Francisco, CA")
-                        .addEnumProperty("units", List.of("celsius", "fahrenheit"))
+                        .addEnumProperty("unit", List.of("celsius", "fahrenheit"))
                         .required("location", "unit")
                         .build())
                 .build();
