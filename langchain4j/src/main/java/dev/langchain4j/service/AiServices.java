@@ -51,6 +51,10 @@ import static java.util.stream.Collectors.toList;
  * <p>
  * You can find more details <a href="https://docs.langchain4j.dev/tutorials/ai-services">here</a>.
  * <p>
+ * Please note that AI Service should not be called concurrently for the same @{@link MemoryId},
+ * as it can lead to corrupted {@link ChatMemory}. Currently, AI Service does not implement any mechanism
+ * to prevent concurrent calls for the same @{@link MemoryId}.
+ * <p>
  * Currently, AI Services support:
  * <pre>
  * - Static system message templates, configured via @{@link SystemMessage} annotation on top of the method
