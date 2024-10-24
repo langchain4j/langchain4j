@@ -56,6 +56,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                                String user,
                                String password,
                                String indexName,
+                               String prefix,
                                Integer dimension,
                                Collection<String> metadataKeys) {
         ensureNotBlank(host, "host");
@@ -65,6 +66,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.client = user == null ? new JedisPooled(host, port) : new JedisPooled(host, port, user, password);
         this.schema = RedisSchema.builder()
                 .indexName(getOrDefault(indexName, "embedding-index"))
+                .prefix(getOrDefault(prefix, "embedding:"))
                 .dimension(dimension)
                 .metadataKeys(metadataKeys)
                 .build();
@@ -232,6 +234,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String user;
         private String password;
         private String indexName;
+        private String prefix;
         private Integer dimension;
         private Collection<String> metadataKeys = new ArrayList<>();
 
@@ -277,6 +280,15 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
+         * @param prefix The prefix of the document, should be ended with ":" (e.g. embedding:)
+         * @return builder
+         */
+        public Builder prefix(String prefix) {
+            this.prefix = prefix;
+            return this;
+        }
+
+        /**
          * @param dimension embedding vector dimension
          * @return builder
          */
@@ -304,7 +316,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public RedisEmbeddingStore build() {
-            return new RedisEmbeddingStore(host, port, user, password, indexName, dimension, metadataKeys);
+            return new RedisEmbeddingStore(host, port, user, password, indexName, prefix, dimension, metadataKeys);
         }
     }
 }
