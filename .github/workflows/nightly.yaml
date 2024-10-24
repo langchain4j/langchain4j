@@ -15,9 +15,9 @@ jobs:
           - 21
         include:
           - java_version: '17'
-            included_modules: '-pl !langchain4j-jlama'
+            mvn_opts: ''
           - java_version: '21'
-            included_modules: ''
+            mvn_opts: ''
       max-parallel: 1
     runs-on: ubuntu-latest
     steps:
@@ -42,13 +42,13 @@ jobs:
           ## compile and verify javadocs on ALL modules
           mvn -B -U -T8C test javadoc:aggregate \
             --fail-at-end \
-            ${{ matrix.included_modules }}
+            {{ matrix.mvn_opts }}
           
           ## run tests for some modules
           mvn -B -U verify \
               --fail-at-end \
               -Dmaven.test.failure.ignore=true \
-              ${{ matrix.included_modules }}
+              ${{ matrix.mvn_opts }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
