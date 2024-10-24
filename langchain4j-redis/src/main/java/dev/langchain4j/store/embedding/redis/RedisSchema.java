@@ -34,7 +34,17 @@ class RedisSchema {
     private final int dimension;
     private final MetricType metricType;
 
-    RedisSchema(String indexName, String prefix, String vectorFieldName, String scalarFieldName, Collection<String> metadataKeys, VectorAlgorithm vectorAlgorithm, int dimension, MetricType metricType) {
+    RedisSchema(String indexName,
+                String prefix,
+                String vectorFieldName,
+                String scalarFieldName,
+                Collection<String> metadataKeys,
+                VectorAlgorithm vectorAlgorithm,
+                int dimension,
+                MetricType metricType) {
+        if (!prefix.endsWith(":")) {
+            prefix += ":";
+        }
         this.indexName = indexName;
         this.prefix = prefix;
         this.vectorFieldName = vectorFieldName;
