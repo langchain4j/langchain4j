@@ -100,7 +100,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                 }
             }
 
-            context.streamingChatModel.generate(
+            context.streamingChatModel.generate( // TODO
                     messagesToSend(memoryId),
                     toolSpecifications,
                     new AiServiceStreamingResponseHandler(

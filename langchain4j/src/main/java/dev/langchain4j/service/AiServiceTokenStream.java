@@ -122,9 +122,9 @@ public class AiServiceTokenStream implements TokenStream {
         }
 
         if (isNullOrEmpty(toolSpecifications)) {
-            context.streamingChatModel.generate(messages, handler);
+            context.streamingChatModel.generate(messages, handler); // TODO
         } else {
-            context.streamingChatModel.generate(messages, toolSpecifications, handler);
+            context.streamingChatModel.generate(messages, toolSpecifications, handler); // TODO
         }
     }
 
