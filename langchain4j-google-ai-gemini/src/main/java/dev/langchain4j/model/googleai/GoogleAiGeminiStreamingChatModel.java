@@ -46,15 +46,13 @@ public class GoogleAiGeminiStreamingChatModel implements StreamingChatLanguageMo
     private final GeminiFunctionCallingConfig toolConfig;
     private final boolean allowCodeExecution;
     private final boolean includeCodeExecutionOutput;
-    private final Boolean logRequestsAndResponses;
     private final List<GeminiSafetySetting> safetySettings;
     private final List<ChatModelListener> listeners;
 
     @Builder
     public GoogleAiGeminiStreamingChatModel(String apiKey, String modelName,
                                             Double temperature, Integer topK, Double topP,
-                                            Integer maxOutputTokens, Integer candidateCount,
-                                            Duration timeout,
+                                            Integer maxOutputTokens, Duration timeout,
                                             ResponseFormat responseFormat,
                                             List<String> stopSequences, GeminiFunctionCallingConfig toolConfig,
                                             Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
@@ -63,21 +61,20 @@ public class GoogleAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             List<ChatModelListener> listeners) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.temperature = getOrDefault(temperature, 1.0);
-        this.topK = getOrDefault(topK, 64);
-        this.topP = getOrDefault(topP, 0.95);
-        this.maxOutputTokens = getOrDefault(maxOutputTokens, 8192);
-        this.candidateCount = getOrDefault(candidateCount, 1);
+        this.temperature = temperature;
+        this.topK = topK;
+        this.topP = topP;
+        this.maxOutputTokens = maxOutputTokens;
+        this.candidateCount = 1; // Multiple candidates aren't supported by langchain4j
         this.stopSequences = getOrDefault(stopSequences, emptyList());
         this.toolConfig = toolConfig;
         this.allowCodeExecution = getOrDefault(allowCodeExecution, false);
         this.includeCodeExecutionOutput = getOrDefault(includeCodeExecutionOutput, false);
-        this.logRequestsAndResponses = getOrDefault(logRequestsAndResponses, false);
         this.safetySettings = copyIfNotNull(safetySettings);
         this.responseFormat = responseFormat;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.geminiService = new GeminiService(
-                getOrDefault(this.logRequestsAndResponses, false) ? log : null,
+                getOrDefault(logRequestsAndResponses, false) ? log : null,
                 getOrDefault(timeout, ofSeconds(60))
         );
     }
