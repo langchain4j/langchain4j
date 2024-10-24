@@ -42,7 +42,7 @@ jobs:
           ## compile and verify javadocs on ALL modules
           mvn -B -U -T8C test javadoc:aggregate \
             --fail-at-end \
-            {{ matrix.included_modules }}
+            ${{ matrix.included_modules }}
           
           ## run tests for some modules
           mvn -B -U verify \
