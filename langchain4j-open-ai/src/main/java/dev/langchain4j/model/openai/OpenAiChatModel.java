@@ -185,12 +185,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public ChatResponse chat(ChatRequest request) {
+    public ChatResponse chat(ChatRequest chatRequest) {
         Response<AiMessage> response = generate(
-                request.messages(),
-                request.toolSpecifications(),
+                chatRequest.messages(),
+                chatRequest.toolSpecifications(),
                 null,
-                getOrDefault(toOpenAiResponseFormat(request.responseFormat(), strictJsonSchema), this.responseFormat)
+                getOrDefault(toOpenAiResponseFormat(chatRequest.responseFormat(), strictJsonSchema), this.responseFormat)
         );
         return ChatResponse.builder()
                 .aiMessage(response.content())

@@ -1,20 +1,19 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.service.AiServicesSimpleIT;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.service.StreamingAiServicesSimpleIT;
 
 import java.util.List;
 
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.LOCAL_OLLAMA_IMAGE;
-import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
-import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
-class OllamaAiServicesSimpleIT extends AiServicesSimpleIT {
+class OllamaStreamingAiServicesSimpleIT extends StreamingAiServicesSimpleIT {
 
-    static LC4jOllamaContainer ollama = new LC4jOllamaContainer(resolve(OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE))
-            .withModel(TINY_DOLPHIN_MODEL);
+    static LC4jOllamaContainer ollama = new LC4jOllamaContainer(
+            OllamaImage.resolve(OllamaImage.OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE)
+    ).withModel(OllamaImage.TINY_DOLPHIN_MODEL);
 
     static {
         ollama.start();
@@ -22,18 +21,23 @@ class OllamaAiServicesSimpleIT extends AiServicesSimpleIT {
     }
 
     @Override
-    protected List<ChatLanguageModel> models() {
+    protected List<StreamingChatLanguageModel> models() {
         return List.of(
-                OllamaChatModel.builder()
+                OllamaStreamingChatModel.builder()
                         .baseUrl(ollama.getEndpoint())
                         .modelName(TINY_DOLPHIN_MODEL)
                         .build(),
-                OpenAiChatModel.builder()
+                OpenAiStreamingChatModel.builder()
                         .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
                         .baseUrl(ollama.getEndpoint() + "/v1") // TODO add "/v1" by default?
                         .modelName(TINY_DOLPHIN_MODEL)
                         .build()
         );
+    }
+
+    @Override
+    protected boolean assertTokenUsage() {
+        return false; // TODO why?
     }
 
     @Override

@@ -17,6 +17,7 @@ public class ChatRequest {
 
     private final List<ChatMessage> messages;
     private final List<ToolSpecification> toolSpecifications;
+    // TODO tool mode
     private final ResponseFormat responseFormat;
 
     private ChatRequest(Builder builder) {

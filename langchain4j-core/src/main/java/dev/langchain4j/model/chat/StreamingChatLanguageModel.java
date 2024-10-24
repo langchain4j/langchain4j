@@ -1,13 +1,21 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Collections.singletonList;
 
 /**
@@ -15,12 +23,56 @@ import static java.util.Collections.singletonList;
  */
 public interface StreamingChatLanguageModel {
 
+    // TODO return Stream/Iterable instead?
+
+    @Experimental
+    default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+
+        ResponseFormat responseFormat = chatRequest.responseFormat();
+        if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
+            throw new UnsupportedOperationException("JSON response type is not supported");
+        }
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onNext(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(response.content())
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build();
+                handler.onComplete(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        if (isNullOrEmpty(chatRequest.toolSpecifications())) {
+            generate(chatRequest.messages(), legacyHandler);
+        } else {
+            generate(chatRequest.messages(), chatRequest.toolSpecifications(), legacyHandler);
+        }
+    }
+
+    // TODO convenience methods?
+    // TODO API for N completions?
+
     /**
      * Generates a response from the model based on a message from a user.
      *
      * @param userMessage The message from the user.
      * @param handler     The handler for streaming the response.
      */
+    @Deprecated(forRemoval = true) // TODO
     default void generate(String userMessage, StreamingResponseHandler<AiMessage> handler) {
         generate(singletonList(UserMessage.from(userMessage)), handler);
     }
@@ -31,6 +83,7 @@ public interface StreamingChatLanguageModel {
      * @param userMessage The message from the user.
      * @param handler     The handler for streaming the response.
      */
+    @Deprecated(forRemoval = true) // TODO
     default void generate(UserMessage userMessage, StreamingResponseHandler<AiMessage> handler) {
         generate(singletonList(userMessage), handler);
     }
@@ -43,6 +96,8 @@ public interface StreamingChatLanguageModel {
      * @param messages A list of messages.
      * @param handler  The handler for streaming the response.
      */
+    @Deprecated(forRemoval = true)
+    // TODO
     void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler);
 
     /**
@@ -57,6 +112,7 @@ public interface StreamingChatLanguageModel {
      * @param handler            The handler for streaming the response.
      *                           {@link AiMessage} can contain either a textual response or a request to execute one of the tools.
      */
+    @Deprecated(forRemoval = true) // TODO
     default void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
     }
@@ -68,6 +124,7 @@ public interface StreamingChatLanguageModel {
      * @param toolSpecification A tool that the model is allowed to execute.
      * @param handler           The handler for streaming the response.
      */
+    @Deprecated(forRemoval = true) // TODO
     default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
     }

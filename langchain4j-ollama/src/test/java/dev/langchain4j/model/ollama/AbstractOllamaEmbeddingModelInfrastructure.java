@@ -7,10 +7,10 @@ class AbstractOllamaEmbeddingModelInfrastructure {
 
     private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OLLAMA_IMAGE, ALL_MINILM_MODEL);
 
-    static LangChain4jOllamaContainer ollama;
+    static LC4jOllamaContainer ollama;
 
     static {
-        ollama = new LangChain4jOllamaContainer(OllamaImage.resolve(OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE))
+        ollama = new LC4jOllamaContainer(OllamaImage.resolve(OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE))
                 .withModel(ALL_MINILM_MODEL);
         ollama.start();
         ollama.commitToImage(LOCAL_OLLAMA_IMAGE);

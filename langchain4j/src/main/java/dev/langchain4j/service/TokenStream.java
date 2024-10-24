@@ -50,7 +50,7 @@ public interface TokenStream {
      * @param completionHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
      */
-    TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler);
+    TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler); // TODO Consumer<ChatResponse>?
 
     /**
      * The provided consumer will be invoked when an error occurs during streaming.

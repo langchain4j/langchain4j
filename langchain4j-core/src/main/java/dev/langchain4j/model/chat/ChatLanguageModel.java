@@ -23,18 +23,18 @@ import static java.util.Arrays.asList;
 public interface ChatLanguageModel {
 
     @Experimental
-    default ChatResponse chat(ChatRequest request) {
+    default ChatResponse chat(ChatRequest chatRequest) {
 
-        ResponseFormat responseFormat = request.responseFormat();
+        ResponseFormat responseFormat = chatRequest.responseFormat();
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
             throw new UnsupportedOperationException("JSON response type is not supported");
         }
 
         Response<AiMessage> response;
-        if (isNullOrEmpty(request.toolSpecifications())) {
-            response = generate(request.messages());
+        if (isNullOrEmpty(chatRequest.toolSpecifications())) {
+            response = generate(chatRequest.messages());
         } else {
-            response = generate(request.messages(), request.toolSpecifications());
+            response = generate(chatRequest.messages(), chatRequest.toolSpecifications());
         }
 
         return ChatResponse.builder()
