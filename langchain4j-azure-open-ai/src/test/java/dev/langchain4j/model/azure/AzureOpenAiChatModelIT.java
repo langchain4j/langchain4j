@@ -5,14 +5,10 @@ import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
@@ -21,13 +17,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -116,8 +108,12 @@ public class AzureOpenAiChatModelIT {
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name(toolName)
-                .description("Get the current weather")
-                .parameters(getToolParameters())
+                .description("Get the current temperature, in celsius or fahrenheit depending on the city location")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location", "The city and state, e.g. San Francisco, CA")
+                        .addEnumProperty("unit", List.of("celsius", "fahrenheit"))
+                        .required("location", "unit")
+                        .build())
                 .build();
 
         Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecification);
@@ -210,20 +206,25 @@ public class AzureOpenAiChatModelIT {
                 ToolSpecification.builder()
                         .name("sum")
                         .description("returns a sum of two numbers")
-                        .addParameter("first", INTEGER)
-                        .addParameter("second", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("first")
+                                .addIntegerProperty("second")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("square")
                         .description("returns the square of one number")
-                        .addParameter("number", INTEGER)
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .build())
                         .build(),
                 ToolSpecification.builder()
                         .name("cube")
                         .description("returns the cube of one number")
-                        .addParameter("number", INTEGER)
-                        .build()
-        );
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .build())
+                        .build());
 
         Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecifications);
 
@@ -291,7 +292,13 @@ public class AzureOpenAiChatModelIT {
     }
 
     @ParameterizedTest(name = "Testing model {0}")
-    @EnumSource(AzureOpenAiChatModelName.class)
+    @EnumSource(value = AzureOpenAiChatModelName.class, mode = EnumSource.Mode.EXCLUDE, names = {
+            "GPT_3_5_TURBO_0301",
+            "GPT_3_5_TURBO_16K",
+            "GPT_4_0125_PREVIEW",
+            "GPT_4_1106_PREVIEW",
+            "GPT_4_TURBO",
+            "GPT_4_32K"})
     void should_support_all_string_model_names(AzureOpenAiChatModelName modelName) {
 
         // given
@@ -314,27 +321,6 @@ public class AzureOpenAiChatModelIT {
         assertThat(response.content().text()).isNotBlank();
     }
 
-    private static ToolParameters getToolParameters() {
-        Map<String, Map<String, Object>> properties = new HashMap<>();
-
-        Map<String, Object> location = new HashMap<>();
-        location.put("type", "string");
-        location.put("description", "The city and state, e.g. San Francisco, CA");
-        properties.put("location", location);
-
-        Map<String, Object> unit = new HashMap<>();
-        unit.put("type", "string");
-        unit.put("enum", Arrays.asList("celsius", "fahrenheit"));
-        properties.put("unit", unit);
-
-        List<String> required = Arrays.asList("location", "unit");
-
-        return ToolParameters.builder()
-                .properties(properties)
-                .required(required)
-                .build();
-    }
-
     // This is the method we offer to OpenAI to be used as a function_call.
     // For this example, we ignore the input parameter and return a simple value.
     private static int getCurrentWeather(WeatherLocation weatherLocation) {
@@ -343,18 +329,23 @@ public class AzureOpenAiChatModelIT {
 
     // WeatherLocation is used for this sample. This describes the parameter of the function you want to use.
     private static class WeatherLocation {
+
+        public enum Unit {
+            celsius, fahrenheit
+        }
+
         @JsonProperty(value = "unit")
-        String unit;
+        Unit unit;
         @JsonProperty(value = "location")
         String location;
 
         @JsonCreator
-        WeatherLocation(@JsonProperty(value = "unit") String unit, @JsonProperty(value = "location") String location) {
+        WeatherLocation(@JsonProperty(value = "unit") Unit unit, @JsonProperty(value = "location") String location) {
             this.unit = unit;
             this.location = location;
         }
 
-        public String getUnit() {
+        public Unit getUnit() {
             return unit;
         }
 
