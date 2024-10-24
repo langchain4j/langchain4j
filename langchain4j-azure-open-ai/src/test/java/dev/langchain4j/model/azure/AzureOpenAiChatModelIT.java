@@ -118,7 +118,7 @@ public class AzureOpenAiChatModelIT {
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name(toolName)
-                .description("Get the current weather")
+                .description("Get the current temperature, in celsius or fahrenheit depending on the city location")
                 .parameters(JsonObjectSchema.builder()
                         .addStringProperty("location", "The city and state, e.g. San Francisco, CA")
                         .addEnumProperty("unit", List.of("celsius", "fahrenheit"))
@@ -333,18 +333,23 @@ public class AzureOpenAiChatModelIT {
 
     // WeatherLocation is used for this sample. This describes the parameter of the function you want to use.
     private static class WeatherLocation {
+
+        public enum Unit {
+            celsius, fahrenheit
+        }
+
         @JsonProperty(value = "unit")
-        String unit;
+        Unit unit;
         @JsonProperty(value = "location")
         String location;
 
         @JsonCreator
-        WeatherLocation(@JsonProperty(value = "unit") String unit, @JsonProperty(value = "location") String location) {
+        WeatherLocation(@JsonProperty(value = "unit") Unit unit, @JsonProperty(value = "location") String location) {
             this.unit = unit;
             this.location = location;
         }
 
-        public String getUnit() {
+        public Unit getUnit() {
             return unit;
         }
 
