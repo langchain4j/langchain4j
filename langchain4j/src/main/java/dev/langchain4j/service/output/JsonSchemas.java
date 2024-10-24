@@ -2,6 +2,9 @@ package dev.langchain4j.service.output;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
@@ -10,13 +13,16 @@ import dev.langchain4j.service.TypeUtils;
 
 import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
+import static java.util.Arrays.stream;
 
 @Experimental
 public class JsonSchemas {
@@ -32,18 +38,64 @@ public class JsonSchemas {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
 
-        if (!isPojo(returnType)) {
+        if (!isPojo(returnType) && !isEnum(returnType)) {
             return Optional.empty();
         }
 
         Class<?> rawClass = getRawClass(returnType);
 
-        JsonSchema jsonSchema = JsonSchema.builder()
-                .name(rawClass.getSimpleName())
-                .rootElement(jsonObjectOrReferenceSchemaFrom(rawClass, null, new LinkedHashMap<>(), true))
-                .build();
+        JsonSchema jsonSchema;
+
+        if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
+            rawClass = resolveFirstGenericParameterClass(returnType);
+            Class<?> finalRawClass = rawClass;
+            if (finalRawClass != null && finalRawClass.isEnum()) {
+                jsonSchema = JsonSchema.builder()
+                        .name("Collection_of_" + rawClass.getSimpleName())
+                        .rootElement(JsonObjectSchema.builder()
+                                .addProperty("array", JsonArraySchema.builder()
+                                        .items(JsonEnumSchema.builder()
+                                                .enumValues(stream(finalRawClass.getEnumConstants()).map(Object::toString).toList())
+                                                .build())
+                                        .build())
+                                .required("array")
+                                .build())
+                        .build();
+            } else {
+                jsonSchema = JsonSchema.builder()
+                        .name("Collection_of_" + rawClass.getSimpleName())
+                        .rootElement(JsonObjectSchema.builder()
+                                .addProperty("array", JsonArraySchema.builder()
+                                        .items(jsonObjectOrReferenceSchemaFrom(finalRawClass, null, new LinkedHashMap<>(), true))
+                                        .build())
+                                .required("array")
+                                .build())
+                        .build();
+            }
+        } else {
+            Class<?> returnTypeClass = (Class<?>) returnType;
+            if (returnTypeClass.isEnum()) {
+                List<String> enumValues = stream(returnTypeClass.getEnumConstants()).map(Object::toString).toList();
+                jsonSchema = JsonSchema.builder()
+                        .name(returnTypeClass.getSimpleName())
+                        .rootElement(JsonObjectSchema.builder()
+                                .addEnumProperty(returnTypeClass.getSimpleName(), enumValues)
+                                .build())
+                        .build();
+            } else {
+                jsonSchema = JsonSchema.builder()
+                        .name(rawClass.getSimpleName())
+                        .rootElement(jsonObjectOrReferenceSchemaFrom(rawClass, null, new LinkedHashMap<>(), true))
+                        .build();
+            }
+        }
 
         return Optional.of(jsonSchema);
+    }
+
+    private static boolean isEnum(Type returnType) {
+        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
+        return typeArgumentClass != null && typeArgumentClass.isEnum() || (((Class<?>) returnType).isEnum());
     }
 
     private static boolean isPojo(Type returnType) {
