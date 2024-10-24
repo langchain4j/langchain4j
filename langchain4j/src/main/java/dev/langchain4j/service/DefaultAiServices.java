@@ -142,7 +142,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
-                        boolean supportsJsonSchema = supportsJsonSchema();
+                        boolean supportsJsonSchema = supportsJsonSchema(); // TODO should it be called for returnType==String?
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         if (supportsJsonSchema && !streaming) {
                             jsonSchema = jsonSchemaFrom(returnType);
@@ -204,32 +204,23 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
 
-                        Response<AiMessage> response;
+                        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
+                                .messages(messages)
+                                .toolSpecifications(toolSpecifications);
+
                         if (supportsJsonSchema && jsonSchema.isPresent()) {
-                            ChatRequest chatRequest = ChatRequest.builder()
-                                    .messages(messages)
-                                    .toolSpecifications(toolSpecifications)
-                                    .responseFormat(ResponseFormat.builder()
-                                            .type(JSON)
-                                            .jsonSchema(jsonSchema.get())
-                                            .build())
+                            ResponseFormat responseFormat = ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(jsonSchema.get())
                                     .build();
-
-                            ChatResponse chatResponse = context.chatModel.chat(chatRequest);
-
-                            response = new Response<>(
-                                    chatResponse.aiMessage(),
-                                    chatResponse.tokenUsage(),
-                                    chatResponse.finishReason()
-                            );
-                        } else {
-                            // TODO migrate to new API
-                            response = toolSpecifications == null
-                                    ? context.chatModel.generate(messages)
-                                    : context.chatModel.generate(messages, toolSpecifications);
+                            chatRequestBuilder.responseFormat(responseFormat);
                         }
 
-                        TokenUsage tokenUsageAccumulator = response.tokenUsage();
+                        ChatRequest chatRequest = chatRequestBuilder.build();
+
+                        ChatResponse chatResponse = context.chatModel.chat(chatRequest);
+
+                        TokenUsage tokenUsageAccumulator = chatResponse.tokenUsage();
 
                         verifyModerationIfNeeded(moderationFuture);
 
@@ -242,7 +233,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         MAX_SEQUENTIAL_TOOL_EXECUTIONS);
                             }
 
-                            AiMessage aiMessage = response.content();
+                            AiMessage aiMessage = chatResponse.aiMessage();
 
                             if (context.hasChatMemory()) {
                                 context.chatMemory(memoryId).add(aiMessage);
@@ -277,11 +268,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages = context.chatMemory(memoryId).messages();
                             }
 
-                            response = context.chatModel.generate(messages, toolSpecifications);
-                            tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, response.tokenUsage());
+                            chatRequest = ChatRequest.builder()
+                                    .messages(messages)
+                                    .toolSpecifications(toolSpecifications)
+                                    .build();
+
+                            chatResponse = context.chatModel.chat(chatRequest);
+
+                            tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, chatResponse.tokenUsage());
                         }
 
-                        response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
+                        Response<AiMessage> response = Response.from(chatResponse.aiMessage(), tokenUsageAccumulator, chatResponse.finishReason());
 
                         Object parsedResponse = serviceOutputParser.parse(response, returnType);
                         if (typeHasRawClass(returnType, Result.class)) {
@@ -289,7 +286,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .content(parsedResponse)
                                     .tokenUsage(tokenUsageAccumulator)
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(response.finishReason())
+                                    .finishReason(chatResponse.finishReason())
                                     .toolExecutions(toolExecutions)
                                     .build();
                         } else {
