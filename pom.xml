@@ -103,6 +103,8 @@
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-onnx-scoring</module>
+        <module>code-execution-engines/langchain4j-code-execution-engine-v8</module>
+        <module>code-execution-engines/langchain-code-execution-engine-benchmark</module>
 
     </modules>
 
