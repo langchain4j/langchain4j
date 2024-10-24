@@ -10,6 +10,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 class GeminiService {
     private static final String GEMINI_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
@@ -48,6 +50,11 @@ class GeminiService {
         return sendRequest(url, apiKey, request, GoogleAiBatchEmbeddingResponse.class);
     }
 
+    Stream<GeminiGenerateContentResponse> generateContentStream(String modelName, String apiKey, GeminiGenerateContentRequest request) {
+        String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", GEMINI_AI_ENDPOINT, modelName);
+        return streamRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
+    }
+
     private <T> T sendRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
         String jsonBody = gson.toJson(requestBody);
         HttpRequest request = buildHttpRequest(url, apiKey, jsonBody);
@@ -69,6 +76,40 @@ class GeminiService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Sending the request was interrupted", e);
+        }
+    }
+
+    private <T> Stream<T> streamRequest(String url, String apiKey, Object requestBody, Class<T> responseType) {
+        String jsonBody = gson.toJson(requestBody);
+        HttpRequest httpRequest = buildHttpRequest(url, apiKey, jsonBody);
+
+        logRequest(jsonBody);
+
+        try {
+            HttpResponse<Stream<String>> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofLines());
+
+            if (httpResponse.statusCode() >= 300) {
+                String errorBody = httpResponse.body()
+                        .collect(Collectors.joining("\n"));
+
+                throw new RuntimeException(String.format("HTTP error (%d): %s", httpResponse.statusCode(), errorBody));
+            }
+
+            Stream<T> responseStream = httpResponse.body()
+                    .filter(line -> line.startsWith("data: "))
+                    .map(line -> line.substring(6)) // Remove "data: " prefix
+                    .map(jsonString -> gson.fromJson(jsonString, responseType));
+
+            if (logger != null) {
+                responseStream = responseStream.peek(response -> logger.debug("Partial response from Gemini:\n{}", response));
+            }
+
+            return responseStream;
+        } catch (IOException e) {
+            throw new RuntimeException("An error occurred while streaming the request", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Streaming the request was interrupted", e);
         }
     }
 
