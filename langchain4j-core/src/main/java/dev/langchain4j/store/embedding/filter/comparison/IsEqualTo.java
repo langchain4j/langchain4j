@@ -34,11 +34,10 @@ public class IsEqualTo implements Filter {
 
     @Override
     public boolean test(Object object) {
-        if (!(object instanceof Metadata)) {
+        if (!(object instanceof Metadata metadata)) {
             return false;
         }
 
-        Metadata metadata = (Metadata) object;
         if (!metadata.containsKey(key)) {
             return false;
         }

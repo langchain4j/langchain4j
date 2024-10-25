@@ -2,13 +2,8 @@ package dev.langchain4j.store.embedding.filter.comparison;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.containsAsBigDecimals;
@@ -16,8 +11,6 @@ import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensu
 import static dev.langchain4j.store.embedding.filter.comparison.UUIDComparator.containsAsUUID;
 import static java.util.Collections.unmodifiableSet;
 
-@ToString
-@EqualsAndHashCode
 public class IsNotIn implements Filter {
 
     private final String key;
@@ -40,11 +33,10 @@ public class IsNotIn implements Filter {
 
     @Override
     public boolean test(Object object) {
-        if (!(object instanceof Metadata)) {
+        if (!(object instanceof Metadata metadata)) {
             return false;
         }
 
-        Metadata metadata = (Metadata) object;
         if (!metadata.containsKey(key)) {
             return true;
         }
@@ -60,5 +52,20 @@ public class IsNotIn implements Filter {
         }
 
         return !comparisonValues.contains(actualValue);
+    }
+    public boolean equals(final Object o) {
+        if (o == this) return true;
+        if (!(o instanceof IsNotIn other)) return false;
+
+        return Objects.equals(this.key, other.key)
+                && Objects.equals(this.comparisonValues, other.comparisonValues);
+    }
+
+    public int hashCode() {
+        return Objects.hash(key, comparisonValues);
+    }
+
+    public String toString() {
+        return "IsNotIn(key=" + this.key + ", comparisonValues=" + this.comparisonValues + ")";
     }
 }
