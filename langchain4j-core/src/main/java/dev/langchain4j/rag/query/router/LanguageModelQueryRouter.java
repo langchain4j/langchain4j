@@ -6,7 +6,6 @@ import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +64,6 @@ public class LanguageModelQueryRouter implements QueryRouter {
         this(chatLanguageModel, retrieverToDescription, DEFAULT_PROMPT_TEMPLATE, DO_NOT_ROUTE);
     }
 
-    @Builder
     public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
                                     Map<ContentRetriever, String> retrieverToDescription,
                                     PromptTemplate promptTemplate,
