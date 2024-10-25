@@ -99,7 +99,5 @@ public abstract class StreamingAiServicesSimpleIT {
 
     // TODO test tool handling in AI Services across models (separate test)
 
-    // TODO test low-level chat API (separate test) for simple + tools
-
     // TODO test token usage is summed for tools?
 }

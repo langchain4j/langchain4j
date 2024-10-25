@@ -146,7 +146,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        // TODO
+        // TODO implement
         StreamingChatLanguageModel.super.chat(chatRequest, handler);
     }
 
