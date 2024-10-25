@@ -53,6 +53,7 @@ public class IsNotIn implements Filter {
 
         return !comparisonValues.contains(actualValue);
     }
+
     public boolean equals(final Object o) {
         if (o == this) return true;
         if (!(o instanceof IsNotIn other)) return false;
