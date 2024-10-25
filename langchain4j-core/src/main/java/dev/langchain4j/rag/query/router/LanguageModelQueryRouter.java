@@ -46,12 +46,12 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             """
-            Based on the user query, determine the most suitable data source(s) \
-            to retrieve relevant information from the following options:
-            {{options}}
-            It is very important that your answer consists of either a single number \
-            or multiple numbers separated by commas and nothing else!
-            User query: {{query}}"""
+                    Based on the user query, determine the most suitable data source(s) \
+                    to retrieve relevant information from the following options:
+                    {{options}}
+                    It is very important that your answer consists of either a single number \
+                    or multiple numbers separated by commas and nothing else!
+                    User query: {{query}}"""
     );
 
     protected final ChatLanguageModel chatLanguageModel;
@@ -94,6 +94,10 @@ public class LanguageModelQueryRouter implements QueryRouter {
         this.fallbackStrategy = getOrDefault(fallbackStrategy, DO_NOT_ROUTE);
     }
 
+    public static LanguageModelQueryRouterBuilder builder() {
+        return new LanguageModelQueryRouterBuilder();
+    }
+
     @Override
     public Collection<ContentRetriever> route(Query query) {
         Prompt prompt = createPrompt(query);
@@ -107,17 +111,17 @@ public class LanguageModelQueryRouter implements QueryRouter {
     }
 
     protected Collection<ContentRetriever> fallback(Query query, Exception e) {
-        switch (fallbackStrategy) {
-            case DO_NOT_ROUTE:
+        return switch (fallbackStrategy) {
+            case DO_NOT_ROUTE -> {
                 log.debug("Fallback: query '{}' will not be routed", query.text());
-                return emptyList();
-            case ROUTE_TO_ALL:
+                yield emptyList();
+            }
+            case ROUTE_TO_ALL -> {
                 log.debug("Fallback: query '{}' will be routed to all available content retrievers", query.text());
-                return new ArrayList<>(idToRetriever.values());
-            case FAIL:
-            default:
-                throw new RuntimeException(e);
-        }
+                yield new ArrayList<>(idToRetriever.values());
+            }
+            default -> throw new RuntimeException(e);
+        };
     }
 
     protected Prompt createPrompt(Query query) {
@@ -156,5 +160,43 @@ public class LanguageModelQueryRouter implements QueryRouter {
          * In this case, an original exception will be re-thrown, and the RAG flow will fail.
          */
         FAIL
+    }
+
+    public static class LanguageModelQueryRouterBuilder {
+        private ChatLanguageModel chatLanguageModel;
+        private Map<ContentRetriever, String> retrieverToDescription;
+        private PromptTemplate promptTemplate;
+        private FallbackStrategy fallbackStrategy;
+
+        LanguageModelQueryRouterBuilder() {
+        }
+
+        public LanguageModelQueryRouterBuilder chatLanguageModel(ChatLanguageModel chatLanguageModel) {
+            this.chatLanguageModel = chatLanguageModel;
+            return this;
+        }
+
+        public LanguageModelQueryRouterBuilder retrieverToDescription(Map<ContentRetriever, String> retrieverToDescription) {
+            this.retrieverToDescription = retrieverToDescription;
+            return this;
+        }
+
+        public LanguageModelQueryRouterBuilder promptTemplate(PromptTemplate promptTemplate) {
+            this.promptTemplate = promptTemplate;
+            return this;
+        }
+
+        public LanguageModelQueryRouterBuilder fallbackStrategy(FallbackStrategy fallbackStrategy) {
+            this.fallbackStrategy = fallbackStrategy;
+            return this;
+        }
+
+        public LanguageModelQueryRouter build() {
+            return new LanguageModelQueryRouter(this.chatLanguageModel, this.retrieverToDescription, this.promptTemplate, this.fallbackStrategy);
+        }
+
+        public String toString() {
+            return "LanguageModelQueryRouter.LanguageModelQueryRouterBuilder(chatLanguageModel=" + this.chatLanguageModel + ", retrieverToDescription=" + this.retrieverToDescription + ", promptTemplate=" + this.promptTemplate + ", fallbackStrategy=" + this.fallbackStrategy + ")";
+        }
     }
 }

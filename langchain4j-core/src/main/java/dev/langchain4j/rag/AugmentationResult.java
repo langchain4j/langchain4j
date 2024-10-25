@@ -2,7 +2,6 @@ package dev.langchain4j.rag;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.rag.content.Content;
-import lombok.Builder;
 
 import java.util.List;
 
@@ -24,10 +23,13 @@ public class AugmentationResult {
      */
     private final List<Content> contents;
 
-    @Builder
     public AugmentationResult(ChatMessage chatMessage, List<Content> contents) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
         this.contents = copyIfNotNull(contents);
+    }
+
+    public static AugmentationResultBuilder builder() {
+        return new AugmentationResultBuilder();
     }
 
     public ChatMessage chatMessage() {
@@ -36,5 +38,31 @@ public class AugmentationResult {
 
     public List<Content> contents() {
         return contents;
+    }
+
+    public static class AugmentationResultBuilder {
+        private ChatMessage chatMessage;
+        private List<Content> contents;
+
+        AugmentationResultBuilder() {
+        }
+
+        public AugmentationResultBuilder chatMessage(ChatMessage chatMessage) {
+            this.chatMessage = chatMessage;
+            return this;
+        }
+
+        public AugmentationResultBuilder contents(List<Content> contents) {
+            this.contents = contents;
+            return this;
+        }
+
+        public AugmentationResult build() {
+            return new AugmentationResult(this.chatMessage, this.contents);
+        }
+
+        public String toString() {
+            return "AugmentationResult.AugmentationResultBuilder(chatMessage=" + this.chatMessage + ", contents=" + this.contents + ")";
+        }
     }
 }

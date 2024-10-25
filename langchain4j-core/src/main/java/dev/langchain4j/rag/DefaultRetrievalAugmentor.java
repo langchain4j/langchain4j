@@ -14,7 +14,6 @@ import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
-import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,7 +108,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private final ContentInjector contentInjector;
     private final Executor executor;
 
-    @Builder
     public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
                                      QueryRouter queryRouter,
                                      ContentAggregator contentAggregator,
@@ -265,11 +263,15 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 contents.size(), query.text(), retriever);
 
         if (contents.size() > 0) {
+            final var contentsSting = contents.stream()
+                    .map(Content::textSegment)
+                    .map(segment -> "- " + escapeNewlines(segment.text()))
+                    .collect(joining("\n"));
             log.trace("Retrieved {} contents using query '{}' and retriever '{}':\n{}",
-                    contents.size(), query.text(), retriever, contents.stream()
-                            .map(Content::textSegment)
-                            .map(segment -> "- " + escapeNewlines(segment.text()))
-                            .collect(joining("\n")));
+                    contents.size(),
+                    query.text(),
+                    retriever.getClass().getName(),
+                    contentsSting);
         }
     }
 
@@ -308,9 +310,51 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
     public static class DefaultRetrievalAugmentorBuilder {
 
+        private QueryTransformer queryTransformer;
+        private QueryRouter queryRouter;
+        private ContentAggregator contentAggregator;
+        private ContentInjector contentInjector;
+        private Executor executor;
+
+        DefaultRetrievalAugmentorBuilder() {
+        }
+
         public DefaultRetrievalAugmentorBuilder contentRetriever(ContentRetriever contentRetriever) {
             this.queryRouter = new DefaultQueryRouter(ensureNotNull(contentRetriever, "contentRetriever"));
             return this;
+        }
+
+        public DefaultRetrievalAugmentorBuilder queryTransformer(QueryTransformer queryTransformer) {
+            this.queryTransformer = queryTransformer;
+            return this;
+        }
+
+        public DefaultRetrievalAugmentorBuilder queryRouter(QueryRouter queryRouter) {
+            this.queryRouter = queryRouter;
+            return this;
+        }
+
+        public DefaultRetrievalAugmentorBuilder contentAggregator(ContentAggregator contentAggregator) {
+            this.contentAggregator = contentAggregator;
+            return this;
+        }
+
+        public DefaultRetrievalAugmentorBuilder contentInjector(ContentInjector contentInjector) {
+            this.contentInjector = contentInjector;
+            return this;
+        }
+
+        public DefaultRetrievalAugmentorBuilder executor(Executor executor) {
+            this.executor = executor;
+            return this;
+        }
+
+        public DefaultRetrievalAugmentor build() {
+            return new DefaultRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjector, this.executor);
+        }
+
+        public String toString() {
+            return "DefaultRetrievalAugmentor.DefaultRetrievalAugmentorBuilder(queryTransformer=" + this.queryTransformer + ", queryRouter=" + this.queryRouter + ", contentAggregator=" + this.contentAggregator + ", contentInjector=" + this.contentInjector + ", executor=" + this.executor + ")";
         }
     }
 }
