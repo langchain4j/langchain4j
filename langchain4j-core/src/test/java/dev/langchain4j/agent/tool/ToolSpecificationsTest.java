@@ -1,39 +1,26 @@
 package dev.langchain4j.agent.tool;
 
-import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
-import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.model.output.structured.Description;
-import lombok.Data;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 class ToolSpecificationsTest implements WithAssertions {
 
-    @Data
-    public static class Person {
-
-        @Description("Name of the person")
-        private String name;
-        private List<String> aliases;
-        private boolean active;
-        private Person parent;
-        private Address currentAddress;
-        private List<Address> previousAddresses;
+    public record Person(
+            @Description("Name of the person")
+            String name,
+            List<String> aliases,
+            boolean active,
+            Person parent,
+            Address currentAddress,
+            List<Address> previousAddresses
+    ) {
     }
 
     public static class Address {
@@ -300,11 +287,10 @@ class ToolSpecificationsTest implements WithAssertions {
                 );
     }
 
-    @Data
-    public static class Customer {
-        public String name;
-        public Address billingAddress;
-        public Address shippingAddress;
+    record Customer(
+            String name,
+            Address billingAddress,
+            Address shippingAddress) {
     }
 
     public static class CustomerRegistration {
