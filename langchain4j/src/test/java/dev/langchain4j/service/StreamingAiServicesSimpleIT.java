@@ -1,7 +1,10 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -12,7 +15,15 @@ import java.util.concurrent.CompletableFuture;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
+/**
+ * This test makes sure that all {@link StreamingChatLanguageModel} implementations behave consistently
+ * when used with {@link AiServices}.
+ */
 public abstract class StreamingAiServicesSimpleIT {
 
     protected abstract List<StreamingChatLanguageModel> models();
@@ -28,13 +39,19 @@ public abstract class StreamingAiServicesSimpleIT {
         for (StreamingChatLanguageModel model : models()) {
 
             // given
-            Assistant assistant = AiServices.create(Assistant.class, model);
+            model = spy(model);
+
+            Assistant assistant = AiServices.builder(Assistant.class)
+                    .streamingChatLanguageModel(model)
+                    .build();
 
             StringBuilder answerBuilder = new StringBuilder();
             CompletableFuture<String> futureAnswer = new CompletableFuture<>();
             CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
 
-            assistant.chat("What is the capital of Germany?")
+            String userMessage = "What is the capital of Germany?";
+
+            assistant.chat(userMessage)
                     .onNext(answerBuilder::append)
                     .onComplete(response -> {
                         futureAnswer.complete(answerBuilder.toString());
@@ -60,6 +77,11 @@ public abstract class StreamingAiServicesSimpleIT {
             if (assertFinishReason()) {
                 assertThat(response.finishReason()).isEqualTo(STOP);
             }
+
+            verify(model).chat(
+                    eq(ChatRequest.builder().messages(UserMessage.from(userMessage)).build()),
+                    any(StreamingChatResponseHandler.class)
+            );
         }
     }
 
@@ -70,6 +92,10 @@ public abstract class StreamingAiServicesSimpleIT {
     protected boolean assertFinishReason() {
         return true;
     }
+
+    // TODO test tool handling in AI Services across models (separate test)
+
+    // TODO test low-level chat API (separate test) for simple + tools
 
     // TODO test token usage is summed for tools?
 }

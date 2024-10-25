@@ -12,6 +12,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+/**
+ * This test makes sure that all {@link ChatLanguageModel} implementations behave consistently
+ * when used with {@link AiServices}.
+ */
 public abstract class AiServicesSimpleIT {
 
     protected abstract List<ChatLanguageModel> models();
@@ -33,10 +37,10 @@ public abstract class AiServicesSimpleIT {
                     .chatLanguageModel(model)
                     .build();
 
-            String text = "What is the capital of Germany?";
+            String userMessage = "What is the capital of Germany?";
 
             // when
-            Result<String> result = assistant.chat(text);
+            Result<String> result = assistant.chat(userMessage);
 
             // then
             assertThat(result.content()).containsIgnoringCase("Berlin");
@@ -53,13 +57,17 @@ public abstract class AiServicesSimpleIT {
 
             assertThat(result.toolExecutions()).isEmpty();
 
-            verify(model).chat(ChatRequest.builder().messages(UserMessage.from(text)).build());
+            verify(model).chat(ChatRequest.builder().messages(UserMessage.from(userMessage)).build());
         }
     }
 
     protected boolean assertFinishReason() {
         return true;
     }
+
+    // TODO test tool handling in AI Services across models (separate test)
+
+    // TODO test low-level chat API (separate test) for simple + tools
 
     // TODO test token usage is summed for tools?
 }

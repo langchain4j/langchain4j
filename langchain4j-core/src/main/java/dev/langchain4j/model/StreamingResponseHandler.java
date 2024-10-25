@@ -9,7 +9,7 @@ import dev.langchain4j.model.output.Response;
  *
  * @param <T> The type of the response.
  */
-@Deprecated(forRemoval = true) // TODO? keep for language models?
+@Deprecated(forRemoval = true) // TODO keep for language models?
 public interface StreamingResponseHandler<T> {
 
     /**

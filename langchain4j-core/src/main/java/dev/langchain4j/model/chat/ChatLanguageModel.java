@@ -18,16 +18,28 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Arrays.asList;
 
 /**
+ * TODO review all javadoc in this class
  * Represents a language model that has a chat interface.
+ *
+ * @see StreamingChatLanguageModel
  */
 public interface ChatLanguageModel {
 
+    /**
+     * TODO
+     * <p>
+     * A temporary default implementation of this method is necessary
+     * until all {@link ChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     *
+     * @param chatRequest
+     * @return
+     */
     @Experimental
     default ChatResponse chat(ChatRequest chatRequest) {
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
-            throw new UnsupportedOperationException("JSON response type is not supported");
+            throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
         }
 
         Response<AiMessage> response;

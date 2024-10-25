@@ -4,6 +4,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.IllegalConfigurationException;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
@@ -16,7 +18,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyList;
@@ -104,7 +105,12 @@ public class AiServiceTokenStream implements TokenStream {
     public void start() {
         validateConfiguration();
 
-        AiServiceStreamingResponseHandler handler = new AiServiceStreamingResponseHandler(
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+
+        StreamingChatResponseHandler handler = new AiServiceStreamingResponseHandler(
                 context,
                 memoryId,
                 tokenHandler,
@@ -121,11 +127,7 @@ public class AiServiceTokenStream implements TokenStream {
             contentsHandler.accept(retrievedContents);
         }
 
-        if (isNullOrEmpty(toolSpecifications)) {
-            context.streamingChatModel.generate(messages, handler); // TODO
-        } else {
-            context.streamingChatModel.generate(messages, toolSpecifications, handler); // TODO
-        }
+        context.streamingChatModel.chat(chatRequest, handler);
     }
 
     private void validateConfiguration() {

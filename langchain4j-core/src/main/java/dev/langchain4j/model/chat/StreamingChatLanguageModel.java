@@ -19,18 +19,28 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Collections.singletonList;
 
 /**
+ * TODO review all javadoc in this class
  * Represents a language model that has a chat interface and can stream a response one token at a time.
+ *
+ * @see ChatLanguageModel
  */
 public interface StreamingChatLanguageModel {
 
-    // TODO return Stream/Iterable instead?
-
+    /**
+     * TODO
+     * <p>
+     * A temporary default implementation of this method is necessary
+     * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     *
+     * @param chatRequest
+     * @param handler
+     */
     @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
-            throw new UnsupportedOperationException("JSON response type is not supported");
+            throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
         }
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
