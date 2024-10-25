@@ -17,7 +17,6 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <javet.version>4.0.0</javet.version>
     </properties>
 
     <dependencies>
@@ -25,27 +24,6 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-        </dependency>
-
-        <!-- Linux and Windows (x86_64) -->
-        <dependency>
-            <groupId>com.caoccao.javet</groupId>
-            <artifactId>javet</artifactId>
-            <version>${javet.version}</version>
-        </dependency>
-
-        <!-- Linux (arm64) -->
-        <dependency>
-            <groupId>com.caoccao.javet</groupId>
-            <artifactId>javet-linux-arm64</artifactId>
-            <version>${javet.version}</version>
-        </dependency>
-
-        <!-- Mac OS (x86_64 and arm64) -->
-        <dependency>
-            <groupId>com.caoccao.javet</groupId>
-            <artifactId>javet-macos</artifactId>
-            <version>${javet.version}</version>
         </dependency>
 
         <dependency>
@@ -91,15 +69,86 @@
         </dependency>
 
         <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-code-execution-engine-graalvm-polyglot</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.tinylog</groupId>
             <artifactId>tinylog-impl</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.tinylog</groupId>
             <artifactId>slf4j-tinylog</artifactId>
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-generator-annprocess</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
+
+    <profiles>
+        <!-- Profile for Linux ARM64 -->
+        <profile>
+            <id>linux-arm64</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <arch>aarch64</arch> <!-- ARM64 architecture -->
+                </os>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.caoccao.javet</groupId>
+                    <artifactId>javet-linux-arm64</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- Profile for macOS (both x86_64 and ARM64) -->
+        <profile>
+            <id>macos</id>
+            <activation>
+                <os>
+                    <name>Mac OS X</name>
+                </os>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.caoccao.javet</groupId>
+                    <artifactId>javet-macos</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- Profile for Linux and Windows (x86_64) -->
+        <profile>
+            <id>default-javet</id>
+            <activation>
+                <os>
+                    <arch>x86_64</arch>
+                </os>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.caoccao.javet</groupId>
+                    <artifactId>javet</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

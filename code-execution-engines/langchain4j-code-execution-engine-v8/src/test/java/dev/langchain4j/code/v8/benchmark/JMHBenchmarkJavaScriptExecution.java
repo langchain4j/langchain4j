@@ -1,4 +1,4 @@
-package dev.langchain.code.benchmark;
+package dev.langchain4j.code.v8.benchmark;
 
 
 import dev.langchain4j.code.CodeExecutionEngine;
@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(1)
-@Warmup(iterations = 1)
+@Warmup(iterations = 5)
 @Measurement(iterations = 2)
 public class JMHBenchmarkJavaScriptExecution {
 
@@ -40,7 +40,7 @@ public class JMHBenchmarkJavaScriptExecution {
             """;
 
         graalEngine = new GraalVmJavaScriptExecutionEngine();
-        v8Engine = new V8JavaScriptExecutionEngine();
+        v8Engine = V8JavaScriptExecutionEngine.getInstance();
     }
 
 

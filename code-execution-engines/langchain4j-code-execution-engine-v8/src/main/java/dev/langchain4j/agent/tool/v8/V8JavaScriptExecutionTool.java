@@ -8,7 +8,7 @@ import dev.langchain4j.code.v8.V8JavaScriptExecutionEngine;
 
 public class V8JavaScriptExecutionTool {
 
-    private final CodeExecutionEngine engine = new V8JavaScriptExecutionEngine();
+    private final CodeExecutionEngine engine = V8JavaScriptExecutionEngine.getInstance();
 
     @Tool("MUST be used for accurate calculations: math, sorting, filtering, aggregating, string processing, etc")
     public String executeJavaScriptCode(@P("JavaScript code to execute, result MUST be returned by the code") String code) {
