@@ -16,12 +16,12 @@ public class LC4jOllamaContainer extends OllamaContainer {
 
     private String model;
 
-    LC4jOllamaContainer(DockerImageName dockerImageName) {
+    public LC4jOllamaContainer(DockerImageName dockerImageName) {
         super(dockerImageName);
         this.dockerImageName = dockerImageName;
     }
 
-    LC4jOllamaContainer withModel(String model) {
+    public LC4jOllamaContainer withModel(String model) {
         this.model = model;
         return this;
     }

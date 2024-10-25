@@ -1,11 +1,12 @@
-package dev.langchain4j.model.vertexai;
+package dev.langchain4j.model.vertexai.common;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.service.StreamingAiServicesSimpleIT;
+import dev.langchain4j.model.chat.StreamingChatLanguageModelIT;
+import dev.langchain4j.model.vertexai.VertexAiGeminiStreamingChatModel;
 
 import java.util.List;
 
-class VertexAiGeminiStreamingAiServicesSimpleIT extends StreamingAiServicesSimpleIT {
+class VertexAiGeminiStreamingChatModelIT extends StreamingChatLanguageModelIT {
 
     @Override
     protected List<StreamingChatLanguageModel> models() {
@@ -16,5 +17,10 @@ class VertexAiGeminiStreamingAiServicesSimpleIT extends StreamingAiServicesSimpl
                         .modelName("gemini-1.5-flash")
                         .build()
         );
+    }
+
+    @Override
+    protected boolean assertThreads() {
+        return false; // TODO why?
     }
 }

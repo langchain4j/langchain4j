@@ -1,5 +1,6 @@
-package dev.langchain4j.model.bedrock;
+package dev.langchain4j.model.bedrock.common;
 
+import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.AiServicesSimpleIT;
 
@@ -15,6 +16,7 @@ class BedrockAiServicesSimpleIT extends AiServicesSimpleIT {
                 BedrockAnthropicMessageChatModel.builder()
                         .model(AnthropicClaude3SonnetV1.getValue())
                         .build()
+                // TODO add more models
         );
     }
 }

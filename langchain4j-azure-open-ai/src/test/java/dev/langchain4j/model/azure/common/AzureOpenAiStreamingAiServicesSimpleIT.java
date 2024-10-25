@@ -1,5 +1,6 @@
-package dev.langchain4j.model.azure;
+package dev.langchain4j.model.azure.common;
 
+import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.service.StreamingAiServicesSimpleIT;
 

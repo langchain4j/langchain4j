@@ -1,8 +1,8 @@
 package dev.langchain4j.model.ollama;
 
-class AbstractOllamaLanguageModelInfrastructure {
+public class AbstractOllamaLanguageModelInfrastructure {
 
-    static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, OllamaImage.TINY_DOLPHIN_MODEL);
+    public static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, OllamaImage.TINY_DOLPHIN_MODEL);
 
     static LC4jOllamaContainer ollama;
 

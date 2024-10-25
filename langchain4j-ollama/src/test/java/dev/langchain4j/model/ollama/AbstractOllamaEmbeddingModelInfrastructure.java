@@ -3,7 +3,7 @@ package dev.langchain4j.model.ollama;
 import static dev.langchain4j.model.ollama.OllamaImage.ALL_MINILM_MODEL;
 import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 
-class AbstractOllamaEmbeddingModelInfrastructure {
+public class AbstractOllamaEmbeddingModelInfrastructure {
 
     private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OLLAMA_IMAGE, ALL_MINILM_MODEL);
 

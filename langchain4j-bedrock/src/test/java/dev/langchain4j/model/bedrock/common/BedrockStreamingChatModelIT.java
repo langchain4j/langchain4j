@@ -1,13 +1,14 @@
-package dev.langchain4j.model.bedrock;
+package dev.langchain4j.model.bedrock.common;
 
+import dev.langchain4j.model.bedrock.BedrockAnthropicStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.service.StreamingAiServicesSimpleIT;
+import dev.langchain4j.model.chat.StreamingChatLanguageModelIT;
 
 import java.util.List;
 
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
 
-class BedrockStreamingAiServicesSimpleIT extends StreamingAiServicesSimpleIT {
+class BedrockStreamingChatModelIT extends StreamingChatLanguageModelIT {
 
     @Override
     protected List<StreamingChatLanguageModel> models() {
@@ -15,6 +16,7 @@ class BedrockStreamingAiServicesSimpleIT extends StreamingAiServicesSimpleIT {
                 BedrockAnthropicStreamingChatModel.builder()
                         .model(AnthropicClaude3SonnetV1.getValue())
                         .build()
+                // TODO add more models
         );
     }
 }
