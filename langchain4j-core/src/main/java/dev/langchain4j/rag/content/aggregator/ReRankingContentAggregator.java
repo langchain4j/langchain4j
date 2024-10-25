@@ -5,7 +5,6 @@ import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
-import lombok.Builder;
 
 import java.util.*;
 import java.util.function.Function;
@@ -64,13 +63,16 @@ public class ReRankingContentAggregator implements ContentAggregator {
         this(scoringModel, DEFAULT_QUERY_SELECTOR, null);
     }
 
-    @Builder
     public ReRankingContentAggregator(ScoringModel scoringModel,
                                       Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
                                       Double minScore) {
         this.scoringModel = ensureNotNull(scoringModel, "scoringModel");
         this.querySelector = getOrDefault(querySelector, DEFAULT_QUERY_SELECTOR);
         this.minScore = minScore;
+    }
+
+    public static ReRankingContentAggregatorBuilder builder() {
+        return new ReRankingContentAggregatorBuilder();
     }
 
     @Override
@@ -125,5 +127,37 @@ public class ReRankingContentAggregator implements ContentAggregator {
                 .map(Map.Entry::getKey)
                 .map(Content::from)
                 .collect(toList());
+    }
+
+    public static class ReRankingContentAggregatorBuilder {
+        private ScoringModel scoringModel;
+        private Function<Map<Query, Collection<List<Content>>>, Query> querySelector;
+        private Double minScore;
+
+        ReRankingContentAggregatorBuilder() {
+        }
+
+        public ReRankingContentAggregatorBuilder scoringModel(ScoringModel scoringModel) {
+            this.scoringModel = scoringModel;
+            return this;
+        }
+
+        public ReRankingContentAggregatorBuilder querySelector(Function<Map<Query, Collection<List<Content>>>, Query> querySelector) {
+            this.querySelector = querySelector;
+            return this;
+        }
+
+        public ReRankingContentAggregatorBuilder minScore(Double minScore) {
+            this.minScore = minScore;
+            return this;
+        }
+
+        public ReRankingContentAggregator build() {
+            return new ReRankingContentAggregator(this.scoringModel, this.querySelector, this.minScore);
+        }
+
+        public String toString() {
+            return "ReRankingContentAggregator.ReRankingContentAggregatorBuilder(scoringModel=" + this.scoringModel + ", querySelector=" + this.querySelector + ", minScore=" + this.minScore + ")";
+        }
     }
 }

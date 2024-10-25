@@ -200,7 +200,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                                                                          Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
                 .map(retriever -> supplyAsync(() -> retrieve(retriever, query), executor))
-                .collect(toList());
+                .toList();
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))
                 .thenApply(ignored ->
@@ -262,7 +262,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         log.debug("Retrieved {} contents using query '{}' and retriever '{}'",
                 contents.size(), query.text(), retriever);
 
-        if (contents.size() > 0) {
+        if (!contents.isEmpty()) {
             final var contentsSting = contents.stream()
                     .map(Content::textSegment)
                     .map(segment -> "- " + escapeNewlines(segment.text()))
