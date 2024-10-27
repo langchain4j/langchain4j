@@ -21,9 +21,6 @@ import java.util.Map;
 @Getter
 public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockCohereEmbeddingResponse> {
 
-    private final static String MODEL_ENGLISH_V3_ID = "cohere.embed-english-v3";
-    private final static String MODEL_MULTILINGUAL_V3_ID = "cohere.embed-multilingual-v3";
-
     @Builder.Default
     private final String model = Types.CohereEmbedEnglishTextV3.getValue();
 
