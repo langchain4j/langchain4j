@@ -20,7 +20,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -48,6 +50,7 @@ public class GoogleAiGeminiStreamingChatModel implements StreamingChatLanguageMo
     private final boolean includeCodeExecutionOutput;
     private final List<GeminiSafetySetting> safetySettings;
     private final List<ChatModelListener> listeners;
+    private final Integer maxRetries;
 
     @Builder
     public GoogleAiGeminiStreamingChatModel(String apiKey, String modelName,
@@ -58,7 +61,8 @@ public class GoogleAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Boolean allowCodeExecution, Boolean includeCodeExecutionOutput,
                                             Boolean logRequestsAndResponses,
                                             List<GeminiSafetySetting> safetySettings,
-                                            List<ChatModelListener> listeners) {
+                                            List<ChatModelListener> listeners,
+                                            Integer maxRetries) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
@@ -73,6 +77,7 @@ public class GoogleAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         this.safetySettings = copyIfNotNull(safetySettings);
         this.responseFormat = responseFormat;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        this.maxRetries = getOrDefault(maxRetries, 3);
         this.geminiService = new GeminiService(
                 getOrDefault(logRequestsAndResponses, false) ? log : null,
                 getOrDefault(timeout, ofSeconds(60))
@@ -145,11 +150,14 @@ public class GoogleAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         GeminiStreamingResponseBuilder responseBuilder = new GeminiStreamingResponseBuilder(this.includeCodeExecutionOutput);
 
         try {
-            this.geminiService.generateContentStream(this.modelName, this.apiKey, request)
-                    .forEach(partialResponse -> {
-                        Optional<String> text = responseBuilder.append(partialResponse);
-                        text.ifPresent(handler::onNext);
-                    });
+            Stream<GeminiGenerateContentResponse> contentStream = withRetry(
+                    () -> this.geminiService.generateContentStream(this.modelName, this.apiKey, request),
+                    maxRetries);
+
+            contentStream.forEach(partialResponse -> {
+                Optional<String> text = responseBuilder.append(partialResponse);
+                text.ifPresent(handler::onNext);
+            });
 
             Response<AiMessage> fullResponse = responseBuilder.build();
             handler.onComplete(fullResponse);
