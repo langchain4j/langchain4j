@@ -2,7 +2,7 @@ package dev.langchain4j.service.openai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.service.AiServicesSimpleIT;
+import dev.langchain4j.service.common.AiServicesSimpleIT;
 
 import java.util.List;
 

@@ -1,9 +1,11 @@
-package dev.langchain4j.service;
+package dev.langchain4j.service.common;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;

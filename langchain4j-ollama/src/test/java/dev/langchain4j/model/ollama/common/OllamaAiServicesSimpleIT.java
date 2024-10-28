@@ -4,7 +4,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.service.AiServicesSimpleIT;
+import dev.langchain4j.service.common.AiServicesSimpleIT;
 
 import java.util.List;
 

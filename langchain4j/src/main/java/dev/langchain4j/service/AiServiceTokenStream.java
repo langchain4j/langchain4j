@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -35,6 +36,7 @@ public class AiServiceTokenStream implements TokenStream {
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
     private Consumer<Throwable> errorHandler;
+    private Consumer<ChatResponse> newCompletionHandler;
     private Consumer<Response<AiMessage>> completionHandler;
 
     private int onNextInvoked;
@@ -81,9 +83,16 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler) {
+    public TokenStream onCompleteNew(Consumer<ChatResponse> completionHandler) {
+        this.newCompletionHandler = completionHandler;
+        this.onCompleteInvoked++; // TODO check
+        return this;
+    }
+
+    @Override
+    public TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler) { // TODO remove?
         this.completionHandler = completionHandler;
-        this.onCompleteInvoked++;
+        this.onCompleteInvoked++; // TODO check
         return this;
     }
 
@@ -115,6 +124,7 @@ public class AiServiceTokenStream implements TokenStream {
                 memoryId,
                 tokenHandler,
                 toolExecutionHandler,
+                newCompletionHandler,
                 completionHandler,
                 errorHandler,
                 initTemporaryMemory(context, messages),
@@ -135,7 +145,7 @@ public class AiServiceTokenStream implements TokenStream {
             throw new IllegalConfigurationException("onNext must be invoked exactly 1 time");
         }
         if (onCompleteInvoked > 1) {
-            throw new IllegalConfigurationException("onComplete must be invoked at most 1 time");
+            throw new IllegalConfigurationException("onComplete must be invoked at most 1 time"); // TODO onCompleteNew
         }
         if (onRetrievedInvoked > 1) {
             throw new IllegalConfigurationException("onRetrieved must be invoked at most 1 time");

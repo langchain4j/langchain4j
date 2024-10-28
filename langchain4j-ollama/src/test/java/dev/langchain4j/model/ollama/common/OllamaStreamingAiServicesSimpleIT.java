@@ -5,7 +5,7 @@ import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaImage;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.service.StreamingAiServicesSimpleIT;
+import dev.langchain4j.service.common.StreamingAiServicesSimpleIT;
 
 import java.util.List;
 

@@ -2,7 +2,7 @@ package dev.langchain4j.model.vertexai.common;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.vertexai.VertexAiGeminiStreamingChatModel;
-import dev.langchain4j.service.StreamingAiServicesSimpleIT;
+import dev.langchain4j.service.common.StreamingAiServicesSimpleIT;
 
 import java.util.List;
 

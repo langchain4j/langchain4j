@@ -1,12 +1,13 @@
-package dev.langchain4j.service;
+package dev.langchain4j.service.common;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.TokenStream;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -50,27 +51,27 @@ public abstract class StreamingAiServicesSimpleIT {
 
         StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
 
         String userMessage = "What is the capital of Germany?";
 
         assistant.chat(userMessage)
                 .onNext(answerBuilder::append)
-                .onComplete(response -> {
+                .onCompleteNew(chatResponse -> {
                     futureAnswer.complete(answerBuilder.toString());
-                    futureResponse.complete(response);
+                    futureChatResponse.complete(chatResponse);
                 })
                 .onError(futureAnswer::completeExceptionally)
                 .start();
 
         String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        ChatResponse chatResponse = futureChatResponse.get(30, SECONDS);
 
         assertThat(answer).containsIgnoringCase("Berlin");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(chatResponse.aiMessage().text()).isEqualTo(answer);
 
         if (assertTokenUsage()) {
-            TokenUsage tokenUsage = response.tokenUsage();
+            TokenUsage tokenUsage = chatResponse.tokenUsage();
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.totalTokenCount())
@@ -78,7 +79,7 @@ public abstract class StreamingAiServicesSimpleIT {
         }
 
         if (assertFinishReason()) {
-            assertThat(response.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
         }
 
         verify(model).chat(

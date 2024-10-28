@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
@@ -45,12 +46,23 @@ public interface TokenStream {
     TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler);
 
     /**
+     * TODO
      * The provided consumer will be invoked when a language model finishes streaming a response.
      *
      * @param completionHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
      */
-    TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler); // TODO Consumer<ChatResponse>?
+    TokenStream onCompleteNew(Consumer<ChatResponse> completionHandler); // TODO name
+
+    /**
+     * The provided consumer will be invoked when a language model finishes streaming a response.
+     *
+     * @param completionHandler lambda that will be invoked when language model finishes streaming
+     * @return token stream instance used to configure or start stream processing
+     * @deprecated Please use {@link #onCompleteNew(Consumer)} instead // TODO
+     */
+    @Deprecated(forRemoval = true)
+    TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler);
 
     /**
      * The provided consumer will be invoked when an error occurs during streaming.

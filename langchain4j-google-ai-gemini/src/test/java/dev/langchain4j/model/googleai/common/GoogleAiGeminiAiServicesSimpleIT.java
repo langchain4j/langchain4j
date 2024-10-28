@@ -2,7 +2,7 @@ package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
-import dev.langchain4j.service.AiServicesSimpleIT;
+import dev.langchain4j.service.common.AiServicesSimpleIT;
 
 import java.util.List;
 
