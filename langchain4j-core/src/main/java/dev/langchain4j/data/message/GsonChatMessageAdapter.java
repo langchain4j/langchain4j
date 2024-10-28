@@ -29,7 +29,7 @@ class GsonChatMessageAdapter implements JsonDeserializer<ChatMessage>, JsonSeria
         String chatMessageTypeString = messageJsonElement.getAsJsonObject().get(CHAT_MESSAGE_TYPE).getAsString();
         ChatMessageType chatMessageType = ChatMessageType.valueOf(chatMessageTypeString);
         ChatMessage chatMessage = GSON.fromJson(messageJsonElement, chatMessageType.messageClass());
-        if (chatMessage instanceof UserMessage && ((UserMessage) chatMessage).contents() == null) {
+        if (chatMessage instanceof UserMessage message && message.contents() == null) {
             // keeping backward compatibility with old schema TODO remove after a few releases
             chatMessage = UserMessage.from(messageJsonElement.getAsJsonObject().get("text").getAsString());
         }
