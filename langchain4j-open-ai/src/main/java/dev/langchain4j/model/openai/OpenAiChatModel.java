@@ -161,6 +161,23 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
+    public ChatResponse chat(ChatRequest chatRequest) {
+
+        Response<AiMessage> response = generate(
+                chatRequest.messages(),
+                chatRequest.toolSpecifications(),
+                null,
+                getOrDefault(toOpenAiResponseFormat(chatRequest.responseFormat(), strictJsonSchema), this.responseFormat)
+        );
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .build();
+    }
+
+    @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>();
         if (responseFormat != null && responseFormat.type() == JSON_SCHEMA) {
@@ -182,21 +199,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         return generate(messages, singletonList(toolSpecification), toolSpecification, this.responseFormat);
-    }
-
-    @Override
-    public ChatResponse chat(ChatRequest chatRequest) {
-        Response<AiMessage> response = generate(
-                chatRequest.messages(),
-                chatRequest.toolSpecifications(),
-                null,
-                getOrDefault(toOpenAiResponseFormat(chatRequest.responseFormat(), strictJsonSchema), this.responseFormat)
-        );
-        return ChatResponse.builder()
-                .aiMessage(response.content())
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
-                .build();
     }
 
     private Response<AiMessage> generate(List<ChatMessage> messages,
