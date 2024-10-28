@@ -38,6 +38,7 @@ import static java.util.stream.Collectors.joining;
  * <br>
  * - {@link #promptTemplate}: The prompt template that defines how the original {@code userMessage}
  * and {@code contents} are combined into the resulting {@link UserMessage}.
+ * The text of the template should contain the {@code {{userMessage}}} and {@code {{contents}}} variables.
  * <br>
  * - {@link #metadataKeysToInclude}: A list of {@link Metadata} keys that should be included
  * with each {@link Content#textSegment()}.
@@ -45,10 +46,11 @@ import static java.util.stream.Collectors.joining;
 public class DefaultContentInjector implements ContentInjector {
 
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "{{userMessage}}\n" +
-                    "\n" +
-                    "Answer using the following information:\n" +
-                    "{{contents}}"
+            """
+            {{userMessage}}
+            
+            Answer using the following information:
+            {{contents}}"""
     );
 
     private final PromptTemplate promptTemplate;
@@ -80,8 +82,8 @@ public class DefaultContentInjector implements ContentInjector {
         }
 
         Prompt prompt = createPrompt(chatMessage, contents);
-        if (chatMessage instanceof UserMessage && isNotNullOrBlank(((UserMessage)chatMessage).name())) {
-            return prompt.toUserMessage(((UserMessage)chatMessage).name());
+        if (chatMessage instanceof UserMessage message && isNotNullOrBlank(message.name())) {
+            return prompt.toUserMessage(message.name());
         }
 
         return prompt.toUserMessage();
@@ -157,6 +159,6 @@ public class DefaultContentInjector implements ContentInjector {
     protected String format(String segmentContent, String segmentMetadata) {
         return segmentMetadata.isEmpty()
                 ? segmentContent
-                : String.format("content: %s\n%s", segmentContent, segmentMetadata);
+                : "content: %s\n%s".formatted(segmentContent, segmentMetadata);
     }
 }

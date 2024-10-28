@@ -758,12 +758,46 @@ More details are coming soon.
 More details are coming soon.
 
 ### Content Injector
-More details are coming soon.
+
+`ContentInjector` is responsible for injecting of `Content`s returned by `ContentAggregator` into the `UserMessage`.
 
 #### Default Content Injector
-`DefaultContentInjector`
 
-More details are coming soon.
+`DefaultContentInjector` is the default implementation of `ContentInjector` that simply appends `Content`s
+to the end of a `UserMessage` with the prefix `Answer using the following information:`.
+
+You can customize how `Content`s are injected into the `UserMessage` in 3 ways:
+- Override the default `PromptTemplate`:
+```java
+RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+    .contentInjector(DefaultContentInjector.builder()
+        .promptTemplate(PromptTemplate.from("{{userMessage}}\n{{contents}}"))
+        .build())
+    .build();
+```
+Please note that `PromptTemplate` must contain `{{userMessage}}` and `{{contents}}` variables.
+- Extend `DefaultContentInjector` and override one of the `format` methods
+- Implement a custom `ContentInjector`
+
+`DefaultContentInjector` also supports injecting `Metadata` entries from retrieved `Content.textSegment()`:
+```java
+DefaultContentInjector.builder()
+    .metadataKeysToInclude(List.of("source"))
+    .build()
+```
+In this case, `TextSegment.text()` will be prepended with the "content: " prefix,
+and each value from `Metadata` will be prepended with a key.
+The final `UserMessage` will look like this:
+```
+How can I cancel my reservation?
+
+Answer using the following information:
+content: To cancel a reservation, go to ...
+source: ./cancellation_procedure.html
+
+content: Cancellation is allowed for ...
+source: ./cancellation_policy.html
+```
 
 ### Parallelization
 

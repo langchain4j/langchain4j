@@ -111,8 +111,8 @@ public class Metadata {
         }
 
         Object value = metadata.get(key);
-        if (value instanceof String) {
-            return (String) value;
+        if (value instanceof String string) {
+            return string;
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
@@ -132,11 +132,11 @@ public class Metadata {
         }
 
         Object value = metadata.get(key);
-        if (value instanceof UUID) {
-            return (UUID) value;
+        if (value instanceof UUID iD) {
+            return iD;
         }
-        if (value instanceof String) {
-            return UUID.fromString((String)value);
+        if (value instanceof String string) {
+            return UUID.fromString(string);
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
@@ -167,8 +167,8 @@ public class Metadata {
         Object value = metadata.get(key);
         if (value instanceof String) {
             return Integer.parseInt(value.toString());
-        } else if (value instanceof Number) {
-            return ((Number) value).intValue();
+        } else if (value instanceof Number number) {
+            return number.intValue();
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
@@ -199,8 +199,8 @@ public class Metadata {
         Object value = metadata.get(key);
         if (value instanceof String) {
             return Long.parseLong(value.toString());
-        } else if (value instanceof Number) {
-            return ((Number) value).longValue();
+        } else if (value instanceof Number number) {
+            return number.longValue();
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
@@ -231,8 +231,8 @@ public class Metadata {
         Object value = metadata.get(key);
         if (value instanceof String) {
             return Float.parseFloat(value.toString());
-        } else if (value instanceof Number) {
-            return ((Number) value).floatValue();
+        } else if (value instanceof Number number) {
+            return number.floatValue();
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
@@ -263,8 +263,8 @@ public class Metadata {
         Object value = metadata.get(key);
         if (value instanceof String) {
             return Double.parseDouble(value.toString());
-        } else if (value instanceof Number) {
-            return ((Number) value).doubleValue();
+        } else if (value instanceof Number number) {
+            return number.doubleValue();
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
