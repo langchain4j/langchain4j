@@ -3,6 +3,7 @@ package dev.langchain4j.model.chat.request;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -100,5 +101,16 @@ public class ChatRequest {
         public ChatRequest build() {
             return new ChatRequest(this);
         }
+    }
+
+    /**
+     * TODO
+     * @param userMessage
+     * @return
+     */
+    public static ChatRequest from(String userMessage) { // TODO needed?
+        return ChatRequest.builder()
+                .messages(UserMessage.from(userMessage))
+                .build();
     }
 }
