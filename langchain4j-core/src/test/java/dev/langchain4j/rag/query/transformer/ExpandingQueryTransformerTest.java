@@ -50,13 +50,14 @@ class ExpandingQueryTransformerTest {
                 Query.from("query 3", metadata)
         );
         assertThat(model.userMessageText()).isEqualTo(
-                "Generate 3 different versions of a provided user query. " +
-                        "Each version should be worded differently, using synonyms or alternative sentence structures, " +
-                        "but they should all retain the original meaning. " +
-                        "These versions will be used to retrieve relevant documents. " +
-                        "It is very important to provide each query version on a separate line, " +
-                        "without enumerations, hyphens, or any additional formatting!\n" +
-                        "User query: query"
+                """
+                Generate 3 different versions of a provided user query. \
+                Each version should be worded differently, using synonyms or alternative sentence structures, \
+                but they should all retain the original meaning. \
+                These versions will be used to retrieve relevant documents. \
+                It is very important to provide each query version on a separate line, \
+                without enumerations, hyphens, or any additional formatting!
+                User query: query"""
         );
     }
 

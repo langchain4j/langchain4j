@@ -118,8 +118,8 @@ public class JsonSchemaProperty {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof JsonSchemaProperty
-                && equalTo((JsonSchemaProperty) another);
+        return another instanceof JsonSchemaProperty jsp
+                && equalTo(jsp);
     }
 
     /**
@@ -131,8 +131,8 @@ public class JsonSchemaProperty {
     private boolean equalTo(JsonSchemaProperty another) {
         if (!Objects.equals(key, another.key)) return false;
 
-        if (value instanceof Object[] && another.value instanceof Object[]) {
-            return Arrays.equals((Object[]) value, (Object[]) another.value);
+        if (value instanceof Object[] objects && another.value instanceof Object[] objects1) {
+            return Arrays.equals(objects, objects1);
         }
 
         return Objects.equals(value, another.value);
@@ -142,14 +142,14 @@ public class JsonSchemaProperty {
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(key);
-        int v = (value instanceof Object[]) ? Arrays.hashCode((Object[]) value) : Objects.hashCode(value);
+        int v = (value instanceof Object[] os) ? Arrays.hashCode(os) : Objects.hashCode(value);
         h += (h << 5) + v;
         return h;
     }
 
     @Override
     public String toString() {
-        String valueString = (value instanceof Object[]) ? Arrays.toString((Object[]) value) : value.toString();
+        String valueString = (value instanceof Object[] os) ? Arrays.toString(os) : value.toString();
         return "JsonSchemaProperty {"
                 + " key = " + quoted(key)
                 + ", value = " + valueString
