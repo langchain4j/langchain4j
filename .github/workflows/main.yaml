@@ -58,7 +58,6 @@ jobs:
       - name: Compile and test with JDK ${{ matrix.java_version }}
         run: |
           mvn -B -U -T8C test javadoc:aggregate \
-            -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             ${{ matrix.mvn_opts }}
 
       - name: Integration test with JDK ${{ matrix.java_version }}
