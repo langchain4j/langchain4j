@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.34.0-SNAPSHOT</version>
+        <version>0.36.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -15,13 +15,14 @@
     <name>LangChain4j :: Integration :: Oracle Coherence</name>
 
     <properties>
-        <coherence.version>15.1.1-0-0-SNAPSHOT</coherence.version>
+        <coherence.version>24.09</coherence.version>
+        <coherence.groupId>com.oracle.coherence.ce</coherence.groupId>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>com.oracle.coherence</groupId>
+                <groupId>${coherence.groupId}</groupId>
                 <artifactId>coherence-bom</artifactId>
                 <version>${coherence.version}</version>
                 <type>pom</type>
@@ -42,6 +43,11 @@
             <artifactId>langchain4j-core</artifactId>
             <classifier>tests</classifier>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -72,17 +78,17 @@
         </dependency>
 
         <dependency>
-            <groupId>com.oracle.coherence</groupId>
+            <groupId>${coherence.groupId}</groupId>
             <artifactId>coherence</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.oracle.coherence.ai</groupId>
+            <groupId>${coherence.groupId}</groupId>
             <artifactId>coherence-hnsw</artifactId>
-            <version>1.1.0-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.oracle.coherence</groupId>
+            <groupId>${coherence.groupId}</groupId>
             <artifactId>coherence-bedrock-testing-support</artifactId>
             <scope>test</scope>
         </dependency>

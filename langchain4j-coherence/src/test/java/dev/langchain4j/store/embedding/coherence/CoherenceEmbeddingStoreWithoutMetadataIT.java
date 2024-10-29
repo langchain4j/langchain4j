@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.cohrence;
+package dev.langchain4j.store.embedding.coherence;
 
 import com.oracle.bedrock.junit.CoherenceClusterExtension;
 import com.oracle.bedrock.junit.SessionBuilders;
@@ -16,23 +16,22 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
-import dev.langchain4j.store.embedding.coherence.CoherenceEmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithoutMetadataIT;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 /**
- * An extension of the LangChain4J {@link EmbeddingStoreWithFilteringIT} tests
+ * An extension of the LangChain4J {@link EmbeddingStoreWithoutMetadataIT} tests
  * that use Coherence as an {@link EmbeddingStore}.
  */
-public class CoherenceEmbeddingStoreWithFilteringIT
-        extends EmbeddingStoreWithFilteringIT {
+public class CoherenceEmbeddingStoreWithoutMetadataIT
+        extends EmbeddingStoreWithoutMetadataIT {
     @RegisterExtension
     static TestLogsExtension testLogs = new TestLogsExtension();
 
     @RegisterExtension
     static CoherenceClusterExtension cluster = new CoherenceClusterExtension()
-            .with(ClusterName.of("CoherenceEmbeddingStoreWithFilteringIT"),
+            .with(ClusterName.of("CoherenceEmbeddingStoreWithoutMetadataIT"),
                     WellKnownAddress.loopback(),
                     LocalHost.only(),
                     IPv4Preferred.autoDetect(),
