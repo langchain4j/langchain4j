@@ -285,7 +285,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 retriever.getClass().getName(),
                 contentsSting);
         } else {
-            log.trace("Retrieved empty contents using query '{}' and retriever '{}'",
+            log.trace("Retrieved 0 contents using query '{}' and retriever '{}'",
                 query.text(),
                 retriever.getClass().getName());
         }
