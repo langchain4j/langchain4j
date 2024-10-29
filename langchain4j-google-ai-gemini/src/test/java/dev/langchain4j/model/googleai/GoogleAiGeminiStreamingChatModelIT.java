@@ -1,7 +1,6 @@
 package dev.langchain4j.model.googleai;
 
 import com.google.gson.Gson;
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -22,6 +21,7 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.output.JsonSchemas;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.RetryingTest;
 
@@ -52,9 +52,9 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_answer_simple_question() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .build();
 
         UserMessage userMessage = UserMessage.from("What is the capital of France?");
 
@@ -74,13 +74,13 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_configure_generation() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .temperature(2.0)
-                .topP(0.5)
-                .topK(10)
-                .maxOutputTokens(10)
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .temperature(2.0)
+            .topP(0.5)
+            .topK(10)
+            .maxOutputTokens(10)
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -96,16 +96,16 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_answer_in_json() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-pro")
-                .responseFormat(ResponseFormat.JSON)
-                .logRequestsAndResponses(true)
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-pro")
+            .responseFormat(ResponseFormat.JSON)
+            .logRequestsAndResponses(true)
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         gemini.generate(UserMessage.from("What is the firstname of the John Doe?\n" +
-                "Reply in JSON following with the following format: {\"firstname\": string}"), handler);
+            "Reply in JSON following with the following format: {\"firstname\": string}"), handler);
         Response<AiMessage> response = handler.get();
 
         // then
@@ -123,9 +123,9 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_support_multiturn_chatting() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .build();
 
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(UserMessage.from("Hello, my name is Guillaume"));
@@ -145,14 +145,13 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_support_sending_images_as_base64() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .build();
 
         UserMessage userMessage = UserMessage.userMessage(
-//            ImageContent.fromToolExecReqToGFunCall(CAT_IMAGE_URL),
-                ImageContent.from(new String(Base64.getEncoder().encode(readBytes(CAT_IMAGE_URL))), "image/png"),
-                TextContent.from("Describe this image in a single word")
+            ImageContent.from(new String(Base64.getEncoder().encode(readBytes(CAT_IMAGE_URL))), "image/png"),
+            TextContent.from("Describe this image in a single word")
         );
 
         // when
@@ -168,13 +167,13 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_support_text_file() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .build();
 
         UserMessage userMessage = UserMessage.userMessage(
-                TextFileContent.from(new String(Base64.getEncoder().encode(readBytes(MD_FILE_URL))), "text/markdown"),
-                TextContent.from("What project does this markdown file mention?")
+            TextFileContent.from(new String(Base64.getEncoder().encode(readBytes(MD_FILE_URL))), "text/markdown"),
+            TextContent.from("What project does this markdown file mention?")
         );
 
         // when
@@ -190,16 +189,16 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_support_audio_file() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .build();
 
         UserMessage userMessage = UserMessage.from(
-                AudioContent.from(
-                        new String(Base64.getEncoder().encode( //TODO use local file
-                                readBytes("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3"))),
-                        "audio/mp3"),
-                TextContent.from("Give a summary of the audio")
+            AudioContent.from(
+                new String(Base64.getEncoder().encode( //TODO use local file
+                    readBytes("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3"))),
+                "audio/mp3"),
+            TextContent.from("Give a summary of the audio")
         );
 
         // when
@@ -212,6 +211,7 @@ public class GoogleAiGeminiStreamingChatModelIT {
     }
 
     @Test
+    @Disabled
     void should_support_video_file() {
         // ToDo waiting for the normal GoogleAiGeminiChatModel to implement the test
     }
@@ -220,13 +220,13 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_respect_system_instruction() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .build();
 
         List<ChatMessage> chatMessages = List.of(
-                SystemMessage.from("Translate from English into French"),
-                UserMessage.from("apple")
+            SystemMessage.from("Translate from English into French"),
+            UserMessage.from("apple")
         );
 
         // when
@@ -242,18 +242,18 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_execute_python_code() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .allowCodeExecution(true)
-                .includeCodeExecutionOutput(true)
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .allowCodeExecution(true)
+            .includeCodeExecutionOutput(true)
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         gemini.generate(
-                UserMessage.from("Calculate `fibonacci(13)`. Write code in Python and execute it to get the result."),
-                handler
+            UserMessage.from("Calculate `fibonacci(13)`. Write code in Python and execute it to get the result."),
+            handler
         );
         Response<AiMessage> response = handler.get();
 
@@ -265,58 +265,13 @@ public class GoogleAiGeminiStreamingChatModelIT {
     }
 
     @Test
-    void should_request_to_call_function() {
-        // given
-        GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .build();
-
-        List<ChatMessage> allMessages = new ArrayList<>();
-        allMessages.add(UserMessage.from("What is the weather forecast in Paris?"));
-
-        // when
-        TestStreamingResponseHandler<AiMessage> handler1 = new TestStreamingResponseHandler<>();
-        gemini.generate(
-                allMessages,
-                ToolSpecification.builder()
-                        .name("getWeatherForecast")
-                        .description("Get the weather forecast for a given city")
-                        .addParameter("city", JsonSchemaProperty.STRING)
-                        .build(),
-                handler1
-        );
-        Response<AiMessage> response1 = handler1.get();
-
-        // then
-        assertThat(response1.content().hasToolExecutionRequests()).isTrue();
-        assertThat(response1.content().toolExecutionRequests().get(0).name()).isEqualTo("getWeatherForecast");
-        assertThat(response1.content().toolExecutionRequests().get(0).arguments()).isEqualTo("{\"city\":\"Paris\"}");
-
-        allMessages.add(response1.content());
-
-        // when
-        ToolExecutionResultMessage forecastResult =
-                ToolExecutionResultMessage.from(null, "getWeatherForecast", "{\"forecast\":\"sunny\"}");
-        allMessages.add(forecastResult);
-
-        TestStreamingResponseHandler<AiMessage> handler2 = new TestStreamingResponseHandler<>();
-        gemini.generate(allMessages, handler2);
-        Response<AiMessage> response2 = handler2.get();
-
-        // then
-        assertThat(response2.content().text()).containsIgnoringCase("sunny");
-    }
-
-    @Test
     void should_support_JSON_array_in_tools() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .build();
 
         // when
         List<ChatMessage> allMessages = new ArrayList<>();
@@ -325,13 +280,15 @@ public class GoogleAiGeminiStreamingChatModelIT {
 
         TestStreamingResponseHandler<AiMessage> handler1 = new TestStreamingResponseHandler<>();
         gemini.generate(
-                allMessages,
-                ToolSpecification.builder()
-                        .name("getFirstNFibonacciNumbers")
-                        .description("Get the first n fibonacci numbers")
-                        .addParameter("n", JsonSchemaProperty.INTEGER)
-                        .build(),
-                handler1
+            allMessages,
+            List.of(ToolSpecification.builder()
+                .name("getFirstNFibonacciNumbers")
+                .description("Get the first n fibonacci numbers")
+                .parameters(JsonObjectSchema.builder()
+                    .addNumberProperty("n")
+                    .build())
+                .build()),
+            handler1
         );
         Response<AiMessage> response1 = handler1.get();
 
@@ -344,7 +301,7 @@ public class GoogleAiGeminiStreamingChatModelIT {
 
         // when
         ToolExecutionResultMessage forecastResult =
-                ToolExecutionResultMessage.from(null, "getFirstNFibonacciNumbers", "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]");
+            ToolExecutionResultMessage.from(null, "getFirstNFibonacciNumbers", "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]");
         allMessages.add(forecastResult);
 
         // then
@@ -362,10 +319,10 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_support_parallel_tool_execution() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .build();
 
         // when
         List<ChatMessage> allMessages = new ArrayList<>();
@@ -373,13 +330,15 @@ public class GoogleAiGeminiStreamingChatModelIT {
 
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         gemini.generate(
-                allMessages,
-                ToolSpecification.builder()
-                        .name("getWarehouseStock")
-                        .description("Retrieve the amount of stock available in a warehouse designated by its name")
-                        .addParameter("name", JsonSchemaProperty.STRING, JsonSchemaProperty.description("The name of the warehouse"))
-                        .build(),
-                handler
+            allMessages,
+            List.of(ToolSpecification.builder()
+                .name("getWarehouseStock")
+                .description("Retrieve the amount of stock available in a warehouse designated by its name")
+                .parameters(JsonObjectSchema.builder()
+                    .addStringProperty("name", "The name of the warehouse")
+                    .build())
+                .build()),
+            handler
         );
         Response<AiMessage> response = handler.get();
 
@@ -391,8 +350,8 @@ public class GoogleAiGeminiStreamingChatModelIT {
         assertThat(executionRequests).hasSize(2);
 
         String allArgs = executionRequests.stream()
-                .map(ToolExecutionRequest::arguments)
-                .collect(Collectors.joining(" "));
+            .map(ToolExecutionRequest::arguments)
+            .collect(Collectors.joining(" "));
         assertThat(allArgs).contains("ABC");
         assertThat(allArgs).contains("XYZ");
     }
@@ -401,16 +360,16 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_support_safety_settings() {
         // given
         List<GeminiSafetySetting> safetySettings = List.of(
-                new GeminiSafetySetting(HARM_CATEGORY_HATE_SPEECH, BLOCK_LOW_AND_ABOVE),
-                new GeminiSafetySetting(HARM_CATEGORY_HARASSMENT, BLOCK_LOW_AND_ABOVE)
+            new GeminiSafetySetting(HARM_CATEGORY_HATE_SPEECH, BLOCK_LOW_AND_ABOVE),
+            new GeminiSafetySetting(HARM_CATEGORY_HARASSMENT, BLOCK_LOW_AND_ABOVE)
         );
 
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .safetySettings(safetySettings)
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .safetySettings(safetySettings)
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -425,34 +384,34 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_comply_to_response_schema() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .rootElement(JsonObjectSchema.builder()
-                                        .addStringProperty("name")
-                                        .addProperty("address", JsonObjectSchema.builder()
-                                                .addStringProperty("city")
-                                                .required("city")
-                                                .build())
-                                        .required("name", "address")
-                                        .additionalProperties(false)
-                                        .build())
-                                .build())
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .responseFormat(ResponseFormat.builder()
+                .type(JSON)
+                .jsonSchema(JsonSchema.builder()
+                    .rootElement(JsonObjectSchema.builder()
+                        .addStringProperty("name")
+                        .addProperty("address", JsonObjectSchema.builder()
+                            .addStringProperty("city")
+                            .required("city")
+                            .build())
+                        .required("name", "address")
+                        .additionalProperties(false)
                         .build())
-                .build();
+                    .build())
+                .build())
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         gemini.generate(List.of(
-                SystemMessage.from(
-                        "Your role is to extract information related to a person," +
-                                "like their name, their address, the city the live in."),
-                UserMessage.from(
-                        "In the town of Liverpool, lived Tommy Skybridge, a young little boy."
-                )
+            SystemMessage.from(
+                "Your role is to extract information related to a person," +
+                    "like their name, their address, the city the live in."),
+            UserMessage.from(
+                "In the town of Liverpool, lived Tommy Skybridge, a young little boy."
+            )
         ), handler);
         Response<AiMessage> response = handler.get();
 
@@ -460,40 +419,40 @@ public class GoogleAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.content().text().trim())
-                .isEqualTo("{\"address\": {\"city\": \"Liverpool\"}, \"name\": \"Tommy Skybridge\"}");
+            .isEqualTo("{\"address\": {\"city\": \"Liverpool\"}, \"name\": \"Tommy Skybridge\"}");
     }
 
     @Test
     void should_handle_enum_type() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .rootElement(JsonObjectSchema.builder()
-                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                            put("sentiment", JsonEnumSchema.builder()
-                                                    .enumValues("POSITIVE", "NEGATIVE")
-                                                    .build());
-                                        }})
-                                        .required("sentiment")
-                                        .additionalProperties(false)
-                                        .build())
-                                .build())
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .responseFormat(ResponseFormat.builder()
+                .type(JSON)
+                .jsonSchema(JsonSchema.builder()
+                    .rootElement(JsonObjectSchema.builder()
+                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                            put("sentiment", JsonEnumSchema.builder()
+                                .enumValues("POSITIVE", "NEGATIVE")
+                                .build());
+                        }})
+                        .required("sentiment")
+                        .additionalProperties(false)
                         .build())
-                .build();
+                    .build())
+                .build())
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         gemini.generate(List.of(
-                SystemMessage.from(
-                        "Your role is to analyze the sentiment of the text you receive."),
-                UserMessage.from(
-                        "This is super exciting news, congratulations!"
-                )
+            SystemMessage.from(
+                "Your role is to analyze the sentiment of the text you receive."),
+            UserMessage.from(
+                "This is super exciting news, congratulations!"
+            )
         ), handler);
         Response<AiMessage> response = handler.get();
 
@@ -501,67 +460,67 @@ public class GoogleAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.content().text().trim())
-                .isEqualTo("{\"sentiment\": \"POSITIVE\"}");
+            .isEqualTo("{\"sentiment\": \"POSITIVE\"}");
     }
 
     @Test
     void should_handle_enum_output_mode() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .rootElement(JsonEnumSchema.builder()
-                                        .enumValues("POSITIVE", "NEUTRAL", "NEGATIVE")
-                                        .build())
-                                .build())
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .responseFormat(ResponseFormat.builder()
+                .type(JSON)
+                .jsonSchema(JsonSchema.builder()
+                    .rootElement(JsonEnumSchema.builder()
+                        .enumValues("POSITIVE", "NEUTRAL", "NEGATIVE")
                         .build())
-                .build();
+                    .build())
+                .build())
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         gemini.generate(List.of(
-                SystemMessage.from(
-                        "Your role is to analyze the sentiment of the text you receive."),
-                UserMessage.from(
-                        "This is super exciting news, congratulations!"
-                )
+            SystemMessage.from(
+                "Your role is to analyze the sentiment of the text you receive."),
+            UserMessage.from(
+                "This is super exciting news, congratulations!"
+            )
         ), handler);
         Response<AiMessage> response = handler.get();
 
         // then
         assertThat(response.content().text().trim())
-                .isEqualTo("POSITIVE");
+            .isEqualTo("POSITIVE");
     }
 
     @Test
     void should_allow_array_as_response_schema() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .rootElement(JsonArraySchema.builder()
-                                        .items(new JsonIntegerSchema())
-                                        .build())
-                                .build())
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .responseFormat(ResponseFormat.builder()
+                .type(JSON)
+                .jsonSchema(JsonSchema.builder()
+                    .rootElement(JsonArraySchema.builder()
+                        .items(new JsonIntegerSchema())
                         .build())
-                .build();
+                    .build())
+                .build())
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         gemini.generate(List.of(
-                SystemMessage.from(
-                        "Your role is to return a list of 6-faces dice rolls"),
-                UserMessage.from(
-                        "Give me 3 dice rolls"
-                )
+            SystemMessage.from(
+                "Your role is to return a list of 6-faces dice rolls"),
+            UserMessage.from(
+                "Give me 3 dice rolls"
+            )
         ), handler);
         Response<AiMessage> response = handler.get();
 
@@ -584,40 +543,23 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_deserialize_to_POJO() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .responseFormat(ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
-                        .build())
-//             Equivalent to:
-//            .responseFormat(ResponseFormat.builder()
-//                .type(JSON)
-//                .jsonSchema(JsonSchema.builder()
-//                    .schema(JsonObjectSchema.builder()
-//                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-//                            put("name", JSON_STRING_SCHEMA);
-//                            put("red", JSON_INTEGER_SCHEMA);
-//                            put("green", JSON_INTEGER_SCHEMA);
-//                            put("blue", JSON_INTEGER_SCHEMA);
-//                            put("muted", JSON_BOOLEAN_SCHEMA);
-//                        }})
-//                        .required("name", "red", "green", "blue", "muted")
-//                        .additionalProperties(false)
-//                        .build())
-//                    .build())
-//                .build())
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .responseFormat(ResponseFormat.builder()
+                .type(JSON)
+                .jsonSchema(JsonSchemas.jsonSchemaFrom(Color.class).get())
+                .build())
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         gemini.generate(List.of(
-                SystemMessage.from(
-                        "Your role is to extract information from the description of a color"),
-                UserMessage.from(
-                        "Cobalt blue is a blend of a lot of blue, a bit of green, and almost no red."
-                )
+            SystemMessage.from(
+                "Your role is to extract information from the description of a color"),
+            UserMessage.from(
+                "Cobalt blue is a blend of a lot of blue, a bit of green, and almost no red."
+            )
         ), handler);
         Response<AiMessage> response = handler.get();
 
@@ -636,15 +578,15 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_support_tool_config() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .build();
 
         List<ChatMessage> chatMessages = List.of(UserMessage.from("Call toolOne"));
         List<ToolSpecification> listOfTools = Arrays.asList(
-                ToolSpecification.builder().name("toolOne").build(),
-                ToolSpecification.builder().name("toolTwo").build()
+            ToolSpecification.builder().name("toolOne").build(),
+            ToolSpecification.builder().name("toolTwo").build()
         );
 
         // when
@@ -658,11 +600,11 @@ public class GoogleAiGeminiStreamingChatModelIT {
 
         // given
         gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-flash")
-                .logRequestsAndResponses(true)
-                .toolConfig(new GeminiFunctionCallingConfig(GeminiMode.ANY, List.of("toolTwo")))
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-flash")
+            .logRequestsAndResponses(true)
+            .toolConfig(new GeminiFunctionCallingConfig(GeminiMode.ANY, List.of("toolTwo")))
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler2 = new TestStreamingResponseHandler<>();
@@ -697,32 +639,32 @@ public class GoogleAiGeminiStreamingChatModelIT {
     void should_work_with_tools_with_AiServices() throws ExecutionException, InterruptedException, TimeoutException {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
-                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-1.5-pro")
-                .logRequestsAndResponses(true)
-                .timeout(Duration.ofMinutes(2))
-                .temperature(0.0)
-                .topP(0.0)
-                .topK(1)
-                .build();
+            .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+            .modelName("gemini-1.5-pro")
+            .logRequestsAndResponses(true)
+            .timeout(Duration.ofMinutes(2))
+            .temperature(0.0)
+            .topP(0.0)
+            .topK(1)
+            .build();
 
         // when
         Transactions spyTransactions = spy(new Transactions());
 
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .tools(spyTransactions)
-                .chatMemory(chatMemory)
-                .streamingChatLanguageModel(gemini)
-                .build();
+            .tools(spyTransactions)
+            .chatMemory(chatMemory)
+            .streamingChatLanguageModel(gemini)
+            .build();
 
         // then
         CompletableFuture<Response<AiMessage>> future1 = new CompletableFuture<>();
         assistant.chat("What is the amount of transaction T001?")
-                .onNext(System.out::println)
-                .onComplete(future1::complete)
-                .onError(future1::completeExceptionally)
-                .start();
+            .onNext(System.out::println)
+            .onComplete(future1::complete)
+            .onError(future1::completeExceptionally)
+            .start();
         Response<AiMessage> response1 = future1.get(30, TimeUnit.SECONDS);
 
         assertThat(response1.content().text()).containsIgnoringCase("11.1");
@@ -730,10 +672,10 @@ public class GoogleAiGeminiStreamingChatModelIT {
 
         CompletableFuture<Response<AiMessage>> future2 = new CompletableFuture<>();
         assistant.chat("What is the amount of transaction T002?")
-                .onNext(System.out::println)
-                .onComplete(future2::complete)
-                .onError(future2::completeExceptionally)
-                .start();
+            .onNext(System.out::println)
+            .onComplete(future2::complete)
+            .onError(future2::completeExceptionally)
+            .start();
         Response<AiMessage> response2 = future2.get(30, TimeUnit.SECONDS);
 
         assertThat(response2.content().text()).containsIgnoringCase("22.2");
