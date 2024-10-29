@@ -80,11 +80,9 @@ public class LambdaStreamingResponseHandlerTest implements WithAssertions {
         @Override
         public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
             stringsAndError.forEach(obj -> {
-                if (obj instanceof String) {
-                    String msg = (String)obj;
+                if (obj instanceof String msg) {
                     handler.onNext(msg);
-                } else if (obj instanceof Throwable) {
-                    Throwable problem = (Throwable) obj;
+                } else if (obj instanceof Throwable problem) {
                     handler.onError(problem);
                 }
             });

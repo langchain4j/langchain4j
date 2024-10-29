@@ -130,14 +130,7 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(param, messages, null);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
-        listeners.forEach(listener -> {
-            try {
-                listener.onRequest(requestContext);
-            } catch (Exception e) {
-                log.warn("Exception while calling model listener", e);
-            }
-        });
+        onListenRequest(listeners, modelListenerRequest, attributes);
 
         QwenStreamingResponseBuilder responseBuilder = new QwenStreamingResponseBuilder();
         AtomicReference<String> responseId = new AtomicReference<>();
@@ -159,72 +152,18 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
                 @Override
                 public void onComplete() {
                     Response<AiMessage> response = responseBuilder.build();
-
-                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                            responseId.get(),
-                            param.getModel(),
-                            response
-                    );
-                    ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                            modelListenerResponse,
-                            modelListenerRequest,
-                            attributes
-                    );
-                    listeners.forEach(listener -> {
-                        try {
-                            listener.onResponse(responseContext);
-                        } catch (Exception e) {
-                            log.warn("Exception while calling model listener", e);
-                        }
-                    });
-
+                    onListenResponse(listeners, responseId.get(), response, modelListenerRequest, attributes);
                     handler.onComplete(response);
                 }
 
                 @Override
                 public void onError(Exception e) {
-                    Response<AiMessage> response = responseBuilder.build();
-
-                    ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
-                            responseId.get(),
-                            param.getModel(),
-                            response
-                    );
-
-                    ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                            e,
-                            modelListenerRequest,
-                            modelListenerPartialResponse,
-                            attributes
-                    );
-
-                    listeners.forEach(listener -> {
-                        try {
-                            listener.onError(errorContext);
-                        } catch (Exception ex) {
-                            log.warn("Exception while calling model listener", ex);
-                        }
-                    });
-
+                    onListenError(listeners, responseId.get(), e, modelListenerRequest, responseBuilder.build(), attributes);
                     handler.onError(e);
                 }
             });
         } catch (NoApiKeyException | InputRequiredException | RuntimeException e) {
-            ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    e,
-                    modelListenerRequest,
-                    null,
-                    attributes
-            );
-
-            listeners.forEach(listener -> {
-                try {
-                    listener.onError(errorContext);
-                } catch (Exception e2) {
-                    log.warn("Exception while calling model listener", e2);
-                }
-            });
-
+            onListenError(listeners, null, e, modelListenerRequest, null, attributes);
             throw e instanceof RuntimeException ?
                     (RuntimeException) e : new RuntimeException(e);
         }
@@ -246,14 +185,7 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(param, messages, null);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
-        listeners.forEach(listener -> {
-            try {
-                listener.onRequest(requestContext);
-            } catch (Exception e) {
-                log.warn("Exception while calling model listener", e);
-            }
-        });
+        onListenRequest(listeners, modelListenerRequest, attributes);
 
         QwenStreamingResponseBuilder responseBuilder = new QwenStreamingResponseBuilder();
         AtomicReference<String> responseId = new AtomicReference<>();
@@ -275,72 +207,18 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
                 @Override
                 public void onComplete() {
                     Response<AiMessage> response = responseBuilder.build();
-
-                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                            responseId.get(),
-                            param.getModel(),
-                            response
-                    );
-                    ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                            modelListenerResponse,
-                            modelListenerRequest,
-                            attributes
-                    );
-                    listeners.forEach(listener -> {
-                        try {
-                            listener.onResponse(responseContext);
-                        } catch (Exception e) {
-                            log.warn("Exception while calling model listener", e);
-                        }
-                    });
-
+                    onListenResponse(listeners, responseId.get(), response, modelListenerRequest, attributes);
                     handler.onComplete(response);
                 }
 
                 @Override
                 public void onError(Exception e) {
-                    Response<AiMessage> response = responseBuilder.build();
-
-                    ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
-                            responseId.get(),
-                            param.getModel(),
-                            response
-                    );
-
-                    ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                            e,
-                            modelListenerRequest,
-                            modelListenerPartialResponse,
-                            attributes
-                    );
-
-                    listeners.forEach(listener -> {
-                        try {
-                            listener.onError(errorContext);
-                        } catch (Exception ex) {
-                            log.warn("Exception while calling model listener", ex);
-                        }
-                    });
-
+                    onListenError(listeners, responseId.get(), e, modelListenerRequest, responseBuilder.build(), attributes);
                     handler.onError(e);
                 }
             });
         } catch (NoApiKeyException | UploadFileException | InputRequiredException | RuntimeException e) {
-            ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    e,
-                    modelListenerRequest,
-                    null,
-                    attributes
-            );
-
-            listeners.forEach(listener -> {
-                try {
-                    listener.onError(errorContext);
-                } catch (Exception e2) {
-                    log.warn("Exception while calling model listener", e2);
-                }
-            });
-
+            onListenError(listeners, null, e, modelListenerRequest, null, attributes);
             throw e instanceof RuntimeException ?
                     (RuntimeException) e : new RuntimeException(e);
         }

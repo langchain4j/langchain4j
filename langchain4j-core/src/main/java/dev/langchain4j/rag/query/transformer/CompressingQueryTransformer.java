@@ -8,9 +8,12 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Query;
-import lombok.Builder;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -34,18 +37,19 @@ import static java.util.stream.Collectors.joining;
 public class CompressingQueryTransformer implements QueryTransformer {
 
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "Read and understand the conversation between the User and the AI. " +
-                    "Then, analyze the new query from the User. " +
-                    "Identify all relevant details, terms, and context from both the conversation and the new query. " +
-                    "Reformulate this query into a clear, concise, and self-contained format suitable for information retrieval.\n" +
-                    "\n" +
-                    "Conversation:\n" +
-                    "{{chatMemory}}\n" +
-                    "\n" +
-                    "User query: {{query}}\n" +
-                    "\n" +
-                    "It is very important that you provide only reformulated query and nothing else! " +
-                    "Do not prepend a query with anything!"
+            """
+                    Read and understand the conversation between the User and the AI. \
+                    Then, analyze the new query from the User. \
+                    Identify all relevant details, terms, and context from both the conversation and the new query. \
+                    Reformulate this query into a clear, concise, and self-contained format suitable for information retrieval.
+                    
+                    Conversation:
+                    {{chatMemory}}
+                    
+                    User query: {{query}}
+                    
+                    It is very important that you provide only reformulated query and nothing else! \
+                    Do not prepend a query with anything!"""
     );
 
     protected final PromptTemplate promptTemplate;
@@ -55,10 +59,13 @@ public class CompressingQueryTransformer implements QueryTransformer {
         this(chatLanguageModel, DEFAULT_PROMPT_TEMPLATE);
     }
 
-    @Builder
     public CompressingQueryTransformer(ChatLanguageModel chatLanguageModel, PromptTemplate promptTemplate) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
+    }
+
+    public static CompressingQueryTransformerBuilder builder() {
+        return new CompressingQueryTransformerBuilder();
     }
 
     @Override
@@ -88,8 +95,7 @@ public class CompressingQueryTransformer implements QueryTransformer {
     protected String format(ChatMessage message) {
         if (message instanceof UserMessage) {
             return "User: " + message.text();
-        } else if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        } else if (message instanceof AiMessage aiMessage) {
             if (aiMessage.hasToolExecutionRequests()) {
                 return null;
             }
@@ -104,5 +110,31 @@ public class CompressingQueryTransformer implements QueryTransformer {
         variables.put("query", query.text());
         variables.put("chatMemory", chatMemory);
         return promptTemplate.apply(variables);
+    }
+
+    public static class CompressingQueryTransformerBuilder {
+        private ChatLanguageModel chatLanguageModel;
+        private PromptTemplate promptTemplate;
+
+        CompressingQueryTransformerBuilder() {
+        }
+
+        public CompressingQueryTransformerBuilder chatLanguageModel(ChatLanguageModel chatLanguageModel) {
+            this.chatLanguageModel = chatLanguageModel;
+            return this;
+        }
+
+        public CompressingQueryTransformerBuilder promptTemplate(PromptTemplate promptTemplate) {
+            this.promptTemplate = promptTemplate;
+            return this;
+        }
+
+        public CompressingQueryTransformer build() {
+            return new CompressingQueryTransformer(this.chatLanguageModel, this.promptTemplate);
+        }
+
+        public String toString() {
+            return "CompressingQueryTransformer.CompressingQueryTransformerBuilder(chatLanguageModel=" + this.chatLanguageModel + ", promptTemplate=" + this.promptTemplate + ")";
+        }
     }
 }
