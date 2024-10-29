@@ -270,18 +270,20 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         log.debug("Retrieved {} contents using query '{}' and retriever '{}'",
             contents.size(), query.text(), retriever);
 
-        if (log.isTraceEnabled()) {
-            if (!contents.isEmpty()) {
-                final var contentsSting = contents.stream()
-                    .map(Content::textSegment)
-                    .map(segment -> "- " + escapeNewlines(segment.text()))
-                    .collect(joining("\n"));
-                log.trace("Retrieved {} contents using query '{}' and retriever '{}':\n{}",
-                    contents.size(),
-                    query.text(),
-                    retriever.getClass().getName(),
-                    contentsSting);
-            }
+        if (!log.isTraceEnabled()) {
+            return;
+        }
+
+        if (!contents.isEmpty()) {
+            final var contentsSting = contents.stream()
+                .map(Content::textSegment)
+                .map(segment -> "- " + escapeNewlines(segment.text()))
+                .collect(joining("\n"));
+            log.trace("Retrieved {} contents using query '{}' and retriever '{}':\n{}",
+                contents.size(),
+                query.text(),
+                retriever.getClass().getName(),
+                contentsSting);
         } else {
             log.trace("Retrieved empty contents using query '{}' and retriever '{}'",
                 query.text(),
