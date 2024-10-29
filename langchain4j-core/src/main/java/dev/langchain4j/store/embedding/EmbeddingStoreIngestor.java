@@ -10,7 +10,8 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.spi.data.document.splitter.DocumentSplitterFactory;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -48,8 +49,9 @@ import static java.util.stream.Collectors.toList;
  * Including a document title or a short summary in each {@code TextSegment} is a common technique
  * to improve the quality of similarity searches.
  */
-@Slf4j
 public class EmbeddingStoreIngestor {
+
+    private static final Logger log = LoggerFactory.getLogger(EmbeddingStoreIngestor.class);
 
     private final DocumentTransformer documentTransformer;
     private final DocumentSplitter documentSplitter;
@@ -123,6 +125,7 @@ public class EmbeddingStoreIngestor {
      * <br>
      * For the "Easy RAG", import {@code langchain4j-easy-rag} module,
      * which contains a {@code DocumentSplitterFactory} and {@code EmbeddingModelFactory} implementations.
+     *
      * @return result including information related to ingestion process.
      */
     public static IngestionResult ingest(Document document, EmbeddingStore<TextSegment> embeddingStore) {
@@ -137,6 +140,7 @@ public class EmbeddingStoreIngestor {
      * <br>
      * For the "Easy RAG", import {@code langchain4j-easy-rag} module,
      * which contains a {@code DocumentSplitterFactory} and {@code EmbeddingModelFactory} implementations.
+     *
      * @return result including information related to ingestion process.
      */
     public static IngestionResult ingest(List<Document> documents, EmbeddingStore<TextSegment> embeddingStore) {
