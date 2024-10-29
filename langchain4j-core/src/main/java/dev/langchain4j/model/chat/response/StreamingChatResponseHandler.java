@@ -23,7 +23,7 @@ public interface StreamingChatResponseHandler {
      */
     void onNext(String token);
     // TODO name (Some LLM providers batch tokens): onPartialResponse? onNextTokens?
-    // TODO make sure consistent with ChatResponse
+    // TODO make sure consistent with ChatResponse and TokenStream
 
     /**
      * Invoked when the model has finished streaming a response.

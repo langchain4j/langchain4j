@@ -17,6 +17,15 @@ import java.util.function.Consumer;
  */
 public interface TokenStream {
 
+    // TODO new API:
+    // TODO - onPartialResponse(Consumer<String>) What about tool/other tokens? onPartialResponse(ChatResponse)?
+    // TODO - onCompleteResponse(Consumer<ChatResponse>)
+    // TODO - onRetrieved(Consumer<List<Content>>)
+    // TODO - onToolExecuted(Consumer<ToolExecution>)
+    // TODO - onError(Consumer<Throwable>)
+    // TODO - ignoreErrors()
+    // TODO - start()
+
     /**
      * The provided consumer will be invoked every time a new token from a language model is available.
      *
