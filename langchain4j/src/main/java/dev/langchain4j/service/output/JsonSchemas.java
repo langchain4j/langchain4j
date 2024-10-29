@@ -51,7 +51,7 @@ public class JsonSchemas {
             Class<?> finalRawClass = rawClass;
             if (finalRawClass != null && finalRawClass.isEnum()) {
                 jsonSchema = JsonSchema.builder()
-                        .name("Collection_of_" + rawClass.getSimpleName())
+                        .name(getRawClass(returnType).getSimpleName() + "_of_" + rawClass.getSimpleName())
                         .rootElement(JsonObjectSchema.builder()
                                 .addProperty("array", JsonArraySchema.builder()
                                         .items(JsonEnumSchema.builder()
@@ -63,7 +63,7 @@ public class JsonSchemas {
                         .build();
             } else {
                 jsonSchema = JsonSchema.builder()
-                        .name("Collection_of_" + rawClass.getSimpleName())
+                        .name(getRawClass(returnType).getSimpleName() + "_of_" + rawClass.getSimpleName())
                         .rootElement(JsonObjectSchema.builder()
                                 .addProperty("array", JsonArraySchema.builder()
                                         .items(jsonObjectOrReferenceSchemaFrom(finalRawClass, null, new LinkedHashMap<>(), true))

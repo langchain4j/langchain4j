@@ -138,7 +138,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                     .responseFormat(ResponseFormat.builder()
                             .type(JSON)
                             .jsonSchema(JsonSchema.builder()
-                                    .name("Collection_of_Person")
+                                    .name("List_of_Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .addProperty("array", JsonArraySchema.builder()
                                                     .items(JsonObjectSchema.builder()
@@ -210,7 +210,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                     .responseFormat(ResponseFormat.builder()
                             .type(JSON)
                             .jsonSchema(JsonSchema.builder()
-                                    .name("Collection_of_Person")
+                                    .name("Set_of_Person")
                                     .rootElement(JsonObjectSchema.builder()
                                             .addProperty("array", JsonArraySchema.builder()
                                                     .items(JsonObjectSchema.builder()
@@ -265,14 +265,14 @@ public abstract class AiServicesWithJsonSchemaIT {
             maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.SINGLE);
             maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.MARRIED);
             maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.MARRIED);
-            assertTrue(statuses.containsAll(maritalStatuses));
+            Assertions.assertTrue(statuses.containsAll(maritalStatuses));
 
             verify(model).chat(ChatRequest.builder()
                     .messages(singletonList(userMessage(text)))
                     .responseFormat(ResponseFormat.builder()
                             .type(JSON)
                             .jsonSchema(JsonSchema.builder()
-                                    .name("Collection_of_MaritalStatus")
+                                    .name("List_of_MaritalStatus")
                                     .rootElement(JsonObjectSchema.builder()
                                             .addProperty("array", JsonArraySchema.builder()
                                                     .items(JsonEnumSchema.builder()
