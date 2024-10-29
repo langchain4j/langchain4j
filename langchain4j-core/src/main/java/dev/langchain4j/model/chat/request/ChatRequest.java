@@ -108,7 +108,7 @@ public class ChatRequest {
      * @param userMessage
      * @return
      */
-    public static ChatRequest from(String userMessage) { // TODO needed?
+    public static ChatRequest from(String userMessage) { // TODO needed? keep this method instead of *ChatModel.chat(String, ?)
         return ChatRequest.builder()
                 .messages(UserMessage.from(userMessage))
                 .build();

@@ -57,7 +57,7 @@ public interface ChatLanguageModel {
     }
 
     @Experimental
-    default String chat(String userMessage) {
+    default String chat(String userMessage) { // TODO remove this convenience method?
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from(userMessage))
                 .build();
@@ -65,7 +65,6 @@ public interface ChatLanguageModel {
         return chatResponse.aiMessage().text();
     }
 
-    // TODO more convenience methods? e.g. chat(ChatMessage...), etc?
     // TODO API for N completions?
 
     @Experimental

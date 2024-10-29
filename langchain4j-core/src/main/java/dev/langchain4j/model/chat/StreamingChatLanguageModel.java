@@ -73,7 +73,8 @@ public interface StreamingChatLanguageModel {
         }
     }
 
-    // TODO convenience methods?
+    // TODO add convenience method(s)? e.g. chat(String, StreamingChatResponseHandler)
+
     // TODO API for N completions?
 
     /**
