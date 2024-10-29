@@ -6,7 +6,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Builder;
 
 /**
  * A response from the {@link ChatLanguageModel} or {@link StreamingChatLanguageModel},
@@ -21,7 +20,6 @@ public class ChatModelResponse {
     private final FinishReason finishReason;
     private final AiMessage aiMessage;
 
-    @Builder
     public ChatModelResponse(String id,
                              String model,
                              TokenUsage tokenUsage,
@@ -32,6 +30,10 @@ public class ChatModelResponse {
         this.tokenUsage = tokenUsage;
         this.finishReason = finishReason;
         this.aiMessage = aiMessage;
+    }
+
+    public static ChatModelResponseBuilder builder() {
+        return new ChatModelResponseBuilder();
     }
 
     public String id() {
@@ -52,5 +54,49 @@ public class ChatModelResponse {
 
     public AiMessage aiMessage() {
         return aiMessage;
+    }
+
+    public static class ChatModelResponseBuilder {
+        private String id;
+        private String model;
+        private TokenUsage tokenUsage;
+        private FinishReason finishReason;
+        private AiMessage aiMessage;
+
+        ChatModelResponseBuilder() {
+        }
+
+        public ChatModelResponseBuilder id(String id) {
+            this.id = id;
+            return this;
+        }
+
+        public ChatModelResponseBuilder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+        public ChatModelResponseBuilder tokenUsage(TokenUsage tokenUsage) {
+            this.tokenUsage = tokenUsage;
+            return this;
+        }
+
+        public ChatModelResponseBuilder finishReason(FinishReason finishReason) {
+            this.finishReason = finishReason;
+            return this;
+        }
+
+        public ChatModelResponseBuilder aiMessage(AiMessage aiMessage) {
+            this.aiMessage = aiMessage;
+            return this;
+        }
+
+        public ChatModelResponse build() {
+            return new ChatModelResponse(this.id, this.model, this.tokenUsage, this.finishReason, this.aiMessage);
+        }
+
+        public String toString() {
+            return "ChatModelResponse.ChatModelResponseBuilder(id=" + this.id + ", model=" + this.model + ", tokenUsage=" + this.tokenUsage + ", finishReason=" + this.finishReason + ", aiMessage=" + this.aiMessage + ")";
+        }
     }
 }
