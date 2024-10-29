@@ -98,8 +98,7 @@ String apiKey = "demo";
 Be aware that when using the `demo` key, all requests to the OpenAI API go through our proxy,
 which injects the real key before forwarding your request to the OpenAI API.
 We do not collect or use your data in any way.
-The `demo` key has a quota (e.g. a maximum of 5000 tokens per request), is restricted to the `gpt-4o-mini` model,
-and should only be used for demonstration purposes.
+The `demo` key has a quota, is restricted to the `gpt-4o-mini` model, and should only be used for demonstration purposes.
 :::
 
 Once you've set up the key, let's create an instance of an `OpenAiChatModel`:
