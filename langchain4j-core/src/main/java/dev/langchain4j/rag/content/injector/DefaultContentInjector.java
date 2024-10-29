@@ -7,14 +7,15 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.Content;
-import lombok.Builder;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
@@ -47,10 +48,10 @@ public class DefaultContentInjector implements ContentInjector {
 
     public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             """
-            {{userMessage}}
-            
-            Answer using the following information:
-            {{contents}}"""
+                    {{userMessage}}
+                    
+                    Answer using the following information:
+                    {{contents}}"""
     );
 
     private final PromptTemplate promptTemplate;
@@ -68,10 +69,13 @@ public class DefaultContentInjector implements ContentInjector {
         this(ensureNotNull(promptTemplate, "promptTemplate"), null);
     }
 
-    @Builder
     public DefaultContentInjector(PromptTemplate promptTemplate, List<String> metadataKeysToInclude) {
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
         this.metadataKeysToInclude = copyIfNotNull(metadataKeysToInclude);
+    }
+
+    public static DefaultContentInjectorBuilder builder() {
+        return new DefaultContentInjectorBuilder();
     }
 
     @Override
@@ -160,5 +164,31 @@ public class DefaultContentInjector implements ContentInjector {
         return segmentMetadata.isEmpty()
                 ? segmentContent
                 : "content: %s\n%s".formatted(segmentContent, segmentMetadata);
+    }
+
+    public static class DefaultContentInjectorBuilder {
+        private PromptTemplate promptTemplate;
+        private List<String> metadataKeysToInclude;
+
+        DefaultContentInjectorBuilder() {
+        }
+
+        public DefaultContentInjectorBuilder promptTemplate(PromptTemplate promptTemplate) {
+            this.promptTemplate = promptTemplate;
+            return this;
+        }
+
+        public DefaultContentInjectorBuilder metadataKeysToInclude(List<String> metadataKeysToInclude) {
+            this.metadataKeysToInclude = metadataKeysToInclude;
+            return this;
+        }
+
+        public DefaultContentInjector build() {
+            return new DefaultContentInjector(this.promptTemplate, this.metadataKeysToInclude);
+        }
+
+        public String toString() {
+            return "DefaultContentInjector.DefaultContentInjectorBuilder(promptTemplate=" + this.promptTemplate + ", metadataKeysToInclude=" + this.metadataKeysToInclude + ")";
+        }
     }
 }

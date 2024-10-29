@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import com.google.gson.annotations.SerializedName;
+import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,8 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.google.gson.annotations.SerializedName;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class JsonTest {
 
