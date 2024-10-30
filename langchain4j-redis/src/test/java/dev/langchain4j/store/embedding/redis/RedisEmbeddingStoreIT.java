@@ -8,7 +8,6 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.search.schemafields.NumericField;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TextField;
@@ -42,16 +41,12 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        try (JedisPooled jedis = new JedisPooled(redis.getHost(), redis.getFirstMappedPort())) {
-            jedis.flushDB(); // TODO fix: why redis returns embeddings from different indexes?
-        }
-
         Map<String, SchemaField> schemaFieldMap = new HashMap<>();
         Map<String, Object> metadataMap = createMetadata().toMap();
 
-        List<String> numericPrefix = Arrays.asList("integer", "float", "double", "long");
+        List<Class<? extends Number>> numericPrefix = Arrays.asList(Integer.class, Long.class, Float.class, Double.class);
         metadataMap.forEach((key, value) -> {
-            if (numericPrefix.stream().anyMatch(key::startsWith)) {
+            if (numericPrefix.stream().anyMatch(type -> type.isAssignableFrom(value.getClass()))) {
                 schemaFieldMap.put(key, NumericField.of("$." + key).as(key));
             } else {
                 schemaFieldMap.put(key, TextField.of("$." + key).as(key).weight(1.0));
@@ -59,12 +54,13 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
         });
 
         embeddingStore = RedisEmbeddingStore.builder()
-                .host(redis.getHost())
-                .port(redis.getFirstMappedPort())
-                .indexName(randomUUID())
-                .dimension(embeddingModel.dimension())
-                .schemaFiledMap(schemaFieldMap)
-                .build();
+            .host(redis.getHost())
+            .port(redis.getFirstMappedPort())
+            .indexName(randomUUID())
+            .prefix(randomUUID() + ":")
+            .dimension(384)
+            .schemaFiledMap(schemaFieldMap)
+            .build();
     }
 
     @Override

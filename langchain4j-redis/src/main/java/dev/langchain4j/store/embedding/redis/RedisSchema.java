@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.redis.MetricType.COSINE;
 import static redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm.HNSW;
 
@@ -46,6 +47,8 @@ class RedisSchema {
                 Integer dimension,
                 MetricType metricType,
                 Map<String, SchemaField> schemaFieldMap) {
+        ensureTrue(prefix.endsWith(":"), "Prefix should end with a ':'");
+
         this.indexName = indexName;
         this.prefix = prefix;
         this.vectorFieldName = vectorFieldName;
@@ -65,11 +68,11 @@ class RedisSchema {
         List<SchemaField> fields = new ArrayList<>();
         fields.add(TextField.of(JSON_PATH_PREFIX + scalarFieldName).as(scalarFieldName).weight(1.0));
         fields.add(VectorField.builder()
-                .fieldName(JSON_PATH_PREFIX + vectorFieldName)
-                .algorithm(vectorAlgorithm)
-                .attributes(vectorAttrs)
-                .as(vectorFieldName)
-                .build());
+            .fieldName(JSON_PATH_PREFIX + vectorFieldName)
+            .algorithm(vectorAlgorithm)
+            .attributes(vectorAttrs)
+            .as(vectorFieldName)
+            .build());
         // Add Metadata fields
         fields.addAll(schemaFieldMap.values());
 
