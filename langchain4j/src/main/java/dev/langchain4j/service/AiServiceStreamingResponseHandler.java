@@ -36,7 +36,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final Consumer<String> tokenHandler; // TODO new partialResponseHandler?
     private final Consumer<ToolExecution> toolExecutionHandler;
-    private final Consumer<ChatResponse> newCompletionHandler;
+    private final Consumer<ChatResponse> completeResponseHandler;
     private final Consumer<Response<AiMessage>> completionHandler;
 
     private final Consumer<Throwable> errorHandler;
@@ -51,7 +51,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                       Object memoryId,
                                       Consumer<String> tokenHandler,
                                       Consumer<ToolExecution> toolExecutionHandler,
-                                      Consumer<ChatResponse> newCompletionHandler,
+                                      Consumer<ChatResponse> completeResponseHandler,
                                       Consumer<Response<AiMessage>> completionHandler,
                                       Consumer<Throwable> errorHandler,
                                       List<ChatMessage> temporaryMemory,
@@ -62,7 +62,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.memoryId = ensureNotNull(memoryId, "memoryId");
 
         this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
-        this.newCompletionHandler = newCompletionHandler;
+        this.completeResponseHandler = completeResponseHandler;
         this.completionHandler = completionHandler;
         this.toolExecutionHandler = toolExecutionHandler;
         this.errorHandler = errorHandler;
@@ -115,7 +115,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     memoryId,
                     tokenHandler,
                     toolExecutionHandler,
-                    newCompletionHandler,
+                    completeResponseHandler,
                     completionHandler,
                     errorHandler,
                     temporaryMemory,
@@ -126,13 +126,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             context.streamingChatModel.chat(chatRequest, handler);
         } else {
-            if (newCompletionHandler != null) {
+            if (completeResponseHandler != null) {
                 ChatResponse finalChatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage)
                         .tokenUsage(TokenUsage.sum(tokenUsage, chatResponse.tokenUsage()))
                         .finishReason(chatResponse.finishReason())
                         .build();
-                newCompletionHandler.accept(finalChatResponse);
+                completeResponseHandler.accept(finalChatResponse);
             } else if (completionHandler != null) {
                 Response<AiMessage> finalResponse = Response.from(
                         aiMessage,
