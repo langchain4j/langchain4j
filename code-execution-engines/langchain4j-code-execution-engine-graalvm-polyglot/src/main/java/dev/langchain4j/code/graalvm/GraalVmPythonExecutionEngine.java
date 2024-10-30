@@ -4,6 +4,7 @@ import dev.langchain4j.code.CodeExecutionEngine;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.SandboxPolicy;
+import org.jspecify.annotations.NonNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
@@ -19,7 +20,7 @@ import static org.graalvm.polyglot.SandboxPolicy.TRUSTED;
 public class GraalVmPythonExecutionEngine implements CodeExecutionEngine {
 
     @Override
-    public String execute(String code) {
+    public @NonNull String execute(@NonNull String code) {
         OutputStream outputStream = new ByteArrayOutputStream();
         try (Context context = Context.newBuilder("python")
                 .sandbox(TRUSTED)

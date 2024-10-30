@@ -2,6 +2,7 @@ package dev.langchain4j.code.judge0;
 
 import dev.langchain4j.code.CodeExecutionEngine;
 import okhttp3.*;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +34,7 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
     }
 
     @Override
-    public String execute(String code) {
+    public @NonNull String execute(@NonNull String code) {
 
         String base64EncodedCode = Base64.getEncoder().encodeToString(code.getBytes());
 
