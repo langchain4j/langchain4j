@@ -45,6 +45,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertResponse;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerRequest;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerResponse;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
@@ -162,19 +163,13 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-
-        Response<AiMessage> response = generate(
+        ResponseFormat responseFormat = toOpenAiResponseFormat(chatRequest.responseFormat(), strictJsonSchema);
+        return chat(
                 chatRequest.messages(),
                 chatRequest.toolSpecifications(),
                 null,
-                getOrDefault(toOpenAiResponseFormat(chatRequest.responseFormat(), strictJsonSchema), this.responseFormat)
+                getOrDefault(responseFormat, this.responseFormat)
         );
-
-        return ChatResponse.builder()
-                .aiMessage(response.content())
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
-                .build();
     }
 
     @Override
@@ -188,23 +183,31 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, null, null, this.responseFormat);
+        ChatResponse chatResponse = chat(messages, null, null, responseFormat);
+        return convertResponse(chatResponse);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null, this.responseFormat);
+        ChatResponse chatResponse = chat(messages, toolSpecifications, null, responseFormat);
+        return convertResponse(chatResponse);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, singletonList(toolSpecification), toolSpecification, this.responseFormat);
+        ChatResponse chatResponse = chat(
+                messages,
+                singletonList(toolSpecification),
+                toolSpecification,
+                responseFormat
+        );
+        return convertResponse(chatResponse);
     }
 
-    private Response<AiMessage> generate(List<ChatMessage> messages,
-                                         List<ToolSpecification> toolSpecifications,
-                                         ToolSpecification toolThatMustBeExecuted,
-                                         ResponseFormat responseFormat) {
+    private ChatResponse chat(List<ChatMessage> messages,
+                              List<ToolSpecification> toolSpecifications,
+                              ToolSpecification toolThatMustBeExecuted,
+                              ResponseFormat responseFormat) {
 
         if (responseFormat != null
                 && responseFormat.type() == JSON_SCHEMA
@@ -251,11 +254,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         try {
             ChatCompletionResponse chatCompletionResponse = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
-            Response<AiMessage> response = Response.from(
-                    aiMessageFrom(chatCompletionResponse),
-                    tokenUsageFrom(chatCompletionResponse.usage()),
-                    finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason())
-            );
+            ChatResponse response = ChatResponse.builder()
+                    .aiMessage(aiMessageFrom(chatCompletionResponse))
+                    .tokenUsage(tokenUsageFrom(chatCompletionResponse.usage()))
+                    .finishReason(finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason()))
+                    .build();
 
             ChatModelResponse modelListenerResponse = createModelListenerResponse(
                     chatCompletionResponse.id(),

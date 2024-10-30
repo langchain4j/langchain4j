@@ -20,6 +20,7 @@ public interface TokenStream {
     // TODO new API:
     // TODO - onPartialResponse(Consumer<String>) What about tool/other tokens? onPartialResponse(ChatResponse)?
     // TODO - onCompleteResponse(Consumer<ChatResponse>)
+
     // TODO - onRetrieved(Consumer<List<Content>>)
     // TODO - onToolExecuted(Consumer<ToolExecution>)
     // TODO - onError(Consumer<Throwable>)

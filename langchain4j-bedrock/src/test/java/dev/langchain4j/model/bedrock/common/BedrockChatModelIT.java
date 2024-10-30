@@ -2,7 +2,7 @@ package dev.langchain4j.model.bedrock.common;
 
 import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.ChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.ChatLanguageModelIT;
 
 import java.util.List;
 

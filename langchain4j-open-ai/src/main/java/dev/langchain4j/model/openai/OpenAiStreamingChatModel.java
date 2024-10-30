@@ -25,7 +25,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
-import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,6 +43,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerRequest;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerResponse;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
@@ -154,51 +154,30 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
         }
 
-        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
-
-            @Override
-            public void onNext(String token) {
-                handler.onNext(token);
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                ChatResponse chatResponse = ChatResponse.builder()
-                        .aiMessage(response.content())
-                        .tokenUsage(response.tokenUsage())
-                        .finishReason(response.finishReason())
-                        .build();
-                handler.onComplete(chatResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                handler.onError(error);
-            }
-        };
-
-        generate(chatRequest.messages(), chatRequest.toolSpecifications(), null, legacyHandler);
+        chat(chatRequest.messages(), chatRequest.toolSpecifications(), null, handler);
     }
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, null, null, handler);
+        chat(messages, null, null, convertHandler(handler));
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, toolSpecifications, null, handler);
+    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications,
+                         StreamingResponseHandler<AiMessage> handler) {
+        chat(messages, toolSpecifications, null, convertHandler(handler));
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, null, toolSpecification, handler);
+    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification,
+                         StreamingResponseHandler<AiMessage> handler) {
+        chat(messages, null, toolSpecification, convertHandler(handler));
     }
 
-    private void generate(List<ChatMessage> messages,
-                          List<ToolSpecification> toolSpecifications,
-                          ToolSpecification toolThatMustBeExecuted,
-                          StreamingResponseHandler<AiMessage> handler
+    private void chat(List<ChatMessage> messages,
+                      List<ToolSpecification> toolSpecifications,
+                      ToolSpecification toolThatMustBeExecuted,
+                      StreamingChatResponseHandler handler
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .stream(true)
@@ -258,7 +237,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    ChatResponse response = responseBuilder.build();
 
                     ChatModelResponse modelListenerResponse = createModelListenerResponse(
                             responseId.get(),
@@ -278,10 +257,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                         }
                     });
 
-                    handler.onComplete(response);
+                    handler.onCompleteResponse(response);
                 })
                 .onError(error -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    ChatResponse response = responseBuilder.build();
 
                     ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
                             responseId.get(),
@@ -310,7 +289,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     private static void handle(ChatCompletionResponse partialResponse,
-                               StreamingResponseHandler<AiMessage> handler) {
+                               StreamingChatResponseHandler handler) {
         List<ChatCompletionChoice> choices = partialResponse.choices();
         if (choices == null || choices.isEmpty()) {
             return;
@@ -318,7 +297,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         Delta delta = choices.get(0).delta();
         String content = delta.content();
         if (content != null) {
-            handler.onNext(content);
+            handler.onPartialResponse(content);
         }
     }
 

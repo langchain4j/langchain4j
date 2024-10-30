@@ -2,7 +2,7 @@ package dev.langchain4j.model.bedrock.common;
 
 import dev.langchain4j.model.bedrock.BedrockAnthropicStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.StreamingChatLanguageModelIT;
 
 import java.util.List;
 

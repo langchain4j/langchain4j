@@ -1,7 +1,7 @@
 package dev.langchain4j.model.ollama.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.ChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.ChatLanguageModelIT;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -42,6 +42,6 @@ class OllamaChatModelIT extends ChatLanguageModelIT {
 
     @Override
     protected boolean assertFinishReason() {
-        return false; // TODO why?
+        return false; // TODO fix
     }
 }

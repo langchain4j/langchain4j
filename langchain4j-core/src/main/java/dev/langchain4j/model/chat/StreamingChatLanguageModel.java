@@ -47,7 +47,7 @@ public interface StreamingChatLanguageModel {
 
             @Override
             public void onNext(String token) {
-                handler.onNext(token);
+                handler.onPartialResponse(token);
             }
 
             @Override
@@ -57,7 +57,7 @@ public interface StreamingChatLanguageModel {
                         .tokenUsage(response.tokenUsage())
                         .finishReason(response.finishReason())
                         .build();
-                handler.onComplete(chatResponse);
+                handler.onCompleteResponse(chatResponse);
             }
 
             @Override
@@ -74,7 +74,6 @@ public interface StreamingChatLanguageModel {
     }
 
     // TODO add convenience method(s)? e.g. chat(String, StreamingChatResponseHandler)
-
     // TODO API for N completions?
 
     /**

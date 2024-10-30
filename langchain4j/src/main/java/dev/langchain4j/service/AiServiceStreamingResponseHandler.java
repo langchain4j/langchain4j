@@ -34,7 +34,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final AiServiceContext context;
     private final Object memoryId;
 
-    private final Consumer<String> tokenHandler;
+    private final Consumer<String> tokenHandler; // TODO new partialResponseHandler?
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> newCompletionHandler;
     private final Consumer<Response<AiMessage>> completionHandler;
@@ -75,12 +75,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     @Override
-    public void onNext(String token) {
-        tokenHandler.accept(token);
+    public void onPartialResponse(String partialResponse) {
+        tokenHandler.accept(partialResponse);
     }
 
     @Override
-    public void onComplete(ChatResponse chatResponse) {
+    public void onCompleteResponse(ChatResponse chatResponse) {
 
         AiMessage aiMessage = chatResponse.aiMessage();
         addToMemory(aiMessage);

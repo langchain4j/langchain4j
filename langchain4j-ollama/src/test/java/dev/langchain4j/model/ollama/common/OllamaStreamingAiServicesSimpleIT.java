@@ -42,7 +42,7 @@ class OllamaStreamingAiServicesSimpleIT extends StreamingAiServicesSimpleIT {
 
     @Override
     protected boolean assertTokenUsage() {
-        return false; // TODO why?
+        return false; // TODO fix
     }
 
     @Override

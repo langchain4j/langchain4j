@@ -10,8 +10,8 @@ import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
@@ -142,7 +142,7 @@ public class OpenAiStreamingResponseBuilder {
         }
     }
 
-    public Response<AiMessage> build() {
+    public ChatResponse build() {
 
         String text = contentBuilder.toString();
 
@@ -157,11 +157,11 @@ public class OpenAiStreamingResponseBuilder {
                     AiMessage.from(toolExecutionRequest) :
                     AiMessage.from(text, singletonList(toolExecutionRequest));
 
-            return Response.from(
-                    aiMessage,
-                    tokenUsage,
-                    finishReason
-            );
+            return ChatResponse.builder()
+                    .aiMessage(aiMessage)
+                    .tokenUsage(tokenUsage)
+                    .finishReason(finishReason)
+                    .build();
         }
 
         if (!indexToToolExecutionRequestBuilder.isEmpty()) {
@@ -177,19 +177,19 @@ public class OpenAiStreamingResponseBuilder {
                     AiMessage.from(toolExecutionRequests) :
                     AiMessage.from(text, toolExecutionRequests);
 
-            return Response.from(
-                    aiMessage,
-                    tokenUsage,
-                    finishReason
-            );
+            return ChatResponse.builder()
+                    .aiMessage(aiMessage)
+                    .tokenUsage(tokenUsage)
+                    .finishReason(finishReason)
+                    .build();
         }
 
         if (!isNullOrBlank(text)) {
-            return Response.from(
-                    AiMessage.from(text),
-                    tokenUsage,
-                    finishReason
-            );
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(text))
+                    .tokenUsage(tokenUsage)
+                    .finishReason(finishReason)
+                    .build();
         }
 
         return null;

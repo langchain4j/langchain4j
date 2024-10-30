@@ -1,7 +1,7 @@
 package dev.langchain4j.model.ollama.common;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.StreamingChatLanguageModelIT;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaImage;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
@@ -42,11 +42,16 @@ class OllamaStreamingChatModelIT extends StreamingChatLanguageModelIT {
 
     @Override
     protected boolean assertTokenUsage() {
-        return false; // TODO why?
+        return false; // TODO fix
     }
 
     @Override
     protected boolean assertFinishReason() {
-        return false; // TODO why?
+        return false; // TODO fix
+    }
+
+    @Override
+    protected boolean supportsToolsInStreamingMode() {
+        return false;
     }
 }

@@ -42,6 +42,6 @@ class OllamaAiServicesSimpleIT extends AiServicesSimpleIT {
 
     @Override
     protected boolean assertFinishReason() {
-        return false; // TODO why?
+        return false; // TODO fix
     }
 }

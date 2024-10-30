@@ -1,7 +1,7 @@
 package dev.langchain4j.service.openai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.ChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.ChatLanguageModelIT;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 
 import java.util.List;
