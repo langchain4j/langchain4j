@@ -15,18 +15,18 @@ import static org.mockito.ArgumentMatchers.any;
 class NotTest {
 
     @Mock
-    private Filter mockFilter;
+    private Filter filter;
 
     private Not subject;
 
     @BeforeEach
     void beforeEach() {
-        subject = new Not(mockFilter);
+        subject = new Not(filter);
     }
 
     @Test
-    void shouldReturnFalseOnTest_ifFilterReturnsTrue() {
-        Mockito.when(mockFilter.test(any())).thenReturn(true);
+    void shouldReturnFalseWhenFilterReturnsTrue() {
+        Mockito.when(filter.test(any())).thenReturn(true);
 
         boolean result = subject.test(new Object());
 
@@ -34,8 +34,8 @@ class NotTest {
     }
 
     @Test
-    void shouldReturnTrueOnTest_ifFilterReturnsFalse() {
-        Mockito.when(mockFilter.test(any())).thenReturn(false);
+    void shouldReturnTrueWhenFilterReturnsFalse() {
+        Mockito.when(filter.test(any())).thenReturn(false);
 
         boolean result = subject.test(new Object());
 
@@ -46,17 +46,17 @@ class NotTest {
     void shouldReturnCorrectExpression() {
         Filter result = subject.expression();
 
-        assertThat(result).isEqualTo(mockFilter);
+        assertThat(result).isEqualTo(filter);
     }
 
     @Test
     void shouldHaveCorrectToStringImplementation() {
-        assertThat(subject).hasToString("Not(expression=" + mockFilter + ")");
+        assertThat(subject).hasToString("Not(expression=" + filter + ")");
     }
 
     @Test
     void shouldReturnTrueForEqualsWithSameExpression() {
-        Not anotherWithSameExp = new Not(mockFilter);
+        Not anotherWithSameExp = new Not(filter);
 
         assertThat(subject)
             .isEqualTo(anotherWithSameExp)

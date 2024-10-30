@@ -46,6 +46,8 @@ jobs:
           - java_version: 23
             mvn_opts: ''
             experimental: true
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,7 +74,7 @@ jobs:
         ## The step or job will only run if the `experimental` variable
         ## in the matrix is false (not set to true)
         ## and the OPENAI_API_KEY secret is available and not empty.
-        if: ${{ !matrix.experimental && secrets && secrets.OPENAI_API_KEY != '' }}
+        if: ${{ !matrix.experimental && env.OPENAI_API_KEY != '' }}
         run: |
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
