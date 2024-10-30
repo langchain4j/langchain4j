@@ -61,10 +61,7 @@ class MongoDbTestFixture {
     private static MongoDBAtlasLocalContainer getContainer() {
         if (mongodb == null) {
             mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
-
-            long t1 = System.currentTimeMillis();
             mongodb.start();
-            System.out.println(">>> " + (System.currentTimeMillis() - t1));
         }
         return mongodb;
     }
