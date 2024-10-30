@@ -9,6 +9,7 @@ import com.oracle.coherence.ai.VectorIndexExtractor;
 import com.oracle.coherence.ai.search.SimilaritySearch;
 import com.oracle.coherence.common.base.Logger;
 
+import com.tangosol.internal.util.processor.CacheProcessors;
 import com.tangosol.net.Coherence;
 import com.tangosol.net.NamedMap;
 import com.tangosol.net.Session;
@@ -32,6 +33,7 @@ import dev.langchain4j.store.embedding.RelevanceScore;
 import java.io.Serializable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -121,6 +123,39 @@ public class CoherenceEmbeddingStore
     }
 
     @Override
+    public void remove(String id) {
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("id cannot be null or blank");
+        }
+
+        documentChunks.remove(DocumentChunk.Id.parse(id));
+    }
+
+    @Override
+    public void removeAll(Collection<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new IllegalArgumentException("ids cannot be null or empty");
+        }
+
+        documentChunks.keySet().removeAll(ids.stream().map(DocumentChunk.Id::parse).collect(Collectors.toSet()));
+    }
+
+    @Override
+    public void removeAll(dev.langchain4j.store.embedding.filter.Filter filter) {
+        if (filter == null) {
+            throw new IllegalArgumentException("filter cannot be null");
+        }
+        
+        Filter<DocumentChunk> chunkFilter = CoherenceMetadataFilterMapper.map(filter);
+        documentChunks.invokeAll(chunkFilter, CacheProcessors.removeBlind());
+    }
+
+    @Override
+    public void removeAll() {
+        documentChunks.truncate();
+    }
+
+    @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         Embedding queryEmbedding = request.queryEmbedding();
         if (forceNormalize) {
@@ -193,13 +228,6 @@ public class CoherenceEmbeddingStore
      */
     public NamedMap<DocumentChunk.Id, DocumentChunk> getDocumentChunks() {
         return documentChunks;
-    }
-
-    /**
-     * Clear the embedding store.
-     */
-    public void clearAll() {
-        documentChunks.truncate();
     }
 
     /**

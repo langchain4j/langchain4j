@@ -66,6 +66,6 @@ public class CoherenceEmbeddingStoreIT
 
     @Override
     protected void clearStore() {
-        embeddingStore.clearAll();
+        embeddingStore.removeAll();
     }
 }

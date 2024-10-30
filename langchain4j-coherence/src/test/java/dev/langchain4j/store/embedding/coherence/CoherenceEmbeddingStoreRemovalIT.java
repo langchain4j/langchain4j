@@ -16,30 +16,28 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-/**
- * An extension of the LangChain4J {@link EmbeddingStoreWithFilteringIT} tests
- * that use Coherence as an {@link EmbeddingStore}.
- */
-public class CoherenceEmbeddingStoreWithFilteringIT
-        extends EmbeddingStoreWithFilteringIT {
+public class CoherenceEmbeddingStoreRemovalIT
+    extends EmbeddingStoreWithRemovalIT {
+
     @RegisterExtension
     static TestLogsExtension testLogs = new TestLogsExtension();
 
     @RegisterExtension
     static CoherenceClusterExtension cluster = new CoherenceClusterExtension()
-            .with(ClusterName.of("CoherenceEmbeddingStoreWithFilteringIT"),
-                    WellKnownAddress.loopback(),
-                    LocalHost.only(),
-                    IPv4Preferred.autoDetect(),
-                    SystemProperty.of("coherence.serializer", "pof"))
+            .with(ClusterName.of("CoherenceEmbeddingStoreRemovalIT"),
+                  WellKnownAddress.loopback(),
+                  LocalHost.only(),
+                  IPv4Preferred.autoDetect(),
+                  SystemProperty.of("coherence.serializer", "pof"))
             .include(3, CoherenceClusterMember.class,
-                    DisplayName.of("storage"),
-                    RoleName.of("storage"),
-                    testLogs);
+                     DisplayName.of("storage"),
+                     RoleName.of("storage"),
+                     testLogs);
 
     static Session session;
 
@@ -53,6 +51,10 @@ public class CoherenceEmbeddingStoreWithFilteringIT
         embeddingStore = CoherenceEmbeddingStore.builder().session(session).build();
     }
 
+    @BeforeEach
+    public void clearEmbeddings() {
+        embeddingStore.removeAll();
+    }
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
         return embeddingStore;
@@ -61,10 +63,5 @@ public class CoherenceEmbeddingStoreWithFilteringIT
     @Override
     protected EmbeddingModel embeddingModel() {
         return model;
-    }
-
-    @Override
-    protected void clearStore() {
-        embeddingStore.removeAll();
     }
 }
