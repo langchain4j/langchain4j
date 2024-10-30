@@ -78,7 +78,7 @@ public abstract class StreamingChatLanguageModelIT {
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer tokenAccumulator = new StringBuffer();
-        AtomicInteger timesOnNextCalled = new AtomicInteger();
+        AtomicInteger timesOnPartialResponseIsCalled = new AtomicInteger();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
 
         // when
@@ -87,7 +87,7 @@ public abstract class StreamingChatLanguageModelIT {
             @Override
             public void onPartialResponse(String partialResponse) {
                 tokenAccumulator.append(partialResponse);
-                timesOnNextCalled.incrementAndGet();
+                timesOnPartialResponseIsCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
             }
 
@@ -125,7 +125,7 @@ public abstract class StreamingChatLanguageModelIT {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
         }
 
-        assertThat(timesOnNextCalled.get()).isGreaterThan(1);
+        assertThat(timesOnPartialResponseIsCalled.get()).isGreaterThan(1);
 
         if (assertThreads()) {
             assertThat(threads).hasSize(1);
@@ -154,7 +154,7 @@ public abstract class StreamingChatLanguageModelIT {
                 .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
-        AtomicInteger timesOnNextCalled = new AtomicInteger();
+        AtomicInteger timesOnPartialResponseIsCalled = new AtomicInteger();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
 
         // when
@@ -162,7 +162,7 @@ public abstract class StreamingChatLanguageModelIT {
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                timesOnNextCalled.incrementAndGet();
+                timesOnPartialResponseIsCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
             }
 
@@ -201,7 +201,7 @@ public abstract class StreamingChatLanguageModelIT {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
         }
 
-        assertThat(timesOnNextCalled.get()).isEqualTo(0); // TODO
+        assertThat(timesOnPartialResponseIsCalled.get()).isEqualTo(0); // TODO
 
         if (assertThreads()) {
             assertThat(threads).hasSize(1);
