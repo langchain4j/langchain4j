@@ -47,7 +47,7 @@ class RedisSchema {
                 VectorAlgorithm vectorAlgorithm,
                 int dimension,
                 MetricType metricType) {
-        ensureTrue(prefix.endsWith(":"), "Prefix should be ended with ':'");
+        ensureTrue(prefix.endsWith(":"), "Prefix should end with a ':'");
 
         this.indexName = indexName;
         this.prefix = prefix;
