@@ -58,4 +58,12 @@ public @interface SystemMessage {
      * on the AI Service class (interface).
      */
     String fromResource() default "";
+
+    /**
+     * Specifies the identifier for a prompt template to be used with an AI service.
+     *
+     * @return the identifier for the prompt template.
+     * @see dev.langchain4j.spi.prompt.PromptTemplateSource
+     */
+    String promptTemplateId() default "";
 }

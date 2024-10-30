@@ -23,6 +23,7 @@ import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.spi.prompt.PromptTemplateSource;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
 import java.lang.reflect.Method;
@@ -239,6 +240,11 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
         context.systemMessageProvider = systemMessageProvider.andThen(Optional::ofNullable);
+        return this;
+    }
+
+    public AiServices<T> systemPromptTemplateSource(PromptTemplateSource promptTemplateSource) {
+        context.systemPromptTemplateSource = promptTemplateSource;
         return this;
     }
 

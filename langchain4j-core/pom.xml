@@ -35,6 +35,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
@@ -134,8 +140,10 @@
                                         <exclude>dev.langchain4j.model.listener</exclude>
                                         <exclude>dev.langchain4j.store.embedding</exclude>
                                         <exclude>dev.langchain4j.store.embedding.filter</exclude>
-                                        <exclude>dev.langchain4j.store.embedding.filter.logical</exclude>
-                                        <exclude>dev.langchain4j.store.embedding.filter.comparison</exclude>
+                                        <exclude>dev.langchain4j.store.embedding.filter.logical
+                                        </exclude>
+                                        <exclude>dev.langchain4j.store.embedding.filter.comparison
+                                        </exclude>
                                         <exclude>dev.langchain4j.rag</exclude>
                                         <exclude>dev.langchain4j.rag.content</exclude>
                                         <exclude>dev.langchain4j.rag.content.aggregator</exclude>
@@ -180,8 +188,10 @@
                                         <include>dev.langchain4j.data.document</include>
                                         <include>dev.langchain4j.store.embedding</include>
                                         <include>dev.langchain4j.store.embedding.filter</include>
-                                        <include>dev.langchain4j.store.embedding.filter.logical</include>
-                                        <include>dev.langchain4j.store.embedding.filter.comparison</include>
+                                        <include>dev.langchain4j.store.embedding.filter.logical
+                                        </include>
+                                        <include>dev.langchain4j.store.embedding.filter.comparison
+                                        </include>
                                     </includes>
                                     <element>PACKAGE</element>
                                     <limits>
@@ -197,7 +207,7 @@
                     </execution>
                 </executions>
             </plugin>
-            
+
         </plugins>
     </build>
 

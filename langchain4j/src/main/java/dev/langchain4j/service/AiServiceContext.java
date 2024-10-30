@@ -9,6 +9,7 @@ import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.spi.prompt.PromptTemplateSource;
 
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ public class AiServiceContext {
     public RetrievalAugmentor retrievalAugmentor;
 
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_MESSAGE_PROVIDER;
+    public PromptTemplateSource systemPromptTemplateSource;
 
     public AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;

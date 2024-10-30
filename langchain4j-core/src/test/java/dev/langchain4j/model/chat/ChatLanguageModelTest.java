@@ -22,7 +22,7 @@ class ChatLanguageModelTest implements WithAssertions {
     }
 
     @Test
-    public void test_not_supported() {
+    void test_not_supported() {
         ChatLanguageModel model = new UpperCaseEchoModel();
 
         List<ChatMessage> messages = new ArrayList<>();
@@ -37,7 +37,7 @@ class ChatLanguageModelTest implements WithAssertions {
     }
 
     @Test
-    public void test_generate() {
+    void test_generate() {
         ChatLanguageModel model = new UpperCaseEchoModel();
 
         assertThat(model.generate("how are you?"))

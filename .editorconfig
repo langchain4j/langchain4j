@@ -12,6 +12,7 @@ tab_width = 4
 [*.java]
 ij_java_names_count_to_use_import_on_demand = 999
 ij_java_class_count_to_use_import_on_demand = 999
+ij_java_generate_final_locals = true
 
 [{*.yaml,*.yml}]
 indent_size = 2

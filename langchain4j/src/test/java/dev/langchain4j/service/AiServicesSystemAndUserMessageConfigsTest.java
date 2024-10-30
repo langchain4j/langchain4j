@@ -3,9 +3,14 @@ package dev.langchain4j.service;
 import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.spi.prompt.PromptTemplateSource;
+import org.junit.Before;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -13,15 +18,30 @@ import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesSystemAndUserMessageConfigsTest {
 
     @Spy
-    ChatLanguageModel chatLanguageModel = ChatModelMock.thatAlwaysResponds("Berlin");
+    private ChatLanguageModel chatLanguageModel = ChatModelMock.thatAlwaysResponds("Berlin");
+    @Mock
+    private PromptTemplateSource systemPromptTemplateSource;
+    @Mock
+    private PromptTemplate systemPromptTemplate;
+    private AiServices<AiService> aiServices;
+
+    @BeforeEach
+    void beforeEach() {
+        aiServices = AiServices.builder(AiService.class)
+            .chatLanguageModel(chatLanguageModel);
+    }
 
     @AfterEach
     void afterEach() {
@@ -104,6 +124,9 @@ class AiServicesSystemAndUserMessageConfigsTest {
         @SystemMessage("This message should take precedence over the one provided by systemMessageProvider")
         String chat21(String userMessage);
 
+        // with PromptTemplateProvider
+        @SystemMessage(promptTemplateId = "awesomeSystemPromptTemplateId")
+        String chatWithSystemPromptTemplate(String userMessage);
 
         // illegal
 
@@ -118,9 +141,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
     void test_system_message_configuration_1() {
 
         // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
-                .build();
+        final var aiService = aiServices.build();
 
         // when-then
         assertThat(aiService.chat1("Country: Germany"))
@@ -501,6 +522,45 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 userMessage("What is the capital of Germany?")
         ));
         verify(chatLanguageModel).supportedCapabilities();
+    }
+
+    @Test
+    void test_system_message_prompt_template() {
+
+        // given
+        final var expectedSystemPrompt = "You know geography";
+        final var aiService = aiServices
+            .systemPromptTemplateSource(systemPromptTemplateSource)
+            .build();
+        when(systemPromptTemplateSource.getPromptTemplate("awesomeSystemPromptTemplateId"))
+            .thenReturn(systemPromptTemplate);
+        when(systemPromptTemplate.template()).thenReturn(expectedSystemPrompt);
+
+        // when-then
+        assertThat(aiService.chatWithSystemPromptTemplate("What is the capital of Germany?"))
+            .containsIgnoringCase("Berlin");
+
+        verify(chatLanguageModel).generate(asList(
+            systemMessage(expectedSystemPrompt),
+            userMessage("What is the capital of Germany?")
+        ));
+        verify(chatLanguageModel).supportedCapabilities();
+    }
+
+    @Test
+    void should_throw_exception_when_system_message_prompt_template_not_found() {
+        // given
+        final var aiService = aiServices
+            .systemPromptTemplateSource(systemPromptTemplateSource)
+            .build();
+
+        // when-then
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+            .isThrownBy(() -> {
+                aiService.chatWithSystemPromptTemplate("What is the capital of Germany?");
+            }).withMessage("@System Prompt Template 'chatWithSystemPromptTemplate' not found");
+
+        verifyNoInteractions(chatLanguageModel);
     }
 
     @Test
