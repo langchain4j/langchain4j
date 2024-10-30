@@ -5,7 +5,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.spi.prompt.PromptTemplateSource;
-import org.junit.Before;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +19,6 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -558,7 +556,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
         assertThatExceptionOfType(IllegalConfigurationException.class)
             .isThrownBy(() -> {
                 aiService.chatWithSystemPromptTemplate("What is the capital of Germany?");
-            }).withMessage("@System Prompt Template 'chatWithSystemPromptTemplate' not found");
+            }).withMessage("@System Prompt Template 'awesomeSystemPromptTemplateId' not found");
 
         verifyNoInteractions(chatLanguageModel);
     }
