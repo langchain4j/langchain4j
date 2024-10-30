@@ -129,8 +129,8 @@ public class GoogleAiGeminiStreamingChatModelIT {
         assertThat(jsonText).contains("\"John\"");
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(25);
-        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(6);
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(31);
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(7);
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(32);
     }
 
     @Test
