@@ -36,7 +36,7 @@ public class AiServiceTokenStream implements TokenStream {
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
     private Consumer<Throwable> errorHandler;
-    private Consumer<ChatResponse> newCompletionHandler;
+    private Consumer<ChatResponse> completeResponseHandler;
     private Consumer<Response<AiMessage>> completionHandler;
 
     private int onNextInvoked;
@@ -83,16 +83,16 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onCompleteNew(Consumer<ChatResponse> completionHandler) {
-        this.newCompletionHandler = completionHandler;
-        this.onCompleteInvoked++; // TODO check
+    public TokenStream onCompleteResponse(Consumer<ChatResponse> completionHandler) {
+        this.completeResponseHandler = completionHandler;
+        this.onCompleteInvoked++;
         return this;
     }
 
     @Override
-    public TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler) { // TODO remove?
+    public TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler) {
         this.completionHandler = completionHandler;
-        this.onCompleteInvoked++; // TODO check
+        this.onCompleteInvoked++;
         return this;
     }
 
@@ -124,7 +124,7 @@ public class AiServiceTokenStream implements TokenStream {
                 memoryId,
                 tokenHandler,
                 toolExecutionHandler,
-                newCompletionHandler,
+                completeResponseHandler,
                 completionHandler,
                 errorHandler,
                 initTemporaryMemory(context, messages),
@@ -145,7 +145,8 @@ public class AiServiceTokenStream implements TokenStream {
             throw new IllegalConfigurationException("onNext must be invoked exactly 1 time");
         }
         if (onCompleteInvoked > 1) {
-            throw new IllegalConfigurationException("onComplete must be invoked at most 1 time"); // TODO onCompleteNew
+            throw new IllegalConfigurationException("One of onComplete or onCompleteResponse " +
+                    "must be invoked exactly 1 time");
         }
         if (onRetrievedInvoked > 1) {
             throw new IllegalConfigurationException("onRetrieved must be invoked at most 1 time");

@@ -102,6 +102,28 @@ class AiServiceTokenStreamTest {
         assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> tokenStream.start());
     }
 
+    @Test
+    void start_onCompleteResponseInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onNext(System.out::println)
+                .ignoreErrors()
+                .onCompleteResponse(r -> System.out.println(r.aiMessage()))
+                .onCompleteResponse(r -> System.out.println(r.aiMessage()));
+
+        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> tokenStream.start());
+    }
+
+    @Test
+    void start_onCompleteAndOnCompleteResponseInvoked_shouldThrowException() {
+        tokenStream
+                .onNext(System.out::println)
+                .ignoreErrors()
+                .onComplete(r -> System.out.println(r.content()))
+                .onCompleteResponse(r -> System.out.println(r.aiMessage()));
+
+        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> tokenStream.start());
+    }
+
     private AiServiceTokenStream setupAiServiceTokenStream() {
         StreamingChatLanguageModel model = mock(StreamingChatLanguageModel.class);
         AiServiceContext context = new AiServiceContext(getClass());

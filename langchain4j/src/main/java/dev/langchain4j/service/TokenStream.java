@@ -62,14 +62,14 @@ public interface TokenStream {
      * @param completionHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
      */
-    TokenStream onCompleteNew(Consumer<ChatResponse> completionHandler); // TODO name
+    TokenStream onCompleteResponse(Consumer<ChatResponse> completionHandler); // TODO name
 
     /**
      * The provided consumer will be invoked when a language model finishes streaming a response.
      *
      * @param completionHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
-     * @deprecated Please use {@link #onCompleteNew(Consumer)} instead // TODO
+     * @deprecated Please use {@link #onCompleteResponse(Consumer)} instead // TODO
      */
     @Deprecated(forRemoval = true)
     TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler);

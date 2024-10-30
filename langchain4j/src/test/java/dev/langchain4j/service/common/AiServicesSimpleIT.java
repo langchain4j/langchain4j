@@ -75,5 +75,5 @@ public abstract class AiServicesSimpleIT {
 
     // TODO test tool handling in AI Services across models (separate test)
 
-    // TODO test token usage is summed for tools?
+    // TODO test token usage is summed for tools
 }

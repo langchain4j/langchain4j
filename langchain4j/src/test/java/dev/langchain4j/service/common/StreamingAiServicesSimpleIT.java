@@ -57,7 +57,7 @@ public abstract class StreamingAiServicesSimpleIT {
 
         assistant.chat(userMessage)
                 .onNext(answerBuilder::append)
-                .onCompleteNew(chatResponse -> {
+                .onCompleteResponse(chatResponse -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureChatResponse.complete(chatResponse);
                 })
@@ -100,5 +100,5 @@ public abstract class StreamingAiServicesSimpleIT {
 
     // TODO test tool handling in AI Services across models (separate test)
 
-    // TODO test token usage is summed for tools?
+    // TODO test token usage is summed for tools
 }
