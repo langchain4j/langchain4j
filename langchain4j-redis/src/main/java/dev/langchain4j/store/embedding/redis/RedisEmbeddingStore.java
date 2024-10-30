@@ -291,7 +291,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param prefix The prefix of the document, should be ended with ":" (e.g. embedding:)
+         * @param prefix The prefix of the key, should end with a colon (e.g., "embedding:") (optional). Default value: "embedding:".
          * @return builder
          */
         public Builder prefix(String prefix) {
