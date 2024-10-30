@@ -46,7 +46,7 @@ class GeminiStreamingResponseBuilder {
             return Optional.empty();
         }
 
-        GeminiCandidate firstCandidate = partialResponse.getCandidates().get(0); // TODO: Handle multiple candidates
+        GeminiCandidate firstCandidate = partialResponse.getCandidates().get(0);
 
         updateFinishReason(firstCandidate);
         updateTokenUsage(partialResponse.getUsageMetadata());
@@ -74,9 +74,9 @@ class GeminiStreamingResponseBuilder {
 
     private void updateTokenUsage(GeminiUsageMetadata tokenCounts) {
         this.tokenUsage = new TokenUsage(
-                tokenCounts.getPromptTokenCount(),
-                tokenCounts.getCandidatesTokenCount(),
-                tokenCounts.getTotalTokenCount()
+            tokenCounts.getPromptTokenCount(),
+            tokenCounts.getCandidatesTokenCount(),
+            tokenCounts.getTotalTokenCount()
         );
     }
 
