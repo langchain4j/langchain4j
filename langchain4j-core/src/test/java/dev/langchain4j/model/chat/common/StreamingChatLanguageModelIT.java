@@ -202,6 +202,7 @@ public abstract class StreamingChatLanguageModelIT {
         }
 
         assertThat(timesOnPartialResponseIsCalled.get()).isEqualTo(0); // TODO
+        // TODO if timesOnPartialResponseIsCalled is 0, aiMessage.text() must be null
 
         if (assertThreads()) {
             assertThat(threads).hasSize(1);
