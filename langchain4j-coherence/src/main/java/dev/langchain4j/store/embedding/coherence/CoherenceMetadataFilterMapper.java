@@ -4,6 +4,7 @@ import com.oracle.coherence.ai.DocumentChunk;
 import com.tangosol.util.Extractors;
 import com.tangosol.util.Filters;
 import com.tangosol.util.ValueExtractor;
+
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
@@ -21,7 +22,7 @@ import java.util.Collection;
 import java.util.HashSet;
 
 /**
- * A mapper that maps {@link Filter LangChain filters} to
+ * A mapper that maps {@link Filter LangChain4j filters} to
  * {@link com.tangosol.util.Filter Coherence filters} that
  * can be applied to {@link DocumentChunk} metadata.
  */
@@ -29,7 +30,7 @@ class CoherenceMetadataFilterMapper
     {
     /**
      * Return the Coherence filter that is equivalent to the
-     * specified LangChain filter.
+     * specified LangChain4j filter.
      *
      * @param filter  the LangChain filter to convert
      *
@@ -38,28 +39,28 @@ class CoherenceMetadataFilterMapper
     static com.tangosol.util.Filter<DocumentChunk> map(Filter filter) {
         if (filter == null) {
             return null;
-        } else if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
-        } else if (filter instanceof IsNotEqualTo) {
-            return mapNotEqual((IsNotEqualTo) filter);
-        } else if (filter instanceof IsGreaterThan) {
-            return mapGreaterThan((IsGreaterThan) filter);
-        } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
-        } else if (filter instanceof IsLessThan) {
-            return mapLessThan((IsLessThan) filter);
-        } else if (filter instanceof IsLessThanOrEqualTo) {
-            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
-        } else if (filter instanceof IsIn) {
-            return mapIn((IsIn) filter);
-        } else if (filter instanceof IsNotIn) {
-            return mapNotIn((IsNotIn) filter);
-        } else if (filter instanceof And) {
-            return mapAnd((And) filter);
-        } else if (filter instanceof Not) {
-            return mapNot((Not) filter);
-        } else if (filter instanceof Or) {
-            return mapOr((Or) filter);
+        } else if (filter instanceof IsEqualTo equalTo) {
+            return mapEqual(equalTo);
+        } else if (filter instanceof IsNotEqualTo notEqualTo) {
+            return mapNotEqual(notEqualTo);
+        } else if (filter instanceof IsGreaterThan greaterThan) {
+            return mapGreaterThan(greaterThan);
+        } else if (filter instanceof IsGreaterThanOrEqualTo greaterThanOrEqualTo) {
+            return mapGreaterThanOrEqual(greaterThanOrEqualTo);
+        } else if (filter instanceof IsLessThan lessThan) {
+            return mapLessThan(lessThan);
+        } else if (filter instanceof IsLessThanOrEqualTo lessThanOrEqualTo) {
+            return mapLessThanOrEqual(lessThanOrEqualTo);
+        } else if (filter instanceof IsIn in) {
+            return mapIn(in);
+        } else if (filter instanceof IsNotIn notIn) {
+            return mapNotIn(notIn);
+        } else if (filter instanceof And and) {
+            return mapAnd(and);
+        } else if (filter instanceof Not not) {
+            return mapNot(not);
+        } else if (filter instanceof Or or) {
+            return mapOr(or);
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }

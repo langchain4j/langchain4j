@@ -1,13 +1,11 @@
 package dev.langchain4j.store.memory.chat.coherence;
 
 import com.oracle.coherence.ai.DocumentChunk;
-import com.oracle.coherence.ai.Vector;
-import com.oracle.coherence.ai.VectorIndexExtractor;
 import com.tangosol.net.Coherence;
 import com.tangosol.net.NamedMap;
 import com.tangosol.net.Session;
-import dev.langchain4j.data.message.ChatMessage;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;

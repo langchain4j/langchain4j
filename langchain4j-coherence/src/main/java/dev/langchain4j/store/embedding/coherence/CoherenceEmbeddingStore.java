@@ -303,14 +303,8 @@ public class CoherenceEmbeddingStore
     }
 
     private static Metadata getMetadata(Map<String, Object> mapMetadata) {
-        Metadata metadata = new Metadata();
-        for (Map.Entry<String, Object> e : mapMetadata.entrySet()) {
-            Object value = e.getValue();
-            if (value != null) {
-                metadata.add(e.getKey(), value);
-            }
-        }
-        return metadata;
+        mapMetadata.entrySet().removeIf(entry -> entry.getValue() == null);
+        return Metadata.from(mapMetadata);
     }
 
     /**
