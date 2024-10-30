@@ -501,6 +501,11 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                    <execution>
                         <id>detect-unused-dependencies</id>
                         <goals>
                             <goal>analyze-only</goal>
@@ -524,6 +529,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.3.1</version>
                 <configuration combine.children="append">
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                     <systemPropertyVariables>
                         <tinylog.level>info</tinylog.level>
                     </systemPropertyVariables>
