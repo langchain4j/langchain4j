@@ -60,7 +60,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param user         Redis Stack username (optional)
      * @param password     Redis Stack password (optional)
      * @param indexName    The name of the index (optional). Default value: "embedding-index".
-     * @param prefix       The prefix of the document, should be ended with ":" (e.g. embedding:) (optional). Default value: "embedding:"
+     * @param prefix       The prefix of the key, should end with a colon (e.g., "embedding:") (optional). Default value: "embedding:".
      * @param dimension    Embedding vector dimension
      * @param metadataKeys Metadata keys that should be persisted (optional)
      */
