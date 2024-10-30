@@ -1,6 +1,12 @@
 package dev.langchain4j.store.embedding.vearch.index;
 
-import dev.langchain4j.store.embedding.vearch.index.search.*;
+import dev.langchain4j.store.embedding.vearch.index.search.BINARYIVFSearchParam;
+import dev.langchain4j.store.embedding.vearch.index.search.FLATSearchParam;
+import dev.langchain4j.store.embedding.vearch.index.search.GPUSearchParam;
+import dev.langchain4j.store.embedding.vearch.index.search.HNSWSearchParam;
+import dev.langchain4j.store.embedding.vearch.index.search.IVFFLATSearchParam;
+import dev.langchain4j.store.embedding.vearch.index.search.IVFPQSearchParam;
+import dev.langchain4j.store.embedding.vearch.index.search.SearchIndexParam;
 
 public enum IndexType {
 

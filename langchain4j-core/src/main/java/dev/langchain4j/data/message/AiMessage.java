@@ -8,7 +8,9 @@ import java.util.Objects;
 import static dev.langchain4j.data.message.ChatMessageType.AI;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
 
 /**
@@ -90,7 +92,7 @@ public class AiMessage implements ChatMessage {
         if (o == null || getClass() != o.getClass()) return false;
         AiMessage that = (AiMessage) o;
         return Objects.equals(this.text, that.text)
-                && Objects.equals(this.toolExecutionRequests, that.toolExecutionRequests);
+            && Objects.equals(this.toolExecutionRequests, that.toolExecutionRequests);
     }
 
     @Override
@@ -101,9 +103,9 @@ public class AiMessage implements ChatMessage {
     @Override
     public String toString() {
         return "AiMessage {" +
-                " text = " + quoted(text) +
-                " toolExecutionRequests = " + toolExecutionRequests +
-                " }";
+            " text = " + quoted(text) +
+            " toolExecutionRequests = " + toolExecutionRequests +
+            " }";
     }
 
     /**
@@ -139,7 +141,7 @@ public class AiMessage implements ChatMessage {
     /**
      * Create a new {@link AiMessage} with the given text and tool execution requests.
      *
-     * @param text the text of the message.
+     * @param text                  the text of the message.
      * @param toolExecutionRequests the tool execution requests of the message.
      * @return the new {@link AiMessage}.
      */
@@ -180,7 +182,7 @@ public class AiMessage implements ChatMessage {
     /**
      * Create a new {@link AiMessage} with the given text and tool execution requests.
      *
-     * @param text the text of the message.
+     * @param text                  the text of the message.
      * @param toolExecutionRequests the tool execution requests of the message.
      * @return the new {@link AiMessage}.
      */

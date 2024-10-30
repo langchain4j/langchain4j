@@ -22,26 +22,25 @@ public class VearchConfig {
     static final String DEFAULT_SCORE_FILED_NAME = "_score";
 
     static final List<Field> DEFAULT_FIELDS = List.of(
-            VectorField.builder()
-                    .name(DEFAULT_EMBEDDING_FIELD_NAME)
-                    .dimension(384)
-                    .index(Index.builder()
-                            .name("gamma")
-                            .type(IndexType.HNSW)
-                            .params(HNSWParam.builder()
-                                    .metricType(MetricType.INNER_PRODUCT)
-                                    .efSearch(64)
-                                    .build())
-                            .build()).build(),
-            StringField.builder()
-                    .fieldType(FieldType.STRING)
-                    .name(DEFAULT_TEXT_FIELD_NAME)
-                    .build()
+        VectorField.builder()
+            .name(DEFAULT_EMBEDDING_FIELD_NAME)
+            .dimension(384)
+            .index(Index.builder()
+                .name("gamma")
+                .type(IndexType.HNSW)
+                .params(HNSWParam.builder()
+                    .metricType(MetricType.INNER_PRODUCT)
+                    .efSearch(64)
+                    .build())
+                .build()).build(),
+        StringField.builder()
+            .fieldType(FieldType.STRING)
+            .name(DEFAULT_TEXT_FIELD_NAME)
+            .build()
     );
 
     private String databaseName;
     private String spaceName;
-    private Index index;
     /**
      * Index param when searching, if not set, will use {@link Index}.
      *

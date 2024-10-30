@@ -17,7 +17,7 @@ import static dev.langchain4j.store.embedding.vearch.VearchApi.OK;
 class VearchClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(INDENT_OUTPUT);
+        .enable(INDENT_OUTPUT);
 
     private final VearchApi vearchApi;
 
@@ -26,10 +26,10 @@ class VearchClient {
                         boolean logRequests,
                         boolean logResponses) {
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout);
+            .callTimeout(timeout)
+            .connectTimeout(timeout)
+            .readTimeout(timeout)
+            .writeTimeout(timeout);
 
         if (logRequests) {
             okHttpClientBuilder.addInterceptor(new VearchRequestLoggingInterceptor());
@@ -39,10 +39,10 @@ class VearchClient {
         }
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
-                .client(okHttpClientBuilder.build())
-                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
-                .build();
+            .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
+            .client(okHttpClientBuilder.build())
+            .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+            .build();
 
         vearchApi = retrofit.create(VearchApi.class);
     }

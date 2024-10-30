@@ -37,8 +37,8 @@ public class VearchRequestLoggingInterceptor implements Interceptor {
 
     private static String getHeaders(Headers headers) {
         return StreamSupport.stream(headers.spliterator(), false)
-                .map(header -> formatHeader(header.component1(), header.component2()))
-                .collect(joining(", "));
+            .map(header -> formatHeader(header.component1(), header.component2()))
+            .collect(joining(", "));
     }
 
     private static String formatHeader(String headerKey, String headerValue) {
@@ -70,7 +70,7 @@ public class VearchRequestLoggingInterceptor implements Interceptor {
     private void log(Request request) {
         try {
             log.debug("Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}",
-                    request.method(), request.url(), getHeaders(request.headers()), getBody(request));
+                request.method(), request.url(), getHeaders(request.headers()), getBody(request));
         } catch (Exception e) {
             log.warn("Error while logging request: {}", e.getMessage());
         }

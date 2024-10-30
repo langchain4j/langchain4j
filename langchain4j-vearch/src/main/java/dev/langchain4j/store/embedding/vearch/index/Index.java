@@ -54,8 +54,8 @@ public class Index {
         Class<? extends IndexParam> clazz = type.getCreateSpaceParamClass();
         if (clazz != null && !clazz.isInstance(params)) {
             throw new UnsupportedOperationException(
-                    String.format("can't assign unknown param of engine %s, please use class %s to assign engine param",
-                            type.name(), clazz.getSimpleName()));
+                String.format("can't assign unknown param of engine %s, please use class %s to assign engine param",
+                    type.name(), clazz.getSimpleName()));
         }
         this.params = params;
     }

@@ -4,14 +4,25 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.CosineSimilarity.fromRelevanceScore;
 import static dev.langchain4j.store.embedding.vearch.VearchConfig.DEFAULT_ID_FIELD_NAME;
 import static dev.langchain4j.store.embedding.vearch.VearchConfig.DEFAULT_SCORE_FILED_NAME;
@@ -40,11 +51,11 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.normalizeEmbeddings = normalizeEmbeddings;
 
         vearchClient = VearchClient.builder()
-                .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .build();
+            .baseUrl(baseUrl)
+            .timeout(getOrDefault(timeout, ofSeconds(60)))
+            .logRequests(logRequests)
+            .logResponses(logResponses)
+            .build();
 
         // Step 1: check whether db exist, if not, create it
         if (!isDatabaseExist(this.vearchConfig.getDatabaseName())) {
@@ -83,8 +94,8 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+            .map(ignored -> randomUUID())
+            .collect(toList());
         addAllInternal(ids, embeddings, null);
         return ids;
     }
@@ -92,35 +103,36 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+            .map(ignored -> randomUUID())
+            .collect(toList());
         addAllInternal(ids, embeddings, embedded);
         return ids;
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        double minSimilarity = fromRelevanceScore(minScore);
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        double minSimilarity = fromRelevanceScore(request.minScore());
         List<String> fields = new ArrayList<>(Arrays.asList(vearchConfig.getTextFieldName(), vearchConfig.getEmbeddingFieldName()));
         if (!isNullOrEmpty(vearchConfig.getMetadataFieldNames())) {
             fields.addAll(vearchConfig.getMetadataFieldNames());
         }
-        SearchRequest request = SearchRequest.builder()
-                .dbName(vearchConfig.getDatabaseName())
-                .spaceName(vearchConfig.getSpaceName())
-                .vectors(singletonList(SearchRequest.Vector.builder()
-                        .field(vearchConfig.getEmbeddingFieldName())
-                        .feature(referenceEmbedding.vectorAsList())
-                        .minScore(minSimilarity)
-                        .build()))
-                .fields(fields)
-                .vectorValue(true)
-                .limit(maxResults)
-                .indexParams(vearchConfig.getSearchIndexParam())
-                .build();
+        SearchRequest vearchRequest = SearchRequest.builder()
+            .dbName(vearchConfig.getDatabaseName())
+            .spaceName(vearchConfig.getSpaceName())
+            .vectors(singletonList(SearchRequest.Vector.builder()
+                .field(vearchConfig.getEmbeddingFieldName())
+                .feature(request.queryEmbedding().vectorAsList())
+                .minScore(minSimilarity)
+                .build()))
+            .fields(fields)
+            .vectorValue(true)
+            .limit(request.maxResults())
+            .indexParams(vearchConfig.getSearchIndexParam())
+            .build();
 
-        SearchResponse response = vearchClient.search(request);
-        return toEmbeddingMatch(response.getDocuments().get(0));
+        SearchResponse response = vearchClient.search(vearchRequest);
+        List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatch(response.getDocuments().get(0));
+        return new EmbeddingSearchResult<>(matches);
     }
 
     public void deleteSpace() {
@@ -161,10 +173,10 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         UpsertRequest request = UpsertRequest.builder()
-                .dbName(vearchConfig.getDatabaseName())
-                .spaceName(vearchConfig.getSpaceName())
-                .documents(documents)
-                .build();
+            .dbName(vearchConfig.getDatabaseName())
+            .spaceName(vearchConfig.getSpaceName())
+            .documents(documents)
+            .build();
         vearchClient.upsert(request);
     }
 
@@ -184,11 +196,11 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private void createSpace(String databaseName, String space) {
         vearchClient.createSpace(databaseName, CreateSpaceRequest.builder()
-                .name(space)
-                .replicaNum(1)
-                .partitionNum(1)
-                .fields(vearchConfig.getFields())
-                .build());
+            .name(space)
+            .replicaNum(1)
+            .partitionNum(1)
+            .fields(vearchConfig.getFields())
+            .build());
     }
 
     @SuppressWarnings("unchecked")

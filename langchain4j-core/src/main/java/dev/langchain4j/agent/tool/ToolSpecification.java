@@ -76,8 +76,8 @@ public class ToolSpecification {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolSpecification
-                && equalTo((ToolSpecification) another);
+        return another instanceof ToolSpecification ts
+                && equalTo(ts);
     }
 
     private boolean equalTo(ToolSpecification another) {
@@ -177,8 +177,8 @@ public class ToolSpecification {
          *     .name("weather")
          *     .description("Returns the current weather in the specified city")
          *     .parameters(JsonObjectSchema.builder()
-         *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
-         *         .addEnumProperty("units", TemperatureUnit.class)
+         *         .addStringProperty("city", "The name of the city, e.g., Munich")
+         *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
          *         .required("city") // please specify the required properties explicitly
          *         .build())
          *     .build();
@@ -202,8 +202,8 @@ public class ToolSpecification {
          *     .name("weather")
          *     .description("Returns the current weather in the specified city")
          *     .parameters(JsonObjectSchema.builder()
-         *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
-         *         .addEnumProperty("units", TemperatureUnit.class)
+         *         .addStringProperty("city", "The name of the city, e.g., Munich")
+         *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
          *         .required("city") // please specify the required properties explicitly
          *         .build())
          *     .build();
@@ -226,8 +226,8 @@ public class ToolSpecification {
          *     .name("weather")
          *     .description("Returns the current weather in the specified city")
          *     .parameters(JsonObjectSchema.builder()
-         *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
-         *         .addEnumProperty("units", TemperatureUnit.class)
+         *         .addStringProperty("city", "The name of the city, e.g., Munich")
+         *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
          *         .required("city") // please specify the required properties explicitly
          *         .build())
          *     .build();
@@ -252,8 +252,8 @@ public class ToolSpecification {
          *     .name("weather")
          *     .description("Returns the current weather in the specified city")
          *     .parameters(JsonObjectSchema.builder()
-         *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
-         *         .addEnumProperty("units", TemperatureUnit.class)
+         *         .addStringProperty("city", "The name of the city, e.g., Munich")
+         *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
          *         .required("city") // please specify the required properties explicitly
          *         .build())
          *     .build();
@@ -276,8 +276,8 @@ public class ToolSpecification {
          *     .name("weather")
          *     .description("Returns the current weather in the specified city")
          *     .parameters(JsonObjectSchema.builder()
-         *         .addStringProperty("city", s -> s.description("The name of the city, e.g., Munich"))
-         *         .addEnumProperty("units", TemperatureUnit.class)
+         *         .addStringProperty("city", "The name of the city, e.g., Munich")
+         *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
          *         .required("city") // please specify the required properties explicitly
          *         .build())
          *     .build();
