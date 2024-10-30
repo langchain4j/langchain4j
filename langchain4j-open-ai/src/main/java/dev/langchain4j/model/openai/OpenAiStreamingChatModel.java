@@ -206,9 +206,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             requestBuilder.tools(toTools(toolSpecifications, strictTools));
         }
 
-        ChatCompletionRequest request = requestBuilder.build();
+        ChatCompletionRequest openAiRequest = requestBuilder.build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(openAiRequest, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
         listeners.forEach(listener -> {
@@ -219,14 +219,14 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             }
         });
 
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
+        OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
 
         AtomicReference<String> responseId = new AtomicReference<>();
         AtomicReference<String> responseModel = new AtomicReference<>();
 
-        client.chatCompletion(request)
+        client.chatCompletion(openAiRequest)
                 .onPartialResponse(partialResponse -> {
-                    responseBuilder.append(partialResponse);
+                    openAiResponseBuilder.append(partialResponse);
                     handle(partialResponse, handler);
 
                     if (!isNullOrBlank(partialResponse.id())) {
@@ -237,12 +237,12 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     }
                 })
                 .onComplete(() -> {
-                    ChatResponse response = responseBuilder.build();
+                    ChatResponse chatResponse = openAiResponseBuilder.build();
 
                     ChatModelResponse modelListenerResponse = createModelListenerResponse(
                             responseId.get(),
                             responseModel.get(),
-                            response
+                            chatResponse
                     );
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
                             modelListenerResponse,
@@ -257,15 +257,15 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                         }
                     });
 
-                    handler.onCompleteResponse(response);
+                    handler.onCompleteResponse(chatResponse);
                 })
                 .onError(error -> {
-                    ChatResponse response = responseBuilder.build();
+                    ChatResponse chatResponse = openAiResponseBuilder.build();
 
                     ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
                             responseId.get(),
                             responseModel.get(),
-                            response
+                            chatResponse
                     );
 
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(

@@ -57,7 +57,6 @@ import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
@@ -195,12 +194,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        ChatResponse chatResponse = chat(
-                messages,
-                singletonList(toolSpecification),
-                toolSpecification,
-                responseFormat
-        );
+        ChatResponse chatResponse = chat(messages, List.of(toolSpecification), toolSpecification, responseFormat);
         return convertResponse(chatResponse);
     }
 
@@ -238,9 +232,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             requestBuilder.toolChoice(toolThatMustBeExecuted.name());
         }
 
-        ChatCompletionRequest request = requestBuilder.build();
+        ChatCompletionRequest openAiRequest = requestBuilder.build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(openAiRequest, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
         listeners.forEach(listener -> {
@@ -252,18 +246,18 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         });
 
         try {
-            ChatCompletionResponse chatCompletionResponse = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
+            ChatCompletionResponse openAiResponse = withRetry(() -> client.chatCompletion(openAiRequest).execute(), maxRetries);
 
-            ChatResponse response = ChatResponse.builder()
-                    .aiMessage(aiMessageFrom(chatCompletionResponse))
-                    .tokenUsage(tokenUsageFrom(chatCompletionResponse.usage()))
-                    .finishReason(finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason()))
+            ChatResponse chatResponse = ChatResponse.builder()
+                    .aiMessage(aiMessageFrom(openAiResponse))
+                    .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
+                    .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
                     .build();
 
             ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                    chatCompletionResponse.id(),
-                    chatCompletionResponse.model(),
-                    response
+                    openAiResponse.id(),
+                    openAiResponse.model(),
+                    chatResponse
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
                     modelListenerResponse,
@@ -278,7 +272,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 }
             });
 
-            return response;
+            return chatResponse;
         } catch (RuntimeException e) {
 
             Throwable error;
