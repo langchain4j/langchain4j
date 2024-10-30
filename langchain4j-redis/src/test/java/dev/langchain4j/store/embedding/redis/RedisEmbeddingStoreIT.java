@@ -34,13 +34,13 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected void clearStore() {
         embeddingStore = RedisEmbeddingStore.builder()
-                .host(redis.getHost())
-                .port(redis.getFirstMappedPort())
-                .indexName(randomUUID())
-                .prefix(randomUUID() + ":")
-                .dimension(384)
-                .metadataKeys(createMetadata().toMap().keySet())
-                .build();
+            .host(redis.getHost())
+            .port(redis.getFirstMappedPort())
+            .indexName(randomUUID())
+            .prefix(randomUUID() + ":")
+            .dimension(384)
+            .metadataKeys(createMetadata().toMap().keySet())
+            .build();
     }
 
     @Override

@@ -5,8 +5,13 @@ import redis.clients.jedis.search.schemafields.TextField;
 import redis.clients.jedis.search.schemafields.VectorField;
 import redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.redis.MetricType.COSINE;
 import static redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm.HNSW;
 
@@ -42,9 +47,8 @@ class RedisSchema {
                 VectorAlgorithm vectorAlgorithm,
                 int dimension,
                 MetricType metricType) {
-        if (!prefix.endsWith(":")) {
-            prefix += ":";
-        }
+        ensureTrue(prefix.endsWith(":"), "Prefix should be ended with ':'");
+
         this.indexName = indexName;
         this.prefix = prefix;
         this.vectorFieldName = vectorFieldName;
@@ -64,11 +68,11 @@ class RedisSchema {
         List<SchemaField> fields = new ArrayList<>();
         fields.add(TextField.of(JSON_PATH_PREFIX + scalarFieldName).as(scalarFieldName).weight(1.0));
         fields.add(VectorField.builder()
-                .fieldName(JSON_PATH_PREFIX + vectorFieldName)
-                .algorithm(vectorAlgorithm)
-                .attributes(vectorAttrs)
-                .as(vectorFieldName)
-                .build());
+            .fieldName(JSON_PATH_PREFIX + vectorFieldName)
+            .algorithm(vectorAlgorithm)
+            .attributes(vectorAttrs)
+            .as(vectorFieldName)
+            .build());
 
         if (metadataKeys != null) {
             for (String metadataKey : metadataKeys) {
