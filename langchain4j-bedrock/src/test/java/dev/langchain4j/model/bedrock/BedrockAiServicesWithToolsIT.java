@@ -18,9 +18,4 @@ class BedrockAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
                         .build()
         );
     }
-
-    @Override
-    protected boolean verifyModelInteractions() {
-        return false;
-    }
 }

@@ -163,10 +163,10 @@ public class AiServiceTokenStream implements TokenStream {
                     "can be invoked on TokenStream at most 1 time");
         }
         if (onRetrievedInvoked > 1) {
-            throw new IllegalConfigurationException("onRetrieved must be invoked on TokenStream at most 1 time");
+            throw new IllegalConfigurationException("onRetrieved can be invoked on TokenStream at most 1 time");
         }
         if (onToolExecutedInvoked > 1) {
-            throw new IllegalConfigurationException("onToolExecuted must be invoked on TokenStream at most 1 time");
+            throw new IllegalConfigurationException("onToolExecuted can be invoked on TokenStream at most 1 time");
         }
         if (onErrorInvoked + ignoreErrorsInvoked != 1) {
             throw new IllegalConfigurationException("One of [onError, ignoreErrors] " +

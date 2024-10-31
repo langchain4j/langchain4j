@@ -24,7 +24,7 @@ class GoogleAiGeminiAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
 
     @Override
     protected boolean verifyModelInteractions() {
-        return false;
+        return true;
     }
 
     @Test

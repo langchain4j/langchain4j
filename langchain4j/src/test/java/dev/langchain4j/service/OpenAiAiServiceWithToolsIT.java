@@ -46,4 +46,9 @@ class OpenAiAiServiceWithToolsIT extends AiServicesWithNewToolsIT {
     protected boolean supportsRecursion() {
         return true;
     }
+
+    @Override
+    protected boolean verifyModelInteractions() {
+        return true;
+    }
 }
