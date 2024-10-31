@@ -74,7 +74,7 @@ public class CoherenceEmbeddingStore
      */
     protected final NamedMap<DocumentChunk.Id, DocumentChunk> documentChunks;
 
-    protected final boolean forceNormalize;
+    protected final boolean normalizeEmbeddings;
 
     /**
      * Create an {@link CoherenceEmbeddingStore}.
@@ -82,13 +82,13 @@ public class CoherenceEmbeddingStore
      * This method is protected, instances of {@link CoherenceEmbeddingStore}
      * are created using the builder.
      *
-     * @param namedMap        the {@link NamedMap} to contain the {@link DocumentChunk document chunks}
-     * @param forceNormalize  {@code true} if this {@link CoherenceEmbeddingStore} should force call
-     *                        {@link Embedding#normalize()} on embeddings when adding or searching
+     * @param namedMap             the {@link NamedMap} to contain the {@link DocumentChunk document chunks}
+     * @param normalizeEmbeddings  {@code true} if this {@link CoherenceEmbeddingStore} should call
+     *                             {@link Embedding#normalize()} on embeddings when adding or searching
      */
-    protected CoherenceEmbeddingStore(NamedMap<DocumentChunk.Id, DocumentChunk> namedMap, boolean forceNormalize) {
+    protected CoherenceEmbeddingStore(NamedMap<DocumentChunk.Id, DocumentChunk> namedMap, boolean normalizeEmbeddings) {
         this.documentChunks = namedMap;
-        this.forceNormalize = forceNormalize;
+        this.normalizeEmbeddings = normalizeEmbeddings;
     }
 
     @Override
@@ -158,7 +158,7 @@ public class CoherenceEmbeddingStore
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         Embedding queryEmbedding = request.queryEmbedding();
-        if (forceNormalize) {
+        if (normalizeEmbeddings) {
             queryEmbedding.normalize();
         }
         double minScore = request.minScore();
@@ -180,29 +180,9 @@ public class CoherenceEmbeddingStore
                 continue;
             }
 
-            DocumentChunk.Id id = result.getKey();
-            DocumentChunk chunk = result.getValue();
-
-            boolean fHighlyRelevant = score > 0.75f;
-            if (fHighlyRelevant && id.index() > 0) {
-                DocumentChunk.Id idPrev = new DocumentChunk.Id(id.docId(), id.index() - 1);
-                DocumentChunk chunkPrev = documentChunks.get(idPrev);
-                if (chunkPrev != null) {
-                    matches.add(embeddingMatch(score, idPrev, chunkPrev));
-                }
-            }
-
-            matches.add(embeddingMatch(score, id, chunk));
-
-            if (fHighlyRelevant) {
-                DocumentChunk.Id idNext = new DocumentChunk.Id(id.docId(), id.index() + 1);
-                DocumentChunk chunkNext = documentChunks.get(idNext);
-                if (chunkNext != null) {
-                    matches.add(embeddingMatch(score, idNext, chunkNext));
-                }
-            }
-
+            matches.add(embeddingMatch(score, result.getKey(), result.getValue()));
         }
+
         matches.sort(COMPARATOR);
         return new EmbeddingSearchResult<>(matches.size() > request.maxResults()
                                            ? matches.subList(0, request.maxResults())
@@ -237,8 +217,8 @@ public class CoherenceEmbeddingStore
      * @return {@code true} if this {@link CoherenceEmbeddingStore} will force
      *         call {@link Embedding#normalize()} on embeddings when adding or searching
      */
-    public boolean isForceNormalize() {
-        return forceNormalize;
+    public boolean isNormalizeEmbeddings() {
+        return normalizeEmbeddings;
     }
 
 /**
@@ -320,7 +300,7 @@ public class CoherenceEmbeddingStore
         String text = segment == null ? null : segment.text();
         Map<String, Object> metadata = segment == null ? Collections.emptyMap() : segment.metadata().toMap();
         DocumentChunk chunk = new DocumentChunk(text, metadata);
-        if (forceNormalize) {
+        if (normalizeEmbeddings) {
             embedding.normalize();
         }
         Float32Vector vector = new Float32Vector(embedding.vector());
@@ -351,7 +331,7 @@ public class CoherenceEmbeddingStore
      *
      * @return the result of comparing two extracted doubles in reverse order
      */
-    public static<T> Comparator<T> reverseComparingDouble(ToDoubleFunction<? super T> keyExtractor) {
+    private static<T> Comparator<T> reverseComparingDouble(ToDoubleFunction<? super T> keyExtractor) {
         Objects.requireNonNull(keyExtractor);
         return (Comparator<T> & Serializable)
             (c1, c2) -> Double.compare(keyExtractor.applyAsDouble(c2), keyExtractor.applyAsDouble(c1));
@@ -426,7 +406,7 @@ public class CoherenceEmbeddingStore
         /**
          * A flag that when {@code true} forces normalization of embeddings on adding and searching
          */
-        private boolean forceNormalize = false;
+        private boolean normalizeEmbeddings = false;
 
         /**
          * Create a {@link CoherenceEmbeddingStore.Builder}.
@@ -496,8 +476,8 @@ public class CoherenceEmbeddingStore
          *
          * @return this builder for fluent method calls
          */
-        public Builder forceNormalize(boolean f) {
-            forceNormalize = f;
+        public Builder normalizeEmbeddings(boolean f) {
+            normalizeEmbeddings = f;
             return this;
         }
 
@@ -520,7 +500,7 @@ public class CoherenceEmbeddingStore
             if (extractor != null) {
                 map.addIndex(extractor);
             }
-            return new CoherenceEmbeddingStore(map, forceNormalize);
+            return new CoherenceEmbeddingStore(map, normalizeEmbeddings);
         }
     }
 }

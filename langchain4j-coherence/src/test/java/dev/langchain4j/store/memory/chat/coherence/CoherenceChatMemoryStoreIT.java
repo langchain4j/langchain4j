@@ -13,6 +13,7 @@ import com.oracle.bedrock.runtime.options.DisplayName;
 import com.oracle.bedrock.testsupport.junit.TestLogsExtension;
 import com.tangosol.net.Session;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
@@ -76,15 +77,25 @@ class CoherenceChatMemoryStoreIT {
 
         // when
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new SystemMessage("You are a large language model working with Langchain4j"));
+        String sysMessage = "You are a large language model working with Langchain4j";
+        chatMessages.add(new SystemMessage(sysMessage));
         List<Content> userMsgContents = new ArrayList<>();
         userMsgContents.add(new ImageContent("someCatImageUrl"));
-        chatMessages.add(new UserMessage("What do you see in this image?", userMsgContents));
+        chatMessages.add(new UserMessage("user1", userMsgContents));
         memoryStore.updateMessages(userId, chatMessages);
 
         // then
         messages = memoryStore.getMessages(userId);
         assertThat(messages).hasSize(2);
+
+        assertThat(messages.get(0).type()).isEqualTo(ChatMessageType.SYSTEM);
+        assertThat(messages.get(1).type()).isEqualTo(ChatMessageType.USER);
+
+        SystemMessage sys = (SystemMessage) messages.get(0);
+        assertThat(sys.text()).isEqualTo(sysMessage);
+
+        UserMessage usr = (UserMessage) messages.get(1);
+        assertThat(usr.contents()).isEqualTo(userMsgContents);
     }
 
     @Test

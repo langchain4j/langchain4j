@@ -11,12 +11,16 @@ import com.oracle.bedrock.runtime.java.options.IPv4Preferred;
 import com.oracle.bedrock.runtime.java.options.SystemProperty;
 import com.oracle.bedrock.runtime.options.DisplayName;
 import com.oracle.bedrock.testsupport.junit.TestLogsExtension;
+
 import com.tangosol.net.Session;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -25,7 +29,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
  * that use Coherence as an {@link EmbeddingStore}.
  */
 public class CoherenceEmbeddingStoreIT
-        extends EmbeddingStoreIT {
+        extends EmbeddingStoreWithFilteringIT {
 
     @RegisterExtension
     static TestLogsExtension testLogs = new TestLogsExtension();

@@ -39,6 +39,17 @@
         </dependency>
 
         <dependency>
+            <groupId>${coherence.groupId}</groupId>
+            <artifactId>coherence</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>${coherence.groupId}</groupId>
+            <artifactId>coherence-hnsw</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
             <classifier>tests</classifier>
@@ -77,16 +88,6 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>${coherence.groupId}</groupId>
-            <artifactId>coherence</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>${coherence.groupId}</groupId>
-            <artifactId>coherence-hnsw</artifactId>
-            <scope>provided</scope>
-        </dependency>
         <dependency>
             <groupId>${coherence.groupId}</groupId>
             <artifactId>coherence-bedrock-testing-support</artifactId>
