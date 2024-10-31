@@ -64,7 +64,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param indexName      The name of the index (optional). Default value: "embedding-index".
      * @param prefix         The prefix of the key, should end with a colon (e.g., "embedding:") (optional). Default value: "embedding:".
      * @param dimension      Embedding vector dimension
-     * @param schemaFieldMap Metadata schemaField that should be persisted (optional)
+     * @param metadataConfig Metadata config to map metadata key to metadata type. (optional)
      */
     public RedisEmbeddingStore(String host,
                                Integer port,
@@ -73,7 +73,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                                String indexName,
                                String prefix,
                                Integer dimension,
-                               Map<String, SchemaField> schemaFieldMap) {
+                               Map<String, SchemaField> metadataConfig) {
         ensureNotBlank(host, "host");
         ensureNotNull(port, "port");
 
@@ -82,7 +82,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
             .indexName(getOrDefault(indexName, "embedding-index"))
             .prefix(getOrDefault(prefix, "embedding:"))
             .dimension(dimension)
-            .schemaFieldMap(copyIfNotNull(schemaFieldMap))
+            .metadataConfig(copyIfNotNull(metadataConfig))
             .build();
 
         if (!isIndexExist(schema.indexName())) {
@@ -250,7 +250,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String indexName;
         private String prefix;
         private Integer dimension;
-        private Map<String, SchemaField> schemaFieldMap = new HashMap<>();
+        private Map<String, SchemaField> metadataConfig = new HashMap<>();
 
         /**
          * @param host Redis Stack host
@@ -322,24 +322,24 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         /**
          * @param metadataKeys Metadata keys that should be persisted (optional)
-         * @deprecated use {@link #schemaFiledMap(Map)}} instead
+         * @deprecated use {@link #metadataConfig(Map)}} instead
          */
         @Deprecated
         public Builder metadataKeys(Collection<String> metadataKeys) {
-            metadataKeys.forEach(metadataKey -> schemaFieldMap.put(metadataKey, TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0)));
+            metadataKeys.forEach(metadataKey -> metadataConfig.put(metadataKey, TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0)));
             return this;
         }
 
         /**
-         * @param schemaFieldMap Metadata schemaField that should be persisted (optional)
+         * @param metadataConfig Metadata config to map metadata key to metadata type. (optional)
          */
-        public Builder schemaFiledMap(Map<String, SchemaField> schemaFieldMap) {
-            this.schemaFieldMap = schemaFieldMap;
+        public Builder metadataConfig(Map<String, SchemaField> metadataConfig) {
+            this.metadataConfig = metadataConfig;
             return this;
         }
 
         public RedisEmbeddingStore build() {
-            return new RedisEmbeddingStore(host, port, user, password, indexName, prefix, dimension, schemaFieldMap);
+            return new RedisEmbeddingStore(host, port, user, password, indexName, prefix, dimension, metadataConfig);
         }
     }
 }

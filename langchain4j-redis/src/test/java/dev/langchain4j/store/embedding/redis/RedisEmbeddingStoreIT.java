@@ -41,15 +41,15 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        Map<String, SchemaField> schemaFieldMap = new HashMap<>();
+        Map<String, SchemaField> metadataConfig = new HashMap<>();
         Map<String, Object> metadataMap = createMetadata().toMap();
 
         List<Class<? extends Number>> numericPrefix = Arrays.asList(Integer.class, Long.class, Float.class, Double.class);
         metadataMap.forEach((key, value) -> {
             if (numericPrefix.stream().anyMatch(type -> type.isAssignableFrom(value.getClass()))) {
-                schemaFieldMap.put(key, NumericField.of("$." + key).as(key));
+                metadataConfig.put(key, NumericField.of("$." + key).as(key));
             } else {
-                schemaFieldMap.put(key, TextField.of("$." + key).as(key).weight(1.0));
+                metadataConfig.put(key, TextField.of("$." + key).as(key).weight(1.0));
             }
         });
 
@@ -59,7 +59,7 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
             .indexName(randomUUID())
             .prefix(randomUUID() + ":")
             .dimension(384)
-            .schemaFiledMap(schemaFieldMap)
+            .metadataConfig(metadataConfig)
             .build();
     }
 

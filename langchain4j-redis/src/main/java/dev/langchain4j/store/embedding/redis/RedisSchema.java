@@ -31,12 +31,12 @@ class RedisSchema {
     private final String prefix;
     private final String vectorFieldName;
     private final String scalarFieldName;
-    private final Map<String, SchemaField> schemaFieldMap;
+    private final Map<String, SchemaField> metadataConfig;
 
     /* Vector field settings */
 
     private final VectorAlgorithm vectorAlgorithm;
-    private final int dimension;
+    private final Integer dimension;
     private final MetricType metricType;
 
     RedisSchema(String indexName,
@@ -46,7 +46,7 @@ class RedisSchema {
                 VectorAlgorithm vectorAlgorithm,
                 Integer dimension,
                 MetricType metricType,
-                Map<String, SchemaField> schemaFieldMap) {
+                Map<String, SchemaField> metadataConfig) {
         ensureTrue(prefix.endsWith(":"), "Prefix should end with a ':'");
 
         this.indexName = indexName;
@@ -56,7 +56,7 @@ class RedisSchema {
         this.vectorAlgorithm = vectorAlgorithm;
         this.dimension = dimension;
         this.metricType = metricType;
-        this.schemaFieldMap = schemaFieldMap;
+        this.metadataConfig = metadataConfig;
     }
 
     SchemaField[] toSchemaFields() {
@@ -74,7 +74,7 @@ class RedisSchema {
             .as(vectorFieldName)
             .build());
         // Add Metadata fields
-        fields.addAll(schemaFieldMap.values());
+        fields.addAll(metadataConfig.values());
 
         return fields.toArray(new SchemaField[0]);
     }
@@ -96,7 +96,7 @@ class RedisSchema {
     }
 
     Map<String, SchemaField> schemaFieldMap() {
-        return schemaFieldMap;
+        return metadataConfig;
     }
 
     static Builder builder() {
@@ -109,7 +109,7 @@ class RedisSchema {
         private String prefix = "embedding:";
         private String vectorFieldName = "vector";
         private String scalarFieldName = "text";
-        private Map<String, SchemaField> schemaFieldMap = new HashMap<>();
+        private Map<String, SchemaField> metadataConfig = new HashMap<>();
 
         /* Vector field settings */
 
@@ -147,13 +147,13 @@ class RedisSchema {
             return this;
         }
 
-        Builder schemaFieldMap(Map<String, SchemaField> schemaFieldMap) {
-            this.schemaFieldMap = schemaFieldMap;
+        Builder metadataConfig(Map<String, SchemaField> metadataConfig) {
+            this.metadataConfig = metadataConfig;
             return this;
         }
 
         RedisSchema build() {
-            return new RedisSchema(indexName, prefix, vectorFieldName, scalarFieldName, vectorAlgorithm, dimension, metricType, schemaFieldMap);
+            return new RedisSchema(indexName, prefix, vectorFieldName, scalarFieldName, vectorAlgorithm, dimension, metricType, metadataConfig);
         }
     }
 }
