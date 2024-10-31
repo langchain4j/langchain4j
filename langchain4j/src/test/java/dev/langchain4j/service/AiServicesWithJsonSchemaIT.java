@@ -31,7 +31,6 @@ import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.PersonExtractor
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
