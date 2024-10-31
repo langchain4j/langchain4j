@@ -56,7 +56,7 @@ public abstract class StreamingAiServicesSimpleIT {
         String userMessage = "What is the capital of Germany?";
 
         assistant.chat(userMessage)
-                .onNext(answerBuilder::append)
+                .onPartialResponse(answerBuilder::append)
                 .onCompleteResponse(chatResponse -> {
                     futureAnswer.complete(answerBuilder.toString());
                     futureChatResponse.complete(chatResponse);

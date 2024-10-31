@@ -74,7 +74,6 @@ public interface StreamingChatLanguageModel {
     }
 
     // TODO add convenience method(s)? e.g. chat(String, StreamingChatResponseHandler)
-    // TODO API for N completions?
 
     /**
      * Generates a response from the model based on a message from a user.

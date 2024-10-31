@@ -32,14 +32,20 @@ public class AiServiceTokenStream implements TokenStream {
     private final AiServiceContext context;
     private final Object memoryId;
 
-    private Consumer<String> tokenHandler;
+    private Consumer<String> partialResponseHandler;
+
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
-    private Consumer<Throwable> errorHandler;
+
     private Consumer<ChatResponse> completeResponseHandler;
+    @Deprecated(forRemoval = true)
     private Consumer<Response<AiMessage>> completionHandler;
 
+    private Consumer<Throwable> errorHandler;
+
+    private int onPartialResponseInvoked;
     private int onNextInvoked;
+    private int onCompleteResponseInvoked;
     private int onCompleteInvoked;
     private int onRetrievedInvoked;
     private int onToolExecutedInvoked;
@@ -62,8 +68,15 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
+    public TokenStream onPartialResponse(Consumer<String> partialResponseHandler) {
+        this.partialResponseHandler = partialResponseHandler;
+        this.onPartialResponseInvoked++;
+        return this;
+    }
+
+    @Override
     public TokenStream onNext(Consumer<String> tokenHandler) {
-        this.tokenHandler = tokenHandler;
+        this.partialResponseHandler = tokenHandler;
         this.onNextInvoked++;
         return this;
     }
@@ -85,7 +98,7 @@ public class AiServiceTokenStream implements TokenStream {
     @Override
     public TokenStream onCompleteResponse(Consumer<ChatResponse> completionHandler) {
         this.completeResponseHandler = completionHandler;
-        this.onCompleteInvoked++;
+        this.onCompleteResponseInvoked++;
         return this;
     }
 
@@ -122,7 +135,7 @@ public class AiServiceTokenStream implements TokenStream {
         StreamingChatResponseHandler handler = new AiServiceStreamingResponseHandler(
                 context,
                 memoryId,
-                tokenHandler,
+                partialResponseHandler,
                 toolExecutionHandler,
                 completeResponseHandler,
                 completionHandler,
@@ -141,21 +154,23 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     private void validateConfiguration() {
-        if (onNextInvoked != 1) {
-            throw new IllegalConfigurationException("onNext must be invoked exactly 1 time");
+        if (onPartialResponseInvoked + onNextInvoked != 1) {
+            throw new IllegalConfigurationException("One of [onPartialResponse, onNext] " +
+                    "must be invoked on TokenStream exactly 1 time");
         }
-        if (onCompleteInvoked > 1) {
-            throw new IllegalConfigurationException("One of onComplete or onCompleteResponse " +
-                    "must be invoked exactly 1 time");
+        if (onCompleteResponseInvoked + onCompleteInvoked > 1) {
+            throw new IllegalConfigurationException("One of [onCompleteResponse, onComplete] " +
+                    "can be invoked on TokenStream at most 1 time");
         }
         if (onRetrievedInvoked > 1) {
-            throw new IllegalConfigurationException("onRetrieved must be invoked at most 1 time");
+            throw new IllegalConfigurationException("onRetrieved must be invoked on TokenStream at most 1 time");
         }
         if (onToolExecutedInvoked > 1) {
-            throw new IllegalConfigurationException("onToolExecuted must be invoked at most 1 time");
+            throw new IllegalConfigurationException("onToolExecuted must be invoked on TokenStream at most 1 time");
         }
         if (onErrorInvoked + ignoreErrorsInvoked != 1) {
-            throw new IllegalConfigurationException("One of onError or ignoreErrors must be invoked exactly 1 time");
+            throw new IllegalConfigurationException("One of [onError, ignoreErrors] " +
+                    "must be invoked on TokenStream exactly 1 time");
         }
     }
 

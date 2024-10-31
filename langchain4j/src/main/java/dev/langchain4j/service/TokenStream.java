@@ -11,28 +11,30 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
+ * TODO
  * Represents a token stream from language model to which you can subscribe and receive updates
  * when a new token is available, when language model finishes streaming, or when an error occurs during streaming.
  * It is intended to be used as a return type in AI Service.
  */
 public interface TokenStream {
 
-    // TODO new API:
-    // TODO - onPartialResponse(Consumer<String>) What about tool/other tokens? onPartialResponse(ChatResponse)?
-    // TODO - onCompleteResponse(Consumer<ChatResponse>)
-
-    // TODO - onRetrieved(Consumer<List<Content>>)
-    // TODO - onToolExecuted(Consumer<ToolExecution>)
-    // TODO - onError(Consumer<Throwable>)
-    // TODO - ignoreErrors()
-    // TODO - start()
+    /**
+     * TODO
+     * The provided consumer will be invoked every time a new token from a language model is available.
+     *
+     * @param partialResponseHandler lambda that consumes tokens of the response
+     * @return token stream instance used to configure or start stream processing
+     */
+    TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
 
     /**
      * The provided consumer will be invoked every time a new token from a language model is available.
      *
      * @param tokenHandler lambda that consumes tokens of the response
      * @return token stream instance used to configure or start stream processing
+     * @deprecated Please use {@link #onPartialResponse(Consumer)} instead // TODO
      */
+    @Deprecated(forRemoval = true)
     TokenStream onNext(Consumer<String> tokenHandler);
 
     /**
@@ -59,10 +61,10 @@ public interface TokenStream {
      * TODO
      * The provided consumer will be invoked when a language model finishes streaming a response.
      *
-     * @param completionHandler lambda that will be invoked when language model finishes streaming
+     * @param completeResponseHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
      */
-    TokenStream onCompleteResponse(Consumer<ChatResponse> completionHandler); // TODO name
+    TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler); // TODO name
 
     /**
      * The provided consumer will be invoked when a language model finishes streaming a response.

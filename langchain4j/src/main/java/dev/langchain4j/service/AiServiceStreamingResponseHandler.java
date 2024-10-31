@@ -34,9 +34,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final AiServiceContext context;
     private final Object memoryId;
 
-    private final Consumer<String> tokenHandler; // TODO new partialResponseHandler?
+    private final Consumer<String> partialResponseHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
+    @Deprecated
     private final Consumer<Response<AiMessage>> completionHandler;
 
     private final Consumer<Throwable> errorHandler;
@@ -49,7 +50,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     AiServiceStreamingResponseHandler(AiServiceContext context,
                                       Object memoryId,
-                                      Consumer<String> tokenHandler,
+                                      Consumer<String> partialResponseHandler,
                                       Consumer<ToolExecution> toolExecutionHandler,
                                       Consumer<ChatResponse> completeResponseHandler,
                                       Consumer<Response<AiMessage>> completionHandler,
@@ -61,7 +62,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
 
-        this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
+        this.partialResponseHandler = ensureNotNull(partialResponseHandler, "partialResponseHandler");
         this.completeResponseHandler = completeResponseHandler;
         this.completionHandler = completionHandler;
         this.toolExecutionHandler = toolExecutionHandler;
@@ -76,7 +77,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onPartialResponse(String partialResponse) {
-        tokenHandler.accept(partialResponse);
+        partialResponseHandler.accept(partialResponse);
     }
 
     @Override
@@ -113,7 +114,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             StreamingChatResponseHandler handler = new AiServiceStreamingResponseHandler(
                     context,
                     memoryId,
-                    tokenHandler,
+                    partialResponseHandler,
                     toolExecutionHandler,
                     completeResponseHandler,
                     completionHandler,

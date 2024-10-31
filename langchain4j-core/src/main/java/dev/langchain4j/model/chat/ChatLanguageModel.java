@@ -65,8 +65,6 @@ public interface ChatLanguageModel {
         return chatResponse.aiMessage().text();
     }
 
-    // TODO API for N completions?
-
     @Experimental
     default Set<Capability> supportedCapabilities() {
         return Set.of();
