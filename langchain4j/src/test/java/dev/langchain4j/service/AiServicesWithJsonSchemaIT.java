@@ -33,6 +33,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 public abstract class AiServicesWithJsonSchemaIT {
+    // TODO move to common, use parameterized tests
 
     protected abstract List<ChatLanguageModel> models();
 

@@ -72,8 +72,4 @@ public abstract class AiServicesSimpleIT {
     protected boolean assertFinishReason() {
         return true;
     }
-
-    // TODO test tool handling in AI Services across models (separate test)
-
-    // TODO test token usage is summed for tools
 }

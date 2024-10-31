@@ -46,6 +46,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AiServicesWithNewToolsIT {
+    // TODO move to common, use parameterized tests
+    // TODO test the same in streaming mode, test token usage is summed for tools
 
     @Captor
     private ArgumentCaptor<ChatRequest> chatRequestCaptor;
@@ -56,6 +58,7 @@ public abstract class AiServicesWithNewToolsIT {
         return models();
     }
 
+    // TODO test token usage is summed for tools
     // TODO single argument: array of primitives, array of enums, array of POJOs, map?
     // TODO up-wrap single POJO and Map? (remove one level of object nesting) Make sure descriptions still work.
 
