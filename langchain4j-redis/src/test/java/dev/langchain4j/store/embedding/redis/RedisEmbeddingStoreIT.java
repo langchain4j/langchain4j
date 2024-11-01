@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.redis;
 
-import com.redis.testcontainers.RedisContainer;
+import com.redis.testcontainers.RedisStackContainer;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -23,7 +23,7 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 
 class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
 
-    static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
+    static RedisStackContainer redis = new RedisStackContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
 
     EmbeddingStore<TextSegment> embeddingStore;
 
