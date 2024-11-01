@@ -5,6 +5,8 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
@@ -94,26 +96,29 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        double minSimilarity = CosineSimilarity.fromRelevanceScore(minScore);
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+
+        double minSimilarity = CosineSimilarity.fromRelevanceScore(request.minScore());
         List<String> fields = new ArrayList<>(Arrays.asList(vearchConfig.getTextFieldName(), vearchConfig.getEmbeddingFieldName()));
         if (!isNullOrEmpty(vearchConfig.getMetadataFieldNames())) {
             fields.addAll(vearchConfig.getMetadataFieldNames());
         }
-        SearchRequest request = SearchRequest.builder()
+        SearchRequest vearchRequest = SearchRequest.builder()
                 .query(SearchRequest.QueryParam.builder()
                         .sum(singletonList(SearchRequest.VectorParam.builder()
                                 .field(vearchConfig.getEmbeddingFieldName())
-                                .feature(referenceEmbedding.vectorAsList())
+                                .feature(request.queryEmbedding().vectorAsList())
                                 .minScore(minSimilarity)
                                 .build()))
                         .build())
-                .size(maxResults)
+                .size(request.maxResults())
                 .fields(fields)
                 .build();
 
-        SearchResponse response = vearchClient.search(vearchConfig.getDatabaseName(), vearchConfig.getSpaceName(), request);
-        return toEmbeddingMatch(response.getHits());
+        SearchResponse response = vearchClient.search(vearchConfig.getDatabaseName(), vearchConfig.getSpaceName(), vearchRequest);
+
+        List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatch(response.getHits());
+        return new EmbeddingSearchResult<>(matches);
     }
 
     public void deleteSpace() {
