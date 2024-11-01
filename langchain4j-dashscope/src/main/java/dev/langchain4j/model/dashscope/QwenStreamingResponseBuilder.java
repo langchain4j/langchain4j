@@ -74,7 +74,7 @@ public class QwenStreamingResponseBuilder {
             }
         }
 
-        return  null;
+        return null;
     }
 
     public String append(MultiModalConversationResult partialResponse) {
