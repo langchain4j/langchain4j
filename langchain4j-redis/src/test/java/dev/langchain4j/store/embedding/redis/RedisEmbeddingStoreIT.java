@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.redis;
 
+import com.redis.testcontainers.RedisContainer;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -7,8 +8,9 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.filter.Filter;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -24,21 +26,35 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.filter.Filter.and;
 import static dev.langchain4j.store.embedding.filter.Filter.not;
 import static dev.langchain4j.store.embedding.filter.Filter.or;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+import static dev.langchain4j.store.embedding.redis.RedisSchema.JSON_PATH_PREFIX;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Map.entry;
 
-@EnabledIfEnvironmentVariable(named = "REDIS_CLOUD_URI", matches = ".+")
-class RedisEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
+class RedisEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
+
+    static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
+
+    RedisEmbeddingStore embeddingStore;
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    RedisEmbeddingStore embeddingStore;
+    @BeforeAll
+    static void beforeAll() {
+        redis.start();
+    }
+
+    @AfterAll
+    static void afterAll() {
+        redis.stop();
+    }
 
     @Override
     protected void clearStore() {
@@ -49,11 +65,11 @@ class RedisEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
         Map<String, Class<?>> filterMetadatas = getFilterMetadataConfig();
         filterMetadatas.forEach((key, value) -> {
             if (numericPrefix.stream().anyMatch(type -> type.isAssignableFrom(value))) {
-                metadataConfig.put(key, NumericField.of("$." + key).as(key));
+                metadataConfig.put(key, NumericField.of(JSON_PATH_PREFIX + key).as(key));
             } else if (key.startsWith("UUID")) {
-                metadataConfig.put(key, TextField.of("$." + key).as(key).weight(1.0));
+                metadataConfig.put(key, TextField.of(JSON_PATH_PREFIX + key).as(key).weight(1.0));
             } else {
-                metadataConfig.put(key, TagField.of("$." + key).caseSensitive().as(key));
+                metadataConfig.put(key, TagField.of(JSON_PATH_PREFIX + key).caseSensitive().as(key));
             }
         });
         metadatas.forEach((key, value) -> {
@@ -66,9 +82,9 @@ class RedisEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
             }
         });
 
-
         embeddingStore = RedisEmbeddingStore.builder()
-            .uri(System.getenv("REDIS_CLOUD_URI"))
+            .host(redis.getHost())
+            .port(redis.getFirstMappedPort())
             .indexName(randomUUID())
             .prefix(randomUUID() + ":")
             .dimension(embeddingModel.dimension())

@@ -7,10 +7,13 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.params.ScanParams;
+import redis.clients.jedis.resps.ScanResult;
 import redis.clients.jedis.search.Document;
 import redis.clients.jedis.search.FTCreateParams;
 import redis.clients.jedis.search.IndexDataType;
@@ -22,6 +25,7 @@ import redis.clients.jedis.search.schemafields.TextField;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +36,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.redis.RedisJsonUtils.toProperties;
@@ -187,6 +192,52 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
         List<Document> documents = result.getDocuments();
 
         return new EmbeddingSearchResult<>(toEmbeddingMatch(documents, request.minScore()));
+    }
+
+    @Override
+    public void removeAll(Collection<String> ids) {
+        ensureNotEmpty(ids, "ids");
+
+        String[] redisKeys = ids.stream()
+            .map(id -> schema.prefix() + id)
+            .toArray(String[]::new);
+        client.del(redisKeys);
+    }
+
+    @Override
+    public void removeAll(Filter filter) {
+        ensureNotNull(filter, "filter");
+
+        SearchResult results = client.ftSearch(schema.indexName(), filterMapper.mapToFilter(filter));
+        String[] keys = results.getDocuments().stream()
+            .map(Document::getId)
+            .toArray(String[]::new);
+
+        client.del(keys);
+    }
+
+    @Override
+    public void removeAll() {
+        Set<String> matchingKeys = new HashSet<>();
+        ScanParams params = new ScanParams();
+        params.match(schema.prefix() + "*");
+
+        String nextCursor = "0";
+
+        do {
+            ScanResult<String> scanResult = client.scan(nextCursor, params);
+            List<String> keys = scanResult.getResult();
+            nextCursor = scanResult.getCursor();
+
+            matchingKeys.addAll(keys);
+
+        } while (!nextCursor.equals("0"));
+
+        if (matchingKeys.isEmpty()) {
+            return;
+        }
+
+        client.del(matchingKeys.toArray(new String[0]));
     }
 
     private void createIndex(String indexName) {
