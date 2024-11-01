@@ -1,11 +1,10 @@
 package dev.langchain4j.model.dashscope;
 
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -15,9 +14,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.dashscope.QwenTestHelper.*;
@@ -26,8 +23,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".+")
 public class QwenChatModelIT {
@@ -99,7 +94,9 @@ public class QwenChatModelIT {
         ToolSpecification hasArgToolSpec = ToolSpecification.builder()
                 .name(toolName)
                 .description("Query the weather of a specified city")
-                .addParameter("cityName", JsonSchemaProperty.STRING)
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("cityName")
+                        .build())
                 .build();
 
         UserMessage userMessage = UserMessage.from("Weather in Beijing?");
@@ -142,7 +139,9 @@ public class QwenChatModelIT {
         ToolSpecification mustBeExecutedTool = ToolSpecification.builder()
                 .name(toolName)
                 .description("Query the weather of a specified city")
-                .addParameter("cityName", JsonSchemaProperty.STRING)
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("cityName")
+                        .build())
                 .build();
 
         // not related to tools
@@ -170,8 +169,10 @@ public class QwenChatModelIT {
         ToolSpecification calculator = ToolSpecification.builder()
                 .name(toolName)
                 .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("first")
+                        .addIntegerProperty("second")
+                        .build())
                 .build();
 
         UserMessage userMessage = userMessage("2+2=?");

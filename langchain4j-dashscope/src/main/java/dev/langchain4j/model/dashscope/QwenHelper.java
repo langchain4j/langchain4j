@@ -61,9 +61,7 @@ import static dev.langchain4j.data.message.ChatMessageType.AI;
 import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
 import static dev.langchain4j.data.message.ChatMessageType.USER;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -263,6 +261,10 @@ class QwenHelper {
                 .map(GenerationResult::getOutput)
                 .map(GenerationOutput::getChoices)
                 .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getContent)
+                .filter(Utils::isNotNullOrBlank)
                 .isPresent();
     }
 
@@ -388,8 +390,8 @@ class QwenHelper {
     private static JsonObject toParameters(ToolSpecification toolSpecification) {
         if (toolSpecification.parameters() != null) {
             return JsonUtils.toJsonObject(toMap(toolSpecification.parameters()));
-        } else if (toolSpecification.toolParameters() != null) {
-            return JsonUtils.toJsonObject(toolSpecification.toolParameters());
+        } else if (toolSpecification.parameters() != null) {
+            return JsonUtils.toJsonObject(toolSpecification.parameters());
         } else {
             return JsonUtils.toJsonObject(Collections.emptyMap());
         }
@@ -399,24 +401,15 @@ class QwenHelper {
         if (isFunctionToolCalls(result)) {
             String text = answerFrom(result);
             return isNullOrBlank(text) ?
-                    new AiMessage(functionToolCallsFrom(result)) :
-                    new AiMessage(text, functionToolCallsFrom(result));
+                    new AiMessage(toolExecutionRequestsFrom(result)) :
+                    new AiMessage(text, toolExecutionRequestsFrom(result));
         } else {
             return new AiMessage(answerFrom(result));
         }
     }
 
-    private static List<ToolExecutionRequest> functionToolCallsFrom(GenerationResult result) {
-        List<ToolCallBase> toolCalls = Optional.of(result)
-                .map(GenerationResult::getOutput)
-                .map(GenerationOutput::getChoices)
-                .filter(choices -> !choices.isEmpty())
-                .map(choices -> choices.get(0))
-                .map(Choice::getMessage)
-                .map(Message::getToolCalls)
-                .orElseThrow(IllegalStateException::new);
-
-        return toolCalls.stream()
+    private static List<ToolExecutionRequest> toolExecutionRequestsFrom(GenerationResult result) {
+        return toolCallsFrom(result).stream()
                 .filter(ToolCallFunction.class::isInstance)
                 .map(ToolCallFunction.class::cast)
                 .map(toolCall -> ToolExecutionRequest.builder()
@@ -425,6 +418,17 @@ class QwenHelper {
                         .arguments(toolCall.getFunction().getArguments())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    static List<ToolCallBase> toolCallsFrom(GenerationResult result) {
+        return Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getToolCalls)
+                .orElseThrow(IllegalStateException::new);
     }
 
     static String toolCallIdFromMessage(GenerationResult result) {
