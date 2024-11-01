@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import redis.clients.jedis.exceptions.JedisAccessControlException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class RedisChatMemoryStoreIT {
 
     static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
+    static RedisContainer redisWithPassword =
+            new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG)).withEnv("REDIS_ARGS", "--requirepass redis-stack");
 
     private final String userId = "someUserId";
     private RedisChatMemoryStore memoryStore;
@@ -29,11 +32,13 @@ class RedisChatMemoryStoreIT {
     @BeforeAll
     static void beforeAll() {
         redis.start();
+        redisWithPassword.start();
     }
 
     @AfterAll
     static void afterAll() {
         redis.stop();
+        redisWithPassword.stop();
     }
 
     @BeforeEach
@@ -174,17 +179,6 @@ class RedisChatMemoryStoreIT {
                 .hasMessage("host cannot be null or blank");
     }
 
-    @Test
-    void constructor_user_empty() {
-        assertThatThrownBy(() -> RedisChatMemoryStore.builder()
-                .port(redis.getFirstMappedPort())
-                .host(redis.getHost())
-                .user("  ")
-                .password("123456")
-                .build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("user cannot be null or blank");
-    }
 
     @Test
     void constructor_password_empty() {
@@ -199,14 +193,34 @@ class RedisChatMemoryStoreIT {
     }
 
     @Test
-    void constructor_password_null() {
-        assertThatThrownBy(() -> RedisChatMemoryStore.builder()
-                .port(redis.getFirstMappedPort())
-                .host(redis.getHost())
-                .user("redisUser")
-                .password(null)
-                .build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("password cannot be null or blank");
+    void shouldConnectToRedisWithCorrectPassword() {
+        RedisChatMemoryStore store = RedisChatMemoryStore.builder()
+                .port(redisWithPassword.getFirstMappedPort())
+                .host(redisWithPassword.getHost())
+                .password("redis-stack")
+                .build();
+
+        List<ChatMessage> messages = store.getMessages(userId);
+        assertThat(messages).isEmpty();
+
+        List<ChatMessage> sysMessages = new ArrayList<>();
+        sysMessages.add(new SystemMessage("Test message with password"));
+        store.updateMessages(userId, sysMessages);
+
+        messages = store.getMessages(userId);
+        assertThat(messages).hasSize(1);
+    }
+
+    @Test
+    void shouldFailToConnectWithIncorrectPassword() {
+        RedisChatMemoryStore store = RedisChatMemoryStore.builder()
+                .port(redisWithPassword.getFirstMappedPort())
+                .host(redisWithPassword.getHost())
+                .password("wrong-password")
+                .build();
+
+        assertThatThrownBy(() -> store.getMessages(userId))
+                .isInstanceOf(JedisAccessControlException.class)
+                .hasMessageContaining("WRONGPASS invalid username-password pair or user is disabled.");
     }
 }
