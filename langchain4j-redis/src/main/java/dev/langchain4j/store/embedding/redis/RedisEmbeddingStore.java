@@ -11,21 +11,38 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.search.*;
+import redis.clients.jedis.search.Document;
+import redis.clients.jedis.search.FTCreateParams;
+import redis.clients.jedis.search.IndexDataType;
+import redis.clients.jedis.search.Query;
+import redis.clients.jedis.search.SearchResult;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TextField;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.redis.RedisJsonUtils.toProperties;
-import static dev.langchain4j.store.embedding.redis.RedisSchema.*;
+import static dev.langchain4j.store.embedding.redis.RedisSchema.JSON_KEY;
+import static dev.langchain4j.store.embedding.redis.RedisSchema.JSON_PATH_PREFIX;
+import static dev.langchain4j.store.embedding.redis.RedisSchema.JSON_SET_PATH;
+import static dev.langchain4j.store.embedding.redis.RedisSchema.SCORE_FIELD_NAME;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
-import static redis.clients.jedis.search.IndexDefinition.Type.JSON;
 import static redis.clients.jedis.search.RediSearchUtil.toByteArray;
 
 /**
@@ -59,26 +76,29 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
      * @param user           Redis Stack username (optional)
      * @param password       Redis Stack password (optional)
      * @param indexName      The name of the index (optional). Default value: "embedding-index".
+     * @param prefix         The prefix of the key, should end with a colon (e.g., "embedding:") (optional). Default value: "embedding:".
      * @param dimension      Embedding vector dimension
-     * @param schemaFieldMap Metadata schemaField that should be persisted (optional)
+     * @param metadataConfig Metadata config to map metadata key to metadata type. (optional)
      */
     public RedisEmbeddingStore(String host,
                                Integer port,
                                String user,
                                String password,
                                String indexName,
+                               String prefix,
                                Integer dimension,
-                               Map<String, SchemaField> schemaFieldMap) {
+                               Map<String, SchemaField> metadataConfig) {
         ensureNotBlank(host, "host");
         ensureNotNull(port, "port");
 
         this.client = user == null ? new JedisPooled(host, port) : new JedisPooled(host, port, user, password);
         this.schema = RedisSchema.builder()
-                .indexName(getOrDefault(indexName, "embedding-index"))
-                .dimension(dimension)
-                .schemaFieldMap(copyIfNotNull(schemaFieldMap))
-                .build();
-        this.filterMapper = new RedisMetadataFilterMapper(schemaFieldMap);
+            .indexName(getOrDefault(indexName, "embedding-index"))
+            .prefix(getOrDefault(prefix, "embedding:"))
+            .dimension(dimension)
+            .metadataConfig(copyIfNotNull(metadataConfig))
+            .build();
+        this.filterMapper = new RedisMetadataFilterMapper(metadataConfig);
 
         if (!isIndexExist(schema.indexName())) {
             ensureNotNull(dimension, "dimension");
@@ -91,22 +111,25 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
      *
      * @param uri            Redis Stack Server URI. (e.g. redis://localhost:6379, rediss://localhost:6379)
      * @param indexName      The name of the index (optional). Default value: "embedding-index".
+     * @param prefix         The prefix of the key, should end with a colon (e.g., "embedding:") (optional). Default value: "embedding:".
      * @param dimension      Embedding vector dimension
-     * @param schemaFieldMap Metadata schemaField that should be persisted (optional)
+     * @param metadataConfig Metadata config to map metadata key to metadata type. (optional)
      */
     public RedisEmbeddingStore(String uri,
                                String indexName,
+                               String prefix,
                                Integer dimension,
-                               Map<String, SchemaField> schemaFieldMap) {
+                               Map<String, SchemaField> metadataConfig) {
         ensureNotBlank(uri, "uri");
 
         this.client = new JedisPooled(uri);
         this.schema = RedisSchema.builder()
-                .indexName(getOrDefault(indexName, "embedding-index"))
-                .dimension(dimension)
-                .schemaFieldMap(copyIfNotNull(schemaFieldMap))
-                .build();
-        this.filterMapper = new RedisMetadataFilterMapper(schemaFieldMap);
+            .indexName(getOrDefault(indexName, "embedding-index"))
+            .prefix(getOrDefault(prefix, "embedding:"))
+            .dimension(dimension)
+            .metadataConfig(copyIfNotNull(metadataConfig))
+            .build();
+        this.filterMapper = new RedisMetadataFilterMapper(metadataConfig);
 
         if (!isIndexExist(schema.indexName())) {
             ensureNotNull(dimension, "dimension");
@@ -136,8 +159,8 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+            .map(ignored -> randomUUID())
+            .collect(toList());
         addAllInternal(ids, embeddings, null);
         return ids;
     }
@@ -145,8 +168,8 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+            .map(ignored -> randomUUID())
+            .collect(toList());
         addAllInternal(ids, embeddings, embedded);
         return ids;
     }
@@ -155,10 +178,10 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         // Using KNN query on @vector field
         Query query = new Query(format(QUERY_TEMPLATE, filterMapper.mapToFilter(request.filter()), request.maxResults(), schema.vectorFieldName(), SCORE_FIELD_NAME))
-                .addParam("BLOB", toByteArray(request.queryEmbedding().vector()))
-                .setSortBy(SCORE_FIELD_NAME, true)
-                .limit(0, request.maxResults())
-                .dialect(2);
+            .addParam("BLOB", toByteArray(request.queryEmbedding().vector()))
+            .setSortBy(SCORE_FIELD_NAME, true)
+            .limit(0, request.maxResults())
+            .dialect(2);
 
         SearchResult result = client.ftSearch(schema.indexName(), query);
         List<Document> documents = result.getDocuments();
@@ -167,11 +190,9 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
     }
 
     private void createIndex(String indexName) {
-        IndexDefinition indexDefinition = new IndexDefinition(JSON);
-        indexDefinition.setPrefixes(schema.prefix());
         String res = client.ftCreate(indexName, FTCreateParams.createParams()
-                .on(IndexDataType.JSON)
-                .addPrefix(schema.prefix()), schema.toSchemaFields());
+            .on(IndexDataType.JSON)
+            .addPrefix(schema.prefix()), schema.toSchemaFields());
         if (!"OK".equals(res)) {
             if (log.isErrorEnabled()) {
                 log.error("create index error, msg={}", res);
@@ -234,32 +255,32 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
         }
 
         return documents.stream()
-                .map(document -> {
-                    double score = (2 - Double.parseDouble(document.getString(SCORE_FIELD_NAME))) / 2;
-                    String id = document.getId().substring(schema.prefix().length());
+            .map(document -> {
+                double score = (2 - Double.parseDouble(document.getString(SCORE_FIELD_NAME))) / 2;
+                String id = document.getId().substring(schema.prefix().length());
 
-                    Map<String, Object> properties = toProperties(document.getString(JSON_KEY));
+                Map<String, Object> properties = toProperties(document.getString(JSON_KEY));
 
-                    List<Double> vectors = (List<Double>) properties.get(schema.vectorFieldName());
-                    Embedding embedding = Embedding.from(
-                            vectors.stream()
-                                    .map(Double::floatValue)
-                                    .collect(toList())
-                    );
+                List<Double> vectors = (List<Double>) properties.get(schema.vectorFieldName());
+                Embedding embedding = Embedding.from(
+                    vectors.stream()
+                        .map(Double::floatValue)
+                        .collect(toList())
+                );
 
-                    String text = properties.containsKey(schema.scalarFieldName()) ? (String) properties.get(schema.scalarFieldName()) : null;
-                    TextSegment textSegment = null;
-                    if (text != null) {
-                        Map<String, Object> metadata = schema.schemaFieldMap().keySet().stream()
-                                .filter(properties::containsKey)
-                                .collect(toMap(metadataKey -> metadataKey, properties::get));
-                        textSegment = TextSegment.from(text, Metadata.from(metadata));
-                    }
+                String text = properties.containsKey(schema.scalarFieldName()) ? (String) properties.get(schema.scalarFieldName()) : null;
+                TextSegment textSegment = null;
+                if (text != null) {
+                    Map<String, Object> metadata = schema.schemaFieldMap().keySet().stream()
+                        .filter(properties::containsKey)
+                        .collect(toMap(metadataKey -> metadataKey, properties::get));
+                    textSegment = TextSegment.from(text, Metadata.from(metadata));
+                }
 
-                    return new EmbeddingMatch<>(score, id, embedding, textSegment);
-                })
-                .filter(embeddingMatch -> embeddingMatch.score() >= minScore)
-                .collect(toList());
+                return new EmbeddingMatch<>(score, id, embedding, textSegment);
+            })
+            .filter(embeddingMatch -> embeddingMatch.score() >= minScore)
+            .collect(toList());
     }
 
     public static Builder builder() {
@@ -282,8 +303,9 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
         private String user;
         private String password;
         private String indexName;
+        private String prefix;
         private Integer dimension;
-        private Map<String, SchemaField> schemaFieldMap = new HashMap<>();
+        private Map<String, SchemaField> metadataConfig = new HashMap<>();
 
         public Builder uri(String uri) {
             this.uri = uri;
@@ -332,6 +354,15 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
         }
 
         /**
+         * @param prefix The prefix of the key, should end with a colon (e.g., "embedding:") (optional). Default value: "embedding:".
+         * @return builder
+         */
+        public Builder prefix(String prefix) {
+            this.prefix = prefix;
+            return this;
+        }
+
+        /**
          * @param dimension embedding vector dimension (optional)
          * @return builder
          */
@@ -351,27 +382,27 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment>, AutoClo
 
         /**
          * @param metadataKeys Metadata keys that should be persisted (optional)
-         * @deprecated use {@link #schemaFiledMap(Map)}} instead
+         * @deprecated use {@link #metadataConfig(Map)}} instead
          */
         @Deprecated
         public Builder metadataKeys(Collection<String> metadataKeys) {
-            metadataKeys.forEach(metadataKey -> schemaFieldMap.put(metadataKey, TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0)));
+            metadataKeys.forEach(metadataKey -> metadataConfig.put(metadataKey, TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0)));
             return this;
         }
 
         /**
-         * @param schemaFieldMap Metadata schemaField that should be persisted (optional)
+         * @param metadataConfig Metadata config to map metadata key to metadata type. (optional)
          */
-        public Builder schemaFiledMap(Map<String, SchemaField> schemaFieldMap) {
-            this.schemaFieldMap = schemaFieldMap;
+        public Builder metadataConfig(Map<String, SchemaField> metadataConfig) {
+            this.metadataConfig = metadataConfig;
             return this;
         }
 
         public RedisEmbeddingStore build() {
             if (uri != null) {
-                return new RedisEmbeddingStore(uri, indexName, dimension, schemaFieldMap);
+                return new RedisEmbeddingStore(uri, indexName, prefix, dimension, metadataConfig);
             } else {
-                return new RedisEmbeddingStore(host, port, user, password, indexName, dimension, schemaFieldMap);
+                return new RedisEmbeddingStore(host, port, user, password, indexName, prefix, dimension, metadataConfig);
             }
         }
     }

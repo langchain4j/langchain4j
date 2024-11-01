@@ -7,7 +7,6 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.search.schemafields.NumericField;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TagField;
@@ -28,28 +27,24 @@ class RedisEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        try (JedisPooled jedis = new JedisPooled(System.getenv("REDIS_CLOUD_URI"))) {
-            jedis.flushDB(); // TODO fix: why redis returns embeddings from different indexes?
-        }
-
-        Map<String, SchemaField> schemaFieldMap = new HashMap<>();
+        Map<String, SchemaField> metadataConfig = new HashMap<>();
         Map<String, Object> metadataMap = createMetadata().toMap();
 
-        List<String> numericPrefix = Arrays.asList("integer", "float", "double", "long");
+        List<Class<? extends Number>> numericPrefix = Arrays.asList(Integer.class, Long.class, Float.class, Double.class);
         metadataMap.forEach((key, value) -> {
-            if (numericPrefix.stream().anyMatch(key::startsWith)) {
-                schemaFieldMap.put(key, NumericField.of("$." + key).as(key));
+            if (numericPrefix.stream().anyMatch(type -> type.isAssignableFrom(value.getClass()))) {
+                metadataConfig.put(key, NumericField.of("$." + key).as(key));
             } else {
-                schemaFieldMap.put(key, TagField.of("$." + key).as(key));
+                metadataConfig.put(key, TagField.of("$." + key).as(key));
             }
         });
 
         embeddingStore = RedisEmbeddingStore.builder()
-                .uri(System.getenv("REDIS_CLOUD_URI"))
-                .indexName(randomUUID())
-                .dimension(embeddingModel.dimension())
-                .schemaFiledMap(schemaFieldMap)
-                .build();
+            .uri(System.getenv("REDIS_CLOUD_URI"))
+            .indexName(randomUUID())
+            .dimension(embeddingModel.dimension())
+            .metadataConfig(metadataConfig)
+            .build();
     }
 
     @AfterEach

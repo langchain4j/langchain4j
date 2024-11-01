@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.redis;
 
-import com.redis.testcontainers.RedisContainer;
+import com.redis.testcontainers.RedisStackContainer;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -9,7 +9,6 @@ import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.search.schemafields.NumericField;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TagField;
@@ -25,7 +24,7 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 
 class RedisEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
-    static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
+    static RedisStackContainer redis = new RedisStackContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
 
     RedisEmbeddingStore embeddingStore;
 
@@ -43,29 +42,26 @@ class RedisEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        try (JedisPooled jedis = new JedisPooled(redis.getHost(), redis.getFirstMappedPort())) {
-            jedis.flushDB(); // TODO fix: why redis returns embeddings from different indexes?
-        }
-
-        Map<String, SchemaField> schemaFieldMap = new HashMap<>();
+        Map<String, SchemaField> metadataConfig = new HashMap<>();
         Map<String, Object> metadataMap = createMetadata().toMap();
 
-        List<String> numericPrefix = Arrays.asList("integer", "float", "double", "long");
+        List<Class<? extends Number>> numericPrefix = Arrays.asList(Integer.class, Long.class, Float.class, Double.class);
         metadataMap.forEach((key, value) -> {
-            if (numericPrefix.stream().anyMatch(key::startsWith)) {
-                schemaFieldMap.put(key, NumericField.of("$." + key).as(key));
+            if (numericPrefix.stream().anyMatch(type -> type.isAssignableFrom(value.getClass()))) {
+                metadataConfig.put(key, NumericField.of("$." + key).as(key));
             } else {
-                schemaFieldMap.put(key, TagField.of("$." + key).as(key));
+                metadataConfig.put(key, TagField.of("$." + key).as(key));
             }
         });
 
         embeddingStore = RedisEmbeddingStore.builder()
-                .host(redis.getHost())
-                .port(redis.getFirstMappedPort())
-                .indexName(randomUUID())
-                .dimension(embeddingModel.dimension())
-                .schemaFiledMap(schemaFieldMap)
-                .build();
+            .host(redis.getHost())
+            .port(redis.getFirstMappedPort())
+            .indexName(randomUUID())
+            .prefix(randomUUID() + ":")
+            .dimension(384)
+            .metadataConfig(metadataConfig)
+            .build();
     }
 
     @AfterEach

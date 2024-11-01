@@ -1,7 +1,14 @@
 package dev.langchain4j.store.embedding.redis;
 
 import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.filter.comparison.*;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
+import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsIn;
+import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
+import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
@@ -34,28 +41,28 @@ class RedisMetadataFilterMapper {
             return "(*)";
         }
 
-        if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
-        } else if (filter instanceof IsNotEqualTo) {
-            return mapNotEqual((IsNotEqualTo) filter);
-        } else if (filter instanceof IsGreaterThan) {
-            return mapGreaterThan((IsGreaterThan) filter);
-        } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
-        } else if (filter instanceof IsLessThan) {
-            return mapLessThan((IsLessThan) filter);
-        } else if (filter instanceof IsLessThanOrEqualTo) {
-            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
-        } else if (filter instanceof IsIn) {
-            return mapIn((IsIn) filter);
-        } else if (filter instanceof IsNotIn) {
-            return mapNotIn((IsNotIn) filter);
-        } else if (filter instanceof And) {
-            return mapAnd((And) filter);
-        } else if (filter instanceof Not) {
-            return mapNot((Not) filter);
-        } else if (filter instanceof Or) {
-            return mapOr((Or) filter);
+        if (filter instanceof IsEqualTo isEqualTo) {
+            return mapEqual(isEqualTo);
+        } else if (filter instanceof IsNotEqualTo isNotEqualTo) {
+            return mapNotEqual(isNotEqualTo);
+        } else if (filter instanceof IsGreaterThan isGreaterThan) {
+            return mapGreaterThan(isGreaterThan);
+        } else if (filter instanceof IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
+            return mapGreaterThanOrEqual(isGreaterThanOrEqualTo);
+        } else if (filter instanceof IsLessThan isLessThan) {
+            return mapLessThan(isLessThan);
+        } else if (filter instanceof IsLessThanOrEqualTo isLessThanOrEqualTo) {
+            return mapLessThanOrEqual(isLessThanOrEqualTo);
+        } else if (filter instanceof IsIn isIn) {
+            return mapIn(isIn);
+        } else if (filter instanceof IsNotIn isNotIn) {
+            return mapNotIn(isNotIn);
+        } else if (filter instanceof And and) {
+            return mapAnd(and);
+        } else if (filter instanceof Not not) {
+            return mapNot(not);
+        } else if (filter instanceof Or or) {
+            return mapOr(or);
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
@@ -202,14 +209,14 @@ class RedisMetadataFilterMapper {
         String keyPrefix = toKeyPrefix(key);
         if (fieldType instanceof TagField) {
             String inFilter = values.stream()
-                    .map(Object::toString)
-                    .collect(Collectors.joining(OR_DELIMITER));
+                .map(Object::toString)
+                .collect(Collectors.joining(OR_DELIMITER));
 
             return keyPrefix + Boundary.TAG_BOUNDARY.toSingleString(inFilter);
         } else if (fieldType instanceof TextField) {
             String inFilter = values.stream()
-                    .map(Boundary.TEXT_BOUNDARY::toSingleString)
-                    .collect(Collectors.joining(OR_DELIMITER));
+                .map(Boundary.TEXT_BOUNDARY::toSingleString)
+                .collect(Collectors.joining(OR_DELIMITER));
 
             return keyPrefix + Boundary.TEXT_IN_BOUNDARY.toSingleString(inFilter);
         } else {

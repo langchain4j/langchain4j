@@ -94,6 +94,8 @@ public class ChatRequest {
             return this;
         }
 
+        // TODO consider adding responseFormat(JsonSchema) or jsonSchema(JsonSchema)
+
         public ChatRequest build() {
             return new ChatRequest(this);
         }

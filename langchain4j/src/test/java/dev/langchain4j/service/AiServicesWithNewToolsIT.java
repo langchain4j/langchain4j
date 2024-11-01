@@ -25,7 +25,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalTime;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -527,7 +526,9 @@ public abstract class AiServicesWithNewToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNames")
                 .parameters(JsonObjectSchema.builder()
-                        .addArrayProperty("arg0", new JsonStringSchema())
+                        .addProperty("arg0", JsonArraySchema.builder()
+                                .items(new JsonStringSchema())
+                                .build())
                         .required("arg0")
                         .build())
                 .build();
@@ -638,7 +639,9 @@ public abstract class AiServicesWithNewToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNumbers")
                 .parameters(JsonObjectSchema.builder()
-                        .addArrayProperty("arg0", new JsonIntegerSchema())
+                        .addProperty("arg0", JsonArraySchema.builder()
+                                .items(new JsonIntegerSchema())
+                                .build())
                         .required("arg0")
                         .build())
                 .build();
@@ -698,9 +701,11 @@ public abstract class AiServicesWithNewToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
                 .parameters(JsonObjectSchema.builder()
-                        .addArrayProperty("arg0", JsonObjectSchema.builder()
-                                .addStringProperty("name")
-                                .required("name")
+                        .addProperty("arg0", JsonArraySchema.builder()
+                                .items(JsonObjectSchema.builder()
+                                        .addStringProperty("name")
+                                        .required("name")
+                                        .build())
                                 .build())
                         .required("arg0")
                         .build())

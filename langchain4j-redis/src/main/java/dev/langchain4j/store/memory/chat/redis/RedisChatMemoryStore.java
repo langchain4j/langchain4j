@@ -9,7 +9,9 @@ import redis.clients.jedis.JedisPooled;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 public class RedisChatMemoryStore implements ChatMemoryStore {
 

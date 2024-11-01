@@ -42,10 +42,10 @@ public class WanxImageModelIT {
                 .build();
 
         Image image = Image.builder()
-                .url("https://img.alicdn.com/imgextra/i4/O1CN01K1DWat25own2MuQgF_!!6000000007574-0-tps-128-128.jpg")
+                .url("https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/2476628361/p335710.png")
                 .build();
 
-        Response<Image> response = model.edit(image, "Change the parrot's feathers with yellow");
+        Response<Image> response = model.edit(image, "Draw a parrot");
 
         URI remoteImage = response.content().url();
         log.info("Your remote image is here: {}", remoteImage);

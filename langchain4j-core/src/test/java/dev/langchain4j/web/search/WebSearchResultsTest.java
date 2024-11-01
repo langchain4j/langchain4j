@@ -4,17 +4,12 @@ import dev.langchain4j.data.document.Metadata;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
-import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Stream;
 
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
-import static org.mockito.ArgumentMatchers.anyList;
 
 class WebSearchResultsTest {
 

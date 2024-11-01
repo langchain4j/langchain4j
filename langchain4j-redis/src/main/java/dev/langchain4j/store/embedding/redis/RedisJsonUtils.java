@@ -9,11 +9,11 @@ import java.util.Map;
 
 class RedisJsonUtils {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private RedisJsonUtils() throws InstantiationException {
         throw new InstantiationException("Can't instantiate this utility class.");
     }
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     static String toJson(Object object) {
         try {

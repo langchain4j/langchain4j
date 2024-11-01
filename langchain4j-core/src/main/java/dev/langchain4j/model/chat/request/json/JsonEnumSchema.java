@@ -8,9 +8,6 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static java.util.Arrays.asList;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
 
 @Experimental
 public class JsonEnumSchema implements JsonSchemaElement {
@@ -51,14 +48,7 @@ public class JsonEnumSchema implements JsonSchemaElement {
         }
 
         public Builder enumValues(String... enumValues) {
-            return enumValues(asList(enumValues));
-        }
-
-        public Builder enumValues(Class<? extends Enum<?>> enumClass) {
-            List<String> enumValues = stream(enumClass.getEnumConstants())
-                    .map(Object::toString)
-                    .collect(toList());
-            return enumValues(enumValues);
+            return enumValues(List.of(enumValues));
         }
 
         public JsonEnumSchema build() {
