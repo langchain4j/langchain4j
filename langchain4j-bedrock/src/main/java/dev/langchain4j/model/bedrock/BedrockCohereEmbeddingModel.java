@@ -18,7 +18,6 @@ import java.util.Map;
  * See more details <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-embed.html">here</a>.
  */
 @SuperBuilder
-@Getter
 public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockCohereEmbeddingResponse> {
 
     @Builder.Default
@@ -40,6 +39,10 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
     @Override
     protected String getModelId() {
         return model;
+    }
+
+    public String getInputType() {
+        return inputType;
     }
 
     @Override
