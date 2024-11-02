@@ -42,14 +42,6 @@ class BedrockCohereEmbeddingResponse implements BedrockEmbeddingResponse {
         this.texts = texts;
     }
 
-    public void addText(String text) {
-        if (this.texts == null) {
-            this.texts = List.of(text);
-            return;
-        }
-        this.texts.add(text);
-    }
-
     public float[][] getEmbeddings() {
         return embeddings;
     }
