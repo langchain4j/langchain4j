@@ -14,13 +14,16 @@ class BedrockCohereEmbeddingResponse implements BedrockEmbeddingResponse {
 
     private List<String> texts;
 
-    private float[] embedding;
+    private float[][] embeddings;
 
     private int inputTextTokenCount;
 
     @Override
     public Embedding toEmbedding() {
-        return new Embedding(embedding);
+        if (embeddings == null) {
+            return null;
+        }
+        return new Embedding(embeddings[0]);
     }
 
     public String getId() {
@@ -47,12 +50,12 @@ class BedrockCohereEmbeddingResponse implements BedrockEmbeddingResponse {
         this.texts.add(text);
     }
 
-    public float[] getEmbedding() {
-        return embedding;
+    public float[][] getEmbeddings() {
+        return embeddings;
     }
 
-    public void setEmbedding(float[] embedding) {
-        this.embedding = embedding;
+    public void setEmbeddings(float[][] embeddings) {
+        this.embeddings = embeddings;
     }
 
     @Override

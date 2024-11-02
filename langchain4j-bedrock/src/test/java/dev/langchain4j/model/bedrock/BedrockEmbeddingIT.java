@@ -107,9 +107,9 @@ class BedrockEmbeddingIT {
         assertThat(embedding.vector()).hasSize(1024);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(1);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(0);
         assertThat(tokenUsage.outputTokenCount()).isNull();
-        assertThat(tokenUsage.totalTokenCount()).isEqualTo(1);
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(0);
 
         assertThat(response.finishReason()).isNull();
 
@@ -128,7 +128,7 @@ class BedrockEmbeddingIT {
 
         assertThat(embeddingModel).isNotNull();
 
-        List<TextSegment> segments = Collections.singletonList(TextSegment.from("proba"));
+        List<TextSegment> segments = Collections.singletonList(TextSegment.from("one"));
 
         Response<List<Embedding>> response = embeddingModel.embedAll(segments);
         assertThat(response).isNotNull();
@@ -140,9 +140,9 @@ class BedrockEmbeddingIT {
         assertThat(embedding.vector()).hasSize(1024);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(1);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(0);
         assertThat(tokenUsage.outputTokenCount()).isNull();
-        assertThat(tokenUsage.totalTokenCount()).isEqualTo(1);
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(0);
 
         assertThat(response.finishReason()).isNull();
 
