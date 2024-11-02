@@ -16,7 +16,7 @@ class BedrockCohereEmbeddingResponse implements BedrockEmbeddingResponse {
 
     private float[][] embeddings;
 
-    private int inputTextTokenCount;
+    private int inputTextTokenCount = 0;
 
     @Override
     public Embedding toEmbedding() {
