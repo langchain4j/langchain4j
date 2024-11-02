@@ -34,11 +34,11 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
-        <!-- Test dependencies -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
+        <!-- Test dependencies -->
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
