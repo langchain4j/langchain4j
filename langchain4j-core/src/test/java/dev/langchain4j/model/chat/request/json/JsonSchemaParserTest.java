@@ -1,8 +1,6 @@
 package dev.langchain4j.model.chat.request.json;
 
 import com.fasterxml.jackson.core.JsonParseException;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -49,10 +47,9 @@ public class JsonSchemaParserTest {
             }
         """;
 
-        ResponseFormat responseFormat = JsonSchemaParser.fromJsonString(jsonSchema);
-        assertEquals(responseFormat.type(), ResponseFormatType.JSON);
-        assertInstanceOf(JsonStringSchema.class, responseFormat.jsonSchema().rootElement());
-        assertEquals(((JsonStringSchema) responseFormat.jsonSchema().rootElement()).description(), "A simple string");
+        JsonSchema schema = JsonSchemaParser.fromJsonString(jsonSchema);
+        assertInstanceOf(JsonStringSchema.class, schema.rootElement());
+        assertEquals(((JsonStringSchema) schema.rootElement()).description(), "A simple string");
     }
 
 
@@ -79,10 +76,9 @@ public class JsonSchemaParserTest {
         }
     """;
 
-        ResponseFormat responseFormat = JsonSchemaParser.fromJsonString(jsonSchema);
-        assertEquals(responseFormat.type(), ResponseFormatType.JSON);
-        assertInstanceOf(JsonObjectSchema.class, responseFormat.jsonSchema().rootElement());
-        JsonObjectSchema rootSchema = (JsonObjectSchema) responseFormat.jsonSchema().rootElement();
+        JsonSchema schema = JsonSchemaParser.fromJsonString(jsonSchema);
+        assertInstanceOf(JsonObjectSchema.class, schema.rootElement());
+        JsonObjectSchema rootSchema = (JsonObjectSchema) schema.rootElement();
 
         assertEquals(1, rootSchema.properties().size());
         assertInstanceOf(JsonObjectSchema.class, rootSchema.properties().get("person"));
@@ -130,14 +126,14 @@ public class JsonSchemaParserTest {
             }
         """;
 
-        ResponseFormat responseFormat = JsonSchemaParser.fromJsonString(jsonSchema);
-        assertEquals(responseFormat.type(), ResponseFormatType.JSON);
-        assertInstanceOf(JsonObjectSchema.class, responseFormat.jsonSchema().rootElement());
-        assertEquals(4, ((JsonObjectSchema)responseFormat.jsonSchema().rootElement()).properties().size());
-        assertEquals(3, ((JsonObjectSchema)responseFormat.jsonSchema().rootElement()).required().size());
-        assertInstanceOf(JsonStringSchema.class, ((JsonObjectSchema)responseFormat.jsonSchema().rootElement()).properties().get("title"));
-        assertInstanceOf(JsonIntegerSchema.class, ((JsonObjectSchema)responseFormat.jsonSchema().rootElement()).properties().get("preparationTimeMinutes"));
-        assertEquals("A preparation time minutes", ((JsonIntegerSchema)((JsonObjectSchema)responseFormat.jsonSchema().rootElement()).properties().get("preparationTimeMinutes")).description());
+        JsonSchema schema = JsonSchemaParser.fromJsonString(jsonSchema);
+
+        assertInstanceOf(JsonObjectSchema.class, schema.rootElement());
+        assertEquals(4, ((JsonObjectSchema)schema.rootElement()).properties().size());
+        assertEquals(3, ((JsonObjectSchema)schema.rootElement()).required().size());
+        assertInstanceOf(JsonStringSchema.class, ((JsonObjectSchema)schema.rootElement()).properties().get("title"));
+        assertInstanceOf(JsonIntegerSchema.class, ((JsonObjectSchema)schema.rootElement()).properties().get("preparationTimeMinutes"));
+        assertEquals("A preparation time minutes", ((JsonIntegerSchema)((JsonObjectSchema)schema.rootElement()).properties().get("preparationTimeMinutes")).description());
     }
 
 }

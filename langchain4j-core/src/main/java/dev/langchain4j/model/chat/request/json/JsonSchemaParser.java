@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.chat.request.ResponseFormat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,14 +13,11 @@ public class JsonSchemaParser {
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    public static ResponseFormat fromJsonString(String jsonSchemaString) {
+    public static JsonSchema fromJsonString(String jsonSchemaString) {
         try {
-            return ResponseFormat.builder()
-                .type(ResponseFormat.JSON.type())
-                .jsonSchema(JsonSchema.builder()
+            return JsonSchema.builder()
                     .rootElement(parse(mapper.readTree(jsonSchemaString)))
-                    .build())
-                .build();
+                    .build();
         }catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -32,23 +28,18 @@ public class JsonSchemaParser {
         String type = jsonNode.has("type") ? jsonNode.get("type").asText() : null;
         String description = jsonNode.has("description") ? jsonNode.get("description").asText() : null;
 
-        if (type == null){
+        if (type == null) {
             throw new IllegalArgumentException("Type cannot be null");
         }
 
         return switch (type) {
-            case "string" ->
-                JsonStringSchema.builder().description(description).build();
-            case "integer" ->
-                JsonIntegerSchema.builder().description(description).build();
-            case "boolean" ->
-                JsonBooleanSchema.builder().description(description).build();
-            case "number" ->
-                JsonNumberSchema.builder().description(description).build();
-            case "object" ->
-                parseObject(jsonNode);
-            case "array" ->
-                parseArray(jsonNode);
+            case "string" -> JsonStringSchema.builder().description(description).build();
+            case "integer" -> JsonIntegerSchema.builder().description(description).build();
+            case "boolean" -> JsonBooleanSchema.builder().description(description).build();
+            case "number" -> JsonNumberSchema.builder().description(description).build();
+            case "enum" -> JsonEnumSchema.builder().description(description).build();
+            case "object" -> parseObject(jsonNode);
+            case "array" -> parseArray(jsonNode);
             default -> throw new IllegalArgumentException("Unsupported JSON schema type: " + type);
         };
     }

@@ -2,6 +2,7 @@ package dev.langchain4j.model.chat.request;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaParser;
 
 import java.util.Objects;
 
@@ -70,6 +71,11 @@ public class ResponseFormat {
 
         public Builder jsonSchema(JsonSchema jsonSchema) {
             this.jsonSchema = jsonSchema;
+            return this;
+        }
+
+        public Builder jsonSchemaString(String jsonSchemaString) {
+            this.jsonSchema = JsonSchemaParser.fromJsonString(jsonSchemaString);
             return this;
         }
 
