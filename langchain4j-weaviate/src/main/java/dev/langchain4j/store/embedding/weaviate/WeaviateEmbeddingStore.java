@@ -4,6 +4,8 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateAuthClient;
@@ -177,11 +179,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
      * The score inside {@link EmbeddingMatch} is Weaviate's certainty.
      */
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(
-            Embedding referenceEmbedding,
-            int maxResults,
-            double minCertainty
-    ) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+
         List<Field> fields = new ArrayList<>();
         fields.add(Field.builder().name(textFieldName).build());
         fields.add(Field
@@ -208,11 +207,11 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .withNearVector(
                         NearVectorArgument
                                 .builder()
-                                .vector(referenceEmbedding.vectorAsList().toArray(new Float[0]))
-                                .certainty((float) minCertainty)
+                                .vector(request.queryEmbedding().vectorAsList().toArray(new Float[0]))
+                                .certainty((float) request.minScore())
                                 .build()
                 )
-                .withLimit(maxResults)
+                .withLimit(request.maxResults())
                 .run();
 
         if (result.hasErrors()) {
@@ -229,17 +228,18 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         Optional<Map.Entry<String, Map>> resGetPart =
                 ((Map<String, Map>) result.getResult().getData()).entrySet().stream().findFirst();
         if (!resGetPart.isPresent()) {
-            return emptyList();
+            return new EmbeddingSearchResult<>(emptyList());
         }
 
         Optional resItemsPart = resGetPart.get().getValue().entrySet().stream().findFirst();
         if (!resItemsPart.isPresent()) {
-            return emptyList();
+            return new EmbeddingSearchResult<>(emptyList());
         }
 
         List<Map<String, ?>> resItems = ((Map.Entry<String, List<Map<String, ?>>>) resItemsPart.get()).getValue();
 
-        return resItems.stream().map(item -> toEmbeddingMatch(item)).collect(toList());
+        List<EmbeddingMatch<TextSegment>> matches = resItems.stream().map(item -> toEmbeddingMatch(item)).collect(toList());
+        return new EmbeddingSearchResult<>(matches);
     }
 
     private List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
