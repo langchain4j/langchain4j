@@ -1,8 +1,11 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.content.Content;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -19,6 +23,18 @@ import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class AiServiceTokenStreamTest {
+
+    static Consumer<String> DUMMY_PARTIAL_RESPONSE_HANDLER = (partialResponse) -> {
+    };
+
+    static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {
+    };
+
+    static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {
+    };
+
+    static Consumer<Response<AiMessage>> DUMMY_RESPONSE_HANDLER = (response) -> {
+    };
 
     List<ChatMessage> messages = new ArrayList<>();
 
@@ -39,7 +55,7 @@ class AiServiceTokenStreamTest {
     @Test
     void start_with_onPartialResponse_shouldNotThrowException() {
         tokenStream
-                .onPartialResponse(System.out::println)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
                 .ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
@@ -48,7 +64,7 @@ class AiServiceTokenStreamTest {
     @Test
     void start_withOnNext_shouldNotThrowException() {
         tokenStream
-                .onNext(System.out::println)
+                .onNext(DUMMY_PARTIAL_RESPONSE_HANDLER)
                 .ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
@@ -67,8 +83,8 @@ class AiServiceTokenStreamTest {
     @Test
     void start_onPartialResponseInvokedMultipleTimes_shouldThrowException() {
         tokenStream
-                .onPartialResponse(System.out::println)
-                .onPartialResponse(System.out::println)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
                 .ignoreErrors();
 
         assertThatThrownBy(() -> tokenStream.start())
@@ -79,8 +95,8 @@ class AiServiceTokenStreamTest {
     @Test
     void start_onNextInvokedMultipleTimes_shouldThrowException() {
         tokenStream
-                .onNext(System.out::println)
-                .onNext(System.out::println)
+                .onNext(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .onNext(DUMMY_PARTIAL_RESPONSE_HANDLER)
                 .ignoreErrors();
 
         assertThatThrownBy(() -> tokenStream.start())
@@ -91,8 +107,8 @@ class AiServiceTokenStreamTest {
     @Test
     void start_onPartialResponseAndOnNextInvoked_shouldThrowException() {
         tokenStream
-                .onPartialResponse(System.out::println)
-                .onNext(System.out::println)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .onNext(DUMMY_PARTIAL_RESPONSE_HANDLER)
                 .ignoreErrors();
 
         assertThatThrownBy(() -> tokenStream.start())
@@ -103,7 +119,7 @@ class AiServiceTokenStreamTest {
     @Test
     void start_onErrorNorIgnoreErrorsInvoked_shouldThrowException() {
         tokenStream
-                .onPartialResponse(System.out::println);
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER);
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
@@ -113,8 +129,8 @@ class AiServiceTokenStreamTest {
     @Test
     void start_onErrorAndIgnoreErrorsInvoked_shouldThrowException() {
         tokenStream
-                .onPartialResponse(System.out::println)
-                .onError(Throwable::printStackTrace)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
+                .onError(DUMMY_ERROR_HANDLER)
                 .ignoreErrors();
 
         assertThatThrownBy(() -> tokenStream.start())
@@ -125,9 +141,9 @@ class AiServiceTokenStreamTest {
     @Test
     void start_onCompleteInvokedOneTime_shouldNotThrowException() {
         tokenStream
-                .onPartialResponse(System.out::println)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
                 .ignoreErrors()
-                .onComplete(r -> System.out.println(r.content()));
+                .onComplete(DUMMY_RESPONSE_HANDLER);
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
     }
@@ -135,10 +151,10 @@ class AiServiceTokenStreamTest {
     @Test
     void start_onCompleteResponseInvokedMultipleTimes_shouldThrowException() {
         tokenStream
-                .onPartialResponse(System.out::println)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
                 .ignoreErrors()
-                .onCompleteResponse(r -> System.out.println(r.aiMessage()))
-                .onCompleteResponse(r -> System.out.println(r.aiMessage()));
+                .onCompleteResponse(DUMMY_CHAT_RESPONSE_HANDLER)
+                .onCompleteResponse(DUMMY_CHAT_RESPONSE_HANDLER);
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
@@ -148,10 +164,10 @@ class AiServiceTokenStreamTest {
     @Test
     void start_onCompleteInvokedMultipleTimes_shouldThrowException() {
         tokenStream
-                .onPartialResponse(System.out::println)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
                 .ignoreErrors()
-                .onComplete(r -> System.out.println(r.content()))
-                .onComplete(r -> System.out.println(r.content()));
+                .onComplete(DUMMY_RESPONSE_HANDLER)
+                .onComplete(DUMMY_RESPONSE_HANDLER);
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
@@ -161,10 +177,10 @@ class AiServiceTokenStreamTest {
     @Test
     void start_onCompleteResponseAndOnCompleteInvoked_shouldThrowException() {
         tokenStream
-                .onPartialResponse(System.out::println)
+                .onPartialResponse(DUMMY_PARTIAL_RESPONSE_HANDLER)
                 .ignoreErrors()
-                .onCompleteResponse(r -> System.out.println(r.aiMessage()))
-                .onComplete(r -> System.out.println(r.content()));
+                .onCompleteResponse(DUMMY_CHAT_RESPONSE_HANDLER)
+                .onComplete(DUMMY_RESPONSE_HANDLER);
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
