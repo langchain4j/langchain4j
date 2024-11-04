@@ -1,5 +1,6 @@
 package dev.langchain4j.model.dashscope;
 
+import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -8,7 +9,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.dashscope.QwenTestHelper.*;
@@ -99,12 +100,11 @@ public class QwenStreamingChatModelIT {
                 .build();
 
         String toolName = "getCurrentWeather";
+        //noinspection deprecation
         ToolSpecification hasArgToolSpec = ToolSpecification.builder()
                 .name(toolName)
                 .description("Query the weather of a specified city")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("cityName")
-                        .build())
+                .addParameter("cityName", JsonSchemaProperty.STRING)
                 .build();
 
         UserMessage userMessage = UserMessage.from("Weather in Beijing?");
@@ -148,12 +148,11 @@ public class QwenStreamingChatModelIT {
                 .build();
 
         String toolName = "getCurrentWeather";
+        //noinspection deprecation
         ToolSpecification mustBeExecutedTool = ToolSpecification.builder()
                 .name(toolName)
                 .description("Query the weather of a specified city")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("cityName")
-                        .build())
+                .addParameter("cityName", JsonSchemaProperty.STRING)
                 .build();
 
         // not related to tools
@@ -180,13 +179,12 @@ public class QwenStreamingChatModelIT {
                 .build();
 
         String toolName = "calculator";
+        //noinspection deprecation
         ToolSpecification calculator = ToolSpecification.builder()
                 .name(toolName)
                 .description("returns a sum of two numbers")
-                .parameters(JsonObjectSchema.builder()
-                        .addIntegerProperty("first")
-                        .addIntegerProperty("second")
-                        .build())
+                .addParameter("first", INTEGER)
+                .addParameter("second", INTEGER)
                 .build();
 
         UserMessage userMessage = userMessage("2+2=?");
