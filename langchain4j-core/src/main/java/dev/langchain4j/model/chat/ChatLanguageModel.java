@@ -58,11 +58,14 @@ public interface ChatLanguageModel {
     }
 
     @Experimental
-    default String chat(String userMessage) { // TODO remove this convenience method?
+    default String chat(String userMessage) {
+
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from(userMessage))
                 .build();
+
         ChatResponse chatResponse = chat(chatRequest);
+
         return chatResponse.aiMessage().text();
     }
 

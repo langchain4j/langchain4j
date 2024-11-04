@@ -74,7 +74,24 @@ public interface StreamingChatLanguageModel {
         }
     }
 
-    // TODO add convenience method(s)? e.g. chat(String, StreamingChatResponseHandler)
+    /**
+     * TODO
+     * <p>
+     * A temporary default implementation of this method is necessary
+     * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     *
+     * @param userMessage
+     * @param handler
+     */
+    @Experimental
+    default void chat(String userMessage, StreamingChatResponseHandler handler) {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from(userMessage))
+                .build();
+
+        chat(chatRequest, handler);
+    }
 
     /**
      * Generates a response from the model based on a message from a user.
