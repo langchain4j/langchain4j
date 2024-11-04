@@ -12,14 +12,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class BedrockCohereEmbeddingResponseTest {
 
     @Test
-    void testToEmbedding_null() {
+    void testToEmbeddingNull() {
         BedrockCohereEmbeddingResponse response = new BedrockCohereEmbeddingResponse();
         response.setEmbeddings(null);
         assertNull(response.toEmbedding());
     }
 
     @Test
-    void testToEmbedding_notNull() {
+    void testToEmbeddingNotNull() {
         BedrockCohereEmbeddingResponse response = new BedrockCohereEmbeddingResponse();
         response.setEmbeddings(new float[][]{{1.0f, 2.0f, 3.0f}});
         assertNotNull(response.toEmbedding());
@@ -27,7 +27,7 @@ class BedrockCohereEmbeddingResponseTest {
     }
 
     @Test
-    void testGetEmbeddings_notNull() {
+    void testGetEmbeddingsNotNull() {
         float[][] responseEmbeddings = new float[][]{{1.0f, 2.0f, 3.0f}};
         BedrockCohereEmbeddingResponse response = new BedrockCohereEmbeddingResponse();
         response.setEmbeddings(responseEmbeddings);
@@ -36,7 +36,7 @@ class BedrockCohereEmbeddingResponseTest {
     }
 
     @Test
-    void testGetId_notNull() {
+    void testGetIdNotNull() {
         String responseId = UUID.randomUUID().toString();
         BedrockCohereEmbeddingResponse response = new BedrockCohereEmbeddingResponse();
         response.setId(responseId);
@@ -45,7 +45,7 @@ class BedrockCohereEmbeddingResponseTest {
     }
 
     @Test
-    void testGetText_notNull() {
+    void testGetTextNotNull() {
         List<String> responseTexts = List.of("one", "two");
         BedrockCohereEmbeddingResponse response = new BedrockCohereEmbeddingResponse();
         response.setTexts(responseTexts);
@@ -54,7 +54,7 @@ class BedrockCohereEmbeddingResponseTest {
     }
 
     @Test
-    void testGetInputTokens_notNull() {
+    void testGetInputTokensNotNull() {
         Integer responseInputTokens = 1;
         BedrockCohereEmbeddingResponse response = new BedrockCohereEmbeddingResponse();
         response.setInputTextTokenCount(responseInputTokens);
@@ -62,7 +62,7 @@ class BedrockCohereEmbeddingResponseTest {
     }
 
     @Test
-    void testGetInputTokens_default() {
+    void testGetInputTokensDefault() {
         BedrockCohereEmbeddingResponse response = new BedrockCohereEmbeddingResponse();
         assertEquals(0, response.getInputTextTokenCount());
     }
