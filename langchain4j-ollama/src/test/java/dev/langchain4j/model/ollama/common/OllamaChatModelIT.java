@@ -1,7 +1,7 @@
 package dev.langchain4j.model.ollama.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.ChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.AbstractChatLanguageModelIT;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -13,7 +13,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.TOOL_MODEL;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
-class OllamaChatModelIT extends ChatLanguageModelIT {
+class OllamaChatModelIT extends AbstractChatLanguageModelIT {
 
     static String MODEL_NAME = TOOL_MODEL;
 

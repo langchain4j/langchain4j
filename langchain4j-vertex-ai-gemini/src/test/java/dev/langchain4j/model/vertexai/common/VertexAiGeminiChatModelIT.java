@@ -1,12 +1,12 @@
 package dev.langchain4j.model.vertexai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.ChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.AbstractChatLanguageModelIT;
 import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 
 import java.util.List;
 
-class VertexAiGeminiChatModelIT extends ChatLanguageModelIT {
+class VertexAiGeminiChatModelIT extends AbstractChatLanguageModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {

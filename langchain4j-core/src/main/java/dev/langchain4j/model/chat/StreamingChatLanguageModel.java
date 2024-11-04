@@ -40,6 +40,7 @@ public interface StreamingChatLanguageModel {
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
+            // TODO check supportedCapabilities() instead?
             throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
         }
 

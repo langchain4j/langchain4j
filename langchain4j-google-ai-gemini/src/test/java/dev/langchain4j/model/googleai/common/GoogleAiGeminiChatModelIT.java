@@ -1,12 +1,12 @@
 package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.ChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.AbstractChatLanguageModelIT;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 
 import java.util.List;
 
-class GoogleAiGeminiChatModelIT extends ChatLanguageModelIT {
+class GoogleAiGeminiChatModelIT extends AbstractChatLanguageModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {

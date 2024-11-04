@@ -61,7 +61,7 @@ import static org.mockito.Mockito.spy;
  * </dependency>
  */
 @TestInstance(PER_CLASS)
-public abstract class StreamingChatLanguageModelIT {
+public abstract class AbstractStreamingChatLanguageModelIT {
 
     protected abstract List<StreamingChatLanguageModel> models();
 

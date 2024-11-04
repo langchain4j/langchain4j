@@ -1,12 +1,12 @@
 package dev.langchain4j.model.vertexai.common;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.StreamingChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatLanguageModelIT;
 import dev.langchain4j.model.vertexai.VertexAiGeminiStreamingChatModel;
 
 import java.util.List;
 
-class VertexAiGeminiStreamingChatModelIT extends StreamingChatLanguageModelIT {
+class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatLanguageModelIT {
 
     @Override
     protected List<StreamingChatLanguageModel> models() {

@@ -1,7 +1,7 @@
 package dev.langchain4j.model.ollama.common;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.common.StreamingChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatLanguageModelIT;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaImage;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
@@ -12,7 +12,7 @@ import java.util.List;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.LOCAL_OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 
-class OllamaStreamingChatModelIT extends StreamingChatLanguageModelIT {
+class OllamaStreamingChatModelIT extends AbstractStreamingChatLanguageModelIT {
 
     static LC4jOllamaContainer ollama = new LC4jOllamaContainer(
             OllamaImage.resolve(OllamaImage.OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE)
