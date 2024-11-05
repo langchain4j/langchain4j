@@ -21,6 +21,8 @@ class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
         if (text.startsWith("{")) {
             stringsList = (List<String>) Json.fromJson(text, Map.class).values().stream().findFirst().get();
         }
-        return stringsList.stream().map(enumOutputParser::parse).collect(Collectors.toList());
+        return stringsList.stream()
+            .map(enumOutputParser::parse)
+            .collect(Collectors.toList());
     }
 }

@@ -287,6 +287,65 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
     }
 
+    interface WeatherExtractor {
+
+        enum WeatherCharacteristic {
+
+            SUNNY, RAINY, CLOUDY, WINDY
+        }
+
+        Set<WeatherCharacteristic> extractWeatherCharacteristicsFrom(String text);
+    }
+
+    @Test
+    void should_extract_set_of_enums() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            WeatherExtractor weatherExtractor = AiServices.create(WeatherExtractor.class, model);
+
+            String text = "The weather in Berlin was sunny and windy." +
+                " Paris experienced rainy and cloudy weather." +
+                " New York had cloudy and windy weather.";
+
+            // when
+            Set<WeatherExtractor.WeatherCharacteristic> characteristics = weatherExtractor.extractWeatherCharacteristicsFrom(text);
+
+            // then
+            assertThat(characteristics).hasSize(4);
+
+            // Use assertThat with filters to ensure each weather characteristic is in the list
+            ArrayList<WeatherExtractor.WeatherCharacteristic> expectedCharacteristics = new ArrayList<>();
+            expectedCharacteristics.add(WeatherExtractor.WeatherCharacteristic.SUNNY);
+            expectedCharacteristics.add(WeatherExtractor.WeatherCharacteristic.RAINY);
+            expectedCharacteristics.add(WeatherExtractor.WeatherCharacteristic.CLOUDY);
+            expectedCharacteristics.add(WeatherExtractor.WeatherCharacteristic.WINDY);
+            Assertions.assertTrue(characteristics.containsAll(expectedCharacteristics));
+
+            verify(model).chat(ChatRequest.builder()
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Set_of_WeatherCharacteristic")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addProperty("array", JsonArraySchema.builder()
+                                .items(JsonEnumSchema.builder()
+                                    .enumValues("SUNNY", "RAINY", "CLOUDY", "WINDY")
+                                    .build())
+                                .build())
+                            .required("array")
+                            .build())
+                        .build())
+                    .build())
+                .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
 
     interface StatusExtractor {
 
