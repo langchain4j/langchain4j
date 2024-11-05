@@ -29,7 +29,7 @@ import static org.mockito.Mockito.verify;
  * when used with {@link AiServices}.
  */
 @TestInstance(PER_CLASS)
-public abstract class StreamingAiServicesSimpleIT {
+public abstract class AbstractStreamingAiServiceIT {
 
     protected abstract List<StreamingChatLanguageModel> models();
 

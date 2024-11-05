@@ -5,14 +5,14 @@ import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaImage;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.service.common.StreamingAiServicesSimpleIT;
+import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
 
 import java.util.List;
 
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.LOCAL_OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 
-class OllamaStreamingAiServicesSimpleIT extends StreamingAiServicesSimpleIT {
+class OllamaStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
 
     static LC4jOllamaContainer ollama = new LC4jOllamaContainer(
             OllamaImage.resolve(OllamaImage.OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE)
