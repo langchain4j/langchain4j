@@ -2,13 +2,13 @@ package dev.langchain4j.model.bedrock.common;
 
 import dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 
 import java.util.List;
 
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
 
-class BedrockChatModelIT extends AbstractChatLanguageModelIT {
+class BedrockChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {

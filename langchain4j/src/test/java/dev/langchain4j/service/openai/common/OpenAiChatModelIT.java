@@ -1,7 +1,7 @@
 package dev.langchain4j.service.openai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatLanguageModelIT;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 
 import java.util.List;
@@ -9,7 +9,7 @@ import java.util.List;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
-class OpenAiChatModelIT extends AbstractChatLanguageModelIT {
+class OpenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
