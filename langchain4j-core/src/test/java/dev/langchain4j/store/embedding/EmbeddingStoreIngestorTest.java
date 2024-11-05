@@ -16,7 +16,10 @@ import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 class EmbeddingStoreIngestorTest {
 

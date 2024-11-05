@@ -3,6 +3,8 @@ package dev.langchain4j.store.embedding.neo4j;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
 import lombok.Getter;
@@ -175,22 +177,26 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        var embeddingValue = Values.value(referenceEmbedding.vector());
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+
+        var embeddingValue = Values.value(request.queryEmbedding().vector());
 
         try (var session = session()) {
             Map<String, Object> params = Map.of("indexName", indexName,
                     "embeddingValue", embeddingValue,
-                    "minScore", minScore,
-                    "maxResults", maxResults);
-            return session
-                    .run("""
-						CALL db.index.vector.queryNodes($indexName, $maxResults, $embeddingValue)
-						YIELD node, score
-						WHERE score >= $minScore
-						""" + retrievalQuery, 
-                        params)
-                    .list(item -> Neo4jEmbeddingUtils.toEmbeddingMatch(this, item));
+                    "minScore", request.minScore(),
+                    "maxResults", request.maxResults());
+
+            List<EmbeddingMatch<TextSegment>> matches = session
+                .run("""
+                        CALL db.index.vector.queryNodes($indexName, $maxResults, $embeddingValue)
+                        YIELD node, score
+                        WHERE score >= $minScore
+                        """ + retrievalQuery,
+                    params)
+                .list(item -> toEmbeddingMatch(this, item));
+
+            return new EmbeddingSearchResult<>(matches);
         }
     }
 

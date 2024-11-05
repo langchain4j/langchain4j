@@ -23,6 +23,11 @@ class GoogleAiGeminiAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
     }
 
     @Override
+    protected boolean supportsMapParameters() {
+        return false;
+    }
+
+    @Override
     protected boolean verifyModelInteractions() {
         return true;
     }
