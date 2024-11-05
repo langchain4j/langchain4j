@@ -5,12 +5,17 @@ import dev.ai4j.openai4j.chat.ChatCompletionChoice;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.ai4j.openai4j.chat.FunctionCall;
 import dev.ai4j.openai4j.chat.ToolCall;
+import dev.ai4j.openai4j.chat.ToolChoiceMode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.request.ToolMode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiToolChoice;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -134,5 +139,18 @@ class InternalOpenAiHelperTest {
                 .arguments(functionArguments)
                 .build()
         );
+    }
+
+    @Test
+    void should_map_tool_mode() {
+        assertThat(toOpenAiToolChoice(ToolMode.AUTO)).isEqualTo(ToolChoiceMode.AUTO);
+        assertThat(toOpenAiToolChoice(ToolMode.ANY)).isEqualTo(ToolChoiceMode.REQUIRED);
+        assertThat(toOpenAiToolChoice(null)).isEqualTo(null);
+    }
+
+    @ParameterizedTest
+    @EnumSource
+    void should_map_all_tool_modes(ToolMode toolMode) {
+        assertThat(toOpenAiToolChoice(toolMode)).isNotNull();
     }
 }

@@ -21,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static dev.langchain4j.model.chat.request.ToolMode.ANY;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -73,8 +74,8 @@ public abstract class AbstractStreamingChatModelIT {
         model = spy(model);
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany?"))
-                .build();
+            .messages(UserMessage.from("What is the capital of Germany?"))
+            .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer tokenAccumulator = new StringBuffer();
@@ -118,7 +119,7 @@ public abstract class AbstractStreamingChatModelIT {
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
         }
 
         if (assertFinishReason()) {
@@ -133,7 +134,7 @@ public abstract class AbstractStreamingChatModelIT {
         }
     }
 
-    @EnabledIf("supportsToolsInStreamingMode")
+    @EnabledIf("supportsTools")
     @ParameterizedTest
     @MethodSource("models")
     void should_call_a_tool(StreamingChatLanguageModel model) throws Exception {
@@ -141,17 +142,17 @@ public abstract class AbstractStreamingChatModelIT {
         // given
         model = spy(model);
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("weather")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("city")
-                        .build())
-                .build();
+        ToolSpecification weatherTool = ToolSpecification.builder()
+            .name("weather")
+            .parameters(JsonObjectSchema.builder()
+                .addStringProperty("city")
+                .build())
+            .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the weather in Munich?"))
-                .toolSpecifications(toolSpecification)
-                .build();
+            .messages(UserMessage.from("What is the weather in Munich?"))
+            .toolSpecifications(weatherTool)
+            .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         AtomicInteger timesOnPartialResponseIsCalled = new AtomicInteger();
@@ -186,7 +187,7 @@ public abstract class AbstractStreamingChatModelIT {
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo(toolSpecification.name());
+        assertThat(toolExecutionRequest.name()).isEqualTo(weatherTool.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         if (assertTokenUsage()) {
@@ -194,7 +195,7 @@ public abstract class AbstractStreamingChatModelIT {
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
         }
 
         if (assertFinishReason()) {
@@ -210,6 +211,178 @@ public abstract class AbstractStreamingChatModelIT {
         }
     }
 
+    protected boolean supportsTools() {
+        return true;
+    }
+
+    @EnabledIf("supportsToolMode")
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_force_LLM_to_call_any_tool(StreamingChatLanguageModel model) throws Exception {
+
+        // given
+        model = spy(model);
+
+        ToolSpecification weatherTool = ToolSpecification.builder()
+            .name("weather")
+            .parameters(JsonObjectSchema.builder()
+                .addStringProperty("city")
+                .build())
+            .build();
+
+        ToolSpecification calculatorTool = ToolSpecification.builder()
+            .name("add_two_numbers")
+            .parameters(JsonObjectSchema.builder()
+                .addIntegerProperty("a")
+                .addIntegerProperty("b")
+                .build())
+            .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+            .messages(UserMessage.from("I live in Munich"))
+            .toolSpecifications(weatherTool, calculatorTool)
+            .toolMode(ANY) // this will FORCE the LLM to call any tool
+            .build();
+
+        CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
+        AtomicInteger timesOnPartialResponseIsCalled = new AtomicInteger();
+        Set<Thread> threads = new CopyOnWriteArraySet<>();
+
+        // when
+        model.chat(chatRequest, new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                timesOnPartialResponseIsCalled.incrementAndGet();
+                threads.add(Thread.currentThread());
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse chatResponse) {
+                futureChatResponse.complete(chatResponse);
+                threads.add(Thread.currentThread());
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                threads.add(Thread.currentThread());
+                futureChatResponse.completeExceptionally(error);
+            }
+        });
+
+        // then
+        ChatResponse chatResponse = futureChatResponse.get(30, SECONDS);
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(weatherTool.name());
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+
+        if (assertTokenUsage()) {
+            TokenUsage tokenUsage = chatResponse.tokenUsage();
+            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+            assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+            assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
+        }
+
+        assertThat(timesOnPartialResponseIsCalled.get()).isEqualTo(0); // TODO
+        // TODO if timesOnPartialResponseIsCalled is 0, aiMessage.text() must be null
+
+        if (assertThreads()) {
+            assertThat(threads).hasSize(1);
+            assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+        }
+    }
+
+    @EnabledIf("supportsToolMode")
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_force_LLM_to_call_specific_tool(StreamingChatLanguageModel model) throws Exception {
+
+        // given
+        model = spy(model);
+
+        ToolSpecification weatherTool = ToolSpecification.builder()
+            .name("weather")
+            .parameters(JsonObjectSchema.builder()
+                .addStringProperty("city")
+                .build())
+            .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+            .messages(UserMessage.from("I live in Munich"))
+            .toolSpecifications(weatherTool)
+            .toolMode(ANY) // this will FORCE the LLM to call weatherTool
+            .build();
+
+        CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
+        AtomicInteger timesOnPartialResponseIsCalled = new AtomicInteger();
+        Set<Thread> threads = new CopyOnWriteArraySet<>();
+
+        // when
+        model.chat(chatRequest, new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                timesOnPartialResponseIsCalled.incrementAndGet();
+                threads.add(Thread.currentThread());
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse chatResponse) {
+                futureChatResponse.complete(chatResponse);
+                threads.add(Thread.currentThread());
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                threads.add(Thread.currentThread());
+                futureChatResponse.completeExceptionally(error);
+            }
+        });
+
+        // then
+        ChatResponse chatResponse = futureChatResponse.get(30, SECONDS);
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(weatherTool.name());
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+
+        if (assertTokenUsage()) {
+            TokenUsage tokenUsage = chatResponse.tokenUsage();
+            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+            assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+            assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
+        }
+
+        assertThat(timesOnPartialResponseIsCalled.get()).isEqualTo(0); // TODO
+        // TODO if timesOnPartialResponseIsCalled is 0, aiMessage.text() must be null
+
+        if (assertThreads()) {
+            assertThat(threads).hasSize(1);
+            assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+        }
+    }
+
+    protected boolean supportsToolMode() {
+        return false;
+    }
+
     protected boolean assertTokenUsage() {
         return true;
     }
@@ -219,10 +392,6 @@ public abstract class AbstractStreamingChatModelIT {
     }
 
     protected boolean assertThreads() {
-        return true;
-    }
-
-    protected boolean supportsToolsInStreamingMode() {
         return true;
     }
 }

@@ -51,7 +51,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolsInStreamingMode() {
-        return false;
+    protected boolean supportsTools() {
+        return false; // Ollama does not support tools in streaming mode
     }
 }

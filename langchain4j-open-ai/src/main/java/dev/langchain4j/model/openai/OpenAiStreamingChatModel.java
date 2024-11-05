@@ -22,6 +22,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ToolMode;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
@@ -41,18 +42,19 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.chat.request.ToolMode.ANY;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerRequest;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerResponse;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toTools;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
@@ -154,7 +156,12 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
         }
 
-        chat(chatRequest.messages(), chatRequest.toolSpecifications(), null, handler);
+        chat(
+            chatRequest.messages(),
+            chatRequest.toolSpecifications(),
+            chatRequest.toolMode(),
+            handler
+        );
     }
 
     @Override
@@ -171,12 +178,12 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     @Override
     public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification,
                          StreamingResponseHandler<AiMessage> handler) {
-        chat(messages, null, toolSpecification, convertHandler(handler));
+        chat(messages, List.of(toolSpecification), ANY, convertHandler(handler));
     }
 
     private void chat(List<ChatMessage> messages,
                       List<ToolSpecification> toolSpecifications,
-                      ToolSpecification toolThatMustBeExecuted,
+                      ToolMode toolMode,
                       StreamingChatResponseHandler handler
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
@@ -199,12 +206,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .user(user)
                 .parallelToolCalls(parallelToolCalls);
 
-        if (toolThatMustBeExecuted != null) {
-            requestBuilder.tools(toTools(singletonList(toolThatMustBeExecuted), strictTools));
-            requestBuilder.toolChoice(toolThatMustBeExecuted.name());
-        } else if (!isNullOrEmpty(toolSpecifications)) {
+        if (!isNullOrEmpty(toolSpecifications)) {
             requestBuilder.tools(toTools(toolSpecifications, strictTools));
         }
+        requestBuilder.toolChoice(toOpenAiToolChoice(toolMode));
 
         ChatCompletionRequest openAiRequest = requestBuilder.build();
 

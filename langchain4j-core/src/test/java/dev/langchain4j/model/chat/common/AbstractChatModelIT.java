@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
+import static dev.langchain4j.model.chat.request.ToolMode.ANY;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,8 +68,8 @@ public abstract class AbstractChatModelIT {
         model = spy(model);
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany?"))
-                .build();
+            .messages(UserMessage.from("What is the capital of Germany?"))
+            .build();
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
@@ -82,7 +83,7 @@ public abstract class AbstractChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -97,17 +98,17 @@ public abstract class AbstractChatModelIT {
         // given
         model = spy(model);
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("weather")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("city")
-                        .build())
-                .build();
+        ToolSpecification weatherTool = ToolSpecification.builder()
+            .name("weather")
+            .parameters(JsonObjectSchema.builder()
+                .addStringProperty("city")
+                .build())
+            .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the weather in Munich?"))
-                .toolSpecifications(toolSpecification)
-                .build();
+            .messages(UserMessage.from("What is the weather in Munich?"))
+            .toolSpecifications(weatherTool)
+            .build();
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
@@ -117,14 +118,14 @@ public abstract class AbstractChatModelIT {
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo(toolSpecification.name());
+        assertThat(toolExecutionRequest.name()).isEqualTo(weatherTool.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         TokenUsage tokenUsage = chatResponse.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
@@ -133,6 +134,104 @@ public abstract class AbstractChatModelIT {
 
     protected boolean supportsTools() {
         return true; // TODO check model capability instead?
+    }
+
+    @EnabledIf("supportsToolMode")
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_force_LLM_to_call_any_tool(ChatLanguageModel model) {
+
+        // given
+        model = spy(model);
+
+        ToolSpecification weatherTool = ToolSpecification.builder()
+            .name("weather")
+            .parameters(JsonObjectSchema.builder()
+                .addStringProperty("city")
+                .build())
+            .build();
+
+        ToolSpecification calculatorTool = ToolSpecification.builder()
+            .name("add_two_numbers")
+            .parameters(JsonObjectSchema.builder()
+                .addIntegerProperty("a")
+                .addIntegerProperty("b")
+                .build())
+            .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+            .messages(UserMessage.from("I live in Munich"))
+            .toolSpecifications(weatherTool, calculatorTool)
+            .toolMode(ANY) // this will FORCE the LLM to call any tool
+            .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(weatherTool.name());
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+
+        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
+        }
+    }
+
+    @EnabledIf("supportsToolMode")
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_force_LLM_to_call_specific_tool(ChatLanguageModel model) {
+
+        // given
+        model = spy(model);
+
+        ToolSpecification weatherTool = ToolSpecification.builder()
+            .name("weather")
+            .parameters(JsonObjectSchema.builder()
+                .addStringProperty("city")
+                .build())
+            .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+            .messages(UserMessage.from("I live in Munich"))
+            .toolSpecifications(weatherTool)
+            .toolMode(ANY) // this will FORCE the LLM to call weatherTool
+            .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(weatherTool.name());
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+
+        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
+        }
+    }
+
+    protected boolean supportsToolMode() {
+        return false;
     }
 
     protected boolean assertFinishReason() {

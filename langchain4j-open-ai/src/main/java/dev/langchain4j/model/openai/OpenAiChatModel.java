@@ -20,6 +20,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ToolMode;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -39,7 +40,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.request.ToolMode.ANY;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
@@ -51,6 +54,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListe
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toTools;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
@@ -166,7 +170,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         return chat(
                 chatRequest.messages(),
                 chatRequest.toolSpecifications(),
-                null,
+                chatRequest.toolMode(),
                 getOrDefault(responseFormat, this.responseFormat)
         );
     }
@@ -194,13 +198,13 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        ChatResponse chatResponse = chat(messages, List.of(toolSpecification), toolSpecification, responseFormat);
+        ChatResponse chatResponse = chat(messages, List.of(toolSpecification), ANY, responseFormat);
         return convertResponse(chatResponse);
     }
 
     private ChatResponse chat(List<ChatMessage> messages,
                               List<ToolSpecification> toolSpecifications,
-                              ToolSpecification toolThatMustBeExecuted,
+                              ToolMode toolMode,
                               ResponseFormat responseFormat) {
 
         if (responseFormat != null
@@ -225,12 +229,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .user(user)
                 .parallelToolCalls(parallelToolCalls);
 
-        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+        if (!isNullOrEmpty(toolSpecifications)) {
             requestBuilder.tools(toTools(toolSpecifications, strictTools));
         }
-        if (toolThatMustBeExecuted != null) {
-            requestBuilder.toolChoice(toolThatMustBeExecuted.name());
-        }
+        requestBuilder.toolChoice(toOpenAiToolChoice(toolMode));
 
         ChatCompletionRequest openAiRequest = requestBuilder.build();
 

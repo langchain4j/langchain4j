@@ -18,12 +18,13 @@ public class ChatRequest {
 
     private final List<ChatMessage> messages;
     private final List<ToolSpecification> toolSpecifications;
-    // TODO tool mode
+    private final ToolMode toolMode; // TODO wrap into "tools" pojo?
     private final ResponseFormat responseFormat;
 
     private ChatRequest(Builder builder) {
         this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));
         this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
+        this.toolMode = builder.toolMode; // TODO set AUTO by default? only if toolSpecifications are present?
         this.responseFormat = builder.responseFormat;
     }
 
@@ -33,6 +34,10 @@ public class ChatRequest {
 
     public List<ToolSpecification> toolSpecifications() {
         return toolSpecifications;
+    }
+
+    public ToolMode toolMode() {
+        return toolMode;
     }
 
     public ResponseFormat responseFormat() {
@@ -45,22 +50,24 @@ public class ChatRequest {
         if (o == null || getClass() != o.getClass()) return false;
         ChatRequest that = (ChatRequest) o;
         return Objects.equals(this.messages, that.messages)
-                && Objects.equals(this.toolSpecifications, that.toolSpecifications)
-                && Objects.equals(this.responseFormat, that.responseFormat);
+            && Objects.equals(this.toolSpecifications, that.toolSpecifications)
+            && Objects.equals(this.toolMode, that.toolMode)
+            && Objects.equals(this.responseFormat, that.responseFormat);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(messages, toolSpecifications, responseFormat);
+        return Objects.hash(messages, toolSpecifications, toolMode, responseFormat);
     }
 
     @Override
     public String toString() {
         return "ChatRequest {" +
-                " messages = " + messages +
-                ", toolSpecifications = " + toolSpecifications +
-                ", responseFormat = " + responseFormat +
-                " }";
+            " messages = " + messages +
+            ", toolSpecifications = " + toolSpecifications +
+            ", toolMode = " + toolMode +
+            ", responseFormat = " + responseFormat +
+            " }";
     }
 
     public static Builder builder() {
@@ -71,6 +78,7 @@ public class ChatRequest {
 
         private List<ChatMessage> messages;
         private List<ToolSpecification> toolSpecifications;
+        private ToolMode toolMode;
         private ResponseFormat responseFormat;
 
         public Builder messages(List<ChatMessage> messages) {
@@ -91,6 +99,11 @@ public class ChatRequest {
             return toolSpecifications(asList(toolSpecifications));
         }
 
+        public Builder toolMode(ToolMode toolMode) {
+            this.toolMode = toolMode;
+            return this;
+        }
+
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;
@@ -105,12 +118,13 @@ public class ChatRequest {
 
     /**
      * TODO
+     *
      * @param userMessage
      * @return
      */
     public static ChatRequest from(String userMessage) { // TODO needed? keep this method instead of *ChatModel.chat(String, ?)
         return ChatRequest.builder()
-                .messages(UserMessage.from(userMessage))
-                .build();
+            .messages(UserMessage.from(userMessage))
+            .build();
     }
 }

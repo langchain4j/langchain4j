@@ -14,12 +14,17 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected List<StreamingChatLanguageModel> models() {
         return List.of(
-                OpenAiStreamingChatModel.builder()
-                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                        .apiKey(System.getenv("OPENAI_API_KEY"))
-                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .modelName(GPT_4_O_MINI)
-                        .build()
+            OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .build()
         );
+    }
+
+    @Override
+    protected boolean supportsToolMode() {
+        return true;
     }
 }

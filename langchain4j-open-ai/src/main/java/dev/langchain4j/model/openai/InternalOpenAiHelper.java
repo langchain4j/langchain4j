@@ -12,6 +12,7 @@ import dev.ai4j.openai4j.chat.ImageUrl;
 import dev.ai4j.openai4j.chat.Message;
 import dev.ai4j.openai4j.chat.Tool;
 import dev.ai4j.openai4j.chat.ToolCall;
+import dev.ai4j.openai4j.chat.ToolChoiceMode;
 import dev.ai4j.openai4j.chat.ToolMessage;
 import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -30,6 +31,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ToolMode;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -544,6 +546,17 @@ public class InternalOpenAiHelper {
                     .jsonSchema(openAiJsonSchema)
                     .build();
         }
+    }
+
+    public static ToolChoiceMode toOpenAiToolChoice(ToolMode toolMode) {
+        if (toolMode == null) {
+            return null;
+        }
+
+        return switch (toolMode) {
+            case AUTO -> ToolChoiceMode.AUTO;
+            case ANY -> ToolChoiceMode.REQUIRED;
+        };
     }
 
     public static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
