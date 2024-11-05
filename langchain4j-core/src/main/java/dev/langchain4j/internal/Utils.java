@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -175,9 +176,8 @@ public class Utils {
    */
   public static String generateUUIDFrom(String input) {
       byte[] hashBytes = getSha256Instance().digest(input.getBytes(UTF_8));
-      StringBuilder sb = new StringBuilder();
-      for (byte b : hashBytes) sb.append("%02x".formatted(b));
-      return UUID.nameUUIDFromBytes(sb.toString().getBytes(UTF_8)).toString();
+      String hexFormat = HexFormat.of().formatHex(hashBytes);
+      return UUID.nameUUIDFromBytes(hexFormat.getBytes(UTF_8)).toString();
   }
 
   /**
