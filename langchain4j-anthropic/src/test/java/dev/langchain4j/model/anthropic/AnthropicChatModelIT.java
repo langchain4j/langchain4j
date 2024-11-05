@@ -9,7 +9,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -229,9 +229,7 @@ class AnthropicChatModelIT {
 
         StringBuilder sysMessages = new StringBuilder();
 
-        for (int i = 1; i <= 7; i++) {
-            sysMessages.append(CACHE_MESSAGE);
-        }
+        sysMessages.append(CACHE_MESSAGE.repeat(7));
 
         SystemMessage systemMessage = SystemMessage.from(sysMessages.toString());
         UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
@@ -246,6 +244,49 @@ class AnthropicChatModelIT {
 
         assertThat(responseReadCache.tokenUsage().cacheCreationInputTokens()).isEqualTo(0);
         assertThat(responseReadCache.tokenUsage().cacheReadInputTokens()).isGreaterThan(0);
+    }
+
+
+    @Test
+    void should_fail_if_more_four_system_message_with_cache() {
+
+        // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+                .baseUrl("https://api.anthropic.com/v1/")
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .version("2023-06-01")
+                .beta("prompt-caching-2024-07-31")
+                .modelName(CLAUDE_3_HAIKU_20240307)
+                .maxTokens(1024)
+                .timeout(Duration.ofSeconds(30))
+                .maxRetries(1)
+                .logRequests(true)
+                .logResponses(true)
+                .cacheSystemMessage(true)
+                .build();
+
+        StringBuilder sysMessages = new StringBuilder();
+
+        sysMessages.append(CACHE_MESSAGE.repeat(7));
+
+        SystemMessage systemMessageOne = SystemMessage.from(CACHE_MESSAGE);
+        SystemMessage systemMessageTwo = SystemMessage.from(CACHE_MESSAGE);
+        SystemMessage systemMessageThree = SystemMessage.from(CACHE_MESSAGE);
+        SystemMessage systemMessageFour = SystemMessage.from(CACHE_MESSAGE);
+        SystemMessage systemMessageFive = SystemMessage.from(CACHE_MESSAGE);
+
+        // then
+        assertThatThrownBy(() -> model.generate(
+            systemMessageOne,
+            systemMessageTwo,
+            systemMessageThree,
+            systemMessageFour,
+            systemMessageFive
+        ))
+            .isExactlyInstanceOf(RuntimeException.class)
+            .hasMessage("dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException: " +
+                "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"messages: at least one message is required\"}}");
+
     }
 
     @Test
