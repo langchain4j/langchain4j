@@ -54,12 +54,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 public class CoherenceEmbeddingStore
         implements EmbeddingStore<TextSegment> {
     /**
-     * A {@link Comparator} to sort an {@link EmbeddingMatch} based on score, where the
-     * highest score is first.
-     */
-    private static final Comparator<EmbeddingMatch<?>> COMPARATOR = reverseComparingDouble(EmbeddingMatch::score);
-
-    /**
      * The {@link ValueExtractor} to extract the float vector from a {@link DocumentChunk}.
      */
     private static final ValueExtractor<DocumentChunk, Vector<float[]>> EXTRACTOR = ValueExtractor.of(DocumentChunk::vector);
@@ -183,51 +177,9 @@ public class CoherenceEmbeddingStore
             matches.add(embeddingMatch(score, result.getKey(), result.getValue()));
         }
 
-        matches.sort(COMPARATOR);
-        return new EmbeddingSearchResult<>(matches.size() > request.maxResults()
-                                           ? matches.subList(0, request.maxResults())
-                                           : matches);
+        return new EmbeddingSearchResult<>(matches);
     }
 
-    /**
-     * Perform a KNN search.
-     *
-     * @param vector  the vector to find the nearest neighbours to
-     * @param k       the maximum number of neighbours to find
-     *
-     * @return  the search results
-     */
-    public List<QueryResult<DocumentChunk.Id, DocumentChunk>> search(float[] vector, int k) {
-         return documentChunks.aggregate(new SimilaritySearch<>(DocumentChunk::vector, new Float32Vector(vector), k));
-     }
-
-    /**
-     * Obtain the {@link NamedMap} used to store embeddings.
-     *
-     * @return the {@link NamedMap} used to store embeddings
-     */
-    public NamedMap<DocumentChunk.Id, DocumentChunk> getDocumentChunks() {
-        return documentChunks;
-    }
-
-    /**
-     * Returns {@code true} if this {@link CoherenceEmbeddingStore} will force
-     * call {@link Embedding#normalize()} on embeddings when adding or searching.
-     *
-     * @return {@code true} if this {@link CoherenceEmbeddingStore} will force
-     *         call {@link Embedding#normalize()} on embeddings when adding or searching
-     */
-    public boolean isNormalizeEmbeddings() {
-        return normalizeEmbeddings;
-    }
-
-/**
-     * Add an embedding to the repository.
-     *
-     * @param id         the id of the {@link Embedding}
-     * @param embedding  the {@link Embedding} to add
-     * @param segment    an optional {@link TextSegment} to add with the embedding
-     */
     private void addInternal(DocumentChunk.Id id, Embedding embedding, TextSegment segment) {
         Map<DocumentChunk.Id, DocumentChunk> map = new HashMap<>();
         map.put(id, createChunk(embedding, segment));
@@ -275,14 +227,21 @@ public class CoherenceEmbeddingStore
     private EmbeddingMatch<TextSegment> embeddingMatch(double score, DocumentChunk.Id id, DocumentChunk chunk) {
         String key = id.toString();
         String text = chunk.text();
-        TextSegment segment = text == null ? null : new TextSegment(chunk.text(), getMetadata(chunk.metadata()));
+        TextSegment segment = text == null ? null : new TextSegment(chunk.text(), mapToMetadata(chunk.metadata()));
         Vector<float[]> vector = chunk.vector();
         Embedding embedding = vector == null ? null : new Embedding(vector.get());
 
         return new EmbeddingMatch<>(score, key, embedding, segment);
     }
 
-    private static Metadata getMetadata(Map<String, Object> mapMetadata) {
+    /**
+     * Convert a {@code Map<String, Object>} of metadata attributes into a {@link Metadata} instance.
+     *
+     * @param mapMetadata  the map to convert
+     *
+     * @return a {@link Metadata} instance containing all non-null attributes from the specified Map
+     */
+    private static Metadata mapToMetadata(Map<String, Object> mapMetadata) {
         mapMetadata.entrySet().removeIf(entry -> entry.getValue() == null);
         return Metadata.from(mapMetadata);
     }
