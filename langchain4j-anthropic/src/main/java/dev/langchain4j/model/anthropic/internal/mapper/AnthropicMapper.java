@@ -93,9 +93,6 @@ public class AnthropicMapper {
                 .map(content -> {
                     if (content instanceof TextContent) {
                         TextContent textContent = (TextContent) content;
-                        if (cacheType.isApplyCache() && cacheType.isApplyUserMessage()) {
-                            return new AnthropicTextContent(textContent.text(), cacheType.cacheControl());
-                        }
                         return new AnthropicTextContent(textContent.text());
                     } else if (content instanceof ImageContent) {
                         Image image = ((ImageContent) content).image();
@@ -146,7 +143,7 @@ public class AnthropicMapper {
                 .filter(message -> message instanceof SystemMessage)
                 .map(message -> {
                     SystemMessage systemMessage = (SystemMessage) message;
-                    if (cacheType.isApplyCache() && cacheType.isApplySystemMessage()) {
+                    if (cacheType != AnthropicCacheType.NO_CACHE) {
                         return new AnthropicTextContent(systemMessage.text(), cacheType.cacheControl());
                     }
                     return new AnthropicTextContent(systemMessage.text());
@@ -189,7 +186,7 @@ public class AnthropicMapper {
         if (anthropicUsage == null) {
             return null;
         }
-        return new TokenUsage(anthropicUsage.inputTokens, anthropicUsage.outputTokens);
+        return new TokenUsage(anthropicUsage.inputTokens, anthropicUsage.outputTokens, anthropicUsage.cacheCreationInputTokens, anthropicUsage.cacheReadInputTokens);
     }
 
     public static FinishReason toFinishReason(String anthropicStopReason) {

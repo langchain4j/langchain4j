@@ -47,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AnthropicChatModelIT {
 
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    static final String CACHE_MESSAGE = "Welcome! The goal of LangChain4j is to simplify integrating LLMs into Java applications. Here's how: Unified APIs: LLM providers (like OpenAI or Google Vertex AI) and embedding (vector) stores (such as Pinecone or Milvus) use proprietary APIs. LangChain4j offers a unified API to avoid the need for learning and implementing specific APIs for each of them. To experiment with different LLMs or embedding stores, you can easily switch between them without the need to rewrite your code. LangChain4j currently supports 15+ popular LLM providers and 20+ embedding stores. Comprehensive Toolbox: Since early 2023, the community has been building numerous LLM-powered applications, identifying common abstractions, patterns, and techniques. LangChain4j has refined these into a ready to use package. Our toolbox includes tools ranging from low-level prompt templating, chat memory management, and function calling to high-level patterns like AI Services and RAG. For each abstraction, we provide an interface along with multiple ready-to-use implementations based on common techniques. Whether you're building a chatbot or developing a RAG with a complete pipeline from data ingestion to retrieval, LangChain4j offers a wide variety of options. Numerous Examples: These examples showcase how to begin creating various LLM-powered applications, providing inspiration and enabling you to start building quickly. LangChain4j began development in early 2023 amid the ChatGPT hype. We noticed a lack of Java counterparts to the numerous Python and JavaScript LLM libraries and frameworks, and we had to fix that! Although 'LangChain' is in our name, the project is a fusion of ideas and concepts from LangChain, Haystack, LlamaIndex, and the broader community, spiced up with a touch of our own innovation. We actively monitor community developments, aiming to quickly incorporate new techniques and integrations, ensuring you stay up-to-date. The library is under active development. While some features are still being worked on, the core functionality is in place, allowing you to start building LLM-powered apps now! For easier integration, LangChain4j also includes integration with Quarkus and Spring Boot.";
 
     ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
@@ -210,10 +211,6 @@ class AnthropicChatModelIT {
 
     @Test
     void test_all_parameters_with_cache() {
-        AnthropicCacheType cacheType = AnthropicCacheType.builder()
-                .cacheType(AnthropicCacheType.CacheType.EPHEMERAL)
-                .messageTypeApplyCache(AnthropicCacheType.MessageTypeApplyCache.ALL)
-                .build();
 
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
@@ -222,26 +219,33 @@ class AnthropicChatModelIT {
                 .version("2023-06-01")
                 .beta("prompt-caching-2024-07-31")
                 .modelName(CLAUDE_3_HAIKU_20240307)
-                .temperature(1.0)
-                .topP(1.0)
-                .topK(1)
-                .maxTokens(100)
-                .stopSequences(asList("hello", "world"))
+                .maxTokens(1024)
                 .timeout(Duration.ofSeconds(30))
                 .maxRetries(1)
                 .logRequests(true)
                 .logResponses(true)
-                .cacheType(cacheType)
+                .cacheSystemMessage(true)
                 .build();
 
-        SystemMessage systemMessage = SystemMessage.from("You are a professional translator");
-        UserMessage userMessage = new UserMessage(TextContent.from("How say: java is very slow on spanish ?"));
+        StringBuilder sysMessages = new StringBuilder();
+
+        for (int i = 1; i <= 7; i++) {
+            sysMessages.append(CACHE_MESSAGE);
+        }
+
+        SystemMessage systemMessage = SystemMessage.from(sysMessages.toString());
+        UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
         // when
-        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+        Response<AiMessage> responseCreateCache = model.generate(systemMessage, userMessage);
+        Response<AiMessage> responseReadCache = model.generate(systemMessage, userMessage);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(responseCreateCache.tokenUsage().cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseCreateCache.tokenUsage().cacheReadInputTokens()).isEqualTo(0);
+
+        assertThat(responseReadCache.tokenUsage().cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(responseReadCache.tokenUsage().cacheReadInputTokens()).isGreaterThan(0);
     }
 
     @Test

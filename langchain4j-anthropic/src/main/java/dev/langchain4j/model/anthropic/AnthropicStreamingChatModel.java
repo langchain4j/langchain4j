@@ -76,7 +76,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     private final int maxTokens;
     private final List<String> stopSequences;
     private final List<ChatModelListener> listeners;
-    private final AnthropicCacheType cacheType;
+    private final boolean cacheSystemMessage;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -108,7 +108,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                                         Boolean logRequests,
                                         Boolean logResponses,
                                         List<ChatModelListener> listeners,
-                                        AnthropicCacheType cacheType) {
+                                        Boolean cacheSystemMessage) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
@@ -124,14 +124,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
         this.maxTokens = getOrDefault(maxTokens, 1024);
         this.stopSequences = stopSequences;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        if (cacheType == null) {
-            this.cacheType = AnthropicCacheType.builder()
-                    .cacheType(AnthropicCacheType.CacheType.NO_CACHE)
-                    .messageTypeApplyCache(AnthropicCacheType.MessageTypeApplyCache.NONE)
-                    .build();
-        } else {
-            this.cacheType = cacheType;
-        }
+        this.cacheSystemMessage = getOrDefault(cacheSystemMessage, false);
     }
 
     public static class AnthropicStreamingChatModelBuilder {
@@ -174,6 +167,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                           List<ToolSpecification> toolSpecifications,
                           ToolSpecification toolThatMustBeExecuted,
                           StreamingResponseHandler<AiMessage> handler) {
+        AnthropicCacheType cacheType = cacheSystemMessage ? AnthropicCacheType.EPHEMERAL : AnthropicCacheType.NO_CACHE;
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages, cacheType);
         ensureNotNull(handler, "handler");

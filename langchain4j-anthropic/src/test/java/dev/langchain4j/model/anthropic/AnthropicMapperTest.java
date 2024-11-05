@@ -28,14 +28,8 @@ class AnthropicMapperTest {
     @ParameterizedTest
     @MethodSource
     void test_toAnthropicMessages(List<ChatMessage> messages, List<AnthropicMessage> expectedAnthropicMessages) {
-
-        AnthropicCacheType cacheType = AnthropicCacheType.builder()
-                .cacheType(AnthropicCacheType.CacheType.NO_CACHE)
-                .messageTypeApplyCache(AnthropicCacheType.MessageTypeApplyCache.NONE)
-                .build();
-
         // when
-        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages, cacheType);
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages, AnthropicCacheType.NO_CACHE);
 
         //then
         assertThat(anthropicMessages).containsExactlyElementsOf(expectedAnthropicMessages);

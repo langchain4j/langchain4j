@@ -132,10 +132,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
     }
 
     private String toBeta(AnthropicCreateMessageRequest request) {
-        if (beta != null) {
-            return beta;
-        }
-        return hasTools(request) ? beta : null;
+        return hasTools(request) || beta != null ? beta : null;
     }
 
     private static boolean hasTools(AnthropicCreateMessageRequest request) {
@@ -159,6 +156,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
+
+            final AtomicInteger cacheCreationInputTokens = new AtomicInteger();
+            final AtomicInteger cacheReadInputTokens = new AtomicInteger();
 
             final AtomicReference<String> responseId = new AtomicReference<>();
             final AtomicReference<String> responseModel = new AtomicReference<>();
@@ -241,6 +241,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 if (usage.outputTokens != null) {
                     this.outputTokenCount.addAndGet(usage.outputTokens);
                 }
+                if (usage.cacheCreationInputTokens != null) {
+                    this.cacheCreationInputTokens.addAndGet(usage.cacheCreationInputTokens);
+                }
+                if (usage.cacheReadInputTokens != null) {
+                    this.cacheReadInputTokens.addAndGet(usage.cacheReadInputTokens);
+                }
             }
 
             private void handleContentBlockStart(AnthropicStreamingData data) {
@@ -312,7 +318,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
             private Response<AiMessage> build() {
 
                 String text = String.join("\n", contents);
-                TokenUsage tokenUsage = new TokenUsage(inputTokenCount.get(), outputTokenCount.get());
+                TokenUsage tokenUsage = new TokenUsage(inputTokenCount.get(), outputTokenCount.get(), cacheCreationInputTokens.get(), cacheReadInputTokens.get());
                 FinishReason finishReason = toFinishReason(stopReason);
                 Map<String, Object> metadata = createMetadata();
 

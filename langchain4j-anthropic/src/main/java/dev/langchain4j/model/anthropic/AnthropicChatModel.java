@@ -68,7 +68,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private final List<String> stopSequences;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
-    private final AnthropicCacheType cacheType;
+    private final boolean cacheSystemMessage;
 
     /**
      * Constructs an instance of an {@code AnthropicChatModel} with the specified parameters.
@@ -104,7 +104,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
                                Boolean logRequests,
                                Boolean logResponses,
                                List<ChatModelListener> listeners,
-                               AnthropicCacheType cacheType) {
+                               Boolean cacheSystemMessage) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
@@ -122,14 +122,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
         this.stopSequences = stopSequences;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        if (cacheType == null) {
-            this.cacheType = AnthropicCacheType.builder()
-                    .cacheType(AnthropicCacheType.CacheType.NO_CACHE)
-                    .messageTypeApplyCache(AnthropicCacheType.MessageTypeApplyCache.NONE)
-                    .build();
-        } else {
-            this.cacheType = cacheType;
-        }
+        this.cacheSystemMessage = getOrDefault(cacheSystemMessage, false);
     }
 
     public static class AnthropicChatModelBuilder {
@@ -160,12 +153,13 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        AnthropicCacheType cacheTypeSystemPrompt = cacheSystemMessage ? AnthropicCacheType.EPHEMERAL : AnthropicCacheType.NO_CACHE;
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
-        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages, cacheType);
+        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages, cacheTypeSystemPrompt);
 
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
-                .messages(toAnthropicMessages(sanitizedMessages, cacheType))
+                .messages(toAnthropicMessages(sanitizedMessages, AnthropicCacheType.NO_CACHE))
                 .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
