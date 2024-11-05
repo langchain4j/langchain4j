@@ -21,7 +21,6 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
-import static org.mockito.Mockito.spy;
 
 /**
  * This test makes sure that all {@link ChatLanguageModel} implementations behave consistently.
@@ -42,18 +41,6 @@ import static org.mockito.Mockito.spy;
  *     <type>test-jar</type>
  *     <scope>test</scope>
  * </dependency>
- *
- * <dependency>
- *     <groupId>org.mockito</groupId>
- *     <artifactId>mockito-core</artifactId>
- *     <scope>test</scope>
- * </dependency>
- *
- * <dependency>
- *     <groupId>org.mockito</groupId>
- *     <artifactId>mockito-junit-jupiter</artifactId>
- *     <scope>test</scope>
- * </dependency>
  */
 @TestInstance(PER_CLASS)
 public abstract class AbstractChatModelIT {
@@ -65,8 +52,6 @@ public abstract class AbstractChatModelIT {
     void should_answer_simple_question(ChatLanguageModel model) {
 
         // given
-        model = spy(model);
-
         ChatRequest chatRequest = ChatRequest.builder()
             .messages(UserMessage.from("What is the capital of Germany?"))
             .build();
@@ -96,8 +81,6 @@ public abstract class AbstractChatModelIT {
     void should_call_a_tool(ChatLanguageModel model) {
 
         // given
-        model = spy(model);
-
         ToolSpecification weatherTool = ToolSpecification.builder()
             .name("weather")
             .parameters(JsonObjectSchema.builder()
@@ -142,8 +125,6 @@ public abstract class AbstractChatModelIT {
     void should_force_LLM_to_call_any_tool(ChatLanguageModel model) {
 
         // given
-        model = spy(model);
-
         ToolSpecification weatherTool = ToolSpecification.builder()
             .name("weather")
             .parameters(JsonObjectSchema.builder()
@@ -193,8 +174,6 @@ public abstract class AbstractChatModelIT {
     void should_force_LLM_to_call_specific_tool(ChatLanguageModel model) {
 
         // given
-        model = spy(model);
-
         ToolSpecification weatherTool = ToolSpecification.builder()
             .name("weather")
             .parameters(JsonObjectSchema.builder()
@@ -229,6 +208,8 @@ public abstract class AbstractChatModelIT {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
         }
     }
+
+    // TODO test responseFormat
 
     protected boolean supportsToolMode() {
         return false;

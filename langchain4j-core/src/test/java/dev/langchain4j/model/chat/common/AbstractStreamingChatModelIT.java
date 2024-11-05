@@ -27,7 +27,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
-import static org.mockito.Mockito.spy;
 
 /**
  * This test makes sure that all {@link StreamingChatLanguageModel} implementations behave consistently.
@@ -48,18 +47,6 @@ import static org.mockito.Mockito.spy;
  *     <type>test-jar</type>
  *     <scope>test</scope>
  * </dependency>
- *
- * <dependency>
- *     <groupId>org.mockito</groupId>
- *     <artifactId>mockito-core</artifactId>
- *     <scope>test</scope>
- * </dependency>
- *
- * <dependency>
- *     <groupId>org.mockito</groupId>
- *     <artifactId>mockito-junit-jupiter</artifactId>
- *     <scope>test</scope>
- * </dependency>
  */
 @TestInstance(PER_CLASS)
 public abstract class AbstractStreamingChatModelIT {
@@ -71,8 +58,6 @@ public abstract class AbstractStreamingChatModelIT {
     void should_answer_simple_question(StreamingChatLanguageModel model) throws Exception {
 
         // given
-        model = spy(model);
-
         ChatRequest chatRequest = ChatRequest.builder()
             .messages(UserMessage.from("What is the capital of Germany?"))
             .build();
@@ -140,8 +125,6 @@ public abstract class AbstractStreamingChatModelIT {
     void should_call_a_tool(StreamingChatLanguageModel model) throws Exception {
 
         // given
-        model = spy(model);
-
         ToolSpecification weatherTool = ToolSpecification.builder()
             .name("weather")
             .parameters(JsonObjectSchema.builder()
@@ -221,8 +204,6 @@ public abstract class AbstractStreamingChatModelIT {
     void should_force_LLM_to_call_any_tool(StreamingChatLanguageModel model) throws Exception {
 
         // given
-        model = spy(model);
-
         ToolSpecification weatherTool = ToolSpecification.builder()
             .name("weather")
             .parameters(JsonObjectSchema.builder()
@@ -307,8 +288,6 @@ public abstract class AbstractStreamingChatModelIT {
     void should_force_LLM_to_call_specific_tool(StreamingChatLanguageModel model) throws Exception {
 
         // given
-        model = spy(model);
-
         ToolSpecification weatherTool = ToolSpecification.builder()
             .name("weather")
             .parameters(JsonObjectSchema.builder()
