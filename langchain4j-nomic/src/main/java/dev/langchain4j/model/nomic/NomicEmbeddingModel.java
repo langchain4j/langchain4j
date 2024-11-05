@@ -59,7 +59,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
     /**
      * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static NomicEmbeddingModel withApiKey(String apiKey) {
         return NomicEmbeddingModel.builder().apiKey(apiKey).build();
     }
