@@ -19,6 +19,11 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
         );
     }
 
+    @Override
+    protected boolean supportsToolMode() {
+        return true;
+    }
+
     protected boolean assertFinishReason() {
         return false; // TODO fix
     }
