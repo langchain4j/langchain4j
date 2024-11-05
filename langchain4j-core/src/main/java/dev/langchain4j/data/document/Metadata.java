@@ -3,7 +3,12 @@ package dev.langchain4j.data.document;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
@@ -67,8 +72,8 @@ public class Metadata {
             validate(key, value);
             if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
                 throw illegalArgument("The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. " +
-                                "Currently, the supported types are: %s",
-                        key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
+                        "Currently, the supported types are: %s",
+                    key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
                 );
             }
         });
@@ -111,12 +116,12 @@ public class Metadata {
         }
 
         Object value = metadata.get(key);
-        if (value instanceof String) {
-            return (String) value;
+        if (value instanceof String string) {
+            return string;
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a String.", key, value, value.getClass().getName());
+            "It cannot be returned as a String.", key, value, value.getClass().getName());
     }
 
     /**
@@ -132,15 +137,15 @@ public class Metadata {
         }
 
         Object value = metadata.get(key);
-        if (value instanceof UUID) {
-            return (UUID) value;
+        if (value instanceof UUID iD) {
+            return iD;
         }
-        if (value instanceof String) {
-            return UUID.fromString((String)value);
+        if (value instanceof String string) {
+            return UUID.fromString(string);
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a UUID.", key, value, value.getClass().getName());
+            "It cannot be returned as a UUID.", key, value, value.getClass().getName());
     }
 
     /**
@@ -167,12 +172,12 @@ public class Metadata {
         Object value = metadata.get(key);
         if (value instanceof String) {
             return Integer.parseInt(value.toString());
-        } else if (value instanceof Number) {
-            return ((Number) value).intValue();
+        } else if (value instanceof Number number) {
+            return number.intValue();
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as an Integer.", key, value, value.getClass().getName());
+            "It cannot be returned as an Integer.", key, value, value.getClass().getName());
     }
 
     /**
@@ -199,12 +204,12 @@ public class Metadata {
         Object value = metadata.get(key);
         if (value instanceof String) {
             return Long.parseLong(value.toString());
-        } else if (value instanceof Number) {
-            return ((Number) value).longValue();
+        } else if (value instanceof Number number) {
+            return number.longValue();
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a Long.", key, value, value.getClass().getName());
+            "It cannot be returned as a Long.", key, value, value.getClass().getName());
     }
 
     /**
@@ -231,12 +236,12 @@ public class Metadata {
         Object value = metadata.get(key);
         if (value instanceof String) {
             return Float.parseFloat(value.toString());
-        } else if (value instanceof Number) {
-            return ((Number) value).floatValue();
+        } else if (value instanceof Number number) {
+            return number.floatValue();
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a Float.", key, value, value.getClass().getName());
+            "It cannot be returned as a Float.", key, value, value.getClass().getName());
     }
 
     /**
@@ -263,12 +268,12 @@ public class Metadata {
         Object value = metadata.get(key);
         if (value instanceof String) {
             return Double.parseDouble(value.toString());
-        } else if (value instanceof Number) {
-            return ((Number) value).doubleValue();
+        } else if (value instanceof Number number) {
+            return number.doubleValue();
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a Double.", key, value, value.getClass().getName());
+            "It cannot be returned as a Double.", key, value, value.getClass().getName());
     }
 
     /**
@@ -449,8 +454,8 @@ public class Metadata {
     @Override
     public String toString() {
         return "Metadata {" +
-                " metadata = " + metadata +
-                " }";
+            " metadata = " + metadata +
+            " }";
     }
 
     /**

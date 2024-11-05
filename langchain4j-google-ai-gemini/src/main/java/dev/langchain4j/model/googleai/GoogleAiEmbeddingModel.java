@@ -8,10 +8,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,8 +26,6 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
 
     private final GeminiService geminiService;
 
-    private final Gson GSON = new Gson();
-
     private final String modelName;
     private final String apiKey;
     private final Integer maxRetries;
@@ -40,14 +35,14 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
 
     @Builder
     public GoogleAiEmbeddingModel(
-        String modelName,
-        String apiKey,
-        Integer maxRetries,
-        TaskType taskType,
-        String titleMetadataKey,
-        Integer outputDimensionality,
-        Duration timeout,
-        Boolean logRequestsAndResponses
+            String modelName,
+            String apiKey,
+            Integer maxRetries,
+            TaskType taskType,
+            String titleMetadataKey,
+            Integer outputDimensionality,
+            Duration timeout,
+            Boolean logRequestsAndResponses
     ) {
 
         this.modelName = ensureNotBlank(modelName, "modelName");
@@ -64,33 +59,14 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
 
         boolean logRequestsAndResponses1 = logRequestsAndResponses != null && logRequestsAndResponses;
 
-        this.geminiService = GeminiService.getGeminiService(logRequestsAndResponses1 ? log : null, timeout1);
+        this.geminiService = new GeminiService(logRequestsAndResponses1 ? log : null, timeout1);
     }
 
     @Override
     public Response<Embedding> embed(TextSegment textSegment) {
         GoogleAiEmbeddingRequest embeddingRequest = getGoogleAiEmbeddingRequest(textSegment);
 
-        Call<GoogleAiEmbeddingResponse> geminiEmbeddingResponseCall =
-            withRetry(() -> this.geminiService.embed(this.modelName, this.apiKey, embeddingRequest), this.maxRetries);
-
-        GoogleAiEmbeddingResponse geminiResponse;
-        try {
-            retrofit2.Response<GoogleAiEmbeddingResponse> executed = geminiEmbeddingResponseCall.execute();
-            geminiResponse = executed.body();
-
-            if (executed.code() >= 300) {
-                try (ResponseBody errorBody = executed.errorBody()) {
-                    GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
-
-                    throw new RuntimeException(
-                        String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
-                }
-            }
-        } catch (IOException e) {
-
-            throw new RuntimeException("An error occurred when calling the Gemini API endpoint (embed).", e);
-        }
+        GoogleAiEmbeddingResponse geminiResponse = withRetry(() -> this.geminiService.embed(this.modelName, this.apiKey, embeddingRequest), this.maxRetries);
 
         if (geminiResponse != null) {
             return Response.from(Embedding.from(geminiResponse.getEmbedding().getValues()));
@@ -107,8 +83,8 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         List<GoogleAiEmbeddingRequest> embeddingRequests = textSegments.stream()
-            .map(this::getGoogleAiEmbeddingRequest)
-            .collect(Collectors.toList());
+                .map(this::getGoogleAiEmbeddingRequest)
+                .collect(Collectors.toList());
 
         List<Embedding> allEmbeddings = new ArrayList<>();
         int numberOfEmbeddings = embeddingRequests.size();
@@ -123,30 +99,12 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
             GoogleAiBatchEmbeddingRequest batchEmbeddingRequest = new GoogleAiBatchEmbeddingRequest();
             batchEmbeddingRequest.setRequests(embeddingRequests.subList(startIndex, lastIndex));
 
-            Call<GoogleAiBatchEmbeddingResponse> geminiBatchEmbeddingResponseCall =
-                withRetry(() -> this.geminiService.batchEmbed(this.modelName, this.apiKey, batchEmbeddingRequest));
-
-            GoogleAiBatchEmbeddingResponse geminiResponse;
-            try {
-                retrofit2.Response<GoogleAiBatchEmbeddingResponse> executed = geminiBatchEmbeddingResponseCall.execute();
-                geminiResponse = executed.body();
-
-                if (executed.code() >= 300) {
-                    try (ResponseBody errorBody = executed.errorBody()) {
-                        GeminiError error = GSON.fromJson(errorBody.string(), GeminiErrorContainer.class).getError();
-
-                        throw new RuntimeException(
-                            String.format("%s (code %d) %s", error.getStatus(), error.getCode(), error.getMessage()));
-                    }
-                }
-            } catch (IOException e) {
-                throw new RuntimeException("An error occurred when calling the Gemini API endpoint (embedAll).", e);
-            }
+            GoogleAiBatchEmbeddingResponse geminiResponse = withRetry(() -> this.geminiService.batchEmbed(this.modelName, this.apiKey, batchEmbeddingRequest));
 
             if (geminiResponse != null) {
                 allEmbeddings.addAll(geminiResponse.getEmbeddings().stream()
-                    .map(values -> Embedding.from(values.getValues()))
-                    .collect(Collectors.toList()));
+                        .map(values -> Embedding.from(values.getValues()))
+                        .collect(Collectors.toList()));
             } else {
                 throw new RuntimeException("Gemini embedding response was null (embedAll)");
             }
@@ -157,8 +115,8 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
 
     private GoogleAiEmbeddingRequest getGoogleAiEmbeddingRequest(TextSegment textSegment) {
         GeminiPart geminiPart = GeminiPart.builder()
-            .text(textSegment.text())
-            .build();
+                .text(textSegment.text())
+                .build();
 
         GeminiContent content = new GeminiContent(Collections.singletonList(geminiPart), null);
 
@@ -170,11 +128,11 @@ public class GoogleAiEmbeddingModel implements EmbeddingModel {
         }
 
         return new GoogleAiEmbeddingRequest(
-            "models/" + this.modelName,
-            content,
-            this.taskType,
-            title,
-            this.outputDimensionality
+                "models/" + this.modelName,
+                content,
+                this.taskType,
+                title,
+                this.outputDimensionality
         );
     }
 

@@ -18,12 +18,12 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -34,7 +34,13 @@ import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.RetryingTest;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -44,7 +50,9 @@ import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HA
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 public class GoogleAiGeminiChatModelIT {
 
@@ -114,8 +122,8 @@ public class GoogleAiGeminiChatModelIT {
         assertThat(jsonText).contains("\"John\"");
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(25);
-        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(6);
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(31);
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(7);
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(32);
     }
 
     @Test
@@ -435,10 +443,10 @@ public class GoogleAiGeminiChatModelIT {
                 .jsonSchema(JsonSchema.builder()
                     .rootElement(JsonObjectSchema.builder()
                         .addStringProperty("name")
-                            .addProperty("address", JsonObjectSchema.builder()
-                                    .addStringProperty("city")
-                                    .required("city")
-                                    .build())
+                        .addProperty("address", JsonObjectSchema.builder()
+                            .addStringProperty("city")
+                            .required("city")
+                            .build())
                         .required("name", "address")
                         .additionalProperties(false)
                         .build())

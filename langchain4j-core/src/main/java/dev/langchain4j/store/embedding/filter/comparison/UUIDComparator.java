@@ -16,8 +16,8 @@ class UUIDComparator {
     private static UUID toUUID(Object actualUUID) {
         if (actualUUID instanceof String) {
             return UUID.fromString(actualUUID.toString());
-        } else if (actualUUID instanceof UUID) {
-            return (UUID)actualUUID;
+        } else if (actualUUID instanceof UUID iD) {
+            return iD;
         }
 
         throw new IllegalArgumentException("Unsupported type: " + actualUUID.getClass().getName());
