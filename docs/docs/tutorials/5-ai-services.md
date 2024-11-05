@@ -576,6 +576,12 @@ Please note that if an AI Service method does not have a parameter annotated wit
 the value of `memoryId` in `ChatMemoryProvider` will default to a string `"default"`.
 :::
 
+:::note
+Please note that AI Service should not be called concurrently for the same `@MemoryId`,
+as it can lead to corrupted `ChatMemory`.
+Currently, AI Service does not implement any mechanism to prevent concurrent calls for the same `@MemoryId`.
+:::
+
 - [Example with a single ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
 - [Example with ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
 - [Example with a single persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryExample.java)
@@ -608,7 +614,9 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 String answer = assistant.chat("What is 1+2 and 3*4?");
 ```
-In this scenario, LLM will execute `add(1, 2)` and `multiply(3, 4)` methods before providing an answer.
+In this scenario, the LLM will request to execute the `add(1, 2)` and `multiply(3, 4)` methods
+before providing a final answer.
+LangChain4j will execute these methods automatically.
 
 More details about tools can be found [here](/tutorials/tools#high-level-tool-api).
 

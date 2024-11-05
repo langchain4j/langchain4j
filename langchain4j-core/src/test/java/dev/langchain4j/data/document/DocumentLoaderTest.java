@@ -3,7 +3,10 @@ package dev.langchain4j.data.document;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 
@@ -75,27 +78,27 @@ class DocumentLoaderTest implements WithAssertions {
         assertThat(document).isEqualTo(Document.from("Hello, world!", new Metadata().put("foo", "bar")));
 
         assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(() -> DocumentLoader.load(new DocumentSource() {
-                    @Override
-                    public InputStream inputStream() throws IOException {
-                        throw new IOException("Failed to open input stream");
-                    }
+            .isThrownBy(() -> DocumentLoader.load(new DocumentSource() {
+                @Override
+                public InputStream inputStream() throws IOException {
+                    throw new IOException("Failed to open input stream");
+                }
 
-                    @Override
-                    public Metadata metadata() {
-                        return new Metadata();
-                    }
-                }, new TrivialParser()))
-                .withMessageContaining("Failed to load document");
+                @Override
+                public Metadata metadata() {
+                    return new Metadata();
+                }
+            }, new TrivialParser()))
+            .withMessageContaining("Failed to load document");
 
         assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(() -> DocumentLoader.load(
-                        source,
-                        inputStream -> {
-                            throw new RuntimeException("Failed to parse document");
-                        }
+            .isThrownBy(() -> DocumentLoader.load(
+                source,
+                inputStream -> {
+                    throw new RuntimeException("Failed to parse document");
+                }
 
-                ))
-                .withMessageContaining("Failed to load document");
+            ))
+            .withMessageContaining("Failed to load document");
     }
 }

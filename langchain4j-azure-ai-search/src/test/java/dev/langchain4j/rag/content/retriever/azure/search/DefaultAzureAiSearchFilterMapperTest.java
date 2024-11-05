@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 class DefaultAzureAiSearchFilterMapperTest {
 
@@ -18,49 +18,49 @@ class DefaultAzureAiSearchFilterMapperTest {
     @Test
     void map_nullFilter() {
         String result = mapper.map(null);
-        assertEquals("", result);
+        assertThat(result).isEmpty();
     }
 
     @Test
     void map_handlesIsGreaterThan() {
         IsGreaterThan isGreaterThanFilter = new IsGreaterThan("key1", "value1");
         String result = mapper.map(isGreaterThanFilter);
-        assertEquals("metadata/attributes/any(k: k/key eq 'key1' and k/value gt 'value1')", result);
+        assertThat(result).isEqualTo("metadata/attributes/any(k: k/key eq 'key1' and k/value gt 'value1')");
     }
 
     @Test
     void map_handlesIsGreaterThanOrEqualTo() {
         IsGreaterThanOrEqualTo isGreaterThanOrEqualToFilter = new IsGreaterThanOrEqualTo("key1", "value1");
         String result = mapper.map(isGreaterThanOrEqualToFilter);
-        assertEquals("metadata/attributes/any(k: k/key eq 'key1' and k/value ge 'value1')", result);
+        assertThat(result).isEqualTo("metadata/attributes/any(k: k/key eq 'key1' and k/value ge 'value1')");
     }
 
     @Test
     void map_handlesIsLessThan() {
         IsLessThan isLessThanFilter = new IsLessThan("key1", "value1");
         String result = mapper.map(isLessThanFilter);
-        assertEquals("metadata/attributes/any(k: k/key eq 'key1' and k/value lt 'value1')", result);
+        assertThat(result).isEqualTo("metadata/attributes/any(k: k/key eq 'key1' and k/value lt 'value1')");
     }
 
     @Test
     void map_handlesIsLessThanOrEqualTo() {
         IsLessThanOrEqualTo isLessThanOrEqualToFilter = new IsLessThanOrEqualTo("key1", "value1");
         String result = mapper.map(isLessThanOrEqualToFilter);
-        assertEquals("metadata/attributes/any(k: k/key eq 'key1' and k/value le 'value1')", result);
+        assertThat(result).isEqualTo("metadata/attributes/any(k: k/key eq 'key1' and k/value le 'value1')");
     }
 
     @Test
     void map_handlesIsIn() {
         IsIn isInFilter = new IsIn("key1", Arrays.asList("value1", "value2"));
         String result = mapper.map(isInFilter);
-        assertEquals("metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('value1, value2')))", result);
+        assertThat(result).isEqualTo("metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('value1, value2')))");
     }
 
     @Test
     void map_handlesIsNotIn() {
         IsNotIn isNotInFilter = new IsNotIn("key1", Arrays.asList("value1", "value2"));
         String result = mapper.map(isNotInFilter);
-        assertEquals("(not metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('value1, value2'))))", result);
+        assertThat(result).isEqualTo("(not metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('value1, value2'))))");
     }
 
     @Test
@@ -72,7 +72,7 @@ class DefaultAzureAiSearchFilterMapperTest {
                         new IsGreaterThan("key3", "100"))
         );
         String result = mapper.map(filter);
-        assertEquals("(metadata/attributes/any(k: k/key eq 'key1' and k/value eq 'value1') and ((not metadata/attributes/any(k: k/key eq 'key2' and search.in(k/value, ('value2, value3')))) or metadata/attributes/any(k: k/key eq 'key3' and k/value gt '100')))", result);
+        assertThat(result).isEqualTo("(metadata/attributes/any(k: k/key eq 'key1' and k/value eq 'value1') and ((not metadata/attributes/any(k: k/key eq 'key2' and search.in(k/value, ('value2, value3')))) or metadata/attributes/any(k: k/key eq 'key3' and k/value gt '100')))");
     }
 
     @Test
@@ -83,6 +83,6 @@ class DefaultAzureAiSearchFilterMapperTest {
                 return false;
             }
         };
-        assertThrows(IllegalArgumentException.class, () -> mapper.map(unsupportedFilter));
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> mapper.map(unsupportedFilter));
     }
 }

@@ -9,13 +9,22 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
-import static org.assertj.core.api.Assertions.*;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.entry;
 
 @SuppressWarnings({"ObviousNullCheck", "ConstantValue"})
 class UtilsTest {
@@ -96,7 +105,7 @@ class UtilsTest {
 
     @Test
     public void test_repeat() {
-        assertThat(Utils.repeat("foo", 0)).isEqualTo("");
+        assertThat(Utils.repeat("foo", 0)).isEmpty();
         assertThat(Utils.repeat("foo", 1)).isEqualTo("foo");
         assertThat(Utils.repeat("foo", 2)).isEqualTo("foofoo");
         assertThat(Utils.repeat("foo", 3)).isEqualTo("foofoofoo");

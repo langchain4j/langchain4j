@@ -528,8 +528,12 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
 
 ingestor.ingest(document1);
 ingestor.ingest(document2, document3);
-ingestor.ingest(List.of(document4, document5, document6));
+IngestionResult ingestionResult = ingestor.ingest(List.of(document4, document5, document6));
 ```
+
+All `ingest()` methods in `EmbeddingStoreIngestor` return an `IngestionResult`.
+The `IngestionResult` contains useful information, including `TokenUsage`,
+which shows how many tokens were used for embedding.
 
 Optionally, the `EmbeddingStoreIngestor` can transform `Document`s using a specified `DocumentTransformer`.
 This can be useful if you want to clean, enrich, or format `Document`s before embedding them.
@@ -754,12 +758,46 @@ More details are coming soon.
 More details are coming soon.
 
 ### Content Injector
-More details are coming soon.
+
+`ContentInjector` is responsible for injecting of `Content`s returned by `ContentAggregator` into the `UserMessage`.
 
 #### Default Content Injector
-`DefaultContentInjector`
 
-More details are coming soon.
+`DefaultContentInjector` is the default implementation of `ContentInjector` that simply appends `Content`s
+to the end of a `UserMessage` with the prefix `Answer using the following information:`.
+
+You can customize how `Content`s are injected into the `UserMessage` in 3 ways:
+- Override the default `PromptTemplate`:
+```java
+RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+    .contentInjector(DefaultContentInjector.builder()
+        .promptTemplate(PromptTemplate.from("{{userMessage}}\n{{contents}}"))
+        .build())
+    .build();
+```
+Please note that `PromptTemplate` must contain `{{userMessage}}` and `{{contents}}` variables.
+- Extend `DefaultContentInjector` and override one of the `format` methods
+- Implement a custom `ContentInjector`
+
+`DefaultContentInjector` also supports injecting `Metadata` entries from retrieved `Content.textSegment()`:
+```java
+DefaultContentInjector.builder()
+    .metadataKeysToInclude(List.of("source"))
+    .build()
+```
+In this case, `TextSegment.text()` will be prepended with the "content: " prefix,
+and each value from `Metadata` will be prepended with a key.
+The final `UserMessage` will look like this:
+```
+How can I cancel my reservation?
+
+Answer using the following information:
+content: To cancel a reservation, go to ...
+source: ./cancellation_procedure.html
+
+content: Cancellation is allowed for ...
+source: ./cancellation_policy.html
+```
 
 ### Parallelization
 
