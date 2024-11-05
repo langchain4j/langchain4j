@@ -232,7 +232,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         if (!isNullOrEmpty(toolSpecifications)) {
             requestBuilder.tools(toTools(toolSpecifications, strictTools));
         }
-        requestBuilder.toolChoice(toOpenAiToolChoice(toolMode));
+        if (toolMode != null) {
+            requestBuilder.toolChoice(toOpenAiToolChoice(toolMode));
+        }
 
         ChatCompletionRequest openAiRequest = requestBuilder.build();
 

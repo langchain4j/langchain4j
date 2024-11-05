@@ -549,10 +549,6 @@ public class InternalOpenAiHelper {
     }
 
     public static ToolChoiceMode toOpenAiToolChoice(ToolMode toolMode) {
-        if (toolMode == null) {
-            return null;
-        }
-
         return switch (toolMode) {
             case AUTO -> ToolChoiceMode.AUTO;
             case ANY -> ToolChoiceMode.REQUIRED;
