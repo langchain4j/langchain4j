@@ -115,7 +115,7 @@ public class TokenUsage {
      * @return a new {@link TokenUsage} instance with the token usage of both responses added together.
      * @deprecated use {@link #sum(TokenUsage, TokenUsage)} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public TokenUsage add(TokenUsage that) {
         if (that == null) {
             return new TokenUsage(inputTokenCount, outputTokenCount, totalTokenCount);

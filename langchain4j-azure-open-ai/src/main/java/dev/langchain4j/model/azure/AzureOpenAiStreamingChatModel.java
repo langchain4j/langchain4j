@@ -675,7 +675,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
          * @return builder with the useAsyncClient parameter set
          */
         @SuppressWarnings("DeprecatedIsStillUsed")
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder useAsyncClient(boolean useAsyncClient) {
             this.useAsyncClient = useAsyncClient;
             return this;
@@ -688,7 +688,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
          * @return builder
          */
         @SuppressWarnings("DeprecatedIsStillUsed")
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder openAIClient(OpenAIClient openAIClient) {
             this.openAIClient = openAIClient;
             return this;

@@ -10,7 +10,7 @@ package dev.langchain4j.model.openai;
  * {@link OpenAiModerationModelName}
  * </pre>
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class OpenAiModelName {
 
     // Use with OpenAiChatModel and OpenAiStreamingChatModel

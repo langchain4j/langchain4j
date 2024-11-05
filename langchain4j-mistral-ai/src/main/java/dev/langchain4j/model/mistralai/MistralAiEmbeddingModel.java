@@ -65,7 +65,7 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     /**
      * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static MistralAiEmbeddingModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

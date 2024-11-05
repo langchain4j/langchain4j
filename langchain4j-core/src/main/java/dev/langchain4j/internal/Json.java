@@ -11,7 +11,8 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 /**
  * A utility class for JSON.
  *
- * @deprecated use Jackson's ObjectMapper
+ * @deprecated Do not use {@link Json} from third-party modules, use Jackson's ObjectMapper directly.
+ * {@link Json} should be used only by {@code langchain4j-core} and {@code langchain4j} modules.
  */
 @Deprecated
 public class Json {

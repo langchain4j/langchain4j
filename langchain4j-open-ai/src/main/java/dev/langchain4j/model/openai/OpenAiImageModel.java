@@ -167,7 +167,7 @@ public class OpenAiImageModel implements ImageModel {
     /**
      * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static OpenAiImageModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

@@ -54,7 +54,7 @@ public class JinaScoringModel implements ScoringModel {
     /**
      * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static JinaScoringModel withApiKey(String apiKey) {
         return JinaScoringModel.builder().apiKey(apiKey).build();
     }

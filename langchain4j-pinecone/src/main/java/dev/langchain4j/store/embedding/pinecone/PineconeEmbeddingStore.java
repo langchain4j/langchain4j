@@ -226,9 +226,9 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String nameSpace;
         private String metadataTextKey;
         private PineconeIndexConfig createIndex;
-        @Deprecated
+        @Deprecated(forRemoval = true)
         private String environment;
-        @Deprecated
+        @Deprecated(forRemoval = true)
         private String projectId;
 
         /**
@@ -275,7 +275,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @param environment The environment (e.g., "northamerica-northeast1-gcp").
          * @deprecated Please use {@link Builder#createIndex(PineconeIndexConfig)}
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder environment(String environment) {
             this.environment = environment;
             return this;
@@ -286,7 +286,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
          *                  The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
          * @deprecated Please use {@link Builder#createIndex(PineconeIndexConfig)}
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder projectId(String projectId) {
             this.projectId = projectId;
             return this;

@@ -58,7 +58,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
     /**
      * Use another constructor with a new {@link ContentRetriever} instead.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public ConversationalRetrievalChain(ChatLanguageModel chatLanguageModel,
                                         ChatMemory chatMemory,
                                         PromptTemplate promptTemplate,
@@ -108,9 +108,9 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
         private ChatMemory chatMemory;
         private RetrievalAugmentor retrievalAugmentor;
 
-        @Deprecated
+        @Deprecated(forRemoval = true)
         private dev.langchain4j.retriever.Retriever<TextSegment> retriever;
-        @Deprecated
+        @Deprecated(forRemoval = true)
         private PromptTemplate promptTemplate;
 
         public Builder chatLanguageModel(ChatLanguageModel chatLanguageModel) {
@@ -140,7 +140,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
         /**
          * Deprecated. Use {@link Builder#contentRetriever(ContentRetriever)} instead.
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder retriever(dev.langchain4j.retriever.Retriever<TextSegment> retriever) {
             this.retriever = retriever;
             return this;
@@ -155,7 +155,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
          *     .build());
          * </pre>
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder promptTemplate(PromptTemplate promptTemplate) {
             this.promptTemplate = promptTemplate;
             return this;

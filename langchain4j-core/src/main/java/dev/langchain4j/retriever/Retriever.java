@@ -14,7 +14,7 @@ import static java.util.stream.Collectors.toList;
  *
  * @param <T> the type of the items.
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public interface Retriever<T> {
 
     /**
