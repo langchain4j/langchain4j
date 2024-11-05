@@ -27,4 +27,5 @@ sidebar_position: 0
 
 Legend:
 - ✅ means "supported"
-- ⏳ means "not supported yet, please help us with implementing it"
+- ⏳ means "not supported yet; please help us implement it"
+- 🔜 means "it is being implemented; please wait"
