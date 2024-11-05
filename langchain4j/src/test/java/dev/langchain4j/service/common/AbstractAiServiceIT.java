@@ -23,7 +23,7 @@ import static org.mockito.Mockito.verify;
  * when used with {@link AiServices}.
  */
 @TestInstance(PER_CLASS)
-public abstract class AiServicesSimpleIT {
+public abstract class AbstractAiServiceIT {
 
     protected abstract List<ChatLanguageModel> models();
 

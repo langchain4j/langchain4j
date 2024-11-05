@@ -2,11 +2,11 @@ package dev.langchain4j.model.azure.common;
 
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.service.common.AiServicesSimpleIT;
+import dev.langchain4j.service.common.AbstractAiServiceIT;
 
 import java.util.List;
 
-class AzureOpenAiAiServicesSimpleIT extends AiServicesSimpleIT {
+class AzureOpenAiAiServiceIT extends AbstractAiServiceIT {
 
     @Override
     protected List<ChatLanguageModel> models() {

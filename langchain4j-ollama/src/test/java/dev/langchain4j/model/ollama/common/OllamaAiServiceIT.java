@@ -4,7 +4,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.service.common.AiServicesSimpleIT;
+import dev.langchain4j.service.common.AbstractAiServiceIT;
 
 import java.util.List;
 
@@ -13,7 +13,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
-class OllamaAiServicesSimpleIT extends AiServicesSimpleIT {
+class OllamaAiServiceIT extends AbstractAiServiceIT {
 
     static LC4jOllamaContainer ollama = new LC4jOllamaContainer(resolve(OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE))
             .withModel(TINY_DOLPHIN_MODEL);
