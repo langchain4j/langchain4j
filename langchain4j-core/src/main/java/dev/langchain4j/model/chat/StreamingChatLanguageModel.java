@@ -80,7 +80,6 @@ public interface StreamingChatLanguageModel {
      * @param userMessage The message from the user.
      * @param handler     The handler for streaming the response.
      */
-    @Deprecated(forRemoval = true) // TODO
     default void generate(String userMessage, StreamingResponseHandler<AiMessage> handler) {
         generate(singletonList(UserMessage.from(userMessage)), handler);
     }
@@ -91,7 +90,6 @@ public interface StreamingChatLanguageModel {
      * @param userMessage The message from the user.
      * @param handler     The handler for streaming the response.
      */
-    @Deprecated(forRemoval = true) // TODO
     default void generate(UserMessage userMessage, StreamingResponseHandler<AiMessage> handler) {
         generate(singletonList(userMessage), handler);
     }
@@ -104,8 +102,6 @@ public interface StreamingChatLanguageModel {
      * @param messages A list of messages.
      * @param handler  The handler for streaming the response.
      */
-    @Deprecated(forRemoval = true)
-    // TODO
     void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler);
 
     /**
@@ -120,7 +116,6 @@ public interface StreamingChatLanguageModel {
      * @param handler            The handler for streaming the response.
      *                           {@link AiMessage} can contain either a textual response or a request to execute one of the tools.
      */
-    @Deprecated(forRemoval = true) // TODO
     default void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
     }
@@ -132,7 +127,6 @@ public interface StreamingChatLanguageModel {
      * @param toolSpecification A tool that the model is allowed to execute.
      * @param handler           The handler for streaming the response.
      */
-    @Deprecated(forRemoval = true) // TODO
     default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
     }
