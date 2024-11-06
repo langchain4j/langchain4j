@@ -479,6 +479,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
+    @EnabledIf("supportsMapParameters")
     protected void should_execute_tool_with_map_parameter() {
 
         for (ChatLanguageModel model : modelsSupportingMapParametersInTools()) {
@@ -515,6 +516,10 @@ public abstract class AiServicesWithNewToolsIT {
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithMapParameter.EXPECTED_SPECIFICATION);
             }
         }
+    }
+
+    protected boolean supportsMapParameters() {
+        return true;
     }
 
     static class ToolWithListOfStringsParameter {

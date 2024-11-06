@@ -39,7 +39,7 @@ class JlamaAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
     }
 
     @Override
-    protected List<ChatLanguageModel> modelsSupportingMapParametersInTools() {
-        return List.of();
+    protected boolean supportsMapParameters() {
+        return false;
     }
 }
