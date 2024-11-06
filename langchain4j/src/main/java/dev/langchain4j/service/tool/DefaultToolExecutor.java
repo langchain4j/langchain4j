@@ -138,8 +138,12 @@ public class DefaultToolExecutor implements ToolExecutor {
             try {
                 @SuppressWarnings({"unchecked", "rawtypes"})
                 Class<Enum> enumClass = (Class<Enum>) parameterClass;
-                // Safe to assume that enum values are uppercased
-                return Enum.valueOf(enumClass, Objects.requireNonNull(argument.toString().toUpperCase()));
+                try {
+                    return Enum.valueOf(enumClass, argument.toString());
+                } catch (IllegalArgumentException e) {
+                    // try to convert to uppercase as a last resort
+                    return Enum.valueOf(enumClass, Objects.requireNonNull(argument.toString().toUpperCase()));
+                }
             } catch (Exception | Error e) {
                 throw new IllegalArgumentException(String.format(
                         "Argument \"%s\" is not a valid enum value for %s: <%s>",
