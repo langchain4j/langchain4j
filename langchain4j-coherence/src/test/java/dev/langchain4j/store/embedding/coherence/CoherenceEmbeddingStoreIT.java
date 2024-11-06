@@ -28,8 +28,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
  * An extension of the LangChain4J {@link EmbeddingStoreIT} tests
  * that use Coherence as an {@link EmbeddingStore}.
  */
-public class CoherenceEmbeddingStoreIT
-        extends EmbeddingStoreWithFilteringIT {
+class CoherenceEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @RegisterExtension
     static TestLogsExtension testLogs = new TestLogsExtension();

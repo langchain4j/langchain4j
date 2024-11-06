@@ -21,8 +21,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-public class CoherenceEmbeddingStoreRemovalIT
-    extends EmbeddingStoreWithRemovalIT {
+class CoherenceEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @RegisterExtension
     static TestLogsExtension testLogs = new TestLogsExtension();

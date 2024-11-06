@@ -30,33 +30,28 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
-import java.io.Serializable;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-
-import java.util.function.ToDoubleFunction;
-
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * An {@link EmbeddingStore} backed by an Oracle Coherence {@link NamedMap}.
  */
-public class CoherenceEmbeddingStore
-        implements EmbeddingStore<TextSegment> {
+public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * The {@link ValueExtractor} to extract the float vector from a {@link DocumentChunk}.
      */
-    private static final ValueExtractor<DocumentChunk, Vector<float[]>> EXTRACTOR = ValueExtractor.of(DocumentChunk::vector);
+    private static final ValueExtractor<DocumentChunk, Vector<float[]>> EXTRACTOR =
+        ValueExtractor.of(DocumentChunk::vector);
     
     /**
      * The default {@link NamedMap} name.
@@ -80,7 +75,8 @@ public class CoherenceEmbeddingStore
      * @param normalizeEmbeddings  {@code true} if this {@link CoherenceEmbeddingStore} should call
      *                             {@link Embedding#normalize()} on embeddings when adding or searching
      */
-    protected CoherenceEmbeddingStore(NamedMap<DocumentChunk.Id, DocumentChunk> namedMap, boolean normalizeEmbeddings) {
+    protected CoherenceEmbeddingStore(NamedMap<DocumentChunk.Id, DocumentChunk> namedMap,
+                                      boolean normalizeEmbeddings) {
         this.documentChunks = namedMap;
         this.normalizeEmbeddings = normalizeEmbeddings;
     }
@@ -131,7 +127,11 @@ public class CoherenceEmbeddingStore
             throw new IllegalArgumentException("ids cannot be null or empty");
         }
 
-        documentChunks.keySet().removeAll(ids.stream().map(DocumentChunk.Id::parse).collect(Collectors.toSet()));
+        Set<DocumentChunk.Id> chunkIds = ids.stream()
+            .map(DocumentChunk.Id::parse)
+            .collect(toSet());
+
+        documentChunks.keySet().removeAll(chunkIds);
     }
 
     @Override
@@ -160,7 +160,8 @@ public class CoherenceEmbeddingStore
         Filter<DocumentChunk> filter = CoherenceMetadataFilterMapper.map(request.filter());
         Float32Vector vector = new Float32Vector(queryEmbedding.vector());
 
-        SimilaritySearch<DocumentChunk.Id, DocumentChunk, float[]> aggregator = new SimilaritySearch<>(EXTRACTOR, vector, request.maxResults());
+        SimilaritySearch<DocumentChunk.Id, DocumentChunk, float[]> aggregator =
+            new SimilaritySearch<>(EXTRACTOR, vector, request.maxResults());
         if (filter != null) {
             aggregator = aggregator.filter(filter);
         }
@@ -193,7 +194,8 @@ public class CoherenceEmbeddingStore
      * @param embeddings  the {@link Embedding} to add
      * @param segments    an optional list of {@link TextSegment} to add with the embeddings
      */
-    private void addAllInternal(List<DocumentChunk.Id> ids, List<Embedding> embeddings, List<TextSegment> segments) {
+    private void addAllInternal(List<DocumentChunk.Id> ids, List<Embedding> embeddings,
+                                List<TextSegment> segments) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             Logger.info("Skipped adding empty embeddings");
             return;
@@ -201,9 +203,11 @@ public class CoherenceEmbeddingStore
 
         boolean hasEmbedded = segments != null && !segments.isEmpty();
 
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
+        ensureTrue(ids.size() == embeddings.size(),
+            "ids size is not equal to embeddings size");
         if (hasEmbedded) {
-            ensureTrue(embeddings.size() == segments.size(), "embeddings size is not equal to embedded size");
+            ensureTrue(embeddings.size() == segments.size(),
+                "embeddings size is not equal to embedded size");
         }
 
         Map<DocumentChunk.Id, DocumentChunk> map = new HashMap<>();
@@ -224,7 +228,8 @@ public class CoherenceEmbeddingStore
      *
      * @return an {@link EmbeddingMatch} created from the {@link QueryResult}
      */
-    private EmbeddingMatch<TextSegment> embeddingMatch(double score, DocumentChunk.Id id, DocumentChunk chunk) {
+    private EmbeddingMatch<TextSegment> embeddingMatch(double score, DocumentChunk.Id id,
+                                                       DocumentChunk chunk) {
         String key = id.toString();
         String text = chunk.text();
         TextSegment segment = text == null ? null : new TextSegment(chunk.text(), mapToMetadata(chunk.metadata()));
@@ -280,20 +285,6 @@ public class CoherenceEmbeddingStore
             keys.add(new DocumentChunk.Id(new UUID().toString(), 0));
         }
         return keys;
-    }
-
-    /**
-     * Create a {@link Comparator} that sorts a double in reverse order.
-     *
-     * @param keyExtractor  the function to use to extract a double value
-     * @param <T>           the type of value the function extracts from
-     *
-     * @return the result of comparing two extracted doubles in reverse order
-     */
-    private static<T> Comparator<T> reverseComparingDouble(ToDoubleFunction<? super T> keyExtractor) {
-        Objects.requireNonNull(keyExtractor);
-        return (Comparator<T> & Serializable)
-            (c1, c2) -> Double.compare(keyExtractor.applyAsDouble(c2), keyExtractor.applyAsDouble(c1));
     }
 
     /**

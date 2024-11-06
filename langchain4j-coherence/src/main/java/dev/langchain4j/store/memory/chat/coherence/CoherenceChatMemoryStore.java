@@ -23,8 +23,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
  * implement {@code equals()} and {@code hashCode()} and be serializable by
  * the configured Coherence serializer.
  */
-public class CoherenceChatMemoryStore
-        implements ChatMemoryStore {
+public class CoherenceChatMemoryStore implements ChatMemoryStore {
 
     /**
      * The default {@link NamedMap} name.
