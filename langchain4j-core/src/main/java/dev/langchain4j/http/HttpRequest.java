@@ -1,8 +1,6 @@
 package dev.langchain4j.http;
 
 import dev.langchain4j.Experimental;
-import lombok.Builder;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,7 +16,6 @@ public class HttpRequest {
     private final Map<String, String> headers;
     private final String body; // TODO type
 
-    @Builder
     public HttpRequest(HttpMethod method, String url, Map<String, String> headers, String body) {
         this.method = ensureNotNull(method, "method");
         this.url = ensureNotBlank(url, "url");
@@ -43,6 +40,10 @@ public class HttpRequest {
     }
 
     public static class HttpRequestBuilder {
+        private HttpMethod method;
+        private String url;
+        private Map<String, String> headers;
+        private String body;
 
         public HttpRequestBuilder url(String url) {
             this.url = url;
@@ -67,5 +68,45 @@ public class HttpRequest {
             this.headers.put(name, value);
             return this;
         }
+
+        HttpRequestBuilder() {
+        }
+
+        /**
+         * @return {@code this}.
+         */
+        public HttpRequest.HttpRequestBuilder method(final HttpMethod method) {
+            this.method = method;
+            return this;
+        }
+
+        /**
+         * @return {@code this}.
+         */
+        public HttpRequest.HttpRequestBuilder headers(final Map<String, String> headers) {
+            this.headers = headers;
+            return this;
+        }
+
+        /**
+         * @return {@code this}.
+         */
+        public HttpRequest.HttpRequestBuilder body(final String body) {
+            this.body = body;
+            return this;
+        }
+
+        public HttpRequest build() {
+            return new HttpRequest(this.method, this.url, this.headers, this.body);
+        }
+
+        @java.lang.Override
+        public java.lang.String toString() {
+            return "HttpRequest.HttpRequestBuilder(method=" + this.method + ", url=" + this.url + ", headers=" + this.headers + ", body=" + this.body + ")";
+        }
+    }
+
+    public static HttpRequest.HttpRequestBuilder builder() {
+        return new HttpRequest.HttpRequestBuilder();
     }
 }

@@ -1,8 +1,6 @@
 package dev.langchain4j.http;
 
 import dev.langchain4j.Experimental;
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -11,11 +9,10 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
 
-@Slf4j
 @Experimental
 class HttpRequestLogger {
-
-    private static final Set<String> COMMON_SECRET_HEADERS =
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(HttpRequestLogger.class);
+        private static final Set<String> COMMON_SECRET_HEADERS =
             new HashSet<>(asList("authorization", "x-api-key", "x-auth-token"));
 
     static void log(HttpRequest httpRequest) {

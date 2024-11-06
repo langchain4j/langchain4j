@@ -1,15 +1,12 @@
 package dev.langchain4j.http;
 
 import dev.langchain4j.Experimental;
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.Collection;
-
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-@Slf4j
 @Experimental
 public class HttpClientBuilderLoader {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(HttpClientBuilderLoader.class);
 
     public static HttpClientBuilder loadHttpClientBuilder() {
         Collection<HttpClientBuilderFactory> factories = loadFactories(HttpClientBuilderFactory.class);
