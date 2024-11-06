@@ -209,36 +209,42 @@ public class AnthropicMapper {
         }
     }
 
-    public static List<AnthropicTool> toAnthropicTools(List<ToolSpecification> toolSpecifications) {
+    public static List<AnthropicTool> toAnthropicTools(List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
         if (toolSpecifications == null) {
             return null;
         }
         return toolSpecifications.stream()
-                .map(AnthropicMapper::toAnthropicTool)
-                .collect(toList());
+            .map(toolSpecification -> toAnthropicTool(toolSpecification, cacheToolsPrompt))
+            .collect(toList());
     }
 
-    public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification) {
+    public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt) {
+        AnthropicTool. AnthropicToolBuilder toolBuilder;
         if (toolSpecification.parameters() != null) {
             JsonObjectSchema parameters = toolSpecification.parameters();
-            return AnthropicTool.builder()
-                    .name(toolSpecification.name())
-                    .description(toolSpecification.description())
-                    .inputSchema(AnthropicToolSchema.builder()
-                            .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
-                            .required(parameters != null ? parameters.required() : emptyList())
-                            .build())
-                    .build();
+            toolBuilder = AnthropicTool.builder()
+                .name(toolSpecification.name())
+                .description(toolSpecification.description())
+                .inputSchema(AnthropicToolSchema.builder()
+                    .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
+                    .required(parameters != null ? parameters.required() : emptyList())
+                    .build());
+
         } else {
             ToolParameters parameters = toolSpecification.toolParameters();
-            return AnthropicTool.builder()
-                    .name(toolSpecification.name())
-                    .description(toolSpecification.description())
-                    .inputSchema(AnthropicToolSchema.builder()
-                            .properties(parameters != null ? parameters.properties() : emptyMap())
-                            .required(parameters != null ? parameters.required() : emptyList())
-                            .build())
-                    .build();
+            toolBuilder = AnthropicTool.builder()
+                .name(toolSpecification.name())
+                .description(toolSpecification.description())
+                .inputSchema(AnthropicToolSchema.builder()
+                    .properties(parameters != null ? parameters.properties() : emptyMap())
+                    .required(parameters != null ? parameters.required() : emptyList())
+                    .build());
+
         }
+
+        if (cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
+            return toolBuilder.cacheControl(cacheToolsPrompt.cacheControl()).build();
+        }
+        return toolBuilder.build();
     }
 }

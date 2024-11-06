@@ -77,6 +77,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     private final List<String> stopSequences;
     private final List<ChatModelListener> listeners;
     private final boolean cacheSystemMessage;
+    private final boolean cacheTools;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -93,6 +94,8 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
      * @param timeout       The timeout for API requests. Default: 60 seconds
      * @param logRequests   Whether to log the content of API requests using SLF4J. Default: false
      * @param logResponses  Whether to log the content of API responses using SLF4J. Default: false
+     * @param cacheSystemMessage  If true, it should add cache control to all system messages. Default: false
+     * @param cacheTools  If true, it should add cache control to all tools. Default: false
      */
     @Builder
     private AnthropicStreamingChatModel(String baseUrl,
@@ -108,7 +111,8 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                                         Boolean logRequests,
                                         Boolean logResponses,
                                         List<ChatModelListener> listeners,
-                                        Boolean cacheSystemMessage) {
+                                        Boolean cacheSystemMessage,
+                                        Boolean cacheTools) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
@@ -125,6 +129,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
         this.stopSequences = stopSequences;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.cacheSystemMessage = getOrDefault(cacheSystemMessage, false);
+        this.cacheTools = getOrDefault(cacheTools, false);
     }
 
     public static class AnthropicStreamingChatModelBuilder {
@@ -167,15 +172,16 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                           List<ToolSpecification> toolSpecifications,
                           ToolSpecification toolThatMustBeExecuted,
                           StreamingResponseHandler<AiMessage> handler) {
-        AnthropicCacheType cacheType = cacheSystemMessage ? AnthropicCacheType.EPHEMERAL : AnthropicCacheType.NO_CACHE;
+        AnthropicCacheType cacheTypeSystemPrompt = cacheSystemMessage ? AnthropicCacheType.EPHEMERAL : AnthropicCacheType.NO_CACHE;
+        AnthropicCacheType cacheToolsPrompt = cacheTools ? AnthropicCacheType.EPHEMERAL : AnthropicCacheType.NO_CACHE;
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
-        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages, cacheType);
+        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(messages, cacheTypeSystemPrompt);
         ensureNotNull(handler, "handler");
 
         AnthropicCreateMessageRequest.AnthropicCreateMessageRequestBuilder requestBuilder = AnthropicCreateMessageRequest.builder()
                 .stream(true)
                 .model(modelName)
-                .messages(toAnthropicMessages(sanitizedMessages, cacheType))
+                .messages(toAnthropicMessages(sanitizedMessages, AnthropicCacheType.NO_CACHE))
                 .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
@@ -184,10 +190,10 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                 .topK(topK);
 
         if (toolThatMustBeExecuted != null) {
-            requestBuilder.tools(toAnthropicTools(singletonList(toolThatMustBeExecuted)));
+            requestBuilder.tools(toAnthropicTools(singletonList(toolThatMustBeExecuted), cacheToolsPrompt));
             requestBuilder.toolChoice(AnthropicToolChoice.from(toolThatMustBeExecuted.name()));
         } else if (!isNullOrEmpty(toolSpecifications)) {
-            requestBuilder.tools(toAnthropicTools(toolSpecifications));
+            requestBuilder.tools(toAnthropicTools(toolSpecifications, cacheToolsPrompt));
         }
 
         AnthropicCreateMessageRequest request = requestBuilder.build();

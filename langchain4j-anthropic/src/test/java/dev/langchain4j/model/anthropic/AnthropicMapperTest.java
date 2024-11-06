@@ -211,7 +211,7 @@ class AnthropicMapperTest {
     void test_toAnthropicTool(ToolSpecification toolSpecification, AnthropicTool expectedAnthropicTool) {
 
         // when
-        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification);
+        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE);
 
         // then
         assertThat(anthropicTool).isEqualTo(expectedAnthropicTool);

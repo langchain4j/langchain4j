@@ -9,8 +9,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -429,6 +429,48 @@ class AnthropicChatModelIT {
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_execute_tools_with_cache() {
+        // given
+        AnthropicChatModel model = AnthropicChatModel.builder()
+            .baseUrl("https://api.anthropic.com/v1/")
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .version("2023-06-01")
+            .beta("prompt-caching-2024-07-31")
+            .modelName(CLAUDE_3_5_SONNET_20240620)
+            .maxTokens(1024)
+            .timeout(Duration.ofSeconds(30))
+            .maxRetries(1)
+            .logRequests(true)
+            .logResponses(true)
+            .cacheTools(true)
+            .build();
+
+        List<ToolSpecification> toolSpecifications = singletonList(ToolSpecification.builder()
+            .name("calculator")
+            .description("returns a sum of two numbers".repeat(190))
+            .parameters(JsonObjectSchema.builder()
+                .addIntegerProperty("first")
+                .addIntegerProperty("second")
+                .build())
+            .build());
+
+
+        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+
+        // when
+        Response<AiMessage> responseCreateCache = model.generate(singletonList(userMessage), toolSpecifications);
+        Response<AiMessage> responseReadCache = model.generate(singletonList(userMessage), toolSpecifications);
+
+        // then
+        assertThat(responseCreateCache.tokenUsage().cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseCreateCache.tokenUsage().cacheReadInputTokens()).isEqualTo(0);
+
+        assertThat(responseReadCache.tokenUsage().cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(responseReadCache.tokenUsage().cacheReadInputTokens()).isGreaterThan(0);
+
     }
 
     @Test
