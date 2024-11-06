@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
@@ -25,6 +26,7 @@ public interface TokenStream {
      * @param partialResponseHandler lambda that consumes tokens of the response
      * @return token stream instance used to configure or start stream processing
      */
+    @Experimental
     TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
 
     /**
@@ -34,7 +36,6 @@ public interface TokenStream {
      * @return token stream instance used to configure or start stream processing
      * @deprecated Please use {@link #onPartialResponse(Consumer)} instead // TODO
      */
-    @Deprecated(forRemoval = true)
     TokenStream onNext(Consumer<String> tokenHandler);
 
     /**
@@ -64,6 +65,7 @@ public interface TokenStream {
      * @param completeResponseHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
      */
+    @Experimental
     TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler); // TODO name
 
     /**
@@ -73,7 +75,6 @@ public interface TokenStream {
      * @return token stream instance used to configure or start stream processing
      * @deprecated Please use {@link #onCompleteResponse(Consumer)} instead // TODO
      */
-    @Deprecated(forRemoval = true)
     TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler);
 
     /**
