@@ -18,8 +18,8 @@ vectors with SQL.
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-elasticsearch</artifactId>
-    <version>0.35.0</version>
+    <artifactId>langchain4j-community-elasticsearch</artifactId>
+    <version>0.36.0</version>
 </dependency>
 ```
 
