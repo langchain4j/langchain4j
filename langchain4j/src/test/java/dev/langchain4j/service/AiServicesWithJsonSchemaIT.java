@@ -73,21 +73,21 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.married).isFalse();
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addStringProperty("name")
-                                            .addIntegerProperty("age")
-                                            .addNumberProperty("height")
-                                            .addBooleanProperty("married")
-                                            .required("name", "age", "height", "married")
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addStringProperty("name")
+                            .addIntegerProperty("age")
+                            .addNumberProperty("height")
+                            .addBooleanProperty("married")
+                            .required("name", "age", "height", "married")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -116,7 +116,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             PersonListExtractor personExtractor = AiServices.create(PersonListExtractor.class, model);
 
             String text = "Klaus is 37 years old, 1.78m height and single. " +
-                    "Franny is 35 years old, 1.65m height and married.";
+                "Franny is 35 years old, 1.65m height and married.";
 
             // when
             List<PersonListExtractor.Person> people = personExtractor.extractPeopleFrom(text);
@@ -133,26 +133,26 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(people.get(1).married).isTrue();
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("List_of_Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addProperty("items", JsonArraySchema.builder()
-                                                    .items(JsonObjectSchema.builder()
-                                                            .addStringProperty("name")
-                                                            .addIntegerProperty("age")
-                                                            .addNumberProperty("height")
-                                                            .addBooleanProperty("married")
-                                                            .required("name", "age", "height", "married")
-                                                            .build())
-                                                    .build())
-                                            .required("items")
-                                            .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("List_of_Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addProperty("items", JsonArraySchema.builder()
+                                .items(JsonObjectSchema.builder()
+                                    .addStringProperty("name")
+                                    .addIntegerProperty("age")
+                                    .addNumberProperty("height")
+                                    .addBooleanProperty("married")
+                                    .required("name", "age", "height", "married")
                                     .build())
+                                .build())
+                            .required("items")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -181,7 +181,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             PersonSetExtractor personExtractor = AiServices.create(PersonSetExtractor.class, model);
 
             String text = "Klaus is 37 years old, 1.78m height and single. " +
-                    "Franny is 35 years old, 1.65m height and married.";
+                "Franny is 35 years old, 1.65m height and married.";
 
             // when
             Set<PersonSetExtractor.Person> people = personExtractor.extractPeopleFrom(text);
@@ -191,40 +191,40 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             // Use assertThat with filters to ensure each person is in the set
             assertThat(people).anyMatch(person ->
-                    person.name.equals("Klaus") &&
-                            person.age == 37 &&
-                            person.height.equals(1.78) &&
-                            !person.married
+                person.name.equals("Klaus") &&
+                    person.age == 37 &&
+                    person.height.equals(1.78) &&
+                    !person.married
             );
 
             assertThat(people).anyMatch(person ->
-                    person.name.equals("Franny") &&
-                            person.age == 35 &&
-                            person.height.equals(1.65) &&
-                            person.married
+                person.name.equals("Franny") &&
+                    person.age == 35 &&
+                    person.height.equals(1.65) &&
+                    person.married
             );
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Set_of_Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addProperty("items", JsonArraySchema.builder()
-                                                    .items(JsonObjectSchema.builder()
-                                                            .addStringProperty("name")
-                                                            .addIntegerProperty("age")
-                                                            .addNumberProperty("height")
-                                                            .addBooleanProperty("married")
-                                                            .required("name", "age", "height", "married")
-                                                            .build())
-                                                    .build())
-                                            .required("items")
-                                            .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Set_of_Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addProperty("items", JsonArraySchema.builder()
+                                .items(JsonObjectSchema.builder()
+                                    .addStringProperty("name")
+                                    .addIntegerProperty("age")
+                                    .addNumberProperty("height")
+                                    .addBooleanProperty("married")
+                                    .required("name", "age", "height", "married")
                                     .build())
+                                .build())
+                            .required("items")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -250,8 +250,8 @@ public abstract class AiServicesWithJsonSchemaIT {
             MaritalStatusExtractor personExtractor = AiServices.create(MaritalStatusExtractor.class, model);
 
             String text = "Klaus is 37 years old, 1.78m height and single. " +
-                    "Franny is 35 years old, 1.65m height and married." +
-                    "Staniel is 33 years old, 1.70m height and married.";
+                "Franny is 35 years old, 1.65m height and married." +
+                "Staniel is 33 years old, 1.70m height and married.";
 
             // when
             List<MaritalStatusExtractor.MaritalStatus> statuses = personExtractor.extractMaritalStatusFrom(text);
@@ -264,25 +264,26 @@ public abstract class AiServicesWithJsonSchemaIT {
             maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.SINGLE);
             maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.MARRIED);
             maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.MARRIED);
-            Assertions.assertTrue(statuses.containsAll(maritalStatuses));
+            assertThat(statuses).containsExactly(MaritalStatusExtractor.MaritalStatus.SINGLE,
+                MaritalStatusExtractor.MaritalStatus.MARRIED, MaritalStatusExtractor.MaritalStatus.MARRIED);
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("List_of_MaritalStatus")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addProperty("items", JsonArraySchema.builder()
-                                                    .items(JsonEnumSchema.builder()
-                                                            .enumValues("SINGLE", "MARRIED")
-                                                            .build())
-                                                    .build())
-                                            .required("items")
-                                            .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("List_of_MaritalStatus")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addProperty("items", JsonArraySchema.builder()
+                                .items(JsonEnumSchema.builder()
+                                    .enumValues("SINGLE", "MARRIED")
                                     .build())
+                                .build())
+                            .required("items")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -373,20 +374,20 @@ public abstract class AiServicesWithJsonSchemaIT {
             StatusExtractor.MaritalStatus status = personExtractor.extractMaritalStatusFrom(text);
 
             // then
-            Assertions.assertSame(status, StatusExtractor.MaritalStatus.SINGLE);
+            assertThat(status).isEqualTo(StatusExtractor.MaritalStatus.SINGLE);
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("MaritalStatus")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addEnumProperty("MaritalStatus", List.of("SINGLE", "MARRIED"))
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("MaritalStatus")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addEnumProperty("MaritalStatus", List.of("SINGLE", "MARRIED"))
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -429,26 +430,26 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.billingAddress.city).isEqualTo("New York");
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addStringProperty("name")
-                                            .addProperty("shippingAddress", JsonObjectSchema.builder()
-                                                    .addStringProperty("city")
-                                                    .required("city")
-                                                    .build())
-                                            .addProperty("billingAddress", JsonObjectSchema.builder()
-                                                    .addStringProperty("city")
-                                                    .required("city")
-                                                    .build())
-                                            .required("name", "shippingAddress", "billingAddress")
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addStringProperty("name")
+                            .addProperty("shippingAddress", JsonObjectSchema.builder()
+                                .addStringProperty("city")
+                                .required("city")
+                                .build())
+                            .addProperty("billingAddress", JsonObjectSchema.builder()
+                                .addStringProperty("city")
+                                .required("city")
+                                .build())
+                            .required("name", "shippingAddress", "billingAddress")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -490,19 +491,19 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.maritalStatus).isEqualTo(SINGLE);
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addStringProperty("name")
-                                            .addEnumProperty("maritalStatus", List.of("SINGLE", "MARRIED"))
-                                            .required("name", "maritalStatus")
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addStringProperty("name")
+                            .addEnumProperty("maritalStatus", List.of("SINGLE", "MARRIED"))
+                            .required("name", "maritalStatus")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -539,21 +540,21 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.favouriteColors).containsExactly("orange", "green");
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addStringProperty("name")
-                                            .addProperty("favouriteColors", JsonArraySchema.builder()
-                                                    .items(new JsonStringSchema())
-                                                    .build())
-                                            .required("name", "favouriteColors")
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addStringProperty("name")
+                            .addProperty("favouriteColors", JsonArraySchema.builder()
+                                .items(new JsonStringSchema())
+                                .build())
+                            .required("name", "favouriteColors")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -589,21 +590,21 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.favouriteColors).containsExactly("orange", "green");
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addStringProperty("name")
-                                            .addProperty("favouriteColors", JsonArraySchema.builder()
-                                                    .items(new JsonStringSchema())
-                                                    .build())
-                                            .required("name", "favouriteColors")
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addStringProperty("name")
+                            .addProperty("favouriteColors", JsonArraySchema.builder()
+                                .items(new JsonStringSchema())
+                                .build())
+                            .required("name", "favouriteColors")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -640,21 +641,21 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.favouriteColors).containsExactly("orange", "green");
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addStringProperty("name")
-                                            .addProperty("favouriteColors", JsonArraySchema.builder()
-                                                    .items(new JsonStringSchema())
-                                                    .build())
-                                            .required("name", "favouriteColors")
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addStringProperty("name")
+                            .addProperty("favouriteColors", JsonArraySchema.builder()
+                                .items(new JsonStringSchema())
+                                .build())
+                            .required("name", "favouriteColors")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -698,24 +699,24 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.pets[1].name).isEqualTo("Muffin");
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addStringProperty("name")
-                                            .addProperty("pets", JsonArraySchema.builder()
-                                                    .items(JsonObjectSchema.builder()
-                                                            .addStringProperty("name")
-                                                            .required("name")
-                                                            .build())
-                                                    .build())
-                                            .required("name", "pets")
-                                            .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addStringProperty("name")
+                            .addProperty("pets", JsonArraySchema.builder()
+                                .items(JsonObjectSchema.builder()
+                                    .addStringProperty("name")
+                                    .required("name")
                                     .build())
+                                .build())
+                            .required("name", "pets")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -759,24 +760,24 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.pets.get(1).name).isEqualTo("Muffin");
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addStringProperty("name")
-                                            .addProperty("pets", JsonArraySchema.builder()
-                                                    .items(JsonObjectSchema.builder()
-                                                            .addStringProperty("name")
-                                                            .required("name")
-                                                            .build())
-                                                    .build())
-                                            .required("name", "pets")
-                                            .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addStringProperty("name")
+                            .addProperty("pets", JsonArraySchema.builder()
+                                .items(JsonObjectSchema.builder()
+                                    .addStringProperty("name")
+                                    .required("name")
                                     .build())
+                                .build())
+                            .required("name", "pets")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -821,24 +822,24 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(iterator.next().name).isEqualTo("Muffin");
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .addStringProperty("name")
-                                            .addProperty("pets", JsonArraySchema.builder()
-                                                    .items(JsonObjectSchema.builder()
-                                                            .addStringProperty("name")
-                                                            .required("name")
-                                                            .build())
-                                                    .build())
-                                            .required("name", "pets")
-                                            .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addStringProperty("name")
+                            .addProperty("pets", JsonArraySchema.builder()
+                                .items(JsonObjectSchema.builder()
+                                    .addStringProperty("name")
+                                    .required("name")
                                     .build())
+                                .build())
+                            .required("name", "pets")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -881,25 +882,25 @@ public abstract class AiServicesWithJsonSchemaIT {
 
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", new JsonStringSchema());
-                                                put("groups", JsonArraySchema.builder()
-                                                        .items(JsonEnumSchema.builder()
-                                                                .enumValues("A", "B", "C")
-                                                                .build())
-                                                        .build());
-                                            }})
-                                            .required("name", "groups")
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                put("name", new JsonStringSchema());
+                                put("groups", JsonArraySchema.builder()
+                                    .items(JsonEnumSchema.builder()
+                                        .enumValues("A", "B", "C")
+                                        .build())
+                                    .build());
+                            }})
+                            .required("name", "groups")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -941,25 +942,25 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.groups).containsExactly(PersonExtractor11.Group.A, PersonExtractor11.Group.C);
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", new JsonStringSchema());
-                                                put("groups", JsonArraySchema.builder()
-                                                        .items(JsonEnumSchema.builder()
-                                                                .enumValues("A", "B", "C")
-                                                                .build())
-                                                        .build());
-                                            }})
-                                            .required("name", "groups")
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                put("name", new JsonStringSchema());
+                                put("groups", JsonArraySchema.builder()
+                                    .items(JsonEnumSchema.builder()
+                                        .enumValues("A", "B", "C")
+                                        .build())
+                                    .build());
+                            }})
+                            .required("name", "groups")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -1001,25 +1002,25 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.groups).containsExactly(PersonExtractor12.Group.A, PersonExtractor12.Group.C);
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", new JsonStringSchema());
-                                                put("groups", JsonArraySchema.builder()
-                                                        .items(JsonEnumSchema.builder()
-                                                                .enumValues("A", "B", "C")
-                                                                .build())
-                                                        .build());
-                                            }})
-                                            .required("name", "groups")
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                put("name", new JsonStringSchema());
+                                put("groups", JsonArraySchema.builder()
+                                    .items(JsonEnumSchema.builder()
+                                        .enumValues("A", "B", "C")
+                                        .build())
+                                    .build());
+                            }})
+                            .required("name", "groups")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -1058,62 +1059,62 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.birthDate).isEqualTo(LocalDate.of(1976, 8, 12));
             assertThat(person.birthTime).isEqualTo(LocalTime.of(14, 43));
             assertThat(person.birthDateTime)
-                    .isEqualTo(LocalDateTime.of(1976, 8, 12, 14, 43));
+                .isEqualTo(LocalDateTime.of(1976, 8, 12, 14, 43));
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                put("name", new JsonStringSchema());
+                                put("birthDate", JsonObjectSchema.builder()
+                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                        put("year", new JsonIntegerSchema());
+                                        put("month", new JsonIntegerSchema());
+                                        put("day", new JsonIntegerSchema());
+                                    }})
+                                    .required("year", "month", "day")
+                                    .build());
+                                put("birthTime", JsonObjectSchema.builder()
+                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                        put("hour", new JsonIntegerSchema());
+                                        put("minute", new JsonIntegerSchema());
+                                        put("second", new JsonIntegerSchema());
+                                        put("nano", new JsonIntegerSchema());
+                                    }})
+                                    .required("hour", "minute", "second", "nano")
+                                    .build());
+                                put("birthDateTime", JsonObjectSchema.builder()
+                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                        put("date", JsonObjectSchema.builder()
                                             .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", new JsonStringSchema());
-                                                put("birthDate", JsonObjectSchema.builder()
-                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("year", new JsonIntegerSchema());
-                                                            put("month", new JsonIntegerSchema());
-                                                            put("day", new JsonIntegerSchema());
-                                                        }})
-                                                        .required("year", "month", "day")
-                                                        .build());
-                                                put("birthTime", JsonObjectSchema.builder()
-                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("hour", new JsonIntegerSchema());
-                                                            put("minute", new JsonIntegerSchema());
-                                                            put("second", new JsonIntegerSchema());
-                                                            put("nano", new JsonIntegerSchema());
-                                                        }})
-                                                        .required("hour", "minute", "second", "nano")
-                                                        .build());
-                                                put("birthDateTime", JsonObjectSchema.builder()
-                                                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                            put("date", JsonObjectSchema.builder()
-                                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                        put("year", new JsonIntegerSchema());
-                                                                        put("month", new JsonIntegerSchema());
-                                                                        put("day", new JsonIntegerSchema());
-                                                                    }})
-                                                                    .required("year", "month", "day")
-                                                                    .build());
-                                                            put("time", JsonObjectSchema.builder()
-                                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                                        put("hour", new JsonIntegerSchema());
-                                                                        put("minute", new JsonIntegerSchema());
-                                                                        put("second", new JsonIntegerSchema());
-                                                                        put("nano", new JsonIntegerSchema());
-                                                                    }})
-                                                                    .required("hour", "minute", "second", "nano")
-                                                                    .build());
-                                                        }})
-                                                        .required("date", "time")
-                                                        .build());
+                                                put("year", new JsonIntegerSchema());
+                                                put("month", new JsonIntegerSchema());
+                                                put("day", new JsonIntegerSchema());
                                             }})
-                                            .required("name", "birthDate", "birthTime", "birthDateTime")
-                                            .build())
-                                    .build())
+                                            .required("year", "month", "day")
+                                            .build());
+                                        put("time", JsonObjectSchema.builder()
+                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                                put("hour", new JsonIntegerSchema());
+                                                put("minute", new JsonIntegerSchema());
+                                                put("second", new JsonIntegerSchema());
+                                                put("nano", new JsonIntegerSchema());
+                                            }})
+                                            .required("hour", "minute", "second", "nano")
+                                            .build());
+                                    }})
+                                    .required("date", "time")
+                                    .build());
+                            }})
+                            .required("name", "birthDate", "birthTime", "birthDateTime")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -1149,20 +1150,20 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.name).isEqualTo("Klaus");
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", new JsonStringSchema());
-                                            }})
-                                            .required("name")
-                                            .build())
-                                    .build())
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                put("name", new JsonStringSchema());
+                            }})
+                            .required("name")
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
@@ -1205,36 +1206,36 @@ public abstract class AiServicesWithJsonSchemaIT {
             String reference = generateUUIDFrom(PersonExtractor15.Person.class.getName());
 
             verify(model).chat(ChatRequest.builder()
-                    .messages(singletonList(userMessage(text)))
-                    .responseFormat(ResponseFormat.builder()
-                            .type(JSON)
-                            .jsonSchema(JsonSchema.builder()
-                                    .name("Person")
-                                    .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", new JsonStringSchema());
-                                                put("children", JsonArraySchema.builder()
-                                                        .items(JsonReferenceSchema.builder()
-                                                                .reference(reference)
-                                                                .build())
-                                                        .build());
-                                            }})
-                                            .required("name", "children")
-                                            .definitions(singletonMap(reference, JsonObjectSchema.builder()
-                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                        put("name", new JsonStringSchema());
-                                                        put("children", JsonArraySchema.builder()
-                                                                .items(JsonReferenceSchema.builder()
-                                                                        .reference(reference)
-                                                                        .build())
-                                                                .build());
-                                                    }})
-                                                    .required("name", "children")
-                                                    .build()))
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                put("name", new JsonStringSchema());
+                                put("children", JsonArraySchema.builder()
+                                    .items(JsonReferenceSchema.builder()
+                                        .reference(reference)
+                                        .build())
+                                    .build());
+                            }})
+                            .required("name", "children")
+                            .definitions(singletonMap(reference, JsonObjectSchema.builder()
+                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                                    put("name", new JsonStringSchema());
+                                    put("children", JsonArraySchema.builder()
+                                        .items(JsonReferenceSchema.builder()
+                                            .reference(reference)
                                             .build())
-                                    .build())
+                                        .build());
+                                }})
+                                .required("name", "children")
+                                .build()))
                             .build())
-                    .build());
+                        .build())
+                    .build())
+                .build());
             verify(model).supportedCapabilities();
         }
     }
