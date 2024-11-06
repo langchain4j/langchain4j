@@ -14,6 +14,8 @@ import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.*;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
@@ -230,29 +232,53 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         this.enhancements = enhancements;
         this.seed = seed;
         this.responseFormat = responseFormat;
-        this.strictJsonSchema = strictJsonSchema;
+        this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, null, null);
+        return generate(messages, null, null, null);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null);
+        return generate(messages, toolSpecifications, null, null);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, singletonList(toolSpecification), toolSpecification);
+        return generate(messages, singletonList(toolSpecification), toolSpecification, null);
+    }
+
+    @Override
+    public ChatResponse chat(ChatRequest request) {
+        Response<AiMessage> response = generate(
+                request.messages(),
+                request.toolSpecifications(),
+                null,
+                getOrDefault(toAzureOpenAiResponseFormat(request.responseFormat(), strictJsonSchema), this.responseFormat)
+        );
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .build();
     }
 
     private Response<AiMessage> generate(List<ChatMessage> messages,
                                          List<ToolSpecification> toolSpecifications,
-                                         ToolSpecification toolThatMustBeExecuted
+                                         ToolSpecification toolThatMustBeExecuted,
+                                         ChatCompletionsResponseFormat responseFormat
     ) {
+
+        if (responseFormat != null
+                && responseFormat instanceof ChatCompletionsJsonSchemaResponseFormat
+                && ((ChatCompletionsJsonSchemaResponseFormat) responseFormat).getJsonSchema() == null) {
+
+            responseFormat = null;
+        }
+
         ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(messages))
                 .setModel(deploymentName)
                 .setMaxTokens(maxTokens)

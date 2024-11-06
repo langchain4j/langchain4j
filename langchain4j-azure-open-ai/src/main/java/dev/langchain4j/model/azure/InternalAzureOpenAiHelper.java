@@ -19,13 +19,19 @@ import com.azure.core.http.policy.RetryOptions;
 import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
+import com.azure.json.JsonReader;
+import com.azure.json.JsonSerializable;
+import com.azure.json.JsonToken;
+import com.azure.json.JsonWriter;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -33,6 +39,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -41,6 +48,7 @@ import java.util.*;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
@@ -411,5 +419,26 @@ class InternalAzureOpenAiHelper {
                 .finishReason(response.finishReason())
                 .aiMessage(response.content())
                 .build();
+    }
+
+    static ChatCompletionsResponseFormat toAzureOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
+        if (responseFormat == null || responseFormat.type() == TEXT) {
+            return null;
+        }
+
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
+        if (jsonSchema == null) {
+            return new ChatCompletionsJsonResponseFormat();
+        } else {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+                throw new IllegalArgumentException("For Azure OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: " + jsonSchema.rootElement().getClass());
+            }
+            ChatCompletionsJsonSchemaResponseFormatJsonSchema schema = new ChatCompletionsJsonSchemaResponseFormatJsonSchema(jsonSchema.name());
+            schema.setStrict(strict);
+            Parameters parameters = new Parameters();
+            parameters.setProperties(((JsonObjectSchema) jsonSchema.rootElement()).properties());
+            schema.setSchema(BinaryData.fromObject(parameters));
+            return new ChatCompletionsJsonSchemaResponseFormat(schema);
+        }
     }
 }
