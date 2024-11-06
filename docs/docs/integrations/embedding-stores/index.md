@@ -14,6 +14,7 @@ sidebar_position: 0
 | [Cassandra](/integrations/embedding-stores/cassandra)                                 | ✅                |                            |                     |
 | [Chroma](/integrations/embedding-stores/chroma)                                       | ✅                | ✅                          | ✅                   |
 | [ClickHouse](/integrations/embedding-stores/clickhouse)                               | ✅                | ✅                          | ✅                   |
+| [Coherence](/integrations/embedding-stores/coherence)                                 | ✅                | ✅                          | ✅                   |
 | [Couchbase](/integrations/embedding-stores/couchbase)                                 | ✅                |                            | ✅                   |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                          | ✅                   |
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                |                            |                     |
