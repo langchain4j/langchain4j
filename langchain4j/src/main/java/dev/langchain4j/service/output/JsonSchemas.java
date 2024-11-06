@@ -51,13 +51,13 @@ public class JsonSchemas {
             rawClass = resolveFirstGenericParameterClass(returnType);
             Class<?> finalRawClass = rawClass;
             if (finalRawClass != null && finalRawClass.isEnum()) {
-                jsonSchema = getJsonSchema(returnType, rawClass, finalRawClass,
+                jsonSchema = getJsonSchema(returnType, rawClass,
                     JsonEnumSchema.builder()
                         .enumValues(stream(finalRawClass.getEnumConstants()).map(Object::toString).toList())
                         .build());
             } else {
                 assert rawClass != null;
-                jsonSchema = getJsonSchema(returnType, rawClass, finalRawClass,
+                jsonSchema = getJsonSchema(returnType, rawClass,
                     jsonObjectOrReferenceSchemaFrom(finalRawClass, null, new LinkedHashMap<>(), true));
             }
         } else {
@@ -81,14 +81,16 @@ public class JsonSchemas {
         return Optional.of(jsonSchema);
     }
 
-    private static JsonSchema getJsonSchema(Type returnType, Class<?> rawClass, Class<?> finalRawClass, JsonSchemaElement items) {
+    private static JsonSchema getJsonSchema(Type returnType, Class<?> rawClass, JsonSchemaElement items) {
+        String collectionName = getRawClass(returnType).getSimpleName();
+
         return JsonSchema.builder()
-            .name(getRawClass(returnType).getSimpleName() + "_of_" + rawClass.getSimpleName())
+            .name(collectionName + "_of_" + rawClass.getSimpleName())
             .rootElement(JsonObjectSchema.builder()
-                .addProperty("array", JsonArraySchema.builder()
+                .addProperty("items", JsonArraySchema.builder()
                     .items(items)
                     .build())
-                .required("array")
+                .required("items")
                 .build())
             .build();
     }

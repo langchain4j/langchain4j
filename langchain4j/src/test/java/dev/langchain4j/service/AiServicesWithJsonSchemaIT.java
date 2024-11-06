@@ -102,7 +102,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             boolean married;
         }
 
-        List<Person> extractPersonFrom(String text);
+        List<Person> extractPeopleFrom(String text);
     }
 
     @Test
@@ -119,7 +119,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                     "Franny is 35 years old, 1.65m height and married.";
 
             // when
-            List<PersonListExtractor.Person> people = personExtractor.extractPersonFrom(text);
+            List<PersonListExtractor.Person> people = personExtractor.extractPeopleFrom(text);
 
             // then
             assertThat(people.get(0).name).isEqualTo("Klaus");
@@ -139,7 +139,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("List_of_Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .addProperty("array", JsonArraySchema.builder()
+                                            .addProperty("items", JsonArraySchema.builder()
                                                     .items(JsonObjectSchema.builder()
                                                             .addStringProperty("name")
                                                             .addIntegerProperty("age")
@@ -148,7 +148,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                             .required("name", "age", "height", "married")
                                                             .build())
                                                     .build())
-                                            .required("array")
+                                            .required("items")
                                             .build())
                                     .build())
                             .build())
@@ -167,7 +167,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             boolean married;
         }
 
-        Set<Person> extractPersonFrom(String text);
+        Set<Person> extractPeopleFrom(String text);
     }
 
     @Test
@@ -181,10 +181,10 @@ public abstract class AiServicesWithJsonSchemaIT {
             PersonSetExtractor personExtractor = AiServices.create(PersonSetExtractor.class, model);
 
             String text = "Klaus is 37 years old, 1.78m height and single. " +
-                    "Franny is 35 years old, 1.65m height and single.";
+                    "Franny is 35 years old, 1.65m height and married.";
 
             // when
-            Set<PersonSetExtractor.Person> people = personExtractor.extractPersonFrom(text);
+            Set<PersonSetExtractor.Person> people = personExtractor.extractPeopleFrom(text);
 
             // then
             assertThat(people).hasSize(2);
@@ -201,7 +201,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                     person.name.equals("Franny") &&
                             person.age == 35 &&
                             person.height.equals(1.65) &&
-                            !person.married
+                            person.married
             );
 
             verify(model).chat(ChatRequest.builder()
@@ -211,7 +211,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Set_of_Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .addProperty("array", JsonArraySchema.builder()
+                                            .addProperty("items", JsonArraySchema.builder()
                                                     .items(JsonObjectSchema.builder()
                                                             .addStringProperty("name")
                                                             .addIntegerProperty("age")
@@ -220,7 +220,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                             .required("name", "age", "height", "married")
                                                             .build())
                                                     .build())
-                                            .required("array")
+                                            .required("items")
                                             .build())
                                     .build())
                             .build())
@@ -273,12 +273,12 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("List_of_MaritalStatus")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .addProperty("array", JsonArraySchema.builder()
+                                            .addProperty("items", JsonArraySchema.builder()
                                                     .items(JsonEnumSchema.builder()
                                                             .enumValues("SINGLE", "MARRIED")
                                                             .build())
                                                     .build())
-                                            .required("array")
+                                            .required("items")
                                             .build())
                                     .build())
                             .build())
@@ -332,12 +332,12 @@ public abstract class AiServicesWithJsonSchemaIT {
                     .jsonSchema(JsonSchema.builder()
                         .name("Set_of_WeatherCharacteristic")
                         .rootElement(JsonObjectSchema.builder()
-                            .addProperty("array", JsonArraySchema.builder()
+                            .addProperty("items", JsonArraySchema.builder()
                                 .items(JsonEnumSchema.builder()
                                     .enumValues("SUNNY", "RAINY", "CLOUDY", "WINDY")
                                     .build())
                                 .build())
-                            .required("array")
+                            .required("items")
                             .build())
                         .build())
                     .build())

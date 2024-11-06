@@ -75,7 +75,7 @@ public class ServiceOutputParser {
 
         try {
             if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
-                return Json.fromJson(Json.toJson(Json.fromJson(text, Map.class).get("array")), returnType);
+                return Json.fromJson(Json.toJson(Json.fromJson(text, Map.class).get("items")), returnType);
             } else {
                 return Json.fromJson(text, returnType);
             }
@@ -99,10 +99,10 @@ public class ServiceOutputParser {
         Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
 
         if (rawClass == String.class
-                || rawClass == AiMessage.class
-                || rawClass == TokenStream.class
-                || rawClass == Response.class
-                || rawClass == Map.class) {
+            || rawClass == AiMessage.class
+            || rawClass == TokenStream.class
+            || rawClass == Response.class
+            || rawClass == Map.class) {
             return "";
         }
 
@@ -116,8 +116,8 @@ public class ServiceOutputParser {
             String formatInstructions = outputParser.get().formatInstructions();
 
             if (rawClass == List.class ||
-                    rawClass == Set.class ||
-                    rawClass.isEnum()) {
+                rawClass == Set.class ||
+                rawClass.isEnum()) {
                 // In these cases complete instruction is already
                 // constructed by concrete output parsers.
                 return formatInstructions;
@@ -135,7 +135,7 @@ public class ServiceOutputParser {
         if (jsonStructure.replaceAll("\\s", "").equals("{}")) {
             if (returnType.toString().contains("reactor.core.publisher.Flux")) {
                 throw illegalConfiguration("Please import langchain4j-reactor module " +
-                        "if you wish to use Flux<String> as a method return type");
+                    "if you wish to use Flux<String> as a method return type");
             }
             throw illegalConfiguration("Illegal method return type: " + returnType);
         }
@@ -179,7 +179,7 @@ public class ServiceOutputParser {
             Type[] typeArguments = parameterizedType.getActualTypeArguments();
 
             if (parameterizedType.getRawType().equals(List.class)
-                    || parameterizedType.getRawType().equals(Set.class)) {
+                || parameterizedType.getRawType().equals(Set.class)) {
                 return format("array of %s", simpleNameOrJsonStructure((Class<?>) typeArguments[0], visited));
             }
         } else if (field.getType().isArray()) {
@@ -194,8 +194,8 @@ public class ServiceOutputParser {
     private static String simpleNameOrJsonStructure(Class<?> structured, Set<Class<?>> visited) {
         String simpleTypeName = simpleTypeName(structured);
         if (structured.getPackage() == null
-                || structured.getPackage().getName().startsWith("java.")
-                || visited.contains(structured)) {
+            || structured.getPackage().getName().startsWith("java.")
+            || visited.contains(structured)) {
             return simpleTypeName;
         } else {
             visited.add(structured);
