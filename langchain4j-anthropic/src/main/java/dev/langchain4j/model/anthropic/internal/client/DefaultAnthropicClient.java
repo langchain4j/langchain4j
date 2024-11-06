@@ -394,7 +394,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
         };
 
-        Call<ResponseBody> call = anthropicApi.streamMessage(apiKey, version, request);
+        Call<ResponseBody> call = anthropicApi.streamMessage(apiKey, version, toBeta(request), request);
         EventSources.createFactory(okHttpClient).newEventSource(call.request(), eventSourceListener);
     }
 }

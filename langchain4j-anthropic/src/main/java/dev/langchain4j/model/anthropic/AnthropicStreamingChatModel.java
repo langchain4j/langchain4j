@@ -95,7 +95,8 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
      * @param logRequests   Whether to log the content of API requests using SLF4J. Default: false
      * @param logResponses  Whether to log the content of API responses using SLF4J. Default: false
      * @param cacheSystemMessage  If true, it should add cache control to all system messages. Default: false
-     * @param cacheTools  If true, it should add cache control to all tools. Default: false
+     * @param cacheTools    If true, it should add cache control to all tools. Default: false
+     * @param beta          The value of the "anthropic-beta" HTTP header. It is used when tools are present in the request.
      */
     @Builder
     private AnthropicStreamingChatModel(String baseUrl,
@@ -112,10 +113,12 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                                         Boolean logResponses,
                                         List<ChatModelListener> listeners,
                                         Boolean cacheSystemMessage,
-                                        Boolean cacheTools) {
+                                        Boolean cacheTools,
+                                        String beta) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
+                .beta(getOrDefault(beta, "tools-2024-04-04"))
                 .version(getOrDefault(version, "2023-06-01"))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
