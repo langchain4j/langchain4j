@@ -3,8 +3,7 @@ package dev.langchain4j.model.chat.request;
 /**
  * TODO
  */
-public enum ToolMode {
-    // TODO name: ToolChoice? FunctionMode?
+public enum ToolChoice {
     // TODO package
 
     /**

@@ -24,7 +24,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolMode() {
+    protected boolean supportsToolChoice() {
         return true;
     }
 }

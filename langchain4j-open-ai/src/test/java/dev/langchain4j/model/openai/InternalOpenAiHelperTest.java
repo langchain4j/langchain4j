@@ -8,7 +8,7 @@ import dev.ai4j.openai4j.chat.ToolCall;
 import dev.ai4j.openai4j.chat.ToolChoiceMode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.request.ToolMode;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -142,14 +142,14 @@ class InternalOpenAiHelperTest {
     }
 
     @Test
-    void should_map_tool_mode() {
-        assertThat(toOpenAiToolChoice(ToolMode.AUTO)).isEqualTo(ToolChoiceMode.AUTO);
-        assertThat(toOpenAiToolChoice(ToolMode.ANY)).isEqualTo(ToolChoiceMode.REQUIRED);
+    void should_map_tool_choice() {
+        assertThat(toOpenAiToolChoice(ToolChoice.AUTO)).isEqualTo(ToolChoiceMode.AUTO);
+        assertThat(toOpenAiToolChoice(ToolChoice.ANY)).isEqualTo(ToolChoiceMode.REQUIRED);
     }
 
     @ParameterizedTest
     @EnumSource
-    void should_map_all_tool_modes(ToolMode toolMode) {
-        assertThat(toOpenAiToolChoice(toolMode)).isNotNull();
+    void should_map_all_tool_choices(ToolChoice toolChoice) {
+        assertThat(toOpenAiToolChoice(toolChoice)).isNotNull();
     }
 }

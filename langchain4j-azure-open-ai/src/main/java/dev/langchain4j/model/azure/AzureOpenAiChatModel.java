@@ -22,7 +22,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.ToolMode;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -39,7 +39,7 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
-import static dev.langchain4j.model.chat.request.ToolMode.ANY;
+import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 
@@ -249,7 +249,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         Response<AiMessage> response = generate(
             chatRequest.messages(),
             chatRequest.toolSpecifications(),
-            chatRequest.toolMode()
+            chatRequest.toolChoice()
         );
 
         return ChatResponse.builder()
@@ -276,7 +276,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     private Response<AiMessage> generate(List<ChatMessage> messages,
                                          List<ToolSpecification> toolSpecifications,
-                                         ToolMode toolMode
+                                         ToolChoice toolChoice
     ) {
         ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(messages))
                 .setModel(deploymentName)
@@ -297,8 +297,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         if (!isNullOrEmpty(toolSpecifications)) {
             options.setTools(toToolDefinitions(toolSpecifications));
         }
-        if (toolMode != null) {
-            options.setToolChoice(toToolChoice(toolMode));
+        if (toolChoice != null) {
+            options.setToolChoice(toToolChoice(toolChoice));
         }
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);

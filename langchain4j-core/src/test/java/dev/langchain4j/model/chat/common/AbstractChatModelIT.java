@@ -16,7 +16,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
-import static dev.langchain4j.model.chat.request.ToolMode.ANY;
+import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -119,7 +119,7 @@ public abstract class AbstractChatModelIT {
         return true; // TODO check model capability instead?
     }
 
-    @EnabledIf("supportsToolMode")
+    @EnabledIf("supportsToolChoice")
     @ParameterizedTest
     @MethodSource("models")
     void should_force_LLM_to_call_any_tool(ChatLanguageModel model) {
@@ -143,7 +143,7 @@ public abstract class AbstractChatModelIT {
         ChatRequest chatRequest = ChatRequest.builder()
             .messages(UserMessage.from("I live in Munich"))
             .toolSpecifications(weatherTool, calculatorTool)
-            .toolMode(ANY) // this will FORCE the LLM to call any tool
+            .toolChoice(ANY) // this will FORCE the LLM to call any tool
             .build();
 
         // when
@@ -168,7 +168,7 @@ public abstract class AbstractChatModelIT {
         }
     }
 
-    @EnabledIf("supportsToolMode")
+    @EnabledIf("supportsToolChoice")
     @ParameterizedTest
     @MethodSource("models")
     void should_force_LLM_to_call_specific_tool(ChatLanguageModel model) {
@@ -184,7 +184,7 @@ public abstract class AbstractChatModelIT {
         ChatRequest chatRequest = ChatRequest.builder()
             .messages(UserMessage.from("I live in Munich"))
             .toolSpecifications(weatherTool)
-            .toolMode(ANY) // this will FORCE the LLM to call weatherTool
+            .toolChoice(ANY) // this will FORCE the LLM to call weatherTool
             .build();
 
         // when
@@ -211,7 +211,7 @@ public abstract class AbstractChatModelIT {
 
     // TODO test responseFormat
 
-    protected boolean supportsToolMode() {
+    protected boolean supportsToolChoice() {
         return false;
     }
 

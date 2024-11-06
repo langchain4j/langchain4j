@@ -31,7 +31,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ToolMode;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -548,8 +548,8 @@ public class InternalOpenAiHelper {
         }
     }
 
-    public static ToolChoiceMode toOpenAiToolChoice(ToolMode toolMode) {
-        return switch (toolMode) {
+    public static ToolChoiceMode toOpenAiToolChoice(ToolChoice toolChoice) {
+        return switch (toolChoice) {
             case AUTO -> ToolChoiceMode.AUTO;
             case ANY -> ToolChoiceMode.REQUIRED;
         };

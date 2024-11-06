@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static dev.langchain4j.model.chat.request.ToolMode.ANY;
+import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -198,7 +198,7 @@ public abstract class AbstractStreamingChatModelIT {
         return true;
     }
 
-    @EnabledIf("supportsToolMode")
+    @EnabledIf("supportsToolChoice")
     @ParameterizedTest
     @MethodSource("models")
     void should_force_LLM_to_call_any_tool(StreamingChatLanguageModel model) throws Exception {
@@ -222,7 +222,7 @@ public abstract class AbstractStreamingChatModelIT {
         ChatRequest chatRequest = ChatRequest.builder()
             .messages(UserMessage.from("I live in Munich"))
             .toolSpecifications(weatherTool, calculatorTool)
-            .toolMode(ANY) // this will FORCE the LLM to call any tool
+            .toolChoice(ANY) // this will FORCE the LLM to call any tool
             .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
@@ -282,7 +282,7 @@ public abstract class AbstractStreamingChatModelIT {
         }
     }
 
-    @EnabledIf("supportsToolMode")
+    @EnabledIf("supportsToolChoice")
     @ParameterizedTest
     @MethodSource("models")
     void should_force_LLM_to_call_specific_tool(StreamingChatLanguageModel model) throws Exception {
@@ -298,7 +298,7 @@ public abstract class AbstractStreamingChatModelIT {
         ChatRequest chatRequest = ChatRequest.builder()
             .messages(UserMessage.from("I live in Munich"))
             .toolSpecifications(weatherTool)
-            .toolMode(ANY) // this will FORCE the LLM to call weatherTool
+            .toolChoice(ANY) // this will FORCE the LLM to call weatherTool
             .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
@@ -358,7 +358,7 @@ public abstract class AbstractStreamingChatModelIT {
         }
     }
 
-    protected boolean supportsToolMode() {
+    protected boolean supportsToolChoice() {
         return false;
     }
 

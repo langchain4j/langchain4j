@@ -20,7 +20,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ToolMode;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -42,7 +42,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ToolMode.ANY;
+import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
@@ -170,7 +170,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         return chat(
                 chatRequest.messages(),
                 chatRequest.toolSpecifications(),
-                chatRequest.toolMode(),
+                chatRequest.toolChoice(),
                 getOrDefault(responseFormat, this.responseFormat)
         );
     }
@@ -204,7 +204,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private ChatResponse chat(List<ChatMessage> messages,
                               List<ToolSpecification> toolSpecifications,
-                              ToolMode toolMode,
+                              ToolChoice toolChoice,
                               ResponseFormat responseFormat) {
 
         if (responseFormat != null
@@ -232,8 +232,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         if (!isNullOrEmpty(toolSpecifications)) {
             requestBuilder.tools(toTools(toolSpecifications, strictTools));
         }
-        if (toolMode != null) {
-            requestBuilder.toolChoice(toOpenAiToolChoice(toolMode));
+        if (toolChoice != null) {
+            requestBuilder.toolChoice(toOpenAiToolChoice(toolChoice));
         }
 
         ChatCompletionRequest openAiRequest = requestBuilder.build();

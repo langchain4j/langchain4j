@@ -19,13 +19,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaOpenAiStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
-            .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
-            .baseUrl(ollama.getEndpoint() + "/v1") // TODO add "/v1" by default?
-            .modelName(TINY_DOLPHIN_MODEL)
-            .temperature(0.0)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+        .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
+        .baseUrl(ollama.getEndpoint() + "/v1") // TODO add "/v1" by default?
+        .modelName(TINY_DOLPHIN_MODEL)
+        .temperature(0.0)
+        .logRequests(true)
+        .logResponses(true)
+        .build();
 
     @Test
     void should_generate_response() {

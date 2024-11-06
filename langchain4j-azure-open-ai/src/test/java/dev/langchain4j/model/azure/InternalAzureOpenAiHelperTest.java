@@ -13,7 +13,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.request.ToolMode;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.output.FinishReason;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -150,14 +150,14 @@ class InternalAzureOpenAiHelperTest {
     }
 
     @Test
-    void should_map_tool_mode() {
-        assertThat(toToolChoice(ToolMode.AUTO).getPreset()).isEqualTo(AUTO);
-        assertThat(toToolChoice(ToolMode.ANY).getPreset()).isEqualTo(REQUIRED);
+    void should_map_tool_choice() {
+        assertThat(toToolChoice(ToolChoice.AUTO).getPreset()).isEqualTo(AUTO);
+        assertThat(toToolChoice(ToolChoice.ANY).getPreset()).isEqualTo(REQUIRED);
     }
 
     @ParameterizedTest
     @EnumSource
-    void should_map_all_tool_modes(ToolMode toolMode) {
-        assertThat(toToolChoice(toolMode)).isNotNull();
+    void should_map_all_tool_choices(ToolChoice toolChoice) {
+        assertThat(toToolChoice(toolChoice)).isNotNull();
     }
 }

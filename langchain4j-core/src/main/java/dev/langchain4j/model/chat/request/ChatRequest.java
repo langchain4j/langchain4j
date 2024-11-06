@@ -17,14 +17,14 @@ import static java.util.Arrays.asList;
 public class ChatRequest {
 
     private final List<ChatMessage> messages;
-    private final List<ToolSpecification> toolSpecifications;
-    private final ToolMode toolMode; // TODO wrap into "tools" pojo?
+    private final List<ToolSpecification> toolSpecifications; // TODO introduce "tools" section?
+    private final ToolChoice toolChoice;
     private final ResponseFormat responseFormat;
 
     private ChatRequest(Builder builder) {
         this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));
         this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
-        this.toolMode = builder.toolMode; // TODO set AUTO by default? only if toolSpecifications are present?
+        this.toolChoice = builder.toolChoice; // TODO set AUTO by default? only if toolSpecifications are present?
         this.responseFormat = builder.responseFormat;
     }
 
@@ -36,8 +36,8 @@ public class ChatRequest {
         return toolSpecifications;
     }
 
-    public ToolMode toolMode() {
-        return toolMode;
+    public ToolChoice toolChoice() {
+        return toolChoice;
     }
 
     public ResponseFormat responseFormat() {
@@ -51,13 +51,13 @@ public class ChatRequest {
         ChatRequest that = (ChatRequest) o;
         return Objects.equals(this.messages, that.messages)
             && Objects.equals(this.toolSpecifications, that.toolSpecifications)
-            && Objects.equals(this.toolMode, that.toolMode)
+            && Objects.equals(this.toolChoice, that.toolChoice)
             && Objects.equals(this.responseFormat, that.responseFormat);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(messages, toolSpecifications, toolMode, responseFormat);
+        return Objects.hash(messages, toolSpecifications, toolChoice, responseFormat);
     }
 
     @Override
@@ -65,7 +65,7 @@ public class ChatRequest {
         return "ChatRequest {" +
             " messages = " + messages +
             ", toolSpecifications = " + toolSpecifications +
-            ", toolMode = " + toolMode +
+            ", toolChoice = " + toolChoice +
             ", responseFormat = " + responseFormat +
             " }";
     }
@@ -78,7 +78,7 @@ public class ChatRequest {
 
         private List<ChatMessage> messages;
         private List<ToolSpecification> toolSpecifications;
-        private ToolMode toolMode;
+        private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
 
         public Builder messages(List<ChatMessage> messages) {
@@ -99,8 +99,8 @@ public class ChatRequest {
             return toolSpecifications(asList(toolSpecifications));
         }
 
-        public Builder toolMode(ToolMode toolMode) {
-            this.toolMode = toolMode;
+        public Builder toolChoice(ToolChoice toolChoice) {
+            this.toolChoice = toolChoice;
             return this;
         }
 

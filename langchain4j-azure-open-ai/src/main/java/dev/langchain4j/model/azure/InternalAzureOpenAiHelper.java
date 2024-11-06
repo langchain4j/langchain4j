@@ -52,7 +52,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
-import dev.langchain4j.model.chat.request.ToolMode;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -450,8 +450,8 @@ class InternalAzureOpenAiHelper {
                 .build();
     }
 
-    static ChatCompletionsToolSelection toToolChoice(ToolMode toolMode) {
-        ChatCompletionsToolSelectionPreset preset = switch (toolMode) {
+    static ChatCompletionsToolSelection toToolChoice(ToolChoice toolChoice) {
+        ChatCompletionsToolSelectionPreset preset = switch (toolChoice) {
             case AUTO -> ChatCompletionsToolSelectionPreset.AUTO;
             case ANY -> ChatCompletionsToolSelectionPreset.REQUIRED;
         };

@@ -24,7 +24,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolMode() {
+    protected boolean supportsToolChoice() {
         return true;
     }
 }

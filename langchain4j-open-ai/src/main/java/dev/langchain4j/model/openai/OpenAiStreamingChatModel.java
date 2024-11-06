@@ -22,7 +22,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ToolMode;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
@@ -42,7 +42,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.chat.request.ToolMode.ANY;
+import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
@@ -159,7 +159,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         chat(
             chatRequest.messages(),
             chatRequest.toolSpecifications(),
-            chatRequest.toolMode(),
+            chatRequest.toolChoice(),
             handler
         );
     }
@@ -183,7 +183,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     private void chat(List<ChatMessage> messages,
                       List<ToolSpecification> toolSpecifications,
-                      ToolMode toolMode,
+                      ToolChoice toolChoice,
                       StreamingChatResponseHandler handler
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
@@ -209,8 +209,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         if (!isNullOrEmpty(toolSpecifications)) {
             requestBuilder.tools(toTools(toolSpecifications, strictTools));
         }
-        if (toolMode != null) {
-            requestBuilder.toolChoice(toOpenAiToolChoice(toolMode));
+        if (toolChoice != null) {
+            requestBuilder.toolChoice(toOpenAiToolChoice(toolChoice));
         }
 
         ChatCompletionRequest openAiRequest = requestBuilder.build();

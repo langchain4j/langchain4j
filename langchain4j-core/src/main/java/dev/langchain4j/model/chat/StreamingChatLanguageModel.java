@@ -54,10 +54,10 @@ public interface StreamingChatLanguageModel {
             @Override
             public void onComplete(Response<AiMessage> response) {
                 ChatResponse chatResponse = ChatResponse.builder()
-                        .aiMessage(response.content())
-                        .tokenUsage(response.tokenUsage())
-                        .finishReason(response.finishReason())
-                        .build();
+                    .aiMessage(response.content())
+                    .tokenUsage(response.tokenUsage())
+                    .finishReason(response.finishReason())
+                    .build();
                 handler.onCompleteResponse(chatResponse);
             }
 
@@ -72,25 +72,6 @@ public interface StreamingChatLanguageModel {
         } else {
             generate(chatRequest.messages(), chatRequest.toolSpecifications(), legacyHandler);
         }
-    }
-
-    /**
-     * TODO
-     * <p>
-     * A temporary default implementation of this method is necessary
-     * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
-     *
-     * @param userMessage
-     * @param handler
-     */
-    @Experimental
-    default void chat(String userMessage, StreamingChatResponseHandler handler) {
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(userMessage))
-                .build();
-
-        chat(chatRequest, handler);
     }
 
     /**
