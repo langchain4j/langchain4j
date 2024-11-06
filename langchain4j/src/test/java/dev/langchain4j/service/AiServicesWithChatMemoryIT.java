@@ -24,6 +24,7 @@ import static dev.langchain4j.data.message.ChatMessageSerializer.messagesToJson;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.service.AiServicesIT.chatRequest;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.ANOTHER_SYSTEM_MESSAGE;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.SYSTEM_MESSAGE;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -84,7 +85,7 @@ class AiServicesWithChatMemoryIT {
 
         // then
         verify(chatMemory).add(userMessage(firstUserMessage));
-        verify(chatLanguageModel).chat(ChatRequest.from(firstUserMessage));
+        verify(chatLanguageModel).chat(chatRequest(firstUserMessage));
         verify(chatMemory).add(aiMessage(firstAiMessage));
 
 
@@ -283,11 +284,11 @@ class AiServicesWithChatMemoryIT {
 
         String firstMessageFromFirstUser = "Hello, my name is Klaus";
         String firstAiResponseToFirstUser = chatWithMemory.chat(firstMemoryId, firstMessageFromFirstUser);
-        verify(chatLanguageModel).chat(ChatRequest.from(firstMessageFromFirstUser));
+        verify(chatLanguageModel).chat(chatRequest(firstMessageFromFirstUser));
 
         String firstMessageFromSecondUser = "Hello, my name is Francine";
         String firstAiResponseToSecondUser = chatWithMemory.chat(secondMemoryId, firstMessageFromSecondUser);
-        verify(chatLanguageModel).chat(ChatRequest.from(firstMessageFromSecondUser));
+        verify(chatLanguageModel).chat(chatRequest(firstMessageFromSecondUser));
 
         String secondMessageFromFirstUser = "What is my name?";
         String secondAiResponseToFirstUser = chatWithMemory.chat(firstMemoryId, secondMessageFromFirstUser);
