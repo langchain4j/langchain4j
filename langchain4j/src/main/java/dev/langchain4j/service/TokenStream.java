@@ -34,7 +34,6 @@ public interface TokenStream {
      *
      * @param tokenHandler lambda that consumes tokens of the response
      * @return token stream instance used to configure or start stream processing
-     * @deprecated Please use {@link #onPartialResponse(Consumer)} instead // TODO
      */
     TokenStream onNext(Consumer<String> tokenHandler);
 
@@ -73,7 +72,6 @@ public interface TokenStream {
      *
      * @param completionHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
-     * @deprecated Please use {@link #onCompleteResponse(Consumer)} instead // TODO
      */
     TokenStream onComplete(Consumer<Response<AiMessage>> completionHandler);
 
