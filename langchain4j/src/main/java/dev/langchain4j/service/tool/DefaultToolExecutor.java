@@ -139,10 +139,10 @@ public class DefaultToolExecutor implements ToolExecutor {
                 @SuppressWarnings({"unchecked", "rawtypes"})
                 Class<Enum> enumClass = (Class<Enum>) parameterClass;
                 try {
-                    return Enum.valueOf(enumClass, argument.toString());
+                    return Enum.valueOf(enumClass, Objects.requireNonNull(argument).toString());
                 } catch (IllegalArgumentException e) {
                     // try to convert to uppercase as a last resort
-                    return Enum.valueOf(enumClass, Objects.requireNonNull(argument.toString().toUpperCase()));
+                    return Enum.valueOf(enumClass, Objects.requireNonNull(argument).toString().toUpperCase());
                 }
             } catch (Exception | Error e) {
                 throw new IllegalArgumentException(String.format(
