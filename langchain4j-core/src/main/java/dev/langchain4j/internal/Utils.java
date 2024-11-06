@@ -123,6 +123,15 @@ public class Utils {
   }
 
   /**
+   * Is the map object {@code null} or empty?
+   * @param map The iterable object to check.
+   * @return {@code true} if the map object is {@code null} or empty map, otherwise {@code false}.
+   * */
+  public static boolean isNullOrEmpty(Map<?, ?> map) {
+      return map == null || map.isEmpty();
+  }
+
+  /**
    * @deprecated Use {@link #isNullOrEmpty(Collection)} instead.
    * @param collection The collection to check.
    * @return {@code true} if the collection is {@code null} or empty, {@code false} otherwise.
