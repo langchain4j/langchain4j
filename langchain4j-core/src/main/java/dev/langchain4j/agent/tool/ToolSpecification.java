@@ -179,7 +179,7 @@ public class ToolSpecification {
          *     .parameters(JsonObjectSchema.builder()
          *         .addStringProperty("city", "The name of the city, e.g., Munich")
          *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify the required properties explicitly
+         *         .required("city") // please specify mandatory properties explicitly
          *         .build())
          *     .build();
          * </pre>
@@ -204,7 +204,7 @@ public class ToolSpecification {
          *     .parameters(JsonObjectSchema.builder()
          *         .addStringProperty("city", "The name of the city, e.g., Munich")
          *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify the required properties explicitly
+         *         .required("city") // please specify mandatory properties explicitly
          *         .build())
          *     .build();
          * </pre>
@@ -228,7 +228,7 @@ public class ToolSpecification {
          *     .parameters(JsonObjectSchema.builder()
          *         .addStringProperty("city", "The name of the city, e.g., Munich")
          *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify the required properties explicitly
+         *         .required("city") // please specify mandatory properties explicitly
          *         .build())
          *     .build();
          * </pre>
@@ -254,7 +254,7 @@ public class ToolSpecification {
          *     .parameters(JsonObjectSchema.builder()
          *         .addStringProperty("city", "The name of the city, e.g., Munich")
          *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify the required properties explicitly
+         *         .required("city") // please specify mandatory properties explicitly
          *         .build())
          *     .build();
          * </pre>
@@ -278,7 +278,7 @@ public class ToolSpecification {
          *     .parameters(JsonObjectSchema.builder()
          *         .addStringProperty("city", "The name of the city, e.g., Munich")
          *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify the required properties explicitly
+         *         .required("city") // please specify mandatory properties explicitly
          *         .build())
          *     .build();
          * </pre>
