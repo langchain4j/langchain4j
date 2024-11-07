@@ -54,7 +54,8 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     /**
-     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
      */
     @Deprecated(forRemoval = true)
     public static CohereEmbeddingModel withApiKey(String apiKey) {
