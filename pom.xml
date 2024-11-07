@@ -91,7 +91,7 @@
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
         <module>code-execution-engines/langchain4j-code-execution-engine-judge0</module>
-        <module>code-execution-engines/langchain4j-code-execution-engine-v8</module>
+        <module>code-execution-engines/langchain4j-code-execution-engine-javet</module>
 
         <!-- web search engines -->
         <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>

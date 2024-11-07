@@ -11,7 +11,7 @@
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-code-execution-engine-v8</artifactId>
+    <artifactId>langchain4j-code-execution-engine-javet</artifactId>
     <name>LangChain4j :: Integration :: V8</name>
     <description>Implementation of JavaScript code execution engine and tool using V8</description>
 
@@ -24,6 +24,24 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
+        </dependency>
+
+        <!-- Linux and Windows (x86_64) -->
+        <dependency>
+            <groupId>com.caoccao.javet</groupId>
+            <artifactId>javet</artifactId>
+        </dependency>
+
+        <!-- Linux (arm64) -->
+        <dependency>
+            <groupId>com.caoccao.javet</groupId>
+            <artifactId>javet-linux-arm64</artifactId>
+        </dependency>
+
+        <!-- Mac OS (x86_64 and arm64) -->
+        <dependency>
+            <groupId>com.caoccao.javet</groupId>
+            <artifactId>javet-macos</artifactId>
         </dependency>
 
         <dependency>
@@ -79,24 +97,6 @@
             <groupId>org.tinylog</groupId>
             <artifactId>tinylog-impl</artifactId>
             <scope>test</scope>
-        </dependency>
-
-        <!-- Linux and Windows (x86_64) -->
-        <dependency>
-            <groupId>com.caoccao.javet</groupId>
-            <artifactId>javet</artifactId>
-        </dependency>
-
-        <!-- Linux (arm64) -->
-        <dependency>
-            <groupId>com.caoccao.javet</groupId>
-            <artifactId>javet-linux-arm64</artifactId>
-        </dependency>
-
-        <!-- Mac OS (x86_64 and arm64) -->
-        <dependency>
-            <groupId>com.caoccao.javet</groupId>
-            <artifactId>javet-macos</artifactId>
         </dependency>
 
         <dependency>
