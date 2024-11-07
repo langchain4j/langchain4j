@@ -290,9 +290,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     /**
-     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     * <b>The default values for the model name and temperature will be removed in future releases!</b>
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static OpenAiStreamingChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
