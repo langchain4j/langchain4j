@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
@@ -229,19 +230,19 @@ class AnthropicChatModelIT {
         UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
         // when
-        Response<AiMessage> responseCreateCache = model.generate(systemMessage, systemMessageTwo, userMessage);
+        AnthropicTokenUsage responseCreateCacheTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, systemMessageTwo, userMessage).tokenUsage();
 
         // then
-        assertThat(responseCreateCache.tokenUsage().cacheCreationInputTokens()).isGreaterThan(0);
-        assertThat(responseCreateCache.tokenUsage().cacheReadInputTokens()).isEqualTo(0);
+        assertThat(responseCreateCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseCreateCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        Response<AiMessage> responseReadCache = model.generate(systemMessage, systemMessageTwo, userMessage);
+        AnthropicTokenUsage responseReadCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, systemMessageTwo, userMessage).tokenUsage();
 
 
         // then
-        assertThat(responseReadCache.tokenUsage().cacheCreationInputTokens()).isEqualTo(0);
-        assertThat(responseReadCache.tokenUsage().cacheReadInputTokens()).isGreaterThan(0);
+        assertThat(responseReadCacheAnthropicTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(responseReadCacheAnthropicTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
     }
 
     @Test
@@ -262,19 +263,19 @@ class AnthropicChatModelIT {
         UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
         // when
-        Response<AiMessage> responseCreateCache = model.generate(systemMessage, userMessage);
+        AnthropicTokenUsage responseCreateCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, userMessage).tokenUsage();
 
         // then
-        assertThat(responseCreateCache.tokenUsage().cacheCreationInputTokens()).isGreaterThan(0);
-        assertThat(responseCreateCache.tokenUsage().cacheReadInputTokens()).isEqualTo(0);
+        assertThat(responseCreateCacheAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseCreateCacheAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        Response<AiMessage> responseReadCache = model.generate(systemMessage, userMessage);
+        AnthropicTokenUsage responseReadCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, userMessage).tokenUsage();
 
 
         // then
-        assertThat(responseReadCache.tokenUsage().cacheCreationInputTokens()).isEqualTo(0);
-        assertThat(responseReadCache.tokenUsage().cacheReadInputTokens()).isGreaterThan(0);
+        assertThat(responseReadCacheAnthropicTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(responseReadCacheAnthropicTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
     }
 
 
@@ -482,18 +483,19 @@ class AnthropicChatModelIT {
         UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
 
         // when
-        Response<AiMessage> responseCreateCache = model.generate(asList(userMessage, systemMessage), toolSpecifications);
+        AnthropicTokenUsage responseCreateCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, userMessage).tokenUsage();
 
         // then
-        assertThat(responseCreateCache.tokenUsage().cacheCreationInputTokens()).isGreaterThan(0);
-        assertThat(responseCreateCache.tokenUsage().cacheReadInputTokens()).isEqualTo(0);
+        assertThat(responseCreateCacheAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseCreateCacheAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        Response<AiMessage> responseReadCache = model.generate(asList(userMessage, systemMessage), toolSpecifications);
+        AnthropicTokenUsage responseReadCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, userMessage).tokenUsage();
+
 
         // then
-        assertThat(responseReadCache.tokenUsage().cacheCreationInputTokens()).isEqualTo(0);
-        assertThat(responseReadCache.tokenUsage().cacheReadInputTokens()).isGreaterThan(0);
+        assertThat(responseReadCacheAnthropicTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(responseReadCacheAnthropicTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
 
     }
 
@@ -523,18 +525,18 @@ class AnthropicChatModelIT {
         UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
 
         // when
-        Response<AiMessage> responseCreateCache = model.generate(singletonList(userMessage), toolSpecifications);
+        AnthropicTokenUsage responseCreateCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(singletonList(userMessage), toolSpecifications).tokenUsage();
 
         // then
-        assertThat(responseCreateCache.tokenUsage().cacheCreationInputTokens()).isGreaterThan(0);
-        assertThat(responseCreateCache.tokenUsage().cacheReadInputTokens()).isEqualTo(0);
+        assertThat(responseCreateCacheAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseCreateCacheAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        Response<AiMessage> responseReadCache = model.generate(singletonList(userMessage), toolSpecifications);
+        AnthropicTokenUsage responseReadCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(singletonList(userMessage), toolSpecifications).tokenUsage();
 
         // then
-        assertThat(responseReadCache.tokenUsage().cacheCreationInputTokens()).isEqualTo(0);
-        assertThat(responseReadCache.tokenUsage().cacheReadInputTokens()).isGreaterThan(0);
+        assertThat(responseReadCacheAnthropicTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(responseReadCacheAnthropicTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
 
     }
 

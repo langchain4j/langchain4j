@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -194,11 +195,11 @@ class AnthropicStreamingChatModelIT {
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         model.generate(asList(userMessage, systemMessage), handler);
-        Response<AiMessage> response = handler.get();
+        AnthropicTokenUsage responseAnthropicTokenUsage = (AnthropicTokenUsage) handler.get().tokenUsage();
 
         // then
-        assertThat(response.tokenUsage().cacheCreationInputTokens()).isGreaterThan(0);
-        assertThat(response.tokenUsage().cacheReadInputTokens()).isEqualTo(0);
+        assertThat(responseAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
     }
 
     @Test
@@ -234,11 +235,11 @@ class AnthropicStreamingChatModelIT {
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
         model.generate(singletonList(userMessage), toolSpecifications, handler);
-        Response<AiMessage> response = handler.get();
+        AnthropicTokenUsage responseAnthropicTokenUsage = (AnthropicTokenUsage) handler.get().tokenUsage();
 
         // then
-        assertThat(response.tokenUsage().cacheCreationInputTokens()).isGreaterThan(0);
-        assertThat(response.tokenUsage().cacheReadInputTokens()).isEqualTo(0);
+        assertThat(responseAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
     }
 
     @Test
