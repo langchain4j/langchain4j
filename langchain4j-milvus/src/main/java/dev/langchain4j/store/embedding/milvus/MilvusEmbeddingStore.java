@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.setIfPresent;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.createCollection;
@@ -81,6 +82,10 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             String token,
             String username,
             String password,
+            String clientKeyPath,
+            String clientPemPath,
+            String caPemPath,
+            boolean secured,
             ConsistencyLevelEnum consistencyLevel,
             Boolean retrieveEmbeddingsOnSearch,
             Boolean autoFlushOnInsert,
@@ -101,6 +106,11 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (databaseName != null) {
             connectBuilder.withDatabaseName(databaseName);
         }
+
+        setIfPresent(secured, connectBuilder::withSecure);
+        setIfPresent(clientKeyPath, connectBuilder::withClientKeyPath);
+        setIfPresent(clientPemPath, connectBuilder::withClientPemPath);
+        setIfPresent(caPemPath, connectBuilder::withCaPemPath);
 
         this.milvusClient = new MilvusServiceClient(connectBuilder.build());
         this.collectionName = getOrDefault(collectionName, "default");
@@ -286,6 +296,10 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String token;
         private String username;
         private String password;
+        private String clientKeyPath;
+        private String clientPemPath;
+        private String caPemPath;
+        private boolean secured;
         private ConsistencyLevelEnum consistencyLevel;
         private Boolean retrieveEmbeddingsOnSearch;
         private String databaseName;
@@ -393,6 +407,42 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
+         * @param clientKeyPath The clientKeyPath.
+         * @return builder
+         */
+        public Builder clientKeyPath(String clientKeyPath) {
+            this.clientKeyPath = clientKeyPath;
+            return this;
+        }
+
+        /**
+         * @param clientPemPath The clientPemPath.
+         * @return builder
+         */
+        public Builder clientPemPath(String clientPemPath) {
+            this.clientPemPath = clientPemPath;
+            return this;
+        }
+
+        /**
+         * @param caPemPath The caPemPath.
+         * @return builder
+         */
+        public Builder caPemPath(String caPemPath) {
+            this.caPemPath = caPemPath;
+            return this;
+        }
+
+        /**
+         * @param secured The secured. to useTransportSecurity.
+         * @return builder
+         */
+        public Builder secured(boolean secured) {
+            this.secured = secured;
+            return this;
+        }
+
+        /**
          * @param consistencyLevel The consistency level used by Milvus.
          *                         Default value: EVENTUALLY.
          * @return builder
@@ -491,6 +541,10 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                     token,
                     username,
                     password,
+                    clientKeyPath,
+                    clientPemPath,
+                    caPemPath,
+                    secured,
                     consistencyLevel,
                     retrieveEmbeddingsOnSearch,
                     autoFlushOnInsert,
