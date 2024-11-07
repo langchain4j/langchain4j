@@ -88,7 +88,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
      * @param maxRetries    The maximum number of retries for API requests. Default: 3
      * @param logRequests   Whether to log the content of API requests using SLF4J. Default: false
      * @param logResponses  Whether to log the content of API responses using SLF4J. Default: false
-     * @param cacheSystemMessage  If true, it should add cache control to all system messages. Default: false
+     * @param cacheSystemMessages  If true, it should add cache control to all system messages. Default: false
      * @param cacheTools    If true, it should add cache control to all tools. Default: false
      */
     @Builder
