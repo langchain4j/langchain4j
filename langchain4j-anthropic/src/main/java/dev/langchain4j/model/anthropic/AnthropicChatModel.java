@@ -165,7 +165,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
-                .messages(toAnthropicMessages(sanitizedMessages, AnthropicCacheType.NO_CACHE))
+                .messages(toAnthropicMessages(sanitizedMessages))
                 .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)

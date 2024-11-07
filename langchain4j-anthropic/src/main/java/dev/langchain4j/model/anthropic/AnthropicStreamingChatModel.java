@@ -184,7 +184,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
         AnthropicCreateMessageRequest.AnthropicCreateMessageRequestBuilder requestBuilder = AnthropicCreateMessageRequest.builder()
                 .stream(true)
                 .model(modelName)
-                .messages(toAnthropicMessages(sanitizedMessages, AnthropicCacheType.NO_CACHE))
+                .messages(toAnthropicMessages(sanitizedMessages))
                 .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)

@@ -54,7 +54,7 @@ public class AnthropicMapper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages, AnthropicCacheType cacheType) {
+    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
@@ -70,7 +70,7 @@ public class AnthropicMapper {
                 }
 
                 if (message instanceof UserMessage) {
-                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message, cacheType);
+                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message);
                     anthropicMessages.add(new AnthropicMessage(USER, contents));
                 } else if (message instanceof AiMessage) {
                     List<AnthropicMessageContent> contents = toAnthropicMessageContents((AiMessage) message);
@@ -90,7 +90,7 @@ public class AnthropicMapper {
         return new AnthropicToolResultContent(message.id(), message.text(), null); // TODO propagate isError
     }
 
-    private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message, AnthropicCacheType cacheType) {
+    private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
         return message.contents().stream()
                 .map(content -> {
                     if (content instanceof TextContent) {
