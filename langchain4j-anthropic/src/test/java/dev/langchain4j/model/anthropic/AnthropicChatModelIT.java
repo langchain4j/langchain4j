@@ -30,6 +30,7 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20240620;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
@@ -210,7 +211,7 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void test_all_parameters_with_cache_on_system_message() {
+    void test_cache_on_system_message() {
 
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
@@ -435,7 +436,7 @@ class AnthropicChatModelIT {
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .version("2023-06-01")
             .beta("prompt-caching-2024-07-31")
-            .modelName(CLAUDE_3_5_SONNET_20240620)
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
             .maxTokens(1024)
             .timeout(Duration.ofSeconds(30))
             .maxRetries(1)
