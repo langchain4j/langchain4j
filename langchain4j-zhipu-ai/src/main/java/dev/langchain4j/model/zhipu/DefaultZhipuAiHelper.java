@@ -223,7 +223,7 @@ class DefaultZhipuAiHelper {
         
         ResponseBody errorBody = ((retrofit2.Response<?>) object).errorBody();
         // 解决url输入错误Json.fromJson 解析是失败转换的问题
-        if (object instanceof Response && ((Response) object).code() == 404 ) {
+        if (object instanceof Response && ((Response) object).code() == 404) {
             return ChatCompletionChoice.builder()
                     .message(AssistantMessage.builder().content("uri is error!").build())
                     .finishReason(FINISH_REASON_OTHER)
