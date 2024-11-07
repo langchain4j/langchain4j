@@ -14,7 +14,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * @deprecated use {@link EmbeddingStoreContentRetriever} instead.
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
 
     private final EmbeddingStore<TextSegment> embeddingStore;

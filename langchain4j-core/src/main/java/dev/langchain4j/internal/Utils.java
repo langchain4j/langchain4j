@@ -137,7 +137,7 @@ public class Utils {
    * @return {@code true} if the collection is {@code null} or empty, {@code false} otherwise.
    */
   @SuppressWarnings("DeprecatedIsStillUsed")
-  @Deprecated
+  @Deprecated(forRemoval = true)
   public static boolean isCollectionEmpty(Collection<?> collection) {
     return isNullOrEmpty(collection);
   }
