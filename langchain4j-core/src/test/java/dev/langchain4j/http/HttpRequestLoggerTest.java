@@ -1,13 +1,12 @@
-package dev.langchain4j.model.anthropic.internal.client;
+package dev.langchain4j.http;
 
 import org.junit.jupiter.api.Test;
 
-import static dev.langchain4j.model.anthropic.internal.api.AnthropicApi.X_API_KEY;
-import static dev.langchain4j.model.anthropic.internal.client.AnthropicRequestLoggingInterceptor.format;
-import static dev.langchain4j.model.anthropic.internal.client.AnthropicRequestLoggingInterceptor.maskSecretKey;
+import static dev.langchain4j.http.HttpRequestLogger.format;
+import static dev.langchain4j.http.HttpRequestLogger.maskSecretKey;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class AnthropicRequestLoggingInterceptorTest {
+class HttpRequestLoggerTest {
 
     @Test
     void should_mask_secret_headers() {
@@ -32,11 +31,6 @@ class AnthropicRequestLoggingInterceptorTest {
                 .isEqualTo("[X-Auth-Token: 12345...90]");
         assertThat(format("x-auth-token", "1234567890"))
                 .isEqualTo("[x-auth-token: 12345...90]");
-
-        assertThat(format(X_API_KEY, null))
-                .isEqualTo("[x-api-key: null]");
-        assertThat(format(X_API_KEY, "1234567890"))
-                .isEqualTo("[x-api-key: 12345...90]");
     }
 
     @Test
