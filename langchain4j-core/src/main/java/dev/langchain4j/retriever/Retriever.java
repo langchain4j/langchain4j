@@ -10,9 +10,9 @@ import static java.util.stream.Collectors.toList;
 
 /**
  * Interface for retrieving relevant items.
- * This class is deprecated, use {@link ContentRetriever} instead.
  *
  * @param <T> the type of the items.
+ * @deprecated Please use {@link ContentRetriever} instead.
  */
 @Deprecated(forRemoval = true)
 public interface Retriever<T> {

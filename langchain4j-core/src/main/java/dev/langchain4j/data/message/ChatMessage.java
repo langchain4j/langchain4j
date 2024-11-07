@@ -25,7 +25,8 @@ public interface ChatMessage {
      * The text of the message.
      *
      * @return the text of the message
-     * @deprecated decode through {@link #type()} instead.
+     * @deprecated use accessors of {@link SystemMessage}, {@link UserMessage},
+     * {@link AiMessage} and {@link ToolExecutionResultMessage} instead
      */
     @Deprecated(forRemoval = true)
     String text();

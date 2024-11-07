@@ -308,7 +308,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     /**
-     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     * <b>The default values for the model name and temperature will be removed in future releases!</b>
      */
     @Deprecated(forRemoval = true)
     public static OpenAiChatModel withApiKey(String apiKey) {

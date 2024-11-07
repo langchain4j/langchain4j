@@ -312,7 +312,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @param metadataFieldsName metadata fields names (optional)
          * @deprecated use {@link #metadataKeys(Collection)} instead
          */
-        @Deprecated(forRemoval = true)
+        @Deprecated
         public Builder metadataFieldsName(Collection<String> metadataFieldsName) {
             this.metadataKeys = metadataFieldsName;
             return this;
