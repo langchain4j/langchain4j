@@ -23,7 +23,7 @@ public class ChatRequest {
     private ChatRequest(Builder builder) {
         this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));
         this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
-        this.toolChoice = builder.toolChoice; // TODO set AUTO by default? only if toolSpecifications are present?
+        this.toolChoice = builder.toolChoice; // TODO set AUTO by default? only if toolSpecifications are present? validate: can be set only when tools are defined
         this.responseFormat = builder.responseFormat;
     }
 
