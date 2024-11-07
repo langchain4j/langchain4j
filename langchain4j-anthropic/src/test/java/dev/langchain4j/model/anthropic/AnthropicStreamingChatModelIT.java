@@ -169,7 +169,7 @@ class AnthropicStreamingChatModelIT {
     }
 
     @Test
-    void test_all_parameters_with_cache_on_system_message() {
+    void test_with_cache_on_system_message() {
 
         // given
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
