@@ -210,7 +210,7 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void test_all_parameters_with_cache() {
+    void test_all_parameters_with_cache_on_system_message() {
 
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
@@ -227,11 +227,7 @@ class AnthropicChatModelIT {
                 .cacheSystemMessage(true)
                 .build();
 
-        StringBuilder sysMessages = new StringBuilder();
-
-        sysMessages.append(CACHE_MESSAGE.repeat(7));
-
-        SystemMessage systemMessage = SystemMessage.from(sysMessages.toString());
+        SystemMessage systemMessage = SystemMessage.from(CACHE_MESSAGE.repeat(7));
         UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
         // when
