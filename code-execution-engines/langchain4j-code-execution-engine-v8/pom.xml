@@ -81,6 +81,24 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Linux and Windows (x86_64) -->
+        <dependency>
+            <groupId>com.caoccao.javet</groupId>
+            <artifactId>javet</artifactId>
+        </dependency>
+
+        <!-- Linux (arm64) -->
+        <dependency>
+            <groupId>com.caoccao.javet</groupId>
+            <artifactId>javet-linux-arm64</artifactId>
+        </dependency>
+
+        <!-- Mac OS (x86_64 and arm64) -->
+        <dependency>
+            <groupId>com.caoccao.javet</groupId>
+            <artifactId>javet-macos</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.tinylog</groupId>
             <artifactId>slf4j-tinylog</artifactId>
@@ -100,55 +118,4 @@
         </dependency>
 
     </dependencies>
-
-    <profiles>
-        <!-- Profile for Linux ARM64 -->
-        <profile>
-            <id>linux-arm64</id>
-            <activation>
-                <os>
-                    <name>Linux</name>
-                    <arch>aarch64</arch> <!-- ARM64 architecture -->
-                </os>
-            </activation>
-            <dependencies>
-                <dependency>
-                    <groupId>com.caoccao.javet</groupId>
-                    <artifactId>javet-linux-arm64</artifactId>
-                </dependency>
-            </dependencies>
-        </profile>
-
-        <!-- Profile for macOS (both x86_64 and ARM64) -->
-        <profile>
-            <id>macos</id>
-            <activation>
-                <os>
-                    <name>Mac OS X</name>
-                </os>
-            </activation>
-            <dependencies>
-                <dependency>
-                    <groupId>com.caoccao.javet</groupId>
-                    <artifactId>javet-macos</artifactId>
-                </dependency>
-            </dependencies>
-        </profile>
-
-        <!-- Profile for Linux and Windows (x86_64) -->
-        <profile>
-            <id>default-javet</id>
-            <activation>
-                <os>
-                    <arch>x86_64</arch>
-                </os>
-            </activation>
-            <dependencies>
-                <dependency>
-                    <groupId>com.caoccao.javet</groupId>
-                    <artifactId>javet</artifactId>
-                </dependency>
-            </dependencies>
-        </profile>
-    </profiles>
 </project>
