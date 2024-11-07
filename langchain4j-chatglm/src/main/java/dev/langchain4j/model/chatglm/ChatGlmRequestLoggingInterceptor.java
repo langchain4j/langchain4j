@@ -18,7 +18,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
 
-public class ChatGlmRequestLoggingInterceptor implements Interceptor {
+class ChatGlmRequestLoggingInterceptor implements Interceptor {
 
     private static final Logger log = LoggerFactory.getLogger(ChatGlmRequestLoggingInterceptor.class);
 
