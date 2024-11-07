@@ -590,8 +590,9 @@ class AnthropicChatModelIT {
     }
 
     static Stream<Arguments> models_supporting_tools() {
+        // claude 2 does not support tools
         return stream(AnthropicChatModelName.values())
-                .filter(modelName -> modelName.toString().startsWith("claude-3"))
+                .filter(modelName -> !modelName.toString().startsWith("claude-2"))
                 .map(Arguments::of);
     }
 }
