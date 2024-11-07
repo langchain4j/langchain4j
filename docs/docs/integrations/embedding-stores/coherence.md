@@ -1,10 +1,10 @@
 ---
-sidebar_position: 7
+sidebar_position: 9
 ---
 
 # Oracle Coherence
 
-<https://coherence.community/>
+https://coherence.community/
 
 ## Maven Dependency
 

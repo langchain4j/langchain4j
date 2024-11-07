@@ -76,8 +76,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
      *
      * @param baseUrl       The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
      * @param apiKey        The API key for authentication with the Anthropic API.
-     * @param version       The version of the Anthropic API. Default: "2023-06-01"
-     * @param beta          The value of the "anthropic-beta" HTTP header. It is used when tools are present in the request. Default: "tools-2024-04-04"
+     * @param version       The value of the "anthropic-version" HTTP header. Default: "2023-06-01"
+     * @param beta          The value of the "anthropic-beta" HTTP header.
      * @param modelName     The name of the Anthropic model to use. Default: "claude-3-haiku-20240307"
      * @param temperature   The temperature
      * @param topP          The top-P
@@ -88,7 +88,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
      * @param maxRetries    The maximum number of retries for API requests. Default: 3
      * @param logRequests   Whether to log the content of API requests using SLF4J. Default: false
      * @param logResponses  Whether to log the content of API responses using SLF4J. Default: false
-     * @param cacheSystemMessage  If true, it should add cache control to all system messages. Default: false
+     * @param cacheSystemMessages  If true, it should add cache control to all system messages. Default: false
      * @param cacheTools    If true, it should add cache control to all tools. Default: false
      */
     @Builder
@@ -113,7 +113,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
                 .version(getOrDefault(version, "2023-06-01"))
-                .beta(getOrDefault(beta, "tools-2024-04-04"))
+                .beta(beta)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
