@@ -11,11 +11,16 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(
-                GoogleAiGeminiChatModel.builder()
-                        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                        .modelName("gemini-1.5-flash")
-                        .build()
+            GoogleAiGeminiChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-1.5-flash")
+                .build()
         );
+    }
+
+    @Override
+    protected boolean supportsToolChoice() {
+        return false;
     }
 
     protected boolean assertFinishReason() {

@@ -2,21 +2,28 @@ package dev.langchain4j.model.vertexai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
+import dev.langchain4j.model.vertexai.VertexAiChatModel;
 
 import java.util.List;
 
-class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
+class VertexAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(
-            VertexAiGeminiChatModel.builder()
+            VertexAiChatModel.builder()
+                .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-1.5-flash")
+                .publisher("google")
+                .modelName("chat-bison@001")
                 .build()
         );
+    }
+
+    @Override
+    protected boolean supportsTools() {
+        return false;
     }
 
     @Override
@@ -26,7 +33,7 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // TODO fix, is supports json mode
+        return false;
     }
 
     @Override
@@ -34,7 +41,8 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
         return false;
     }
 
+    @Override
     protected boolean assertFinishReason() {
-        return false; // TODO fix
+        return false;
     }
 }

@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -21,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static dev.langchain4j.model.chat.common.AbstractChatModelIT.WEATHER_TOOL;
 import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -52,6 +54,8 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 public abstract class AbstractStreamingChatModelIT {
 
     protected abstract List<StreamingChatLanguageModel> models();
+
+    // TODO make sure all tests as in sync model
 
     @ParameterizedTest
     @MethodSource("models")
@@ -125,16 +129,9 @@ public abstract class AbstractStreamingChatModelIT {
     void should_call_a_tool(StreamingChatLanguageModel model) throws Exception {
 
         // given
-        ToolSpecification weatherTool = ToolSpecification.builder()
-            .name("weather")
-            .parameters(JsonObjectSchema.builder()
-                .addStringProperty("city")
-                .build())
-            .build();
-
         ChatRequest chatRequest = ChatRequest.builder()
             .messages(UserMessage.from("What is the weather in Munich?"))
-            .toolSpecifications(weatherTool)
+            .toolSpecifications(WEATHER_TOOL)
             .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
@@ -170,7 +167,7 @@ public abstract class AbstractStreamingChatModelIT {
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo(weatherTool.name());
+        assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         if (assertTokenUsage()) {
@@ -194,6 +191,25 @@ public abstract class AbstractStreamingChatModelIT {
         }
     }
 
+    @DisabledIf("supportsTools")
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_fail_if_tools_are_not_supported(StreamingChatLanguageModel model) throws Exception {
+
+        // given
+        ChatRequest chatRequest = ChatRequest.builder()
+            .messages(UserMessage.from("What is the weather in Munich?"))
+            .toolSpecifications(WEATHER_TOOL)
+            .build();
+
+        CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
+        AtomicInteger timesOnPartialResponseIsCalled = new AtomicInteger();
+        Set<Thread> threads = new CopyOnWriteArraySet<>();
+
+        // when-then
+        // TODO
+    }
+
     protected boolean supportsTools() {
         return true;
     }
@@ -204,13 +220,6 @@ public abstract class AbstractStreamingChatModelIT {
     void should_force_LLM_to_call_any_tool(StreamingChatLanguageModel model) throws Exception {
 
         // given
-        ToolSpecification weatherTool = ToolSpecification.builder()
-            .name("weather")
-            .parameters(JsonObjectSchema.builder()
-                .addStringProperty("city")
-                .build())
-            .build();
-
         ToolSpecification calculatorTool = ToolSpecification.builder()
             .name("add_two_numbers")
             .parameters(JsonObjectSchema.builder()
@@ -221,7 +230,7 @@ public abstract class AbstractStreamingChatModelIT {
 
         ChatRequest chatRequest = ChatRequest.builder()
             .messages(UserMessage.from("I live in Munich"))
-            .toolSpecifications(weatherTool, calculatorTool)
+            .toolSpecifications(WEATHER_TOOL, calculatorTool)
             .toolChoice(ANY) // this will FORCE the LLM to call any tool
             .build();
 
@@ -258,7 +267,7 @@ public abstract class AbstractStreamingChatModelIT {
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo(weatherTool.name());
+        assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         if (assertTokenUsage()) {
@@ -288,16 +297,9 @@ public abstract class AbstractStreamingChatModelIT {
     void should_force_LLM_to_call_specific_tool(StreamingChatLanguageModel model) throws Exception {
 
         // given
-        ToolSpecification weatherTool = ToolSpecification.builder()
-            .name("weather")
-            .parameters(JsonObjectSchema.builder()
-                .addStringProperty("city")
-                .build())
-            .build();
-
         ChatRequest chatRequest = ChatRequest.builder()
             .messages(UserMessage.from("I live in Munich"))
-            .toolSpecifications(weatherTool)
+            .toolSpecifications(WEATHER_TOOL)
             .toolChoice(ANY) // this will FORCE the LLM to call weatherTool
             .build();
 
@@ -334,7 +336,7 @@ public abstract class AbstractStreamingChatModelIT {
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo(weatherTool.name());
+        assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         if (assertTokenUsage()) {
