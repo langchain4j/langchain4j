@@ -21,7 +21,7 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Make sure these dependencies are present in the module where this test class is extended:
@@ -96,7 +96,7 @@ public abstract class StreamingChatModelListenerIT {
             public void onResponse(ChatModelResponseContext responseContext) {
                 responseReference.set(responseContext.response());
                 assertThat(responseContext.request()).isSameAs(requestReference.get());
-                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
             @Override
@@ -201,7 +201,7 @@ public abstract class StreamingChatModelListenerIT {
                 errorReference.set(errorContext.error());
                 assertThat(errorContext.request()).isSameAs(requestReference.get());
                 assertThat(errorContext.partialResponse()).isNull(); // can be non-null if it fails in the middle of streaming
-                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };
 

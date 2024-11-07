@@ -4,7 +4,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import org.junit.jupiter.api.Assertions;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -15,11 +14,12 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.randomFloats;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * An object representation of the data stored by {@link OracleEmbeddingStore}. This class can be
  * used to generate test data. It implements {@link #equals(Object)}, {@link #toString()}, and {@link #hashCode()} so
- * that results may be verified with {@link Assertions#assertEquals(Object, Object)}
+ * that results may be verified with {@link assertThat(Object)#isEqualTo(Object)}
  */
 final class TestData {
     final String id;

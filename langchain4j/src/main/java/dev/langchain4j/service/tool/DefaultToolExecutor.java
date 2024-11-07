@@ -1,9 +1,7 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
-
-import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.internal.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,11 +9,14 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+
+import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -103,17 +104,20 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         for (int i = 0; i < parameters.length; i++) {
 
-            if (parameters[i].isAnnotationPresent(ToolMemoryId.class)) {
+            Parameter parameter = parameters[i];
+
+            if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
                 arguments[i] = memoryId;
                 continue;
             }
 
-            String parameterName = parameters[i].getName();
+            String parameterName = parameter.getName();
             if (argumentsMap.containsKey(parameterName)) {
                 Object argument = argumentsMap.get(parameterName);
-                Class<?> parameterType = parameters[i].getType();
+                Class<?> parameterClass = parameter.getType();
+                Type parameterType = parameter.getParameterizedType();
 
-                arguments[i] = coerceArgument(argument, parameterName, parameterType);
+                arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
             }
         }
 
@@ -123,83 +127,96 @@ public class DefaultToolExecutor implements ToolExecutor {
     static Object coerceArgument(
             Object argument,
             String parameterName,
-            Class<?> parameterType
-    ) {
-        if (parameterType == String.class) {
+            Class<?> parameterClass,
+            Type parameterType) {
+        if (parameterClass == String.class) {
             return argument.toString();
         }
 
-        if (parameterType.isEnum()) {
+        // TODO handle enum and collection of enums (e.g. wrong case, etc)
+        if (parameterClass.isEnum()) {
             try {
                 @SuppressWarnings({"unchecked", "rawtypes"})
-                Class<Enum> enumClass = (Class<Enum>) parameterType;
-                return Enum.valueOf(enumClass, Objects.requireNonNull(argument.toString()));
-            } catch (Exception|Error e) {
+                Class<Enum> enumClass = (Class<Enum>) parameterClass;
+                try {
+                    return Enum.valueOf(enumClass, Objects.requireNonNull(argument).toString());
+                } catch (IllegalArgumentException e) {
+                    // try to convert to uppercase as a last resort
+                    return Enum.valueOf(enumClass, Objects.requireNonNull(argument).toString().toUpperCase());
+                }
+            } catch (Exception | Error e) {
                 throw new IllegalArgumentException(String.format(
                         "Argument \"%s\" is not a valid enum value for %s: <%s>",
-                        parameterName, parameterType.getName(), argument), e);
+                        parameterName, parameterClass.getName(), argument), e);
             }
         }
 
-        if (parameterType == Boolean.class || parameterType == boolean.class) {
+        if (parameterClass == Boolean.class || parameterClass == boolean.class) {
             if (argument instanceof Boolean) {
                 return argument;
             }
             throw new IllegalArgumentException(String.format(
                     "Argument \"%s\" is not convertable to %s, got %s: <%s>",
-                    parameterName, parameterType.getName(), argument.getClass().getName(), argument));
+                    parameterName, parameterClass.getName(), argument.getClass().getName(), argument));
         }
 
-        if (parameterType == Double.class || parameterType == double.class) {
-            return getDoubleValue(argument, parameterName, parameterType);
+        if (parameterClass == Double.class || parameterClass == double.class) {
+            return getDoubleValue(argument, parameterName, parameterClass);
         }
 
-        if (parameterType == Float.class || parameterType == float.class) {
-            double doubleValue = getDoubleValue(argument, parameterName, parameterType);
-            checkBounds(doubleValue, parameterName, parameterType, -Float.MIN_VALUE, Float.MAX_VALUE);
+        if (parameterClass == Float.class || parameterClass == float.class) {
+            double doubleValue = getDoubleValue(argument, parameterName, parameterClass);
+            checkBounds(doubleValue, parameterName, parameterClass, -Float.MIN_VALUE, Float.MAX_VALUE);
             return (float) doubleValue;
         }
 
-        if (parameterType == BigDecimal.class) {
-            return BigDecimal.valueOf(getDoubleValue(argument, parameterName, parameterType));
+        if (parameterClass == BigDecimal.class) {
+            return BigDecimal.valueOf(getDoubleValue(argument, parameterName, parameterClass));
         }
 
-        if (parameterType == Integer.class || parameterType == int.class) {
+        if (parameterClass == Integer.class || parameterClass == int.class) {
             return (int) getBoundedLongValue(
-                    argument, parameterName, parameterType, Integer.MIN_VALUE, Integer.MAX_VALUE);
+                    argument, parameterName, parameterClass, Integer.MIN_VALUE, Integer.MAX_VALUE);
         }
 
-        if (parameterType == Long.class || parameterType == long.class) {
+        if (parameterClass == Long.class || parameterClass == long.class) {
             return getBoundedLongValue(
-                    argument, parameterName, parameterType, Long.MIN_VALUE, Long.MAX_VALUE);
+                    argument, parameterName, parameterClass, Long.MIN_VALUE, Long.MAX_VALUE);
         }
 
-        if (parameterType == Short.class || parameterType == short.class) {
+        if (parameterClass == Short.class || parameterClass == short.class) {
             return (short) getBoundedLongValue(
-                    argument, parameterName, parameterType, Short.MIN_VALUE, Short.MAX_VALUE);
+                    argument, parameterName, parameterClass, Short.MIN_VALUE, Short.MAX_VALUE);
         }
 
-        if (parameterType == Byte.class || parameterType == byte.class) {
+        if (parameterClass == Byte.class || parameterClass == byte.class) {
             return (byte) getBoundedLongValue(
-                    argument, parameterName, parameterType, Byte.MIN_VALUE, Byte.MAX_VALUE);
+                    argument, parameterName, parameterClass, Byte.MIN_VALUE, Byte.MAX_VALUE);
         }
 
-        if (parameterType == BigInteger.class) {
+        if (parameterClass == BigInteger.class) {
             return BigDecimal.valueOf(
-                    getNonFractionalDoubleValue(argument, parameterName, parameterType)).toBigInteger();
+                    getNonFractionalDoubleValue(argument, parameterName, parameterClass)).toBigInteger();
         }
 
-        if (parameterType.isArray() && argument instanceof Collection) {
-            Class<?> type = parameterType.getComponentType();
+        if (parameterClass.isArray() && argument instanceof Collection) {
+            Class<?> type = parameterClass.getComponentType();
             if (type == String.class) {
                 return ((Collection<String>) argument).toArray(new String[0]);
             }
             // TODO: Consider full type coverage.
         }
 
+        if (Collection.class.isAssignableFrom(parameterClass) || Map.class.isAssignableFrom(parameterClass)) {
+            return Json.fromJson(Json.toJson(argument), parameterType);
+        }
 
-        String result  = Json.toJson(argument);
-        return Json.fromJson(result, parameterType);
+        if (argument instanceof String) {
+            return Json.fromJson(argument.toString(), parameterClass);
+        } else {
+            String result = Json.toJson(argument);
+            return Json.fromJson(result, parameterClass);
+        }
     }
 
     private static double getDoubleValue(
@@ -246,7 +263,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         if (doubleValue < minValue || doubleValue > maxValue) {
             throw new IllegalArgumentException(String.format(
                     "Argument \"%s\" is out of range for %s: <%s>",
-                    parameterName, parameterType.getName(),doubleValue));
+                    parameterName, parameterType.getName(), doubleValue));
         }
     }
 

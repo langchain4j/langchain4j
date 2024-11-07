@@ -14,6 +14,11 @@
     <artifactId>langchain4j-azure-cosmos-nosql</artifactId>
     <name>LangChain4j :: Integration :: Azure CosmosDB NoSQL</name>
 
+    <properties>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
+
     <dependencies>
 
         <dependency>

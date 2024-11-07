@@ -256,9 +256,10 @@ Currently, AI Services support the following return types:
 - `byte`/`short`/`int`/`BigInteger`/`long`/`float`/`double`/`BigDecimal`
 - `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
 - `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
+- `Map<K, V>`
 - `Result<T>`, if you need to access `TokenUsage`, `FinishReason`, sources (`Content`s retrieved during RAG) and executed tools, aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
 
-Unless the return type is `String` or `AiMessage`, the AI Service will automatically append instructions
+Unless the return type is `String`, `AiMessage`, or `Map<K, V>`, the AI Service will automatically append instructions
 to the end of the `UserMessage` indicating the format in which the LLM should respond.
 Before the method returns, the AI Service will parse the output of the LLM into the desired type.
 
@@ -512,9 +513,11 @@ Assistant assistant = AiServices.create(Assistant.class, model);
 
 TokenStream tokenStream = assistant.chat("Tell me a joke");
 
-tokenStream.onNext(System.out::println)
-    .onComplete(System.out::println)
-    .onError(Throwable::printStackTrace)
+tokenStream.onNext((String token) -> System.out.println(token))
+    .onRetrieved((List<Content> contents) -> System.out.println(contents))
+    .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
+    .onComplete((Response<AiMessage> response) -> System.out.println(response))
+    .onError((Throwable error) -> error.printStackTrace())
     .start();
 ```
 
@@ -573,6 +576,12 @@ Please note that if an AI Service method does not have a parameter annotated wit
 the value of `memoryId` in `ChatMemoryProvider` will default to a string `"default"`.
 :::
 
+:::note
+Please note that AI Service should not be called concurrently for the same `@MemoryId`,
+as it can lead to corrupted `ChatMemory`.
+Currently, AI Service does not implement any mechanism to prevent concurrent calls for the same `@MemoryId`.
+:::
+
 - [Example with a single ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
 - [Example with ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
 - [Example with a single persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryExample.java)
@@ -605,7 +614,9 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 String answer = assistant.chat("What is 1+2 and 3*4?");
 ```
-In this scenario, LLM will execute `add(1, 2)` and `multiply(3, 4)` methods before providing an answer.
+In this scenario, the LLM will request to execute the `add(1, 2)` and `multiply(3, 4)` methods
+before providing a final answer.
+LangChain4j will execute these methods automatically.
 
 More details about tools can be found [here](/tutorials/tools#high-level-tool-api).
 

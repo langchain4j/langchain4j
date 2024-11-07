@@ -9,9 +9,11 @@ import static dev.langchain4j.internal.Utils.quoted;
 @Experimental
 public class JsonStringSchema implements JsonSchemaElement {
 
-    public static final JsonStringSchema JSON_STRING_SCHEMA = JsonStringSchema.builder().build();
-
     private final String description;
+
+    public JsonStringSchema() {
+        this.description = null;
+    }
 
     public JsonStringSchema(Builder builder) {
         this.description = builder.description;

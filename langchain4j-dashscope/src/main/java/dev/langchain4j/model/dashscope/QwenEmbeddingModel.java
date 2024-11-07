@@ -28,7 +28,7 @@ public class QwenEmbeddingModel extends DimensionAwareEmbeddingModel {
     public static final String TYPE_KEY = "type";
     public static final String TYPE_QUERY = "query";
     public static final String TYPE_DOCUMENT = "document";
-    private static final int BATCH_SIZE = 25;
+    private static final int BATCH_SIZE = 6;
 
     private final String apiKey;
     private final String modelName;

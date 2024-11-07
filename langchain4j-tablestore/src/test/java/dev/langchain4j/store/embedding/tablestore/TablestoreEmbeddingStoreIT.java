@@ -40,8 +40,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_ENDPOINT", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "TABLESTORE_INSTANCE_NAME", matches = ".+")
@@ -246,7 +245,7 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
             // when
             List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
             // then
-            assertThat(matches).hasSize(0);
+            assertThat(matches).isEmpty();
         }
         {
             EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
@@ -272,7 +271,7 @@ class TablestoreEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
             SearchRequest searchRequest = new SearchRequest(embeddingStore.getTableName(), embeddingStore.getSearchIndexName(), searchQuery);
             searchQuery.setGetTotalCount(true);
             SearchResponse resp = embeddingStore.getClient().search(searchRequest);
-            assertTrue(resp.isAllSuccess());
+            assertThat(resp.isAllSuccess()).isTrue();
             if (resp.getTotalCount() == expectTotalHit) {
                 log.info("ensureSearchDataReady totalHit:{}, expect:{}", resp.getTotalCount(), expectTotalHit);
                 log.info("DataSyncTimeInMs:" + (System.currentTimeMillis() - begin));
