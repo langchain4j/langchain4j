@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class ChatGlmResponseLoggingInterceptor implements Interceptor {
+class ChatGlmResponseLoggingInterceptor implements Interceptor {
 
     private static final Logger log = LoggerFactory.getLogger(ChatGlmResponseLoggingInterceptor.class);
 
