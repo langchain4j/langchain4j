@@ -10,6 +10,9 @@ import java.util.concurrent.Callable;
  * Utility class for retrying actions.
  */
 public final class RetryUtils {
+
+    private static final Random RANDOM = new Random();
+
     private RetryUtils() {}
 
     private static final Logger log = LoggerFactory.getLogger(RetryUtils.class);
@@ -141,10 +144,9 @@ public final class RetryUtils {
          * @return The jitter delay in milliseconds.
          */
         public int jitterDelayMillis(int attempt) {
-            Random rand = new Random();
             double delay = rawDelayMs(attempt);
             double jitter = delay * jitterScale;
-            return (int) (delay + rand.nextInt((int) jitter));
+            return (int) (delay + RANDOM.nextInt((int) jitter));
         }
 
         /**
