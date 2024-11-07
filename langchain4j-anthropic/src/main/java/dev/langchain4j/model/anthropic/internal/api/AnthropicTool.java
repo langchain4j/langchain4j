@@ -21,5 +21,5 @@ public class AnthropicTool {
     public String name;
     public String description;
     public AnthropicToolSchema inputSchema;
-    public AnthropicMessageContent.CacheControl cacheControl;
+    public CacheControl cacheControl;
 }

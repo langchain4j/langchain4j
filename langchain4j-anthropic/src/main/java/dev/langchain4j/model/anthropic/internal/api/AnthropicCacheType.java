@@ -1,7 +1,5 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
-import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent.CacheControl;
-
 import java.util.function.Supplier;
 
 public enum AnthropicCacheType {

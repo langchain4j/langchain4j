@@ -2,27 +2,22 @@ package dev.langchain4j.model.anthropic.internal.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @EqualsAndHashCode
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
-public abstract class AnthropicMessageContent {
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+@Getter
+public class CacheControl {
+    private final String type;
 
-    public String type;
-    public CacheControl cacheControl;
-
-    public AnthropicMessageContent(String type) {
+    public CacheControl(String type) {
         this.type = type;
-    }
-
-    public AnthropicMessageContent(String type, CacheControl cacheControl) {
-        this.type = type;
-        this.cacheControl = cacheControl;
     }
 }
