@@ -73,12 +73,12 @@ Here is a simplified diagram of the retrieval stage:
 [![](/img/rag-retrieval.png)](/tutorials/rag)
 
 
-### RAG Flavours in LangChain4j
+## RAG Flavours in LangChain4j
 
 LangChain4j offers three flavors of RAG:
-- Easy RAG: the easiest way to start with RAG
-- Naive RAG: a basic implementation of RAG using vector search
-- Advanced RAG: a modular RAG framework that allows for additional steps such as
+- [Easy RAG](/tutorials/rag/#easy-rag): the easiest way to start with RAG
+- [Naive RAG](/tutorials/rag/#naive-rag): a basic implementation of RAG using vector search
+- [Advanced RAG](/tutorials/rag/#advanced-rag): a modular RAG framework that allows for additional steps such as
 query transformation, retrieval from multiple sources, and re-ranking
 
 
