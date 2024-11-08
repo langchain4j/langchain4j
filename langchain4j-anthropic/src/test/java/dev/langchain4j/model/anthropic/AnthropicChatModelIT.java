@@ -9,7 +9,6 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
@@ -23,6 +22,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
@@ -49,7 +49,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AnthropicChatModelIT {
 
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    static final String CACHE_MESSAGE = "Welcome! The goal of LangChain4j is to simplify integrating LLMs into Java applications. Here's how: Unified APIs: LLM providers (like OpenAI or Google Vertex AI) and embedding (vector) stores (such as Pinecone or Milvus) use proprietary APIs. LangChain4j offers a unified API to avoid the need for learning and implementing specific APIs for each of them. To experiment with different LLMs or embedding stores, you can easily switch between them without the need to rewrite your code. LangChain4j currently supports 15+ popular LLM providers and 20+ embedding stores. Comprehensive Toolbox: Since early 2023, the community has been building numerous LLM-powered applications, identifying common abstractions, patterns, and techniques. LangChain4j has refined these into a ready to use package. Our toolbox includes tools ranging from low-level prompt templating, chat memory management, and function calling to high-level patterns like AI Services and RAG. For each abstraction, we provide an interface along with multiple ready-to-use implementations based on common techniques. Whether you're building a chatbot or developing a RAG with a complete pipeline from data ingestion to retrieval, LangChain4j offers a wide variety of options. Numerous Examples: These examples showcase how to begin creating various LLM-powered applications, providing inspiration and enabling you to start building quickly. LangChain4j began development in early 2023 amid the ChatGPT hype. We noticed a lack of Java counterparts to the numerous Python and JavaScript LLM libraries and frameworks, and we had to fix that! Although 'LangChain' is in our name, the project is a fusion of ideas and concepts from LangChain, Haystack, LlamaIndex, and the broader community, spiced up with a touch of our own innovation. We actively monitor community developments, aiming to quickly incorporate new techniques and integrations, ensuring you stay up-to-date. The library is under active development. While some features are still being worked on, the core functionality is in place, allowing you to start building LLM-powered apps now! For easier integration, LangChain4j also includes integration with Quarkus and Spring Boot.";
 
     ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
@@ -212,92 +211,90 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void test_cache_with_two_system_messages() {
+    void should_cache_system_message() {
 
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-            .version("2023-06-01")
             .beta("prompt-caching-2024-07-31")
             .modelName(CLAUDE_3_HAIKU_20240307)
+            .cacheSystemMessages(true)
             .logRequests(true)
             .logResponses(true)
-            .cacheSystemMessage(true)
             .build();
 
-        SystemMessage systemMessage = SystemMessage.from("What types of messages are supported in LangChain?".repeat(220));
-        SystemMessage systemMessageTwo = SystemMessage.from("What types of messages are supported in LangChain?".repeat(220));
+        SystemMessage systemMessage = SystemMessage.from("What types of messages are supported in LangChain?".repeat(172) + randomString(2));
         UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
         // when
-        AnthropicTokenUsage responseCreateCacheTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, systemMessageTwo, userMessage).tokenUsage();
+        Response<AiMessage> response = model.generate(systemMessage, userMessage);
 
         // then
-        assertThat(responseCreateCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
-        assertThat(responseCreateCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+        AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
+        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        AnthropicTokenUsage responseReadCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, systemMessageTwo, userMessage).tokenUsage();
-
+        Response<AiMessage> response2 = model.generate(systemMessage, userMessage);
 
         // then
-        assertThat(responseReadCacheAnthropicTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
-        assertThat(responseReadCacheAnthropicTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
+        AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
+        assertThat(readCacheTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(readCacheTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
     }
 
     @Test
-    void test_cache_on_system_message() {
+    void should_cache_multiple_system_messages() {
+
+        // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .beta("prompt-caching-2024-07-31")
+            .modelName(CLAUDE_3_HAIKU_20240307)
+            .cacheSystemMessages(true)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        SystemMessage systemMessage = SystemMessage.from("What types of messages are supported in LangChain?".repeat(87) + randomString(2));
+        SystemMessage systemMessage2 = SystemMessage.from("What types of messages are supported in LangChain?".repeat(87) + randomString(2));
+        UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
+
+        // when
+        Response<AiMessage> response = model.generate(systemMessage, systemMessage2, userMessage);
+
+        // then
+        AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
+        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+
+        // when
+        Response<AiMessage> response2 = model.generate(systemMessage, systemMessage2, userMessage);
+
+        // then
+        AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
+        assertThat(readCacheTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(readCacheTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
+    }
+
+    @Test
+    void should_fail_if_more_than_four_system_message_with_cache() {
 
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .version("2023-06-01")
                 .beta("prompt-caching-2024-07-31")
                 .modelName(CLAUDE_3_HAIKU_20240307)
+                .cacheSystemMessages(true)
                 .logRequests(true)
                 .logResponses(true)
-                .cacheSystemMessage(true)
                 .build();
 
-        SystemMessage systemMessage = SystemMessage.from(CACHE_MESSAGE.repeat(5));
-        UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
-
-        // when
-        AnthropicTokenUsage responseCreateCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, userMessage).tokenUsage();
-
-        // then
-        assertThat(responseCreateCacheAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
-        assertThat(responseCreateCacheAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
-
-        // when
-        AnthropicTokenUsage responseReadCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, userMessage).tokenUsage();
-
-
-        // then
-        assertThat(responseReadCacheAnthropicTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
-        assertThat(responseReadCacheAnthropicTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
-    }
-
-
-    @Test
-    void should_fail_if_more_four_system_message_with_cache() {
-
-        // given
-        ChatLanguageModel model = AnthropicChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .version("2023-06-01")
-                .beta("prompt-caching-2024-07-31")
-                .modelName(CLAUDE_3_HAIKU_20240307)
-                .logRequests(true)
-                .logResponses(true)
-                .cacheSystemMessage(true)
-                .build();
-
-        SystemMessage systemMessageOne = SystemMessage.from(CACHE_MESSAGE);
-        SystemMessage systemMessageTwo = SystemMessage.from(CACHE_MESSAGE);
-        SystemMessage systemMessageThree = SystemMessage.from(CACHE_MESSAGE);
-        SystemMessage systemMessageFour = SystemMessage.from(CACHE_MESSAGE);
-        SystemMessage systemMessageFive = SystemMessage.from(CACHE_MESSAGE);
+        SystemMessage systemMessageOne = SystemMessage.from("banana");
+        SystemMessage systemMessageTwo = SystemMessage.from("banana");
+        SystemMessage systemMessageThree = SystemMessage.from("banana");
+        SystemMessage systemMessageFour = SystemMessage.from("banana");
+        SystemMessage systemMessageFive = SystemMessage.from("banana");
 
         // then
         assertThatThrownBy(() -> model.generate(
@@ -456,88 +453,88 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_execute_tools_and_system_message_with_cache() {
+    void should_cache_system_message_and_tools() {
+
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-            .version("2023-06-01")
             .beta("prompt-caching-2024-07-31")
             .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .cacheSystemMessages(true)
+            .cacheTools(true)
             .logRequests(true)
             .logResponses(true)
-            .cacheTools(true)
-            .cacheSystemMessage(true)
             .build();
 
-        SystemMessage systemMessage = SystemMessage.from("returns a sum of two numbers".repeat(220));
-        List<ToolSpecification> toolSpecifications = singletonList(ToolSpecification.builder()
+        SystemMessage systemMessage = SystemMessage.from("returns a sum of two numbers".repeat(210) + randomString(2));
+
+        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
             .name("calculator")
-            .description(CACHE_MESSAGE.repeat(5))
+            .description(randomString(2))
             .parameters(JsonObjectSchema.builder()
                 .addIntegerProperty("first")
                 .addIntegerProperty("second")
                 .build())
-            .build());
-
-
-        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+            .build();
 
         // when
-        AnthropicTokenUsage responseCreateCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, userMessage).tokenUsage();
+        Response<AiMessage> response = model.generate(List.of(systemMessage, userMessage), List.of(toolSpecification));
 
         // then
-        assertThat(responseCreateCacheAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
-        assertThat(responseCreateCacheAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+        AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
+        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        AnthropicTokenUsage responseReadCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(systemMessage, userMessage).tokenUsage();
-
+        Response<AiMessage> response2 = model.generate(List.of(systemMessage, userMessage), List.of(toolSpecification));
 
         // then
-        assertThat(responseReadCacheAnthropicTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
-        assertThat(responseReadCacheAnthropicTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
-
+        AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
+        assertThat(readCacheTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(readCacheTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
     }
 
     @Test
-    void should_execute_tools_with_cache() {
+    void should_cache_tools() {
+
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-            .version("2023-06-01")
             .beta("prompt-caching-2024-07-31")
             .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .cacheTools(true)
             .logRequests(true)
             .logResponses(true)
-            .cacheTools(true)
             .build();
 
-        List<ToolSpecification> toolSpecifications = singletonList(ToolSpecification.builder()
+        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
             .name("calculator")
-            .description("returns a sum of two numbers".repeat(220))
+            .description("returns a sum of two numbers".repeat(214) + randomString(2))
             .parameters(JsonObjectSchema.builder()
                 .addIntegerProperty("first")
                 .addIntegerProperty("second")
                 .build())
-            .build());
-
-
-        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+            .build();
 
         // when
-        AnthropicTokenUsage responseCreateCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(singletonList(userMessage), toolSpecifications).tokenUsage();
+        Response<AiMessage> response = model.generate(singletonList(userMessage), List.of(toolSpecification));
 
         // then
-        assertThat(responseCreateCacheAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
-        assertThat(responseCreateCacheAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+        AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
+        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
         // when
-        AnthropicTokenUsage responseReadCacheAnthropicTokenUsage = (AnthropicTokenUsage) model.generate(singletonList(userMessage), toolSpecifications).tokenUsage();
+        Response<AiMessage> response2 = model.generate(singletonList(userMessage), List.of(toolSpecification));
 
         // then
-        assertThat(responseReadCacheAnthropicTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
-        assertThat(responseReadCacheAnthropicTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
-
+        AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
+        assertThat(readCacheTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(readCacheTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
     }
 
     @Test
@@ -665,5 +662,15 @@ class AnthropicChatModelIT {
         return stream(AnthropicChatModelName.values())
                 .filter(modelName -> !modelName.toString().startsWith("claude-2"))
                 .map(Arguments::of);
+    }
+
+    static String randomString(int length) {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        Random random = new Random();
+        StringBuilder result = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            result.append(characters.charAt(random.nextInt(characters.length())));
+        }
+        return result.toString();
     }
 }

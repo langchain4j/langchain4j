@@ -134,7 +134,7 @@ public class TokenUsage {
      * @param second The second integer, or null.
      * @return the sum of the two integers, or null if both are null.
      */
-    protected static Integer sum(Integer first, Integer second) {
+    private static Integer sum(Integer first, Integer second) {
         if (first == null && second == null) {
             return null;
         }

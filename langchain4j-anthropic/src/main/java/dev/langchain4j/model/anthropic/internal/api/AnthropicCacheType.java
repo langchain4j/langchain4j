@@ -3,16 +3,17 @@ package dev.langchain4j.model.anthropic.internal.api;
 import java.util.function.Supplier;
 
 public enum AnthropicCacheType {
-    NO_CACHE(() -> new CacheControl("no_cache")),
-    EPHEMERAL(() -> new CacheControl("ephemeral"));
 
-    private final Supplier<CacheControl> value;
+    NO_CACHE(() -> new AnthropicCacheControl("no_cache")),
+    EPHEMERAL(() -> new AnthropicCacheControl("ephemeral"));
 
-    AnthropicCacheType(Supplier<CacheControl> value) {
+    private final Supplier<AnthropicCacheControl> value;
+
+    AnthropicCacheType(Supplier<AnthropicCacheControl> value) {
         this.value = value;
     }
 
-    public CacheControl cacheControl() {
+    public AnthropicCacheControl cacheControl() {
         return this.value.get();
     }
 }

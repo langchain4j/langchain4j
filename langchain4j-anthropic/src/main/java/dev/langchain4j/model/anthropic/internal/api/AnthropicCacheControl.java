@@ -14,10 +14,11 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 @Getter
-public class CacheControl {
+public class AnthropicCacheControl {
+
     private final String type;
 
-    public CacheControl(String type) {
+    public AnthropicCacheControl(String type) {
         this.type = type;
     }
 }

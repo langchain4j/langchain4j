@@ -23,7 +23,7 @@ public class AnthropicTextContent extends AnthropicMessageContent {
         this.text = text;
     }
 
-    public AnthropicTextContent(String text, CacheControl cacheControl) {
+    public AnthropicTextContent(String text, AnthropicCacheControl cacheControl) {
         super("text", cacheControl);
         this.text = text;
     }

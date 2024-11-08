@@ -6,9 +6,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -30,8 +30,8 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.CACHE_MESSAGE;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.CAT_IMAGE_URL;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.randomString;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20240620;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
@@ -170,27 +170,20 @@ class AnthropicStreamingChatModelIT {
     }
 
     @Test
-    void test_with_cache_on_system_message() {
+    void should_cache_system_message() {
 
         // given
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
-            .baseUrl("https://api.anthropic.com/v1/")
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-            .version("2023-06-01")
             .beta("prompt-caching-2024-07-31")
             .modelName(CLAUDE_3_HAIKU_20240307)
-            .temperature(1.0)
-            .topP(1.0)
-            .topK(1)
-            .maxTokens(1000)
-            .timeout(Duration.ofSeconds(30))
+            .cacheSystemMessages(true)
             .logRequests(true)
             .logResponses(true)
-            .cacheSystemMessage(true)
             .build();
 
-        SystemMessage systemMessage = SystemMessage.from(CACHE_MESSAGE.repeat(7));
-        UserMessage userMessage = userMessage("Hi");
+        SystemMessage systemMessage = SystemMessage.from("What types of messages are supported in LangChain?".repeat(172) + randomString(2));
+        UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -203,38 +196,32 @@ class AnthropicStreamingChatModelIT {
     }
 
     @Test
-    void test_all_parameters_with_cache_on_tools() {
+    void should_cache_tools() {
 
         // given
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
-            .baseUrl("https://api.anthropic.com/v1/")
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-            .version("2023-06-01")
             .beta("prompt-caching-2024-07-31")
             .modelName(CLAUDE_3_HAIKU_20240307)
-            .temperature(1.0)
-            .topP(1.0)
-            .topK(1)
-            .maxTokens(1000)
-            .timeout(Duration.ofSeconds(30))
+            .cacheTools(true)
             .logRequests(true)
             .logResponses(true)
-            .cacheTools(true)
             .build();
 
-        List<ToolSpecification> toolSpecifications = singletonList(ToolSpecification.builder()
+        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
             .name("calculator")
-            .description("returns a sum of two numbers".repeat(290))
+            .description("returns a sum of two numbers".repeat(214) + randomString(2))
             .parameters(JsonObjectSchema.builder()
                 .addIntegerProperty("first")
                 .addIntegerProperty("second")
                 .build())
-            .build());
-        UserMessage userMessage = userMessage("Hi");
+            .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), toolSpecifications, handler);
+        model.generate(singletonList(userMessage), List.of(toolSpecification), handler);
         AnthropicTokenUsage responseAnthropicTokenUsage = (AnthropicTokenUsage) handler.get().tokenUsage();
 
         // then
