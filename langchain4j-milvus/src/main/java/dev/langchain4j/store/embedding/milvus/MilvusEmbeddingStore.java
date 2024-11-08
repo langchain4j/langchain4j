@@ -540,18 +540,41 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .vectorFieldName(vectorFieldName);
 
             if (milvusClient == null) {
-                builder.host(host)
-                    .port(port)
-                    .uri(uri)
-                    .token(token)
-                    .username(username)
-                    .password(password)
-                    .databaseName(databaseName);
-            } else {
-                builder.milvusClient(milvusClient);
+                return new MilvusEmbeddingStore(
+                    host,
+                    port,
+                    collectionName,
+                    dimension,
+                    indexType,
+                    metricType,
+                    uri,
+                    token,
+                    username,
+                    password,
+                    consistencyLevel,
+                    retrieveEmbeddingsOnSearch,
+                    autoFlushOnInsert,
+                    databaseName,
+                    idFieldName,
+                    textFieldName,
+                    metadataFieldName,
+                    vectorFieldName
+                );
             }
-
-            return builder.build();
+            return new MilvusEmbeddingStore(
+                milvusClient,
+                collectionName,
+                dimension,
+                indexType,
+                metricType,
+                consistencyLevel,
+                retrieveEmbeddingsOnSearch,
+                autoFlushOnInsert,
+                idFieldName,
+                textFieldName,
+                metadataFieldName,
+                vectorFieldName
+            );
         }
     }
 }
