@@ -41,6 +41,8 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .topK(...)
     .maxTokens(...)
     .stopSequences(...)
+    .cacheSystemMessages(...)
+    .cacheTools(...)
     .timeout(...)
     .maxRetries(...)
     .logRequests(...)
@@ -84,6 +86,21 @@ Identical to the `AnthropicChatModel`, see above.
 Anthropic supports [tools](/tutorials/tools) in both streaming and non-streaming mode.
 
 Anthropic documentation on tools can be found [here](https://docs.anthropic.com/claude/docs/tool-use).
+
+## Caching
+
+`AnthropicChatModel` and `AnthropicStreamingChatModel` support caching of system messages and tools.
+Caching is disabled by default.
+It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
+
+When enabled,`cache_control` blocks will be added to all system messages and tools respectively.
+
+To use caching, please set `beta("prompt-caching-2024-07-31")`.
+
+`AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in response which
+contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
+
+More info on caching can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching).
 
 ## Quarkus
 

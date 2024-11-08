@@ -5,7 +5,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import lombok.Builder;
 
 import java.util.List;
 
@@ -25,7 +24,6 @@ public class ChatModelRequest {
     private final List<ChatMessage> messages;
     private final List<ToolSpecification> toolSpecifications;
 
-    @Builder
     public ChatModelRequest(String model,
                             Double temperature,
                             Double topP,
@@ -38,6 +36,10 @@ public class ChatModelRequest {
         this.maxTokens = maxTokens;
         this.messages = copyIfNotNull(messages);
         this.toolSpecifications = copyIfNotNull(toolSpecifications);
+    }
+
+    public static ChatModelRequestBuilder builder() {
+        return new ChatModelRequestBuilder();
     }
 
     public String model() {
@@ -62,5 +64,55 @@ public class ChatModelRequest {
 
     public List<ToolSpecification> toolSpecifications() {
         return toolSpecifications;
+    }
+
+    public static class ChatModelRequestBuilder {
+        private String model;
+        private Double temperature;
+        private Double topP;
+        private Integer maxTokens;
+        private List<ChatMessage> messages;
+        private List<ToolSpecification> toolSpecifications;
+
+        ChatModelRequestBuilder() {
+        }
+
+        public ChatModelRequestBuilder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+        public ChatModelRequestBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public ChatModelRequestBuilder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public ChatModelRequestBuilder maxTokens(Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public ChatModelRequestBuilder messages(List<ChatMessage> messages) {
+            this.messages = messages;
+            return this;
+        }
+
+        public ChatModelRequestBuilder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            this.toolSpecifications = toolSpecifications;
+            return this;
+        }
+
+        public ChatModelRequest build() {
+            return new ChatModelRequest(this.model, this.temperature, this.topP, this.maxTokens, this.messages, this.toolSpecifications);
+        }
+
+        public String toString() {
+            return "ChatModelRequest.ChatModelRequestBuilder(model=" + this.model + ", temperature=" + this.temperature + ", topP=" + this.topP + ", maxTokens=" + this.maxTokens + ", messages=" + this.messages + ", toolSpecifications=" + this.toolSpecifications + ")";
+        }
     }
 }

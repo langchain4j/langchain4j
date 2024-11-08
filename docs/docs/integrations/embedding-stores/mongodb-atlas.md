@@ -1,5 +1,5 @@
 ---
-sidebar_position: 11
+sidebar_position: 14
 ---
 
 # MongoDB Atlas and Vector Search
