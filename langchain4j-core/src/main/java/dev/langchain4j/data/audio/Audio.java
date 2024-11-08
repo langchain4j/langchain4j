@@ -84,7 +84,7 @@ public class Audio {
      */
     public static class Builder {
 
-        private URI url;
+        URI url;
         private String base64Data;
         private String mimeType;
 

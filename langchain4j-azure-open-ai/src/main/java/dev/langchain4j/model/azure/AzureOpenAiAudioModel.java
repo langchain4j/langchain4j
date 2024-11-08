@@ -1,25 +1,24 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.models.*;
+import com.azure.ai.openai.models.AudioTranscription;
+import com.azure.ai.openai.models.AudioTranscriptionFormat;
+import com.azure.ai.openai.models.AudioTranscriptionOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 
-import dev.langchain4j.data.audio.AudioFile;
-import dev.langchain4j.data.image.Image;
-import dev.langchain4j.model.azure.spi.AzureOpenAiImageModelBuilderFactory;
-import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.audio.AudioModel;
+import dev.langchain4j.model.azure.spi.AzureOpenAiAudioModelBuilderFactory;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URI;
 import java.time.Duration;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -52,48 +51,51 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
 public class AzureOpenAiAudioModel implements AudioModel {
-
-    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiImageModel.class);
-
+    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiAudioModel.class);
     private OpenAIClient client;
     private final String deploymentName;
-    private AudioFile audioFile;
-    private String language = null;
+    private Audio audio = null;
     private String prompt = null;
-    private String responseFormat = "json";
-    private AudioQuality quality = null;
+    private String user = null;
+    private AudioTranscriptionFormat responseFormat = AudioTranscriptionFormat.JSON;
+    private String language;
 
 
     //By default, the response type will be json with the raw text included.
     public AzureOpenAiAudioModel(OpenAIClient client,
                                  String deploymentName,
-                                 Audiofile audioFile,
+                                 Audio audio,
+                                 String language,
+                                 String user,
                                  String responseFormat) {
 
-        this(deploymentName, audioFile, responseFormat);
+        this(deploymentName, audio, language, user, responseFormat);
         this.client = client;
     }
 
     public AzureOpenAiAudioModel(String endpoint,
-                                String serviceVersion,
-                                String apiKey,
-                                String deploymentName,
-                                Audiofile audioFile,
-                                String user,
-                                String responseFormat,
-                                Duration timeout,
-                                Integer maxRetries,
-                                ProxyOptions proxyOptions,
-                                boolean logRequestsAndResponses,
-                                String userAgentSuffix) {
-        this(deploymentName, audioFile, user, responseFormat);
+                                 String serviceVersion,
+                                 String apiKey,
+                                 String deploymentName,
+                                 Audio audio,
+                                 String language,
+                                 String user,
+                                 String responseFormat,
+                                 Duration timeout,
+                                 Integer maxRetries,
+                                 ProxyOptions proxyOptions,
+                                 boolean logRequestsAndResponses,
+                                 String userAgentSuffix) {
+    
+        this(deploymentName, audio, language, user, responseFormat);
         this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
-    public AzureOpenAiImageModel(String endpoint,
+    public AzureOpenAiAudioModel(String endpoint,
                                  String serviceVersion,
                                  KeyCredential keyCredential,
-                                 Audiofile audioFile,
+                                 Audio audio,
+                                 String language,
                                  String deploymentName,
                                  String user,
                                  String responseFormat,
@@ -103,18 +105,17 @@ public class AzureOpenAiAudioModel implements AudioModel {
                                  boolean logRequestsAndResponses,
                                  String userAgentSuffix) {
 
-        this(deploymentName, audioFile, user, responseFormat);
+        this(deploymentName, audio, language, user, responseFormat);
         this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
-    public AzureOpenAiImageModel(String endpoint,
+    public AzureOpenAiAudioModel(String endpoint,
                                  String serviceVersion,
                                  TokenCredential tokenCredential,
                                  String deploymentName,
-                                 String quality,
-                                 String size,
+                                 Audio audio,
                                  String user,
-                                 String style,
+                                 String language,
                                  String responseFormat,
                                  Duration timeout,
                                  Integer maxRetries,
@@ -122,49 +123,41 @@ public class AzureOpenAiAudioModel implements AudioModel {
                                  boolean logRequestsAndResponses,
                                  String userAgentSuffix) {
 
-        this(deploymentName, quality, size, user, style, responseFormat);
+        this(deploymentName, audio, language, user, responseFormat);
         this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
-    private AzureOpenAiImageModel(String deploymentName, String quality, String size, String user, String style, String responseFormat) {
-        this.deploymentName = getOrDefault(deploymentName, "dall-e-3");
-        if (quality != null) {
-            this.quality = ImageGenerationQuality.fromString(quality);
+
+    private AzureOpenAiAudioModel(String deploymentName, Audio audio, String language, String user, String responseFormat) {
+        this.deploymentName = getOrDefault(deploymentName, "whisper-1");
+        if (audio != null) {
+            this.audio = audio;
         }
-        if (size != null) {
-            this.size = ImageSize.fromString(size);
-        }
-        if (user != null) {
-            this.user = user;
-        }
-        if (style != null) {
-            this.style = ImageGenerationStyle.fromString(style);
+        if (language != null) {
+            this.language = language;
         }
         if (responseFormat != null) {
-            this.responseFormat = ImageGenerationResponseFormat.fromString(responseFormat);
+            this.responseFormat = AudioTranscriptionFormat.fromString(responseFormat);
         }
     }
 
-    @Override
-    public Response<Image> generate(String prompt) {
-        ImageGenerationOptions options = new ImageGenerationOptions(prompt)
-                .setModel(deploymentName)
-                .setN(1)
-                .setQuality(quality)
-                .setSize(size)
-                .setUser(user)
-                .setStyle(style)
-                .setResponseFormat(responseFormat);
 
+    @Override
+    public Response<String> transcribe(Audio audio) {
+        AudioTranscriptionOptions options = new AudioTranscriptionOptions(audio.base64Data().getBytes())
+                .setPrompt(prompt)
+                .setModel(deploymentName)
+                .setLanguage(language)
+                .setResponseFormat(responseFormat);
+    
         try {
-            ImageGenerations imageGenerations = client.getImageGenerations(deploymentName, options);
-            Image image = imageFrom(imageGenerations.getData().get(0));
-            return Response.from(image);
+            AudioTranscription audioTranscription = client.getAudioTranscription(deploymentName, options.getFilename(), options);
+            return Response.from(audioTranscription.getText());
         } catch (HttpResponseException httpResponseException) {
-            logger.info("Error generating image, {}", httpResponseException.getValue());
+            logger.info("Error retrieving transcription, {}", httpResponseException.getValue());
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_policy_violation");
             return Response.from(
-                    Image.builder().build(),
+                    AudioTranscriptionFormat.JSON.toString(),
                     null,
                     exceptionFinishReason
             );
@@ -172,7 +165,7 @@ public class AzureOpenAiAudioModel implements AudioModel {
     }
 
     public static Builder builder() {
-        for (AzureOpenAiImageModelBuilderFactory factory : loadFactories(AzureOpenAiImageModelBuilderFactory.class)) {
+        for (AzureOpenAiAudioModelBuilderFactory factory : loadFactories(AzureOpenAiAudioModelBuilderFactory.class)) {
             return factory.get();
         }
         return new Builder();
@@ -186,10 +179,7 @@ public class AzureOpenAiAudioModel implements AudioModel {
         private KeyCredential keyCredential;
         private TokenCredential tokenCredential;
         private String deploymentName;
-        private String quality;
-        private String size;
         private String user;
-        private String style;
         private String responseFormat;
         private Duration timeout;
         private Integer maxRetries;
@@ -197,6 +187,8 @@ public class AzureOpenAiAudioModel implements AudioModel {
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
         private String userAgentSuffix;
+        private String language;
+        private Audio audio;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -265,54 +257,12 @@ public class AzureOpenAiAudioModel implements AudioModel {
             return this;
         }
 
-        /**
-         * Sets the quality of the image. This is an optional parameter.
-         *
-         * @param quality The quality of the image.
-         * @return builder
-         */
-        public Builder quality(String quality) {
-            this.quality = quality;
-            return this;
-        }
+        
 
         /**
-         * Sets the quality of the image, using the ImageGenerationQuality enum. This is an optional parameter.
+         * Sets the user of the audio. This is an optional parameter.
          *
-         * @param imageGenerationQuality The quality of the image.
-         * @return builder
-         */
-        public Builder quality(ImageGenerationQuality imageGenerationQuality) {
-            this.quality = imageGenerationQuality.toString();
-            return this;
-        }
-
-        /**
-         * Sets the size of the image. This is an optional parameter.
-         *
-         * @param size The size of the image.
-         * @return builder
-         */
-        public Builder size(String size) {
-            this.size = size;
-            return this;
-        }
-
-        /**
-         * Sets the size of the image, using the ImageSize enum. This is an optional parameter.
-         *
-         * @param imageSize The size of the image.
-         * @return builder
-         */
-        public Builder size(ImageSize imageSize) {
-            this.size = imageSize.toString();
-            return this;
-        }
-
-        /**
-         * Sets the user of the image. This is an optional parameter.
-         *
-         * @param user The user of the image.
+         * @param user The user of the audio.
          * @return builder
          */
         public Builder user(String user) {
@@ -320,32 +270,11 @@ public class AzureOpenAiAudioModel implements AudioModel {
             return this;
         }
 
-        /**
-         * Sets the style of the image. This is an optional parameter.
-         *
-         * @param style The style of the image.
-         * @return builder
-         */
-        public Builder style(String style) {
-            this.style = style;
-            return this;
-        }
 
         /**
-         * Sets the style of the image, using the ImageGenerationStyle enum. This is an optional parameter.
+         * Sets the response format of the audio. This is an optional parameter.
          *
-         * @param imageGenerationStyle The style of the image.
-         * @return builder
-         */
-        public Builder style(ImageGenerationStyle imageGenerationStyle) {
-            this.style = imageGenerationStyle.toString();
-            return this;
-        }
-
-        /**
-         * Sets the response format of the image. This is an optional parameter.
-         *
-         * @param responseFormat The response format of the image.
+         * @param responseFormat The response format of the audio.
          * @return builder
          */
         public Builder responseFormat(String responseFormat) {
@@ -354,13 +283,24 @@ public class AzureOpenAiAudioModel implements AudioModel {
         }
 
         /**
-         * Sets the response format of the image, using the ImageGenerationResponseFormat enum. This is an optional parameter.
+         * Sets the response format of the audio, using the AudioResponseFormat enum. This is an optional parameter.
          *
-         * @param imageGenerationResponseFormat The response format of the image.
+         * @param audioTranscriptionFormat The response format of the audio.
          * @return builder
          */
-        public Builder responseFormat(ImageGenerationResponseFormat imageGenerationResponseFormat) {
-            this.responseFormat = imageGenerationResponseFormat.toString();
+        public Builder responseFormat(AudioTranscriptionFormat audioTranscriptionFormat) {
+            this.responseFormat = audioTranscriptionFormat.toString();
+            return this;
+        }
+
+        /**
+         * Sets the language of the audio. This is an optional parameter.
+         *
+         * @param language The language of the audio.
+         * @return builder
+         */
+        public Builder language(String language) {
+            this.language = language;
             return this;
         }
 
@@ -394,18 +334,17 @@ public class AzureOpenAiAudioModel implements AudioModel {
             return this;
         }
 
-        public AzureOpenAiImageModel build() {
+        public AzureOpenAiAudioModel build() {
             if (openAIClient == null) {
                 if (tokenCredential != null) {
-                    return new AzureOpenAiImageModel(
+                    return new AzureOpenAiAudioModel(
                             endpoint,
                             serviceVersion,
                             tokenCredential,
                             deploymentName,
-                            quality,
-                            size,
+                            audio,
+                            language,
                             user,
-                            style,
                             responseFormat,
                             timeout,
                             maxRetries,
@@ -414,15 +353,14 @@ public class AzureOpenAiAudioModel implements AudioModel {
                             userAgentSuffix
                     );
                 } else if (keyCredential != null) {
-                    return new AzureOpenAiImageModel(
+                    return new AzureOpenAiAudioModel(
                             endpoint,
                             serviceVersion,
                             keyCredential,
+                            audio,
                             deploymentName,
-                            quality,
-                            size,
+                            language,
                             user,
-                            style,
                             responseFormat,
                             timeout,
                             maxRetries,
@@ -431,15 +369,14 @@ public class AzureOpenAiAudioModel implements AudioModel {
                             userAgentSuffix
                     );
                 }
-                return new AzureOpenAiImageModel(
+                return new AzureOpenAiAudioModel(
                         endpoint,
                         serviceVersion,
                         apiKey,
                         deploymentName,
-                        quality,
-                        size,
+                        audio,
+                        language,
                         user,
-                        style,
                         responseFormat,
                         timeout,
                         maxRetries,
@@ -448,14 +385,14 @@ public class AzureOpenAiAudioModel implements AudioModel {
                         userAgentSuffix
                 );
             }
-            return new AzureOpenAiImageModel(
+            return new AzureOpenAiAudioModel(
                     openAIClient,
                     deploymentName,
-                    quality,
-                    size,
+                    audio,
+                    language,
                     user,
-                    style,
                     responseFormat);
         }
     }
+
 }

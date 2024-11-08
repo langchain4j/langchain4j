@@ -1,6 +1,7 @@
 package dev.langchain4j.model.audio;
 
-import dev.langchain4j.data.audio.AudioFile;
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.output.Response;
 
 public interface AudioModel {
     /**
@@ -9,5 +10,5 @@ public interface AudioModel {
      * @param audioFile The audio file to generate a transcription from.
      * @return The generated transcription response.
      */
-    Response<Transcription> transcribe(AudioFile audioFile);
+    Response<String> transcribe(Audio audioFile);
 }

@@ -120,4 +120,5 @@ public class Response<T> {
     public static <T> Response<T> from(T content, TokenUsage tokenUsage, FinishReason finishReason) {
         return new Response<>(content, tokenUsage, finishReason);
     }
+
 }
