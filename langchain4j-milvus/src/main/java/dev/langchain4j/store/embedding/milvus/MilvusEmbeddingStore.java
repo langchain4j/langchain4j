@@ -525,20 +525,6 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public MilvusEmbeddingStore build() {
-
-            MilvusEmbeddingStore.Builder builder = new MilvusEmbeddingStore.Builder()
-                .collectionName(collectionName)
-                .dimension(dimension)
-                .indexType(indexType)
-                .metricType(metricType)
-                .consistencyLevel(consistencyLevel)
-                .retrieveEmbeddingsOnSearch(retrieveEmbeddingsOnSearch)
-                .autoFlushOnInsert(autoFlushOnInsert)
-                .idFieldName(idFieldName)
-                .textFieldName(textFieldName)
-                .metadataFieldName(metadataFieldName)
-                .vectorFieldName(vectorFieldName);
-
             if (milvusClient == null) {
                 return new MilvusEmbeddingStore(
                     host,
