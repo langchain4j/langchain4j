@@ -1,13 +1,11 @@
 package dev.langchain4j.store.embedding.filter.logical;
 
 import dev.langchain4j.store.embedding.filter.Filter;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+
+import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-@ToString
-@EqualsAndHashCode
 public class Not implements Filter {
 
     private final Filter expression;
@@ -23,5 +21,19 @@ public class Not implements Filter {
     @Override
     public boolean test(Object object) {
         return !expression.test(object);
+    }
+
+    public boolean equals(final Object o) {
+        if (o == this) return true;
+        if (!(o instanceof Not other)) return false;
+        return Objects.equals(this.expression, other.expression);
+    }
+
+    public int hashCode() {
+        return Objects.hash(expression);
+    }
+
+    public String toString() {
+        return "Not(expression=" + this.expression + ")";
     }
 }

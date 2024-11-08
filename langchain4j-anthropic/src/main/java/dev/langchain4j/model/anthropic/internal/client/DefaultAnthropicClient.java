@@ -12,8 +12,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRespon
 import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -42,7 +41,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
@@ -115,7 +113,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
     public AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request) {
         try {
             retrofit2.Response<AnthropicCreateMessageResponse> retrofitResponse
-                    = anthropicApi.createMessage(apiKey, version, toBeta(request), request).execute();
+                    = anthropicApi.createMessage(apiKey, version, beta, request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -129,17 +127,6 @@ public class DefaultAnthropicClient extends AnthropicClient {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private String toBeta(AnthropicCreateMessageRequest request) {
-        return hasTools(request) ? beta : null;
-    }
-
-    private static boolean hasTools(AnthropicCreateMessageRequest request) {
-        return !isNullOrEmpty(request.tools) || request.messages.stream()
-                .flatMap(message -> message.content.stream())
-                .anyMatch(content ->
-                        (content instanceof AnthropicToolUseContent) || (content instanceof AnthropicToolResultContent));
     }
 
     @Override
@@ -156,6 +143,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             final AtomicInteger inputTokenCount = new AtomicInteger();
             final AtomicInteger outputTokenCount = new AtomicInteger();
+
+            final AtomicInteger cacheCreationInputTokens = new AtomicInteger();
+            final AtomicInteger cacheReadInputTokens = new AtomicInteger();
 
             final AtomicReference<String> responseId = new AtomicReference<>();
             final AtomicReference<String> responseModel = new AtomicReference<>();
@@ -238,6 +228,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 if (usage.outputTokens != null) {
                     this.outputTokenCount.addAndGet(usage.outputTokens);
                 }
+                if (usage.cacheCreationInputTokens != null) {
+                    this.cacheCreationInputTokens.addAndGet(usage.cacheCreationInputTokens);
+                }
+                if (usage.cacheReadInputTokens != null) {
+                    this.cacheReadInputTokens.addAndGet(usage.cacheReadInputTokens);
+                }
             }
 
             private void handleContentBlockStart(AnthropicStreamingData data) {
@@ -309,7 +305,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
             private Response<AiMessage> build() {
 
                 String text = String.join("\n", contents);
-                TokenUsage tokenUsage = new TokenUsage(inputTokenCount.get(), outputTokenCount.get());
+                TokenUsage tokenUsage = new AnthropicTokenUsage(inputTokenCount.get(), outputTokenCount.get(), cacheCreationInputTokens.get(), cacheReadInputTokens.get());
                 FinishReason finishReason = toFinishReason(stopReason);
                 Map<String, Object> metadata = createMetadata();
 
@@ -385,7 +381,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
         };
 
-        Call<ResponseBody> call = anthropicApi.streamMessage(apiKey, version, request);
+        Call<ResponseBody> call = anthropicApi.streamMessage(apiKey, version, beta, request);
         EventSources.createFactory(okHttpClient).newEventSource(call.request(), eventSourceListener);
     }
 }

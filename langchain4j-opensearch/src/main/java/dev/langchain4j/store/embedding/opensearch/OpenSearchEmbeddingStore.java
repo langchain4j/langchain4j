@@ -5,6 +5,8 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -265,14 +267,18 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * See https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
      */
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+
         List<EmbeddingMatch<TextSegment>> matches;
         try {
-            ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(referenceEmbedding.vector(), (float) minScore);
+            ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(
+                request.queryEmbedding().vector(),
+                (float) request.minScore()
+            );
             SearchResponse<Document> response = client.search(
                     SearchRequest.of(s -> s.index(indexName)
                             .query(n -> n.scriptScore(scriptScoreQuery))
-                            .size(maxResults)),
+                            .size(request.maxResults())),
                     Document.class
             );
             matches = toEmbeddingMatch(response);
@@ -280,7 +286,8 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             log.error("[I/O OpenSearch Exception]", ex);
             throw new OpenSearchRequestFailedException(ex.getMessage());
         }
-        return matches;
+
+        return new EmbeddingSearchResult<>(matches);
     }
 
     private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) throws JsonProcessingException {

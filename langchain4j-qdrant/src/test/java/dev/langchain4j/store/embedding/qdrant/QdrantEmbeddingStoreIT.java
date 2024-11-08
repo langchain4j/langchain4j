@@ -17,12 +17,13 @@ import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
-import io.qdrant.client.grpc.Collections.Distance;
 import io.qdrant.client.grpc.Collections.VectorParams;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.qdrant.QdrantContainer;
@@ -33,36 +34,37 @@ import java.util.concurrent.ExecutionException;
 import java.lang.reflect.Method;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static io.qdrant.client.grpc.Collections.Distance.Cosine;
 
 @Testcontainers
 class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
-    private static String collectionName = "langchain4j-" + randomUUID();
-    private static int dimension = 384;
-    private static Distance distance = Distance.Cosine;
-    private static QdrantEmbeddingStore embeddingStore;
+    private static final String COLLECTION_NAME = "langchain4j-" + randomUUID();
 
     @Container
-    private static final QdrantContainer qdrant = new QdrantContainer("qdrant/qdrant:latest");
+    private static final QdrantContainer QDRANT_CONTAINER = new QdrantContainer("qdrant/qdrant:latest");
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    private static QdrantEmbeddingStore EMBEDDING_STORE;
+    private static final EmbeddingModel EMBEDDING_MODEL = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeAll
     static void setup() throws InterruptedException, ExecutionException {
-        embeddingStore = QdrantEmbeddingStore.builder()
-            .host(qdrant.getHost())
-            .port(qdrant.getGrpcPort())
-            .collectionName(collectionName)
+        EMBEDDING_STORE = QdrantEmbeddingStore.builder()
+            .host(QDRANT_CONTAINER.getHost())
+            .port(QDRANT_CONTAINER.getGrpcPort())
+            .collectionName(COLLECTION_NAME)
             .build();
 
         QdrantClient client = new QdrantClient(
-            QdrantGrpcClient.newBuilder(qdrant.getHost(), qdrant.getGrpcPort(), false)
+            QdrantGrpcClient.newBuilder(QDRANT_CONTAINER.getHost(), QDRANT_CONTAINER.getGrpcPort(), false)
             .build());
 
         client
             .createCollectionAsync(
-                collectionName,
-                VectorParams.newBuilder().setDistance(distance).setSize(dimension)
+                COLLECTION_NAME,
+                VectorParams.newBuilder()
+                    .setDistance(Cosine)
+                    .setSize(EMBEDDING_MODEL.dimension())
                 .build())
             .get();
 
@@ -71,22 +73,31 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @AfterAll
     static void teardown() {
-        embeddingStore.close();
+        EMBEDDING_STORE.close();
     }
 
     @Override
     protected EmbeddingStore < TextSegment > embeddingStore() {
-        return embeddingStore;
+        return EMBEDDING_STORE;
     }
 
     @Override
     protected EmbeddingModel embeddingModel() {
-        return embeddingModel;
+        return EMBEDDING_MODEL;
     }
 
     @Override
     protected void clearStore() {
-        embeddingStore.clearStore();
+        EMBEDDING_STORE.clearStore();
+    }
+
+    @Override
+    @ParameterizedTest
+    @MethodSource("should_filter_by_metadata_not_qdrant")
+    protected void should_filter_by_metadata_not(Filter metadataFilter,
+                                                 List<Metadata> matchingMetadatas,
+                                                 List<Metadata> notMatchingMetadatas) {
+        super.should_filter_by_metadata_not(metadataFilter, matchingMetadatas, notMatchingMetadatas);
     }
 
     // - Eq, NEq, In, NIn don't allow float and double values. Only integers and
@@ -95,7 +106,7 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     // - For In and NIn conditions, if the key doesn't exist in the metadata, it is
     // not matched.
 
-    protected static Stream < Arguments > should_filter_by_metadata_not() {
+    protected static Stream < Arguments > should_filter_by_metadata_not_qdrant() {
         return EmbeddingStoreWithFilteringIT.should_filter_by_metadata_not()
             .filter(arguments -> {
                 Filter filter = (Filter) arguments.get()[0];
@@ -134,7 +145,16 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
             });
     }
 
-    protected static Stream < Arguments > should_filter_by_metadata() {
+    @Override
+    @ParameterizedTest
+    @MethodSource("should_filter_by_metadata_qdrant")
+    protected void should_filter_by_metadata(Filter metadataFilter,
+                                             List<Metadata> matchingMetadatas,
+                                             List<Metadata> notMatchingMetadatas) {
+        super.should_filter_by_metadata(metadataFilter, matchingMetadatas, notMatchingMetadatas);
+    }
+
+    protected static Stream < Arguments > should_filter_by_metadata_qdrant() {
         return EmbeddingStoreWithFilteringIT.should_filter_by_metadata()
             .filter(arguments -> {
                 Filter filter = (Filter) arguments.get()[0];

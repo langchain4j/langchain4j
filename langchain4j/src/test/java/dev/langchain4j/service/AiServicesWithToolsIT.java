@@ -118,7 +118,7 @@ class AiServicesWithToolsIT {
                 .name("getTransactionAmount")
                 .description("returns amount of a given transaction")
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("arg0", s -> s.description("ID of a transaction"))
+                        .addStringProperty("arg0", "ID of a transaction")
                         .required("arg0")
                         .build())
                 .build();

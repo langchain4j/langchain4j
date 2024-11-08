@@ -12,7 +12,9 @@ import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.logical.Not;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.chromadb.ChromaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -51,8 +53,17 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         return embeddingModel;
     }
 
+    @Override
+    @ParameterizedTest
+    @MethodSource("should_filter_by_metadata_chroma")
+    protected void should_filter_by_metadata(Filter metadataFilter,
+                                             List<Metadata> matchingMetadatas,
+                                             List<Metadata> notMatchingMetadatas) {
+        super.should_filter_by_metadata(metadataFilter, matchingMetadatas, notMatchingMetadatas);
+    }
+
     // in chroma compare filter only works with numbers
-    protected static Stream<Arguments> should_filter_by_metadata() {
+    protected static Stream<Arguments> should_filter_by_metadata_chroma() {
         return EmbeddingStoreWithFilteringIT.should_filter_by_metadata()
                 .filter(arguments -> {
                             Filter filter = (Filter) arguments.get()[0];
@@ -71,11 +82,20 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 );
     }
 
+    @Override
+    @ParameterizedTest
+    @MethodSource("should_filter_by_metadata_not_chroma")
+    protected void should_filter_by_metadata_not(Filter metadataFilter,
+                                                 List<Metadata> matchingMetadatas,
+                                                 List<Metadata> notMatchingMetadatas) {
+        super.should_filter_by_metadata_not(metadataFilter, matchingMetadatas, notMatchingMetadatas);
+    }
+
     // Chroma filters by *not* as following:
     // If you filter by "key" not equals "a", then in fact all items with "key" != "a" value are returned, but no items
     // without "key" metadata!
     // Therefore, all default *not* tests coming from parent class have to be rewritten here.
-    protected static Stream<Arguments> should_filter_by_metadata_not() {
+    protected static Stream<Arguments> should_filter_by_metadata_not_chroma() {
         return EmbeddingStoreWithFilteringIT.should_filter_by_metadata_not()
                 .map(args -> {
                     Object[] arguments = args.get();
@@ -92,7 +112,7 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                     List<Metadata> newNotMatchingMetadatas = new ArrayList<>(notMatchingMetadatas);
                     newNotMatchingMetadatas.addAll(matchingMetadatas.stream()
                             .filter(metadata -> !metadata.containsKey(key))
-                            .collect(toList()));
+                            .toList());
 
                     assertThat(Stream.concat(newMatchingMetadatas.stream(), newNotMatchingMetadatas.stream()))
                             .containsExactlyInAnyOrderElementsOf(Stream.concat(matchingMetadatas.stream(), notMatchingMetadatas.stream()).collect(toList()));

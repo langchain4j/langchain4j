@@ -83,9 +83,34 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
 ```
 
 ## GoogleAiGeminiStreamingChatModel
+The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token. The response must be managed by a `StreamingResponseHandler`. 
+```java
+StreamingChatLanguageModel gemini = GoogleAiGeminiStreamingChatModel.builder()
+        .apiKey(System.getenv("GEMINI_AI_KEY"))
+        .modelName("gemini-1.5-flash")
+        .build();
 
-No streaming chat model is available yet.
-Please open a feature request if you're interested in a streaming model or if you want to contribute to implementing it.
+CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+
+        gemini.generate("Tell me a joke about Java", new StreamingResponseHandler<AiMessage>() {
+    @Override
+    public void onNext(String token) {
+        System.out.print(token);
+    }
+
+    @Override
+    public void onComplete(Response<AiMessage> response) {
+        futureResponse.complete(response);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        futureResponse.completeExceptionally(error);
+    }
+});
+
+        futureResponse.join();
+```
 
 ## Tools
 
@@ -182,8 +207,12 @@ ChatLanguageModel gemini = GoogleAiGeminiChatModel.builder()
             .rootElement(JsonObjectSchema.builder()
                 .addStringProperty("title")
                 .addIntegerProperty("preparationTimeMinutes")
-                .addArrayProperty("ingredients", new JsonStringSchema())
-                .addArrayProperty("steps", new JsonStringSchema())
+                .addProperty("ingredients", JsonArraySchema.builder()
+                        .items(new JsonStringSchema())
+                        .build())
+                .addProperty("steps", JsonArraySchema.builder()
+                        .items(new JsonStringSchema())
+                        .build())
                 .build())
             .build())
         .build())
