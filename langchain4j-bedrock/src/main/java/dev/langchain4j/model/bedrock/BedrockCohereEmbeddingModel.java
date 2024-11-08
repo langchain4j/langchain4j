@@ -37,11 +37,11 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
     }
 
     @Override
-    protected String getModelId() {
+    protected String getModel() {
         return model;
     }
 
-    public String getInputType() {
+    public String inputType() {
         return inputType;
     }
 

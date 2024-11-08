@@ -30,7 +30,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
  */
 @SuperBuilder
 @Getter
-@Slf4j
 public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> implements EmbeddingModel {
 
     @Builder.Default
@@ -77,7 +76,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
      *
      * @return model id
      */
-    protected abstract String getModelId();
+    protected abstract String getModel();
 
     /**
      * Get response class type
@@ -96,7 +95,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
 
         InvokeModelRequest invokeModelRequest = InvokeModelRequest
                 .builder()
-                .modelId(getModelId())
+                .modelId(getModel())
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
         return getClient().invokeModel(invokeModelRequest);

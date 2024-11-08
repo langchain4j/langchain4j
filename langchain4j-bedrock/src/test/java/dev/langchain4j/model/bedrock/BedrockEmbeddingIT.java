@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -115,6 +116,42 @@ class BedrockEmbeddingIT {
 
         assertThat(embeddingModel.dimension()).isEqualTo(1024);
     }
+
+    @Test
+    void testBedrockCohereEmbedEnglishTextV3MultipleTextSegments() {
+
+        BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel
+            .builder()
+            .region(Region.US_EAST_1)
+            .maxRetries(1)
+            .model(BedrockCohereEmbeddingModel.Types.CohereEmbedEnglishTextV3.getValue())
+            .build();
+
+        assertThat(embeddingModel).isNotNull();
+
+        List<TextSegment> segments = new ArrayList<>();
+        segments.add(TextSegment.from("Hello world!"));
+        segments.add(TextSegment.from("How are you?"));
+
+        Response<List<Embedding>> response = embeddingModel.embedAll(segments);
+        assertThat(response).isNotNull();
+
+        List<Embedding> embeddings = response.content();
+        assertThat(embeddings).hasSize(1);
+
+        Embedding embedding = embeddings.get(0);
+        assertThat(embedding.vector()).hasSize(1024);
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(0);
+        assertThat(tokenUsage.outputTokenCount()).isNull();
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(0);
+
+        assertThat(response.finishReason()).isNull();
+
+        assertThat(embeddingModel.dimension()).isEqualTo(1024);
+    }
+
 
     @Test
     void testBedrockCohereEmbedMultilingualTextV3() {
