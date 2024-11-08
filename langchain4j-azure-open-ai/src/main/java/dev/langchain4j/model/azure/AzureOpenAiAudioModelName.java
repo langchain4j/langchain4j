@@ -9,13 +9,13 @@ public enum AzureOpenAiAudioModelName {
     private final String modelType;
     private final String modelVersion;
 
-    AzureOpenAiImageModelName(String modelName, String modelType) {
+    AzureOpenAiAudioModelName(String modelName, String modelType) {
         this.modelName = modelName;
         this.modelType = modelType;
         this.modelVersion = null;
     }
 
-    AzureOpenAiImageModelName(String modelName, String modelType, String modelVersion) {
+    AzureOpenAiAudioModelName(String modelName, String modelType, String modelVersion) {
         this.modelName = modelName;
         this.modelType = modelType;
         this.modelVersion = modelVersion;
