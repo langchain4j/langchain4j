@@ -69,10 +69,10 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private final Integer topK;
     private final int maxTokens;
     private final List<String> stopSequences;
-    private final int maxRetries;
-    private final List<ChatModelListener> listeners;
     private final boolean cacheSystemMessages;
     private final boolean cacheTools;
+    private final int maxRetries;
+    private final List<ChatModelListener> listeners;
 
     /**
      * Constructs an instance of an {@code AnthropicChatModel} with the specified parameters.
@@ -93,6 +93,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
      * @param maxRetries          The maximum number of retries for API requests. Default: 3
      * @param logRequests         Whether to log the content of API requests using SLF4J. Default: false
      * @param logResponses        Whether to log the content of API responses using SLF4J. Default: false
+     * @param listeners           A list of {@link ChatModelListener} instances to be notified.
      */
     @Builder
     private AnthropicChatModel(String baseUrl,
@@ -127,10 +128,10 @@ public class AnthropicChatModel implements ChatLanguageModel {
         this.topK = topK;
         this.maxTokens = getOrDefault(maxTokens, 1024);
         this.stopSequences = stopSequences;
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.cacheSystemMessages = getOrDefault(cacheSystemMessages, false);
         this.cacheTools = getOrDefault(cacheTools, false);
+        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     public static class AnthropicChatModelBuilder {

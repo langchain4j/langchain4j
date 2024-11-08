@@ -76,9 +76,9 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
     private final Integer topK;
     private final int maxTokens;
     private final List<String> stopSequences;
-    private final List<ChatModelListener> listeners;
     private final boolean cacheSystemMessages;
     private final boolean cacheTools;
+    private final List<ChatModelListener> listeners;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -93,29 +93,30 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
      * @param topK                The top-K
      * @param maxTokens           The maximum number of tokens to generate. Default: 1024
      * @param stopSequences       The custom text sequences that will cause the model to stop generating
+     * @param cacheSystemMessages If true, it will add cache_control block to all system messages. Default: false
+     * @param cacheTools          If true, it will add cache_control block to all tools. Default: false
      * @param timeout             The timeout for API requests. Default: 60 seconds
      * @param logRequests         Whether to log the content of API requests using SLF4J. Default: false
      * @param logResponses        Whether to log the content of API responses using SLF4J. Default: false
-     * @param cacheSystemMessages If true, it will add cache_control block to all system messages. Default: false
-     * @param cacheTools          If true, it will add cache_control block to all tools. Default: false
+     * @param listeners           A list of {@link ChatModelListener} instances to be notified.
      */
     @Builder
     private AnthropicStreamingChatModel(String baseUrl,
                                         String apiKey,
                                         String version,
+                                        String beta,
                                         String modelName,
                                         Double temperature,
                                         Double topP,
                                         Integer topK,
                                         Integer maxTokens,
                                         List<String> stopSequences,
+                                        Boolean cacheSystemMessages,
+                                        Boolean cacheTools,
                                         Duration timeout,
                                         Boolean logRequests,
                                         Boolean logResponses,
-                                        List<ChatModelListener> listeners,
-                                        Boolean cacheSystemMessages,
-                                        Boolean cacheTools,
-                                        String beta) {
+                                        List<ChatModelListener> listeners) {
         this.client = AnthropicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
@@ -131,9 +132,9 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
         this.topK = topK;
         this.maxTokens = getOrDefault(maxTokens, 1024);
         this.stopSequences = stopSequences;
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.cacheSystemMessages = getOrDefault(cacheSystemMessages, false);
         this.cacheTools = getOrDefault(cacheTools, false);
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     public static class AnthropicStreamingChatModelBuilder {
