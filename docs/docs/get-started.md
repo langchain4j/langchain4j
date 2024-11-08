@@ -19,7 +19,7 @@ The simplest way to begin is with the OpenAI integration:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>0.34.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
@@ -30,14 +30,14 @@ the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.34.0</version>
+    <version>0.35.0</version>
 </dependency>
 ```
 
 - For Gradle in `build.gradle`:
 ```groovy
-implementation 'dev.langchain4j:langchain4j-open-ai:0.34.0'
-implementation 'dev.langchain4j:langchain4j:0.34.0'
+implementation 'dev.langchain4j:langchain4j-open-ai:0.35.0'
+implementation 'dev.langchain4j:langchain4j:0.35.0'
 ```
 
 <details>
@@ -49,7 +49,7 @@ implementation 'dev.langchain4j:langchain4j:0.34.0'
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-bom</artifactId>
-            <version>0.34.0</version>
+            <version>0.35.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -78,7 +78,7 @@ you can use the most recent SNAPSHOT dependency:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j</artifactId>
-        <version>0.35.0-SNAPSHOT</version>
+        <version>0.36.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -98,7 +98,7 @@ String apiKey = "demo";
 Be aware that when using the `demo` key, all requests to the OpenAI API go through our proxy,
 which injects the real key before forwarding your request to the OpenAI API.
 We do not collect or use your data in any way.
-The `demo` key has a quota and should only be used for demonstration purposes.
+The `demo` key has a quota, is restricted to the `gpt-4o-mini` model, and should only be used for demonstration purposes.
 :::
 
 Once you've set up the key, let's create an instance of an `OpenAiChatModel`:

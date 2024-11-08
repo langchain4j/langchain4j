@@ -10,7 +10,6 @@ import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -19,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static java.util.Collections.singletonList;
@@ -40,12 +40,6 @@ public class OpenAiStreamingResponseBuilder {
 
     private volatile TokenUsage tokenUsage;
     private volatile FinishReason finishReason;
-
-    private final Integer inputTokenCount;
-
-    public OpenAiStreamingResponseBuilder(Integer inputTokenCount) {
-        this.inputTokenCount = inputTokenCount;
-    }
 
     public void append(ChatCompletionResponse partialResponse) {
         if (partialResponse == null) {
@@ -122,6 +116,11 @@ public class OpenAiStreamingResponseBuilder {
             return;
         }
 
+        Usage usage = partialResponse.usage();
+        if (usage != null) {
+            this.tokenUsage = tokenUsageFrom(usage);
+        }
+
         List<CompletionChoice> choices = partialResponse.choices();
         if (choices == null || choices.isEmpty()) {
             return;
@@ -143,16 +142,9 @@ public class OpenAiStreamingResponseBuilder {
         }
     }
 
-    public Response<AiMessage> build(Tokenizer tokenizer, boolean forcefulToolExecution) {
+    public Response<AiMessage> build() {
 
-        String content = contentBuilder.toString();
-        if (!content.isEmpty()) {
-            return Response.from(
-                    AiMessage.from(content),
-                    tokenUsage(content, tokenizer),
-                    finishReason
-            );
-        }
+        String text = contentBuilder.toString();
 
         String toolName = toolNameBuilder.toString();
         if (!toolName.isEmpty()) {
@@ -160,9 +152,14 @@ public class OpenAiStreamingResponseBuilder {
                     .name(toolName)
                     .arguments(toolArgumentsBuilder.toString())
                     .build();
+
+            AiMessage aiMessage = isNullOrBlank(text) ?
+                    AiMessage.from(toolExecutionRequest) :
+                    AiMessage.from(text, singletonList(toolExecutionRequest));
+
             return Response.from(
-                    AiMessage.from(toolExecutionRequest),
-                    tokenUsage(singletonList(toolExecutionRequest), tokenizer, forcefulToolExecution),
+                    aiMessage,
+                    tokenUsage,
                     finishReason
             );
         }
@@ -175,49 +172,27 @@ public class OpenAiStreamingResponseBuilder {
                             .arguments(it.argumentsBuilder.toString())
                             .build())
                     .collect(toList());
+
+            AiMessage aiMessage = isNullOrBlank(text) ?
+                    AiMessage.from(toolExecutionRequests) :
+                    AiMessage.from(text, toolExecutionRequests);
+
             return Response.from(
-                    AiMessage.from(toolExecutionRequests),
-                    tokenUsage(toolExecutionRequests, tokenizer, forcefulToolExecution),
+                    aiMessage,
+                    tokenUsage,
+                    finishReason
+            );
+        }
+
+        if (!isNullOrBlank(text)) {
+            return Response.from(
+                    AiMessage.from(text),
+                    tokenUsage,
                     finishReason
             );
         }
 
         return null;
-    }
-
-    private TokenUsage tokenUsage(String content, Tokenizer tokenizer) {
-        if (tokenUsage != null) {
-            return tokenUsage;
-        }
-
-        if (tokenizer == null) {
-            return null;
-        }
-
-        int outputTokenCount = tokenizer.estimateTokenCountInText(content);
-        return new TokenUsage(inputTokenCount, outputTokenCount);
-    }
-
-    private TokenUsage tokenUsage(List<ToolExecutionRequest> toolExecutionRequests, Tokenizer tokenizer, boolean forcefulToolExecution) {
-        if (tokenUsage != null) {
-            return tokenUsage;
-        }
-
-        if (tokenizer == null) {
-            return null;
-        }
-
-        int outputTokenCount = 0;
-        if (forcefulToolExecution) {
-            // OpenAI calculates output tokens differently when tool is executed forcefully
-            for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
-                outputTokenCount += tokenizer.estimateTokenCountInForcefulToolExecutionRequest(toolExecutionRequest);
-            }
-        } else {
-            outputTokenCount = tokenizer.estimateTokenCountInToolExecutionRequests(toolExecutionRequests);
-        }
-
-        return new TokenUsage(inputTokenCount, outputTokenCount);
     }
 
     private static class ToolExecutionRequestBuilder {

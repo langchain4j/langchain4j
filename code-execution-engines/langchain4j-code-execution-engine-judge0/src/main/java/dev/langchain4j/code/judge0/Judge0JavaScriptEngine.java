@@ -25,11 +25,11 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
         this.apiKey = apiKey;
         this.languageId = languageId;
         this.client = new OkHttpClient.Builder()
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .callTimeout(timeout)
-                .build();
+            .connectTimeout(timeout)
+            .readTimeout(timeout)
+            .writeTimeout(timeout)
+            .callTimeout(timeout)
+            .build();
     }
 
     @Override
@@ -42,10 +42,10 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
         RequestBody requestBody = RequestBody.create(Json.toJson(submission), MEDIA_TYPE);
 
         Request request = new Request.Builder()
-                .url("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true&fields=*")
-                .addHeader("X-RapidAPI-Key", apiKey)
-                .post(requestBody)
-                .build();
+            .url("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true&fields=*")
+            .addHeader("X-RapidAPI-Key", apiKey)
+            .post(requestBody)
+            .build();
 
         try {
             Response response = client.newCall(request).execute();

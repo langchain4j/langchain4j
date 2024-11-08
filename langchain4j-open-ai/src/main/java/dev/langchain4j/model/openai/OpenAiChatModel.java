@@ -71,6 +71,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final Double topP;
     private final List<String> stop;
     private final Integer maxTokens;
+    private final Integer maxCompletionTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
     private final Map<String, Integer> logitBias;
@@ -93,6 +94,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Double topP,
                            List<String> stop,
                            Integer maxTokens,
+                           Integer maxCompletionTokens,
                            Double presencePenalty,
                            Double frequencyPenalty,
                            Map<String, Integer> logitBias,
@@ -137,6 +139,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.topP = topP;
         this.stop = stop;
         this.maxTokens = maxTokens;
+        this.maxCompletionTokens = maxCompletionTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.logitBias = logitBias;
@@ -214,6 +217,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .topP(topP)
                 .stop(stop)
                 .maxTokens(maxTokens)
+                .maxCompletionTokens(maxCompletionTokens)
                 .presencePenalty(presencePenalty)
                 .frequencyPenalty(frequencyPenalty)
                 .logitBias(logitBias)
@@ -303,6 +307,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         return tokenizer.estimateTokenCountInMessages(messages);
     }
 
+    /**
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     * <b>The default values for the model name and temperature will be removed in future releases!</b>
+     */
+    @Deprecated(forRemoval = true)
     public static OpenAiChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

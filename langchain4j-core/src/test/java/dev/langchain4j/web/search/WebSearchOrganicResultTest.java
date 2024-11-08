@@ -19,7 +19,7 @@ class WebSearchOrganicResultTest {
         WebSearchOrganicResult webSearchOrganicResult = WebSearchOrganicResult.from("title", URI.create("https://google.com"));
 
         assertThat(webSearchOrganicResult.title()).isEqualTo("title");
-        assertThat(webSearchOrganicResult.url().toString()).isEqualTo("https://google.com");
+        assertThat(webSearchOrganicResult.url()).hasToString("https://google.com");
         assertThat(webSearchOrganicResult.snippet()).isNull();
         assertThat(webSearchOrganicResult.content()).isNull();
         assertThat(webSearchOrganicResult.metadata()).isNull();
@@ -30,7 +30,7 @@ class WebSearchOrganicResultTest {
         WebSearchOrganicResult webSearchOrganicResult = WebSearchOrganicResult.from("title", URI.create("https://google.com"), "snippet", null);
 
         assertThat(webSearchOrganicResult.title()).isEqualTo("title");
-        assertThat(webSearchOrganicResult.url().toString()).isEqualTo("https://google.com");
+        assertThat(webSearchOrganicResult.url()).hasToString("https://google.com");
         assertThat(webSearchOrganicResult.snippet()).isEqualTo("snippet");
         assertThat(webSearchOrganicResult.content()).isNull();
         assertThat(webSearchOrganicResult.metadata()).isNull();
@@ -43,7 +43,7 @@ class WebSearchOrganicResultTest {
         WebSearchOrganicResult webSearchOrganicResult = WebSearchOrganicResult.from("title", URI.create("https://google.com"), null, "content");
 
         assertThat(webSearchOrganicResult.title()).isEqualTo("title");
-        assertThat(webSearchOrganicResult.url().toString()).isEqualTo("https://google.com");
+        assertThat(webSearchOrganicResult.url()).hasToString("https://google.com");
         assertThat(webSearchOrganicResult.snippet()).isNull();
         assertThat(webSearchOrganicResult.content()).isEqualTo("content");
         assertThat(webSearchOrganicResult.metadata()).isNull();
@@ -57,7 +57,7 @@ class WebSearchOrganicResultTest {
                 Stream.of(new AbstractMap.SimpleEntry<>("key", "value")).collect(toMap(Map.Entry::getKey, Map.Entry::getValue)));
 
         assertThat(webSearchOrganicResult.title()).isEqualTo("title");
-        assertThat(webSearchOrganicResult.url().toString()).isEqualTo("https://google.com");
+        assertThat(webSearchOrganicResult.url()).hasToString("https://google.com");
         assertThat(webSearchOrganicResult.snippet()).isEqualTo("snippet");
         assertThat(webSearchOrganicResult.metadata()).containsExactly(new AbstractMap.SimpleEntry<>("key", "value"));
 

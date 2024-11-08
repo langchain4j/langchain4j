@@ -110,6 +110,12 @@ public class OpenAiModerationModel implements ModerationModel {
         return moderateInternal(inputs);
     }
 
+    /**
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     * <b>The default value for the model name will be removed in future releases!</b>
+     */
+    @Deprecated(forRemoval = true)
     public static OpenAiModerationModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

@@ -16,6 +16,7 @@ class HuggingFaceEmbeddingModelIT {
     HuggingFaceEmbeddingModel model = HuggingFaceEmbeddingModel.builder()
             .accessToken(System.getenv("HF_API_KEY"))
             .modelId("sentence-transformers/all-MiniLM-L6-v2")
+            .waitForModel(true)
             .build();
 
     @Test

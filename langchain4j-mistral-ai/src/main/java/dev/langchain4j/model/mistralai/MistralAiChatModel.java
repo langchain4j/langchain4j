@@ -96,11 +96,11 @@ public class MistralAiChatModel implements ChatLanguageModel {
     }
 
     /**
-     * Creates a MistralAiChatModel with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return a MistralAiChatModel instance
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     * <b>The default value for the model name will be removed in future releases!</b>
      */
+    @Deprecated(forRemoval = true)
     public static MistralAiChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
