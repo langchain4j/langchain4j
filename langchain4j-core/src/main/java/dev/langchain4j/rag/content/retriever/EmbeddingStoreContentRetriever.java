@@ -11,14 +11,15 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import lombok.Builder;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
@@ -109,7 +110,6 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         );
     }
 
-    @Builder
     private EmbeddingStoreContentRetriever(String displayName,
                                            EmbeddingStore<TextSegment> embeddingStore,
                                            EmbeddingModel embeddingModel,
@@ -141,7 +141,21 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         return null;
     }
 
+    public static EmbeddingStoreContentRetrieverBuilder builder() {
+        return new EmbeddingStoreContentRetrieverBuilder();
+    }
+
     public static class EmbeddingStoreContentRetrieverBuilder {
+
+        private String displayName;
+        private EmbeddingStore<TextSegment> embeddingStore;
+        private EmbeddingModel embeddingModel;
+        private Function<Query, Integer> dynamicMaxResults;
+        private Function<Query, Double> dynamicMinScore;
+        private Function<Query, Filter> dynamicFilter;
+
+        EmbeddingStoreContentRetrieverBuilder() {
+        }
 
         public EmbeddingStoreContentRetrieverBuilder maxResults(Integer maxResults) {
             if (maxResults != null) {
@@ -162,6 +176,44 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 dynamicFilter = (query) -> filter;
             }
             return this;
+        }
+
+        public EmbeddingStoreContentRetrieverBuilder displayName(String displayName) {
+            this.displayName = displayName;
+            return this;
+        }
+
+        public EmbeddingStoreContentRetrieverBuilder embeddingStore(EmbeddingStore<TextSegment> embeddingStore) {
+            this.embeddingStore = embeddingStore;
+            return this;
+        }
+
+        public EmbeddingStoreContentRetrieverBuilder embeddingModel(EmbeddingModel embeddingModel) {
+            this.embeddingModel = embeddingModel;
+            return this;
+        }
+
+        public EmbeddingStoreContentRetrieverBuilder dynamicMaxResults(Function<Query, Integer> dynamicMaxResults) {
+            this.dynamicMaxResults = dynamicMaxResults;
+            return this;
+        }
+
+        public EmbeddingStoreContentRetrieverBuilder dynamicMinScore(Function<Query, Double> dynamicMinScore) {
+            this.dynamicMinScore = dynamicMinScore;
+            return this;
+        }
+
+        public EmbeddingStoreContentRetrieverBuilder dynamicFilter(Function<Query, Filter> dynamicFilter) {
+            this.dynamicFilter = dynamicFilter;
+            return this;
+        }
+
+        public EmbeddingStoreContentRetriever build() {
+            return new EmbeddingStoreContentRetriever(this.displayName, this.embeddingStore, this.embeddingModel, this.dynamicMaxResults, this.dynamicMinScore, this.dynamicFilter);
+        }
+
+        public String toString() {
+            return "EmbeddingStoreContentRetriever.EmbeddingStoreContentRetrieverBuilder(displayName=" + this.displayName + ", embeddingStore=" + this.embeddingStore + ", embeddingModel=" + this.embeddingModel + ", dynamicMaxResults=" + this.dynamicMaxResults + ", dynamicMinScore=" + this.dynamicMinScore + ", dynamicFilter=" + this.dynamicFilter + ")";
         }
     }
 

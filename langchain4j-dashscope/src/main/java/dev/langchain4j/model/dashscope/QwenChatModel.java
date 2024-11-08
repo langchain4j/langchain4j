@@ -148,14 +148,7 @@ public class QwenChatModel implements ChatLanguageModel {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(param, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
-        listeners.forEach(listener -> {
-            try {
-                listener.onRequest(requestContext);
-            } catch (Exception e) {
-                log.warn("Exception while calling model listener", e);
-            }
-        });
+        onListenRequest(listeners, modelListenerRequest, attributes);
 
         try {
             GenerationResult result = generation.call(param);
@@ -165,41 +158,10 @@ public class QwenChatModel implements ChatLanguageModel {
                     finishReasonFrom(result)
             );
 
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                    result.getRequestId(),
-                    param.getModel(),
-                    response
-            );
-            ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
-                    attributes
-            );
-            listeners.forEach(listener -> {
-                try {
-                    listener.onResponse(responseContext);
-                } catch (Exception e) {
-                    log.warn("Exception while calling model listener", e);
-                }
-            });
-
+            onListenResponse(listeners, result.getRequestId(), response, modelListenerRequest, attributes);
             return response;
         } catch (NoApiKeyException | InputRequiredException | RuntimeException e) {
-            ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    e,
-                    modelListenerRequest,
-                    null,
-                    attributes
-            );
-
-            listeners.forEach(listener -> {
-                try {
-                    listener.onError(errorContext);
-                } catch (Exception e2) {
-                    log.warn("Exception while calling model listener", e2);
-                }
-            });
-
+            onListenError(listeners, null, e, modelListenerRequest, null, attributes);
             throw e instanceof RuntimeException ?
                     (RuntimeException) e : new RuntimeException(e);
         }
@@ -226,14 +188,7 @@ public class QwenChatModel implements ChatLanguageModel {
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(param, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
-        listeners.forEach(listener -> {
-            try {
-                listener.onRequest(requestContext);
-            } catch (Exception e) {
-                log.warn("Exception while calling model listener", e);
-            }
-        });
+        onListenRequest(listeners, modelListenerRequest, attributes);
 
         try {
             MultiModalConversationResult result = conv.call(param);
@@ -242,41 +197,10 @@ public class QwenChatModel implements ChatLanguageModel {
             Response<AiMessage> response = Response.from(AiMessage.from(answer),
                     tokenUsageFrom(result), finishReasonFrom(result));
 
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                    result.getRequestId(),
-                    param.getModel(),
-                    response
-            );
-            ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
-                    attributes
-            );
-            listeners.forEach(listener -> {
-                try {
-                    listener.onResponse(responseContext);
-                } catch (Exception e) {
-                    log.warn("Exception while calling model listener", e);
-                }
-            });
-
+            onListenResponse(listeners, result.getRequestId(), response, modelListenerRequest, attributes);
             return response;
         } catch (NoApiKeyException | UploadFileException | RuntimeException e) {
-            ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    e,
-                    modelListenerRequest,
-                    null,
-                    attributes
-            );
-
-            listeners.forEach(listener -> {
-                try {
-                    listener.onError(errorContext);
-                } catch (Exception e2) {
-                    log.warn("Exception while calling model listener", e2);
-                }
-            });
-
+            onListenError(listeners, null, e, modelListenerRequest, null, attributes);
             throw e instanceof RuntimeException ?
                     (RuntimeException) e : new RuntimeException(e);
         }

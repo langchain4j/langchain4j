@@ -53,8 +53,13 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH);
     }
 
+    /**
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     */
+    @Deprecated(forRemoval = true)
     public static CohereEmbeddingModel withApiKey(String apiKey) {
-        return CohereEmbeddingModel.builder().apiKey(apiKey).build();
+        return builder().apiKey(apiKey).build();
     }
 
     @Override
@@ -65,7 +70,6 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .collect(toList());
 
         return embedTexts(texts);
-        
     }
 
 
@@ -85,14 +89,14 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
                     .build();
 
             EmbedResponse response = this.client.embed(request);
-            
+
             embeddings.addAll(getEmbeddings(response));
             totalTokenUsage += getTokenUsage(response);
         }
 
         return Response.from(
                 embeddings,
-                new TokenUsage(totalTokenUsage,0)
+                new TokenUsage(totalTokenUsage, 0)
         );
 
     }

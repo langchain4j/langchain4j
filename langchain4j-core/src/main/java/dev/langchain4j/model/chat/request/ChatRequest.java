@@ -16,7 +16,7 @@ import static java.util.Arrays.asList;
 public class ChatRequest {
 
     private final List<ChatMessage> messages;
-    private final List<ToolSpecification> toolSpecifications;
+    private final List<ToolSpecification> toolSpecifications; // TODO add section with tools?
     private final ResponseFormat responseFormat;
 
     private ChatRequest(Builder builder) {
@@ -93,6 +93,8 @@ public class ChatRequest {
             this.responseFormat = responseFormat;
             return this;
         }
+
+        // TODO consider adding responseFormat(JsonSchema) or jsonSchema(JsonSchema)
 
         public ChatRequest build() {
             return new ChatRequest(this);

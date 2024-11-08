@@ -2,7 +2,7 @@ package dev.langchain4j.service.output;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class EnumOutputParserTest {
 
@@ -21,12 +21,12 @@ class EnumOutputParserTest {
         String instruction = sut.formatInstructions();
 
         // Then
-        assertEquals("\n" +
+        assertThat(instruction).isEqualTo("\n" +
                 "You must answer strictly with one of these enums:\n" +
                 "SUNNY\n" +
                 "CLOUDY\n" +
                 "RAINY\n" +
-                "SNOWY", instruction);
+                "SNOWY");
     }
 
     @Test
@@ -35,7 +35,7 @@ class EnumOutputParserTest {
         Enum<?> resultedEnum = sut.parse(Weather.SUNNY.name());
 
         // Then
-        assertEquals(Weather.SUNNY, resultedEnum);
+        assertThat(resultedEnum).isEqualTo(Weather.SUNNY);
     }
 
     @Test
@@ -44,7 +44,7 @@ class EnumOutputParserTest {
         Enum<?> resultedEnum = sut.parse(" " + Weather.SUNNY.name() + "    ");
 
         // Then
-        assertEquals(Weather.SUNNY, resultedEnum);
+        assertThat(resultedEnum).isEqualTo(Weather.SUNNY);
     }
 
     @Test
@@ -53,6 +53,6 @@ class EnumOutputParserTest {
         Enum<?> resultedEnum = sut.parse(" [  " + Weather.SUNNY.name() + "  ]  ");
 
         // Then
-        assertEquals(Weather.SUNNY, resultedEnum);
+        assertThat(resultedEnum).isEqualTo(Weather.SUNNY);
     }
 }

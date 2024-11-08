@@ -30,7 +30,7 @@ public class SchemaHelperTest {
 
         // then
         assertThat(schema.getRequiredList()).contains("name", "age", "isStudent", "friends");
-        assertThat(schema.getPropertiesMap().keySet()).contains("name", "age", "isStudent", "friends");
+        assertThat(schema.getPropertiesMap()).containsKeys("name", "age", "isStudent", "friends");
         assertThat(schema.getPropertiesMap().get("name").getType()).isEqualTo(Type.STRING);
         assertThat(schema.getPropertiesMap().get("age").getType()).isEqualTo(Type.INTEGER);
         assertThat(schema.getPropertiesMap().get("isStudent").getType()).isEqualTo(Type.BOOLEAN);
@@ -76,7 +76,7 @@ public class SchemaHelperTest {
 
         // then
         assertThat(schema.getRequiredList()).contains("artist-name", "artist-age", "artist-adult", "artist-pets", "artist-address");
-        assertThat(schema.getPropertiesMap().keySet()).contains("artist-name", "artist-age", "artist-adult", "artist-pets", "artist-address");
+        assertThat(schema.getPropertiesMap()).containsKeys("artist-name", "artist-age", "artist-adult", "artist-pets", "artist-address");
         assertThat(schema.getPropertiesMap().get("artist-name").getType()).isEqualTo(Type.STRING);
         assertThat(schema.getPropertiesMap().get("artist-address").getType()).isEqualTo(Type.STRING);
         assertThat(schema.getPropertiesMap().get("artist-age").getType()).isEqualTo(Type.INTEGER);
