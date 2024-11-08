@@ -90,7 +90,10 @@ Anthropic documentation on tools can be found [here](https://docs.anthropic.com/
 ## Caching
 
 `AnthropicChatModel` and `AnthropicStreamingChatModel` support caching of system messages and tools.
-This can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
+Caching is disabled by default.
+It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
+
+When enabled,`cache_control` blocks will be added to all system messages and tools respectively.
 
 To use caching, please set `beta("prompt-caching-2024-07-31")`.
 
