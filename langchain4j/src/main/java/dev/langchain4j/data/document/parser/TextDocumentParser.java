@@ -27,8 +27,7 @@ public class TextDocumentParser implements DocumentParser {
     @Override
     public Document parse(InputStream inputStream) {
         // see https://stackoverflow.com/a/35446009
-        try {
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try(ByteArrayOutputStream buffer = new ByteArrayOutputStream()){
             int nRead;
             byte[] data = new byte[1024];
             while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
@@ -36,7 +35,7 @@ public class TextDocumentParser implements DocumentParser {
             }
             buffer.flush();
 
-            String text = new String(buffer.toByteArray(), charset);
+            String text = buffer.toString(charset);
 
             if (isNullOrBlank(text)) {
                 throw new BlankDocumentException();
