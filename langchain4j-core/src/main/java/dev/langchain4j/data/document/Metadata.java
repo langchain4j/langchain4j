@@ -93,7 +93,7 @@ public class Metadata {
      * @deprecated as of 0.31.0, use {@link #getString(String)}, {@link #getInteger(String)}, {@link #getLong(String)},
      * {@link #getFloat(String)}, {@link #getDouble(String)} instead.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public String get(String key) {
         Object value = metadata.get(key);
         if (value != null) {
@@ -295,7 +295,7 @@ public class Metadata {
      * @deprecated as of 0.31.0, use {@link #put(String, String)}, {@link #put(String, int)}, {@link #put(String, long)},
      * {@link #put(String, float)}, {@link #put(String, double)} instead.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public Metadata add(String key, Object value) {
         return put(key, value.toString());
     }
@@ -309,7 +309,7 @@ public class Metadata {
      * @deprecated as of 0.31.0, use {@link #put(String, String)}, {@link #put(String, int)}, {@link #put(String, long)},
      * {@link #put(String, float)}, {@link #put(String, double)} instead.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public Metadata add(String key, String value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -420,7 +420,7 @@ public class Metadata {
      * @return the metadata as a map of key-value pairs.
      * @deprecated as of 0.31.0, use {@link #toMap()} instead.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public Map<String, String> asMap() {
         Map<String, String> map = new HashMap<>();
         for (Map.Entry<String, Object> entry : metadata.entrySet()) {
@@ -475,7 +475,7 @@ public class Metadata {
      * @return a Metadata object
      * @deprecated Use {@link #from(String, String)} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static Metadata from(String key, Object value) {
         return new Metadata().add(key, value);
     }
@@ -507,7 +507,7 @@ public class Metadata {
      * @return a Metadata object
      * @deprecated Use {@link #metadata(String, String)} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static Metadata metadata(String key, Object value) {
         return from(key, value);
     }

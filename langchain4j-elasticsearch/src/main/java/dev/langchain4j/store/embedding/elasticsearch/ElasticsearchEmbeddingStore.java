@@ -73,7 +73,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * @param dimension     Embedding vector dimension (mandatory when index does not exist yet).
      * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
                                        String serverUrl,
                                        String apiKey,
@@ -97,7 +97,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      *                      Index will be created automatically if not exists.
      * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
                                        String serverUrl,
                                        String apiKey,
@@ -164,7 +164,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          * @return builder
          * @deprecated call {@link #restClient(RestClient)} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder serverUrl(String serverUrl) {
             this.serverUrl = serverUrl;
             return this;
@@ -175,7 +175,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          * @return builder
          * @deprecated call {@link #restClient(RestClient)} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
@@ -186,7 +186,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          * @return builder
          * @deprecated call {@link #restClient(RestClient)} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder userName(String userName) {
             this.userName = userName;
             return this;
@@ -197,7 +197,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          * @return builder
          * @deprecated call {@link #restClient(RestClient)} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder password(String password) {
             this.password = password;
             return this;
@@ -227,7 +227,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          * @return builder
          * @deprecated dimension is not used anymore.
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder dimension(Integer dimension) {
             log.warn("Setting the dimension is deprecated. This value is ignored.");
             return this;

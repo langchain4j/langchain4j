@@ -79,7 +79,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_primitive_parameters() {
+    protected void should_execute_tool_with_primitive_parameters() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -149,7 +149,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_pojo_with_primitives() {
+    protected void should_execute_tool_with_pojo_with_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -224,7 +224,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_pojo_with_nested_pojo() {
+    protected void should_execute_tool_with_pojo_with_nested_pojo() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -300,7 +300,7 @@ public abstract class AiServicesWithNewToolsIT {
 
     @Test
     @EnabledIf("supportsRecursion")
-    void should_execute_tool_with_pojo_with_recursion() {
+    protected void should_execute_tool_with_pojo_with_recursion() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -359,7 +359,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_without_parameters() {
+    protected void should_execute_tool_without_parameters() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -424,7 +424,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_enum_parameter() {
+    protected void should_execute_tool_with_enum_parameter() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -479,7 +479,8 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_map_parameter() {
+    @EnabledIf("supportsMapParameters")
+    protected void should_execute_tool_with_map_parameter() {
 
         for (ChatLanguageModel model : modelsSupportingMapParametersInTools()) {
 
@@ -517,6 +518,10 @@ public abstract class AiServicesWithNewToolsIT {
         }
     }
 
+    protected boolean supportsMapParameters() {
+        return true;
+    }
+
     static class ToolWithListOfStringsParameter {
 
         @Tool
@@ -535,7 +540,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_list_of_strings_parameter() {
+    protected void should_execute_tool_with_list_of_strings_parameter() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -595,7 +600,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_set_of_enums_parameter() {
+    protected void should_execute_tool_with_set_of_enums_parameter() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -648,7 +653,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_collection_of_integers_parameter() {
+    protected void should_execute_tool_with_collection_of_integers_parameter() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -713,7 +718,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_list_of_POJOs_parameter() {
+    protected void should_execute_tool_with_list_of_POJOs_parameter() {
 
         for (ChatLanguageModel model : models()) {
 

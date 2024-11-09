@@ -5,7 +5,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
@@ -26,8 +24,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".+")
 public class QwenChatModelIT {
@@ -96,6 +92,7 @@ public class QwenChatModelIT {
                 .build();
 
         String toolName = "getCurrentWeather";
+        //noinspection deprecation
         ToolSpecification hasArgToolSpec = ToolSpecification.builder()
                 .name(toolName)
                 .description("Query the weather of a specified city")
@@ -139,6 +136,7 @@ public class QwenChatModelIT {
                 .build();
 
         String toolName = "getCurrentWeather";
+        //noinspection deprecation
         ToolSpecification mustBeExecutedTool = ToolSpecification.builder()
                 .name(toolName)
                 .description("Query the weather of a specified city")
@@ -167,6 +165,7 @@ public class QwenChatModelIT {
                 .build();
 
         String toolName = "calculator";
+        //noinspection deprecation
         ToolSpecification calculator = ToolSpecification.builder()
                 .name(toolName)
                 .description("returns a sum of two numbers")

@@ -398,7 +398,7 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Deprecated. Use {@link #contentRetriever(ContentRetriever)}
+     * @deprecated Use {@link #contentRetriever(ContentRetriever)}
      * (e.g. {@link EmbeddingStoreContentRetriever}) instead.
      * <br>
      * Configures a retriever that will be invoked on every method call to fetch relevant information
@@ -408,7 +408,7 @@ public abstract class AiServices<T> {
      * @param retriever The retriever to be used by the AI Service.
      * @return builder
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
         if (contentRetrieverSet || retrievalAugmentorSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");

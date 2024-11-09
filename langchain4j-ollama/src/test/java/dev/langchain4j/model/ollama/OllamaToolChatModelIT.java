@@ -123,16 +123,19 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
-    void should_execute_tool_with_pojo_with_nested_pojo() {
+    @Override
+    protected void should_execute_tool_with_pojo_with_nested_pojo() {
     }
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
-    void should_execute_tool_with_list_of_POJOs_parameter() {
+    @Override
+    protected void should_execute_tool_with_list_of_POJOs_parameter() {
     }
 
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
-    void should_execute_tool_with_collection_of_integers_parameter() {
+    @Override
+    protected void should_execute_tool_with_collection_of_integers_parameter() {
     }
 }
