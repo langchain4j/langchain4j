@@ -1,84 +1,104 @@
 package dev.langchain4j.store.embedding.vespa;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 
+@JsonInclude(NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 class Record {
 
     private String id;
     private Double relevance;
     private Fields fields;
 
-    public Record(String id, String textSegment, List<Float> vector) {
+    public Record(String id, Double relevance, Fields fields) {
         this.id = id;
-        this.fields = new Fields(textSegment, vector);
+        this.relevance = relevance;
+        this.fields = fields;
+    }
+
+    public Record() {}
+
+    public static RecordBuilder builder() {
+        return new RecordBuilder();
     }
 
     public String getId() {
-        return id;
+        return this.id;
+    }
+
+    public Double getRelevance() {
+        return this.relevance;
+    }
+
+    public Fields getFields() {
+        return this.fields;
     }
 
     public void setId(String id) {
         this.id = id;
     }
 
-    public double getRelevance() {
-        return relevance;
-    }
-
-    public void setRelevance(double relevance) {
+    public void setRelevance(Double relevance) {
         this.relevance = relevance;
-    }
-
-    public Fields getFields() {
-        return fields;
     }
 
     public void setFields(Fields fields) {
         this.fields = fields;
     }
 
-    public static class Fields {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(NON_NULL)
+    @JsonNaming(SnakeCaseStrategy.class)
+    static class Fields {
 
-        @JsonProperty("documentid")
-        private String documentId;
-
-        @JsonProperty("text_segment")
+        private String documentid;
         private String textSegment;
-
         private Vector vector;
 
-        public Fields(String textSegment, List<Float> vector) {
+        public Fields(String documentid, String textSegment, Vector vector) {
+            this.documentid = documentid;
             this.textSegment = textSegment;
-            this.vector = new Vector(vector);
+            this.vector = vector;
         }
 
-        public String getDocumentId() {
-            return documentId;
+        public Fields() {}
+
+        public static FieldsBuilder builder() {
+            return new FieldsBuilder();
         }
 
-        public void setDocumentId(String documentId) {
-            this.documentId = documentId;
+        public String getDocumentid() {
+            return this.documentid;
         }
 
         public String getTextSegment() {
-            return textSegment;
+            return this.textSegment;
+        }
+
+        public Vector getVector() {
+            return this.vector;
+        }
+
+        public void setDocumentid(String documentid) {
+            this.documentid = documentid;
         }
 
         public void setTextSegment(String textSegment) {
             this.textSegment = textSegment;
         }
 
-        public Vector getVector() {
-            return vector;
-        }
-
         public void setVector(Vector vector) {
             this.vector = vector;
         }
 
-        public static class Vector {
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        static class Vector {
 
             private List<Float> values;
 
@@ -86,13 +106,91 @@ class Record {
                 this.values = values;
             }
 
+            public Vector() {}
+
+            public static VectorBuilder builder() {
+                return new VectorBuilder();
+            }
+
             public List<Float> getValues() {
-                return values;
+                return this.values;
             }
 
             public void setValues(List<Float> values) {
                 this.values = values;
             }
+
+            public static class VectorBuilder {
+
+                private List<Float> values;
+
+                VectorBuilder() {}
+
+                public VectorBuilder values(List<Float> values) {
+                    this.values = values;
+                    return this;
+                }
+
+                public Vector build() {
+                    return new Vector(this.values);
+                }
+            }
+        }
+
+        public static class FieldsBuilder {
+
+            private String documentid;
+            private String textSegment;
+            private Vector vector;
+
+            FieldsBuilder() {}
+
+            public FieldsBuilder documentid(String documentid) {
+                this.documentid = documentid;
+                return this;
+            }
+
+            public FieldsBuilder textSegment(String textSegment) {
+                this.textSegment = textSegment;
+                return this;
+            }
+
+            public FieldsBuilder vector(Vector vector) {
+                this.vector = vector;
+                return this;
+            }
+
+            public Fields build() {
+                return new Fields(this.documentid, this.textSegment, this.vector);
+            }
+        }
+    }
+
+    public static class RecordBuilder {
+
+        private String id;
+        private Double relevance;
+        private Fields fields;
+
+        RecordBuilder() {}
+
+        public RecordBuilder id(String id) {
+            this.id = id;
+            return this;
+        }
+
+        public RecordBuilder relevance(Double relevance) {
+            this.relevance = relevance;
+            return this;
+        }
+
+        public RecordBuilder fields(Fields fields) {
+            this.fields = fields;
+            return this;
+        }
+
+        public Record build() {
+            return new Record(this.id, this.relevance, this.fields);
         }
     }
 }

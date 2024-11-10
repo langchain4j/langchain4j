@@ -1,16 +1,29 @@
 package dev.langchain4j.store.embedding.vespa;
 
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.store.embedding.vespa.Record.Fields.Vector;
+import static dev.langchain4j.store.embedding.vespa.VespaClient.createInstance;
+
 import ai.vespa.client.dsl.A;
 import ai.vespa.client.dsl.NearestNeighbor;
 import ai.vespa.client.dsl.Q;
-import ai.vespa.feed.client.*;
+import ai.vespa.feed.client.DocumentId;
+import ai.vespa.feed.client.FeedClientBuilder;
+import ai.vespa.feed.client.FeedException;
+import ai.vespa.feed.client.JsonFeeder;
+import ai.vespa.feed.client.Result;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import retrofit2.Response;
-
+import dev.langchain4j.store.embedding.vespa.Record.Fields;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
@@ -19,11 +32,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.vespa.VespaQueryClient.createInstance;
+import retrofit2.Response;
 
 /**
  * Represents the <a href="https://vespa.ai/">Vespa</a> - search engine and vector database.
@@ -33,9 +42,12 @@ import static dev.langchain4j.store.embedding.vespa.VespaQueryClient.createInsta
  */
 public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
-    private static final String DEFAULT_NAMESPACE = "namespace";
-    private static final String DEFAULT_DOCUMENT_TYPE = "langchain4j";
+    static final String DEFAULT_NAMESPACE = "namespace";
+    static final String DEFAULT_DOCUMENT_TYPE = "langchain4j";
+    private static final String DEFAULT_CLUSTER_NAME = "langchain4j";
     private static final boolean DEFAULT_AVOID_DUPS = true;
     private static final String FIELD_NAME_TEXT_SEGMENT = "text_segment";
     private static final String FIELD_NAME_VECTOR = "vector";
@@ -49,11 +61,14 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final Duration timeout;
     private final String namespace;
     private final String documentType;
+    private final String clusterName;
     private final String rankProfile;
     private final int targetHits;
     private final boolean avoidDups;
+    private final boolean logRequests;
+    private final boolean logResponses;
 
-    private VespaQueryApi queryApi;
+    private VespaApi api;
 
     /**
      * Creates a new VespaEmbeddingStore instance.
@@ -69,6 +84,8 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
      *                     <a href="https://docs.vespa.ai/en/documents.html#namespace">here</a>.
      * @param documentType document type, used for document ID generation, find more details
      *                     <a href="https://docs.vespa.ai/en/documents.html#namespace">here</a> and data querying
+     * @param clusterName  cluster name, used for deleting all documents, find more details
+     *                     <a href="https://docs.vespa.ai/en/operations/batch-delete.html">here</a>
      * @param rankProfile  rank profile from your .sd schema. Provided example schema configures cosine similarity match
      * @param targetHits   sets the number of hits (10 is default) exposed to the real Vespa's first-phase ranking
      *                     function per content node, find more details
@@ -76,37 +93,45 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param avoidDups    if true (default), then <code>VespaEmbeddingStore</code> will generate a hashed ID based on
      *                     provided text segment, which avoids duplicated entries in DB.
      *                     If false, then random ID will be generated.
+     * @param logRequests  If true, requests to the Vespa service are logged.
+     * @param logResponses If true, responses from the Vespa service are logged.
      */
-    public VespaEmbeddingStore(String url,
-                               String keyPath,
-                               String certPath,
-                               Duration timeout,
-                               String namespace,
-                               String documentType,
-                               String rankProfile,
-                               Integer targetHits,
-                               Boolean avoidDups) {
+    public VespaEmbeddingStore(
+        String url,
+        String keyPath,
+        String certPath,
+        Duration timeout,
+        String namespace,
+        String documentType,
+        String clusterName,
+        String rankProfile,
+        Integer targetHits,
+        Boolean avoidDups,
+        Boolean logRequests,
+        Boolean logResponses
+    ) {
         ensureNotNull(url, "url");
-        ensureNotNull(keyPath, "keyPath");
-        ensureNotNull(certPath, "certPath");
 
         this.url = url;
-        this.keyPath = Paths.get(keyPath);
-        this.certPath = Paths.get(certPath);
+        this.keyPath = keyPath != null ? Paths.get(keyPath) : null;
+        this.certPath = certPath != null ? Paths.get(certPath) : null;
         this.timeout = getOrDefault(timeout, DEFAULT_TIMEOUT);
         this.namespace = getOrDefault(namespace, DEFAULT_NAMESPACE);
         this.documentType = getOrDefault(documentType, DEFAULT_DOCUMENT_TYPE);
+        this.clusterName = getOrDefault(clusterName, DEFAULT_CLUSTER_NAME);
         this.rankProfile = getOrDefault(rankProfile, DEFAULT_RANK_PROFILE);
         this.targetHits = getOrDefault(targetHits, DEFAULT_TARGET_HITS);
         this.avoidDups = getOrDefault(avoidDups, DEFAULT_AVOID_DUPS);
+        this.logRequests = getOrDefault(logRequests, false);
+        this.logResponses = getOrDefault(logResponses, false);
     }
 
     private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Record in) {
         return new EmbeddingMatch<>(
-                in.getRelevance(),
-                in.getFields().getDocumentId(),
-                Embedding.from(in.getFields().getVector().getValues()),
-                TextSegment.from(in.getFields().getTextSegment())
+            in.getRelevance(),
+            in.getFields().getDocumentid(),
+            Embedding.from(in.getFields().getVector().getValues()),
+            in.getFields().getTextSegment() != null ? TextSegment.from(in.getFields().getTextSegment()) : null
         );
     }
 
@@ -149,7 +174,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         List<String> ids = new ArrayList<>();
 
-        try (JsonFeeder jsonFeeder = buildJsonFeeder()) {
+        try (JsonFeeder jsonFeeder = feeder()) {
             List<Record> records = new ArrayList<>();
 
             for (int i = 0; i < embeddings.size(); i++) {
@@ -157,22 +182,22 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
 
             jsonFeeder.feedMany(
-                    Json.toInputStream(records, List.class),
-                    new JsonFeeder.ResultCallback() {
-                        @Override
-                        public void onNextResult(Result result, FeedException error) {
-                            if (error != null) {
-                                throw new RuntimeException(error.getMessage());
-                            } else if (Result.Type.success.equals(result.type())) {
-                                ids.add(result.documentId().toString());
-                            }
-                        }
-
-                        @Override
-                        public void onError(FeedException error) {
+                new ByteArrayInputStream(OBJECT_MAPPER.writeValueAsString(records).getBytes()),
+                new JsonFeeder.ResultCallback() {
+                    @Override
+                    public void onNextResult(Result result, FeedException error) {
+                        if (error != null) {
                             throw new RuntimeException(error.getMessage());
+                        } else if (Result.Type.success.equals(result.type())) {
+                            ids.add(result.documentId().toString());
                         }
                     }
+
+                    @Override
+                    public void onError(FeedException error) {
+                        throw new RuntimeException(error.getMessage());
+                    }
+                }
             );
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -186,30 +211,42 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
      * The score inside {@link EmbeddingMatch} is Vespa relevance according to provided rank profile.
      */
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         try {
             String searchQuery = Q
-                    .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
-                    .from(documentType)
-                    .where(buildNearestNeighbor())
-                    .fix()
-                    .hits(maxResults)
-                    .ranking(rankProfile)
-                    .param("input.query(q)", Json.toJson(referenceEmbedding.vectorAsList()))
-                    .param("input.query(threshold)", String.valueOf(minScore))
-                    .build();
+                .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
+                .from(documentType)
+                .where(buildNearestNeighbor())
+                .fix()
+                .hits(request.maxResults())
+                .ranking(rankProfile)
+                .param("input.query(q)", OBJECT_MAPPER.writeValueAsString(request.queryEmbedding().vectorAsList()))
+                .param("input.query(threshold)", String.valueOf(request.minScore()))
+                .build();
 
-            Response<QueryResponse> response = getQueryApi().search(searchQuery).execute();
+            Response<QueryResponse> response = api().search(searchQuery).execute();
             if (response.isSuccessful()) {
                 QueryResponse parsedResponse = response.body();
-                return parsedResponse
-                        .getRoot()
-                        .getChildren()
-                        .stream()
-                        .map(VespaEmbeddingStore::toEmbeddingMatch)
-                        .collect(Collectors.toList());
+                List<Record> children = parsedResponse.getRoot().getChildren();
+                return new EmbeddingSearchResult<>(
+                    children == null || children.isEmpty()
+                        ? new ArrayList<>()
+                        : children.stream().map(VespaEmbeddingStore::toEmbeddingMatch).toList()
+                );
             } else {
                 throw new RuntimeException("Request failed");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void removeAll() {
+        try {
+            Response<DeleteResponse> response = api().deleteAll(namespace, documentType, clusterName).execute();
+            if (!response.isSuccessful()) {
+                throw new RuntimeException("Delete failed");
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -219,20 +256,18 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     private String add(String id, Embedding embedding, TextSegment textSegment) {
         AtomicReference<String> resId = new AtomicReference<>();
 
-        try (JsonFeeder jsonFeeder = buildJsonFeeder()) {
+        try (JsonFeeder jsonFeeder = feeder()) {
             jsonFeeder
-                    .feedSingle(Json.toJson(buildRecord(id, embedding, textSegment)))
-                    .whenComplete(
-                            (
-                                    (result, throwable) -> {
-                                        if (throwable != null) {
-                                            throw new RuntimeException(throwable);
-                                        } else if (Result.Type.success.equals(result.type())) {
-                                            resId.set(result.documentId().toString());
-                                        }
-                                    }
-                            )
-                    );
+                .feedSingle(OBJECT_MAPPER.writeValueAsString(buildRecord(id, embedding, textSegment)))
+                .whenComplete(
+                    ((result, throwable) -> {
+                            if (throwable != null) {
+                                throw new RuntimeException(throwable);
+                            } else if (Result.Type.success.equals(result.type())) {
+                                resId.set(result.documentId().toString());
+                            }
+                        })
+                );
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -240,27 +275,39 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
         return resId.get();
     }
 
-    private JsonFeeder buildJsonFeeder() {
-        return JsonFeeder
-                .builder(FeedClientBuilder.create(URI.create(url)).setCertificate(certPath, keyPath).build())
-                .withTimeout(timeout)
-                .build();
+    private JsonFeeder feeder() {
+        FeedClientBuilder fcBuilder = FeedClientBuilder.create(URI.create(url));
+        if (certPath != null && keyPath != null) {
+            fcBuilder.setCertificate(certPath, keyPath);
+        }
+
+        return JsonFeeder.builder(fcBuilder.build()).withTimeout(timeout).build();
     }
 
-    private VespaQueryApi getQueryApi() {
-        if (queryApi == null) {
-            queryApi = createInstance(url, certPath, keyPath);
+    private VespaApi api() {
+        if (api == null) {
+            api = createInstance(url, certPath, keyPath, logRequests, logResponses);
         }
-        return queryApi;
+        return api;
     }
 
     private Record buildRecord(String id, Embedding embedding, TextSegment textSegment) {
         String recordId = id != null
-                ? id
-                : avoidDups && textSegment != null ? generateUUIDFrom(textSegment.text()) : randomUUID();
+            ? id
+            : avoidDups && textSegment != null ? generateUUIDFrom(textSegment.text()) : randomUUID();
         DocumentId documentId = DocumentId.of(namespace, documentType, recordId);
         String text = textSegment != null ? textSegment.text() : null;
-        return new Record(documentId.toString(), text, embedding.vectorAsList());
+        return Record
+            .builder()
+            .id(documentId.toString())
+            .fields(
+                Fields
+                    .builder()
+                    .textSegment(text)
+                    .vector(Vector.builder().values(embedding.vectorAsList()).build())
+                    .build()
+            )
+            .build();
     }
 
     private Record buildRecord(Embedding embedding, TextSegment textSegment) {
@@ -281,9 +328,12 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Duration timeout;
         private String namespace;
         private String documentType;
+        private String clusterName;
         private String rankProfile;
         private Integer targetHits;
         private Boolean avoidDups;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         /**
          * @param url server url, local or cloud one. The latter you can find under Endpoint of your Vespa
@@ -339,6 +389,15 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
+         * @param clusterName cluster name, used for deleting all documents, find more details
+         *                    <a href="https://docs.vespa.ai/en/operations/batch-delete.html">here</a>
+         */
+        public Builder clusterName(String clusterName) {
+            this.clusterName = clusterName;
+            return this;
+        }
+
+        /**
          * @param rankProfile rank profile from your .sd schema. Provided example schema configures cosine similarity match.
          */
         public Builder rankProfile(String rankProfile) {
@@ -361,8 +420,31 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
         public VespaEmbeddingStore build() {
-            return new VespaEmbeddingStore(url, keyPath, certPath, timeout, namespace, documentType, rankProfile, targetHits, avoidDups);
+            return new VespaEmbeddingStore(
+                url,
+                keyPath,
+                certPath,
+                timeout,
+                namespace,
+                documentType,
+                rankProfile,
+                clusterName,
+                targetHits,
+                avoidDups,
+                logRequests,
+                logResponses
+            );
         }
     }
 }
