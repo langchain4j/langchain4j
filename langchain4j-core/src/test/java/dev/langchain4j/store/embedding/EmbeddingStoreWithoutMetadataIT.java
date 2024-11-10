@@ -1,20 +1,19 @@
 package dev.langchain4j.store.embedding;
 
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.data.Percentage.withPercentage;
-
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import java.time.Duration;
-import java.util.List;
 import org.assertj.core.data.Percentage;
-import org.awaitility.Awaitility;
-import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
 
 public abstract class EmbeddingStoreWithoutMetadataIT {
 
@@ -373,15 +372,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .matches()
         )
             .isEqualTo(relevant);
-    }
-
-    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
-        Awaitility
-            .await()
-            .atMost(Duration.ofSeconds(60))
-            .pollDelay(Duration.ofSeconds(0))
-            .pollInterval(Duration.ofMillis(300))
-            .untilAsserted(assertion);
     }
 
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {

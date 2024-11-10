@@ -40,29 +40,29 @@ class CollectionOperationsExecutor {
         return response.getData();
     }
 
-    static void createCollection(MilvusServiceClient milvusClient, String collectionName, int dimension) {
+    static void createCollection(MilvusServiceClient milvusClient, String collectionName, FieldDefinition fieldDefinition, int dimension) {
 
         CreateCollectionParam request = CreateCollectionParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withSchema(CollectionSchemaParam.newBuilder()
                         .addFieldType(FieldType.newBuilder()
-                                .withName(ID_FIELD_NAME)
+                                .withName(fieldDefinition.getIdFieldName())
                                 .withDataType(VarChar)
                                 .withMaxLength(36)
                                 .withPrimaryKey(true)
                                 .withAutoID(false)
                                 .build())
                         .addFieldType(FieldType.newBuilder()
-                                .withName(TEXT_FIELD_NAME)
+                                .withName(fieldDefinition.getTextFieldName())
                                 .withDataType(VarChar)
                                 .withMaxLength(65535)
                                 .build())
                         .addFieldType(FieldType.newBuilder()
-                                .withName(METADATA_FIELD_NAME)
+                                .withName(fieldDefinition.getMetadataFieldName())
                                 .withDataType(JSON)
                                 .build())
                         .addFieldType(FieldType.newBuilder()
-                                .withName(VECTOR_FIELD_NAME)
+                                .withName(fieldDefinition.getVectorFieldName())
                                 .withDataType(FloatVector)
                                 .withDimension(dimension)
                                 .build())
@@ -82,12 +82,13 @@ class CollectionOperationsExecutor {
 
     static void createIndex(MilvusServiceClient milvusClient,
                             String collectionName,
+                            String vectorFieldName,
                             IndexType indexType,
                             MetricType metricType) {
 
         CreateIndexParam request = CreateIndexParam.newBuilder()
                 .withCollectionName(collectionName)
-                .withFieldName(VECTOR_FIELD_NAME)
+                .withFieldName(vectorFieldName)
                 .withIndexType(indexType)
                 .withMetricType(metricType)
                 .build();
@@ -117,9 +118,10 @@ class CollectionOperationsExecutor {
 
     static QueryResultsWrapper queryForVectors(MilvusServiceClient milvusClient,
                                                String collectionName,
+                                               FieldDefinition fieldDefinition,
                                                List<String> rowIds,
                                                ConsistencyLevelEnum consistencyLevel) {
-        QueryParam request = buildQueryRequest(collectionName, rowIds, consistencyLevel);
+        QueryParam request = buildQueryRequest(collectionName, fieldDefinition, rowIds, consistencyLevel);
         R<QueryResults> response = milvusClient.query(request);
         checkResponseNotFailed(response);
 

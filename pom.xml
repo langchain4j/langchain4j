@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.34.0</version>
+    <version>0.36.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -32,7 +32,6 @@
         <module>langchain4j-cohere</module>
         <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
-        <module>langchain4j-jlama</module>
         <module>langchain4j-jina</module>
         <module>langchain4j-local-ai</module>
         <module>langchain4j-mistral-ai</module>
@@ -41,11 +40,13 @@
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-qianfan</module>
+        <module>langchain4j-github-models</module>
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-zhipu-ai</module>
+        <module>langchain4j-voyage-ai</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
@@ -53,6 +54,7 @@
         <module>langchain4j-azure-cosmos-nosql</module>
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
+        <module>langchain4j-coherence</module>
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-infinispan</module>
@@ -65,6 +67,7 @@
         <module>langchain4j-pinecone</module>
         <module>langchain4j-qdrant</module>
         <module>langchain4j-redis</module>
+        <module>langchain4j-tablestore</module>
         <module>langchain4j-vearch</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
@@ -75,11 +78,15 @@
         <module>document-loaders/langchain4j-document-loader-github</module>
         <module>document-loaders/langchain4j-document-loader-selenium</module>
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
+        <module>document-loaders/langchain4j-document-loader-google-cloud-storage</module>
 
         <!-- document parsers -->
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
         <module>document-parsers/langchain4j-document-parser-apache-tika</module>
+
+        <!-- document transformers -->
+        <module>document-transformers/langchain4j-document-transformer-jsoup</module>
 
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
@@ -95,6 +102,7 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>langchain4j-onnx-scoring</module>
 
     </modules>
 
@@ -108,7 +116,9 @@
         </extensions>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
+                <version>3.1.3</version>
                 <configuration>
                     <!-- do not deploy langchain4j-aggregator's pom.xml (this file) -->
                     <skip>true</skip>
@@ -162,5 +172,43 @@
         </plugins>
     </reporting>
 
+    <profiles>
+        <profile>
+            <id>jdk21</id>
+            <activation>
+                <jdk>[21,)</jdk>
+            </activation>
+            <modules>
+                <module>langchain4j-jlama</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>openrewrite</id>
+            <!-- `mvn -P openrewrite org.openrewrite.maven:rewrite-maven-plugin:run` -->
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.openrewrite.maven</groupId>
+                        <artifactId>rewrite-maven-plugin</artifactId>
+                        <version>5.42.2</version>
+                        <configuration>
+                            <activeRecipes>
+                                <!--<recipe>org.openrewrite.java.OrderImports</recipe>-->
+                                <recipe>org.openrewrite.java.testing.assertj.Assertj</recipe>
+                            </activeRecipes>
+                            <failOnDryRunResults>true</failOnDryRunResults>
+                        </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.openrewrite.recipe</groupId>
+                                <artifactId>rewrite-testing-frameworks</artifactId>
+                                <version>2.20.1</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

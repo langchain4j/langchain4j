@@ -1,26 +1,31 @@
 package dev.langchain4j.model.dashscope;
 
+import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.List;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.dashscope.QwenTestHelper.*;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
 
 @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".+")
 public class QwenStreamingChatModelIT {
@@ -38,6 +43,189 @@ public class QwenStreamingChatModelIT {
 
         assertThat(response.content().text()).containsIgnoringCase("rain");
         assertThat(response.content().text()).endsWith("That's all!");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#functionCallChatModelNameProvider")
+    public void should_call_function_with_no_argument_then_answer(String modelName) {
+        StreamingChatLanguageModel model = QwenStreamingChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        String toolName = "getCurrentDateAndTime";
+        ToolSpecification noArgToolSpec = ToolSpecification.builder()
+                .name(toolName)
+                .description("Get the current date and time")
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What time is it?");
+
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(userMessage), singletonList(noArgToolSpec), handler);
+        Response<AiMessage> response = handler.get();
+
+        assertThat(response.content().text()).isNull();
+        assertThat(response.content().toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
+        assertThat(toolExecutionRequest.arguments()).isEqualTo("{}");
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "10 o'clock");
+        List<ChatMessage> messages = asList(userMessage, response.content(), toolExecutionResultMessage);
+
+        TestStreamingResponseHandler<AiMessage> secondHandler = new TestStreamingResponseHandler<>();
+        model.generate(messages, singletonList(noArgToolSpec), secondHandler);
+        Response<AiMessage> secondResponse = secondHandler.get();
+
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("10");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#functionCallChatModelNameProvider")
+    public void should_call_function_with_argument_then_answer(String modelName) {
+        StreamingChatLanguageModel model = QwenStreamingChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        String toolName = "getCurrentWeather";
+        //noinspection deprecation
+        ToolSpecification hasArgToolSpec = ToolSpecification.builder()
+                .name(toolName)
+                .description("Query the weather of a specified city")
+                .addParameter("cityName", JsonSchemaProperty.STRING)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("Weather in Beijing?");
+
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(userMessage), singletonList(hasArgToolSpec), handler);
+        Response<AiMessage> response = handler.get();
+
+        assertThat(response.content().text()).isNull();
+        assertThat(response.content().toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
+        assertThat(toolExecutionRequest.arguments()).contains("Beijing");
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "rainy");
+        List<ChatMessage> messages = asList(userMessage, response.content(), toolExecutionResultMessage);
+
+        TestStreamingResponseHandler<AiMessage> secondHandler = new TestStreamingResponseHandler<>();
+        model.generate(messages, singletonList(hasArgToolSpec), secondHandler);
+        Response<AiMessage> secondResponse = secondHandler.get();
+
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("rain");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#functionCallChatModelNameProvider")
+    public void should_call_must_be_executed_call_function(String modelName) {
+        StreamingChatLanguageModel model = QwenStreamingChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        String toolName = "getCurrentWeather";
+        //noinspection deprecation
+        ToolSpecification mustBeExecutedTool = ToolSpecification.builder()
+                .name(toolName)
+                .description("Query the weather of a specified city")
+                .addParameter("cityName", JsonSchemaProperty.STRING)
+                .build();
+
+        // not related to tools
+        UserMessage userMessage = UserMessage.from("How many students in the classroom?");
+
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(userMessage), mustBeExecutedTool, handler);
+        Response<AiMessage> response = handler.get();
+
+        assertThat(response.content().text()).isNull();
+        assertThat(response.content().toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
+        assertThat(toolExecutionRequest.arguments()).hasSizeGreaterThan(0);
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#functionCallChatModelNameProvider")
+    void should_call_must_be_executed_call_function_with_argument_then_answer(String modelName) {
+        StreamingChatLanguageModel model = QwenStreamingChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        String toolName = "calculator";
+        //noinspection deprecation
+        ToolSpecification calculator = ToolSpecification.builder()
+                .name(toolName)
+                .description("returns a sum of two numbers")
+                .addParameter("first", INTEGER)
+                .addParameter("second", INTEGER)
+                .build();
+
+        UserMessage userMessage = userMessage("2+2=?");
+
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(userMessage), calculator, handler);
+        Response<AiMessage> response = handler.get();
+
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isNotNull();
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        TestStreamingResponseHandler<AiMessage> secondHandler = new TestStreamingResponseHandler<>();
+        model.generate(messages, singletonList(calculator), secondHandler);
+        Response<AiMessage> secondResponse = secondHandler.get();
+
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("4");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
     @ParameterizedTest
@@ -94,142 +282,5 @@ public class QwenStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         assertThat(response.content().text()).containsIgnoringCase("阿里云");
-    }
-
-    @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#listenableModelNameProvider")
-    void should_listen_request_and_response(String modelName) {
-
-        // given
-        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
-        AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
-
-        ChatModelListener listener = new ChatModelListener() {
-
-            @Override
-            public void onRequest(ChatModelRequestContext requestContext) {
-                requestReference.set(requestContext.request());
-                requestContext.attributes().put("id", "12345");
-            }
-
-            @Override
-            public void onResponse(ChatModelResponseContext responseContext) {
-                responseReference.set(responseContext.response());
-                assertThat(responseContext.request()).isSameAs(requestReference.get());
-                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
-            }
-
-            @Override
-            public void onError(ChatModelErrorContext errorContext) {
-                fail("onError() must not be called");
-            }
-        };
-
-        float temperature = 0.7f;
-        double topP = 1.0;
-        int maxTokens = 7;
-
-        StreamingChatLanguageModel model = QwenStreamingChatModel.builder()
-                .apiKey(apiKey())
-                .modelName(modelName)
-                .temperature(temperature)
-                .topP(topP)
-                .maxTokens(maxTokens)
-                .listeners(singletonList(listener))
-                .build();
-
-        UserMessage userMessage = UserMessage.from("hello");
-
-        // when
-        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(singletonList(userMessage), handler);
-        AiMessage aiMessage = handler.get().content();
-
-        // then
-        ChatModelRequest request = requestReference.get();
-        assertThat(request.model()).isEqualTo(modelName);
-        assertThat(request.temperature()).isEqualTo(temperature);
-        assertThat(request.topP()).isEqualTo(topP);
-        assertThat(request.maxTokens()).isEqualTo(maxTokens);
-        assertThat(request.messages()).containsExactly(userMessage);
-
-        ChatModelResponse response = responseReference.get();
-        assertThat(response.id()).isNotBlank();
-        assertThat(response.model()).isNotBlank();
-        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
-        assertThat(response.finishReason()).isNotNull();
-        assertThat(response.aiMessage()).isEqualTo(aiMessage);
-    }
-
-    @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#listenableModelNameProvider")
-    void should_listen_error(String modelName) throws ExecutionException, InterruptedException, TimeoutException {
-
-        // given
-        String wrongApiKey = "banana";
-
-        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
-        AtomicReference<Throwable> errorReference = new AtomicReference<>();
-
-        ChatModelListener listener = new ChatModelListener() {
-
-            @Override
-            public void onRequest(ChatModelRequestContext requestContext) {
-                requestReference.set(requestContext.request());
-                requestContext.attributes().put("id", "12345");
-            }
-
-            @Override
-            public void onResponse(ChatModelResponseContext responseContext) {
-                fail("onResponse() must not be called");
-            }
-
-            @Override
-            public void onError(ChatModelErrorContext errorContext) {
-                errorReference.set(errorContext.error());
-                assertThat(errorContext.request()).isSameAs(requestReference.get());
-                assertThat(errorContext.partialResponse().aiMessage().text()).isBlank(); // can be non-null if it fails in the middle of streaming
-                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
-            }
-        };
-
-        StreamingChatLanguageModel model = QwenStreamingChatModel.builder()
-                .apiKey(wrongApiKey)
-                .modelName(modelName)
-                .listeners(singletonList(listener))
-                .build();
-
-        String userMessage = "this message will fail";
-
-        CompletableFuture<Throwable> future = new CompletableFuture<>();
-        StreamingResponseHandler<AiMessage> handler = new StreamingResponseHandler<AiMessage>() {
-
-            @Override
-            public void onNext(String token) {
-                fail("onNext() must not be called");
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                future.complete(error);
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                fail("onComplete() must not be called");
-            }
-        };
-
-        // when
-        model.generate(userMessage, handler);
-        Throwable throwable = future.get(5, SECONDS);
-
-        // then
-        assertThat(throwable).isExactlyInstanceOf(com.alibaba.dashscope.exception.ApiException.class);
-        assertThat(throwable).hasMessageContaining("Invalid API-key provided");
-
-        assertThat(errorReference.get()).isSameAs(throwable);
     }
 }

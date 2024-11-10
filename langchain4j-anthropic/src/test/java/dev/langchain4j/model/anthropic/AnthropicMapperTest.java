@@ -28,7 +28,6 @@ class AnthropicMapperTest {
     @ParameterizedTest
     @MethodSource
     void test_toAnthropicMessages(List<ChatMessage> messages, List<AnthropicMessage> expectedAnthropicMessages) {
-
         // when
         List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages);
 
@@ -86,7 +85,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
+                                                .input(mapOf(entry("first", 2), entry("second", 2)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
@@ -114,7 +113,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
+                                                .input(mapOf(entry("first", 2), entry("second", 2)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
@@ -146,12 +145,12 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
+                                                .input(mapOf(entry("first", 2), entry("second", 2)))
                                                 .build(),
                                         AnthropicToolUseContent.builder()
                                                 .id("67890")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 3.0), entry("second", 3.0)))
+                                                .input(mapOf(entry("first", 3), entry("second", 3)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, asList(
@@ -186,7 +185,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
+                                                .input(mapOf(entry("first", 2), entry("second", 2)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
@@ -196,7 +195,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("67890")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 3.0), entry("second", 3.0)))
+                                                .input(mapOf(entry("first", 3), entry("second", 3)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
@@ -212,7 +211,7 @@ class AnthropicMapperTest {
     void test_toAnthropicTool(ToolSpecification toolSpecification, AnthropicTool expectedAnthropicTool) {
 
         // when
-        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification);
+        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE);
 
         // then
         assertThat(anthropicTool).isEqualTo(expectedAnthropicTool);

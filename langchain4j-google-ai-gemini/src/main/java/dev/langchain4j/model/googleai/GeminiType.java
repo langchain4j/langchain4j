@@ -1,7 +1,6 @@
 package dev.langchain4j.model.googleai;
 
 enum GeminiType {
-    TYPE_UNSPECIFIED,
     STRING,
     NUMBER,
     INTEGER,

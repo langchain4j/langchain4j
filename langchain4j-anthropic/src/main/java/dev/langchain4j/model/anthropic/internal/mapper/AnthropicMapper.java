@@ -1,12 +1,31 @@
 package dev.langchain4j.model.anthropic.internal.mapper;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.internal.Json;
-import dev.langchain4j.model.anthropic.internal.api.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -15,17 +34,26 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TOOL_USE;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.OTHER;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 public class AnthropicMapper {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
 
@@ -67,7 +95,8 @@ public class AnthropicMapper {
         return message.contents().stream()
                 .map(content -> {
                     if (content instanceof TextContent) {
-                        return new AnthropicTextContent(((TextContent) content).text());
+                        TextContent textContent = (TextContent) content;
+                        return new AnthropicTextContent(textContent.text());
                     } else if (content instanceof ImageContent) {
                         Image image = ((ImageContent) content).image();
                         if (image.url() != null) {
@@ -93,11 +122,17 @@ public class AnthropicMapper {
 
         if (message.hasToolExecutionRequests()) {
             List<AnthropicToolUseContent> toolUseContents = message.toolExecutionRequests().stream()
-                    .map(toolExecutionRequest -> AnthropicToolUseContent.builder()
-                            .id(toolExecutionRequest.id())
-                            .name(toolExecutionRequest.name())
-                            .input(Json.fromJson(toolExecutionRequest.arguments(), Map.class))
-                            .build())
+                    .map(toolExecutionRequest -> {
+                        try {
+                            return AnthropicToolUseContent.builder()
+                                    .id(toolExecutionRequest.id())
+                                    .name(toolExecutionRequest.name())
+                                    .input(OBJECT_MAPPER.readValue(toolExecutionRequest.arguments(), Map.class))
+                                    .build();
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
                     .collect(toList());
             contents.addAll(toolUseContents);
         }
@@ -105,37 +140,44 @@ public class AnthropicMapper {
         return contents;
     }
 
-    public static String toAnthropicSystemPrompt(List<ChatMessage> messages) {
-        String systemPrompt = messages.stream()
-                .filter(message -> message instanceof SystemMessage)
-                .map(message -> ((SystemMessage) message).text())
-                .collect(joining("\n\n"));
 
-        if (isNullOrBlank(systemPrompt)) {
-            return null;
-        } else {
-            return systemPrompt;
-        }
+    public static List<AnthropicTextContent> toAnthropicSystemPrompt(List<ChatMessage> messages, AnthropicCacheType cacheType) {
+        return messages.stream()
+                .filter(message -> message instanceof SystemMessage)
+                .map(message -> {
+                    SystemMessage systemMessage = (SystemMessage) message;
+                    if (cacheType != AnthropicCacheType.NO_CACHE) {
+                        return new AnthropicTextContent(systemMessage.text(), cacheType.cacheControl());
+                    }
+                    return new AnthropicTextContent(systemMessage.text());
+                })
+                .collect(toList());
     }
 
     public static AiMessage toAiMessage(List<AnthropicContent> contents) {
 
         String text = contents.stream()
-                .filter(content -> "text".equals(content.type))
+                .filter(content -> content.type == TEXT)
                 .map(content -> content.text)
                 .collect(joining("\n"));
 
         List<ToolExecutionRequest> toolExecutionRequests = contents.stream()
-                .filter(content -> "tool_use".equals(content.type))
-                .map(content -> ToolExecutionRequest.builder()
-                        .id(content.id)
-                        .name(content.name)
-                        .arguments(Json.toJson(content.input))
-                        .build())
+                .filter(content -> content.type == TOOL_USE)
+                .map(content -> {
+                    try {
+                        return ToolExecutionRequest.builder()
+                                .id(content.id)
+                                .name(content.name)
+                                .arguments(OBJECT_MAPPER.writeValueAsString(content.input))
+                                .build();
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
                 .collect(toList());
 
         if (isNotNullOrBlank(text) && !isNullOrEmpty(toolExecutionRequests)) {
-            return new AiMessage(text, toolExecutionRequests);
+            return AiMessage.from(text, toolExecutionRequests);
         } else if (!isNullOrEmpty(toolExecutionRequests)) {
             return AiMessage.from(toolExecutionRequests);
         } else {
@@ -147,7 +189,7 @@ public class AnthropicMapper {
         if (anthropicUsage == null) {
             return null;
         }
-        return new TokenUsage(anthropicUsage.inputTokens, anthropicUsage.outputTokens);
+        return new AnthropicTokenUsage(anthropicUsage.inputTokens, anthropicUsage.outputTokens, anthropicUsage.cacheCreationInputTokens, anthropicUsage.cacheReadInputTokens);
     }
 
     public static FinishReason toFinishReason(String anthropicStopReason) {
@@ -168,24 +210,42 @@ public class AnthropicMapper {
         }
     }
 
-    public static List<AnthropicTool> toAnthropicTools(List<ToolSpecification> toolSpecifications) {
+    public static List<AnthropicTool> toAnthropicTools(List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
         if (toolSpecifications == null) {
             return null;
         }
         return toolSpecifications.stream()
-                .map(AnthropicMapper::toAnthropicTool)
-                .collect(toList());
+            .map(toolSpecification -> toAnthropicTool(toolSpecification, cacheToolsPrompt))
+            .collect(toList());
     }
 
-    public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification) {
-        ToolParameters parameters = toolSpecification.parameters();
-        return AnthropicTool.builder()
+    public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt) {
+        AnthropicTool. AnthropicToolBuilder toolBuilder;
+        if (toolSpecification.parameters() != null) {
+            JsonObjectSchema parameters = toolSpecification.parameters();
+            toolBuilder = AnthropicTool.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
                 .inputSchema(AnthropicToolSchema.builder()
-                        .properties(parameters != null ? parameters.properties() : emptyMap())
-                        .required(parameters != null ? parameters.required() : emptyList())
-                        .build())
-                .build();
+                    .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
+                    .required(parameters != null ? parameters.required() : emptyList())
+                    .build());
+
+        } else {
+            ToolParameters parameters = toolSpecification.toolParameters();
+            toolBuilder = AnthropicTool.builder()
+                .name(toolSpecification.name())
+                .description(toolSpecification.description())
+                .inputSchema(AnthropicToolSchema.builder()
+                    .properties(parameters != null ? parameters.properties() : emptyMap())
+                    .required(parameters != null ? parameters.required() : emptyList())
+                    .build());
+
+        }
+
+        if (cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
+            return toolBuilder.cacheControl(cacheToolsPrompt.cacheControl()).build();
+        }
+        return toolBuilder.build();
     }
 }

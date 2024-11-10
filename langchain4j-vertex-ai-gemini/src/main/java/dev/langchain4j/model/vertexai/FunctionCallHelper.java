@@ -109,13 +109,19 @@ class FunctionCallHelper {
 
         for (ToolSpecification toolSpecification : toolSpecifications) {
             FunctionDeclaration.Builder fnBuilder = FunctionDeclaration.newBuilder()
-                .setName(toolSpecification.name())
-                .setDescription(toolSpecification.description());
+                .setName(toolSpecification.name());
 
-            Schema.Builder schema = Schema.newBuilder().setType(Type.OBJECT);
+            if (toolSpecification.description() != null) {
+                fnBuilder.setDescription(toolSpecification.description());
+            }
 
-            ToolParameters parameters = toolSpecification.parameters();
-            if (parameters != null) {
+            if (toolSpecification.parameters() != null) {
+                fnBuilder.setParameters(SchemaHelper.from(toolSpecification.parameters()));
+            } else if (toolSpecification.toolParameters() != null) {
+                ToolParameters parameters = toolSpecification.toolParameters();
+
+                Schema.Builder schema = Schema.newBuilder()
+                        .setType(Type.OBJECT);
                 for (String paramName : parameters.required()) {
                     schema.addRequired(paramName);
                 }
@@ -131,8 +137,9 @@ class FunctionCallHelper {
                             .setType(type)
                             .build());
                 });
+                fnBuilder.setParameters(schema.build());
             }
-            fnBuilder.setParameters(schema.build());
+
             tool.addFunctionDeclarations(fnBuilder.build());
         }
 

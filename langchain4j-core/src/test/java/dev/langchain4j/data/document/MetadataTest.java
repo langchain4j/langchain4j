@@ -320,7 +320,7 @@ class MetadataTest implements WithAssertions {
         UUID uuid = UUID.randomUUID();
         assertThatThrownBy(() -> metadata.put(null, uuid))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage(String.format("The metadata key with the value '%s' cannot be null or blank", uuid));
+                .hasMessage("The metadata key with the value '%s' cannot be null or blank".formatted(uuid));
 
         assertThatThrownBy(() -> metadata.put(null, 1))
                 .isExactlyInstanceOf(IllegalArgumentException.class)

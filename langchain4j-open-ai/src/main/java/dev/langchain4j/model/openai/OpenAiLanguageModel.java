@@ -99,6 +99,12 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         return tokenizer.estimateTokenCountInText(prompt);
     }
 
+    /**
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     * <b>The default values for the model name and temperature will be removed in future releases!</b>
+     */
+    @Deprecated(forRemoval = true)
     public static OpenAiLanguageModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

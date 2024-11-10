@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+@Disabled("Run manually before release. Expensive to run very often.")
 public class VertexAiImageModelIT {
 
     private static final String ENDPOINT = System.getenv("GCP_VERTEXAI_ENDPOINT");
@@ -193,7 +195,7 @@ public class VertexAiImageModelIT {
         assertThatExceptionOfType(Throwable.class).isThrownBy(() -> imagenModel.generate("a nude woman"));
     }
 
-    //    @Test
+    @Test
     public void should_generate_one_imagen_v3_with_persistence() {
 //        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "DEBUG");
 
@@ -202,7 +204,7 @@ public class VertexAiImageModelIT {
                 .location(LOCATION)
                 .project(PROJECT)
                 .publisher(PUBLISHER)
-                .modelName("imagen-3.0-generate-preview-0611")
+                .modelName("imagen-3.0-generate-001")
                 .aspectRatio(VertexAiImageModel.AspectRatio.LANDSCAPE)
                 .mimeType(VertexAiImageModel.MimeType.JPEG)
                 .compressionQuality(80)
