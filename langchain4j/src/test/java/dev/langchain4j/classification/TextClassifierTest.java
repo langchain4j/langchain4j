@@ -46,7 +46,7 @@ class TextClassifierTest implements WithAssertions {
     }
 
     @Test
-    void test_classify_with_score() {
+    void test_classify_with_scores() {
         CatClassifier classifier = new CatClassifier();
 
         ClassificationResult<Categories> results = classifier.classifyWithScores("cat fish");

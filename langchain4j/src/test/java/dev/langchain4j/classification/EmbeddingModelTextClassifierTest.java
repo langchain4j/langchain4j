@@ -270,7 +270,7 @@ class EmbeddingModelTextClassifierTest {
     }
 
     @Test
-    void should_classify_with_score() {
+    void should_classify_with_scores() {
 
         double minScore = 0.64;
 
