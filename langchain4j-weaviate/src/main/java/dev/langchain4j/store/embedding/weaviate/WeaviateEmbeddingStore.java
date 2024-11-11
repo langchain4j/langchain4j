@@ -323,7 +323,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         metadataMap = new HashMap<>(item);
         // Remove text field from metadata if we store metadata in the root of the object
         metadataMap.remove(textFieldName);
-      } else if (item.get(metadataFieldName) != null && item.get(metadataFieldName) instanceof Map) {
+        metadataMap.remove(ADDITIONALS);
+      } else if (item.get(metadataFieldName) instanceof Map) {
         metadataMap = (Map<String, ?>) item.get(metadataFieldName);
       }
       if (metadataKeys != null && !metadataKeys.isEmpty()) {
