@@ -14,7 +14,6 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static java.net.HttpURLConnection.HTTP_OK;
@@ -158,11 +157,6 @@ public class Utils {
     return sb.toString();
   }
 
-    public static  <T> void setIfPresent(T value, Consumer<T> setter) {
-        if (value != null) {
-            setter.accept(value);
-        }
-    }
   /**
    * Returns a random UUID.
    * @return a UUID.
