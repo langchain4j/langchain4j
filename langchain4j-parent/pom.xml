@@ -408,6 +408,16 @@
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
                     <version>3.8.0</version>
                 </plugin>
@@ -429,7 +439,6 @@
                         <goals>
                             <goal>properties</goal>
                         </goals>
-
                     </execution>
                     <execution>
                         <id>detect-unused-dependencies</id>
@@ -437,8 +446,10 @@
                             <goal>analyze-only</goal>
                         </goals>
                         <configuration>
-                            <ignoredUsedUndeclaredDependencies>true</ignoredUsedUndeclaredDependencies>
-                            <failOnWarning>false</failOnWarning><!-- todo: fix dependencies and set to true -->
+                            <ignoredUsedUndeclaredDependencies>true
+                            </ignoredUsedUndeclaredDependencies>
+                            <failOnWarning>false
+                            </failOnWarning><!-- todo: fix dependencies and set to true -->
                         </configuration>
                     </execution>
                     <execution>
@@ -453,7 +464,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.3.1</version>
                 <configuration combine.children="append">
                     <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                     <systemPropertyVariables>
@@ -464,8 +474,8 @@
 
             <plugin>
                 <!-- failsafe will be in charge of running the integration tests (everything that ends in IT) -->
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>3.3.1</version>
                 <configuration combine.children="append">
                     <systemPropertyVariables>
                         <tinylog.level>info</tinylog.level>
@@ -572,7 +582,8 @@
     <scm>
         <url>https://github.com/langchain4j/langchain4j</url>
         <connection>scm:git:git://github.com/langchain4j/langchain4j.git</connection>
-        <developerConnection>scm:git:git@github.com:langchain4j/langchain4j.git</developerConnection>
+        <developerConnection>scm:git:git@github.com:langchain4j/langchain4j.git
+        </developerConnection>
     </scm>
 
     <distributionManagement>
@@ -656,7 +667,9 @@
                                 </license>
                                 <license>
                                     <name>(The MIT License|MIT License|MIT)</name>
-                                    <url>(https?://opensource.org/licenses/MIT|https://projectlombok.org/LICENSE)</url>
+                                    <url>
+                                        (https?://opensource.org/licenses/MIT|https://projectlombok.org/LICENSE)
+                                    </url>
                                 </license>
                                 <license>
                                     <name>Eclipse Public License v2.0</name>
