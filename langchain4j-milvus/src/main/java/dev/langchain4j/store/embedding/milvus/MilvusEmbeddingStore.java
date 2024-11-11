@@ -121,7 +121,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         String metadataFiledName,
         String vectorFiledName
     ) {
-        this.milvusClient = milvusClient;
+        this.milvusClient = ensureNotNull(milvusClient, "milvusClient");
         this.collectionName = getOrDefault(collectionName, "default");
         this.metricType = getOrDefault(metricType, COSINE);
         this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
