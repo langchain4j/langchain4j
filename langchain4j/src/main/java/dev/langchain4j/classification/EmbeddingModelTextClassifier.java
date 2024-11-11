@@ -124,7 +124,7 @@ public class EmbeddingModelTextClassifier<L> implements TextClassifier<L> {
 
             double aggregateScore = aggregatedScore(meanScore, maxScore);
             if (aggregateScore >= minScore) {
-                scoredLabels.add(ScoredLabel.from(label, ));
+                scoredLabels.add(ScoredLabel.from(label, aggregateScore));
             }
         });
 
