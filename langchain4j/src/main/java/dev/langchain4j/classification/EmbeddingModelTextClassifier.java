@@ -128,11 +128,13 @@ public class EmbeddingModelTextClassifier<E extends Enum<E>> implements TextClas
             }
             meanScore /= exampleEmbeddings.size();
 
-            labelsWithScores.add(new LabelWithScore(label, aggregatedScore(meanScore, maxScore)));
+            double aggregateScore = aggregatedScore(meanScore, maxScore);
+            if (aggregateScore >= minScore){
+                labelsWithScores.add(new LabelWithScore(label, aggregateScore));
+            }
         });
 
         return labelsWithScores.stream()
-                .filter(it -> it.score >= minScore)
                 // sorting in descending order to return highest score first
                 .sorted(comparingDouble(labelWithScore -> 1 - labelWithScore.score))
                 .limit(maxResults)
