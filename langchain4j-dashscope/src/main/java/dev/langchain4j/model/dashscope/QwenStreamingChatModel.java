@@ -11,6 +11,7 @@ import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.exception.UploadFileException;
 import com.alibaba.dashscope.protocol.Protocol;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
@@ -23,6 +24,7 @@ import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.alibaba.dashscope.aigc.conversation.ConversationParam.ResultFormat.MESSAGE;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.dashscope.QwenHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
@@ -103,11 +106,36 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
         if (isMultimodalModel) {
             generateByMultimodalModel(messages, handler);
         } else {
-            generateByNonMultimodalModel(messages, handler);
+            generateByNonMultimodalModel(messages, null, null, handler);
         }
     }
 
-    private void generateByNonMultimodalModel(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+    @Override
+    public void generate(List<ChatMessage> messages,
+                         List<ToolSpecification> toolSpecifications,
+                         StreamingResponseHandler<AiMessage> handler) {
+        if (isMultimodalModel) {
+            throw new IllegalArgumentException("Tools are currently not supported by this model");
+        } else {
+            generateByNonMultimodalModel(messages, toolSpecifications, null, handler);
+        }
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages,
+                         ToolSpecification toolSpecification,
+                         StreamingResponseHandler<AiMessage> handler) {
+        if (isMultimodalModel) {
+            throw new IllegalArgumentException("Tools are currently not supported by this model");
+        } else {
+            generateByNonMultimodalModel(messages, null, toolSpecification, handler);
+        }
+    }
+
+    private void generateByNonMultimodalModel(List<ChatMessage> messages,
+                                              List<ToolSpecification> toolSpecifications,
+                                              ToolSpecification toolThatMustBeExecuted,
+                                              StreamingResponseHandler<AiMessage> handler) {
         GenerationParam.GenerationParamBuilder<?, ?> builder = GenerationParam.builder()
                 .apiKey(apiKey)
                 .model(modelName)
@@ -126,9 +154,16 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
             builder.stopStrings(stops);
         }
 
+        if (!isNullOrEmpty(toolSpecifications)) {
+            builder.tools(toToolFunctions(toolSpecifications));
+        } else if (toolThatMustBeExecuted != null) {
+            builder.tools(toToolFunctions(Collections.singleton(toolThatMustBeExecuted)));
+            builder.toolChoice(toToolFunction(toolThatMustBeExecuted));
+        }
+
         GenerationParam param = builder.build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(param, messages, null);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(param, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         onListenRequest(listeners, modelListenerRequest, attributes);
 
@@ -136,7 +171,7 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
         AtomicReference<String> responseId = new AtomicReference<>();
 
         try {
-            generation.streamCall(builder.build(), new ResultCallback<GenerationResult>() {
+            generation.streamCall(param, new ResultCallback<>() {
                 @Override
                 public void onEvent(GenerationResult result) {
                     String delta = responseBuilder.append(result);
@@ -191,7 +226,7 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
         AtomicReference<String> responseId = new AtomicReference<>();
 
         try {
-            conv.streamCall(param, new ResultCallback<MultiModalConversationResult>() {
+            conv.streamCall(param, new ResultCallback<>() {
                 @Override
                 public void onEvent(MultiModalConversationResult result) {
                     String delta = responseBuilder.append(result);
