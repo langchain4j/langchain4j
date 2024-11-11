@@ -26,21 +26,11 @@ public class TextDocumentParser implements DocumentParser {
 
     @Override
     public Document parse(InputStream inputStream) {
-        // see https://stackoverflow.com/a/35446009
-        try(ByteArrayOutputStream buffer = new ByteArrayOutputStream()){
-            int nRead;
-            byte[] data = new byte[1024];
-            while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
-                buffer.write(data, 0, nRead);
-            }
-            buffer.flush();
-
-            String text = buffer.toString(charset);
-
-            if (isNullOrBlank(text)) {
+        try {
+            String text = new String(inputStream.readAllBytes(), charset);
+            if (text.isBlank()) {
                 throw new BlankDocumentException();
             }
-
             return Document.from(text);
         } catch (BlankDocumentException e) {
             throw e;
