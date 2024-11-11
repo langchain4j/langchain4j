@@ -12,11 +12,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
 import java.sql.SQLException;
 
 @Testcontainers
-public abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilteringIT {
+abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg16");
@@ -31,7 +30,7 @@ public abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithF
     static final int TABLE_DIMENSION = 384;
 
     static void configureStore(MetadataStorageConfig config) {
-        PGSimpleDataSource source = new PGSimpleDataSource();
+        var source = new PGSimpleDataSource();
         source.setServerNames(new String[] {pgVector.getHost()});
         source.setPortNumbers(new int[] {pgVector.getFirstMappedPort()});
         source.setDatabaseName("test");
@@ -49,7 +48,7 @@ public abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithF
 
     @BeforeEach
     void beforeEach() {
-        try (Connection connection = dataSource.getConnection()) {
+        try (var connection = dataSource.getConnection()) {
             connection.createStatement().executeUpdate("TRUNCATE TABLE %s".formatted(TABLE_NAME));
         } catch (SQLException e) {
             throw new RuntimeException(e);
