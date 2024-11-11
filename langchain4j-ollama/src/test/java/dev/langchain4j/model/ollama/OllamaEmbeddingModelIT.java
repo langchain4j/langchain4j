@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaEmbeddingModelIT extends AbstractOllamaEmbeddingModelInfrastructure {
 
     EmbeddingModel model = OllamaEmbeddingModel.builder()
-            .baseUrl(ollama.getEndpoint())
+            .baseUrl(ollamaBaseUrl())
             .modelName(ALL_MINILM_MODEL)
             .build();
 

@@ -26,7 +26,7 @@ class OllamaOpenAiChatModelIT extends AbstractOllamaLanguageModelInfrastructure 
 
     ChatLanguageModel model = OpenAiChatModel.builder()
             .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
-            .baseUrl(ollama.getEndpoint() + "/v1") // TODO add "/v1" by default?
+            .baseUrl(ollamaBaseUrl() + "/v1") // TODO add "/v1" by default?
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .logRequests(true)

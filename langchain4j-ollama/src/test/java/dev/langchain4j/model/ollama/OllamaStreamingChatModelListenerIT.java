@@ -12,15 +12,15 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
     @Override
     protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
         return OllamaStreamingChatModel.builder()
-                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollama.getEndpoint())
-                .modelName(TINY_DOLPHIN_MODEL)
-                .temperature(temperature())
-                .topP(topP())
-                .numPredict(maxTokens())
-                .logRequests(true)
-                .logResponses(true)
-                .listeners(singletonList(listener))
-                .build();
+            .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl())
+            .modelName(modelName())
+            .temperature(temperature())
+            .topP(topP())
+            .numPredict(maxTokens())
+            .logRequests(true)
+            .logResponses(true)
+            .listeners(singletonList(listener))
+            .build();
     }
 
     @Override
@@ -31,12 +31,12 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
     @Override
     protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OllamaStreamingChatModel.builder()
-                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollama.getEndpoint())
-                .modelName("banana")
-                .logRequests(true)
-                .logResponses(true)
-                .listeners(singletonList(listener))
-                .build();
+            .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl())
+            .modelName("banana")
+            .logRequests(true)
+            .logResponses(true)
+            .listeners(singletonList(listener))
+            .build();
     }
 
     @Override

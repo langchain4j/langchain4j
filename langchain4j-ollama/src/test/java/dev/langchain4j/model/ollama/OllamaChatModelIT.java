@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     ChatLanguageModel model = OllamaChatModel.builder()
-            .baseUrl(ollama.getEndpoint())
+            .baseUrl(ollamaBaseUrl())
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .logRequests(true)
@@ -55,7 +55,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         int numPredict = 1; // max output tokens
 
         OllamaChatModel model = OllamaChatModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .modelName(TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
@@ -111,7 +111,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)
