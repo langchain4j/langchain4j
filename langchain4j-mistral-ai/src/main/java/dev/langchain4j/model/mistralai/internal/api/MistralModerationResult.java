@@ -1,11 +1,16 @@
 package dev.langchain4j.model.mistralai.internal.api;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class MistralModerationResult {
 
-
+    @JsonProperty("categories")
     private MistralCategories categories;
+
+    @JsonProperty("category_scores")
     private MistralCategoryScores categoryScores;
-    private Boolean flagged;
 
     public MistralCategories getCategories() {
         return categories;
@@ -21,13 +26,5 @@ public class MistralModerationResult {
 
     public void setCategoryScores(MistralCategoryScores categoryScores) {
         this.categoryScores = categoryScores;
-    }
-
-    public Boolean getFlagged() {
-        return flagged;
-    }
-
-    public void setFlagged(Boolean flagged) {
-        this.flagged = flagged;
     }
 }

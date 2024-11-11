@@ -3,6 +3,7 @@ package dev.langchain4j.model.mistralai;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModerationResponse;
+import dev.langchain4j.model.mistralai.internal.api.MistralCategories;
 import dev.langchain4j.model.mistralai.internal.api.MistralModerationResult;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.moderation.Moderation;
@@ -32,7 +33,7 @@ public class MistralAiModerationModel implements ModerationModel {
                                     Boolean logResponses) {
 
         this.client = MistralAiClient.builder()
-            .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1/moderations"))
+            .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
             .apiKey(apiKey)
             .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
             .logRequests(getOrDefault(logRequests, false))
@@ -66,7 +67,8 @@ public class MistralAiModerationModel implements ModerationModel {
 
         int i = 0;
         for (MistralModerationResult moderationResult : response.getResults()) {
-            if (moderationResult.getFlagged()) {
+
+            if (isAnyCategoryFlagged(moderationResult.getCategories())) {
                 return Response.from(Moderation.flagged(inputs.get(i)));
             }
             i++;
@@ -75,6 +77,17 @@ public class MistralAiModerationModel implements ModerationModel {
         return Response.from(Moderation.notFlagged());
     }
 
+
+    private boolean isAnyCategoryFlagged(MistralCategories categories) {
+        return (categories.getSexual() != null && categories.getSexual()) ||
+            (categories.getHateAndDiscrimination() != null && categories.getHateAndDiscrimination()) ||
+            (categories.getViolenceAndThreats() != null && categories.getViolenceAndThreats()) ||
+            (categories.getDangerousAndCriminalContent() != null && categories.getDangerousAndCriminalContent()) ||
+            (categories.getSelfHarm() != null && categories.getSelfHarm()) ||
+            (categories.getHealth() != null && categories.getHealth()) ||
+            (categories.getLaw() != null && categories.getLaw()) ||
+            (categories.getPii() != null && categories.getPii());
+    }
 
     public static class Builder {
         private String baseUrl;

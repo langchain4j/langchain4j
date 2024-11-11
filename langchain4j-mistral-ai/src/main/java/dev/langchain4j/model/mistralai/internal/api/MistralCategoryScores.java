@@ -1,7 +1,9 @@
 package dev.langchain4j.model.mistralai.internal.api;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class MistralCategoryScores {
 
     @JsonProperty
