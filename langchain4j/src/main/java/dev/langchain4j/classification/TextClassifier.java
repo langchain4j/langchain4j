@@ -4,42 +4,16 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.segment.TextSegment;
 
 import java.util.List;
-import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
 
 /**
- * Classifies given text according to specified enum.
+ * Classifies a given text based on a set of labels.
+ * It can return zero, one, or multiple labels for each classification.
  *
- * @param <L> Label type that is the result of classification.
+ * @param <L> The type of the label  (e.g., String, Enum, etc.)
  */
 public interface TextClassifier<L> {
-
-    /**
-     * Classify the given text with score.
-     *
-     * @param text Text to classify.
-     * @return A list of classification categories and detailed results
-     */
-    ClassificationResult<L> classifyWithDetail(String text);
-
-    /**
-     * Classify the given {@link TextSegment}.
-     *
-     * @param textSegment {@link TextSegment} to classify.
-     * @return A list of classification categories and detailed results
-     */
-    default ClassificationResult<L> classifyWithDetail(TextSegment textSegment) {
-        return classifyWithDetail(textSegment.text());
-    }
-
-    /**
-     * Classify the given {@link Document}.
-     *
-     * @param document {@link Document} to classify.
-     * @return A list of classification categories and detailed results
-     */
-    default ClassificationResult<L> classifyWithDetail(Document document) {
-        return classifyWithDetail(document.text());
-    }
 
     /**
      * Classify the given text.
@@ -48,9 +22,9 @@ public interface TextClassifier<L> {
      * @return A list of classification categories.
      */
     default List<L> classify(String text) {
-        return classifyWithDetail(text).scoredLabels().stream()
-                .map(ScoredLabel::label)
-                .collect(Collectors.toList());
+        return classifyWithScore(text).scoredLabels().stream()
+            .map(ScoredLabel::label)
+            .collect(toList());
     }
 
     /**
@@ -71,5 +45,33 @@ public interface TextClassifier<L> {
      */
     default List<L> classify(Document document) {
         return classify(document.text());
+    }
+
+    /**
+     * Classify the given text with score.
+     *
+     * @param text Text to classify.
+     * @return A list of classification categories and detailed results
+     */
+    ClassificationResult<L> classifyWithScore(String text);
+
+    /**
+     * Classify the given {@link TextSegment}.
+     *
+     * @param textSegment {@link TextSegment} to classify.
+     * @return A list of classification categories and detailed results
+     */
+    default ClassificationResult<L> classifyWithScore(TextSegment textSegment) {
+        return classifyWithScore(textSegment.text());
+    }
+
+    /**
+     * Classify the given {@link Document}.
+     *
+     * @param document {@link Document} to classify.
+     * @return A list of classification categories and detailed results
+     */
+    default ClassificationResult<L> classifyWithScore(Document document) {
+        return classifyWithScore(document.text());
     }
 }

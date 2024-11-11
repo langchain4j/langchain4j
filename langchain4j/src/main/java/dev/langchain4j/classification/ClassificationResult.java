@@ -3,23 +3,9 @@ package dev.langchain4j.classification;
 import java.util.Collection;
 
 /**
- * Represent a classification result.
+ * Represent the result of classification.
  *
- * @param <L> Label type that is the result of classification.
+ * @param <L> The type of the label (e.g., String, Enum, etc.)
  */
-public class ClassificationResult<L> {
-
-    private final Collection<ScoredLabel<L>> scoredLabels;
-
-    public ClassificationResult(Collection<ScoredLabel<L>> scoredLabels) {
-        this.scoredLabels = scoredLabels;
-    }
-
-    public Collection<ScoredLabel<L>> scoredLabels() {
-        return scoredLabels;
-    }
-
-    public static <L> ClassificationResult<L> fromScoredLabels(Collection<ScoredLabel<L>> scoredLabels) {
-        return new ClassificationResult<>(scoredLabels);
-    }
+public record ClassificationResult<L>(Collection<ScoredLabel<L>> scoredLabels) { // TODO collection type
 }
