@@ -52,6 +52,7 @@ public interface TextClassifier<L> {
      *
      * @param text Text to classify.
      * @return a result object containing a list of labels with corresponding scores.
+     * Can contain zero, one, or multiple labels.
      */
     ClassificationResult<L> classifyWithScores(String text);
 
@@ -60,6 +61,7 @@ public interface TextClassifier<L> {
      *
      * @param textSegment {@link TextSegment} to classify.
      * @return a result object containing a list of labels with corresponding scores.
+     * Can contain zero, one, or multiple labels.
      */
     default ClassificationResult<L> classifyWithScores(TextSegment textSegment) {
         return classifyWithScores(textSegment.text());
@@ -70,6 +72,7 @@ public interface TextClassifier<L> {
      *
      * @param document {@link Document} to classify.
      * @return a result object containing a list of labels with corresponding scores.
+     * Can contain zero, one, or multiple labels.
      */
     default ClassificationResult<L> classifyWithScores(Document document) {
         return classifyWithScores(document.text());
