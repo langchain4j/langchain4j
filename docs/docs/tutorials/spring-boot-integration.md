@@ -165,6 +165,20 @@ In this case, you must explicitly specify **all** components.
 
 More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
 
+## Flux
+
+When streaming, you can use `Flux<String>` as a return type of AI Service:
+```java
+@AiService
+interface Assistant {
+
+    @SystemMessage("You are a polite assistant")
+    Flux<String> chat(String userMessage);
+}
+```
+For this, please import `langchain4j-reactor` module.
+See more details [here](/tutorials/ai-services#flux).
+
 ## Supported versions
 
 LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.2.

@@ -21,6 +21,7 @@ https://neo4j.com/
 ## APIs
 
 - `Neo4jEmbeddingStore`
+- `Neo4jContentRetriever`
 
 
 ## Examples

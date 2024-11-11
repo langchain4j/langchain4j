@@ -13,6 +13,7 @@ public class TokenUsage {
     private final Integer outputTokenCount;
     private final Integer totalTokenCount;
 
+
     /**
      * Creates a new {@link TokenUsage} instance with all fields set to null.
      */

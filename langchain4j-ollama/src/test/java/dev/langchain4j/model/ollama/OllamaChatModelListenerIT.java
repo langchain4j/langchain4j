@@ -12,8 +12,8 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
     @Override
     protected ChatLanguageModel createModel(ChatModelListener listener) {
         return OllamaChatModel.builder()
-                .baseUrl(AbstractOllamaToolsLanguageModelInfrastructure.ollama.getEndpoint())
-                .modelName(TOOL_MODEL)
+                .baseUrl(AbstractOllamaToolsLanguageModelInfrastructure.ollamaBaseUrl())
+                .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
                 .numPredict(maxTokens())
@@ -31,7 +31,7 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
     @Override
     protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OllamaChatModel.builder()
-                .baseUrl(AbstractOllamaToolsLanguageModelInfrastructure.ollama.getEndpoint())
+                .baseUrl(AbstractOllamaToolsLanguageModelInfrastructure.ollamaBaseUrl())
                 .modelName("banana")
                 .maxRetries(0)
                 .logRequests(true)
