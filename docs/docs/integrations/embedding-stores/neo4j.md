@@ -1,5 +1,5 @@
 ---
-sidebar_position: 12
+sidebar_position: 15
 ---
 
 # Neo4j
@@ -21,6 +21,7 @@ https://neo4j.com/
 ## APIs
 
 - `Neo4jEmbeddingStore`
+- `Neo4jContentRetriever`
 
 
 ## Examples

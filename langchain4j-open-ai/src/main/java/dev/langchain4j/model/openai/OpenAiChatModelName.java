@@ -3,14 +3,10 @@ package dev.langchain4j.model.openai;
 public enum OpenAiChatModelName {
 
     GPT_3_5_TURBO("gpt-3.5-turbo"), // alias
-    @Deprecated
-    GPT_3_5_TURBO_0613("gpt-3.5-turbo-0613"),
     GPT_3_5_TURBO_1106("gpt-3.5-turbo-1106"),
     GPT_3_5_TURBO_0125("gpt-3.5-turbo-0125"),
 
     GPT_3_5_TURBO_16K("gpt-3.5-turbo-16k"), // alias
-    @Deprecated
-    GPT_3_5_TURBO_16K_0613("gpt-3.5-turbo-16k-0613"),
 
     GPT_4("gpt-4"), // alias
     @Deprecated

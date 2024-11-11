@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
@@ -29,6 +31,8 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.property;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20240620;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -207,6 +211,106 @@ class AnthropicChatModelIT {
     }
 
     @Test
+    void should_cache_system_message() {
+
+        // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .beta("prompt-caching-2024-07-31")
+            .modelName(CLAUDE_3_HAIKU_20240307)
+            .cacheSystemMessages(true)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        SystemMessage systemMessage = SystemMessage.from("What types of messages are supported in LangChain?".repeat(172) + randomString(2));
+        UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
+
+        // when
+        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+
+        // then
+        AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
+        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+
+        // when
+        Response<AiMessage> response2 = model.generate(systemMessage, userMessage);
+
+        // then
+        AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
+        assertThat(readCacheTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(readCacheTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
+    }
+
+    @Test
+    void should_cache_multiple_system_messages() {
+
+        // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .beta("prompt-caching-2024-07-31")
+            .modelName(CLAUDE_3_HAIKU_20240307)
+            .cacheSystemMessages(true)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        SystemMessage systemMessage = SystemMessage.from("What types of messages are supported in LangChain?".repeat(87) + randomString(2));
+        SystemMessage systemMessage2 = SystemMessage.from("What types of messages are supported in LangChain?".repeat(87) + randomString(2));
+        UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
+
+        // when
+        Response<AiMessage> response = model.generate(systemMessage, systemMessage2, userMessage);
+
+        // then
+        AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
+        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+
+        // when
+        Response<AiMessage> response2 = model.generate(systemMessage, systemMessage2, userMessage);
+
+        // then
+        AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
+        assertThat(readCacheTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(readCacheTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
+    }
+
+    @Test
+    void should_fail_if_more_than_four_system_message_with_cache() {
+
+        // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .beta("prompt-caching-2024-07-31")
+                .modelName(CLAUDE_3_HAIKU_20240307)
+                .cacheSystemMessages(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        SystemMessage systemMessageOne = SystemMessage.from("banana");
+        SystemMessage systemMessageTwo = SystemMessage.from("banana");
+        SystemMessage systemMessageThree = SystemMessage.from("banana");
+        SystemMessage systemMessageFour = SystemMessage.from("banana");
+        SystemMessage systemMessageFive = SystemMessage.from("banana");
+
+        // then
+        assertThatThrownBy(() -> model.generate(
+            systemMessageOne,
+            systemMessageTwo,
+            systemMessageThree,
+            systemMessageFour,
+            systemMessageFive
+        ))
+            .isExactlyInstanceOf(RuntimeException.class)
+            .hasMessage("dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException: " +
+                "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"messages: at least one message is required\"}}");
+
+    }
+
+    @Test
     void test_all_parameters() {
 
         // given
@@ -349,6 +453,91 @@ class AnthropicChatModelIT {
     }
 
     @Test
+    void should_cache_system_message_and_tools() {
+
+        // given
+        AnthropicChatModel model = AnthropicChatModel.builder()
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .beta("prompt-caching-2024-07-31")
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .cacheSystemMessages(true)
+            .cacheTools(true)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        SystemMessage systemMessage = SystemMessage.from("returns a sum of two numbers".repeat(210) + randomString(2));
+
+        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+            .name("calculator")
+            .description(randomString(2))
+            .parameters(JsonObjectSchema.builder()
+                .addIntegerProperty("first")
+                .addIntegerProperty("second")
+                .build())
+            .build();
+
+        // when
+        Response<AiMessage> response = model.generate(List.of(systemMessage, userMessage), List.of(toolSpecification));
+
+        // then
+        AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
+        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+
+        // when
+        Response<AiMessage> response2 = model.generate(List.of(systemMessage, userMessage), List.of(toolSpecification));
+
+        // then
+        AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
+        assertThat(readCacheTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(readCacheTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
+    }
+
+    @Test
+    void should_cache_tools() {
+
+        // given
+        AnthropicChatModel model = AnthropicChatModel.builder()
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .beta("prompt-caching-2024-07-31")
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .cacheTools(true)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+            .name("calculator")
+            .description("returns a sum of two numbers".repeat(214) + randomString(2))
+            .parameters(JsonObjectSchema.builder()
+                .addIntegerProperty("first")
+                .addIntegerProperty("second")
+                .build())
+            .build();
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(userMessage), List.of(toolSpecification));
+
+        // then
+        AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
+        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+
+        // when
+        Response<AiMessage> response2 = model.generate(singletonList(userMessage), List.of(toolSpecification));
+
+        // then
+        AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
+        assertThat(readCacheTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
+        assertThat(readCacheTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
+    }
+
+    @Test
     void should_execute_multiple_tools_in_parallel_then_answer() {
 
         // given
@@ -469,8 +658,19 @@ class AnthropicChatModelIT {
     }
 
     static Stream<Arguments> models_supporting_tools() {
+        // claude 2 does not support tools
         return stream(AnthropicChatModelName.values())
-                .filter(modelName -> modelName.toString().startsWith("claude-3"))
+                .filter(modelName -> !modelName.toString().startsWith("claude-2"))
                 .map(Arguments::of);
+    }
+
+    static String randomString(int length) {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        Random random = new Random();
+        StringBuilder result = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            result.append(characters.charAt(random.nextInt(characters.length())));
+        }
+        return result.toString();
     }
 }

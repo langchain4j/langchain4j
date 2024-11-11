@@ -122,12 +122,14 @@ public class EmbeddingModelTextClassifier<L> implements TextClassifier<L> {
             }
             meanScore /= exampleEmbeddings.size();
 
-            scoredLabels.add(ScoredLabel.from(label, aggregatedScore(meanScore, maxScore)));
+            double aggregateScore = aggregatedScore(meanScore, maxScore);
+            if (aggregateScore >= minScore) {
+                scoredLabels.add(ScoredLabel.from(label, ));
+            }
         });
 
         return ClassificationResult.fromScoredLabels(
                 scoredLabels.stream()
-                        .filter(it -> it.score() >= minScore)
                         // sorting in descending order to return highest score first
                         .sorted(comparingDouble(classificationResult -> 1 - classificationResult.score()))
                         .limit(maxResults)

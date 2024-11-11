@@ -576,6 +576,12 @@ Please note that if an AI Service method does not have a parameter annotated wit
 the value of `memoryId` in `ChatMemoryProvider` will default to a string `"default"`.
 :::
 
+:::note
+Please note that AI Service should not be called concurrently for the same `@MemoryId`,
+as it can lead to corrupted `ChatMemory`.
+Currently, AI Service does not implement any mechanism to prevent concurrent calls for the same `@MemoryId`.
+:::
+
 - [Example with a single ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
 - [Example with ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
 - [Example with a single persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryExample.java)
@@ -617,7 +623,7 @@ More details about tools can be found [here](/tutorials/tools#high-level-tool-ap
 
 ## RAG
 
-AI Service can be configured with a `ContentRetriever` in order to enable RAG:
+AI Service can be configured with a `ContentRetriever` in order to enable [naive RAG](/tutorials/rag#naive-rag):
 ```java
 
 EmbeddingStore embeddingStore  = ...
@@ -632,7 +638,7 @@ Assistant assistant = AiServices.builder(Assistant.class)
 ```
 
 Configuring a `RetrievalAugmentor` provides even more flexibility,
-enabling advanced RAG capabilities such as query transformation, re-ranking, etc:
+enabling [advanced RAG](/tutorials/rag#advanced-rag) capabilities such as query transformation, re-ranking, etc:
 ```java
 RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
         .queryTransformer(...)

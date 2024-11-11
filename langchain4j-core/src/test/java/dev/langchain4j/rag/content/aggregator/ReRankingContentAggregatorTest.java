@@ -9,16 +9,25 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class ReRankingContentAggregatorTest {
 
@@ -190,6 +199,78 @@ class ReRankingContentAggregatorTest {
                 // content4, content6, content7 were fused with content1
                 // content3 and content5 were filtered out by minScore
                 .containsExactly(content1, content8, content2);
+    }
+
+    @Test
+    void test_should_got_max_results() {
+
+        // given
+        Function<Map<Query, Collection<List<Content>>>, Query> querySelector =
+            (q) -> q.keySet().iterator().next(); // always selects first query
+
+        double minScore = 0.4;
+
+        Query query1 = Query.from("query 1");
+
+        Content content1 = Content.from("content");
+        Content content2 = Content.from("content 2");
+
+        Content content3 = Content.from("content 3");
+        Content content4 = Content.from("content");
+
+        Query query2 = Query.from("query 2");
+
+        Content content5 = Content.from("content 5");
+        Content content6 = Content.from("content");
+
+        Content content7 = Content.from("content");
+        Content content8 = Content.from("content 8");
+
+        // LinkedHashMap is used to ensure a predictable order in the test
+        Map<Query, Collection<List<Content>>> queryToContents = new LinkedHashMap<>();
+        queryToContents.put(query1, asList(
+            asList(content1, content2),
+            asList(content3, content4)
+
+        ));
+        queryToContents.put(query2, asList(
+            asList(content5, content6),
+            asList(content7, content8)
+        ));
+
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        when(scoringModel.scoreAll(
+            asList(
+                content1.textSegment(),
+                content3.textSegment(),
+                content5.textSegment(),
+                content2.textSegment(),
+                content8.textSegment()
+            ), query1.text())).thenReturn(Response.from(
+            asList(
+                0.6,
+                0.2,
+                0.3,
+                0.4,
+                0.5
+            )));
+
+        ContentAggregator aggregator = ReRankingContentAggregator.builder()
+            .scoringModel(scoringModel)
+            .querySelector(querySelector)
+            .minScore(minScore)
+            .maxResults(2)
+            .build();
+
+        // when
+        List<Content> aggregated = aggregator.aggregate(queryToContents);
+
+        // then
+        assertThat(aggregated)
+            // content4, content6, content7 were fused with content1
+            // content3 and content5 were filtered out by minScore
+            // count2 filtered by maxResults
+            .containsExactly(content1, content8);
     }
 
     @ParameterizedTest
