@@ -16,62 +16,62 @@ import static java.util.stream.Collectors.toList;
 public interface TextClassifier<L> {
 
     /**
-     * Classify the given text.
+     * Classifies the given text.
      *
      * @param text Text to classify.
-     * @return A list of classification categories.
+     * @return A list of labels. Can contain zero, one, or multiple labels.
      */
     default List<L> classify(String text) {
-        return classifyWithScore(text).scoredLabels().stream()
+        return classifyWithScores(text).scoredLabels().stream()
             .map(ScoredLabel::label)
             .collect(toList());
     }
 
     /**
-     * Classify the given {@link TextSegment}.
+     * Classifies the given {@link TextSegment}.
      *
      * @param textSegment {@link TextSegment} to classify.
-     * @return A list of classification categories.
+     * @return A list of labels. Can contain zero, one, or multiple labels.
      */
     default List<L> classify(TextSegment textSegment) {
         return classify(textSegment.text());
     }
 
     /**
-     * Classify the given {@link Document}.
+     * Classifies the given {@link Document}.
      *
      * @param document {@link Document} to classify.
-     * @return A list of classification categories.
+     * @return A list of labels. Can contain zero, one, or multiple labels.
      */
     default List<L> classify(Document document) {
         return classify(document.text());
     }
 
     /**
-     * Classify the given text with score.
+     * Classifies the given text and returns labels with scores.
      *
      * @param text Text to classify.
-     * @return A list of classification categories and detailed results
+     * @return a result object containing a list of labels with corresponding scores.
      */
-    ClassificationResult<L> classifyWithScore(String text);
+    ClassificationResult<L> classifyWithScores(String text);
 
     /**
-     * Classify the given {@link TextSegment}.
+     * Classifies the given {@link TextSegment} and returns labels with scores.
      *
      * @param textSegment {@link TextSegment} to classify.
-     * @return A list of classification categories and detailed results
+     * @return a result object containing a list of labels with corresponding scores.
      */
-    default ClassificationResult<L> classifyWithScore(TextSegment textSegment) {
-        return classifyWithScore(textSegment.text());
+    default ClassificationResult<L> classifyWithScores(TextSegment textSegment) {
+        return classifyWithScores(textSegment.text());
     }
 
     /**
-     * Classify the given {@link Document}.
+     * Classifies the given {@link Document} and returns labels with scores.
      *
      * @param document {@link Document} to classify.
-     * @return A list of classification categories and detailed results
+     * @return a result object containing a list of labels with corresponding scores.
      */
-    default ClassificationResult<L> classifyWithScore(Document document) {
-        return classifyWithScore(document.text());
+    default ClassificationResult<L> classifyWithScores(Document document) {
+        return classifyWithScores(document.text());
     }
 }

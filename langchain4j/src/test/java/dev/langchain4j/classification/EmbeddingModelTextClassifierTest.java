@@ -282,7 +282,7 @@ class EmbeddingModelTextClassifierTest {
             0.5
         );
 
-        ClassificationResult<CustomerServiceCategory> result = classifier.classifyWithScore("Bro, this product is crap");
+        ClassificationResult<CustomerServiceCategory> result = classifier.classifyWithScores("Bro, this product is crap");
 
         assertThat(result.scoredLabels().stream().map(ScoredLabel::label))
             .containsExactly(RETURNS_AND_EXCHANGES);

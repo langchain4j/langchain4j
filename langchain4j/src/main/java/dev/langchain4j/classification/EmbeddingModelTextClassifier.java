@@ -6,9 +6,15 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
@@ -92,11 +98,11 @@ public class EmbeddingModelTextClassifier<L> implements TextClassifier<L> {
 
         this.exampleEmbeddingsByLabel = new HashMap<>();
         examplesByLabel.forEach((label, examples) ->
-                exampleEmbeddingsByLabel.put(label, embeddingModel.embedAll(
-                        examples.stream()
-                                .map(TextSegment::from)
-                                .collect(toList())).content()
-                )
+            exampleEmbeddingsByLabel.put(label, embeddingModel.embedAll(
+                examples.stream()
+                    .map(TextSegment::from)
+                    .collect(toList())).content()
+            )
         );
 
         this.maxResults = ensureGreaterThanZero(maxResults, "maxResults");
@@ -105,7 +111,7 @@ public class EmbeddingModelTextClassifier<L> implements TextClassifier<L> {
     }
 
     @Override
-    public ClassificationResult<L> classifyWithScore(String text) {
+    public ClassificationResult<L> classifyWithScores(String text) {
 
         Embedding textEmbedding = embeddingModel.embed(text).content();
 
@@ -130,10 +136,10 @@ public class EmbeddingModelTextClassifier<L> implements TextClassifier<L> {
 
         return new ClassificationResult<>(
             scoredLabels.stream()
-                        // sorting in descending order to return highest score first
-                        .sorted(comparingDouble(classificationResult -> 1 - classificationResult.score()))
-                        .limit(maxResults)
-                        .collect(toList())
+                // sorting in descending order to return highest score first
+                .sorted(comparingDouble(classificationResult -> 1 - classificationResult.score()))
+                .limit(maxResults)
+                .collect(toList())
         );
     }
 

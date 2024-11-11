@@ -18,7 +18,7 @@ class TextClassifierTest implements WithAssertions {
     public static class CatClassifier implements TextClassifier<Categories> {
 
         @Override
-        public ClassificationResult<Categories> classifyWithScore(String text) {
+        public ClassificationResult<Categories> classifyWithScores(String text) {
             List<ScoredLabel<Categories>> scoredLabels = new ArrayList<>();
             if (text.contains("cat")) {
                 scoredLabels.add(new ScoredLabel<>(Categories.CAT, 1.0));
@@ -49,7 +49,7 @@ class TextClassifierTest implements WithAssertions {
     void test_classify_with_score() {
         CatClassifier classifier = new CatClassifier();
 
-        ClassificationResult<Categories> results = classifier.classifyWithScore("cat fish");
+        ClassificationResult<Categories> results = classifier.classifyWithScores("cat fish");
         assertThat(results.scoredLabels().stream()
             .map(ScoredLabel::label)
             .collect(Collectors.toList())).containsOnly(Categories.CAT, Categories.FISH);
@@ -57,7 +57,7 @@ class TextClassifierTest implements WithAssertions {
             .map(ScoredLabel::score)
             .collect(Collectors.toList())).allMatch(score -> score == 1.0);
 
-        results = classifier.classifyWithScore(TextSegment.from("cat fish"));
+        results = classifier.classifyWithScores(TextSegment.from("cat fish"));
         assertThat(results.scoredLabels().stream()
             .map(ScoredLabel::label)
             .collect(Collectors.toList())).containsOnly(Categories.CAT, Categories.FISH);
@@ -65,7 +65,7 @@ class TextClassifierTest implements WithAssertions {
             .map(ScoredLabel::score)
             .collect(Collectors.toList())).allMatch(score -> score == 1.0);
 
-        results = classifier.classifyWithScore(Document.from("dog cat"));
+        results = classifier.classifyWithScores(Document.from("dog cat"));
         assertThat(results.scoredLabels().stream()
             .map(ScoredLabel::label)
             .collect(Collectors.toList())).containsOnly(Categories.DOG, Categories.CAT);
