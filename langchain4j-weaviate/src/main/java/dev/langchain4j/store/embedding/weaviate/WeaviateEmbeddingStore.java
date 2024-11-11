@@ -24,6 +24,7 @@ import lombok.Builder;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -317,7 +318,6 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private EmbeddingMatch<TextSegment> toEmbeddingMatch(Map<String, ?> item) {
       Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
-      final Metadata metadata = new Metadata();
       Map<String, ?> metadataMap = new HashMap<>();
       if (metadataFieldName.isEmpty()) {
         metadataMap = new HashMap<>(item);
@@ -327,15 +327,18 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
       } else if (item.get(metadataFieldName) instanceof Map) {
         metadataMap = (Map<String, ?>) item.get(metadataFieldName);
       }
-      if (metadataKeys != null && !metadataKeys.isEmpty()) {
+      if (!metadataKeys.isEmpty()) {
         metadataMap.keySet().retainAll(metadataKeys);
       }
-      for (Map.Entry<String, ?> entry : metadataMap.entrySet()) {
-        if (entry.getValue() != null && !NULL_VALUE.equals(entry.getValue())) {
-          // TODO: Remove or replace use of deprecated method
-          metadata.add(entry.getKey(), entry.getValue());
-        }
-      }
+
+      // Filter out null values from metadataMap
+      metadataMap = metadataMap.entrySet()
+          .stream()
+          .filter(entry -> entry.getValue() != null)
+          .filter(nullValue -> !NULL_VALUE.equals(nullValue.getValue()))
+          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+      final Metadata metadata = new Metadata(metadataMap);
       String text = (String) item.get(textFieldName);
 
       return new EmbeddingMatch<>(
