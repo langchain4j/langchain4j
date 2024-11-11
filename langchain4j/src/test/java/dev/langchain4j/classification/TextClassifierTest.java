@@ -5,8 +5,8 @@ import dev.langchain4j.data.segment.TextSegment;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 class TextClassifierTest implements WithAssertions {
@@ -19,7 +19,7 @@ class TextClassifierTest implements WithAssertions {
 
         @Override
         public ClassificationResult<Categories> classifyWithScore(String text) {
-            Set<ScoredLabel<Categories>> scoredLabels = new HashSet<>();
+            List<ScoredLabel<Categories>> scoredLabels = new ArrayList<>();
             if (text.contains("cat")) {
                 scoredLabels.add(new ScoredLabel<>(Categories.CAT, 1.0));
             }
@@ -46,7 +46,7 @@ class TextClassifierTest implements WithAssertions {
     }
 
     @Test
-    void test_classify_with_detail() {
+    void test_classify_with_score() {
         CatClassifier classifier = new CatClassifier();
 
         ClassificationResult<Categories> results = classifier.classifyWithScore("cat fish");

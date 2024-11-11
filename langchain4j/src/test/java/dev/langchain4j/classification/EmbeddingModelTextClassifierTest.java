@@ -206,6 +206,22 @@ class EmbeddingModelTextClassifierTest {
     }
 
     @Test
+    void should_return_zero_categories() {
+
+        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
+            new AllMiniLmL6V2QuantizedEmbeddingModel(),
+            examples,
+            1,
+            1,
+            0.5
+        );
+
+        List<CustomerServiceCategory> categories = classifier.classify("banana");
+
+        assertThat(categories).isEmpty();
+    }
+
+    @Test
     void should_classify_respecting_minScore() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
@@ -251,22 +267,6 @@ class EmbeddingModelTextClassifierTest {
         List<CustomerServiceCategory> categories = classifier.classify("Bro, this product is crap");
 
         assertThat(categories).containsExactly(RETURNS_AND_EXCHANGES);
-    }
-
-    @Test
-    void should_return_zero_labels() {
-
-        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-            new AllMiniLmL6V2QuantizedEmbeddingModel(),
-            examples,
-            1,
-            1,
-            0.5
-        );
-
-        List<CustomerServiceCategory> categories = classifier.classify("banana");
-
-        assertThat(categories).isEmpty();
     }
 
     @Test
