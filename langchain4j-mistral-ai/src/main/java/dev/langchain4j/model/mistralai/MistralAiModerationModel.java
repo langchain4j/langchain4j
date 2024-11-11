@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.singletonList;
 
 public class MistralAiModerationModel implements ModerationModel {
@@ -40,7 +41,7 @@ public class MistralAiModerationModel implements ModerationModel {
             .logResponses(getOrDefault(logResponses, false))
             .build();
 
-        this.modelName = getOrDefault(modelName, MistralAiChatModelName.MISTRAL_MODERATE_LATEST.toString());
+        this.modelName = ensureNotNull(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
@@ -58,15 +59,12 @@ public class MistralAiModerationModel implements ModerationModel {
 
     private Response<Moderation> moderateInternal(List<String> inputs) {
 
-        MistralAiModerationRequest request = MistralAiModerationRequest.builder()
-            .model(modelName)
-            .input(inputs)
-            .build();
+        MistralAiModerationRequest request = new MistralAiModerationRequest(modelName, inputs);
 
         MistralAiModerationResponse response = withRetry(() -> client.moderation(request), maxRetries);
 
         int i = 0;
-        for (MistralModerationResult moderationResult : response.getResults()) {
+        for (MistralModerationResult moderationResult : response.results()) {
 
             if (isAnyCategoryFlagged(moderationResult.getCategories())) {
                 return Response.from(Moderation.flagged(inputs.get(i)));
