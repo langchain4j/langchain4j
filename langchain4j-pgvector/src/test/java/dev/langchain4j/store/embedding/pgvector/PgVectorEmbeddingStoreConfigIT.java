@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.pgvector;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +54,11 @@ public abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithF
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    protected void ensureStoreIsEmpty() {
+        // it's not necessary to clear the store before every test
     }
 
     @Override
