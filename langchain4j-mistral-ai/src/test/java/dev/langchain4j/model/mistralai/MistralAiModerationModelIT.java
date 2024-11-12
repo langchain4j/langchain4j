@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MistralAiModerationModelIT {
 
     ModerationModel model = new MistralAiModerationModel.Builder()
-        .apiKey("MISTRAL_AI_API_KEY")
+        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
         .modelName("mistral-moderation-latest")
         .logRequests(true)
         .logResponses(true)
