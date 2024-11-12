@@ -492,7 +492,34 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         }
 
         public OpenAiChatModel build() {
-            return new OpenAiChatModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.temperature, this.topP, this.stop, this.maxTokens, this.maxCompletionTokens, this.presencePenalty, this.frequencyPenalty, this.logitBias, this.responseFormat, this.strictJsonSchema, this.seed, this.user, this.strictTools, this.parallelToolCalls, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses, this.tokenizer, this.customHeaders, this.listeners);
+            return new OpenAiChatModel(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.organizationId,
+                    this.modelName,
+                    this.temperature,
+                    this.topP,
+                    this.stop,
+                    this.maxTokens,
+                    this.maxCompletionTokens,
+                    this.presencePenalty,
+                    this.frequencyPenalty,
+                    this.logitBias,
+                    this.responseFormat,
+                    this.strictJsonSchema,
+                    this.seed,
+                    this.user,
+                    this.strictTools,
+                    this.parallelToolCalls,
+                    this.timeout,
+                    this.maxRetries,
+                    this.proxy,
+                    this.logRequests,
+                    this.logResponses,
+                    this.tokenizer,
+                    this.customHeaders,
+                    this.listeners
+            );
         }
 
         @Override

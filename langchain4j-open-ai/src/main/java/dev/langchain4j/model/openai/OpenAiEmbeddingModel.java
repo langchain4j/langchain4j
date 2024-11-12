@@ -239,7 +239,21 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         }
 
         public OpenAiEmbeddingModel build() {
-            return new OpenAiEmbeddingModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.dimensions, this.user, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses, this.tokenizer, this.customHeaders);
+            return new OpenAiEmbeddingModel(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.organizationId,
+                    this.modelName,
+                    this.dimensions,
+                    this.user,
+                    this.timeout,
+                    this.maxRetries,
+                    this.proxy,
+                    this.logRequests,
+                    this.logResponses,
+                    this.tokenizer,
+                    this.customHeaders
+            );
         }
 
         @Override
