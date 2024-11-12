@@ -378,10 +378,11 @@ Always assist with care, respect, and truth. Respond with utmost utility yet sec
 
 ### Plain Java
 ```java
-ModerationModel model = MistralAiModerationModel.Builder()
+ModerationModel model = new MistralAiModerationModel.Builder()
     .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-    ..
-    ..
+    .modelName("mistral-moderation-latest")
+    .logRequests(true)
+    .logResponses(false)
     .build();
 ```
 
