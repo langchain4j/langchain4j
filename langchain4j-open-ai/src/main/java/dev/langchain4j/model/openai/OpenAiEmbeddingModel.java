@@ -10,7 +10,6 @@ import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -19,7 +18,11 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -37,7 +40,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
-    @Builder
     public OpenAiEmbeddingModel(String baseUrl,
                                 String apiKey,
                                 String organizationId,
@@ -60,19 +62,19 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-                .openAiApiKey(apiKey)
-                .baseUrl(baseUrl)
-                .organizationId(organizationId)
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .proxy(proxy)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(customHeaders)
-                .build();
+            .openAiApiKey(apiKey)
+            .baseUrl(baseUrl)
+            .organizationId(organizationId)
+            .callTimeout(timeout)
+            .connectTimeout(timeout)
+            .readTimeout(timeout)
+            .writeTimeout(timeout)
+            .proxy(proxy)
+            .logRequests(logRequests)
+            .logResponses(logResponses)
+            .userAgent(DEFAULT_USER_AGENT)
+            .customHeaders(customHeaders)
+            .build();
         this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
         this.dimensions = dimensions;
         this.user = user;
@@ -97,8 +99,8 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
         List<String> texts = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(toList());
+            .map(TextSegment::text)
+            .collect(toList());
 
         return embedTexts(texts);
     }
@@ -106,21 +108,21 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     private Response<List<Embedding>> embedTexts(List<String> texts) {
 
         EmbeddingRequest request = EmbeddingRequest.builder()
-                .input(texts)
-                .model(modelName)
-                .dimensions(dimensions)
-                .user(user)
-                .build();
+            .input(texts)
+            .model(modelName)
+            .dimensions(dimensions)
+            .user(user)
+            .build();
 
         EmbeddingResponse response = withRetry(() -> client.embedding(request).execute(), maxRetries);
 
         List<Embedding> embeddings = response.data().stream()
-                .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
-                .collect(toList());
+            .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
+            .collect(toList());
 
         return Response.from(
-                embeddings,
-                tokenUsageFrom(response.usage())
+            embeddings,
+            tokenUsageFrom(response.usage())
         );
     }
 
@@ -148,9 +150,22 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
     public static class OpenAiEmbeddingModelBuilder {
 
+        private String baseUrl;
+        private String apiKey;
+        private String organizationId;
+        private String modelName;
+        private Integer dimensions;
+        private String user;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Proxy proxy;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Tokenizer tokenizer;
+        private Map<String, String> customHeaders;
+
         public OpenAiEmbeddingModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public OpenAiEmbeddingModelBuilder modelName(String modelName) {
@@ -161,6 +176,74 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         public OpenAiEmbeddingModelBuilder modelName(OpenAiEmbeddingModelName modelName) {
             this.modelName = modelName.toString();
             return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder organizationId(String organizationId) {
+            this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder dimensions(Integer dimensions) {
+            this.dimensions = dimensions;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder user(String user) {
+            this.user = user;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder tokenizer(Tokenizer tokenizer) {
+            this.tokenizer = tokenizer;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiEmbeddingModel build() {
+            return new OpenAiEmbeddingModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.dimensions, this.user, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses, this.tokenizer, this.customHeaders);
+        }
+
+        public String toString() {
+            return "OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", organizationId=" + this.organizationId + ", modelName=" + this.modelName + ", dimensions=" + this.dimensions + ", user=" + this.user + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", tokenizer=" + this.tokenizer + ", customHeaders=" + this.customHeaders + ")";
         }
     }
 }

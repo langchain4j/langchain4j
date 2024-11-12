@@ -11,7 +11,6 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -38,7 +37,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     private final Double temperature;
     private final Tokenizer tokenizer;
 
-    @Builder
     public OpenAiStreamingLanguageModel(String baseUrl,
                                         String apiKey,
                                         String organizationId,
@@ -54,19 +52,19 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
-                .openAiApiKey(apiKey)
-                .organizationId(organizationId)
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .proxy(proxy)
-                .logRequests(logRequests)
-                .logStreamingResponses(logResponses)
-                .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(customHeaders)
-                .build();
+            .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
+            .openAiApiKey(apiKey)
+            .organizationId(organizationId)
+            .callTimeout(timeout)
+            .connectTimeout(timeout)
+            .readTimeout(timeout)
+            .writeTimeout(timeout)
+            .proxy(proxy)
+            .logRequests(logRequests)
+            .logStreamingResponses(logResponses)
+            .userAgent(DEFAULT_USER_AGENT)
+            .customHeaders(customHeaders)
+            .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
         this.temperature = getOrDefault(temperature, 0.7);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
@@ -80,37 +78,37 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
 
         CompletionRequest request = CompletionRequest.builder()
-                .stream(true)
-                .streamOptions(StreamOptions.builder()
-                        .includeUsage(true)
-                        .build())
-                .model(modelName)
-                .prompt(prompt)
-                .temperature(temperature)
-                .build();
+            .stream(true)
+            .streamOptions(StreamOptions.builder()
+                .includeUsage(true)
+                .build())
+            .model(modelName)
+            .prompt(prompt)
+            .temperature(temperature)
+            .build();
 
         OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
         client.completion(request)
-                .onPartialResponse(partialResponse -> {
-                    responseBuilder.append(partialResponse);
-                    for (CompletionChoice choice : partialResponse.choices()) {
-                        String token = choice.text();
-                        if (isNotNullOrEmpty(token)) {
-                            handler.onNext(token);
-                        }
+            .onPartialResponse(partialResponse -> {
+                responseBuilder.append(partialResponse);
+                for (CompletionChoice choice : partialResponse.choices()) {
+                    String token = choice.text();
+                    if (isNotNullOrEmpty(token)) {
+                        handler.onNext(token);
                     }
-                })
-                .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
-                    handler.onComplete(Response.from(
-                            response.content().text(),
-                            response.tokenUsage(),
-                            response.finishReason()
-                    ));
-                })
-                .onError(handler::onError)
-                .execute();
+                }
+            })
+            .onComplete(() -> {
+                Response<AiMessage> response = responseBuilder.build();
+                handler.onComplete(Response.from(
+                    response.content().text(),
+                    response.tokenUsage(),
+                    response.finishReason()
+                ));
+            })
+            .onError(handler::onError)
+            .execute();
     }
 
     @Override
@@ -137,9 +135,20 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
 
     public static class OpenAiStreamingLanguageModelBuilder {
 
+        private String baseUrl;
+        private String apiKey;
+        private String organizationId;
+        private String modelName;
+        private Double temperature;
+        private Duration timeout;
+        private Proxy proxy;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Tokenizer tokenizer;
+        private Map<String, String> customHeaders;
+
         public OpenAiStreamingLanguageModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public OpenAiStreamingLanguageModelBuilder modelName(String modelName) {
@@ -150,6 +159,64 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         public OpenAiStreamingLanguageModelBuilder modelName(OpenAiLanguageModelName modelName) {
             this.modelName = modelName.toString();
             return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder organizationId(String organizationId) {
+            this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder tokenizer(Tokenizer tokenizer) {
+            this.tokenizer = tokenizer;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModel build() {
+            return new OpenAiStreamingLanguageModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.temperature, this.timeout, this.proxy, this.logRequests, this.logResponses, this.tokenizer, this.customHeaders);
+        }
+
+        public String toString() {
+            return "OpenAiStreamingLanguageModel.OpenAiStreamingLanguageModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", organizationId=" + this.organizationId + ", modelName=" + this.modelName + ", temperature=" + this.temperature + ", timeout=" + this.timeout + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", tokenizer=" + this.tokenizer + ", customHeaders=" + this.customHeaders + ")";
         }
     }
 }

@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -19,8 +20,21 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.*;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_0125;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_1106;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_0125_PREVIEW;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_1106_PREVIEW;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K_0314;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K_0613;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_TURBO_PREVIEW;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
@@ -34,6 +48,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 // TODO use exact model for Tokenizer (the one returned by LLM)
 @Disabled("this test is very long and expensive, we will need to set a schedule for it to run maybe 1 time per month")
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiTokenizerIT {
 
     // my API key does not have access to these models

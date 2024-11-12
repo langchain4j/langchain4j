@@ -8,7 +8,6 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.net.Proxy;
 import java.nio.file.Path;
@@ -53,44 +52,43 @@ public class OpenAiImageModel implements ImageModel {
      *                       The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain
      *                       the URL to local images then.
      */
-    @Builder
     @SuppressWarnings("rawtypes")
     public OpenAiImageModel(
-            String baseUrl,
-            String apiKey,
-            String organizationId,
-            String modelName,
-            String size,
-            String quality,
-            String style,
-            String user,
-            String responseFormat,
-            Duration timeout,
-            Integer maxRetries,
-            Proxy proxy,
-            Boolean logRequests,
-            Boolean logResponses,
-            Boolean withPersisting,
-            Path persistTo,
-            Map<String, String> customHeaders
+        String baseUrl,
+        String apiKey,
+        String organizationId,
+        String modelName,
+        String size,
+        String quality,
+        String style,
+        String user,
+        String responseFormat,
+        Duration timeout,
+        Integer maxRetries,
+        Proxy proxy,
+        Boolean logRequests,
+        Boolean logResponses,
+        Boolean withPersisting,
+        Path persistTo,
+        Map<String, String> customHeaders
     ) {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         OpenAiClient.Builder cBuilder = OpenAiClient
-                .builder()
-                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
-                .openAiApiKey(apiKey)
-                .organizationId(organizationId)
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .proxy(proxy)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
-                .userAgent(DEFAULT_USER_AGENT)
-                .persistTo(persistTo)
-                .customHeaders(customHeaders);
+            .builder()
+            .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
+            .openAiApiKey(apiKey)
+            .organizationId(organizationId)
+            .callTimeout(timeout)
+            .connectTimeout(timeout)
+            .readTimeout(timeout)
+            .writeTimeout(timeout)
+            .proxy(proxy)
+            .logRequests(getOrDefault(logRequests, false))
+            .logResponses(getOrDefault(logResponses, false))
+            .userAgent(DEFAULT_USER_AGENT)
+            .persistTo(persistTo)
+            .customHeaders(customHeaders);
 
         if (withPersisting != null && withPersisting) {
             cBuilder.withPersisting();
@@ -127,7 +125,7 @@ public class OpenAiImageModel implements ImageModel {
         GenerateImagesResponse response = withRetry(() -> client.imagesGeneration(request), maxRetries).execute();
 
         return Response.from(
-                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList())
+            response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList())
         );
     }
 
@@ -139,9 +137,26 @@ public class OpenAiImageModel implements ImageModel {
     }
 
     public static class OpenAiImageModelBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private String organizationId;
+        private String modelName;
+        private String size;
+        private String quality;
+        private String style;
+        private String user;
+        private String responseFormat;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Proxy proxy;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Boolean withPersisting;
+        private Path persistTo;
+        private Map<String, String> customHeaders;
+
         public OpenAiImageModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public OpenAiImageModelBuilder modelName(String modelName) {
@@ -162,6 +177,89 @@ public class OpenAiImageModel implements ImageModel {
             this.withPersisting = withPersisting;
             return this;
         }
+
+        public OpenAiImageModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder organizationId(String organizationId) {
+            this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder size(String size) {
+            this.size = size;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder quality(String quality) {
+            this.quality = quality;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder style(String style) {
+            this.style = style;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder user(String user) {
+            this.user = user;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder responseFormat(String responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder persistTo(Path persistTo) {
+            this.persistTo = persistTo;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiImageModel build() {
+            return new OpenAiImageModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.size, this.quality, this.style, this.user, this.responseFormat, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses, this.withPersisting, this.persistTo, this.customHeaders);
+        }
+
+        public String toString() {
+            return "OpenAiImageModel.OpenAiImageModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", organizationId=" + this.organizationId + ", modelName=" + this.modelName + ", size=" + this.size + ", quality=" + this.quality + ", style=" + this.style + ", user=" + this.user + ", responseFormat=" + this.responseFormat + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", withPersisting=" + this.withPersisting + ", persistTo=" + this.persistTo + ", customHeaders=" + this.customHeaders + ")";
+        }
     }
 
     /**
@@ -180,13 +278,13 @@ public class OpenAiImageModel implements ImageModel {
 
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {
         GenerateImagesRequest.Builder requestBuilder = GenerateImagesRequest
-                .builder()
-                .prompt(prompt)
-                .size(size)
-                .quality(quality)
-                .style(style)
-                .user(user)
-                .responseFormat(responseFormat);
+            .builder()
+            .prompt(prompt)
+            .size(size)
+            .quality(quality)
+            .style(style)
+            .user(user)
+            .responseFormat(responseFormat);
 
         if (DALL_E_2.equals(modelName)) {
             requestBuilder.model(dev.ai4j.openai4j.image.ImageModel.DALL_E_2);

@@ -9,7 +9,6 @@ import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -18,7 +17,10 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -34,7 +36,6 @@ public class OpenAiModerationModel implements ModerationModel {
     private final String modelName;
     private final Integer maxRetries;
 
-    @Builder
     public OpenAiModerationModel(String baseUrl,
                                  String apiKey,
                                  String organizationId,
@@ -54,19 +55,19 @@ public class OpenAiModerationModel implements ModerationModel {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-                .openAiApiKey(apiKey)
-                .baseUrl(baseUrl)
-                .organizationId(organizationId)
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .proxy(proxy)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(customHeaders)
-                .build();
+            .openAiApiKey(apiKey)
+            .baseUrl(baseUrl)
+            .organizationId(organizationId)
+            .callTimeout(timeout)
+            .connectTimeout(timeout)
+            .readTimeout(timeout)
+            .writeTimeout(timeout)
+            .proxy(proxy)
+            .logRequests(logRequests)
+            .logResponses(logResponses)
+            .userAgent(DEFAULT_USER_AGENT)
+            .customHeaders(customHeaders)
+            .build();
         this.modelName = getOrDefault(modelName, TEXT_MODERATION_LATEST);
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
@@ -83,9 +84,9 @@ public class OpenAiModerationModel implements ModerationModel {
     private Response<Moderation> moderateInternal(List<String> inputs) {
 
         ModerationRequest request = ModerationRequest.builder()
-                .model(modelName)
-                .input(inputs)
-                .build();
+            .model(modelName)
+            .input(inputs)
+            .build();
 
         ModerationResponse response = withRetry(() -> client.moderation(request).execute(), maxRetries);
 
@@ -104,8 +105,8 @@ public class OpenAiModerationModel implements ModerationModel {
     @SuppressWarnings("deprecation")
     public Response<Moderation> moderate(List<ChatMessage> messages) {
         List<String> inputs = messages.stream()
-                .map(ChatMessage::text)
-                .collect(toList());
+            .map(ChatMessage::text)
+            .collect(toList());
 
         return moderateInternal(inputs);
     }
@@ -129,9 +130,19 @@ public class OpenAiModerationModel implements ModerationModel {
 
     public static class OpenAiModerationModelBuilder {
 
+        private String baseUrl;
+        private String apiKey;
+        private String organizationId;
+        private String modelName;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Proxy proxy;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Map<String, String> customHeaders;
+
         public OpenAiModerationModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public OpenAiModerationModelBuilder modelName(String modelName) {
@@ -142,6 +153,59 @@ public class OpenAiModerationModel implements ModerationModel {
         public OpenAiModerationModelBuilder modelName(OpenAiModerationModelName modelName) {
             this.modelName = modelName.toString();
             return this;
+        }
+
+        public OpenAiModerationModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder organizationId(String organizationId) {
+            this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiModerationModel build() {
+            return new OpenAiModerationModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses, this.customHeaders);
+        }
+
+        public String toString() {
+            return "OpenAiModerationModel.OpenAiModerationModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", organizationId=" + this.organizationId + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", customHeaders=" + this.customHeaders + ")";
         }
     }
 }
