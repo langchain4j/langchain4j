@@ -374,7 +374,7 @@
                 <plugin>
                     <groupId>org.honton.chas</groupId>
                     <artifactId>license-maven-plugin</artifactId>
-                    <version>0.0.3</version>
+                    <version>0.0.6</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -642,7 +642,7 @@
                     <plugin>
                         <groupId>org.honton.chas</groupId>
                         <artifactId>license-maven-plugin</artifactId>
-                        <version>0.0.3</version>
+                        <version>0.0.6</version>
                         <executions>
                             <execution>
                                 <goals>
