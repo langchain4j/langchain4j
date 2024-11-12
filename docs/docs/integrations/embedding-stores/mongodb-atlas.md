@@ -34,3 +34,8 @@ MongoDB also offers [Atlas CLI](https://www.mongodb.com/docs/atlas/cli/current/)
 ## APIs
 
 - `MongoDbEmbeddingStore`
+
+## Examples
+
+- [MongoDbEmbeddingStoreIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-mongodb-atlas/src/test/java/dev/langchain4j/store/embedding/mongodb/MongoDbEmbeddingStoreIT.java)
+
