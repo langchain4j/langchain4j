@@ -44,7 +44,7 @@
         <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
         <aws-opensearch.version>2.20.161</aws-opensearch.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
-        <elastic.version>8.15.2</elastic.version>
+        <elastic.version>8.15.3</elastic.version>
         <jackson.version>2.16.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
@@ -374,7 +374,7 @@
                 <plugin>
                     <groupId>org.honton.chas</groupId>
                     <artifactId>license-maven-plugin</artifactId>
-                    <version>0.0.3</version>
+                    <version>0.0.6</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -642,7 +642,7 @@
                     <plugin>
                         <groupId>org.honton.chas</groupId>
                         <artifactId>license-maven-plugin</artifactId>
-                        <version>0.0.3</version>
+                        <version>0.0.6</version>
                         <executions>
                             <execution>
                                 <goals>
