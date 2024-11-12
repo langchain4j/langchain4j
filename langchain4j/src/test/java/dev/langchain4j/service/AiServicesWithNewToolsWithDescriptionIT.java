@@ -51,14 +51,14 @@ class AiServicesWithNewToolsWithDescriptionIT {
 
     private static List<ChatLanguageModel> models() {
         return singletonList(OpenAiChatModel.builder()
-            .baseUrl(System.getenv("OPENAI_BASE_URL"))
-            .apiKey(System.getenv("OPENAI_API_KEY"))
-            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_O_MINI)
-            .temperature(0.0)
-            .logRequests(true)
-            .logResponses(true)
-            .build());
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build());
     }
 
     // TODO single argument: List/Set/Array of primitives, List/Set/Array of enums, List/Set/Array of POJOs, map?
@@ -77,10 +77,10 @@ class AiServicesWithNewToolsWithDescriptionIT {
         }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-            .addIntegerProperty("arg0", "first number")
-            .addIntegerProperty("arg1", "second number")
-            .required("arg0", "arg1")
-            .build();
+                .addIntegerProperty("arg0", "first number")
+                .addIntegerProperty("arg1", "second number")
+                .required("arg0", "arg1")
+                .build();
     }
 
     @ParameterizedTest
@@ -93,9 +93,9 @@ class AiServicesWithNewToolsWithDescriptionIT {
         ToolWithPrimitiveParameters tool = spy(new ToolWithPrimitiveParameters());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-            .chatLanguageModel(model)
-            .tools(tool)
-            .build();
+                .chatLanguageModel(model)
+                .tools(tool)
+                .build();
 
         String text = "How much is 37 plus 87?";
 
@@ -123,82 +123,39 @@ class AiServicesWithNewToolsWithDescriptionIT {
     static class ToolWithPojoParameter {
 
         @Description("a person")
-        static class Person {
+        record Person(
 
-            @Description("a name")
-            String name;
+                @Description("a name")
+                String name,
 
-            @Description("an age")
-            int age;
+                @Description("an age")
+                int age,
 
-            @Description("a height")
-            Double height;
+                @Description("a height")
+                Double height,
 
-            @Description("is married")
-            boolean married;
-
-            public Person(String name, int age, Double height, boolean married) {
-                this.name = name;
-                this.age = age;
-                this.height = height;
-                this.married = married;
-            }
-
-            public boolean equals(final Object o) {
-                if (o == this) return true;
-                if (!(o instanceof Person)) return false;
-                final Person other = (Person) o;
-                if (!other.canEqual((Object) this)) return false;
-                final Object this$name = this.name;
-                final Object other$name = other.name;
-                if (this$name == null ? other$name != null : !this$name.equals(other$name))
-                    return false;
-                if (this.age != other.age) return false;
-                final Object this$height = this.height;
-                final Object other$height = other.height;
-                if (this$height == null ? other$height != null : !this$height.equals(other$height))
-                    return false;
-                if (this.married != other.married) return false;
-                return true;
-            }
-
-            protected boolean canEqual(final Object other) {
-                return other instanceof Person;
-            }
-
-            public int hashCode() {
-                final int PRIME = 59;
-                int result = 1;
-                final Object $name = this.name;
-                result = result * PRIME + ($name == null ? 43 : $name.hashCode());
-                result = result * PRIME + this.age;
-                final Object $height = this.height;
-                result = result * PRIME + ($height == null ? 43 : $height.hashCode());
-                result = result * PRIME + (this.married ? 79 : 97);
-                return result;
-            }
-
-            public String toString() {
-                return "AiServicesWithNewToolsWithDescriptionIT.ToolWithPojoParameter.Person(name=" + this.name + ", age=" + this.age + ", height=" + this.height + ", married=" + this.married + ")";
-            }
+                @Description("is married")
+                boolean married
+        ) {
         }
 
         @Tool("processes a person")
         void process(@P("a person 2") Person person) {
+            // this method is empty
         }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-            .properties(singletonMap("arg0", JsonObjectSchema.builder()
-                .description("a person 2")
-                .addStringProperty("name", "a name")
-                .addStringProperty("name", "a name")
-                .addIntegerProperty("age", "an age")
-                .addNumberProperty("height", "a height")
-                .addBooleanProperty("married", "is married")
-                .required("name", "age", "height", "married")
-                .build()))
-            .required("arg0")
-            .build();
+                .properties(singletonMap("arg0", JsonObjectSchema.builder()
+                        .description("a person 2")
+                        .addStringProperty("name", "a name")
+                        .addStringProperty("name", "a name")
+                        .addIntegerProperty("age", "an age")
+                        .addNumberProperty("height", "a height")
+                        .addBooleanProperty("married", "is married")
+                        .required("name", "age", "height", "married")
+                        .build()))
+                .required("arg0")
+                .build();
     }
 
     @ParameterizedTest
@@ -211,9 +168,9 @@ class AiServicesWithNewToolsWithDescriptionIT {
         ToolWithPojoParameter tool = spy(new ToolWithPojoParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-            .chatLanguageModel(model)
-            .tools(tool)
-            .build();
+                .chatLanguageModel(model)
+                .tools(tool)
+                .build();
 
         String text = "Use 'process' tool to process the following: Klaus is 37 years old, 1.78m height and single";
 
@@ -239,91 +196,19 @@ class AiServicesWithNewToolsWithDescriptionIT {
     static class ToolWithNestedPojoParameter {
 
         @Description("a person")
-        static class Person {
+        record Person(
 
-            @Description("a name")
-            String name;
+                @Description("a name")
+                String name,
 
-            @Description("an address 2")
-            Address address;
-
-            public Person(String name, Address address) {
-                this.name = name;
-                this.address = address;
-            }
-
-            public boolean equals(final Object o) {
-                if (o == this) return true;
-                if (!(o instanceof Person)) return false;
-                final Person other = (Person) o;
-                if (!other.canEqual((Object) this)) return false;
-                final Object this$name = this.name;
-                final Object other$name = other.name;
-                if (this$name == null ? other$name != null : !this$name.equals(other$name))
-                    return false;
-                final Object this$address = this.address;
-                final Object other$address = other.address;
-                if (this$address == null ? other$address != null : !this$address.equals(other$address))
-                    return false;
-                return true;
-            }
-
-            protected boolean canEqual(final Object other) {
-                return other instanceof Person;
-            }
-
-            public int hashCode() {
-                final int PRIME = 59;
-                int result = 1;
-                final Object $name = this.name;
-                result = result * PRIME + ($name == null ? 43 : $name.hashCode());
-                final Object $address = this.address;
-                result = result * PRIME + ($address == null ? 43 : $address.hashCode());
-                return result;
-            }
-
-            public String toString() {
-                return "AiServicesWithNewToolsWithDescriptionIT.ToolWithNestedPojoParameter.Person(name=" + this.name + ", address=" + this.address + ")";
-            }
+                @Description("an address 2")
+                Address address) {
         }
 
         @Description("an address")
-        static class Address {
-
-            @Description("a city")
-            String city;
-
-            public Address(String city) {
-                this.city = city;
-            }
-
-            public boolean equals(final Object o) {
-                if (o == this) return true;
-                if (!(o instanceof Address)) return false;
-                final Address other = (Address) o;
-                if (!other.canEqual((Object) this)) return false;
-                final Object this$city = this.city;
-                final Object other$city = other.city;
-                if (this$city == null ? other$city != null : !this$city.equals(other$city))
-                    return false;
-                return true;
-            }
-
-            protected boolean canEqual(final Object other) {
-                return other instanceof Address;
-            }
-
-            public int hashCode() {
-                final int PRIME = 59;
-                int result = 1;
-                final Object $city = this.city;
-                result = result * PRIME + ($city == null ? 43 : $city.hashCode());
-                return result;
-            }
-
-            public String toString() {
-                return "AiServicesWithNewToolsWithDescriptionIT.ToolWithNestedPojoParameter.Address(city=" + this.city + ")";
-            }
+        record Address(
+                @Description("a city")
+                String city) {
         }
 
         @Tool("processes a person")
@@ -331,18 +216,18 @@ class AiServicesWithNewToolsWithDescriptionIT {
         }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-            .properties(singletonMap("arg0", JsonObjectSchema.builder()
-                .description("a person 2")
-                .addStringProperty("name", "a name")
-                .addProperty("address", JsonObjectSchema.builder()
-                    .description("an address 2")
-                    .addStringProperty("city", "a city")
-                    .required("city")
-                    .build())
-                .required("name", "address")
-                .build()))
-            .required("arg0")
-            .build();
+                .properties(singletonMap("arg0", JsonObjectSchema.builder()
+                        .description("a person 2")
+                        .addStringProperty("name", "a name")
+                        .addProperty("address", JsonObjectSchema.builder()
+                                .description("an address 2")
+                                .addStringProperty("city", "a city")
+                                .required("city")
+                                .build())
+                        .required("name", "address")
+                        .build()))
+                .required("arg0")
+                .build();
     }
 
     @ParameterizedTest
@@ -355,9 +240,9 @@ class AiServicesWithNewToolsWithDescriptionIT {
         ToolWithNestedPojoParameter tool = spy(new ToolWithNestedPojoParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-            .chatLanguageModel(model)
-            .tools(tool)
-            .build();
+                .chatLanguageModel(model)
+                .tools(tool)
+                .build();
 
         String text = "Use 'process' tool to process the following: Klaus lives in Langley Falls";
 
@@ -383,77 +268,39 @@ class AiServicesWithNewToolsWithDescriptionIT {
     static class ToolWithRecursion {
 
         @Description("a person")
-        static class Person {
+        record Person(
+                @Description("a name")
+                String name,
 
-            @Description("a name")
-            String name;
-
-            @Description("a list of person")
-            List<Person> children;
-
-            public Person(String name, List<Person> children) {
-                this.name = name;
-                this.children = children;
-            }
-
-            public boolean equals(final Object o) {
-                if (o == this) return true;
-                if (!(o instanceof Person)) return false;
-                final Person other = (Person) o;
-                if (!other.canEqual((Object) this)) return false;
-                final Object this$name = this.name;
-                final Object other$name = other.name;
-                if (this$name == null ? other$name != null : !this$name.equals(other$name))
-                    return false;
-                final Object this$children = this.children;
-                final Object other$children = other.children;
-                if (this$children == null ? other$children != null : !this$children.equals(other$children))
-                    return false;
-                return true;
-            }
-
-            protected boolean canEqual(final Object other) {
-                return other instanceof Person;
-            }
-
-            public int hashCode() {
-                final int PRIME = 59;
-                int result = 1;
-                final Object $name = this.name;
-                result = result * PRIME + ($name == null ? 43 : $name.hashCode());
-                final Object $children = this.children;
-                result = result * PRIME + ($children == null ? 43 : $children.hashCode());
-                return result;
-            }
-
-            public String toString() {
-                return "AiServicesWithNewToolsWithDescriptionIT.ToolWithRecursion.Person(name=" + this.name + ", children=" + this.children + ")";
-            }
+                @Description("a list of person")
+                List<Person> children
+        ) {
         }
 
         @Tool("processes a person")
         void process(@P("a person 2") Person person) {
+            // this method is empty
         }
 
         static final String REFERENCE = generateUUIDFrom(Person.class.getName());
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
-            .description("a person 2")
-            .addStringProperty("name", "a name")
-            .addProperty("children", JsonArraySchema.builder()
-                .description("a list of person")
-                .items(JsonReferenceSchema.builder()
-                    .reference(REFERENCE)
-                    .build())
-                .build())
-            .required("name", "children")
-            .build();
+                .description("a person 2")
+                .addStringProperty("name", "a name")
+                .addProperty("children", JsonArraySchema.builder()
+                        .description("a list of person")
+                        .items(JsonReferenceSchema.builder()
+                                .reference(REFERENCE)
+                                .build())
+                        .build())
+                .required("name", "children")
+                .build();
 
         static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-            .addProperty("arg0", PERSON_SCHEMA)
-            .required("arg0")
-            .definitions(singletonMap(REFERENCE, PERSON_SCHEMA))
-            .build();
+                .addProperty("arg0", PERSON_SCHEMA)
+                .required("arg0")
+                .definitions(singletonMap(REFERENCE, PERSON_SCHEMA))
+                .build();
     }
 
     @ParameterizedTest
@@ -466,9 +313,9 @@ class AiServicesWithNewToolsWithDescriptionIT {
         ToolWithRecursion tool = spy(new ToolWithRecursion());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-            .chatLanguageModel(model)
-            .tools(tool)
-            .build();
+                .chatLanguageModel(model)
+                .tools(tool)
+                .build();
 
         String text = "Use 'process' tool to process the following: Francine has 2 children: Steve and Hayley";
 
@@ -477,13 +324,13 @@ class AiServicesWithNewToolsWithDescriptionIT {
 
         // then
         verify(tool).process(
-            new ToolWithRecursion.Person(
-                "Francine",
-                asList(
-                    new ToolWithRecursion.Person("Steve", emptyList()),
-                    new ToolWithRecursion.Person("Hayley", emptyList())
+                new ToolWithRecursion.Person(
+                        "Francine",
+                        asList(
+                                new ToolWithRecursion.Person("Steve", emptyList()),
+                                new ToolWithRecursion.Person("Hayley", emptyList())
+                        )
                 )
-            )
         );
         verifyNoMoreInteractions(tool);
 
@@ -513,17 +360,17 @@ class AiServicesWithNewToolsWithDescriptionIT {
         }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
-            .name("currentTemperature")
-            .description("returns current temperature")
-            .parameters(JsonObjectSchema.builder()
-                .addProperty("arg0", new JsonStringSchema())
-                .addProperty("arg1", JsonEnumSchema.builder()
-                    .description("a temperature unit 2")
-                    .enumValues("CELSIUS", "fahrenheit", "Kelvin")
-                    .build())
-                .required("arg0", "arg1")
-                .build())
-            .build();
+                .name("currentTemperature")
+                .description("returns current temperature")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("arg0", new JsonStringSchema())
+                        .addProperty("arg1", JsonEnumSchema.builder()
+                                .description("a temperature unit 2")
+                                .enumValues("CELSIUS", "fahrenheit", "Kelvin")
+                                .build())
+                        .required("arg0", "arg1")
+                        .build())
+                .build();
     }
 
     @ParameterizedTest
@@ -536,9 +383,9 @@ class AiServicesWithNewToolsWithDescriptionIT {
         ToolWithEnumParameter tool = spy(new ToolWithEnumParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-            .chatLanguageModel(model)
-            .tools(tool)
-            .build();
+                .chatLanguageModel(model)
+                .tools(tool)
+                .build();
 
         String text = "What is the weather in Munich in celsius?";
 
@@ -564,18 +411,19 @@ class AiServicesWithNewToolsWithDescriptionIT {
 
         @Tool("processes ages")
         void process(@P("map from name to age") Map<String, Integer> ages) {
+            // this method is empty
         }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
-            .name("process")
-            .description("processes ages")
-            .parameters(JsonObjectSchema.builder()
-                .addProperty("arg0", JsonObjectSchema.builder()
-                    .description("map from name to age")
-                    .build())
-                .required("arg0")
-                .build())
-            .build();
+                .name("process")
+                .description("processes ages")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("arg0", JsonObjectSchema.builder()
+                                .description("map from name to age")
+                                .build())
+                        .required("arg0")
+                        .build())
+                .build();
     }
 
     @ParameterizedTest
@@ -588,9 +436,9 @@ class AiServicesWithNewToolsWithDescriptionIT {
         ToolWithMapParameter tool = spy(new ToolWithMapParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-            .chatLanguageModel(model)
-            .tools(tool)
-            .build();
+                .chatLanguageModel(model)
+                .tools(tool)
+                .build();
 
         String text = "Process the following: Klaus is 42 years old and Francine is 47 years old";
 
@@ -598,7 +446,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
         assistant.chat(text);
 
         // then
-        verify(tool).process(new HashMap<String, Integer>() {{
+        verify(tool).process(new HashMap<>() {{
             put("Klaus", 42);
             put("Francine", 47);
         }});
@@ -626,19 +474,19 @@ class AiServicesWithNewToolsWithDescriptionIT {
         }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
-            .name("process")
-            .description("processes colors")
-            .parameters(JsonObjectSchema.builder()
-                .addProperty("arg0", JsonArraySchema.builder()
-                    .description("a list of colors")
-                    .items(JsonEnumSchema.builder()
-                        .description("a color")
-                        .enumValues("RED", "GREEN", "BLUE")
+                .name("process")
+                .description("processes colors")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("arg0", JsonArraySchema.builder()
+                                .description("a list of colors")
+                                .items(JsonEnumSchema.builder()
+                                        .description("a color")
+                                        .enumValues("RED", "GREEN", "BLUE")
+                                        .build())
+                                .build())
+                        .required("arg0")
                         .build())
-                    .build())
-                .required("arg0")
-                .build())
-            .build();
+                .build();
     }
 
     @ParameterizedTest
@@ -651,9 +499,9 @@ class AiServicesWithNewToolsWithDescriptionIT {
         ToolWithListOfEnumsParameter tool = spy(new ToolWithListOfEnumsParameter());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-            .chatLanguageModel(model)
-            .tools(tool)
-            .build();
+                .chatLanguageModel(model)
+                .tools(tool)
+                .build();
 
         String text = "Process the following colors: RED and GREEN";
 
