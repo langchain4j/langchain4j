@@ -1,4 +1,5 @@
 package dev.langchain4j.store.embedding.pgvector;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.pgvector.PGvector;
@@ -12,11 +13,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
-import java.sql.*;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -81,26 +98,26 @@ class PgVectorEmbeddingStore029 implements EmbeddingStore<TextSegment> {
         try (Connection connection = setupConnection()) {
 
             if (dropTableFirst) {
-                connection.createStatement().executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
+                connection.createStatement().executeUpdate("DROP TABLE IF EXISTS %s".formatted(table));
             }
 
             if (createTable) {
-                connection.createStatement().executeUpdate(String.format(
+                connection.createStatement().executeUpdate((
                         "CREATE TABLE IF NOT EXISTS %s (" +
                                 "embedding_id UUID PRIMARY KEY, " +
                                 "embedding vector(%s), " +
                                 "text TEXT NULL, " +
                                 "metadata JSON NULL" +
-                                ")",
+                                ")").formatted(
                         table, ensureGreaterThanZero(dimension, "dimension")));
             }
 
             if (useIndex) {
                 final String indexName = table + "_ivfflat_index";
-                connection.createStatement().executeUpdate(String.format(
+                connection.createStatement().executeUpdate((
                         "CREATE INDEX IF NOT EXISTS %s ON %s " +
                                 "USING ivfflat (embedding vector_cosine_ops) " +
-                                "WITH (lists = %s)",
+                                "WITH (lists = %s)").formatted(
                         indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize")));
             }
         } catch (SQLException e) {
@@ -110,7 +127,7 @@ class PgVectorEmbeddingStore029 implements EmbeddingStore<TextSegment> {
 
     private Connection setupConnection() throws SQLException {
         Connection connection = DriverManager.getConnection(
-                String.format("jdbc:postgresql://%s:%s/%s", host, port, database),
+                "jdbc:postgresql://%s:%s/%s".formatted(host, port, database),
                 user,
                 password
         );
@@ -200,8 +217,7 @@ class PgVectorEmbeddingStore029 implements EmbeddingStore<TextSegment> {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         try (Connection connection = setupConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
-            String query = String.format(
-                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, metadata FROM %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
+            String query = "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, metadata FROM %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;".formatted(
                     referenceVector, table, minScore, maxResults);
             PreparedStatement selectStmt = connection.prepareStatement(query);
 
@@ -250,12 +266,12 @@ class PgVectorEmbeddingStore029 implements EmbeddingStore<TextSegment> {
                 "embeddings size is not equal to embedded size");
 
         try (Connection connection = setupConnection()) {
-            String query = String.format(
+            String query = (
                     "INSERT INTO %s (embedding_id, embedding, text, metadata) VALUES (?, ?, ?, ?)" +
                             "ON CONFLICT (embedding_id) DO UPDATE SET " +
                             "embedding = EXCLUDED.embedding," +
                             "text = EXCLUDED.text," +
-                            "metadata = EXCLUDED.metadata;",
+                            "metadata = EXCLUDED.metadata;").formatted(
                     table);
 
             PreparedStatement upsertStmt = connection.prepareStatement(query);

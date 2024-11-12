@@ -22,6 +22,23 @@ https://weaviate.io/
 
 - `WeaviateEmbeddingStore`
 
+## Usage
+
+|      Parameter      | Description                                                                                                                                                                                         | Required/Optional              |
+| :-----------------: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+|      `apiKey`       | Your Weaviate API key. Not required for local deployment.                                                                                                                                           | Optional                       |
+|      `scheme`       | The scheme, e.*g. "https" of cluster URL. Find it under Details of your Weaviate cluster.                                                                                                           | Required                       |
+|       `host`        | The host, e.g. "langchain4j-4jw7ufd9.weaviate.network" of cluster URL. Find it under Details of your Weaviate cluster.                                                                              | Required                       |
+|       `port`        | The port, e.g. 8080.                                                                                                                                                                                | Optional                       |
+|    `objectClass`    | The object class you want to store, e.g. "MyGreatClass". Must start from an uppercase letter.                                                                                                       | Required                       |
+|     `avoidDups`     | If true (default), then `WeaviateEmbeddingStore` will generate a hashed ID based on the provided text segment, which avoids duplicated entries in DB. If false, then a random ID will be generated. | Optional (default true)        |
+| `consistencyLevel`  | Consistency level: ONE, QUORUM (default) or ALL. Find more details here.                                                                                                                            | Optional (default QUORUM)      |
+|   `metadataKeys`    | Metadata keys that should be persisted (optional).                                                                                                                                                  | Optional                       |
+| `useGrpcForInserts` | Use GRPC instead of HTTP for batch inserts only. You still need HTTP configured for search.                                                                                                         | Optional                       |
+|    `securedGrpc`    | The GRPC connection is secured.                                                                                                                                                                     | Optional                       |
+|     `grpcPort`      | The port, e.g. 50051.                                                                                                                                                                               | Optional                       |
+|   `textFieldName`   | The name of the field that contains the text of a `TextSegment`. Default is "text".                                                                                                                 | Optional (default "text")      |
+| `metadataFieldName` | The name of the field where `Metadata` entries are stored. <br> If set to an empty string, `Metadata` entries will be read from the root object. It is recommended to use `metadataKeys` if using root object. | Optional (default "_metadata" if set to `null`) |
 
 ## Examples
 
