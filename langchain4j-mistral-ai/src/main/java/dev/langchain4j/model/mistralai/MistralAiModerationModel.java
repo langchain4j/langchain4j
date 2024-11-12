@@ -41,7 +41,7 @@ public class MistralAiModerationModel implements ModerationModel {
             .logResponses(getOrDefault(logResponses, false))
             .build();
 
-        this.modelName = ensureNotNull(modelName, "modelName");
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
