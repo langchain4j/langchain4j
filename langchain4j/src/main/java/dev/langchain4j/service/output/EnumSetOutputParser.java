@@ -24,7 +24,7 @@ class EnumSetOutputParser extends EnumCollectionOutputParser<Enum> {
             return new HashSet<>();
         }
 
-        if (text.startsWith("{")) {
+        if (text.trim().startsWith("{")) {
             Map<?, ?> map = Json.fromJson(text, Map.class);
 
             if (map == null || map.isEmpty()) {

@@ -69,7 +69,10 @@ class EnumListOutputParserTest {
 
             // JSON: wrong property name
             Arguments.of("{\"values\":[CAT]}", List.of(CAT)),
-            Arguments.of("{\"animals\":[CAT]}", List.of(CAT))
+            Arguments.of("{\"animals\":[CAT]}", List.of(CAT)),
+
+            // JSON surrounded by whitespaces
+            Arguments.of(" {\"items\":[CAT]} ", List.of(CAT))
         );
     }
 

@@ -23,7 +23,7 @@ class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
             return new ArrayList<>();
         }
 
-        if (text.startsWith("{")) {
+        if (text.trim().startsWith("{")) {
             Map<?, ?> map = Json.fromJson(text, Map.class);
 
             if (map == null || map.isEmpty()) {
