@@ -10,7 +10,7 @@ import org.junit.jupiter.api.BeforeAll;
 
 import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.*;
 
-class MongoDbEmbeddingStoreIT extends EmbeddingStoreIT {
+class MongoDbEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     private MongoDbTestFixture helper = new MongoDbTestFixture(createClient()).initialize();
 
     MongoClient createClient() {

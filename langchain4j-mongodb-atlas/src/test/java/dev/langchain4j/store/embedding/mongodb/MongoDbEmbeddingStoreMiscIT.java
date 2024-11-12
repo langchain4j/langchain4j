@@ -46,7 +46,7 @@ class MongoDbEmbeddingStoreMiscIT {
     }
 
     @Test
-    void should_find_relevant_with_filter() {
+    void should_find_relevant_with_native_filter() {
         // given
         helper = new MongoDbTestFixture(createClient()).initialize(builder -> builder
                         .filter(Filters.and(Filters.eq("metadata.test-key", "test-value"))));
