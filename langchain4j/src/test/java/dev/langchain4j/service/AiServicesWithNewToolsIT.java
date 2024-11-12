@@ -13,9 +13,6 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.Response;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -833,12 +830,7 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithListOfPojoParameter {
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Person {
-
-            String name;
+        static record Person(String name){
         }
 
         @Tool
