@@ -623,7 +623,7 @@ More details about tools can be found [here](/tutorials/tools#high-level-tool-ap
 
 ## RAG
 
-AI Service can be configured with a `ContentRetriever` in order to enable RAG:
+AI Service can be configured with a `ContentRetriever` in order to enable [naive RAG](/tutorials/rag#naive-rag):
 ```java
 
 EmbeddingStore embeddingStore  = ...
@@ -638,7 +638,7 @@ Assistant assistant = AiServices.builder(Assistant.class)
 ```
 
 Configuring a `RetrievalAugmentor` provides even more flexibility,
-enabling advanced RAG capabilities such as query transformation, re-ranking, etc:
+enabling [advanced RAG](/tutorials/rag#advanced-rag) capabilities such as query transformation, re-ranking, etc:
 ```java
 RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
         .queryTransformer(...)

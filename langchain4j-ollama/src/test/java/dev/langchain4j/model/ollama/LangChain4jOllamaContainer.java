@@ -12,13 +12,10 @@ public class LangChain4jOllamaContainer extends OllamaContainer {
 
     private static final Logger log = LoggerFactory.getLogger(LangChain4jOllamaContainer.class);
 
-    private final DockerImageName dockerImageName;
-
     private String model;
 
     LangChain4jOllamaContainer(DockerImageName dockerImageName) {
         super(dockerImageName);
-        this.dockerImageName = dockerImageName;
     }
 
     LangChain4jOllamaContainer withModel(String model) {
