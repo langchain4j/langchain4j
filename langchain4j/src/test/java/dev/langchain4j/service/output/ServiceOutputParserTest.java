@@ -8,6 +8,8 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.stubbing.Answer;
 
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -172,6 +175,83 @@ class ServiceOutputParserTest {
 
     static class KeyProperty {
         String key;
+    }
+
+
+    @Test
+    void should_parse_pojo() {
+
+        // given
+        String json = """
+            {
+                "firstName": "Klaus",
+                "lastName": "Heisler"
+            }
+            """;
+
+        // when
+        Person person = (Person) sut.parse(Response.from(AiMessage.from(json)), Person.class);
+
+        // then
+        assertThat(person.firstName).isEqualTo("Klaus");
+        assertThat(person.lastName).isEqualTo("Heisler");
+        assertThat(person.birthDate).isNull();
+    }
+
+
+    record Pojo(String name) {
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_parse_list_of_pojo(String json, List<Pojo> expected) {
+
+        // given
+        Type type = new TypeToken<List<Pojo>>() {
+        }.getType();
+
+        // when
+        List<Pojo> pojos = (List<Pojo>) sut.parse(Response.from(AiMessage.from(json)), type);
+
+        // then
+        assertThat(pojos).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> should_parse_list_of_pojo() {
+        return Stream.of(
+
+            Arguments.of(
+                "{\"items\":[{\"name\":\"Klaus\"}]}",
+                List.of(new Pojo("Klaus"))
+            ),
+            Arguments.of(
+                "{\"items\":[{\"name\":\"Klaus\"}, {\"name\":\"Franny\"}]}",
+                List.of(new Pojo("Klaus"), new Pojo("Franny"))
+            ),
+
+            // empty
+            Arguments.of("", List.of()),
+            Arguments.of(" ", List.of()),
+            Arguments.of("{}", List.of()),
+            Arguments.of("{\"items\":[]}", List.of()),
+            Arguments.of("{\"items\":null}", List.of()),
+
+            // wrong property name
+            Arguments.of(
+                "{\"values\":[{\"name\":\"Klaus\"}]}",
+                List.of(new Pojo("Klaus"))
+            ),
+            Arguments.of(
+                "{\"people\":[{\"name\":\"Klaus\"}]}",
+                List.of(new Pojo("Klaus"))
+            ),
+
+            // surrounded by whitespaces
+            Arguments.of(
+                " {\"items\":[{\"name\":\"Klaus\"}]} ",
+                List.of(new Pojo("Klaus"))
+            )
+        );
     }
 
     /********************************************************************************************

@@ -11,6 +11,7 @@ import dev.langchain4j.service.TypeUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -74,14 +75,43 @@ public class ServiceOutputParser {
         }
 
         try {
-            if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
-                return Json.fromJson(Json.toJson(Json.fromJson(text, Map.class).get("items")), returnType);
-            } else {
-                return Json.fromJson(text, returnType);
-            }
+            return parsePojos(text, returnType);
         } catch (Exception e) {
             String jsonBlock = extractJsonBlock(text);
-            return Json.fromJson(jsonBlock, returnType);
+            return parsePojos(jsonBlock, returnType);
+        }
+    }
+
+    private static Object parsePojos(String text, Type returnType) {
+        if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
+            Map<?, ?> map = Json.fromJson(text, Map.class);
+
+            if (map == null || map.isEmpty()) {
+                if (typeHasRawClass(returnType, List.class)) {
+                    return new ArrayList<>();
+                } else {
+                    return new HashSet<>();
+                }
+            }
+
+            Object items;
+            if (map.containsKey("items")) {
+                items = map.get("items");
+            } else {
+                items = map.values().iterator().next();
+            }
+
+            if (items == null) { // TODO extract
+                if (typeHasRawClass(returnType, List.class)) {
+                    return new ArrayList<>();
+                } else {
+                    return new HashSet<>();
+                }
+            }
+
+            return Json.fromJson(Json.toJson(items), returnType);
+        } else {
+            return Json.fromJson(text, returnType);
         }
     }
 

@@ -43,9 +43,9 @@ class EnumOutputParserTest {
             Arguments.of("Cat", CAT),
 
             // Plain text: empty
+            Arguments.of(null, null),
             Arguments.of("", null),
             Arguments.of(" ", null),
-            Arguments.of(null, null),
 
             // Plain text: surrounded by whitespaces
             Arguments.of(" CAT ", CAT),

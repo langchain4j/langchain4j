@@ -48,9 +48,9 @@ class EnumSetOutputParserTest {
             Arguments.of("Cat", Set.of(CAT)),
 
             // Plain text: empty
+            Arguments.of(null, Set.of()),
             Arguments.of("", Set.of()),
             Arguments.of(" ", Set.of()),
-            Arguments.of(null, Set.of()),
 
             // Plain text: surrounded by whitespaces
             Arguments.of(" CAT ", Set.of(CAT)),
