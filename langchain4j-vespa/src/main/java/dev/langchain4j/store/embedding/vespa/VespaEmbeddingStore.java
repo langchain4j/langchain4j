@@ -128,10 +128,10 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Record in) {
         return new EmbeddingMatch<>(
-            in.getRelevance(),
-            in.getFields().getDocumentid(),
-            Embedding.from(in.getFields().getVector().getValues()),
-            in.getFields().getTextSegment() != null ? TextSegment.from(in.getFields().getTextSegment()) : null
+            in.relevance(),
+            in.fields().documentid(),
+            Embedding.from(in.fields().vector().values()),
+            in.fields().textSegment() != null ? TextSegment.from(in.fields().textSegment()) : null
         );
     }
 
@@ -227,7 +227,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
             Response<QueryResponse> response = api().search(searchQuery).execute();
             if (response.isSuccessful()) {
                 QueryResponse parsedResponse = response.body();
-                List<Record> children = parsedResponse.getRoot().getChildren();
+                List<Record> children = parsedResponse.root().children();
                 return new EmbeddingSearchResult<>(
                     children == null || children.isEmpty()
                         ? new ArrayList<>()
@@ -297,17 +297,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
             : avoidDups && textSegment != null ? generateUUIDFrom(textSegment.text()) : randomUUID();
         DocumentId documentId = DocumentId.of(namespace, documentType, recordId);
         String text = textSegment != null ? textSegment.text() : null;
-        return Record
-            .builder()
-            .id(documentId.toString())
-            .fields(
-                Fields
-                    .builder()
-                    .textSegment(text)
-                    .vector(Vector.builder().values(embedding.vectorAsList()).build())
-                    .build()
-            )
-            .build();
+        return new Record(documentId.toString(), null, new Fields(null, text, new Vector(embedding.vectorAsList())));
     }
 
     private Record buildRecord(Embedding embedding, TextSegment textSegment) {
