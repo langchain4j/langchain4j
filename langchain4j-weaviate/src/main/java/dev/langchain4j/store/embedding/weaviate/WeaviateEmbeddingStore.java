@@ -24,7 +24,6 @@ import lombok.Builder;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -35,6 +34,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * Represents the <a href="https://weaviate.io/">Weaviate</a> vector database.
@@ -297,13 +297,13 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .properties(props)
                 .build();
     }
-    
+
     private void setMetadata(Map<String, Object> props, Map<String, Object> metadata) {
         if (metadata != null && !metadata.isEmpty()) {
-            if(metadataFieldName != null && !metadataFieldName.isEmpty()) {
+            if (!metadataFieldName.isEmpty()) {
                 props.put(metadataFieldName, metadata);
             } else {
-              props.putAll(metadata);
+                props.putAll(metadata);
             }
         }
     }
@@ -317,37 +317,47 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private EmbeddingMatch<TextSegment> toEmbeddingMatch(Map<String, ?> item) {
-      Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
-      Map<String, ?> metadataMap = new HashMap<>();
-      if (metadataFieldName.isEmpty()) {
-        metadataMap = new HashMap<>(item);
-        // Remove text field from metadata if we store metadata in the root of the object
-        metadataMap.remove(textFieldName);
-        metadataMap.remove(ADDITIONALS);
-      } else if (item.get(metadataFieldName) instanceof Map) {
-        metadataMap = (Map<String, ?>) item.get(metadataFieldName);
-      }
-      if (!metadataKeys.isEmpty()) {
-        metadataMap.keySet().retainAll(metadataKeys);
-      }
 
-      // Filter out null values from metadataMap
-      metadataMap = metadataMap.entrySet()
-          .stream()
-          .filter(entry -> entry.getValue() != null)
-          .filter(nullValue -> !NULL_VALUE.equals(nullValue.getValue()))
-          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
+        Double score = (Double) additional.get("certainty");
+        String embeddingId = (String) additional.get("id");
+        Embedding embedding = toEmbedding(additional);
 
-      final Metadata metadata = new Metadata(metadataMap);
-      String text = (String) item.get(textFieldName);
+        String text = (String) item.get(textFieldName);
+        Metadata metadata = toMetadata(item);
+        TextSegment textSegment = isNullOrBlank(text) ? null : TextSegment.from(text, metadata);
 
-      return new EmbeddingMatch<>(
-          (Double) additional.get("certainty"),
-          (String) additional.get("id"),
-          Embedding.from(
-              ((List<Double>) additional.get("vector")).stream().map(Double::floatValue).collect(toList())
-          ),
-          isNullOrBlank(text) ? null : TextSegment.from(text, metadata)
-      );
+        return new EmbeddingMatch<>(score, embeddingId, embedding, textSegment);
+    }
+
+    private Metadata toMetadata(Map<String, ?> item) {
+        Map<String, ?> metadataMap = new HashMap<>();
+        if (metadataFieldName.isEmpty()) {
+          metadataMap = new HashMap<>(item);
+          // Remove text field from metadata if we store metadata in the root of the object
+          metadataMap.remove(textFieldName);
+          metadataMap.remove(ADDITIONALS);
+        } else if (item.get(metadataFieldName) instanceof Map) {
+          metadataMap = (Map<String, ?>) item.get(metadataFieldName);
+        }
+
+        if (!metadataKeys.isEmpty()) {
+          metadataMap.keySet().retainAll(metadataKeys);
+        }
+
+        // Filter out null values from metadataMap
+        metadataMap = metadataMap.entrySet().stream()
+            .filter(entry -> entry.getValue() != null)
+            .filter(entry -> !NULL_VALUE.equals(entry.getValue()))
+            .collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        return new Metadata(metadataMap);
+    }
+
+    private static Embedding toEmbedding(Map<String, ?> additional) {
+        List<Float> vector = ((List<Double>) additional.get("vector")).stream()
+            .map(Double::floatValue)
+            .collect(toList());
+        return Embedding.from(vector);
     }
 }
