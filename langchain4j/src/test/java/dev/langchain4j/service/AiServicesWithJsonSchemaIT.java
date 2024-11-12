@@ -11,8 +11,8 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import dev.langchain4j.service.AiServicesWithJsonSchemaIT.MaritalStatusExtractor.MaritalStatus;
-import dev.langchain4j.service.AiServicesWithJsonSchemaIT.WeatherExtractor.WeatherCharacteristic;
+import dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumListExtractor.MaritalStatus;
+import dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
@@ -27,7 +27,12 @@ import java.util.Set;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.MaritalStatusExtractor.MaritalStatus.MARRIED;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumExtractor.MaritalStatus.SINGLE;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumListExtractor.MaritalStatus.MARRIED;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.CLOUDY;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.RAINY;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.SUNNY;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.WINDY;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -92,7 +97,7 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
     }
 
-    interface PersonListExtractor {
+    interface PojoListExtractor {
 
         class Person {
 
@@ -102,7 +107,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             boolean married;
         }
 
-        List<Person> extractPeopleFrom(String text);
+        List<Person> extractListOfPojoFrom(String text);
     }
 
     @Test
@@ -113,13 +118,13 @@ public abstract class AiServicesWithJsonSchemaIT {
             // given
             model = spy(model);
 
-            PersonListExtractor personExtractor = AiServices.create(PersonListExtractor.class, model);
+            PojoListExtractor pojoListExtractor = AiServices.create(PojoListExtractor.class, model);
 
             String text = "Klaus is 37 years old, 1.78m height and single. " +
                 "Franny is 35 years old, 1.65m height and married.";
 
             // when
-            List<PersonListExtractor.Person> people = personExtractor.extractPeopleFrom(text);
+            List<PojoListExtractor.Person> people = pojoListExtractor.extractListOfPojoFrom(text);
 
             // then
             assertThat(people.get(0).name).isEqualTo("Klaus");
@@ -157,7 +162,7 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
     }
 
-    interface PersonSetExtractor {
+    interface PojoSetExtractor {
 
         class Person {
 
@@ -167,7 +172,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             boolean married;
         }
 
-        Set<Person> extractPeopleFrom(String text);
+        Set<Person> extractSetOfPojoFrom(String text);
     }
 
     @Test
@@ -178,18 +183,17 @@ public abstract class AiServicesWithJsonSchemaIT {
             // given
             model = spy(model);
 
-            PersonSetExtractor personExtractor = AiServices.create(PersonSetExtractor.class, model);
+            PojoSetExtractor pojoSetExtractor = AiServices.create(PojoSetExtractor.class, model);
 
             String text = "Klaus is 37 years old, 1.78m height and single. " +
                 "Franny is 35 years old, 1.65m height and married.";
 
             // when
-            Set<PersonSetExtractor.Person> people = personExtractor.extractPeopleFrom(text);
+            Set<PojoSetExtractor.Person> people = pojoSetExtractor.extractSetOfPojoFrom(text);
 
             // then
             assertThat(people).hasSize(2);
 
-            // Use assertThat with filters to ensure each person is in the set
             assertThat(people).anyMatch(person ->
                 person.name.equals("Klaus") &&
                     person.age == 37 &&
@@ -221,158 +225,6 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .build())
                                 .build())
                             .required("items")
-                            .build())
-                        .build())
-                    .build())
-                .build());
-            verify(model).supportedCapabilities();
-        }
-    }
-
-    interface MaritalStatusExtractor {
-
-        enum MaritalStatus {
-
-            SINGLE, MARRIED
-        }
-
-        List<MaritalStatus> extractMaritalStatusFrom(String text);
-    }
-
-    @Test
-    void should_extract_list_of_enums() {
-
-        for (ChatLanguageModel model : models()) {
-
-            // given
-            model = spy(model);
-
-            MaritalStatusExtractor personExtractor = AiServices.create(MaritalStatusExtractor.class, model);
-
-            String text = "Klaus is 37 years old, 1.78m height and single. " +
-                "Franny is 35 years old, 1.65m height and married." +
-                "Staniel is 33 years old, 1.70m height and married.";
-
-            // when
-            List<MaritalStatus> statuses = personExtractor.extractMaritalStatusFrom(text);
-
-            // then
-            assertThat(statuses).containsExactly(MaritalStatus.SINGLE, MARRIED, MARRIED);
-
-            verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                    .type(JSON)
-                    .jsonSchema(JsonSchema.builder()
-                        .name("List_of_MaritalStatus")
-                        .rootElement(JsonObjectSchema.builder()
-                            .addProperty("items", JsonArraySchema.builder()
-                                .items(JsonEnumSchema.builder()
-                                    .enumValues("SINGLE", "MARRIED")
-                                    .build())
-                                .build())
-                            .required("items")
-                            .build())
-                        .build())
-                    .build())
-                .build());
-            verify(model).supportedCapabilities();
-        }
-    }
-
-    interface WeatherExtractor {
-
-        enum WeatherCharacteristic {
-
-            SUNNY, RAINY, CLOUDY, WINDY
-        }
-
-        Set<WeatherCharacteristic> extractWeatherCharacteristicsFrom(String text);
-    }
-
-    @Test
-    void should_extract_set_of_enums() {
-
-        for (ChatLanguageModel model : models()) {
-
-            // given
-            model = spy(model);
-
-            WeatherExtractor weatherExtractor = AiServices.create(WeatherExtractor.class, model);
-
-            String text = "The weather in Berlin was sunny and windy." +
-                " Paris experienced rainy and cloudy weather." +
-                " New York had cloudy and windy weather.";
-
-            // when
-            Set<WeatherCharacteristic> characteristics = weatherExtractor.extractWeatherCharacteristicsFrom(text);
-
-            // then
-            assertThat(characteristics).containsExactlyInAnyOrder(
-                WeatherCharacteristic.SUNNY,
-                WeatherCharacteristic.WINDY,
-                WeatherCharacteristic.RAINY,
-                WeatherCharacteristic.CLOUDY
-            );
-
-            verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                    .type(JSON)
-                    .jsonSchema(JsonSchema.builder()
-                        .name("Set_of_WeatherCharacteristic")
-                        .rootElement(JsonObjectSchema.builder()
-                            .addProperty("items", JsonArraySchema.builder()
-                                .items(JsonEnumSchema.builder()
-                                    .enumValues("SUNNY", "RAINY", "CLOUDY", "WINDY")
-                                    .build())
-                                .build())
-                            .required("items")
-                            .build())
-                        .build())
-                    .build())
-                .build());
-            verify(model).supportedCapabilities();
-        }
-    }
-
-
-    interface StatusExtractor {
-
-        enum MaritalStatus {
-
-            SINGLE, MARRIED
-        }
-
-        MaritalStatus extractMaritalStatusFrom(String text);
-    }
-
-    @Test
-    void should_extract_enum() {
-
-        for (ChatLanguageModel model : models()) {
-
-            // given
-            model = spy(model);
-
-            StatusExtractor personExtractor = AiServices.create(StatusExtractor.class, model);
-
-            String text = "Klaus is 37 years old, 1.78m height and single.";
-
-            // when
-            StatusExtractor.MaritalStatus status = personExtractor.extractMaritalStatusFrom(text);
-
-            // then
-            assertThat(status).isEqualTo(StatusExtractor.MaritalStatus.SINGLE);
-
-            verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                    .type(JSON)
-                    .jsonSchema(JsonSchema.builder()
-                        .name("MaritalStatus")
-                        .rootElement(JsonObjectSchema.builder()
-                            .addEnumProperty("value", List.of("SINGLE", "MARRIED"))
                             .build())
                         .build())
                     .build())
@@ -1201,7 +1053,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                     .jsonSchema(JsonSchema.builder()
                         .name("Person")
                         .rootElement(JsonObjectSchema.builder()
-                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                            .properties(new LinkedHashMap<>() {{
                                 put("name", new JsonStringSchema());
                                 put("children", JsonArraySchema.builder()
                                     .items(JsonReferenceSchema.builder()
@@ -1231,5 +1083,154 @@ public abstract class AiServicesWithJsonSchemaIT {
 
     protected boolean supportsRecursion() {
         return false;
+    }
+
+
+    // Enums
+
+    interface EnumExtractor {
+
+        enum MaritalStatus {
+
+            SINGLE, MARRIED
+        }
+
+        MaritalStatus extractEnumFrom(String text);
+    }
+
+    @Test
+    void should_extract_enum() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            EnumExtractor enumExtractor = AiServices.create(EnumExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single.";
+
+            // when
+            EnumExtractor.MaritalStatus maritalStatus = enumExtractor.extractEnumFrom(text);
+
+            // then
+            assertThat(maritalStatus).isEqualTo(SINGLE);
+
+            verify(model).chat(ChatRequest.builder()
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("MaritalStatus")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addEnumProperty("value", List.of("SINGLE", "MARRIED"))
+                            .build())
+                        .build())
+                    .build())
+                .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface EnumListExtractor {
+
+        enum MaritalStatus {
+
+            SINGLE, MARRIED
+        }
+
+        List<MaritalStatus> extractListOfEnumsFrom(String text);
+    }
+
+    @Test
+    void should_extract_list_of_enums() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            EnumListExtractor enumListExtractor = AiServices.create(EnumListExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                "Franny is 35 years old, 1.65m height and married." +
+                "Staniel is 33 years old, 1.70m height and married.";
+
+            // when
+            List<MaritalStatus> maritalStatuses = enumListExtractor.extractListOfEnumsFrom(text);
+
+            // then
+            assertThat(maritalStatuses).containsExactly(MaritalStatus.SINGLE, MARRIED, MARRIED);
+
+            verify(model).chat(ChatRequest.builder()
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("List_of_MaritalStatus")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addProperty("items", JsonArraySchema.builder()
+                                .items(JsonEnumSchema.builder()
+                                    .enumValues("SINGLE", "MARRIED")
+                                    .build())
+                                .build())
+                            .required("items")
+                            .build())
+                        .build())
+                    .build())
+                .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface EnumSetExtractor {
+
+        enum WeatherCharacteristic {
+
+            SUNNY, RAINY, CLOUDY, WINDY
+        }
+
+        Set<WeatherCharacteristic> extractSetOfEnumsFrom(String text);
+    }
+
+    @Test
+    void should_extract_set_of_enums() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            EnumSetExtractor enumSetExtractor = AiServices.create(EnumSetExtractor.class, model);
+
+            String text = "The weather in Berlin was sunny and windy." +
+                " Paris experienced rainy and cloudy weather." +
+                " New York had cloudy and windy weather.";
+
+            // when
+            Set<WeatherCharacteristic> weatherCharacteristics = enumSetExtractor.extractSetOfEnumsFrom(text);
+
+            // then
+            assertThat(weatherCharacteristics).containsExactlyInAnyOrder(SUNNY, WINDY, RAINY, CLOUDY);
+
+            verify(model).chat(ChatRequest.builder()
+                .messages(singletonList(userMessage(text)))
+                .responseFormat(ResponseFormat.builder()
+                    .type(JSON)
+                    .jsonSchema(JsonSchema.builder()
+                        .name("Set_of_WeatherCharacteristic")
+                        .rootElement(JsonObjectSchema.builder()
+                            .addProperty("items", JsonArraySchema.builder()
+                                .items(JsonEnumSchema.builder()
+                                    .enumValues("SUNNY", "RAINY", "CLOUDY", "WINDY")
+                                    .build())
+                                .build())
+                            .required("items")
+                            .build())
+                        .build())
+                    .build())
+                .build());
+            verify(model).supportedCapabilities();
+        }
     }
 }
