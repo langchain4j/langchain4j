@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
@@ -150,7 +151,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.strictTools = getOrDefault(strictTools, false);
         this.parallelToolCalls = parallelToolCalls;
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
@@ -494,8 +495,35 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             return new OpenAiChatModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.temperature, this.topP, this.stop, this.maxTokens, this.maxCompletionTokens, this.presencePenalty, this.frequencyPenalty, this.logitBias, this.responseFormat, this.strictJsonSchema, this.seed, this.user, this.strictTools, this.parallelToolCalls, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses, this.tokenizer, this.customHeaders, this.listeners);
         }
 
+        @Override
         public String toString() {
-            return "OpenAiChatModel.OpenAiChatModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", organizationId=" + this.organizationId + ", modelName=" + this.modelName + ", temperature=" + this.temperature + ", topP=" + this.topP + ", stop=" + this.stop + ", maxTokens=" + this.maxTokens + ", maxCompletionTokens=" + this.maxCompletionTokens + ", presencePenalty=" + this.presencePenalty + ", frequencyPenalty=" + this.frequencyPenalty + ", logitBias=" + this.logitBias + ", responseFormat=" + this.responseFormat + ", strictJsonSchema=" + this.strictJsonSchema + ", seed=" + this.seed + ", user=" + this.user + ", strictTools=" + this.strictTools + ", parallelToolCalls=" + this.parallelToolCalls + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", tokenizer=" + this.tokenizer + ", customHeaders=" + this.customHeaders + ", listeners=" + this.listeners + ")";
+            return new StringJoiner(", ", OpenAiChatModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("baseUrl='" + baseUrl + "'")
+                    .add("organizationId='" + organizationId + "'")
+                    .add("modelName='" + modelName + "'")
+                    .add("temperature=" + temperature)
+                    .add("topP=" + topP)
+                    .add("stop=" + stop)
+                    .add("maxTokens=" + maxTokens)
+                    .add("maxCompletionTokens=" + maxCompletionTokens)
+                    .add("presencePenalty=" + presencePenalty)
+                    .add("frequencyPenalty=" + frequencyPenalty)
+                    .add("logitBias=" + logitBias)
+                    .add("responseFormat='" + responseFormat + "'")
+                    .add("strictJsonSchema=" + strictJsonSchema)
+                    .add("seed=" + seed)
+                    .add("user='" + user + "'")
+                    .add("strictTools=" + strictTools)
+                    .add("parallelToolCalls=" + parallelToolCalls)
+                    .add("timeout=" + timeout)
+                    .add("maxRetries=" + maxRetries)
+                    .add("proxy=" + proxy)
+                    .add("logRequests=" + logRequests)
+                    .add("logResponses=" + logResponses)
+                    .add("tokenizer=" + tokenizer)
+                    .add("customHeaders=" + customHeaders)
+                    .add("listeners=" + listeners)
+                    .toString();
         }
     }
 }
