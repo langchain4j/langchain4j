@@ -13,6 +13,7 @@ import dev.langchain4j.model.output.Response;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.Map;
+import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -69,7 +70,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
         this.temperature = getOrDefault(temperature, 0.7);
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
     }
 
     public String modelName() {
@@ -117,6 +118,10 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         return new OpenAiLanguageModelBuilder();
     }
 
+    /**
+     * Builder class for constructing instances of {@code OpenAiLanguageModel}.
+     * Provides a fluent interface to configure various parameters for the language model.
+     */
     public static class OpenAiLanguageModelBuilder {
 
         private String baseUrl;
@@ -202,11 +207,37 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         }
 
         public OpenAiLanguageModel build() {
-            return new OpenAiLanguageModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.temperature, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses, this.tokenizer, this.customHeaders);
+            return new OpenAiLanguageModel(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.organizationId,
+                    this.modelName,
+                    this.temperature,
+                    this.timeout,
+                    this.maxRetries,
+                    this.proxy,
+                    this.logRequests,
+                    this.logResponses,
+                    this.tokenizer,
+                    this.customHeaders
+            );
         }
 
+        @Override
         public String toString() {
-            return "OpenAiLanguageModel.OpenAiLanguageModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", organizationId=" + this.organizationId + ", modelName=" + this.modelName + ", temperature=" + this.temperature + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", tokenizer=" + this.tokenizer + ", customHeaders=" + this.customHeaders + ")";
+            return new StringJoiner(", ", OpenAiLanguageModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("baseUrl='" + baseUrl + "'")
+                    .add("organizationId='" + organizationId + "'")
+                    .add("modelName='" + modelName + "'")
+                    .add("temperature=" + temperature)
+                    .add("timeout=" + timeout)
+                    .add("maxRetries=" + maxRetries)
+                    .add("proxy=" + proxy)
+                    .add("logRequests=" + logRequests)
+                    .add("logResponses=" + logResponses)
+                    .add("tokenizer=" + tokenizer)
+                    .add("customHeaders=" + customHeaders)
+                    .toString();
         }
     }
 }

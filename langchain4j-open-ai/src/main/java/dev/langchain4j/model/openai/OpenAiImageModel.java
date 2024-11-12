@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -254,11 +255,47 @@ public class OpenAiImageModel implements ImageModel {
         }
 
         public OpenAiImageModel build() {
-            return new OpenAiImageModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.size, this.quality, this.style, this.user, this.responseFormat, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses, this.withPersisting, this.persistTo, this.customHeaders);
+            return new OpenAiImageModel(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.organizationId,
+                    this.modelName,
+                    this.size,
+                    this.quality,
+                    this.style,
+                    this.user,
+                    this.responseFormat,
+                    this.timeout,
+                    this.maxRetries,
+                    this.proxy,
+                    this.logRequests,
+                    this.logResponses,
+                    this.withPersisting,
+                    this.persistTo,
+                    this.customHeaders
+            );
         }
 
+        @Override
         public String toString() {
-            return "OpenAiImageModel.OpenAiImageModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", organizationId=" + this.organizationId + ", modelName=" + this.modelName + ", size=" + this.size + ", quality=" + this.quality + ", style=" + this.style + ", user=" + this.user + ", responseFormat=" + this.responseFormat + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", withPersisting=" + this.withPersisting + ", persistTo=" + this.persistTo + ", customHeaders=" + this.customHeaders + ")";
+            return new StringJoiner(", ", OpenAiImageModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("baseUrl='" + baseUrl + "'")
+                    .add("organizationId='" + organizationId + "'")
+                    .add("modelName='" + modelName + "'")
+                    .add("size='" + size + "'")
+                    .add("quality='" + quality + "'")
+                    .add("style='" + style + "'")
+                    .add("user='" + user + "'")
+                    .add("responseFormat='" + responseFormat + "'")
+                    .add("timeout=" + timeout)
+                    .add("maxRetries=" + maxRetries)
+                    .add("proxy=" + proxy)
+                    .add("logRequests=" + logRequests)
+                    .add("logResponses=" + logResponses)
+                    .add("withPersisting=" + withPersisting)
+                    .add("persistTo=" + persistTo)
+                    .add("customHeaders=" + customHeaders)
+                    .toString();
         }
     }
 

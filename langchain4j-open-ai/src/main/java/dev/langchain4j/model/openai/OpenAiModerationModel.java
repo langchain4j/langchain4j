@@ -14,6 +14,7 @@ import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -25,7 +26,6 @@ import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATES
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an OpenAI moderation model, such as text-moderation-latest.
@@ -92,7 +92,7 @@ public class OpenAiModerationModel implements ModerationModel {
 
         int i = 0;
         for (ModerationResult moderationResult : response.results()) {
-            if (moderationResult.isFlagged()) {
+            if (Boolean.TRUE.equals(moderationResult.isFlagged())) {
                 return Response.from(Moderation.flagged(inputs.get(i)));
             }
             i++;
@@ -106,7 +106,7 @@ public class OpenAiModerationModel implements ModerationModel {
     public Response<Moderation> moderate(List<ChatMessage> messages) {
         List<String> inputs = messages.stream()
                 .map(ChatMessage::text)
-                .collect(toList());
+                .toList();
 
         return moderateInternal(inputs);
     }
@@ -201,11 +201,33 @@ public class OpenAiModerationModel implements ModerationModel {
         }
 
         public OpenAiModerationModel build() {
-            return new OpenAiModerationModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses, this.customHeaders);
+            return new OpenAiModerationModel(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.organizationId,
+                    this.modelName,
+                    this.timeout,
+                    this.maxRetries,
+                    this.proxy,
+                    this.logRequests,
+                    this.logResponses,
+                    this.customHeaders
+            );
         }
 
+        @Override
         public String toString() {
-            return "OpenAiModerationModel.OpenAiModerationModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", organizationId=" + this.organizationId + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", customHeaders=" + this.customHeaders + ")";
+            return new StringJoiner(", ", OpenAiModerationModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("baseUrl='" + baseUrl + "'")
+                    .add("organizationId='" + organizationId + "'")
+                    .add("modelName='" + modelName + "'")
+                    .add("timeout=" + timeout)
+                    .add("maxRetries=" + maxRetries)
+                    .add("proxy=" + proxy)
+                    .add("logRequests=" + logRequests)
+                    .add("logResponses=" + logResponses)
+                    .add("customHeaders=" + customHeaders)
+                    .toString();
         }
     }
 }

@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -132,7 +133,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.user = user;
         this.strictTools = getOrDefault(strictTools, false);
         this.parallelToolCalls = parallelToolCalls;
-        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
@@ -461,11 +462,61 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         }
 
         public OpenAiStreamingChatModel build() {
-            return new OpenAiStreamingChatModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.temperature, this.topP, this.stop, this.maxTokens, this.maxCompletionTokens, this.presencePenalty, this.frequencyPenalty, this.logitBias, this.responseFormat, this.seed, this.user, this.strictTools, this.parallelToolCalls, this.timeout, this.proxy, this.logRequests, this.logResponses, this.tokenizer, this.customHeaders, this.listeners);
+            return new OpenAiStreamingChatModel(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.organizationId,
+                    this.modelName,
+                    this.temperature,
+                    this.topP,
+                    this.stop,
+                    this.maxTokens,
+                    this.maxCompletionTokens,
+                    this.presencePenalty,
+                    this.frequencyPenalty,
+                    this.logitBias,
+                    this.responseFormat,
+                    this.seed,
+                    this.user,
+                    this.strictTools,
+                    this.parallelToolCalls,
+                    this.timeout,
+                    this.proxy,
+                    this.logRequests,
+                    this.logResponses,
+                    this.tokenizer,
+                    this.customHeaders,
+                    this.listeners
+            );
         }
 
+        @Override
         public String toString() {
-            return "OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", organizationId=" + this.organizationId + ", modelName=" + this.modelName + ", temperature=" + this.temperature + ", topP=" + this.topP + ", stop=" + this.stop + ", maxTokens=" + this.maxTokens + ", maxCompletionTokens=" + this.maxCompletionTokens + ", presencePenalty=" + this.presencePenalty + ", frequencyPenalty=" + this.frequencyPenalty + ", logitBias=" + this.logitBias + ", responseFormat=" + this.responseFormat + ", seed=" + this.seed + ", user=" + this.user + ", strictTools=" + this.strictTools + ", parallelToolCalls=" + this.parallelToolCalls + ", timeout=" + this.timeout + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", tokenizer=" + this.tokenizer + ", customHeaders=" + this.customHeaders + ", listeners=" + this.listeners + ")";
+            return new StringJoiner(", ", OpenAiStreamingChatModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("baseUrl='" + baseUrl + "'")
+                    .add("organizationId='" + organizationId + "'")
+                    .add("modelName='" + modelName + "'")
+                    .add("temperature=" + temperature)
+                    .add("topP=" + topP)
+                    .add("stop=" + stop)
+                    .add("maxTokens=" + maxTokens)
+                    .add("maxCompletionTokens=" + maxCompletionTokens)
+                    .add("presencePenalty=" + presencePenalty)
+                    .add("frequencyPenalty=" + frequencyPenalty)
+                    .add("logitBias=" + logitBias)
+                    .add("responseFormat='" + responseFormat + "'")
+                    .add("seed=" + seed)
+                    .add("user='" + user + "'")
+                    .add("strictTools=" + strictTools)
+                    .add("parallelToolCalls=" + parallelToolCalls)
+                    .add("timeout=" + timeout)
+                    .add("proxy=" + proxy)
+                    .add("logRequests=" + logRequests)
+                    .add("logResponses=" + logResponses)
+                    .add("tokenizer=" + tokenizer)
+                    .add("customHeaders=" + customHeaders)
+                    .add("listeners=" + listeners)
+                    .toString();
         }
     }
 }
