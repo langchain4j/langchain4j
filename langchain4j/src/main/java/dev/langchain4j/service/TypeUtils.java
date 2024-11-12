@@ -57,11 +57,10 @@ public class TypeUtils {
             throw new IllegalArgumentException("returnType parameter cannot be null.");
         }
 
-        if (!(returnType instanceof ParameterizedType)) {
+        if (!(returnType instanceof ParameterizedType type)) {
             return new Type[0];
         }
 
-        ParameterizedType type = (ParameterizedType) returnType;
         Type[] typeArguments = type.getActualTypeArguments();
 
         if (typeArguments.length == 0) {
@@ -94,16 +93,15 @@ public class TypeUtils {
      * </ul>*
      *
      * @param methodName the method name
-     * @param type the return type
+     * @param type       the return type
      */
     public static void validateReturnTypesAreProperlyParametrized(String methodName, Type type) {
         TypeUtils.validateReturnTypesAreProperlyParametrized(methodName, type, new ArrayList<>());
     }
 
     private static void validateReturnTypesAreProperlyParametrized(String methodName, Type type, List<Type> typeChain) {
-        if (type instanceof ParameterizedType) {
+        if (type instanceof ParameterizedType parameterizedType) {
             // Recursively check all parametrized types
-            ParameterizedType parameterizedType = (ParameterizedType) type;
             for (Type actualTypeArgument : parameterizedType.getActualTypeArguments()) {
                 typeChain.add(parameterizedType);
                 validateReturnTypesAreProperlyParametrized(methodName, actualTypeArgument, typeChain);
@@ -116,8 +114,7 @@ public class TypeUtils {
             // Type variable: Result<T> ask(String question)
             typeChain.add(type);
             throw genericNotProperlySpecifiedException(methodName, typeChain);
-        } else if (type instanceof Class<?>) {
-            Class<?> clazz = (Class<?>) type;
+        } else if (type instanceof Class<?> clazz) {
             if (clazz.getTypeParameters().length > 0) {
                 //  Raw type:  Result ask(String question)
                 typeChain.add(type);

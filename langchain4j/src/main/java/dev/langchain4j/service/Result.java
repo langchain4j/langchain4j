@@ -1,9 +1,9 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.ToolExecution;
 import lombok.Builder;
 
 import java.util.List;
@@ -17,7 +17,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * such as {@link TokenUsage} and sources ({@link Content}s retrieved during RAG).
  *
  * @param <T> The type of the content. Can be of any return type supported by AI Services,
- *           such as String, Enum, MyCustomPojo, etc.
+ *            such as String, Enum, MyCustomPojo, etc.
  */
 public class Result<T> {
 

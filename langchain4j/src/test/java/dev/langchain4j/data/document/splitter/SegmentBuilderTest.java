@@ -15,7 +15,7 @@ class SegmentBuilderTest implements WithAssertions {
     }
 
     @Test
-    public void test_by_words() {
+    void test_by_words() {
         SegmentBuilder builder = new SegmentBuilder(10,
                 text -> text.split(" ").length,
                 " ; ");
