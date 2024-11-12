@@ -43,47 +43,46 @@ public class JsonSchemas {
             return Optional.empty();
         }
 
-        Class<?> rawClass = getRawClass(returnType);
-
-        JsonSchema jsonSchema;
-
         if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
             Class<?> actualType = resolveFirstGenericParameterClass(returnType);
             if (actualType != null && actualType.isEnum()) {
-                jsonSchema = getJsonSchema(returnType, actualType,
-                    JsonEnumSchema.builder()
-                        .enumValues(stream(actualType.getEnumConstants()).map(Object::toString).toList())
-                        .build());
+                return Optional.of(arraySchemaFrom(returnType, actualType, enumSchemaFrom(actualType)));
             } else {
-                jsonSchema = getJsonSchema(returnType, actualType,
-                    jsonObjectOrReferenceSchemaFrom(actualType, null, new LinkedHashMap<>(), true));
+                return Optional.of(arraySchemaFrom(returnType, actualType, objectSchemaFrom(actualType)));
             }
         } else {
             Class<?> returnTypeClass = (Class<?>) returnType;
             if (returnTypeClass.isEnum()) {
-                List<String> enumValues = stream(returnTypeClass.getEnumConstants()).map(Object::toString).toList();
-                jsonSchema = JsonSchema.builder()
+                JsonSchema jsonSchema = JsonSchema.builder()
                     .name(returnTypeClass.getSimpleName())
                     .rootElement(JsonObjectSchema.builder()
-                        .addEnumProperty(returnTypeClass.getSimpleName(), enumValues)
+                        .addProperty(returnTypeClass.getSimpleName(), enumSchemaFrom(returnTypeClass))
                         .build())
                     .build();
+                return Optional.of(jsonSchema);
             } else {
-                jsonSchema = JsonSchema.builder()
-                    .name(rawClass.getSimpleName())
-                    .rootElement(jsonObjectOrReferenceSchemaFrom(rawClass, null, new LinkedHashMap<>(), true))
+                JsonSchema jsonSchema = JsonSchema.builder()
+                    .name(returnTypeClass.getSimpleName())
+                    .rootElement(objectSchemaFrom(returnTypeClass))
                     .build();
+                return Optional.of(jsonSchema);
             }
         }
-
-        return Optional.of(jsonSchema);
     }
 
-    private static JsonSchema getJsonSchema(Type returnType, Class<?> rawClass, JsonSchemaElement items) {
-        String collectionName = getRawClass(returnType).getSimpleName();
+    private static JsonSchemaElement objectSchemaFrom(Class<?> actualType) {
+        return jsonObjectOrReferenceSchemaFrom(actualType, null, new LinkedHashMap<>(), true);
+    }
 
+    private static JsonEnumSchema enumSchemaFrom(Class<?> actualType) {
+        return JsonEnumSchema.builder()
+            .enumValues(stream(actualType.getEnumConstants()).map(Object::toString).toList())
+            .build();
+    }
+
+    private static JsonSchema arraySchemaFrom(Type returnType, Class<?> actualType, JsonSchemaElement items) {
         return JsonSchema.builder()
-            .name(collectionName + "_of_" + rawClass.getSimpleName())
+            .name(getRawClass(returnType).getSimpleName() + "_of_" + actualType.getSimpleName())
             .rootElement(JsonObjectSchema.builder()
                 .addProperty("items", JsonArraySchema.builder()
                     .items(items)
@@ -93,9 +92,13 @@ public class JsonSchemas {
             .build();
     }
 
-    private static boolean isEnum(Type returnType) {
+    static boolean isEnum(Type returnType) {
+        if (returnType instanceof Class<?> && ((Class<?>) returnType).isEnum()) {
+            return true;
+        }
+
         Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
-        return typeArgumentClass != null && typeArgumentClass.isEnum() || (((Class<?>) returnType).isEnum());
+        return typeArgumentClass != null && typeArgumentClass.isEnum();
     }
 
     private static boolean isPojo(Type returnType) {

@@ -10,10 +10,18 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.Result;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
+import static dev.langchain4j.service.output.JsonSchemas.isEnum;
 import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -223,5 +231,58 @@ class JsonSchemasTest {
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
         JsonArraySchema petsSchema = (JsonArraySchema) rootElement.properties().get("pets");
         assertThat(petsSchema.description()).isEqualTo("pets of a person");
+    }
+
+    private enum TestEnum {
+        VALUE1, VALUE2
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void test_isEnum(Type type, boolean expected) {
+        assertThat(isEnum(type)).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> test_isEnum() throws NoSuchMethodException {
+
+        Method enumListMethod = GenericEnumHolder.class.getDeclaredMethod("getEnumList");
+        Method optionalEnumMethod = GenericEnumHolder.class.getDeclaredMethod("getOptionalEnum");
+
+        Method nonEnumListMethod = GenericEnumHolder.class.getDeclaredMethod("getNonEnumList");
+        Method nonEnumOptionalMethod = GenericEnumHolder.class.getDeclaredMethod("getNonEnumOptional");
+
+        return Stream.of(
+            Arguments.of(TestEnum.class, true),
+            Arguments.of(enumListMethod.getGenericReturnType(), true),
+            Arguments.of(optionalEnumMethod.getGenericReturnType(), true),
+
+            Arguments.of(String.class, false),
+            Arguments.of(int.class, false),
+            Arguments.of(List.class, false),
+            Arguments.of(Optional.class, false),
+            Arguments.of(nonEnumListMethod.getGenericReturnType(), false),
+            Arguments.of(nonEnumOptionalMethod.getGenericReturnType(), false)
+        );
+    }
+
+    private static class GenericEnumHolder<T extends Enum<T>> {
+
+        private T enumValue;
+
+        private List<TestEnum> getEnumList() {
+            return null;
+        }
+
+        private Optional<TestEnum> getOptionalEnum() {
+            return null;
+        }
+
+        private List<String> getNonEnumList() {
+            return null;
+        }
+
+        private Optional<String> getNonEnumOptional() {
+            return null;
+        }
     }
 }
