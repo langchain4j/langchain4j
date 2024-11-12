@@ -49,6 +49,10 @@ class EnumListOutputParserTest {
             Arguments.of(" ", List.of()),
             Arguments.of(null, List.of()),
 
+            // Plain text: surrounded by whitespaces
+            Arguments.of(" CAT ", List.of(CAT)),
+            Arguments.of(" CAT \n DOG ", List.of(CAT, DOG)),
+
             // JSON
             Arguments.of("{\"items\":[CAT]}", List.of(CAT)),
             Arguments.of("{\"items\":['CAT']}", List.of(CAT)),
@@ -71,7 +75,7 @@ class EnumListOutputParserTest {
             Arguments.of("{\"values\":[CAT]}", List.of(CAT)),
             Arguments.of("{\"animals\":[CAT]}", List.of(CAT)),
 
-            // JSON surrounded by whitespaces
+            // JSON: surrounded by whitespaces
             Arguments.of(" {\"items\":[CAT]} ", List.of(CAT))
         );
     }

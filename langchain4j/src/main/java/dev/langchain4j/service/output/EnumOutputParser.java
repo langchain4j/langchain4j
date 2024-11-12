@@ -21,15 +21,44 @@ class EnumOutputParser implements OutputParser<Enum> {
 
     @Override
     public Enum parse(String string) {
-        string = trimAndRemoveBracketsIfPresent(string);
-        if (string.startsWith("{")) {
-            string = (String) Json.fromJson(string, Map.class).values().stream().findFirst().get();
+        if (string == null || string.isBlank()) {
+            return null;
         }
+
+        string = trimAndRemoveBracketsIfPresent(string);
+
+        if (string.trim().startsWith("{")) {
+
+            Map<?, ?> map = Json.fromJson(string, Map.class);
+
+            if (map == null || map.isEmpty()) {
+                return null;
+            }
+
+            Object value;
+            if (map.containsKey("value")) {
+                value = map.get("value");
+            } else {
+                value = map.values().iterator().next();
+            }
+
+            if (value == null) {
+                return null;
+            }
+
+            string = value.toString();
+        }
+
+        if (string.isBlank()) {
+            return null;
+        }
+
         for (Enum enumConstant : enumClass.getEnumConstants()) {
             if (enumConstant.name().equalsIgnoreCase(string)) {
                 return enumConstant;
             }
         }
+
         throw new RuntimeException("Unknown enum value: " + string);
     }
 

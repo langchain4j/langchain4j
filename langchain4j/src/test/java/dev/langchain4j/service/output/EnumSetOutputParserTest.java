@@ -52,6 +52,10 @@ class EnumSetOutputParserTest {
             Arguments.of(" ", Set.of()),
             Arguments.of(null, Set.of()),
 
+            // Plain text: surrounded by whitespaces
+            Arguments.of(" CAT ", Set.of(CAT)),
+            Arguments.of(" CAT \n DOG ", Set.of(CAT, DOG)),
+
             // JSON
             Arguments.of("{\"items\":[CAT]}", Set.of(CAT)),
             Arguments.of("{\"items\":['CAT']}", Set.of(CAT)),
@@ -74,7 +78,7 @@ class EnumSetOutputParserTest {
             Arguments.of("{\"values\":[CAT]}", Set.of(CAT)),
             Arguments.of("{\"animals\":[CAT]}", Set.of(CAT)),
 
-            // JSON surrounded by whitespaces
+            // JSON: surrounded by whitespaces
             Arguments.of(" {\"items\":[CAT]} ", Set.of(CAT))
         );
     }
