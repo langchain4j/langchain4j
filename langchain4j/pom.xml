@@ -13,7 +13,9 @@
 
     <artifactId>langchain4j</artifactId>
     <name>LangChain4j</name>
-    <description>Java implementation of LangChain: Integrate your Java application with countless AI tools and services smoothly</description>
+    <description>Java implementation of LangChain: Integrate your Java application with countless AI
+        tools and services smoothly
+    </description>
 
     <dependencies>
 
@@ -25,12 +27,6 @@
         <dependency>
             <groupId>org.apache.opennlp</groupId>
             <artifactId>opennlp-tools</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>

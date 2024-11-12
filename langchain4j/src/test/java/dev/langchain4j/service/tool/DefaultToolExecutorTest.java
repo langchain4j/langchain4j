@@ -4,8 +4,6 @@ import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -37,27 +35,27 @@ class DefaultToolExecutorTest implements WithAssertions {
 
     @SuppressWarnings("unused")
     public void example(
-            @ToolMemoryId UUID idA,
-            int intP,
-            Integer integerP,
-            long longP,
-            Long LongP,
-            float floatP,
-            Float FloatP,
-            double doubleP,
-            Double DoubleP,
-            byte byteP,
-            Byte ByteP,
-            short shortP,
-            Short ShortP,
-            ExampleEnum enumP,
-            boolean booleanP,
-            Boolean BooleanP,
-            double double2P,
-            Double Double2P,
-            List<Integer> integerList,
-            Set<ExampleEnum> enumSet,
-            Map<String, Integer> map
+        @ToolMemoryId UUID idA,
+        int intP,
+        Integer integerP,
+        long longP,
+        Long LongP,
+        float floatP,
+        Float FloatP,
+        double doubleP,
+        Double DoubleP,
+        byte byteP,
+        Byte ByteP,
+        short shortP,
+        Short ShortP,
+        ExampleEnum enumP,
+        boolean booleanP,
+        Boolean BooleanP,
+        double double2P,
+        Double Double2P,
+        List<Integer> integerList,
+        Set<ExampleEnum> enumSet,
+        Map<String, Integer> map
     ) {
     }
 
@@ -66,28 +64,28 @@ class DefaultToolExecutorTest implements WithAssertions {
         UUID memoryId = UUID.randomUUID();
 
         Method method = getClass().getMethod(
-                "example",
-                UUID.class,
-                int.class,
-                Integer.class,
-                long.class,
-                Long.class,
-                float.class,
-                Float.class,
-                double.class,
-                Double.class,
-                byte.class,
-                Byte.class,
-                short.class,
-                Short.class,
-                ExampleEnum.class,
-                boolean.class,
-                Boolean.class,
-                double.class,
-                Double.class,
-                List.class,
-                Set.class,
-                Map.class
+            "example",
+            UUID.class,
+            int.class,
+            Integer.class,
+            long.class,
+            Long.class,
+            float.class,
+            Float.class,
+            double.class,
+            Double.class,
+            byte.class,
+            Byte.class,
+            short.class,
+            Short.class,
+            ExampleEnum.class,
+            boolean.class,
+            Boolean.class,
+            double.class,
+            Double.class,
+            List.class,
+            Set.class,
+            Map.class
         );
 
         Map<String, Object> arguments = new HashMap<>();
@@ -115,27 +113,27 @@ class DefaultToolExecutorTest implements WithAssertions {
         Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, memoryId);
 
         assertThat(args).containsExactly(
-                memoryId,
-                1,
-                2,
-                3L,
-                4L,
-                5.5f,
-                6.5f,
-                7.5,
-                8.5,
-                (byte) 9,
-                (byte) 10,
-                (short) 11,
-                (short) 12,
-                ExampleEnum.A,
-                true,
-                false,
-                1.1,
-                2.2,
-                asList(1, 2, 3),
-                new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)),
-                singletonMap("A", 1)
+            memoryId,
+            1,
+            2,
+            3L,
+            4L,
+            5.5f,
+            6.5f,
+            7.5,
+            8.5,
+            (byte) 9,
+            (byte) 10,
+            (short) 11,
+            (short) 12,
+            ExampleEnum.A,
+            true,
+            false,
+            1.1,
+            2.2,
+            asList(1, 2, 3),
+            new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)),
+            singletonMap("A", 1)
         );
 
         {
@@ -143,18 +141,16 @@ class DefaultToolExecutorTest implements WithAssertions {
             as.put("arg1", "abc");
 
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, memoryId))
-                    .withMessage("Argument \"arg1\" is not convertable to int, got java.lang.String: <abc>")
-                    .withNoCause();
+                .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, memoryId))
+                .withMessage("Argument \"arg1\" is not convertable to int, got java.lang.String: <abc>")
+                .withNoCause();
         }
     }
 
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    static class Person {
+    record Person(
 
-        String name;
-        int age;
+        String name,
+        int age) {
     }
 
     @Test
@@ -170,94 +166,94 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(coerceArgument("A", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
         assertThat(coerceArgument(ExampleEnum.A, "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument("D", "arg", ExampleEnum.class, null))
-                .withMessageContaining("Argument \"arg\" is not a valid enum value for");
+            .isThrownBy(() -> coerceArgument("D", "arg", ExampleEnum.class, null))
+            .withMessageContaining("Argument \"arg\" is not a valid enum value for");
 
         assertThat(coerceArgument(true, "arg", boolean.class, null)).isEqualTo(true);
         assertThat(coerceArgument(Boolean.FALSE, "arg", boolean.class, null)).isEqualTo(false);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument("true", "arg", boolean.class, null))
-                .withMessageContaining("Argument \"arg\" is not convertable to boolean, got java.lang.String: <true>");
+            .isThrownBy(() -> coerceArgument("true", "arg", boolean.class, null))
+            .withMessageContaining("Argument \"arg\" is not convertable to boolean, got java.lang.String: <true>");
 
         assertThat(coerceArgument(1.5, "arg", double.class, null)).isEqualTo(1.5);
         assertThat(coerceArgument(1.5, "arg", Double.class, null)).isEqualTo(1.5);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument("abc", "arg", double.class, null))
-                .withMessageContaining("Argument \"arg\" is not convertable to double, got java.lang.String: <abc>");
+            .isThrownBy(() -> coerceArgument("abc", "arg", double.class, null))
+            .withMessageContaining("Argument \"arg\" is not convertable to double, got java.lang.String: <abc>");
 
         assertThat(coerceArgument(1.5, "arg", float.class, null)).isEqualTo(1.5f);
         assertThat(coerceArgument(1.5, "arg", Float.class, null)).isEqualTo(1.5f);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(1.5 * ((double) Float.MAX_VALUE), "arg", float.class, null))
-                .withMessageContaining("Argument \"arg\" is out of range for float:");
+            .isThrownBy(() -> coerceArgument(1.5 * ((double) Float.MAX_VALUE), "arg", float.class, null))
+            .withMessageContaining("Argument \"arg\" is out of range for float:");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(-1.5 * ((double) Float.MAX_VALUE), "arg", float.class, null))
-                .withMessageContaining("Argument \"arg\" is out of range for float:");
+            .isThrownBy(() -> coerceArgument(-1.5 * ((double) Float.MAX_VALUE), "arg", float.class, null))
+            .withMessageContaining("Argument \"arg\" is out of range for float:");
 
         assertThat(coerceArgument(1.0, "arg", int.class, null)).isEqualTo(1);
         assertThat(coerceArgument(Integer.MAX_VALUE, "arg", int.class, null)).isEqualTo(Integer.MAX_VALUE);
         assertThat(coerceArgument(Integer.MIN_VALUE, "arg", Integer.class, null)).isEqualTo(Integer.MIN_VALUE);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(1.5, "arg", int.class, null))
-                .withMessageContaining("has non-integer value");
+            .isThrownBy(() -> coerceArgument(1.5, "arg", int.class, null))
+            .withMessageContaining("has non-integer value");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(Integer.MAX_VALUE + 1.0, "arg", int.class, null))
-                .withMessageContaining("Argument \"arg\" is out of range for int:");
+            .isThrownBy(() -> coerceArgument(Integer.MAX_VALUE + 1.0, "arg", int.class, null))
+            .withMessageContaining("Argument \"arg\" is out of range for int:");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(Integer.MIN_VALUE - 1.0, "arg", Integer.class, null))
-                .withMessageContaining("Argument \"arg\" is out of range for java.lang.Integer:");
+            .isThrownBy(() -> coerceArgument(Integer.MIN_VALUE - 1.0, "arg", Integer.class, null))
+            .withMessageContaining("Argument \"arg\" is out of range for java.lang.Integer:");
 
         assertThat(coerceArgument(1.0, "arg", long.class, null)).isEqualTo(1L);
         assertThat(coerceArgument(Long.MAX_VALUE, "arg", long.class, null)).isEqualTo(Long.MAX_VALUE);
         assertThat(coerceArgument(Long.MIN_VALUE, "arg", Long.class, null)).isEqualTo(Long.MIN_VALUE);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(1.5, "arg", long.class, null))
-                .withMessageContaining("has non-integer value");
+            .isThrownBy(() -> coerceArgument(1.5, "arg", long.class, null))
+            .withMessageContaining("has non-integer value");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(1.5 * ((double) Long.MAX_VALUE), "arg", long.class, null))
-                .withMessageContaining("Argument \"arg\" is out of range for long:");
+            .isThrownBy(() -> coerceArgument(1.5 * ((double) Long.MAX_VALUE), "arg", long.class, null))
+            .withMessageContaining("Argument \"arg\" is out of range for long:");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(1.5 * ((double) Long.MIN_VALUE), "arg", Long.class, null))
-                .withMessageContaining("Argument \"arg\" is out of range for java.lang.Long:");
+            .isThrownBy(() -> coerceArgument(1.5 * ((double) Long.MIN_VALUE), "arg", Long.class, null))
+            .withMessageContaining("Argument \"arg\" is out of range for java.lang.Long:");
 
         assertThat(coerceArgument(1.0, "arg", short.class, null)).isEqualTo((short) 1);
         assertThat(coerceArgument(Short.MAX_VALUE, "arg", short.class, null)).isEqualTo(Short.MAX_VALUE);
         assertThat(coerceArgument(Short.MIN_VALUE, "arg", Short.class, null)).isEqualTo(Short.MIN_VALUE);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(1.5, "arg", short.class, null))
-                .withMessageContaining("has non-integer value");
+            .isThrownBy(() -> coerceArgument(1.5, "arg", short.class, null))
+            .withMessageContaining("has non-integer value");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(Short.MAX_VALUE + 1.0, "arg", short.class, null))
-                .withMessageContaining("Argument \"arg\" is out of range for short:");
+            .isThrownBy(() -> coerceArgument(Short.MAX_VALUE + 1.0, "arg", short.class, null))
+            .withMessageContaining("Argument \"arg\" is out of range for short:");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(Short.MIN_VALUE - 1.0, "arg", Short.class, null))
-                .withMessageContaining("Argument \"arg\" is out of range for java.lang.Short:");
+            .isThrownBy(() -> coerceArgument(Short.MIN_VALUE - 1.0, "arg", Short.class, null))
+            .withMessageContaining("Argument \"arg\" is out of range for java.lang.Short:");
 
         assertThat(coerceArgument(1.0, "arg", byte.class, null)).isEqualTo((byte) 1);
         assertThat(coerceArgument(Byte.MAX_VALUE, "arg", byte.class, null)).isEqualTo(Byte.MAX_VALUE);
         assertThat(coerceArgument(Byte.MIN_VALUE, "arg", Byte.class, null)).isEqualTo(Byte.MIN_VALUE);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(1.5, "arg", byte.class, null))
-                .withMessageContaining("has non-integer value");
+            .isThrownBy(() -> coerceArgument(1.5, "arg", byte.class, null))
+            .withMessageContaining("has non-integer value");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(Byte.MAX_VALUE + 1.0, "arg", byte.class, null))
-                .withMessageContaining("Argument \"arg\" is out of range for byte:");
+            .isThrownBy(() -> coerceArgument(Byte.MAX_VALUE + 1.0, "arg", byte.class, null))
+            .withMessageContaining("Argument \"arg\" is out of range for byte:");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(Byte.MIN_VALUE - 1.0, "arg", Byte.class, null))
-                .withMessageContaining("Argument \"arg\" is out of range for java.lang.Byte:");
+            .isThrownBy(() -> coerceArgument(Byte.MIN_VALUE - 1.0, "arg", Byte.class, null))
+            .withMessageContaining("Argument \"arg\" is out of range for java.lang.Byte:");
 
         assertThat(coerceArgument(1.5, "arg", BigDecimal.class, null)).isEqualTo(BigDecimal.valueOf(1.5));
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument("abc", "arg", BigDecimal.class, null))
-                .withMessageContaining("Argument \"arg\" is not convertable to java.math.BigDecimal, got java.lang.String: <abc>");
+            .isThrownBy(() -> coerceArgument("abc", "arg", BigDecimal.class, null))
+            .withMessageContaining("Argument \"arg\" is not convertable to java.math.BigDecimal, got java.lang.String: <abc>");
 
         assertThat(coerceArgument(1, "arg", BigInteger.class, null)).isEqualTo(BigInteger.valueOf(1));
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument(1.5, "arg", BigInteger.class, null))
-                .withMessageContaining("has non-integer value");
+            .isThrownBy(() -> coerceArgument(1.5, "arg", BigInteger.class, null))
+            .withMessageContaining("has non-integer value");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument("abc", "arg", BigInteger.class, null))
-                .withMessageContaining("Argument \"arg\" is not convertable to java.math.BigInteger, got java.lang.String: <abc>");
+            .isThrownBy(() -> coerceArgument("abc", "arg", BigInteger.class, null))
+            .withMessageContaining("Argument \"arg\" is not convertable to java.math.BigInteger, got java.lang.String: <abc>");
 
         assertThat(coerceArgument(asList(1.0, 2.0, 3.0), "arg", List.class, new TypeToken<List<Integer>>() {
         }.getType())).isEqualTo(asList(1, 2, 3));
@@ -280,13 +276,13 @@ class DefaultToolExecutorTest implements WithAssertions {
     @Test
     public void should_execute_tool_by_method_name() throws NoSuchMethodException {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
-                .id("1")
-                .name("addOne")
-                .arguments("{ \"arg0\": 2 }")
-                .build();
+            .id("1")
+            .name("addOne")
+            .arguments("{ \"arg0\": 2 }")
+            .build();
 
         DefaultToolExecutor toolExecutor =
-                new DefaultToolExecutor(new TestTool(), TestTool.class.getDeclaredMethod("addOne", int.class));
+            new DefaultToolExecutor(new TestTool(), TestTool.class.getDeclaredMethod("addOne", int.class));
 
         String result = toolExecutor.execute(request, "DEFAULT");
 
@@ -296,10 +292,10 @@ class DefaultToolExecutorTest implements WithAssertions {
     @Test
     public void should_execute_tool_with_execution_request() {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
-                .id("1")
-                .name("addOne")
-                .arguments("{ \"arg0\": 2 }")
-                .build();
+            .id("1")
+            .name("addOne")
+            .arguments("{ \"arg0\": 2 }")
+            .build();
 
         DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestTool(), request);
 
@@ -311,21 +307,21 @@ class DefaultToolExecutorTest implements WithAssertions {
     @Test
     public void should_not_execute_tool_with_wrong_execution_request() throws NoSuchMethodException {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
-                .id("1")
-                .name("unknownMethod")
-                .arguments("{ \"arg0\": 2 }")
-                .build();
+            .id("1")
+            .name("unknownMethod")
+            .arguments("{ \"arg0\": 2 }")
+            .build();
 
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), request))
-                .withMessageContaining("Method 'unknownMethod' is not found in object");
+            .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), request))
+            .withMessageContaining("Method 'unknownMethod' is not found in object");
 
     }
 
     @Test
     public void should_not_execute_tool_with_null_execution_request() {
         assertThatExceptionOfType(NullPointerException.class)
-                .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), (ToolExecutionRequest) null));
+            .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), (ToolExecutionRequest) null));
 
     }
 
@@ -396,89 +392,89 @@ class DefaultToolExecutorTest implements WithAssertions {
     public void should_execute_tools_with_collection() {
 
         ToolExecutionRequest request = ToolExecutionRequest.builder()
-                .id("1")
-                .name("save")
-                .arguments("{ \"arg0\": {\"name\": \"Klaus\", \"age\": 42} }")
-                .build();
+            .id("1")
+            .name("save")
+            .arguments("{ \"arg0\": {\"name\": \"Klaus\", \"age\": 42} }")
+            .build();
 
         DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new PersonTool(), request);
 
         String result = toolExecutor.execute(request, "DEFAULT");
         assertThat(result).isEqualTo("{\n" +
-                "  \"name\": \"Klaus\",\n" +
-                "  \"age\": 42\n" +
-                "}");
+            "  \"name\": \"Klaus\",\n" +
+            "  \"age\": 42\n" +
+            "}");
 
         ToolExecutionRequest request2 = ToolExecutionRequest.builder()
-                .id("2")
-                .name("saveList")
-                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
-                .build();
+            .id("2")
+            .name("saveList")
+            .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+            .build();
         DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
         String result2 = toolExecutor2.execute(request2, "DEFAULT");
         assertThat(result2).isEqualTo("[\n" +
-                "  {\n" +
-                "    \"name\": \"Klaus\",\n" +
-                "    \"age\": 42\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"name\": \"Peter\",\n" +
-                "    \"age\": 43\n" +
-                "  }\n" +
-                "]");
+            "  {\n" +
+            "    \"name\": \"Klaus\",\n" +
+            "    \"age\": 42\n" +
+            "  },\n" +
+            "  {\n" +
+            "    \"name\": \"Peter\",\n" +
+            "    \"age\": 43\n" +
+            "  }\n" +
+            "]");
 
         ToolExecutionRequest request3 = ToolExecutionRequest.builder()
-                .id("3")
-                .name("saveSet")
-                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
-                .build();
+            .id("3")
+            .name("saveSet")
+            .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+            .build();
         DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
         String result3 = toolExecutor3.execute(request3, "DEFAULT");
         assertThat(result3).isEqualTo("[\n" +
-                "  {\n" +
-                "    \"name\": \"Klaus\",\n" +
-                "    \"age\": 42\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"name\": \"Peter\",\n" +
-                "    \"age\": 43\n" +
-                "  }\n" +
-                "]");
+            "  {\n" +
+            "    \"name\": \"Klaus\",\n" +
+            "    \"age\": 42\n" +
+            "  },\n" +
+            "  {\n" +
+            "    \"name\": \"Peter\",\n" +
+            "    \"age\": 43\n" +
+            "  }\n" +
+            "]");
 
         ToolExecutionRequest request4 = ToolExecutionRequest.builder()
-                .id("4")
-                .name("saveMap")
-                .arguments("{ \"arg0\": { \"p1\" : {\"name\": \"Klaus\", \"age\": 42}, \"p2\" : {\"name\": \"Peter\", \"age\": 43} } }")
-                .build();
+            .id("4")
+            .name("saveMap")
+            .arguments("{ \"arg0\": { \"p1\" : {\"name\": \"Klaus\", \"age\": 42}, \"p2\" : {\"name\": \"Peter\", \"age\": 43} } }")
+            .build();
         DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
         String result4 = toolExecutor4.execute(request4, "DEFAULT");
         assertThat(result4).isEqualTo("{\n" +
-                "  \"p1\": {\n" +
-                "    \"name\": \"Klaus\",\n" +
-                "    \"age\": 42\n" +
-                "  },\n" +
-                "  \"p2\": {\n" +
-                "    \"name\": \"Peter\",\n" +
-                "    \"age\": 43\n" +
-                "  }\n" +
-                "}");
+            "  \"p1\": {\n" +
+            "    \"name\": \"Klaus\",\n" +
+            "    \"age\": 42\n" +
+            "  },\n" +
+            "  \"p2\": {\n" +
+            "    \"name\": \"Peter\",\n" +
+            "    \"age\": 43\n" +
+            "  }\n" +
+            "}");
 
         ToolExecutionRequest request5 = ToolExecutionRequest.builder()
-                .id("5")
-                .name("saveArray")
-                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
-                .build();
+            .id("5")
+            .name("saveArray")
+            .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+            .build();
         DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
         String result5 = toolExecutor5.execute(request5, "DEFAULT");
         assertThat(result5).isEqualTo("[\n" +
-                "  {\n" +
-                "    \"name\": \"Klaus\",\n" +
-                "    \"age\": 42\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"name\": \"Peter\",\n" +
-                "    \"age\": 43\n" +
-                "  }\n" +
-                "]");
+            "  {\n" +
+            "    \"name\": \"Klaus\",\n" +
+            "    \"age\": 42\n" +
+            "  },\n" +
+            "  {\n" +
+            "    \"name\": \"Peter\",\n" +
+            "    \"age\": 43\n" +
+            "  }\n" +
+            "]");
     }
 }
