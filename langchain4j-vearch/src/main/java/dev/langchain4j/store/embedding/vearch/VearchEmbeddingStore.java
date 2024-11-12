@@ -30,6 +30,13 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * Represent a <a href="https://vearch.github.io/home">Vearch</a> index as an {@link EmbeddingStore}.
+ *
+ * <p>Current implementation assumes the index uses the cosine distance metric.</p>
+ *
+ * <p>Supported Vearch version: 3.4.x and 3.5.x</p>
+ */
 public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final VearchConfig vearchConfig;
