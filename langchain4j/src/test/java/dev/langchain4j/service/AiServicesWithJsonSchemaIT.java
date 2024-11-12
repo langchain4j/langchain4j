@@ -11,14 +11,14 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import org.junit.jupiter.api.Assertions;
+import dev.langchain4j.service.AiServicesWithJsonSchemaIT.MaritalStatusExtractor.MaritalStatus;
+import dev.langchain4j.service.AiServicesWithJsonSchemaIT.WeatherExtractor.WeatherCharacteristic;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,7 +27,7 @@ import java.util.Set;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
+import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.MaritalStatusExtractor.MaritalStatus.MARRIED;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -254,18 +254,10 @@ public abstract class AiServicesWithJsonSchemaIT {
                 "Staniel is 33 years old, 1.70m height and married.";
 
             // when
-            List<MaritalStatusExtractor.MaritalStatus> statuses = personExtractor.extractMaritalStatusFrom(text);
+            List<MaritalStatus> statuses = personExtractor.extractMaritalStatusFrom(text);
 
             // then
-            assertThat(statuses).hasSize(3);
-
-            // Use assertThat with filters to ensure each marital status is in the list
-            ArrayList<MaritalStatusExtractor.MaritalStatus> maritalStatuses = new ArrayList<>();
-            maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.SINGLE);
-            maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.MARRIED);
-            maritalStatuses.add(MaritalStatusExtractor.MaritalStatus.MARRIED);
-            assertThat(statuses).containsExactly(MaritalStatusExtractor.MaritalStatus.SINGLE,
-                MaritalStatusExtractor.MaritalStatus.MARRIED, MaritalStatusExtractor.MaritalStatus.MARRIED);
+            assertThat(statuses).containsExactly(MaritalStatus.SINGLE, MARRIED, MARRIED);
 
             verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
@@ -313,18 +305,15 @@ public abstract class AiServicesWithJsonSchemaIT {
                 " New York had cloudy and windy weather.";
 
             // when
-            Set<WeatherExtractor.WeatherCharacteristic> characteristics = weatherExtractor.extractWeatherCharacteristicsFrom(text);
+            Set<WeatherCharacteristic> characteristics = weatherExtractor.extractWeatherCharacteristicsFrom(text);
 
             // then
-            assertThat(characteristics).hasSize(4);
-
-            // Use assertThat with filters to ensure each weather characteristic is in the list
-            ArrayList<WeatherExtractor.WeatherCharacteristic> expectedCharacteristics = new ArrayList<>();
-            expectedCharacteristics.add(WeatherExtractor.WeatherCharacteristic.SUNNY);
-            expectedCharacteristics.add(WeatherExtractor.WeatherCharacteristic.RAINY);
-            expectedCharacteristics.add(WeatherExtractor.WeatherCharacteristic.CLOUDY);
-            expectedCharacteristics.add(WeatherExtractor.WeatherCharacteristic.WINDY);
-            Assertions.assertTrue(characteristics.containsAll(expectedCharacteristics));
+            assertThat(characteristics).containsExactlyInAnyOrder(
+                WeatherCharacteristic.SUNNY,
+                WeatherCharacteristic.WINDY,
+                WeatherCharacteristic.RAINY,
+                WeatherCharacteristic.CLOUDY
+            );
 
             verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
@@ -383,7 +372,7 @@ public abstract class AiServicesWithJsonSchemaIT {
                     .jsonSchema(JsonSchema.builder()
                         .name("MaritalStatus")
                         .rootElement(JsonObjectSchema.builder()
-                            .addEnumProperty("MaritalStatus", List.of("SINGLE", "MARRIED"))
+                            .addEnumProperty("value", List.of("SINGLE", "MARRIED"))
                             .build())
                         .build())
                     .build())
@@ -488,7 +477,7 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             // then
             assertThat(person.name).isEqualTo("Klaus");
-            assertThat(person.maritalStatus).isEqualTo(SINGLE);
+            assertThat(person.maritalStatus).isEqualTo(PersonExtractor3.MaritalStatus.SINGLE);
 
             verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
