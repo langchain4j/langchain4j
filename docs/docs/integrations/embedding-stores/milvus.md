@@ -64,7 +64,8 @@ MilvusServiceClient customMilvusClient = new MilvusServiceClient(
 );
 
 // Use the custom client in the builder
-MilvusEmbeddingStore store = new MilvusEmbeddingStore.Builder()
+MilvusEmbeddingStore store = MilvusEmbeddingStore.builder()
+
     .milvusClient(customMilvusClient)          // Use an existing Milvus client
     .collectionName("example_collection")      // Name of the collection
     .dimension(128)                            // Dimension of vectors
