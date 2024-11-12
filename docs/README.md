@@ -11,6 +11,11 @@ This is built using [Docusaurus](https://docusaurus.io/), a modern static docs/w
 
 - [Node.JS](https://nodejs.org/en/download) (20+)
 
+If Node.js is managed by Node Version Manager (nvm), run:
+```shell
+nvm use
+```
+
 ### Installation
 
 This command installs all the Node dependencies.
