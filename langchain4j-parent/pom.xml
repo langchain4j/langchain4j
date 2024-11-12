@@ -31,7 +31,7 @@
         <jtokkit.version>1.1.0</jtokkit.version>
         <langchain4j-embeddings.version>${project.version}</langchain4j-embeddings.version>
         <lombok.version>1.18.30</lombok.version>
-        <slf4j-api.version>2.0.7</slf4j-api.version>
+        <slf4j-api.version>2.0.16</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.11.3</junit.version>
         <testcontainers.version>1.20.3</testcontainers.version>
