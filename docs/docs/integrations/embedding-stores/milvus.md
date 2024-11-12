@@ -31,7 +31,8 @@ There are 2 ways to create `MilvusEmbeddingStore`:
 
 
 ```java
-MilvusEmbeddingStore store = new MilvusEmbeddingStore.Builder()
+MilvusEmbeddingStore store = MilvusEmbeddingStore.builder()
+
     .host("localhost")                         // Host for Milvus instance
     .port(19530)                               // Port for Milvus instance
     .collectionName("example_collection")      // Name of the collection
