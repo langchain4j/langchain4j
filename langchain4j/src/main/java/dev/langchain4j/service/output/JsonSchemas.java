@@ -48,17 +48,15 @@ public class JsonSchemas {
         JsonSchema jsonSchema;
 
         if (typeHasRawClass(returnType, List.class) || typeHasRawClass(returnType, Set.class)) {
-            rawClass = resolveFirstGenericParameterClass(returnType);
-            Class<?> finalRawClass = rawClass;
-            if (finalRawClass != null && finalRawClass.isEnum()) {
-                jsonSchema = getJsonSchema(returnType, rawClass,
+            Class<?> actualType = resolveFirstGenericParameterClass(returnType);
+            if (actualType != null && actualType.isEnum()) {
+                jsonSchema = getJsonSchema(returnType, actualType,
                     JsonEnumSchema.builder()
-                        .enumValues(stream(finalRawClass.getEnumConstants()).map(Object::toString).toList())
+                        .enumValues(stream(actualType.getEnumConstants()).map(Object::toString).toList())
                         .build());
             } else {
-                assert rawClass != null;
-                jsonSchema = getJsonSchema(returnType, rawClass,
-                    jsonObjectOrReferenceSchemaFrom(finalRawClass, null, new LinkedHashMap<>(), true));
+                jsonSchema = getJsonSchema(returnType, actualType,
+                    jsonObjectOrReferenceSchemaFrom(actualType, null, new LinkedHashMap<>(), true));
             }
         } else {
             Class<?> returnTypeClass = (Class<?>) returnType;
