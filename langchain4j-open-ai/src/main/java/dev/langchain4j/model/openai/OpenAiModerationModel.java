@@ -55,19 +55,19 @@ public class OpenAiModerationModel implements ModerationModel {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-            .openAiApiKey(apiKey)
-            .baseUrl(baseUrl)
-            .organizationId(organizationId)
-            .callTimeout(timeout)
-            .connectTimeout(timeout)
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .proxy(proxy)
-            .logRequests(logRequests)
-            .logResponses(logResponses)
-            .userAgent(DEFAULT_USER_AGENT)
-            .customHeaders(customHeaders)
-            .build();
+                .openAiApiKey(apiKey)
+                .baseUrl(baseUrl)
+                .organizationId(organizationId)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
+                .proxy(proxy)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
+                .build();
         this.modelName = getOrDefault(modelName, TEXT_MODERATION_LATEST);
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
@@ -84,9 +84,9 @@ public class OpenAiModerationModel implements ModerationModel {
     private Response<Moderation> moderateInternal(List<String> inputs) {
 
         ModerationRequest request = ModerationRequest.builder()
-            .model(modelName)
-            .input(inputs)
-            .build();
+                .model(modelName)
+                .input(inputs)
+                .build();
 
         ModerationResponse response = withRetry(() -> client.moderation(request).execute(), maxRetries);
 
@@ -105,8 +105,8 @@ public class OpenAiModerationModel implements ModerationModel {
     @SuppressWarnings("deprecation")
     public Response<Moderation> moderate(List<ChatMessage> messages) {
         List<String> inputs = messages.stream()
-            .map(ChatMessage::text)
-            .collect(toList());
+                .map(ChatMessage::text)
+                .collect(toList());
 
         return moderateInternal(inputs);
     }

@@ -62,19 +62,19 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-            .openAiApiKey(apiKey)
-            .baseUrl(baseUrl)
-            .organizationId(organizationId)
-            .callTimeout(timeout)
-            .connectTimeout(timeout)
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .proxy(proxy)
-            .logRequests(logRequests)
-            .logResponses(logResponses)
-            .userAgent(DEFAULT_USER_AGENT)
-            .customHeaders(customHeaders)
-            .build();
+                .openAiApiKey(apiKey)
+                .baseUrl(baseUrl)
+                .organizationId(organizationId)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
+                .proxy(proxy)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
+                .build();
         this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
         this.dimensions = dimensions;
         this.user = user;
@@ -99,8 +99,8 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
         List<String> texts = textSegments.stream()
-            .map(TextSegment::text)
-            .collect(toList());
+                .map(TextSegment::text)
+                .collect(toList());
 
         return embedTexts(texts);
     }
@@ -108,21 +108,21 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     private Response<List<Embedding>> embedTexts(List<String> texts) {
 
         EmbeddingRequest request = EmbeddingRequest.builder()
-            .input(texts)
-            .model(modelName)
-            .dimensions(dimensions)
-            .user(user)
-            .build();
+                .input(texts)
+                .model(modelName)
+                .dimensions(dimensions)
+                .user(user)
+                .build();
 
         EmbeddingResponse response = withRetry(() -> client.embedding(request).execute(), maxRetries);
 
         List<Embedding> embeddings = response.data().stream()
-            .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
-            .collect(toList());
+                .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
+                .collect(toList());
 
         return Response.from(
-            embeddings,
-            tokenUsageFrom(response.usage())
+                embeddings,
+                tokenUsageFrom(response.usage())
         );
     }
 

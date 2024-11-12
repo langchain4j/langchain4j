@@ -119,19 +119,19 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-            .openAiApiKey(apiKey)
-            .baseUrl(baseUrl)
-            .organizationId(organizationId)
-            .callTimeout(timeout)
-            .connectTimeout(timeout)
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .proxy(proxy)
-            .logRequests(logRequests)
-            .logResponses(logResponses)
-            .userAgent(DEFAULT_USER_AGENT)
-            .customHeaders(customHeaders)
-            .build();
+                .openAiApiKey(apiKey)
+                .baseUrl(baseUrl)
+                .organizationId(organizationId)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
+                .proxy(proxy)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
+                .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -142,8 +142,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.frequencyPenalty = frequencyPenalty;
         this.logitBias = logitBias;
         this.responseFormat = responseFormat == null ? null : ResponseFormat.builder()
-            .type(ResponseFormatType.valueOf(responseFormat.toUpperCase(Locale.ROOT)))
-            .build();
+                .type(ResponseFormatType.valueOf(responseFormat.toUpperCase(Locale.ROOT)))
+                .build();
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
         this.seed = seed;
         this.user = user;
@@ -185,16 +185,16 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     @Override
     public ChatResponse chat(ChatRequest request) {
         Response<AiMessage> response = generate(
-            request.messages(),
-            request.toolSpecifications(),
-            null,
-            getOrDefault(toOpenAiResponseFormat(request.responseFormat(), strictJsonSchema), this.responseFormat)
+                request.messages(),
+                request.toolSpecifications(),
+                null,
+                getOrDefault(toOpenAiResponseFormat(request.responseFormat(), strictJsonSchema), this.responseFormat)
         );
         return ChatResponse.builder()
-            .aiMessage(response.content())
-            .tokenUsage(response.tokenUsage())
-            .finishReason(response.finishReason())
-            .build();
+                .aiMessage(response.content())
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .build();
     }
 
     private Response<AiMessage> generate(List<ChatMessage> messages,
@@ -203,26 +203,26 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                                          ResponseFormat responseFormat) {
 
         if (responseFormat != null
-            && responseFormat.type() == JSON_SCHEMA
-            && responseFormat.jsonSchema() == null) {
+                && responseFormat.type() == JSON_SCHEMA
+                && responseFormat.jsonSchema() == null) {
             responseFormat = null;
         }
 
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
-            .model(modelName)
-            .messages(toOpenAiMessages(messages))
-            .temperature(temperature)
-            .topP(topP)
-            .stop(stop)
-            .maxTokens(maxTokens)
-            .maxCompletionTokens(maxCompletionTokens)
-            .presencePenalty(presencePenalty)
-            .frequencyPenalty(frequencyPenalty)
-            .logitBias(logitBias)
-            .responseFormat(responseFormat)
-            .seed(seed)
-            .user(user)
-            .parallelToolCalls(parallelToolCalls);
+                .model(modelName)
+                .messages(toOpenAiMessages(messages))
+                .temperature(temperature)
+                .topP(topP)
+                .stop(stop)
+                .maxTokens(maxTokens)
+                .maxCompletionTokens(maxCompletionTokens)
+                .presencePenalty(presencePenalty)
+                .frequencyPenalty(frequencyPenalty)
+                .logitBias(logitBias)
+                .responseFormat(responseFormat)
+                .seed(seed)
+                .user(user)
+                .parallelToolCalls(parallelToolCalls);
 
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
             requestBuilder.tools(toTools(toolSpecifications, strictTools));
@@ -248,20 +248,20 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             ChatCompletionResponse chatCompletionResponse = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
             Response<AiMessage> response = Response.from(
-                aiMessageFrom(chatCompletionResponse),
-                tokenUsageFrom(chatCompletionResponse.usage()),
-                finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason())
+                    aiMessageFrom(chatCompletionResponse),
+                    tokenUsageFrom(chatCompletionResponse.usage()),
+                    finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason())
             );
 
             ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                chatCompletionResponse.id(),
-                chatCompletionResponse.model(),
-                response
+                    chatCompletionResponse.id(),
+                    chatCompletionResponse.model(),
+                    response
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                modelListenerResponse,
-                modelListenerRequest,
-                attributes
+                    modelListenerResponse,
+                    modelListenerRequest,
+                    attributes
             );
             listeners.forEach(listener -> {
                 try {
@@ -282,10 +282,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             }
 
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                error,
-                modelListenerRequest,
-                null,
-                attributes
+                    error,
+                    modelListenerRequest,
+                    null,
+                    attributes
             );
 
             listeners.forEach(listener -> {

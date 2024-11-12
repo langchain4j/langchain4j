@@ -54,41 +54,41 @@ public class OpenAiImageModel implements ImageModel {
      */
     @SuppressWarnings("rawtypes")
     public OpenAiImageModel(
-        String baseUrl,
-        String apiKey,
-        String organizationId,
-        String modelName,
-        String size,
-        String quality,
-        String style,
-        String user,
-        String responseFormat,
-        Duration timeout,
-        Integer maxRetries,
-        Proxy proxy,
-        Boolean logRequests,
-        Boolean logResponses,
-        Boolean withPersisting,
-        Path persistTo,
-        Map<String, String> customHeaders
+            String baseUrl,
+            String apiKey,
+            String organizationId,
+            String modelName,
+            String size,
+            String quality,
+            String style,
+            String user,
+            String responseFormat,
+            Duration timeout,
+            Integer maxRetries,
+            Proxy proxy,
+            Boolean logRequests,
+            Boolean logResponses,
+            Boolean withPersisting,
+            Path persistTo,
+            Map<String, String> customHeaders
     ) {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         OpenAiClient.Builder cBuilder = OpenAiClient
-            .builder()
-            .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
-            .openAiApiKey(apiKey)
-            .organizationId(organizationId)
-            .callTimeout(timeout)
-            .connectTimeout(timeout)
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .proxy(proxy)
-            .logRequests(getOrDefault(logRequests, false))
-            .logResponses(getOrDefault(logResponses, false))
-            .userAgent(DEFAULT_USER_AGENT)
-            .persistTo(persistTo)
-            .customHeaders(customHeaders);
+                .builder()
+                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
+                .openAiApiKey(apiKey)
+                .organizationId(organizationId)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
+                .proxy(proxy)
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(getOrDefault(logResponses, false))
+                .userAgent(DEFAULT_USER_AGENT)
+                .persistTo(persistTo)
+                .customHeaders(customHeaders);
 
         if (withPersisting != null && withPersisting) {
             cBuilder.withPersisting();
@@ -125,7 +125,7 @@ public class OpenAiImageModel implements ImageModel {
         GenerateImagesResponse response = withRetry(() -> client.imagesGeneration(request), maxRetries).execute();
 
         return Response.from(
-            response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList())
+                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList())
         );
     }
 
@@ -278,13 +278,13 @@ public class OpenAiImageModel implements ImageModel {
 
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {
         GenerateImagesRequest.Builder requestBuilder = GenerateImagesRequest
-            .builder()
-            .prompt(prompt)
-            .size(size)
-            .quality(quality)
-            .style(style)
-            .user(user)
-            .responseFormat(responseFormat);
+                .builder()
+                .prompt(prompt)
+                .size(size)
+                .quality(quality)
+                .style(style)
+                .user(user)
+                .responseFormat(responseFormat);
 
         if (DALL_E_2.equals(modelName)) {
             requestBuilder.model(dev.ai4j.openai4j.image.ImageModel.DALL_E_2);

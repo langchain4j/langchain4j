@@ -53,19 +53,19 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-            .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
-            .openAiApiKey(apiKey)
-            .organizationId(organizationId)
-            .callTimeout(timeout)
-            .connectTimeout(timeout)
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .proxy(proxy)
-            .logRequests(logRequests)
-            .logResponses(logResponses)
-            .userAgent(DEFAULT_USER_AGENT)
-            .customHeaders(customHeaders)
-            .build();
+                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
+                .openAiApiKey(apiKey)
+                .organizationId(organizationId)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
+                .proxy(proxy)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
+                .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
         this.temperature = getOrDefault(temperature, 0.7);
         this.maxRetries = getOrDefault(maxRetries, 3);
@@ -80,18 +80,18 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     public Response<String> generate(String prompt) {
 
         CompletionRequest request = CompletionRequest.builder()
-            .model(modelName)
-            .prompt(prompt)
-            .temperature(temperature)
-            .build();
+                .model(modelName)
+                .prompt(prompt)
+                .temperature(temperature)
+                .build();
 
         CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
 
         CompletionChoice completionChoice = response.choices().get(0);
         return Response.from(
-            completionChoice.text(),
-            tokenUsageFrom(response.usage()),
-            finishReasonFrom(completionChoice.finishReason())
+                completionChoice.text(),
+                tokenUsageFrom(response.usage()),
+                finishReasonFrom(completionChoice.finishReason())
         );
     }
 

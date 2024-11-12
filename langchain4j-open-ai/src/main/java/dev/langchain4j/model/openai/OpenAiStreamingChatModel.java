@@ -103,19 +103,19 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-            .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
-            .openAiApiKey(apiKey)
-            .organizationId(organizationId)
-            .callTimeout(timeout)
-            .connectTimeout(timeout)
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .proxy(proxy)
-            .logRequests(logRequests)
-            .logStreamingResponses(logResponses)
-            .userAgent(DEFAULT_USER_AGENT)
-            .customHeaders(customHeaders)
-            .build();
+                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
+                .openAiApiKey(apiKey)
+                .organizationId(organizationId)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
+                .proxy(proxy)
+                .logRequests(logRequests)
+                .logStreamingResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
+                .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -126,8 +126,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.frequencyPenalty = frequencyPenalty;
         this.logitBias = logitBias;
         this.responseFormat = responseFormat == null ? null : ResponseFormat.builder()
-            .type(ResponseFormatType.valueOf(responseFormat.toUpperCase(Locale.ROOT)))
-            .build();
+                .type(ResponseFormatType.valueOf(responseFormat.toUpperCase(Locale.ROOT)))
+                .build();
         this.seed = seed;
         this.user = user;
         this.strictTools = getOrDefault(strictTools, false);
@@ -161,24 +161,24 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                           StreamingResponseHandler<AiMessage> handler
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
-            .stream(true)
-            .streamOptions(StreamOptions.builder()
-                .includeUsage(true)
-                .build())
-            .model(modelName)
-            .messages(toOpenAiMessages(messages))
-            .temperature(temperature)
-            .topP(topP)
-            .stop(stop)
-            .maxTokens(maxTokens)
-            .maxCompletionTokens(maxCompletionTokens)
-            .presencePenalty(presencePenalty)
-            .frequencyPenalty(frequencyPenalty)
-            .logitBias(logitBias)
-            .responseFormat(responseFormat)
-            .seed(seed)
-            .user(user)
-            .parallelToolCalls(parallelToolCalls);
+                .stream(true)
+                .streamOptions(StreamOptions.builder()
+                        .includeUsage(true)
+                        .build())
+                .model(modelName)
+                .messages(toOpenAiMessages(messages))
+                .temperature(temperature)
+                .topP(topP)
+                .stop(stop)
+                .maxTokens(maxTokens)
+                .maxCompletionTokens(maxCompletionTokens)
+                .presencePenalty(presencePenalty)
+                .frequencyPenalty(frequencyPenalty)
+                .logitBias(logitBias)
+                .responseFormat(responseFormat)
+                .seed(seed)
+                .user(user)
+                .parallelToolCalls(parallelToolCalls);
 
         if (toolThatMustBeExecuted != null) {
             requestBuilder.tools(toTools(singletonList(toolThatMustBeExecuted), strictTools));
@@ -206,67 +206,67 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         AtomicReference<String> responseModel = new AtomicReference<>();
 
         client.chatCompletion(request)
-            .onPartialResponse(partialResponse -> {
-                responseBuilder.append(partialResponse);
-                handle(partialResponse, handler);
+                .onPartialResponse(partialResponse -> {
+                    responseBuilder.append(partialResponse);
+                    handle(partialResponse, handler);
 
-                if (!isNullOrBlank(partialResponse.id())) {
-                    responseId.set(partialResponse.id());
-                }
-                if (!isNullOrBlank(partialResponse.model())) {
-                    responseModel.set(partialResponse.model());
-                }
-            })
-            .onComplete(() -> {
-                Response<AiMessage> response = responseBuilder.build();
-
-                ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                    responseId.get(),
-                    responseModel.get(),
-                    response
-                );
-                ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
-                    attributes
-                );
-                listeners.forEach(listener -> {
-                    try {
-                        listener.onResponse(responseContext);
-                    } catch (Exception e) {
-                        log.warn("Exception while calling model listener", e);
+                    if (!isNullOrBlank(partialResponse.id())) {
+                        responseId.set(partialResponse.id());
                     }
-                });
-
-                handler.onComplete(response);
-            })
-            .onError(error -> {
-                Response<AiMessage> response = responseBuilder.build();
-
-                ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
-                    responseId.get(),
-                    responseModel.get(),
-                    response
-                );
-
-                ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    error,
-                    modelListenerRequest,
-                    modelListenerPartialResponse,
-                    attributes
-                );
-
-                listeners.forEach(listener -> {
-                    try {
-                        listener.onError(errorContext);
-                    } catch (Exception e) {
-                        log.warn("Exception while calling model listener", e);
+                    if (!isNullOrBlank(partialResponse.model())) {
+                        responseModel.set(partialResponse.model());
                     }
-                });
+                })
+                .onComplete(() -> {
+                    Response<AiMessage> response = responseBuilder.build();
 
-                handler.onError(error);
-            })
-            .execute();
+                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                            responseId.get(),
+                            responseModel.get(),
+                            response
+                    );
+                    ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                            modelListenerResponse,
+                            modelListenerRequest,
+                            attributes
+                    );
+                    listeners.forEach(listener -> {
+                        try {
+                            listener.onResponse(responseContext);
+                        } catch (Exception e) {
+                            log.warn("Exception while calling model listener", e);
+                        }
+                    });
+
+                    handler.onComplete(response);
+                })
+                .onError(error -> {
+                    Response<AiMessage> response = responseBuilder.build();
+
+                    ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
+                            responseId.get(),
+                            responseModel.get(),
+                            response
+                    );
+
+                    ChatModelErrorContext errorContext = new ChatModelErrorContext(
+                            error,
+                            modelListenerRequest,
+                            modelListenerPartialResponse,
+                            attributes
+                    );
+
+                    listeners.forEach(listener -> {
+                        try {
+                            listener.onError(errorContext);
+                        } catch (Exception e) {
+                            log.warn("Exception while calling model listener", e);
+                        }
+                    });
+
+                    handler.onError(error);
+                })
+                .execute();
     }
 
     private static void handle(ChatCompletionResponse partialResponse,

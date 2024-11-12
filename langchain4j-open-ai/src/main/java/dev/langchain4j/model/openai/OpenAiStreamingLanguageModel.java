@@ -52,19 +52,19 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-            .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
-            .openAiApiKey(apiKey)
-            .organizationId(organizationId)
-            .callTimeout(timeout)
-            .connectTimeout(timeout)
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .proxy(proxy)
-            .logRequests(logRequests)
-            .logStreamingResponses(logResponses)
-            .userAgent(DEFAULT_USER_AGENT)
-            .customHeaders(customHeaders)
-            .build();
+                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
+                .openAiApiKey(apiKey)
+                .organizationId(organizationId)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
+                .proxy(proxy)
+                .logRequests(logRequests)
+                .logStreamingResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
+                .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
         this.temperature = getOrDefault(temperature, 0.7);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
@@ -78,37 +78,37 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
 
         CompletionRequest request = CompletionRequest.builder()
-            .stream(true)
-            .streamOptions(StreamOptions.builder()
-                .includeUsage(true)
-                .build())
-            .model(modelName)
-            .prompt(prompt)
-            .temperature(temperature)
-            .build();
+                .stream(true)
+                .streamOptions(StreamOptions.builder()
+                        .includeUsage(true)
+                        .build())
+                .model(modelName)
+                .prompt(prompt)
+                .temperature(temperature)
+                .build();
 
         OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder();
 
         client.completion(request)
-            .onPartialResponse(partialResponse -> {
-                responseBuilder.append(partialResponse);
-                for (CompletionChoice choice : partialResponse.choices()) {
-                    String token = choice.text();
-                    if (isNotNullOrEmpty(token)) {
-                        handler.onNext(token);
+                .onPartialResponse(partialResponse -> {
+                    responseBuilder.append(partialResponse);
+                    for (CompletionChoice choice : partialResponse.choices()) {
+                        String token = choice.text();
+                        if (isNotNullOrEmpty(token)) {
+                            handler.onNext(token);
+                        }
                     }
-                }
-            })
-            .onComplete(() -> {
-                Response<AiMessage> response = responseBuilder.build();
-                handler.onComplete(Response.from(
-                    response.content().text(),
-                    response.tokenUsage(),
-                    response.finishReason()
-                ));
-            })
-            .onError(handler::onError)
-            .execute();
+                })
+                .onComplete(() -> {
+                    Response<AiMessage> response = responseBuilder.build();
+                    handler.onComplete(Response.from(
+                            response.content().text(),
+                            response.tokenUsage(),
+                            response.finishReason()
+                    ));
+                })
+                .onError(handler::onError)
+                .execute();
     }
 
     @Override
