@@ -15,6 +15,7 @@ import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -26,7 +27,6 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
@@ -100,7 +100,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
         List<String> texts = textSegments.stream()
                 .map(TextSegment::text)
-                .collect(toList());
+                .toList();
 
         return embedTexts(texts);
     }
@@ -118,7 +118,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
         List<Embedding> embeddings = response.data().stream()
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
-                .collect(toList());
+                .toList();
 
         return Response.from(
                 embeddings,
@@ -242,8 +242,22 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
             return new OpenAiEmbeddingModel(this.baseUrl, this.apiKey, this.organizationId, this.modelName, this.dimensions, this.user, this.timeout, this.maxRetries, this.proxy, this.logRequests, this.logResponses, this.tokenizer, this.customHeaders);
         }
 
+        @Override
         public String toString() {
-            return "OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", organizationId=" + this.organizationId + ", modelName=" + this.modelName + ", dimensions=" + this.dimensions + ", user=" + this.user + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ", tokenizer=" + this.tokenizer + ", customHeaders=" + this.customHeaders + ")";
+            return new StringJoiner(", ", OpenAiEmbeddingModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("baseUrl='" + baseUrl + "'")
+                    .add("organizationId='" + organizationId + "'")
+                    .add("modelName='" + modelName + "'")
+                    .add("dimensions=" + dimensions)
+                    .add("user='" + user + "'")
+                    .add("timeout=" + timeout)
+                    .add("maxRetries=" + maxRetries)
+                    .add("proxy=" + proxy)
+                    .add("logRequests=" + logRequests)
+                    .add("logResponses=" + logResponses)
+                    .add("tokenizer=" + tokenizer)
+                    .add("customHeaders=" + customHeaders)
+                    .toString();
         }
     }
 }
