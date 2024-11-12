@@ -52,7 +52,7 @@ public enum MistralAiChatModelName {
 
     MISTRAL_LARGE_LATEST("mistral-large-latest"), // aka mistral-large-2402
 
-    MISTRAL_MODERATE_LATEST("mistral-moderation-latest"); // aka mistral-moderation-latest
+    MISTRAL_MODERATION_LATEST("mistral-moderation-latest");
 
     private final String value;
 
