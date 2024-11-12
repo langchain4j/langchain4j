@@ -22,12 +22,12 @@ import static dev.langchain4j.internal.Utils.quoted;
  *     .parameters(JsonObjectSchema.builder()
  *         .addStringProperty("city", "The name of the city, e.g., Munich")
  *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
- *         .required("city") // please specify the required properties explicitly
+ *         .required("city") // please specify mandatory properties explicitly
  *         .build())
  *     .build();
  * </pre>
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class ToolParameters {
 
     private final String type;
@@ -115,7 +115,7 @@ public class ToolParameters {
      * @return a {@link Builder}.
      * @deprecated please use {@link JsonObjectSchema#builder()} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static Builder builder() {
         return new Builder();
     }
@@ -141,7 +141,7 @@ public class ToolParameters {
          * @return the {@code Builder}.
          * @deprecated please use {@link JsonObjectSchema#builder()} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder type(String type) {
             this.type = type;
             return this;
@@ -154,7 +154,7 @@ public class ToolParameters {
          * @return the {@code Builder}.
          * @deprecated please use {@link JsonObjectSchema.Builder#properties(Map)} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder properties(Map<String, Map<String, Object>> properties) {
             this.properties = properties;
             return this;
@@ -167,7 +167,7 @@ public class ToolParameters {
          * @return the {@code Builder}.
          * @deprecated please use {@link JsonObjectSchema.Builder#required(List)} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder required(List<String> required) {
             this.required = required;
             return this;
@@ -179,7 +179,7 @@ public class ToolParameters {
          * @return a {@code ToolParameters} built with parameters of this {@code ToolParameters.Builder}
          * @deprecated please use {@link JsonObjectSchema.Builder#build()} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public ToolParameters build() {
             return new ToolParameters(this);
         }

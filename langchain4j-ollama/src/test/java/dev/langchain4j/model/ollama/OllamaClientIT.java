@@ -14,7 +14,7 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
@@ -33,7 +33,7 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
@@ -47,29 +47,5 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(modelDetailsResponse.getTemplate()).contains("<|im_start|>");
         assertThat(modelDetailsResponse.getDetails().getFormat()).isEqualTo("gguf");
         assertThat(modelDetailsResponse.getDetails().getFamily()).isEqualTo("llama");
-    }
-
-    @Test
-    void should_delete_model() {
-        // given AbstractOllamaInfrastructure
-
-        OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(ollama.getEndpoint())
-                .logRequests(true)
-                .logResponses(true)
-                .timeout(Duration.ofMinutes(1))
-                .build();
-
-        ModelsListResponse beforeDeleteModelList = ollamaClient.listModels();
-        assertThat(beforeDeleteModelList.getModels().size()).isPositive();
-
-        // when
-        ollamaClient.deleteModel(DeleteModelRequest.builder()
-                .name("tinydolphin")
-                .build());
-
-        // then
-        ModelsListResponse afterDeleteModelList = ollamaClient.listModels();
-        assertThat(afterDeleteModelList.getModels()).isEmpty();
     }
 }

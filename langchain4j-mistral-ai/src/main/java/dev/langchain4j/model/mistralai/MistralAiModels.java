@@ -50,10 +50,6 @@ public class MistralAiModels {
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
-    /**
-     * @deprecated use {@code builder()} instead and explicitly set the model name and, if required, other parameters.
-     */
-    @Deprecated
     public static MistralAiModels withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
