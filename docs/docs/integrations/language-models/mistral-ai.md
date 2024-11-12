@@ -386,6 +386,9 @@ ModerationModel model = new MistralAiModerationModel.Builder()
     .build();
 ```
 
+```java
+Moderation moderation = model.moderate("I want to kill them.").content();
+```
 
 ## Examples
 - [Mistral AI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples/src/main/java)
