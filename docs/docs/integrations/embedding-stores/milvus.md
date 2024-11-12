@@ -24,7 +24,7 @@ https://milvus.io/
 
 ## Creation
 
-In the MilvusEmbeddingStore, have two ways to build an instance of MilvusEmbeddingStore, depending on whether you want to create a new MilvusServiceClient or pass an existing one. Here’s how you can use each approach:
+There are 2 ways to create `MilvusEmbeddingStore`:
 
 
 1. Create MilvusEmbeddingStore with Automatic MilvusServiceClient Creation: Use this option to set up a new MilvusServiceClient internally with specified host, port, and authentication details for easy setup.
