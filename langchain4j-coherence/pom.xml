@@ -110,6 +110,7 @@
 
     <build>
         <plugins>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
@@ -119,6 +120,20 @@
                     </systemProperties>
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <acceptableLicenses combine.children="append">
+                        <license>
+                            <name>Universal Permissive License v 1.0</name>
+                            <url>https://oss.oracle.com/licenses/upl</url>
+                        </license>
+                    </acceptableLicenses>
+                </configuration>
+            </plugin>
+
         </plugins>
     </build>
 
