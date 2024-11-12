@@ -1,26 +1,25 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
+import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
 
 /**
  * Test upgrade from 029 to latest version
  */
 @Testcontainers
-public class PgVectorEmbeddingStoreUpgradeIT {
+class PgVectorEmbeddingStoreUpgradeIT {
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
@@ -29,17 +28,18 @@ public class PgVectorEmbeddingStoreUpgradeIT {
 
     EmbeddingStore<TextSegment> embeddingStore;
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeEach
     void beforeEach() {
+        final var tableName = "test" + nextInt(3000, 4000);
         embeddingStore029 = PgVectorEmbeddingStore029.builder()
                 .host(pgVector.getHost())
                 .port(pgVector.getFirstMappedPort())
                 .user("test")
                 .password("test")
                 .database("test")
-                .table("test")
+                .table(tableName)
                 .dimension(384)
                 .dropTableFirst(true)
                 .build();
@@ -50,24 +50,23 @@ public class PgVectorEmbeddingStoreUpgradeIT {
                 .user("test")
                 .password("test")
                 .database("test")
-                .table("test")
+                .table(tableName)
                 .dimension(384)
                 .build();
     }
 
     @Test
     void upgrade() {
+        var embedding = embeddingModel.embed("hello").content();
 
-        Embedding embedding = embeddingModel.embed("hello").content();
-
-        String id = embeddingStore029.add(embedding);
+        var id = embeddingStore029.add(embedding);
         assertThat(id).isNotBlank();
 
         // Check 029 results
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore029.findRelevant(embedding, 10);
+        var relevant = embeddingStore029.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        var match = relevant.get(0);
         assertThat(match.score()).isCloseTo(1, withPercentage(1));
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);

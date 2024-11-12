@@ -34,7 +34,7 @@
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.11.3</junit.version>
-        <testcontainers.version>1.20.2</testcontainers.version>
+        <testcontainers.version>1.20.3</testcontainers.version>
         <bytebuddy.version>1.15.7</bytebuddy.version>
         <mockito.version>5.14.1</mockito.version>
         <assertj.version>3.24.2</assertj.version>
