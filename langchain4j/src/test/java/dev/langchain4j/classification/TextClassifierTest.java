@@ -73,5 +73,4 @@ class TextClassifierTest implements WithAssertions {
             .map(ScoredLabel::score)
             .collect(Collectors.toList())).allMatch(score -> score == 1.0);
     }
-
 }
