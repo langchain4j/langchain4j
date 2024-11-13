@@ -30,7 +30,6 @@ public enum ContentType {
      */
     PDF(PdfFileContent.class);
 
-
     private final Class<? extends Content> contentClass;
 
     ContentType(Class<? extends Content> contentClass) {
