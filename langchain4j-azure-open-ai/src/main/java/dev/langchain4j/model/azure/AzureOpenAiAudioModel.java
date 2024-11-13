@@ -148,12 +148,12 @@ public class AzureOpenAiAudioModel implements AudioModel {
 
     @Override
     public Response<String> transcribe(Audio audio) {
-        AudioTranscriptionOptions options = new AudioTranscriptionOptions(audio.base64Data().getBytes())
+        AudioTranscriptionOptions options = new AudioTranscriptionOptions(audio.audioData())
                 .setPrompt(prompt)
                 .setModel(deploymentName)
                 .setLanguage(language)
+                .setFilename(audio.getFilename())
                 .setResponseFormat(responseFormat);
-    
         try {
             AudioTranscription audioTranscription = client.getAudioTranscription(deploymentName, options.getFilename(), options);
             return Response.from(audioTranscription.getText());
@@ -408,5 +408,4 @@ public class AzureOpenAiAudioModel implements AudioModel {
                     responseFormat);
         }
     }
-
 }
