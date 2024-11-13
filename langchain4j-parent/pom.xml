@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.36.0-SNAPSHOT</version>
+    <version>0.37.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -21,7 +21,7 @@
         <argLine></argLine>
         <!-- Dependency Versions -->
         <openai4j.version>0.23.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.12</azure-ai-openai.version>
+        <azure-ai-openai.version>1.0.0-beta.11</azure-ai-openai.version>
         <azure-ai-search.version>11.7.3</azure-ai-search.version>
         <azure.storage-blob.version>12.28.1</azure.storage-blob.version>
         <azure.storage-common.version>12.27.1</azure.storage-common.version>
@@ -51,7 +51,7 @@
         <github-api.version>1.318</github-api.version>
         <milvus-sdk-java.version>2.3.9</milvus-sdk-java.version>
         <netty.version>4.1.111.Final</netty.version>
-        <awaitility.version>4.2.0</awaitility.version>
+        <awaitility.version>4.2.2</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
     </properties>
@@ -161,7 +161,7 @@
             <dependency>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-stdlib-jdk8</artifactId>
-                <version>1.9.10</version>
+                <version>1.9.25</version>
             </dependency>
             <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (END)  -->
 
