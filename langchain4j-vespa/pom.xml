@@ -24,8 +24,6 @@
 
     <properties>
         <vespa.version>8.432.4</vespa.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
     <dependencies>
