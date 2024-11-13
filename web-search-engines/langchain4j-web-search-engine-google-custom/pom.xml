@@ -34,7 +34,7 @@
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-customsearch</artifactId>
-            <version>v1-rev20240417-2.0.0</version>
+            <version>v1-rev20240821-2.0.0</version>
         </dependency>
 
         <dependency>

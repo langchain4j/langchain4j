@@ -12,7 +12,7 @@
     </parent>
 
     <properties>
-        <pgvector-java.version>0.1.4</pgvector-java.version>
+        <pgvector-java.version>0.1.6</pgvector-java.version>
         <postgresql.version>42.7.3</postgresql.version>
         <spotless.version>2.40.0</spotless.version>
         <!-- TODO: remove enforcer.skipRules -->
