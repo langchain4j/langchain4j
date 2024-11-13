@@ -151,7 +151,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.strictTools = getOrDefault(strictTools, false);
         this.parallelToolCalls = parallelToolCalls;
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 

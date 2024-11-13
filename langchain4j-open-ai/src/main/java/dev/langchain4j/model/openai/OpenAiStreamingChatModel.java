@@ -133,7 +133,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.user = user;
         this.strictTools = getOrDefault(strictTools, false);
         this.parallelToolCalls = parallelToolCalls;
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
