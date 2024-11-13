@@ -41,7 +41,7 @@
         <tinylog.version>2.6.2</tinylog.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <opensearch-java.version>2.9.0</opensearch-java.version>
-        <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
+        <aws-java-sdk-core.version>1.12.777</aws-java-sdk-core.version>
         <aws-opensearch.version>2.20.161</aws-opensearch.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <elastic.version>8.15.3</elastic.version>
