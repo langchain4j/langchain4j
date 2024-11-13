@@ -135,7 +135,7 @@ public class Audio {
             return this;
         }
 
-                /**
+        /**
          * Set the base64 data of the audio.
          * @param base64Data the base64 data of the audio.
          * @return {@code this}
