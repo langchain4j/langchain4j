@@ -41,7 +41,7 @@ To get started, add the following dependencies to your project's `pom.xml`:
 
 <dependency>
     <groupId>org.testcontainers</groupId>
-    <artifactId>testcontainers</artifactId>
+    <artifactId>ollama</artifactId>
     <version>1.19.1</version>
 </dependency>
 ```
