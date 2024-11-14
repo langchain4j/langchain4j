@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
@@ -9,6 +10,7 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.Arrays.asList;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
 
     @Override

@@ -51,7 +51,7 @@ class SegmentBuilderTest implements WithAssertions {
         builder.reset();
 
         assertThat(builder.isNotEmpty()).isFalse();
-        assertThat(builder.getSize()).isEqualTo(0);
+        assertThat(builder.getSize()).isZero();
         assertThat(builder.toString()).isEqualTo("");
     }
 

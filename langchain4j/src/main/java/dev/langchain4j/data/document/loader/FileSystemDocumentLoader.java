@@ -6,6 +6,15 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.nio.file.Files.isDirectory;
 import static java.nio.file.Files.isRegularFile;
 
+import dev.langchain4j.data.document.BlankDocumentException;
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.DocumentLoader;
+import dev.langchain4j.data.document.DocumentParser;
+import dev.langchain4j.data.document.parser.TextDocumentParser;
+import dev.langchain4j.spi.data.document.parser.DocumentParserFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,16 +23,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import dev.langchain4j.data.document.BlankDocumentException;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentLoader;
-import dev.langchain4j.data.document.DocumentParser;
-import dev.langchain4j.data.document.parser.TextDocumentParser;
-import dev.langchain4j.spi.data.document.parser.DocumentParserFactory;
 
 public class FileSystemDocumentLoader {
 
