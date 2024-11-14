@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.36.0-SNAPSHOT</version>
+        <version>0.37.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -15,7 +15,7 @@
     <name>LangChain4j :: Integration :: GitHub Models</name>
 
     <properties>
-        <netty.version>4.1.111.Final</netty.version>
+        <netty.version>4.1.115.Final</netty.version>
     </properties>
 
     <dependencyManagement>
@@ -84,7 +84,7 @@
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-commons</artifactId>
-                <version>1.11.2</version>
+                <version>1.11.3</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
@@ -104,6 +104,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -115,6 +116,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
+            <version>${project.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -123,11 +125,13 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
+            <version>${project.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

@@ -13,6 +13,8 @@ sidebar_position: 0
 | [Azure CosmosDB NoSQL](/integrations/embedding-stores/azure-cosmos-nosql)             | ✅                |                            |                     |
 | [Cassandra](/integrations/embedding-stores/cassandra)                                 | ✅                |                            |                     |
 | [Chroma](/integrations/embedding-stores/chroma)                                       | ✅                | ✅                          | ✅                   |
+| [ClickHouse](/integrations/embedding-stores/clickhouse)                               | ✅                | ✅                          | ✅                   |
+| [Coherence](/integrations/embedding-stores/coherence)                                 | ✅                | ✅                          | ✅                   |
 | [Couchbase](/integrations/embedding-stores/couchbase)                                 | ✅                |                            | ✅                   |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                          | ✅                   |
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                |                            |                     |
@@ -25,7 +27,7 @@ sidebar_position: 0
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   | ✅                | ✅                          | ✅                   |
 | [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                | ✅                          |                     |
 | [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                            |                     |
-| [Tablestore](/integrations/embedding-stores/tablestore) | ✅             |✅                      |✅                    |
+| [Tablestore](/integrations/embedding-stores/tablestore)                               | ✅                | ✅                          | ✅                   |
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                            |                     |
 | [Vespa](/integrations/embedding-stores/vespa)                                         |                  |                            |                     |
 | [Weaviate](/integrations/embedding-stores/weaviate)                                   | ✅                |                            | ✅                   |

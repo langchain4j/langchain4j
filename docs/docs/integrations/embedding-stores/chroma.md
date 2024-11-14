@@ -1,5 +1,5 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 # Chroma
@@ -13,7 +13,7 @@ https://www.trychroma.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-chroma</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 

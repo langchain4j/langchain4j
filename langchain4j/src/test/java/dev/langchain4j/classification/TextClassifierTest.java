@@ -6,42 +6,71 @@ import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 class TextClassifierTest implements WithAssertions {
+
     public enum Categories {
         CAT, DOG, FISH
     }
 
     public static class CatClassifier implements TextClassifier<Categories> {
+
         @Override
-        public List<Categories> classify(String text) {
-            Set<Categories> result = new HashSet<>();
+        public ClassificationResult<Categories> classifyWithScores(String text) {
+            List<ScoredLabel<Categories>> scoredLabels = new ArrayList<>();
             if (text.contains("cat")) {
-                result.add(Categories.CAT);
+                scoredLabels.add(new ScoredLabel<>(Categories.CAT, 1.0));
             }
             if (text.contains("dog")) {
-                result.add(Categories.DOG);
+                scoredLabels.add(new ScoredLabel<>(Categories.DOG, 1.0));
             }
             if (text.contains("fish")) {
-                result.add(Categories.FISH);
+                scoredLabels.add(new ScoredLabel<>(Categories.FISH, 1.0));
             }
-            return new ArrayList<>(result);
+            return new ClassificationResult<>(scoredLabels);
         }
     }
 
     @Test
-    public void test() {
+    void test_classify() {
         CatClassifier classifier = new CatClassifier();
 
         assertThat(classifier.classify("cat fish")).containsOnly(Categories.CAT, Categories.FISH);
 
         assertThat(classifier.classify(TextSegment.from("dog fish")))
-                .containsOnly(Categories.DOG, Categories.FISH);
+            .containsOnly(Categories.DOG, Categories.FISH);
 
         assertThat(classifier.classify(Document.from("dog cat"))).containsOnly(Categories.CAT, Categories.DOG);
     }
 
+    @Test
+    void test_classify_with_scores() {
+        CatClassifier classifier = new CatClassifier();
+
+        ClassificationResult<Categories> results = classifier.classifyWithScores("cat fish");
+        assertThat(results.scoredLabels().stream()
+            .map(ScoredLabel::label)
+            .collect(Collectors.toList())).containsOnly(Categories.CAT, Categories.FISH);
+        assertThat(results.scoredLabels().stream()
+            .map(ScoredLabel::score)
+            .collect(Collectors.toList())).allMatch(score -> score == 1.0);
+
+        results = classifier.classifyWithScores(TextSegment.from("cat fish"));
+        assertThat(results.scoredLabels().stream()
+            .map(ScoredLabel::label)
+            .collect(Collectors.toList())).containsOnly(Categories.CAT, Categories.FISH);
+        assertThat(results.scoredLabels().stream()
+            .map(ScoredLabel::score)
+            .collect(Collectors.toList())).allMatch(score -> score == 1.0);
+
+        results = classifier.classifyWithScores(Document.from("dog cat"));
+        assertThat(results.scoredLabels().stream()
+            .map(ScoredLabel::label)
+            .collect(Collectors.toList())).containsOnly(Categories.DOG, Categories.CAT);
+        assertThat(results.scoredLabels().stream()
+            .map(ScoredLabel::score)
+            .collect(Collectors.toList())).allMatch(score -> score == 1.0);
+    }
 }

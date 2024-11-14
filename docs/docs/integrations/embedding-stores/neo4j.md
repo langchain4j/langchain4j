@@ -1,5 +1,5 @@
 ---
-sidebar_position: 12
+sidebar_position: 15
 ---
 
 # Neo4j
@@ -13,7 +13,7 @@ https://neo4j.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-neo4j</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 
@@ -21,6 +21,7 @@ https://neo4j.com/
 ## APIs
 
 - `Neo4jEmbeddingStore`
+- `Neo4jContentRetriever`
 
 
 ## Examples
