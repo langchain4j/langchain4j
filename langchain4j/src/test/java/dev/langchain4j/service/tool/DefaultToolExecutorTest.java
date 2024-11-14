@@ -4,8 +4,6 @@ import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -149,12 +147,10 @@ class DefaultToolExecutorTest implements WithAssertions {
         }
     }
 
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    static class Person {
+    record Person(
 
-        String name;
-        int age;
+            String name,
+            int age) {
     }
 
     @Test
