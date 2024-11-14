@@ -13,11 +13,13 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
@@ -33,7 +35,6 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicContentBlockType.TEXT;
@@ -94,7 +95,8 @@ public class AnthropicMapper {
         return message.contents().stream()
                 .map(content -> {
                     if (content instanceof TextContent) {
-                        return new AnthropicTextContent(((TextContent) content).text());
+                        TextContent textContent = (TextContent) content;
+                        return new AnthropicTextContent(textContent.text());
                     } else if (content instanceof ImageContent) {
                         Image image = ((ImageContent) content).image();
                         if (image.url() != null) {
@@ -138,17 +140,18 @@ public class AnthropicMapper {
         return contents;
     }
 
-    public static String toAnthropicSystemPrompt(List<ChatMessage> messages) {
-        String systemPrompt = messages.stream()
-                .filter(message -> message instanceof SystemMessage)
-                .map(message -> ((SystemMessage) message).text())
-                .collect(joining("\n\n"));
 
-        if (isNullOrBlank(systemPrompt)) {
-            return null;
-        } else {
-            return systemPrompt;
-        }
+    public static List<AnthropicTextContent> toAnthropicSystemPrompt(List<ChatMessage> messages, AnthropicCacheType cacheType) {
+        return messages.stream()
+                .filter(message -> message instanceof SystemMessage)
+                .map(message -> {
+                    SystemMessage systemMessage = (SystemMessage) message;
+                    if (cacheType != AnthropicCacheType.NO_CACHE) {
+                        return new AnthropicTextContent(systemMessage.text(), cacheType.cacheControl());
+                    }
+                    return new AnthropicTextContent(systemMessage.text());
+                })
+                .collect(toList());
     }
 
     public static AiMessage toAiMessage(List<AnthropicContent> contents) {
@@ -186,7 +189,7 @@ public class AnthropicMapper {
         if (anthropicUsage == null) {
             return null;
         }
-        return new TokenUsage(anthropicUsage.inputTokens, anthropicUsage.outputTokens);
+        return new AnthropicTokenUsage(anthropicUsage.inputTokens, anthropicUsage.outputTokens, anthropicUsage.cacheCreationInputTokens, anthropicUsage.cacheReadInputTokens);
     }
 
     public static FinishReason toFinishReason(String anthropicStopReason) {
@@ -207,36 +210,42 @@ public class AnthropicMapper {
         }
     }
 
-    public static List<AnthropicTool> toAnthropicTools(List<ToolSpecification> toolSpecifications) {
+    public static List<AnthropicTool> toAnthropicTools(List<ToolSpecification> toolSpecifications, AnthropicCacheType cacheToolsPrompt) {
         if (toolSpecifications == null) {
             return null;
         }
         return toolSpecifications.stream()
-                .map(AnthropicMapper::toAnthropicTool)
-                .collect(toList());
+            .map(toolSpecification -> toAnthropicTool(toolSpecification, cacheToolsPrompt))
+            .collect(toList());
     }
 
-    public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification) {
+    public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification, AnthropicCacheType cacheToolsPrompt) {
+        AnthropicTool. AnthropicToolBuilder toolBuilder;
         if (toolSpecification.parameters() != null) {
             JsonObjectSchema parameters = toolSpecification.parameters();
-            return AnthropicTool.builder()
-                    .name(toolSpecification.name())
-                    .description(toolSpecification.description())
-                    .inputSchema(AnthropicToolSchema.builder()
-                            .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
-                            .required(parameters != null ? parameters.required() : emptyList())
-                            .build())
-                    .build();
+            toolBuilder = AnthropicTool.builder()
+                .name(toolSpecification.name())
+                .description(toolSpecification.description())
+                .inputSchema(AnthropicToolSchema.builder()
+                    .properties(parameters != null ? toMap(parameters.properties()) : emptyMap())
+                    .required(parameters != null ? parameters.required() : emptyList())
+                    .build());
+
         } else {
             ToolParameters parameters = toolSpecification.toolParameters();
-            return AnthropicTool.builder()
-                    .name(toolSpecification.name())
-                    .description(toolSpecification.description())
-                    .inputSchema(AnthropicToolSchema.builder()
-                            .properties(parameters != null ? parameters.properties() : emptyMap())
-                            .required(parameters != null ? parameters.required() : emptyList())
-                            .build())
-                    .build();
+            toolBuilder = AnthropicTool.builder()
+                .name(toolSpecification.name())
+                .description(toolSpecification.description())
+                .inputSchema(AnthropicToolSchema.builder()
+                    .properties(parameters != null ? parameters.properties() : emptyMap())
+                    .required(parameters != null ? parameters.required() : emptyList())
+                    .build());
+
         }
+
+        if (cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
+            return toolBuilder.cacheControl(cacheToolsPrompt.cacheControl()).build();
+        }
+        return toolBuilder.build();
     }
 }

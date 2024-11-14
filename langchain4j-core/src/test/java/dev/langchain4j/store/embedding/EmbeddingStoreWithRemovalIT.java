@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -98,6 +99,7 @@ public abstract class EmbeddingStoreWithRemovalIT {
     }
 
     @Test
+    @EnabledIf("supportsRemoveAllByFilter")
     void should_remove_all_by_filter() {
 
         // given
@@ -124,6 +126,7 @@ public abstract class EmbeddingStoreWithRemovalIT {
     }
 
     @Test
+    @EnabledIf("supportsRemoveAllByFilter")
     void should_fail_to_remove_all_by_filter_null() {
 
         assertThatThrownBy(() -> embeddingStore().removeAll((Filter) null))
@@ -131,7 +134,12 @@ public abstract class EmbeddingStoreWithRemovalIT {
                 .hasMessage("filter cannot be null");
     }
 
+    protected boolean supportsRemoveAllByFilter() {
+        return true;
+    }
+
     @Test
+    @EnabledIf("supportsRemoveAll")
     void should_remove_all() {
 
         // given
@@ -148,6 +156,10 @@ public abstract class EmbeddingStoreWithRemovalIT {
 
         // then
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).isEmpty());
+    }
+
+    protected boolean supportsRemoveAll() {
+        return true;
     }
 
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {

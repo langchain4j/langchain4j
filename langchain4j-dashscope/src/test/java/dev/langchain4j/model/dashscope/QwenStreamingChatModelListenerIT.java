@@ -41,9 +41,4 @@ public class QwenStreamingChatModelListenerIT extends StreamingChatModelListener
     protected Class<? extends Exception> expectedExceptionClass() {
         return com.alibaba.dashscope.exception.ApiException.class;
     }
-
-    @Override
-    protected boolean supportsTools() {
-        return false;
-    }
 }

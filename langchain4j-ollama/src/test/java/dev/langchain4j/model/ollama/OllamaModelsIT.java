@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
     OllamaModels ollamaModels = OllamaModels.builder()
-            .baseUrl(ollama.getEndpoint())
+            .baseUrl(ollamaBaseUrl())
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -72,7 +72,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // load model
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .modelName(TINY_DOLPHIN_MODEL)
                 .temperature(0.0)
                 .numPredict(1)
