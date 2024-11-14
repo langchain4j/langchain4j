@@ -36,12 +36,12 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 
 <dependency>
     <groupId>org.testcontainers</groupId>
-    <artifactId>testcontainers</artifactId>
+    <artifactId>ollama</artifactId>
     <version>1.19.1</version>
 </dependency>
 ```
