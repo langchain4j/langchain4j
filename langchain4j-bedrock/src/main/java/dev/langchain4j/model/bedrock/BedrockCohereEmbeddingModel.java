@@ -30,7 +30,7 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
     protected List<Map<String, Object>> getRequestParameters(List<TextSegment> textSegments) {
         List<Map<String, Object>> result = new ArrayList<>();
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("texts", textSegments.stream().map(TextSegment::text).toArray(String[]::new));
+        parameters.put("texts", textSegments.stream().map(TextSegment::text).toList());
         parameters.put("input_type", inputType);
         result.add(parameters);
         return result;

@@ -21,11 +21,11 @@ class BedrockEmbeddingIT {
     void testBedrockTitanEmbeddingModelV1() {
 
         BedrockTitanEmbeddingModel embeddingModel = BedrockTitanEmbeddingModel
-                .builder()
-                .region(Region.US_EAST_1)
-                .maxRetries(1)
-                .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV1.getValue())
-                .build();
+            .builder()
+            .region(Region.US_EAST_1)
+            .maxRetries(1)
+            .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV1.getValue())
+            .build();
 
         assertThat(embeddingModel).isNotNull();
 
@@ -53,13 +53,13 @@ class BedrockEmbeddingIT {
     @Test
     void testBedrockTitanEmbeddingModelV2() {
         BedrockTitanEmbeddingModel embeddingModel = BedrockTitanEmbeddingModel
-                .builder()
-                .region(Region.US_EAST_1)
-                .maxRetries(1)
-                .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV2.getValue())
-                .dimensions(256)
-                .normalize(true)
-                .build();
+            .builder()
+            .region(Region.US_EAST_1)
+            .maxRetries(1)
+            .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV2.getValue())
+            .dimensions(256)
+            .normalize(true)
+            .build();
 
         assertThat(embeddingModel).isNotNull();
 
@@ -85,14 +85,47 @@ class BedrockEmbeddingIT {
     }
 
     @Test
+    void testBedrockTitanEmbeddingModelV2MultipleSegments() {
+
+        // given
+        BedrockTitanEmbeddingModel embeddingModel = BedrockTitanEmbeddingModel.builder()
+            .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV2.getValue())
+            .build();
+
+        List<TextSegment> segments = List.of(
+            TextSegment.from("Hello world!"),
+            TextSegment.from("How are you?")
+        );
+
+        // when
+        Response<List<Embedding>> response = embeddingModel.embedAll(segments);
+
+        // then
+        List<Embedding> embeddings = response.content();
+        assertThat(embeddings).hasSize(2);
+
+        Embedding embedding = embeddings.get(0);
+        assertThat(embedding.vector()).hasSize(1024);
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(9);
+        assertThat(tokenUsage.outputTokenCount()).isNull();
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(9);
+
+        assertThat(response.finishReason()).isNull();
+
+        assertThat(embeddingModel.dimension()).isEqualTo(1024);
+    }
+
+    @Test
     void testBedrockCohereEmbedEnglishTextV3() {
 
         BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel
-                .builder()
-                .region(Region.US_EAST_1)
-                .maxRetries(1)
-                .model(BedrockCohereEmbeddingModel.Types.CohereEmbedEnglishTextV3.getValue())
-                .build();
+            .builder()
+            .region(Region.US_EAST_1)
+            .maxRetries(1)
+            .model(BedrockCohereEmbeddingModel.Types.CohereEmbedEnglishTextV3.getValue())
+            .build();
 
         assertThat(embeddingModel).isNotNull();
 
@@ -137,7 +170,7 @@ class BedrockEmbeddingIT {
         assertThat(response).isNotNull();
 
         List<Embedding> embeddings = response.content();
-        assertThat(embeddings).hasSize(1);
+        assertThat(embeddings).hasSize(2);
 
         Embedding embedding = embeddings.get(0);
         assertThat(embedding.vector()).hasSize(1024);
@@ -157,11 +190,11 @@ class BedrockEmbeddingIT {
     void testBedrockCohereEmbedMultilingualTextV3() {
 
         BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel
-                .builder()
-                .region(Region.US_EAST_1)
-                .maxRetries(1)
-                .model(BedrockCohereEmbeddingModel.Types.CohereEmbedMultilingualTextV3.getValue())
-                .build();
+            .builder()
+            .region(Region.US_EAST_1)
+            .maxRetries(1)
+            .model(BedrockCohereEmbeddingModel.Types.CohereEmbedMultilingualTextV3.getValue())
+            .build();
 
         assertThat(embeddingModel).isNotNull();
 

@@ -2,17 +2,21 @@ package dev.langchain4j.model.bedrock.internal;
 
 import dev.langchain4j.data.embedding.Embedding;
 
+import java.util.List;
+
 /**
  * Bedrock embedding response
  */
 public interface BedrockEmbeddingResponse {
 
     /**
-     * Get embedding
+     * Get embeddings.
+     * Some models allow multiple TextSegments and as result return multiple embeddings.
+     * In this case, we need to return a list of embeddings.
      *
-     * @return embedding
+     * @return list of embedding
      */
-    Embedding toEmbedding();
+    List<Embedding> toEmbeddings();
 
     /**
      * Get input text token count

@@ -3,6 +3,7 @@ package dev.langchain4j.model.bedrock;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.bedrock.internal.BedrockEmbeddingResponse;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -19,11 +20,13 @@ class BedrockCohereEmbeddingResponse implements BedrockEmbeddingResponse {
     private int inputTextTokenCount = 0;
 
     @Override
-    public Embedding toEmbedding() {
+    public List<Embedding> toEmbeddings() {
         if (embeddings == null) {
-            return null;
+            return List.of();
         }
-        return new Embedding(embeddings[0]);
+        return Arrays.stream(embeddings)
+            .map(Embedding::from)
+            .toList();
     }
 
     public String getId() {
