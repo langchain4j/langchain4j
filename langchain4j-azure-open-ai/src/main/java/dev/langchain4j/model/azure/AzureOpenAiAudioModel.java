@@ -33,6 +33,9 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * Optionally you can set serviceVersion (if not, the latest version is used) and deploymentName (if not, a default name is used).
  * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
+ * By default, the response type will be json with the raw text included.
+ * You can change the response format using the responseFormat() method in the Builder, or the responseFormat parameter in the constructor.
+ * <p>
  * There are 3 authentication methods:
  * <p>
  * 1. Azure OpenAI API Key Authentication: this is the most common method, using an Azure OpenAI API key.
@@ -55,14 +58,11 @@ public class AzureOpenAiAudioModel implements AudioModel {
     private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiAudioModel.class);
     private OpenAIClient client;
     private final String deploymentName;
-    private Audio audio = null;
+    private Audio audio;
     private String prompt = null;
-    private String user = null;
     private AudioTranscriptionFormat responseFormat = AudioTranscriptionFormat.JSON;
     private String language;
 
-
-    //By default, the response type will be json with the raw text included.
     public AzureOpenAiAudioModel(OpenAIClient client,
                                  String deploymentName,
                                  Audio audio,
