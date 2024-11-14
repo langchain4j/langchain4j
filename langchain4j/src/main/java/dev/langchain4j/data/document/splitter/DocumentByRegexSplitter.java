@@ -32,7 +32,7 @@ public class DocumentByRegexSplitter extends HierarchicalDocumentSplitter {
                                    String joinDelimiter,
                                    int maxSegmentSizeInChars,
                                    int maxOverlapSizeInChars) {
-        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null, false);
         this.regex = ensureNotNull(regex, "regex");
         this.joinDelimiter = ensureNotNull(joinDelimiter, "joinDelimiter");
     }
@@ -42,7 +42,7 @@ public class DocumentByRegexSplitter extends HierarchicalDocumentSplitter {
                                    int maxSegmentSizeInChars,
                                    int maxOverlapSizeInChars,
                                    DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter, false);
         this.regex = ensureNotNull(regex, "regex");
         this.joinDelimiter = ensureNotNull(joinDelimiter, "joinDelimiter");
     }
@@ -52,7 +52,7 @@ public class DocumentByRegexSplitter extends HierarchicalDocumentSplitter {
                                    int maxSegmentSizeInTokens,
                                    int maxOverlapSizeInTokens,
                                    Tokenizer tokenizer) {
-        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null, false);
         this.regex = ensureNotNull(regex, "regex");
         this.joinDelimiter = ensureNotNull(joinDelimiter, "joinDelimiter");
     }
@@ -63,7 +63,19 @@ public class DocumentByRegexSplitter extends HierarchicalDocumentSplitter {
                                    int maxOverlapSizeInTokens,
                                    Tokenizer tokenizer,
                                    DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter, false);
+        this.regex = ensureNotNull(regex, "regex");
+        this.joinDelimiter = ensureNotNull(joinDelimiter, "joinDelimiter");
+    }
+
+    public DocumentByRegexSplitter(String regex,
+                                   String joinDelimiter,
+                                   int maxSegmentSizeInTokens,
+                                   int maxOverlapSizeInTokens,
+                                   Tokenizer tokenizer,
+                                   DocumentSplitter subSplitter,
+                                   Boolean addCharacterStartIndex) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter, addCharacterStartIndex);
         this.regex = ensureNotNull(regex, "regex");
         this.joinDelimiter = ensureNotNull(joinDelimiter, "joinDelimiter");
     }
