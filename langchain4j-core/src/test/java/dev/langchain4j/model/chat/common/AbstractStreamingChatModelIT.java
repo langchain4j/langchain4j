@@ -361,7 +361,7 @@ public abstract class AbstractStreamingChatModelIT {
     }
 
     protected boolean supportsToolChoice() {
-        return false;
+        return false; // TODO should be true by default?
     }
 
     protected boolean assertTokenUsage() {
