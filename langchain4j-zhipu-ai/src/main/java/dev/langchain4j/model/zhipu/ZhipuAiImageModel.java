@@ -45,14 +45,14 @@ public class ZhipuAiImageModel implements ImageModel {
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.userId = userId;
         this.client = ZhipuAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, "https://open.bigmodel.cn/"))
+                .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .callTimeout(callTimeout)
                 .connectTimeout(connectTimeout)
                 .writeTimeout(writeTimeout)
                 .readTimeout(readTimeout)
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
     }
 
