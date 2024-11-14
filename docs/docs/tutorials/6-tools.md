@@ -394,6 +394,23 @@ String answer = result.content();
 List<ToolExecution> toolExecutions = result.toolExecutions();
 ```
 
+In streaming mode, you can do so by specifying `onToolExecuted` callback:
+```java
+interface Assistant {
+
+    TokenStream chat(String message);
+}
+
+TokenStream tokenStream = assistant.chat("Cancel my booking");
+
+tokenStream
+    .onNext(...)
+    .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
+    .onComplete(...)
+    .onError(...)
+    .start();
+```
+
 ### Specifying Tools Programmatically
 
 When using AI Services, tools can also be specified programmatically.
