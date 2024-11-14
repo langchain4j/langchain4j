@@ -165,7 +165,8 @@ public class Audio {
     }
 
     /**
-     * Get the filename of the audio using a regex to retrieve the last segment after the last slash.
+     * Get the filename of the audio using a regex to retrieve the last segment after the last slash,
+     * or the full path if no slashes are found.
      * @return the filename of the audio, or null if not set.
      */
     public String getFilename() {
@@ -173,7 +174,7 @@ public class Audio {
             String path = url.getPath();
             if (path != null) {
                 String[] segments = path.split("/");
-                return segments[segments.length - 1];
+                return segments.length > 0 ? segments[segments.length - 1] : path;
             }
         }
         return null;
