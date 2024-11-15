@@ -39,6 +39,7 @@
         <mockito.version>5.14.1</mockito.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
+        <ibm.cloud.sdk.version>9.22.0</ibm.cloud.sdk.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
@@ -69,6 +70,12 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-ai-openai</artifactId>
                 <version>${azure-ai-openai.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.ibm.cloud</groupId>
+                <artifactId>sdk-core</artifactId>
+                <version>${ibm.cloud.sdk.version}</version>
             </dependency>
 
             <dependency>
