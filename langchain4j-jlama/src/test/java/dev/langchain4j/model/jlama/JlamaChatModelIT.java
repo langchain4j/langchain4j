@@ -26,7 +26,7 @@ class JlamaChatModelIT {
         tmpDir.mkdirs();
 
         model = JlamaChatModel.builder()
-                .modelName("tjake/Meta-Llama-3.1-8B-Instruct-Jlama-Q4")
+                .modelName("tjake/Llama-3.2-1B-Instruct-JQ4")
                 .modelCachePath(tmpDir.toPath())
                 .temperature(0.0f)
                 .maxTokens(64)

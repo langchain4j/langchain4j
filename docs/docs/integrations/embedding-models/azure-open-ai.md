@@ -14,7 +14,7 @@ that can be used to transforms text or images into a dimensional vector space.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 
@@ -23,7 +23,7 @@ that can be used to transforms text or images into a dimensional vector space.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 
@@ -43,13 +43,16 @@ EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
 ### Spring Boot
 Add to the `application.properties`:
 ```properties
+langchain4j.azure-open-ai.embedding-model.endpoint=https://langchain4j.openai.azure.com/
+langchain4j.azure-open-ai.embedding-model.service-version=...
 langchain4j.azure-open-ai.embedding-model.api-key=${AZURE_OPENAI_KEY}
 langchain4j.azure-open-ai.embedding-model.deployment-name=text-embedding-3-small
-langchain4j.azure-open-ai.embedding-model.endpoint=https://langchain4j.openai.azure.com/
-langchain4j.azure-open-ai.embedding-model.dimensions=...
-langchain4j.azure-open-ai.embedding-model.log-requests-and-responses=...
-langchain4j.azure-open-ai.embedding-model.max-retries=...
 langchain4j.azure-open-ai.embedding-model.timeout=...
+langchain4j.azure-open-ai.embedding-model.max-retries=...
+langchain4j.azure-open-ai.embedding-model.log-requests-and-responses=...
+langchain4j.azure-open-ai.embedding-model.user-agent-suffix=...
+langchain4j.azure-open-ai.embedding-model.dimensions=...
+langchain4j.azure-open-ai.embedding-model.customHeaders=...
 ```
 
 
