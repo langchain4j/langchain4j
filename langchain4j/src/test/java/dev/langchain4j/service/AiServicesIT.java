@@ -10,10 +10,9 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
-import lombok.Builder;
-import lombok.ToString;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -47,7 +46,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
-public class AiServicesIT {
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+class AiServicesIT {
 
     @Spy
     ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
@@ -358,19 +358,18 @@ public class AiServicesIT {
         verify(chatLanguageModel).supportedCapabilities();
     }
 
-    @ToString
-    static class Address {
-        private Integer streetNumber;
-        private String street;
-        private String city;
+    record Address(
+            Integer streetNumber,
+            String street,
+            String city
+    ) {
     }
 
-    @ToString
-    static class Person {
-        private String firstName;
-        private String lastName;
-        private LocalDate birthDate;
-        private Address address;
+    static record Person(
+            String firstName,
+            String lastName,
+            LocalDate birthDate,
+            Address address) {
     }
 
     interface PersonExtractor {
@@ -463,14 +462,13 @@ public class AiServicesIT {
     }
 
 
-    @ToString
-    static class Recipe {
+    static record Recipe(
 
-        private String title;
-        private String description;
-        @Description("each step should be described in 4 words, steps should rhyme")
-        private String[] steps;
-        private Integer preparationTimeMinutes;
+            String title,
+            String description,
+            @Description("each step should be described in 4 words, steps should rhyme")
+            String[] steps,
+            Integer preparationTimeMinutes) {
     }
 
     interface Chef {
@@ -628,12 +626,10 @@ public class AiServicesIT {
                 .hasMessage("@UserMessage's template cannot be empty");
     }
 
-    @Builder
     @StructuredPrompt("Create a recipe of a {{dish}} that can be prepared using only {{ingredients}}")
-    static class CreateRecipePrompt {
-
-        private String dish;
-        private List<String> ingredients;
+    record CreateRecipePrompt(
+            String dish,
+            List<String> ingredients) {
     }
 
     @Test
@@ -641,10 +637,10 @@ public class AiServicesIT {
 
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
-        CreateRecipePrompt prompt = CreateRecipePrompt.builder()
-                .dish("salad")
-                .ingredients(asList("cucumber", "tomato", "feta", "onion", "olives"))
-                .build();
+        CreateRecipePrompt prompt = new CreateRecipePrompt(
+                "salad",
+                List.of("cucumber", "tomato", "feta", "onion", "olives")
+        );
 
         Recipe recipe = chef.createRecipeFrom(prompt);
 
@@ -669,11 +665,9 @@ public class AiServicesIT {
 
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
-        CreateRecipePrompt prompt = CreateRecipePrompt
-                .builder()
-                .dish("salad")
-                .ingredients(asList("cucumber", "tomato", "feta", "onion", "olives"))
-                .build();
+        CreateRecipePrompt prompt = new CreateRecipePrompt(
+                "salad",
+                List.of("cucumber", "tomato", "feta", "onion", "olives"));
 
         Recipe recipe = chef.createRecipeFrom(prompt, "funny");
 
@@ -700,11 +694,9 @@ public class AiServicesIT {
 
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
-        CreateRecipePrompt prompt = CreateRecipePrompt
-                .builder()
-                .dish("salad")
-                .ingredients(asList("cucumber", "tomato", "feta", "onion", "olives"))
-                .build();
+        CreateRecipePrompt prompt = new CreateRecipePrompt(
+                "salad",
+                List.of("cucumber", "tomato", "feta", "onion", "olives"));
 
         Recipe recipe = chef.createRecipeFromUsingResource(prompt, "funny");
 

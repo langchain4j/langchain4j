@@ -5,7 +5,6 @@ import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
-import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,9 +24,14 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * when a single segment is too long.
  */
 public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
-    @Getter(lazy = true)
-    private final HierarchicalDocumentSplitter overlapSentenceSplitter =
-            new DocumentBySentenceSplitter(1, 0, null, null);
+    private HierarchicalDocumentSplitter overlapSentenceSplitter;
+
+    private HierarchicalDocumentSplitter getOverlapSentenceSplitter() {
+        if (overlapSentenceSplitter == null) {
+            overlapSentenceSplitter = new DocumentBySentenceSplitter(1, 0, null, null);
+        }
+        return overlapSentenceSplitter;
+    }
 
     private static final String INDEX = "index";
 
