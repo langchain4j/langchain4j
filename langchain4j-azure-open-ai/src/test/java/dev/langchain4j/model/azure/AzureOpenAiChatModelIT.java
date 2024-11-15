@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -27,7 +28,7 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class AzureOpenAiChatModelIT {
+class AzureOpenAiChatModelIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
@@ -291,6 +292,7 @@ public class AzureOpenAiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
+    @Disabled("requires deployment of all models")
     @ParameterizedTest(name = "Testing model {0}")
     @EnumSource(value = AzureOpenAiChatModelName.class, mode = EnumSource.Mode.EXCLUDE, names = {
             "GPT_3_5_TURBO_0301",

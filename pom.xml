@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.36.0-SNAPSHOT</version>
+    <version>0.37.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -54,6 +54,7 @@
         <module>langchain4j-azure-cosmos-nosql</module>
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
+        <module>langchain4j-coherence</module>
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-infinispan</module>

@@ -61,9 +61,6 @@ public abstract class AnthropicClient {
         }
 
         public B beta(String beta) {
-            if (beta == null) {
-                throw new IllegalArgumentException("beta cannot be null or empty");
-            }
             this.beta = beta;
             return (B) this;
         }

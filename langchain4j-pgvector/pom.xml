@@ -7,12 +7,12 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.36.0-SNAPSHOT</version>
+        <version>0.37.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <properties>
-        <pgvector-java.version>0.1.4</pgvector-java.version>
+        <pgvector-java.version>0.1.6</pgvector-java.version>
         <postgresql.version>42.7.3</postgresql.version>
         <spotless.version>2.40.0</spotless.version>
         <!-- TODO: remove enforcer.skipRules -->
@@ -28,6 +28,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -56,6 +57,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
+            <version>${project.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

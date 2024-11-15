@@ -19,7 +19,7 @@ public class ToolSpecification {
     private final String name;
     private final String description;
     private final JsonObjectSchema parameters;
-    @Deprecated
+    @Deprecated(forRemoval = true)
     private final ToolParameters toolParameters;
 
     /**
@@ -68,7 +68,7 @@ public class ToolSpecification {
     /**
      * @deprecated please use {@link #parameters()} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public ToolParameters toolParameters() {
         return toolParameters;
     }
@@ -124,7 +124,7 @@ public class ToolSpecification {
         private String name;
         private String description;
         private JsonObjectSchema parameters;
-        @Deprecated
+        @Deprecated(forRemoval = true)
         private ToolParameters toolParameters;
 
         /**
@@ -179,12 +179,12 @@ public class ToolSpecification {
          *     .parameters(JsonObjectSchema.builder()
          *         .addStringProperty("city", "The name of the city, e.g., Munich")
          *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify the required properties explicitly
+         *         .required("city") // please specify mandatory properties explicitly
          *         .build())
          *     .build();
          * </pre>
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder parameters(ToolParameters parameters) {
             this.toolParameters = parameters;
             return this;
@@ -204,12 +204,12 @@ public class ToolSpecification {
          *     .parameters(JsonObjectSchema.builder()
          *         .addStringProperty("city", "The name of the city, e.g., Munich")
          *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify the required properties explicitly
+         *         .required("city") // please specify mandatory properties explicitly
          *         .build())
          *     .build();
          * </pre>
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder addParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
             return addParameter(name, asList(jsonSchemaProperties));
         }
@@ -228,12 +228,12 @@ public class ToolSpecification {
          *     .parameters(JsonObjectSchema.builder()
          *         .addStringProperty("city", "The name of the city, e.g., Munich")
          *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify the required properties explicitly
+         *         .required("city") // please specify mandatory properties explicitly
          *         .build())
          *     .build();
          * </pre>
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder addParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
             addOptionalParameter(name, jsonSchemaProperties);
             this.toolParameters.required().add(name);
@@ -254,12 +254,12 @@ public class ToolSpecification {
          *     .parameters(JsonObjectSchema.builder()
          *         .addStringProperty("city", "The name of the city, e.g., Munich")
          *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify the required properties explicitly
+         *         .required("city") // please specify mandatory properties explicitly
          *         .build())
          *     .build();
          * </pre>
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder addOptionalParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
             return addOptionalParameter(name, asList(jsonSchemaProperties));
         }
@@ -278,12 +278,12 @@ public class ToolSpecification {
          *     .parameters(JsonObjectSchema.builder()
          *         .addStringProperty("city", "The name of the city, e.g., Munich")
          *         .addEnumProperty("units", List.of("CELSIUS", "FAHRENHEIT"))
-         *         .required("city") // please specify the required properties explicitly
+         *         .required("city") // please specify mandatory properties explicitly
          *         .build())
          *     .build();
          * </pre>
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder addOptionalParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
             if (this.toolParameters == null) {
                 this.toolParameters = ToolParameters.builder().build();

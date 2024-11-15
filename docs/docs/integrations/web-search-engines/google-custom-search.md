@@ -13,7 +13,7 @@ https://programmablesearchengine.google.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-web-search-engine-google-custom</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 

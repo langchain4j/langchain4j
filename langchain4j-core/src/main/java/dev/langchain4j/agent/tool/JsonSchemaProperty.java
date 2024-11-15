@@ -24,7 +24,7 @@ import static java.util.Collections.singletonMap;
  *
  * @deprecated please use the new {@link JsonSchemaElement} API instead to define the schema for tool parameters
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class JsonSchemaProperty {
 
     /**
@@ -32,7 +32,7 @@ public class JsonSchemaProperty {
      *
      * @deprecated please use {@link JsonStringSchema#JsonStringSchema()} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static final JsonSchemaProperty STRING = type("string");
 
     /**
@@ -40,7 +40,7 @@ public class JsonSchemaProperty {
      *
      * @deprecated please use {@link JsonIntegerSchema#JsonIntegerSchema()} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static final JsonSchemaProperty INTEGER = type("integer");
 
     /**
@@ -48,7 +48,7 @@ public class JsonSchemaProperty {
      *
      * @deprecated please use {@link JsonNumberSchema#JsonNumberSchema()} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static final JsonSchemaProperty NUMBER = type("number");
 
     /**
@@ -56,7 +56,7 @@ public class JsonSchemaProperty {
      *
      * @deprecated please use {@link JsonObjectSchema#builder} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static final JsonSchemaProperty OBJECT = type("object");
 
     /**
@@ -64,7 +64,7 @@ public class JsonSchemaProperty {
      *
      * @deprecated please use {@link JsonArraySchema#builder} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static final JsonSchemaProperty ARRAY = type("array");
 
     /**
@@ -72,13 +72,13 @@ public class JsonSchemaProperty {
      *
      * @deprecated please use {@link JsonBooleanSchema#JsonBooleanSchema()} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static final JsonSchemaProperty BOOLEAN = type("boolean");
 
     /**
      * A property with key "type" and value "null".
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static final JsonSchemaProperty NULL = type("null");
 
     private final String key;
@@ -91,7 +91,7 @@ public class JsonSchemaProperty {
      * @param value the value.
      * @deprecated please use the new {@link JsonSchemaElement} API instead to define the schema for tool parameters
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public JsonSchemaProperty(String key, Object value) {
         this.key = key;
         this.value = value;
@@ -166,7 +166,7 @@ public class JsonSchemaProperty {
      * @return a property with key and value.
      * @deprecated please use the new {@link JsonSchemaElement} API instead to define the schema for tool parameters
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static JsonSchemaProperty from(String key, Object value) {
         return new JsonSchemaProperty(key, value);
     }
@@ -181,7 +181,7 @@ public class JsonSchemaProperty {
      * @return a property with key and value.
      * @deprecated please use the new {@link JsonSchemaElement} API instead to define the schema for tool parameters
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static JsonSchemaProperty property(String key, Object value) {
         return from(key, value);
     }
@@ -195,7 +195,7 @@ public class JsonSchemaProperty {
      * @return a property with key and value.
      * @deprecated please use the new {@link JsonSchemaElement} API instead to define the schema for tool parameters
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static JsonSchemaProperty type(String value) {
         return from("type", value);
     }
@@ -209,7 +209,7 @@ public class JsonSchemaProperty {
      * @return a property with key and value.
      * @deprecated please use the new {@link JsonSchemaElement} API instead to define the schema for tool parameters
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static JsonSchemaProperty description(String value) {
         return from("description", value);
     }
@@ -221,7 +221,7 @@ public class JsonSchemaProperty {
      * @return a property with key "enum" and value enumValues
      * @deprecated please use {@link JsonEnumSchema} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static JsonSchemaProperty enums(String... enumValues) {
         return from("enum", enumValues);
     }
@@ -235,7 +235,7 @@ public class JsonSchemaProperty {
      * @return a property with key "enum" and value enumValues
      * @deprecated please use {@link JsonEnumSchema} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static JsonSchemaProperty enums(Object... enumValues) {
         List<String> enumNames = new ArrayList<>();
         for (Object enumValue : enumValues) {
@@ -254,7 +254,7 @@ public class JsonSchemaProperty {
      * @return a property with key "enum" and values taken from enumClass
      * @deprecated please use {@link JsonEnumSchema} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static JsonSchemaProperty enums(Class<?> enumClass) {
         if (!enumClass.isEnum()) {
             throw new RuntimeException("Class " + enumClass.getName() + " should be enum");
@@ -269,7 +269,7 @@ public class JsonSchemaProperty {
      * @return a property with key "items" and value type.
      * @deprecated please use {@link JsonArraySchema} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static JsonSchemaProperty items(JsonSchemaProperty type) {
         return from("items", singletonMap(type.key, type.value));
     }
@@ -277,7 +277,7 @@ public class JsonSchemaProperty {
     /**
      * @deprecated please use {@link JsonObjectSchema} instead
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static JsonSchemaProperty objectItems(JsonSchemaProperty type) {
         Map<String, Object> map = new HashMap<>();
         map.put("type", "object");
