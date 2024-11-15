@@ -24,13 +24,7 @@
             <artifactId>langchain4j-core</artifactId>
             <version>${project.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>io.github.omarmahamid</groupId>
-            <artifactId>async-annotation</artifactId>
-            <version>0.0.3</version>
-        </dependency>
-
+        
             <!-- test dependencies -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
