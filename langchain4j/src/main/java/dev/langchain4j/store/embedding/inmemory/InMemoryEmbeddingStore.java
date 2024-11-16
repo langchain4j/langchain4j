@@ -84,7 +84,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     @Override
     public String add(final EmbeddingRecord<Embedded> embeddingRecord) {
         if (embeddingRecord == null) {
-            throw new NullPointerException("embeddingRecord");
+            throw new IllegalArgumentException("embeddingRecord");
         }
         final String id = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
         return add(id, embeddingRecord.getEmbedding(), embeddingRecord.getEmbedded());
@@ -93,7 +93,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     @Override
     public List<String> addBatch(final List<EmbeddingRecord<Embedded>> embeddingRecords) {
         if (embeddingRecords == null || embeddingRecords.isEmpty()) {
-            throw new NullPointerException("embeddingRecords");
+            throw new IllegalArgumentException("embeddingRecords");
         }
         List<String> ids = new ArrayList<>();
         for (EmbeddingRecord<Embedded> embeddingRecord : embeddingRecords) {

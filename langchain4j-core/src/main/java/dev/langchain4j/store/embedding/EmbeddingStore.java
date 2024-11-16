@@ -24,12 +24,9 @@ public interface EmbeddingStore<Embedded> {
     List<String> addBatch(List<EmbeddingRecord<Embedded>> embeddingRecords);
 
     default boolean isEmbeddingRecordValid(EmbeddingRecord<Embedded> embeddingRecord) {
-        if (embeddingRecord == null
-                || embeddingRecord.getEmbedding() == null
-                    || embeddingRecord.getEmbedding().vector() == null) {
-            return false;
-        }
-        return true;
+        return embeddingRecord != null
+                && embeddingRecord.getEmbedding() != null
+                && embeddingRecord.getEmbedding().vector() != null;
     }
 
     default boolean isEmbeddingRecordNotValid(EmbeddingRecord<Embedded> embeddingRecord) {

@@ -301,7 +301,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     @Override
     public String add(final EmbeddingRecord<TextSegment> embeddingRecord) {
         if (embeddingRecord == null) {
-            throw new NullPointerException("embeddingRecord");
+            throw new IllegalArgumentException("embeddingRecord");
         }
         return addInternal(embeddingRecord.getId(), embeddingRecord.getEmbedding(), embeddingRecord.getEmbedded());
     }
