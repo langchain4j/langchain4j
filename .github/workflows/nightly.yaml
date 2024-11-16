@@ -12,11 +12,8 @@ jobs:
       fail-fast: false # do not cancel jobs on error
       matrix:
         java_version:
-          - 17
           - 21
         include:
-          - java_version: '17'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
           - java_version: '21'
             mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
       max-parallel: 1
