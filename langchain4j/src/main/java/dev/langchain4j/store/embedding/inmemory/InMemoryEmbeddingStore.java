@@ -6,6 +6,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingRecord;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -80,8 +81,37 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return id;
     }
 
-    public void add(String id, Embedding embedding, Embedded embedded) {
-        entries.add(new Entry<>(id, embedding, embedded));
+    @Override
+    public String add(final EmbeddingRecord<Embedded> embeddingRecord) {
+        if (embeddingRecord == null) {
+            throw new NullPointerException("embeddingRecord");
+        }
+        final String id = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
+        return add(id, embeddingRecord.getEmbedding(), embeddingRecord.getEmbedded());
+    }
+
+    @Override
+    public List<String> addBatch(final List<EmbeddingRecord<Embedded>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new NullPointerException("embeddingRecords");
+        }
+        List<String> ids = new ArrayList<>();
+        for (EmbeddingRecord<Embedded> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            final String id = add(Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID()),
+                    embeddingRecord.getEmbedding(),
+                    embeddingRecord.getEmbedded());
+            ids.add(id);
+        }
+        return ids;
+    }
+
+    public String add(String id, Embedding embedding, Embedded embedded) {
+        final String idToSave = id != null ? id : randomUUID();
+        entries.add(new Entry<>(idToSave, embedding, embedded));
+        return idToSave;
     }
 
     @Override

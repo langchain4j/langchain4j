@@ -5,14 +5,13 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingRecord;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import io.stargate.sdk.data.domain.JsonDocument;
 import io.stargate.sdk.data.domain.JsonDocumentMutationResult;
 import io.stargate.sdk.data.domain.JsonDocumentResult;
 import io.stargate.sdk.data.domain.odm.Document;
 import io.stargate.sdk.data.domain.query.Filter;
-import io.stargate.sdk.data.domain.query.SelectQuery;
-import io.stargate.sdk.data.domain.query.SelectQueryBuilder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -20,9 +19,13 @@ import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static dev.langchain4j.internal.Utils.randomUUID;
 
 /**
  * Implementation of {@link EmbeddingStore} using AstraDB.
@@ -105,8 +108,9 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     /** {@inheritDoc}  */
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
+        var id = randomUUID();
         return astraDBCollection
-                .insertOne(mapRecord(embedding, textSegment))
+                .insertOne(mapRecord(id, embedding, textSegment))
                 .getDocument().getId();
     }
 
@@ -114,6 +118,67 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void add(String id, Embedding embedding) {
         astraDBCollection.upsertOne(new JsonDocument().id(id).vector(embedding.vector()));
+    }
+
+    @Override
+    public String add(EmbeddingRecord<TextSegment> embeddingRecord) {
+        if (isEmbeddingRecordNotValid(embeddingRecord)) {
+            throw new IllegalArgumentException("EmbeddingRecord is not valid");
+        }
+
+        final JsonDocument jsonDocument = new JsonDocument()
+                .id(Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID()))
+                .vector(embeddingRecord.getEmbedding().vector());
+
+        if (embeddingRecord.getEmbedded() != null) {
+            Map<String, Object> data = new HashMap<>();
+            data.put("textSegment", embeddingRecord.toString());
+            jsonDocument.data(data);
+        }
+
+        astraDBCollection.upsertOne(jsonDocument);
+        return jsonDocument.getId();
+    }
+
+    @Override
+    public List<String> addBatch(final List<EmbeddingRecord<TextSegment>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new IllegalArgumentException("embeddingRecords");
+        }
+        List<String> ids = new ArrayList<>();
+        List<Embedding> embeddings = new ArrayList<>();
+        List<TextSegment> textSegments = new ArrayList<>();
+
+        for (EmbeddingRecord<TextSegment> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            ids.add(Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID()));
+            embeddings.add(embeddingRecord.getEmbedding());
+            textSegments.add(embeddingRecord.getEmbedded());
+        }
+        addAllInternal(ids, embeddings, textSegments);
+        return ids;
+    }
+
+    private List<String> addAllInternal(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
+        if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
+            throw new IllegalArgumentException("embeddingList and textSegmentList must not be null and have the same size");
+        }
+
+        // Map as JsonDocument list
+        List<JsonDocument> recordList = new ArrayList<>();
+        for (int i = 0; i < embeddingList.size(); i++) {
+            recordList.add(mapRecord(ids.get(i), embeddingList.get(i), textSegmentList.get(i)));
+        }
+
+        // No upsert needed (ids will be generated)
+        return astraDBCollection
+                .insertManyChunkedJsonDocuments(recordList, itemsPerChunk, concurrentThreads)
+                .stream()
+                .map(JsonDocumentMutationResult::getDocument)
+                .map(Document::getId)
+                .collect(Collectors.toList());
     }
 
     /** {@inheritDoc}  */
@@ -124,7 +189,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Map as a JsonDocument list.
         List<JsonDocument> recordList = embeddings
                 .stream()
-                .map(e -> mapRecord(e, null))
+                .map(e -> mapRecord(randomUUID(), e, null))
                 .collect(Collectors.toList());
 
         // No upsert needed as ids will be generated.
@@ -154,7 +219,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Map as JsonDocument list
         List<JsonDocument> recordList = new ArrayList<>();
         for (int i = 0; i < embeddingList.size(); i++) {
-            recordList.add(mapRecord(embeddingList.get(i), textSegmentList.get(i)));
+            recordList.add(mapRecord(randomUUID(), embeddingList.get(i), textSegmentList.get(i)));
         }
 
         // No upsert needed (ids will be generated)
@@ -231,8 +296,8 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return
      *      a json document
      */
-    private JsonDocument mapRecord(Embedding embedding, TextSegment textSegment) {
-        JsonDocument record = new JsonDocument().vector(embedding.vector());
+    private JsonDocument mapRecord(String id, Embedding embedding, TextSegment textSegment) {
+        JsonDocument record = new JsonDocument().id(id).vector(embedding.vector());
         if (textSegment != null) {
             record.put(KEY_ATTRIBUTES_BLOB, textSegment.text());
             textSegment.metadata().asMap().forEach(record::put);

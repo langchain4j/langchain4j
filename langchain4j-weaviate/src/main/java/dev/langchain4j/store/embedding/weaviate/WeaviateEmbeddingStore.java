@@ -4,6 +4,7 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingRecord;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -156,6 +157,39 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         return addAll(null, embeddings, embedded);
+    }
+
+    @Override
+    public String add(final EmbeddingRecord<TextSegment> embeddingRecord) {
+        if (isEmbeddingRecordNotValid(embeddingRecord)) {
+            throw new IllegalArgumentException("EmbeddingRecord is not valid");
+        }
+        final String id = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
+        addAll(singletonList(id),
+                singletonList(embeddingRecord.getEmbedding()),
+                singletonList(embeddingRecord.getEmbedded()));
+        return id;
+    }
+
+    @Override
+    public List<String> addBatch(final List<EmbeddingRecord<TextSegment>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new IllegalArgumentException("embeddingRecords");
+        }
+        List<String> ids = new ArrayList<>();
+        List<Embedding> embeddings = new ArrayList<>();
+        List<TextSegment> textSegments = new ArrayList<>();
+
+        for (EmbeddingRecord<TextSegment> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            ids.add(Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID()));
+            embeddings.add(embeddingRecord.getEmbedding());
+            textSegments.add(embeddingRecord.getEmbedded());
+        }
+        addAll(ids, embeddings, textSegments);
+        return ids;
     }
 
     @Override

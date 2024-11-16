@@ -15,6 +15,7 @@ public class AzureAiSearchEmbeddingStoreTest {
     SearchIndex index = new SearchIndex("TEST");
     String indexName = "TEST";
 
+
     @Test
     public void empty_endpoint_should_not_be_allowed() {
         try {

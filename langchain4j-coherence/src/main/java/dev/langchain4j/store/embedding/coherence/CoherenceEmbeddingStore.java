@@ -25,6 +25,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingRecord;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -36,10 +37,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.stream.Collectors.toSet;
 
@@ -110,6 +113,38 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<DocumentChunk.Id> keys = generateKeys(embeddings.size());
         addAllInternal(keys, embeddings, embedded);
         return keys.stream().map(DocumentChunk.Id::toString).collect(Collectors.toList());
+    }
+
+    @Override
+    public String add(final EmbeddingRecord<TextSegment> embeddingRecord) {
+        if (isEmbeddingRecordNotValid(embeddingRecord)) {
+            throw new IllegalArgumentException("EmbeddingRecord is not valid");
+        }
+        final String docId = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
+        addInternal(DocumentChunk.id(docId, 0), embeddingRecord.getEmbedding(), embeddingRecord.getEmbedded());
+        return docId;
+    }
+
+    @Override
+    public List<String> addBatch(final List<EmbeddingRecord<TextSegment>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new IllegalArgumentException("EmbeddingRecords");
+        }
+        List<DocumentChunk.Id> ids = new ArrayList<>();
+        List<Embedding> embeddings = new ArrayList<>();
+        List<TextSegment> textSegments = new ArrayList<>();
+
+        for (EmbeddingRecord<TextSegment> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            final String id = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
+            ids.add(new DocumentChunk.Id(id, 0));
+            embeddings.add(embeddingRecord.getEmbedding());
+            textSegments.add(embeddingRecord.getEmbedded());
+        }
+        addAllInternal(ids, embeddings, textSegments);
+        return ids.stream().map(DocumentChunk.Id::docId).toList();
     }
 
     @Override

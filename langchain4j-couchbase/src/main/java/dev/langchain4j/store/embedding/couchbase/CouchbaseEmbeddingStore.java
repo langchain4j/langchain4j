@@ -18,6 +18,9 @@ import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static java.util.Collections.singletonList;
+
 /**
  * Represents a <a href="https://www.couchbase.com/">Couchbase</a> index as an embedding store.
  * Current implementation assumes the index uses the cosine distance metric.
@@ -235,6 +238,39 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .map(i -> UUID.randomUUID().toString())
                 .collect(Collectors.toList());
         addInternal(ids, embeddings, embedded);
+        return ids;
+    }
+
+    @Override
+    public String add(final EmbeddingRecord<TextSegment> embeddingRecord) {
+        if (isEmbeddingRecordNotValid(embeddingRecord)) {
+            throw new IllegalArgumentException("EmbeddingRecord is not valid");
+        }
+        final String id = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
+        addInternal(singletonList(id),
+                singletonList(embeddingRecord.getEmbedding()),
+                singletonList(embeddingRecord.getEmbedded()));
+        return id;
+    }
+
+    @Override
+    public List<String> addBatch(final List<EmbeddingRecord<TextSegment>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new IllegalArgumentException("embeddingRecords");
+        }
+        List<String> ids = new ArrayList<>();
+        List<Embedding> embeddings = new ArrayList<>();
+        List<TextSegment> textSegments = new ArrayList<>();
+
+        for (EmbeddingRecord<TextSegment> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            ids.add(Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID()));
+            embeddings.add(embeddingRecord.getEmbedding());
+            textSegments.add(embeddingRecord.getEmbedded());
+        }
+        addInternal(ids, embeddings, textSegments);
         return ids;
     }
 

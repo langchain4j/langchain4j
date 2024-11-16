@@ -52,6 +52,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Exceptions;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingRecord;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -64,9 +65,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
@@ -214,6 +217,36 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
                 exception.addSuppressed(e);
             }
             throw exception;
+        }
+        return ids;
+    }
+
+    @Override
+    public String add(final EmbeddingRecord<TextSegment> embeddingRecord) {
+        if (isEmbeddingRecordNotValid(embeddingRecord)) {
+            throw new IllegalArgumentException("EmbeddingRecord is not valid");
+        }
+        final String id = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
+        innerAdd(id,
+                embeddingRecord.getEmbedding(),
+                embeddingRecord.getEmbedded());
+        return id;
+    }
+
+    @Override
+    public List<String> addBatch(final List<EmbeddingRecord<TextSegment>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new IllegalArgumentException("embeddingRecords");
+        }
+        List<String> ids = new ArrayList<>();
+
+        for (EmbeddingRecord<TextSegment> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            final String id = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
+            ids.add(id);
+            innerAdd(id, embeddingRecord.getEmbedding(), embeddingRecord.getEmbedded());
         }
         return ids;
     }

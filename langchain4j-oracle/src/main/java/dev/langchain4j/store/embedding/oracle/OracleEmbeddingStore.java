@@ -4,6 +4,7 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingRecord;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -28,6 +29,7 @@ import java.util.function.BiFunction;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.singletonList;
 
 /**
  * <p>
@@ -231,6 +233,83 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             throw uncheckSQLException(sqlException);
         }
     }
+
+    /**
+     * Copy of  addAll(List<Embedding> embeddings, List<TextSegment> embedded) but with IDs
+     */
+    private List<String> addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+        ensureNotNull(embeddings, "embeddings");
+        ensureNotNull(embedded, "embedded");
+
+        if (embeddings.size() != embedded.size()) {
+            throw new IllegalArgumentException("embeddings.size() " + embeddings.size()
+                    + " is not equal to embedded.size() " + embedded.size());
+        }
+
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement insert = connection.prepareStatement(
+                     "INSERT INTO " + table.name() + "(" +
+                             String.join(", ",
+                                     table.idColumn(), table.embeddingColumn(), table.textColumn(),
+                                     table.metadataColumn()) +
+                             ") VALUES (?, ?, ?, ?)")
+        ) {
+
+            List<String> savedIds = new ArrayList<>();
+            for (int i = 0; i < embeddings.size(); i++) {
+                String id = ids.get(i) != null ? ids.get(i) : randomUUID();
+                savedIds.add(id);
+                Embedding embedding = ensureIndexNotNull(embeddings, i, "embeddings");
+                TextSegment textSegment = ensureIndexNotNull(embedded, i, "embedded");
+
+                insert.setString(1, id);
+                insert.setObject(2, embedding.vector(), OracleType.VECTOR_FLOAT32);
+                insert.setObject(3, textSegment.text());
+                insert.setObject(4, getOsonFromMetadata(textSegment.metadata()));
+                insert.addBatch();
+            }
+            insert.executeBatch();
+
+            return savedIds;
+        }
+        catch (SQLException sqlException) {
+            throw uncheckSQLException(sqlException);
+        }
+    }
+
+    @Override
+    public String add(final EmbeddingRecord<TextSegment> embeddingRecord) {
+        if (isEmbeddingRecordNotValid(embeddingRecord)) {
+            throw new IllegalArgumentException("EmbeddingRecord is not valid");
+        }
+        final String id = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
+        addAllInternal(singletonList(id),
+                singletonList(embeddingRecord.getEmbedding()),
+                singletonList(embeddingRecord.getEmbedded()));
+        return id;
+    }
+
+    @Override
+    public List<String> addBatch(final List<EmbeddingRecord<TextSegment>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new IllegalArgumentException("embeddingRecords");
+        }
+        List<String> ids = new ArrayList<>();
+        List<Embedding> embeddings = new ArrayList<>();
+        List<TextSegment> textSegments = new ArrayList<>();
+
+        for (EmbeddingRecord<TextSegment> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            ids.add(Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID()));
+            embeddings.add(embeddingRecord.getEmbedding());
+            textSegments.add(embeddingRecord.getEmbedded());
+        }
+        addAllInternal(ids, embeddings, textSegments);
+        return ids;
+    }
+
 
     @Override
     public void add(String id, Embedding embedding) {

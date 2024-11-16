@@ -367,11 +367,43 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         return result ;
     }
 
-    private void addInternal(String id, Embedding embedding, TextSegment embedded) {
+    @Override
+    public String add(final EmbeddingRecord<TextSegment> embeddingRecord) {
+        if (isEmbeddingRecordNotValid(embeddingRecord)) {
+            throw new IllegalArgumentException("EmbeddingRecord is not valid");
+        }
+        final String id = embeddingRecord.getId() != null ? embeddingRecord.getId() : UUID.randomUUID().toString();
+        return addInternal(id, embeddingRecord.getEmbedding(), embeddingRecord.getEmbedded());
+    }
+
+    @Override
+    public List<String> addBatch(final List<EmbeddingRecord<TextSegment>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new IllegalArgumentException("embeddingRecords");
+        }
+        List<String> ids = new ArrayList<>();
+        List<Embedding> embeddings = new ArrayList<>();
+        List<TextSegment> textSegments = new ArrayList<>();
+
+        for (EmbeddingRecord<TextSegment> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            ids.add(Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID()));
+            embeddings.add(embeddingRecord.getEmbedding());
+            textSegments.add(embeddingRecord.getEmbedded());
+        }
+        addAllInternal(ids, embeddings, textSegments);
+        return ids;
+    }
+
+    private String addInternal(String id, Embedding embedding, TextSegment embedded) {
+        String idToSave = Objects.requireNonNullElse(id, randomUUID());
         addAllInternal(
-                singletonList(id),
+                singletonList(idToSave),
                 singletonList(embedding),
                 embedded == null ? null : singletonList(embedded));
+        return idToSave;
     }
 
     private void addAllInternal(
@@ -389,7 +421,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             Document document = new Document();
             document.setId(ids.get(i));
             document.setContentVector(embeddings.get(i).vectorAsList());
-            if (embedded != null) {
+            if (embedded != null && embedded.get(i) != null) {
                 document.setContent(embedded.get(i).text());
                 Document.Metadata metadata = new Document.Metadata();
                 List<Document.Metadata.Attribute> attributes = new ArrayList<>();

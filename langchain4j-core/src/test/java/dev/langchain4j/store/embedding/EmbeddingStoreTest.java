@@ -7,9 +7,21 @@ import org.junit.jupiter.api.Test;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
+
 
 class EmbeddingStoreTest implements WithAssertions {
     public static class MinimalEmbeddingStore implements EmbeddingStore<String> {
+        @Override
+        public String add(final EmbeddingRecord<String> embeddingRecord) {
+            return UUID.randomUUID().toString();
+        }
+
+        @Override
+        public List<String> addBatch(final List<EmbeddingRecord<String>> embeddingRecords) {
+            return List.of(UUID.randomUUID().toString());
+        }
+
         @Override
         public String add(Embedding embedding) {
             return null;

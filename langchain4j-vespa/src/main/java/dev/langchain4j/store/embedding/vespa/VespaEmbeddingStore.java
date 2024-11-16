@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.vespa;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.vespa.VespaQueryClient.createInstance;
+import static java.util.Collections.singletonList;
 
 import ai.vespa.client.dsl.A;
 import ai.vespa.client.dsl.Annotation;
@@ -13,6 +14,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingRecord;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -23,6 +25,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.Builder;
@@ -169,6 +172,77 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     return ids;
+  }
+
+    /**
+     * Cope of same method but with IDs
+     */
+  private List<String> addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    if (embedded != null && embeddings.size() != embedded.size()) {
+        throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
+    }
+
+    try (JsonFeeder jsonFeeder = buildJsonFeeder()) {
+        List<Record> records = new ArrayList<>();
+
+        for (int i = 0; i < embeddings.size(); i++) {
+            records.add(buildRecord(ids.get(i), embeddings.get(i), embedded != null ? embedded.get(i) : null));
+        }
+
+        jsonFeeder.feedMany(
+                Json.toInputStream(records, List.class),
+                new JsonFeeder.ResultCallback() {
+                    @Override
+                    public void onNextResult(Result result, FeedException error) {
+                        if (error != null) {
+                            throw new RuntimeException(error.getMessage());
+                        }
+                    }
+
+                    @Override
+                    public void onError(FeedException error) {
+                        throw new RuntimeException(error.getMessage());
+                    }
+                }
+        );
+    } catch (IOException e) {
+        throw new RuntimeException(e);
+    }
+
+    return ids;
+  }
+
+  @Override
+  public String add(final EmbeddingRecord<TextSegment> embeddingRecord) {
+        if (isEmbeddingRecordNotValid(embeddingRecord)) {
+          throw new IllegalArgumentException("EmbeddingRecord is not valid");
+        }
+        final String id = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
+        addAllInternal(singletonList(id),
+              singletonList(embeddingRecord.getEmbedding()),
+              singletonList(embeddingRecord.getEmbedded()));
+        return id;
+  }
+
+  @Override
+  public List<String> addBatch(final List<EmbeddingRecord<TextSegment>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new IllegalArgumentException("embeddingRecords");
+        }
+        List<String> ids = new ArrayList<>();
+        List<Embedding> embeddings = new ArrayList<>();
+        List<TextSegment> textSegments = new ArrayList<>();
+
+        for (EmbeddingRecord<TextSegment> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            ids.add(Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID()));
+            embeddings.add(embeddingRecord.getEmbedding());
+            textSegments.add(embeddingRecord.getEmbedded());
+        }
+        addAllInternal(ids, embeddings, textSegments);
+        return ids;
   }
 
   /**

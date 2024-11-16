@@ -8,6 +8,7 @@ import com.azure.cosmos.util.CosmosPagedIterable;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingRecord;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
 import org.slf4j.Logger;
@@ -15,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.*;
@@ -140,8 +142,39 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
                 .collect(Collectors.toList());
     }
 
-    private void addInternal(String id, Embedding embedding, TextSegment embedded) {
+    @Override
+    public String add(final EmbeddingRecord<TextSegment> embeddingRecord) {
+        if (isEmbeddingRecordNotValid(embeddingRecord)) {
+            throw new IllegalArgumentException("EmbeddingRecord is not valid");
+        }
+        final String id = embeddingRecord.getId() != null ? embeddingRecord.getId() : UUID.randomUUID().toString();
+        return addInternal(id, embeddingRecord.getEmbedding(), embeddingRecord.getEmbedded());
+    }
+
+    @Override
+    public List<String> addBatch(final List<EmbeddingRecord<TextSegment>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new IllegalArgumentException("embeddingRecords");
+        }
+        List<String> ids = new ArrayList<>();
+        List<Embedding> embeddings = new ArrayList<>();
+        List<TextSegment> textSegments = new ArrayList<>();
+
+        for (EmbeddingRecord<TextSegment> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            ids.add(embeddingRecord.getId() != null ? embeddingRecord.getId() : randomUUID());
+            embeddings.add(embeddingRecord.getEmbedding());
+            textSegments.add(embeddingRecord.getEmbedded());
+        }
+        addAllInternal(ids, embeddings, textSegments);
+        return ids;
+    }
+
+    public String addInternal(String id, Embedding embedding, TextSegment embedded) {
         addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        return id;
     }
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {

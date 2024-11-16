@@ -14,6 +14,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingRecord;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import lombok.Getter;
@@ -22,8 +23,10 @@ import lombok.NonNull;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static java.util.stream.Collectors.toList;
@@ -227,6 +230,53 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
             CqlSession cqlSession = CassIO.init(token, dbId, dbRegion, keyspaceName, env);
             return new CassandraEmbeddingStore(cqlSession, tableName, dimension, metric);
         }
+    }
+
+    @Override
+    public String add(final EmbeddingRecord<TextSegment> embeddingRecord) {
+        if (isEmbeddingRecordNotValid(embeddingRecord)) {
+            throw new IllegalArgumentException("EmbeddingRecord is not valid");
+        }
+        final String id = embeddingRecord.getId() != null ? embeddingRecord.getId() : randomUUID();
+        return addInternal(id,
+                embeddingRecord.getEmbedding(),
+                embeddingRecord.getEmbedded());
+    }
+
+
+
+    @Override
+    public List<String> addBatch(final List<EmbeddingRecord<TextSegment>> embeddingRecords) {
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            throw new IllegalArgumentException("embeddingRecords");
+        }
+        List<String> ids = new ArrayList<>();
+        for (EmbeddingRecord<TextSegment> embeddingRecord : embeddingRecords) {
+            if (isEmbeddingRecordNotValid(embeddingRecord)) {
+                throw new IllegalArgumentException("EmbeddingRecord is not a valid. Check vector present!");
+            }
+            final String id = Objects.requireNonNullElse(embeddingRecord.getId(), randomUUID());
+            addInternal(id,
+                    embeddingRecord.getEmbedding(),
+                    embeddingRecord.getEmbedded());
+            ids.add(id);
+        }
+        return ids;
+    }
+
+    private String addInternal(String id, Embedding embedding, TextSegment textSegment) {
+        if (embedding == null) {
+            throw new IllegalArgumentException("Embedding is null");
+        }
+        MetadataVectorRecord record =
+                new MetadataVectorRecord(Objects.requireNonNullElse(id, randomUUID()), embedding.vectorAsList());
+
+        if (textSegment != null) {
+            record.setBody(textSegment.text());
+            record.setMetadata(textSegment.metadata().asMap());
+        }
+        embeddingTable.put(record);
+        return record.getRowId();
     }
 
     /**

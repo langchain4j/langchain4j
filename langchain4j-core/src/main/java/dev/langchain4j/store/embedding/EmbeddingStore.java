@@ -19,46 +19,74 @@ import static java.util.Collections.singletonList;
  */
 public interface EmbeddingStore<Embedded> {
 
+    String add(EmbeddingRecord<Embedded> embeddingRecord);
+
+    List<String> addBatch(List<EmbeddingRecord<Embedded>> embeddingRecords);
+
+    default boolean isEmbeddingRecordValid(EmbeddingRecord<Embedded> embeddingRecord) {
+        if (embeddingRecord == null
+                || embeddingRecord.getEmbedding() == null
+                    || embeddingRecord.getEmbedding().vector() == null) {
+            return false;
+        }
+        return true;
+    }
+
+    default boolean isEmbeddingRecordNotValid(EmbeddingRecord<Embedded> embeddingRecord) {
+        return !isEmbeddingRecordValid(embeddingRecord);
+    }
+
     /**
+     * @deprecated Please use {@code add(EmbeddingRecord<Embedded> embeddingRecord)} instead
+     *
      * Adds a given embedding to the store.
      *
      * @param embedding The embedding to be added to the store.
      * @return The auto-generated ID associated with the added embedding.
      */
+    @Deprecated(forRemoval = true)
     String add(Embedding embedding);
 
     /**
+     * @deprecated Please use {@code add(EmbeddingRecord<Embedded> embeddingRecord)} instead
      * Adds a given embedding to the store.
      *
      * @param id        The unique identifier for the embedding to be added.
      * @param embedding The embedding to be added to the store.
      */
+    @Deprecated(forRemoval = true)
     void add(String id, Embedding embedding);
 
     /**
+     * @deprecated Please use {@code add(EmbeddingRecord<Embedded> embeddingRecord)} instead
      * Adds a given embedding and the corresponding content that has been embedded to the store.
      *
      * @param embedding The embedding to be added to the store.
      * @param embedded  Original content that was embedded.
      * @return The auto-generated ID associated with the added embedding.
      */
+    @Deprecated(forRemoval = true)
     String add(Embedding embedding, Embedded embedded);
 
     /**
+     * @deprecated Please use {@code addBatch(List<EmbeddingRecord<Embedded>> embeddingRecords)} instead
      * Adds multiple embeddings to the store.
      *
      * @param embeddings A list of embeddings to be added to the store.
      * @return A list of auto-generated IDs associated with the added embeddings.
      */
+    @Deprecated(forRemoval = true)
     List<String> addAll(List<Embedding> embeddings);
 
     /**
+     * @deprecated Please use {@code addBatch(List<EmbeddingRecord<Embedded>> embeddingRecords)} instead
      * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
      *
      * @param embeddings A list of embeddings to be added to the store.
      * @param embedded   A list of original contents that were embedded.
      * @return A list of auto-generated IDs associated with the added embeddings.
      */
+    @Deprecated(forRemoval = true)
     List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded);
 
     /**

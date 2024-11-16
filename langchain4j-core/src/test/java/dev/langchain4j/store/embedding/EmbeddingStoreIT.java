@@ -28,7 +28,8 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         TextSegment segment = TextSegment.from("hello", metadata);
         Embedding embedding = embeddingModel().embed(segment.text()).content();
 
-        String id = embeddingStore().add(embedding, segment);
+        final EmbeddingRecord<TextSegment> embeddingRecord = new EmbeddingRecord<>(null, embedding, segment);
+        String id = embeddingStore().add(embeddingRecord);
         assertThat(id).isNotBlank();
 
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
