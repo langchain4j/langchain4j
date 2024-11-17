@@ -10,8 +10,10 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
 
+import java.time.Duration;
 import java.util.List;
 
 public class BedrockChatModel implements ChatLanguageModel {
@@ -24,24 +26,35 @@ public class BedrockChatModel implements ChatLanguageModel {
     private AwsCredentialsProvider credentialsProvider;
     private String modelId;
     private InferenceConfiguration inferenceConfiguration;
+    private Integer maxRetries;
+    private Duration timeout;
+    private BedrockRuntimeClient client;
 
     public BedrockChatModel() {
         this.region = Region.US_EAST_1;
         this.credentialsProvider = DefaultCredentialsProvider.builder().build();
         this.modelId = DEFAULT_MODEL_ID;
         this.inferenceConfiguration = InferenceConfiguration.builder().build();
+        this.maxRetries = 5;
+        this.timeout = Duration.ofMinutes(1L);
+        this.client = createClient();
     }
 
     public BedrockChatModel(
             Region region,
             AwsCredentialsProvider credentialsProvider,
             String modelId,
-            InferenceConfiguration inferenceConfiguration
+            InferenceConfiguration inferenceConfiguration,
+            Integer maxRetries,
+            Duration timeout
     ) {
         this.region = region;
         this.credentialsProvider = credentialsProvider;
         this.modelId = modelId;
         this.inferenceConfiguration = inferenceConfiguration;
+        this.maxRetries = maxRetries;
+        this.timeout = timeout;
+        this.client = createClient();
     }
 
     @Override
@@ -50,12 +63,23 @@ public class BedrockChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Response<AiMessage> generate(final List<ChatMessage> messages, final List<ToolSpecification> toolSpecifications) {
-        throw new IllegalArgumentException("Not implemented yet");
+    public Response<AiMessage> generate(
+            final List<ChatMessage> messages,
+            final List<ToolSpecification> toolSpecifications
+    ) {
+        return null;
     }
 
     public static BedrockChatModelBuilder builder() {
         return new BedrockChatModelBuilder();
+    }
+
+    private BedrockRuntimeClient createClient() {
+        return BedrockRuntimeClient.builder()
+                .region(this.region)
+                .credentialsProvider(this.credentialsProvider)
+                .overrideConfiguration(config -> config.apiCallTimeout(this.timeout))
+                .build();
     }
 
     public static class BedrockChatModelBuilder {
@@ -64,6 +88,8 @@ public class BedrockChatModel implements ChatLanguageModel {
         private AwsCredentialsProvider credentialsProvider;
         private String modelId;
         private InferenceConfiguration inferenceConfiguration;
+        private Integer maxRetries;
+        private Duration timeout;
 
         public BedrockChatModelBuilder region(Region region) {
             this.region = region;
@@ -85,8 +111,18 @@ public class BedrockChatModel implements ChatLanguageModel {
             return this;
         }
 
+        public BedrockChatModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public BedrockChatModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
         public BedrockChatModel build() {
-            return new BedrockChatModel(region, credentialsProvider, modelId, inferenceConfiguration);
+            return new BedrockChatModel(region, credentialsProvider, modelId, inferenceConfiguration, maxRetries, timeout);
         }
 
     }
