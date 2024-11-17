@@ -1,8 +1,10 @@
 package dev.langchain4j.model.bedrock;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.converse.BedrockChatModel;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -13,11 +15,11 @@ public class BedrockChatModelWithConverseAPIIT {
 
     @Test
     void testBedrockChatModelWithDefaultConfig() {
-        var bedrockChatModel = new BedrockChatModel();
+        BedrockChatModel bedrockChatModel = new BedrockChatModel();
 
         assertThat(bedrockChatModel).isNotNull();
 
-        var response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
 
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
