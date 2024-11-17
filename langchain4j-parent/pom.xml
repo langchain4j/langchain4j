@@ -47,7 +47,7 @@
         <elastic.version>8.15.3</elastic.version>
         <jackson.version>2.16.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
-        <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
+        <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <milvus-sdk-java.version>2.3.9</milvus-sdk-java.version>
         <netty.version>4.1.111.Final</netty.version>
