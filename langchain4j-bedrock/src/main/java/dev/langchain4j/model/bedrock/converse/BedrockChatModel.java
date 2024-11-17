@@ -112,6 +112,7 @@ public class BedrockChatModel implements ChatLanguageModel {
             List<ToolSpecification> toolSpecifications
     ) {
         List<SystemContentBlock> systemMessages = extractSystemMessagesFrom(messages);
+
         List<Message> otherMessages = extractOtherMessagesFrom(messages);
 
         ToolConfiguration toolConfig = extractToolConfigurationFrom(toolChoiceSpecification, toolSpecifications);
