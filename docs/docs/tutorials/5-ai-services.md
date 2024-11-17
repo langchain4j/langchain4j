@@ -70,8 +70,10 @@ Finally, we can use the `AiServices` class to create an instance of our AI Servi
 Assistant assistant = AiServices.create(Assistant.class, model);
 ```
 :::note
-In a Quarkus or Spring Boot application, this can be a bean that you can then inject into your code
-wherever you need AI Services.
+In [Quarkus](https://docs.quarkiverse.io/quarkus-langchain4j/dev/ai-services.html)
+and [Spring Boot](/tutorials/spring-boot-integration#spring-boot-starter-for-declarative-ai-services) applications,
+the autoconfiguration handles creating an `Assistant` bean.
+This means you do not need to call `AiServices.create(...)`, you can simply inject/autowire the `Assistant` wherever it is needed.
 :::
 
 Now we can use `Assistant`:
