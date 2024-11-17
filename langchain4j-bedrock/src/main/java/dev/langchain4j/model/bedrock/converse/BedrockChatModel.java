@@ -14,13 +14,17 @@ import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
+
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 public class BedrockChatModel implements ChatLanguageModel {
 
     private static final Logger log = LoggerFactory.getLogger(BedrockChatModel.class);
 
-    public static final String DEFAULT_MODEL_ID = "default-bedrock-model-id";
+    public static final String DEFAULT_MODEL_ID = "anthropic.claude-3-5-sonnet-20241022-v2:0";
 
     private Region region;
     private AwsCredentialsProvider credentialsProvider;
@@ -59,13 +63,23 @@ public class BedrockChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(final List<ChatMessage> messages) {
-        return generate(messages, (List<ToolSpecification>) null);
+        return generate(messages, emptyList());
     }
 
     @Override
-    public Response<AiMessage> generate(
-            final List<ChatMessage> messages,
-            final List<ToolSpecification> toolSpecifications
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return generate(messages, toolSpecification, singletonList(toolSpecification));
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return generate(messages, null, toolSpecifications);
+    }
+
+    private Response<AiMessage> generate(
+            List<ChatMessage> messages,
+            ToolSpecification toolChoiceSpecification,
+            List<ToolSpecification> toolSpecifications
     ) {
         return null;
     }
