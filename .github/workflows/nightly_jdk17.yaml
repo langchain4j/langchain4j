@@ -2,7 +2,7 @@ name: Nightly Build
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # daily at midnight UTC
+    - cron: '0 0 * * *'  # daily at 00:00 UTC
   workflow_dispatch:
 
 jobs:
@@ -13,11 +13,8 @@ jobs:
       matrix:
         java_version:
           - 17
-          - 21
         include:
           - java_version: '17'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
-          - java_version: '21'
             mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
       max-parallel: 1
     runs-on: ubuntu-latest
