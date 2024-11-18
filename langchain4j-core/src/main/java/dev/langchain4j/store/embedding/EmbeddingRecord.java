@@ -5,20 +5,20 @@ import dev.langchain4j.data.embedding.Embedding;
 
 /**
  * Represents a request to add object to {@link EmbeddingStore}.
- * @param <Embedded> The class of the object that has been embedded. Typically, this is {@link dev.langchain4j.data.segment.TextSegment}.
+ * @param <E> The class of the object that has been embedded. Typically, this is {@link dev.langchain4j.data.segment.TextSegment}.
  */
-public class EmbeddingRecord<Embedded> {
+public class EmbeddingRecord<E> {
     private String id;
     private Embedding embedding;
-    private Embedded embedded;
+    private E embedded;
 
-    public EmbeddingRecord(final String id, final Embedding embedding, final Embedded embedded) {
+    public EmbeddingRecord(final String id, final Embedding embedding, final E embedded) {
         this.id = id;
         this.embedding = embedding;
         this.embedded = embedded;
     }
 
-    public static <Embedded> EmbeddingAddRequestBuilder<Embedded> builder() {
+    public static <E> EmbeddingAddRequestBuilder<E> builder() {
         return new EmbeddingAddRequestBuilder();
     }
 
@@ -30,7 +30,7 @@ public class EmbeddingRecord<Embedded> {
         return this.embedding;
     }
 
-    public Embedded getEmbedded() {
+    public E getEmbedded() {
         return this.embedded;
     }
 
@@ -42,35 +42,35 @@ public class EmbeddingRecord<Embedded> {
         this.embedding = embedding;
     }
 
-    public void setEmbedded(final Embedded embedded) {
+    public void setEmbedded(final E embedded) {
         this.embedded = embedded;
     }
 
-    public static class EmbeddingAddRequestBuilder<Embedded> {
+    public static class EmbeddingAddRequestBuilder<E> {
 
         private String id;
         private Embedding embedding;
-        private Embedded embedded;
+        private E embedded;
 
         EmbeddingAddRequestBuilder() {
         }
 
-        public EmbeddingAddRequestBuilder<Embedded> id(final String id) {
+        public EmbeddingAddRequestBuilder<E> id(final String id) {
             this.id = id;
             return this;
         }
 
-        public EmbeddingAddRequestBuilder<Embedded> embedding(final Embedding embedding) {
+        public EmbeddingAddRequestBuilder<E> embedding(final Embedding embedding) {
             this.embedding = embedding;
             return this;
         }
 
-        public EmbeddingAddRequestBuilder<Embedded> embedded(final Embedded embedded) {
+        public EmbeddingAddRequestBuilder<E> embedded(final E embedded) {
             this.embedded = embedded;
             return this;
         }
 
-        public EmbeddingRecord<Embedded> build() {
+        public EmbeddingRecord<E> build() {
             return new EmbeddingRecord(this.id, this.embedding, this.embedded);
         }
 
