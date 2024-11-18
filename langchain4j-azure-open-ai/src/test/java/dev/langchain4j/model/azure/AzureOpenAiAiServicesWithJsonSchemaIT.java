@@ -1,13 +1,12 @@
 package dev.langchain4j.model.azure;
 
-import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormat;
-import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormatJsonSchema;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.AiServicesWithJsonSchemaIT;
 
 import java.util.List;
 
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_O;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static java.util.Arrays.asList;
 
 class AzureOpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
@@ -20,7 +19,7 @@ class AzureOpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
                         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                         .deploymentName(GPT_4_O.modelName())
                         .tokenizer(new AzureOpenAiTokenizer(GPT_4_O.modelName()))
-                        .responseFormat(new ChatCompletionsJsonSchemaResponseFormat(new ChatCompletionsJsonSchemaResponseFormatJsonSchema("test")))
+                        .responseFormat(JSON)
                         .strictJsonSchema(true)
                         .temperature(0.0)
                         .logRequestsAndResponses(true)
@@ -30,7 +29,7 @@ class AzureOpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
                         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                         .deploymentName(GPT_4_O.modelName())
                         .tokenizer(new AzureOpenAiTokenizer(GPT_4_O.modelName()))
-                        .responseFormat(new ChatCompletionsJsonSchemaResponseFormat(new ChatCompletionsJsonSchemaResponseFormatJsonSchema("test")))
+                        .responseFormat(JSON)
                         .strictJsonSchema(false)
                         .temperature(0.0)
                         .logRequestsAndResponses(true)

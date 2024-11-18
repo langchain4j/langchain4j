@@ -19,27 +19,31 @@ import com.azure.core.http.policy.RetryOptions;
 import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
-import com.azure.json.JsonReader;
-import com.azure.json.JsonSerializable;
-import com.azure.json.JsonToken;
-import com.azure.json.JsonWriter;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.azure.json.AzureJsonArraySchema;
+import dev.langchain4j.model.azure.json.AzureJsonBooleanSchema;
+import dev.langchain4j.model.azure.json.AzureJsonEnumSchema;
+import dev.langchain4j.model.azure.json.AzureJsonIntegerSchema;
+import dev.langchain4j.model.azure.json.AzureJsonNumberSchema;
+import dev.langchain4j.model.azure.json.AzureJsonObjectSchema;
+import dev.langchain4j.model.azure.json.AzureJsonReferenceSchema;
+import dev.langchain4j.model.azure.json.AzureJsonSchemaElement;
+import dev.langchain4j.model.azure.json.AzureJsonStringSchema;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -48,6 +52,7 @@ import java.util.*;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
@@ -422,7 +427,10 @@ class InternalAzureOpenAiHelper {
     }
 
     static ChatCompletionsResponseFormat toAzureOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
-        if (responseFormat == null || responseFormat.type() == TEXT) {
+        if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
+            return null;
+        } else if (responseFormat.type() != ResponseFormatType.JSON) {
+            logger.warn("Unsupported response format: " + responseFormat);
             return null;
         }
 
@@ -435,10 +443,88 @@ class InternalAzureOpenAiHelper {
             }
             ChatCompletionsJsonSchemaResponseFormatJsonSchema schema = new ChatCompletionsJsonSchemaResponseFormatJsonSchema(jsonSchema.name());
             schema.setStrict(strict);
-            Parameters parameters = new Parameters();
-            parameters.setProperties(((JsonObjectSchema) jsonSchema.rootElement()).properties());
-            schema.setSchema(BinaryData.fromObject(parameters));
+            schema.setSchema(BinaryData.fromObject(toAzureOpenAiJsonSchemaElement(jsonSchema.rootElement(), strict)));
             return new ChatCompletionsJsonSchemaResponseFormat(schema);
         }
+    }
+
+    private static AzureJsonSchemaElement toAzureOpenAiJsonSchemaElement(
+            JsonSchemaElement jsonSchemaElement,
+            boolean strict) {
+
+        if (jsonSchemaElement instanceof JsonObjectSchema) {
+            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
+            AzureJsonObjectSchema.Builder builder = AzureJsonObjectSchema.builder()
+                    .description(jsonObjectSchema.description())
+                    .properties(toAzureOpenAiProperties(jsonObjectSchema.properties(), strict))
+                    .additionalProperties(strict ? Boolean.FALSE : jsonObjectSchema.additionalProperties())
+                    .definitions(toAzureOpenAiProperties(jsonObjectSchema.definitions(), strict));
+            if (jsonObjectSchema.required() != null) {
+                builder.required(jsonObjectSchema.required());
+            }
+            if (strict) {
+                builder
+                        // when strict, all fields must be required:
+                        // https://platform.openai.com/docs/guides/structured-outputs/all-fields-must-be-required
+                        .required(new ArrayList<>(jsonObjectSchema.properties().keySet()))
+                        // when strict, additionalProperties must be false:
+                        // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects
+                        .additionalProperties(false);
+            }
+            return builder.build();
+        } else if (jsonSchemaElement instanceof JsonArraySchema) {
+            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchemaElement;
+            return AzureJsonArraySchema.builder()
+                    .description(jsonArraySchema.description())
+                    .items(toAzureOpenAiJsonSchemaElement(jsonArraySchema.items(), strict))
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
+            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchemaElement;
+            return AzureJsonEnumSchema.builder()
+                    .description(jsonEnumSchema.description())
+                    .enumValues(jsonEnumSchema.enumValues())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonStringSchema) {
+            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchemaElement;
+            return AzureJsonStringSchema.builder()
+                    .description(jsonStringSchema.description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
+            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchemaElement;
+            return AzureJsonIntegerSchema.builder()
+                    .description(jsonIntegerSchema.description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
+            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
+            return AzureJsonNumberSchema.builder()
+                    .description(jsonNumberSchema.description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
+            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
+            return AzureJsonBooleanSchema.builder()
+                    .description(jsonBooleanSchema.description())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonReferenceSchema) {
+            JsonReferenceSchema jsonReferenceSchema = (JsonReferenceSchema) jsonSchemaElement;
+            return AzureJsonReferenceSchema.builder()
+                    .reference("#/$defs/" + jsonReferenceSchema.reference())
+                    .build();
+        } else {
+            throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
+        }
+    }
+
+    private static Map<String, AzureJsonSchemaElement> toAzureOpenAiProperties(
+            Map<String, JsonSchemaElement> properties,
+            boolean strict) {
+
+        if (properties == null) {
+            return null;
+        }
+
+        Map<String, AzureJsonSchemaElement> azureOpenAiProperties = new LinkedHashMap<>();
+        properties.forEach((key, value) ->
+                azureOpenAiProperties.put(key, toAzureOpenAiJsonSchemaElement(value, strict)));
+        return azureOpenAiProperties;
     }
 }
