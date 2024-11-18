@@ -19,7 +19,6 @@ import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Disabled("Run manually before release. Expensive to run very often.")
-@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiImageModelIT {
 
     Logger log = LoggerFactory.getLogger(OpenAiImageModelIT.class);
