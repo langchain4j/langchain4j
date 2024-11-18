@@ -1,4 +1,4 @@
-name: Nightly Build
+name: Nightly Build JDK 21
 
 on:
   schedule:
