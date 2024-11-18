@@ -11,8 +11,8 @@ class UrlDocumentLoaderTest implements WithAssertions {
         String url = "bad_url";
 
         assertThatExceptionOfType(IllegalArgumentException.class)
-            .isThrownBy(() -> UrlDocumentLoader.load(url, new TextDocumentParser()))
-            .withMessageContaining("no protocol");
+                .isThrownBy(() -> UrlDocumentLoader.load(url, new TextDocumentParser()))
+                .withMessageContaining("no protocol");
     }
 
     @Test

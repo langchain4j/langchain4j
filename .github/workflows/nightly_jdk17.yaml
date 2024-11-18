@@ -1,8 +1,8 @@
-name: Nightly Build
+name: Nightly Build JDK 17
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # daily at midnight UTC
+    - cron: '0 0 * * *'  # daily at 00:00 UTC
   workflow_dispatch:
 
 jobs:
@@ -13,11 +13,8 @@ jobs:
       matrix:
         java_version:
           - 17
-          - 21
         include:
           - java_version: '17'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
-          - java_version: '21'
             mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
       max-parallel: 1
     runs-on: ubuntu-latest
@@ -66,7 +63,7 @@ jobs:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           GCP_PROJECT_NUM: ${{ secrets.GCP_PROJECT_NUM }}
           GCP_VERTEXAI_ENDPOINT: ${{ secrets.GCP_VERTEXAI_ENDPOINT }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
