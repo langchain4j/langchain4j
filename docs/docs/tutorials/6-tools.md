@@ -247,7 +247,7 @@ Response<AiMessage> response2 = model.generate(messages, toolSpecifications);
 
 ## High Level Tool API
 At a high level of abstraction, you can annotate any Java method with the `@Tool` annotation
-and specify them when creating [AI Service](/tutorials/ai-services).
+and specify them when creating [AI Service](/tutorials/ai-services#tools-function-calling).
 
 AI Service will automatically convert such methods into `ToolSpecification`s
 and include them in the request for each interaction with the LLM.
@@ -392,6 +392,23 @@ Result<String> result = assistant.chat("Cancel my booking 123-456");
 
 String answer = result.content();
 List<ToolExecution> toolExecutions = result.toolExecutions();
+```
+
+In streaming mode, you can do so by specifying `onToolExecuted` callback:
+```java
+interface Assistant {
+
+    TokenStream chat(String message);
+}
+
+TokenStream tokenStream = assistant.chat("Cancel my booking");
+
+tokenStream
+    .onNext(...)
+    .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
+    .onComplete(...)
+    .onError(...)
+    .start();
 ```
 
 ### Specifying Tools Programmatically

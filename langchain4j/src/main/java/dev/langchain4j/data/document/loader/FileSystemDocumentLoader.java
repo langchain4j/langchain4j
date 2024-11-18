@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.loader;
 
-import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.BlankDocumentException;
+import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;

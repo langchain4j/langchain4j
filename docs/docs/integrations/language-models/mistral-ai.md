@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:0.35.0'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:0.35.0'
+implementation 'dev.langchain4j:langchain4j:0.36.0'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:0.36.0'
 ```
 ### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
@@ -374,6 +374,21 @@ Toggling the safe prompt will prepend your messages with the following `@SystemM
 Always assist with care, respect, and truth. Respond with utmost utility yet securely. Avoid harmful, unethical, prejudiced, or negative content. Ensure replies promote fairness and positivity.
 ```
 
+## Creating `MistralAiModerationModel`
+
+### Plain Java
+```java
+ModerationModel model = new MistralAiModerationModel.Builder()
+    .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+    .modelName("mistral-moderation-latest")
+    .logRequests(true)
+    .logResponses(false)
+    .build();
+```
+
+```java
+Moderation moderation = model.moderate("I want to kill them.").content();
+```
 
 ## Examples
 - [Mistral AI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples/src/main/java)
