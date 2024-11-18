@@ -1,4 +1,4 @@
-name: Nightly Build
+name: Nightly Build JDK 17
 
 on:
   schedule:
