@@ -84,6 +84,8 @@ public class JsonObjectSchema implements JsonSchemaElement {
          * @see #addBooleanProperty(String, String)
          * @see #addEnumProperty(String, List)
          * @see #addEnumProperty(String, List, String)
+         * @see #addAnyOfProperty(String, List)
+         * @see #addAnyOfProperty(String, List, String)
          */
         public Builder properties(Map<String, JsonSchemaElement> properties) {
             this.properties = properties;
@@ -105,6 +107,9 @@ public class JsonObjectSchema implements JsonSchemaElement {
          * @see #addBooleanProperty(String, String)
          * @see #addEnumProperty(String, List)
          * @see #addEnumProperty(String, List, String)
+         * @see #addAnyOfProperty(String, List)
+         * @see #addAnyOfProperty(String, List, String)
+         *
          */
         public Builder addProperty(String name, JsonSchemaElement jsonSchemaElement) {
             this.properties.put(name, jsonSchemaElement);
@@ -238,6 +243,30 @@ public class JsonObjectSchema implements JsonSchemaElement {
          */
         public Builder addEnumProperty(String name, List<String> enumValues, String description) {
             this.properties.put(name, JsonEnumSchema.builder().enumValues(enumValues).description(description).build());
+            return this;
+        }
+
+        /**
+         * Adds a single anyOf property to the properties of this JSON object.
+         * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
+         * @see #addAnyOfProperty(String, List, String)
+         * @see #addProperty(String, JsonSchemaElement)
+         * @see #properties(Map)
+         */
+        public Builder addAnyOfProperty(String name, List<JsonSchemaElement> anyOf) {
+            this.properties.put(name, JsonAnyOfSchema.builder().anyOf(anyOf).build());
+            return this;
+        }
+
+        /**
+         * Adds a single anyOf property to the properties of this JSON object.
+         * Please note that {@link #required(List)} should be set explicitly if you want the properties to be mandatory.
+         * @see #addAnyOfProperty(String, List)
+         * @see #addProperty(String, JsonSchemaElement)
+         * @see #properties(Map)
+         */
+        public Builder addAnyOfProperty(String name, List<JsonSchemaElement> anyOf, String description) {
+            this.properties.put(name, JsonAnyOfSchema.builder().anyOf(anyOf).description(description).build());
             return this;
         }
 
