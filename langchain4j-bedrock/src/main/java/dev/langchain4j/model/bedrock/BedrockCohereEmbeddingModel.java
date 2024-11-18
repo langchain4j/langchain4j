@@ -20,8 +20,7 @@ import java.util.Map;
 @SuperBuilder
 public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockCohereEmbeddingResponse> {
 
-    @Builder.Default
-    private final String model = Types.CohereEmbedEnglishTextV3.getValue();
+    private final String model;
 
     @Builder.Default
     private final String inputType = InputType.SEARCH_DOCUMENT.getValue();

@@ -3,6 +3,7 @@ package dev.langchain4j.model.bedrock.internal;
 import dev.langchain4j.data.embedding.Embedding;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Bedrock embedding response
@@ -19,10 +20,11 @@ public interface BedrockEmbeddingResponse {
     List<Embedding> toEmbeddings();
 
     /**
-     * Get input text token count
-     *
-     * @return input text token count
+     * Some models allow to return input text token count.
+     * Other models do not provide this information.
+     * @return Optional containing the token count of the input text
+     * or empty if the data is insufficient.
      */
-    int getInputTextTokenCount();
+    Optional<Integer> getInputTextTokenCount();
 
 }

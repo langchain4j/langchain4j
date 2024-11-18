@@ -5,6 +5,7 @@ import dev.langchain4j.model.bedrock.internal.BedrockEmbeddingResponse;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Bedrock Cohere embedding response
@@ -54,8 +55,8 @@ class BedrockCohereEmbeddingResponse implements BedrockEmbeddingResponse {
     }
 
     @Override
-    public int getInputTextTokenCount() {
-        return inputTextTokenCount;
+    public Optional<Integer> getInputTextTokenCount() {
+        return Optional.empty();
     }
 
     public void setInputTextTokenCount(int inputTextTokenCount) {
