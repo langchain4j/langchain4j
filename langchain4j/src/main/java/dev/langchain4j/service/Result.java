@@ -4,7 +4,6 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
-
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;

@@ -22,9 +22,10 @@ class TypeUtilsTest {
      **********************************************************************************************/
 
     @Test
-    public void testIntegerReturnType() {
+    void testIntegerReturnType() {
         // Given Integer
-        Type returnType = new TypeToken<Integer>() {}.getType();
+        Type returnType = new TypeToken<Integer>() {
+        }.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Integer.class);
@@ -33,9 +34,10 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testStringReturnType() {
+    void testStringReturnType() {
         // Given String
-        Type returnType = new TypeToken<String>() {}.getType();
+        Type returnType = new TypeToken<String>() {
+        }.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(String.class);
@@ -44,9 +46,10 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testResultStringReturnType() {
+    void testResultStringReturnType() {
         // Given Result<String>
-        Type returnType = new TypeToken<Result<String>>() {}.getType();
+        Type returnType = new TypeToken<Result<String>>() {
+        }.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Result.class);
@@ -55,9 +58,10 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testListOfStringsReturnType() {
+    void testListOfStringsReturnType() {
         // Given List<String>
-        Type returnType = new TypeToken<List<String>>() {}.getType();
+        Type returnType = new TypeToken<List<String>>() {
+        }.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(List.class);
@@ -66,9 +70,10 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testSetOfIntegersReturnType() {
+    void testSetOfIntegersReturnType() {
         // Given Set<Integer>
-        Type returnType = new TypeToken<Set<Integer>>() {}.getType();
+        Type returnType = new TypeToken<Set<Integer>>() {
+        }.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Set.class);
@@ -77,9 +82,10 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testResultSetOfIntegersReturnType() {
+    void testResultSetOfIntegersReturnType() {
         // Given Result<Set<Integer>
-        Type returnType = new TypeToken<Result<Set<Integer>>>() {}.getType();
+        Type returnType = new TypeToken<Result<Set<Integer>>>() {
+        }.getType();
 
         // Then
         assertThat(TypeUtils.getRawClass(returnType)).isEqualTo(Result.class);
@@ -98,7 +104,7 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testListNoParametrizedTypeInvalidServiceDefinition() {
+    void testListNoParametrizedTypeInvalidServiceDefinition() {
         // Given
         ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
@@ -119,7 +125,7 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testSetNoParametrizedTypeInvalidServiceDefinition() {
+    void testSetNoParametrizedTypeInvalidServiceDefinition() {
         // Given
         ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
@@ -139,7 +145,7 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testResultNoParametrizedTypeInvalidServiceDefinition() {
+    void testResultNoParametrizedTypeInvalidServiceDefinition() {
         // Given
         ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
@@ -159,7 +165,7 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testResultListNoParametrizedTypeInvalidServiceDefinition() {
+    void testResultListNoParametrizedTypeInvalidServiceDefinition() {
         // Given
         ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
@@ -179,7 +185,7 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testListWildcardTypeInvalidServiceDefinition() {
+    void testListWildcardTypeInvalidServiceDefinition() {
         // Given
         ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
@@ -199,7 +205,7 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testResultListWildcardTypeInvalidServiceDefinition() {
+    void testResultListWildcardTypeInvalidServiceDefinition() {
         // Given
         ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
@@ -219,7 +225,7 @@ class TypeUtilsTest {
     }
 
     @Test
-    public void testResultListTypeParamTypeInvalidServiceDefinition() {
+    void testResultListTypeParamTypeInvalidServiceDefinition() {
         // Given
         ChatLanguageModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
