@@ -18,8 +18,6 @@ class BedrockCohereEmbeddingResponse implements BedrockEmbeddingResponse {
 
     private float[][] embeddings;
 
-    private int inputTextTokenCount = 0;
-
     @Override
     public List<Embedding> toEmbeddings() {
         if (embeddings == null) {
@@ -57,10 +55,6 @@ class BedrockCohereEmbeddingResponse implements BedrockEmbeddingResponse {
     @Override
     public Optional<Integer> getInputTextTokenCount() {
         return Optional.empty();
-    }
-
-    public void setInputTextTokenCount(int inputTextTokenCount) {
-        this.inputTextTokenCount = inputTextTokenCount;
     }
 
 }

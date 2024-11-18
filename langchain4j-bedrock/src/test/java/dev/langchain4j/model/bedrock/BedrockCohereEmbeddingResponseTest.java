@@ -4,10 +4,12 @@ import dev.langchain4j.data.embedding.Embedding;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -64,17 +66,9 @@ class BedrockCohereEmbeddingResponseTest {
     }
 
     @Test
-    void testGetInputTokensNotNull() {
-        Integer responseInputTokens = 1;
-        BedrockCohereEmbeddingResponse response = new BedrockCohereEmbeddingResponse();
-        response.setInputTextTokenCount(responseInputTokens);
-        assertEquals(responseInputTokens, response.getInputTextTokenCount());
-    }
-
-    @Test
     void testGetInputTokensDefault() {
         BedrockCohereEmbeddingResponse response = new BedrockCohereEmbeddingResponse();
-        assertEquals(0, response.getInputTextTokenCount());
+        assertTrue(response.getInputTextTokenCount().isEmpty());
     }
 
 }
