@@ -140,6 +140,19 @@
                 </executions>
             </plugin>
 
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <!-- Exclude the local jar used in ClasspathFileSystemDocumentLoaderTest tests -->
+                        <exclude>dev.langchain4j:langchain4j-classpath-test-lib</exclude>
+                    </excludes>
+                    <!-- org.json:json has a "Public Domain" license -->
+                    <skipCompliance>true</skipCompliance>
+                </configuration>
+            </plugin>
+
         </plugins>
     </build>
 
@@ -164,5 +177,4 @@
             </snapshots>
         </repository>
     </repositories>
-
 </project>
