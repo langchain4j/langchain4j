@@ -63,8 +63,8 @@ public abstract class AbstractStreamingChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("What is the capital of Germany?"))
-            .build();
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer tokenAccumulator = new StringBuffer();
@@ -108,7 +108,7 @@ public abstract class AbstractStreamingChatModelIT {
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
         }
 
         if (assertFinishReason()) {
@@ -130,9 +130,9 @@ public abstract class AbstractStreamingChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("What is the weather in Munich?"))
-            .toolSpecifications(WEATHER_TOOL)
-            .build();
+                .messages(UserMessage.from("What is the weather in Munich?"))
+                .toolSpecifications(WEATHER_TOOL)
+                .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         AtomicInteger timesOnPartialResponseIsCalled = new AtomicInteger();
@@ -164,6 +164,7 @@ public abstract class AbstractStreamingChatModelIT {
         ChatResponse chatResponse = futureChatResponse.get(30, SECONDS);
 
         AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -175,15 +176,16 @@ public abstract class AbstractStreamingChatModelIT {
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
         }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
         }
 
-        assertThat(timesOnPartialResponseIsCalled.get()).isEqualTo(0); // TODO
-        // TODO if timesOnPartialResponseIsCalled is 0, aiMessage.text() must be null
+        if (assertTimesOnPartialResponseIsCalled()) {
+            assertThat(timesOnPartialResponseIsCalled.get()).isEqualTo(0);
+        }
 
         if (assertThreads()) {
             assertThat(threads).hasSize(1);
@@ -198,9 +200,9 @@ public abstract class AbstractStreamingChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("What is the weather in Munich?"))
-            .toolSpecifications(WEATHER_TOOL)
-            .build();
+                .messages(UserMessage.from("What is the weather in Munich?"))
+                .toolSpecifications(WEATHER_TOOL)
+                .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         AtomicInteger timesOnPartialResponseIsCalled = new AtomicInteger();
@@ -210,10 +212,6 @@ public abstract class AbstractStreamingChatModelIT {
         // TODO
     }
 
-    protected boolean supportsTools() {
-        return true;
-    }
-
     @EnabledIf("supportsToolChoice")
     @ParameterizedTest
     @MethodSource("models")
@@ -221,18 +219,18 @@ public abstract class AbstractStreamingChatModelIT {
 
         // given
         ToolSpecification calculatorTool = ToolSpecification.builder()
-            .name("add_two_numbers")
-            .parameters(JsonObjectSchema.builder()
-                .addIntegerProperty("a")
-                .addIntegerProperty("b")
-                .build())
-            .build();
+                .name("add_two_numbers")
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("a")
+                        .addIntegerProperty("b")
+                        .build())
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("I live in Munich"))
-            .toolSpecifications(WEATHER_TOOL, calculatorTool)
-            .toolChoice(ANY) // this will FORCE the LLM to call any tool
-            .build();
+                .messages(UserMessage.from("I live in Munich"))
+                .toolSpecifications(WEATHER_TOOL, calculatorTool)
+                .toolChoice(ANY) // this will FORCE the LLM to call any tool
+                .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         AtomicInteger timesOnPartialResponseIsCalled = new AtomicInteger();
@@ -264,6 +262,7 @@ public abstract class AbstractStreamingChatModelIT {
         ChatResponse chatResponse = futureChatResponse.get(30, SECONDS);
 
         AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -275,15 +274,16 @@ public abstract class AbstractStreamingChatModelIT {
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
         }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
         }
 
-        assertThat(timesOnPartialResponseIsCalled.get()).isEqualTo(0); // TODO
-        // TODO if timesOnPartialResponseIsCalled is 0, aiMessage.text() must be null
+        if (assertTimesOnPartialResponseIsCalled()) {
+            assertThat(timesOnPartialResponseIsCalled.get()).isEqualTo(0);
+        }
 
         if (assertThreads()) {
             assertThat(threads).hasSize(1);
@@ -298,10 +298,10 @@ public abstract class AbstractStreamingChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("I live in Munich"))
-            .toolSpecifications(WEATHER_TOOL)
-            .toolChoice(ANY) // this will FORCE the LLM to call weatherTool
-            .build();
+                .messages(UserMessage.from("I live in Munich"))
+                .toolSpecifications(WEATHER_TOOL)
+                .toolChoice(ANY) // this will FORCE the LLM to call weatherTool
+                .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         AtomicInteger timesOnPartialResponseIsCalled = new AtomicInteger();
@@ -333,6 +333,7 @@ public abstract class AbstractStreamingChatModelIT {
         ChatResponse chatResponse = futureChatResponse.get(30, SECONDS);
 
         AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -344,7 +345,7 @@ public abstract class AbstractStreamingChatModelIT {
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
         }
 
         if (assertFinishReason()) {
@@ -360,8 +361,12 @@ public abstract class AbstractStreamingChatModelIT {
         }
     }
 
+    protected boolean supportsTools() {
+        return true;
+    }
+
     protected boolean supportsToolChoice() {
-        return false; // TODO should be true by default?
+        return supportsTools();
     }
 
     protected boolean assertTokenUsage() {
@@ -373,6 +378,10 @@ public abstract class AbstractStreamingChatModelIT {
     }
 
     protected boolean assertThreads() {
+        return true;
+    }
+
+    protected boolean assertTimesOnPartialResponseIsCalled() {
         return true;
     }
 }

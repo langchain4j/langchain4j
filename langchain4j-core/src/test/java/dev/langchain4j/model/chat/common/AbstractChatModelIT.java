@@ -53,21 +53,21 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 public abstract class AbstractChatModelIT {
 
     static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
-        .name("weather")
-        .parameters(JsonObjectSchema.builder()
-            .addStringProperty("city")
-            .build())
-        .build();
+            .name("weather")
+            .parameters(JsonObjectSchema.builder()
+                    .addStringProperty("city")
+                    .build())
+            .build();
 
     static final ResponseFormat RESPONSE_FORMAT = ResponseFormat.builder()
-        .type(ResponseFormatType.JSON)
-        .jsonSchema(JsonSchema.builder()
-            .name("Answer")
-            .rootElement(JsonObjectSchema.builder()
-                .addStringProperty("city")
-                .build())
-            .build())
-        .build();
+            .type(ResponseFormatType.JSON)
+            .jsonSchema(JsonSchema.builder()
+                    .name("Answer")
+                    .rootElement(JsonObjectSchema.builder()
+                            .addStringProperty("city")
+                            .build())
+                    .build())
+            .build();
 
     protected abstract List<ChatLanguageModel> models();
 
@@ -79,8 +79,8 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("What is the capital of Germany?"))
-            .build();
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
@@ -94,7 +94,7 @@ public abstract class AbstractChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
-            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -107,11 +107,11 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(
-                SystemMessage.from("Translate messages from user into German"),
-                UserMessage.from("I love you")
-            )
-            .build();
+                .messages(
+                        SystemMessage.from("Translate messages from user into German"),
+                        UserMessage.from("Translate: 'I love you'")
+                )
+                .build();
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
@@ -129,9 +129,9 @@ public abstract class AbstractChatModelIT {
         UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
 
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(userMessage)
-            .toolSpecifications(WEATHER_TOOL)
-            .build();
+                .messages(userMessage)
+                .toolSpecifications(WEATHER_TOOL)
+                .build();
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
@@ -148,7 +148,7 @@ public abstract class AbstractChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
-            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
@@ -156,13 +156,13 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest2 = ChatRequest.builder()
-            .messages(
-                userMessage,
-                aiMessage,
-                ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
-            )
-            .toolSpecifications(WEATHER_TOOL)
-            .build();
+                .messages(
+                        userMessage,
+                        aiMessage,
+                        ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
+                )
+                .toolSpecifications(WEATHER_TOOL)
+                .build();
 
         // when
         ChatResponse chatResponse2 = model.chat(chatRequest2);
@@ -176,7 +176,7 @@ public abstract class AbstractChatModelIT {
         assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.totalTokenCount())
-            .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
+                .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
 
         if (assertFinishReason()) {
             assertThat(chatResponse2.finishReason()).isEqualTo(STOP);
@@ -190,18 +190,14 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("What is the weather in Munich?"))
-            .toolSpecifications(WEATHER_TOOL)
-            .build();
+                .messages(UserMessage.from("What is the weather in Munich?"))
+                .toolSpecifications(WEATHER_TOOL)
+                .build();
 
         // when-then
         assertThatThrownBy(() -> model.chat(chatRequest))
-            .isExactlyInstanceOf(IllegalArgumentException.class) // TODO use UnsupportedOperationException?
-            .hasMessageContaining("not supported");
-    }
-
-    protected boolean supportsTools() {
-        return true; // TODO check model capability instead?
+                .isExactlyInstanceOf(IllegalArgumentException.class) // TODO use UnsupportedOperationException?
+                .hasMessageContaining("not supported");
     }
 
     @EnabledIf("supportsToolChoice")
@@ -211,18 +207,18 @@ public abstract class AbstractChatModelIT {
 
         // given
         ToolSpecification calculatorTool = ToolSpecification.builder()
-            .name("add_two_numbers")
-            .parameters(JsonObjectSchema.builder()
-                .addIntegerProperty("a")
-                .addIntegerProperty("b")
-                .build())
-            .build();
+                .name("add_two_numbers")
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("a")
+                        .addIntegerProperty("b")
+                        .build())
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("I live in Munich"))
-            .toolSpecifications(WEATHER_TOOL, calculatorTool)
-            .toolChoice(ANY) // this will FORCE the LLM to execute any tool
-            .build();
+                .messages(UserMessage.from("I live in Munich"))
+                .toolSpecifications(WEATHER_TOOL, calculatorTool)
+                .toolChoice(ANY) // this will FORCE the LLM to execute any tool
+                .build();
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
@@ -239,7 +235,7 @@ public abstract class AbstractChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
-            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
@@ -253,10 +249,10 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("I live in Munich"))
-            .toolSpecifications(WEATHER_TOOL)
-            .toolChoice(ANY) // this will FORCE the LLM to execute weatherTool
-            .build();
+                .messages(UserMessage.from("I live in Munich"))
+                .toolSpecifications(WEATHER_TOOL)
+                .toolChoice(ANY) // this will FORCE the LLM to execute weatherTool
+                .build();
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
@@ -273,15 +269,11 @@ public abstract class AbstractChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
-            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
         }
-    }
-
-    protected boolean supportsToolChoice() {
-        return true;
     }
 
     @EnabledIf("supportsJsonResponseFormat")
@@ -291,10 +283,10 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("What is the capital of Germany? " +
-                "Answer with a JSON object containing a single 'city' field"))
-            .responseFormat(ResponseFormat.JSON)
-            .build();
+                .messages(UserMessage.from("What is the capital of Germany? " +
+                        "Answer with a JSON object containing a single 'city' field"))
+                .responseFormat(ResponseFormat.JSON)
+                .build();
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
@@ -308,7 +300,7 @@ public abstract class AbstractChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
-            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -322,19 +314,15 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("What is the capital of Germany? " +
-                "Answer with a JSON object containing a single 'city' field"))
-            .responseFormat(ResponseFormat.JSON)
-            .build();
+                .messages(UserMessage.from("What is the capital of Germany? " +
+                        "Answer with a JSON object containing a single 'city' field"))
+                .responseFormat(ResponseFormat.JSON)
+                .build();
 
         // when-then
         assertThatThrownBy(() -> model.chat(chatRequest))
-            .isExactlyInstanceOf(UnsupportedOperationException.class)
-            .hasMessage("JSON response type is not supported by this model provider");
-    }
-
-    protected boolean supportsJsonResponseFormat() {
-        return true;
+                .isExactlyInstanceOf(UnsupportedOperationException.class)
+                .hasMessage("JSON response type is not supported by this model provider");
     }
 
     @EnabledIf("supportsJsonResponseFormatWithSchema")
@@ -344,9 +332,9 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("What is the capital of Germany?"))
-            .responseFormat(RESPONSE_FORMAT)
-            .build();
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .responseFormat(RESPONSE_FORMAT)
+                .build();
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
@@ -360,7 +348,7 @@ public abstract class AbstractChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
-            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -374,14 +362,26 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from("What is the capital of Germany?"))
-            .responseFormat(RESPONSE_FORMAT)
-            .build();
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .responseFormat(RESPONSE_FORMAT)
+                .build();
 
         // when-then
         assertThatThrownBy(() -> model.chat(chatRequest))
-            .isExactlyInstanceOf(UnsupportedOperationException.class)
-            .hasMessage("JSON response type is not supported by this model provider");
+                .isExactlyInstanceOf(UnsupportedOperationException.class)
+                .hasMessage("JSON response type is not supported by this model provider");
+    }
+
+    protected boolean supportsTools() {
+        return true; // TODO check model capability instead?
+    }
+
+    protected boolean supportsToolChoice() {
+        return supportsTools();
+    }
+
+    protected boolean supportsJsonResponseFormat() {
+        return true;
     }
 
     protected boolean supportsJsonResponseFormatWithSchema() {

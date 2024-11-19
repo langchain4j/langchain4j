@@ -70,17 +70,17 @@ class OllamaChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsToolChoice() {
-        return false;
+        return false; // TODO check if Ollama supports this
     }
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // TODO fix, Ollama supports json mode
+        return false; // TODO implement
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false;
+        return false; // Ollama does not support structured outputs
     }
 
     @Override

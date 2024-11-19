@@ -11,27 +11,27 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(
-            VertexAiGeminiChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-1.5-flash")
-                .build()
+                VertexAiGeminiChatModel.builder()
+                        .project(System.getenv("GCP_PROJECT_ID"))
+                        .location(System.getenv("GCP_LOCATION"))
+                        .modelName("gemini-1.5-flash")
+                        .build()
         );
     }
 
     @Override
     protected boolean supportsToolChoice() {
-        return false;
+        return false; // TODO implement
     }
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // TODO fix, is supports json mode
+        return false; // TODO implement
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false;
+        return false; // TODO implement
     }
 
     protected boolean assertFinishReason() {

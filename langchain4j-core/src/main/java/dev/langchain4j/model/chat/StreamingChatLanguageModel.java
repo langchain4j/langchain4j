@@ -9,6 +9,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
@@ -54,10 +55,10 @@ public interface StreamingChatLanguageModel {
             @Override
             public void onComplete(Response<AiMessage> response) {
                 ChatResponse chatResponse = ChatResponse.builder()
-                    .aiMessage(response.content())
-                    .tokenUsage(response.tokenUsage())
-                    .finishReason(response.finishReason())
-                    .build();
+                        .aiMessage(response.content())
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build();
                 handler.onCompleteResponse(chatResponse);
             }
 
@@ -70,7 +71,16 @@ public interface StreamingChatLanguageModel {
         if (isNullOrEmpty(chatRequest.toolSpecifications())) {
             generate(chatRequest.messages(), legacyHandler);
         } else {
-            generate(chatRequest.messages(), chatRequest.toolSpecifications(), legacyHandler);
+            if (chatRequest.toolChoice() == ToolChoice.ANY) {
+                if (chatRequest.toolSpecifications().size() == 1) {
+                    generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0), legacyHandler);
+                } else {
+                    throw new UnsupportedOperationException(
+                            "ToolChoice.ANY is currently supported only when there is a single tool");
+                }
+            } else {
+                generate(chatRequest.messages(), chatRequest.toolSpecifications(), legacyHandler);
+            }
         }
     }
 

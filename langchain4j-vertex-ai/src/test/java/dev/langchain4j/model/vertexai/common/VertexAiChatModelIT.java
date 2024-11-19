@@ -11,38 +11,33 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(
-            VertexAiChatModel.builder()
-                .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .publisher("google")
-                .modelName("chat-bison@001")
-                .build()
+                VertexAiChatModel.builder()
+                        .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+                        .project(System.getenv("GCP_PROJECT_ID"))
+                        .location(System.getenv("GCP_LOCATION"))
+                        .publisher("google")
+                        .modelName("chat-bison@001")
+                        .build()
         );
     }
 
     @Override
     protected boolean supportsTools() {
-        return false;
-    }
-
-    @Override
-    protected boolean supportsToolChoice() {
-        return false;
+        return false; // TODO check if supported
     }
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false;
+        return false; // TODO check if supported
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false;
+        return false; // TODO check if supported
     }
 
     @Override
     protected boolean assertFinishReason() {
-        return false;
+        return false; // TODO fix
     }
 }

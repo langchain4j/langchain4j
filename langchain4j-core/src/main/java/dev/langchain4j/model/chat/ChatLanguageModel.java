@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 
@@ -47,22 +48,31 @@ public interface ChatLanguageModel {
         if (isNullOrEmpty(chatRequest.toolSpecifications())) {
             response = generate(chatRequest.messages());
         } else {
-            response = generate(chatRequest.messages(), chatRequest.toolSpecifications());
+            if (chatRequest.toolChoice() == ToolChoice.ANY) {
+                if (chatRequest.toolSpecifications().size() == 1) {
+                    response = generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0));
+                } else {
+                    throw new UnsupportedOperationException(
+                            "ToolChoice.ANY is currently supported only when there is a single tool");
+                }
+            } else {
+                response = generate(chatRequest.messages(), chatRequest.toolSpecifications());
+            }
         }
 
         return ChatResponse.builder()
-            .aiMessage(response.content())
-            .tokenUsage(response.tokenUsage())
-            .finishReason(response.finishReason())
-            .build();
+                .aiMessage(response.content())
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .build();
     }
 
     @Experimental
     default String chat(String userMessage) {
 
         ChatRequest chatRequest = ChatRequest.builder()
-            .messages(UserMessage.from(userMessage))
-            .build();
+                .messages(UserMessage.from(userMessage))
+                .build();
 
         ChatResponse chatResponse = chat(chatRequest);
 

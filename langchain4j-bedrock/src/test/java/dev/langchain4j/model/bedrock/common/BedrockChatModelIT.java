@@ -13,25 +13,25 @@ class BedrockChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(
-            BedrockAnthropicMessageChatModel.builder()
-                .model(AnthropicClaude3SonnetV1.getValue())
-                .build()
-            // TODO add more models
+                BedrockAnthropicMessageChatModel.builder()
+                        .model(AnthropicClaude3SonnetV1.getValue())
+                        .build()
+                // TODO add more models
         );
     }
 
     @Override
     protected boolean supportsToolChoice() {
-        return false;
+        return false; // TODO implement
     }
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false;
+        return false; // TODO check if supported
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false;
+        return false; // TODO check if supported
     }
 }

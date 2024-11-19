@@ -22,11 +22,6 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsTools() {
-        return false;
-    }
-
-    @Override
-    protected boolean supportsToolChoice() {
-        return false;
+        return false; // TODO check if supported
     }
 }

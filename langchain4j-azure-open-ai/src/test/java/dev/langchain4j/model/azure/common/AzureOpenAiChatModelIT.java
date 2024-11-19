@@ -11,22 +11,22 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(
-            AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("gpt-4o-mini")
-                .build()
+                AzureOpenAiChatModel.builder()
+                        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                        .deploymentName("gpt-4o-mini")
+                        .build()
         );
     }
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // TODO fix, Azure supports JSON mode
+        return false; // TODO implement
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false;
+        return false; // TODO implement
     }
 
     protected boolean assertFinishReason() {
