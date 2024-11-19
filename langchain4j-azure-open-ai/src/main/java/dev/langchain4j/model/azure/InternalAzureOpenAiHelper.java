@@ -4,7 +4,30 @@ import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.OpenAIServiceVersion;
-import com.azure.ai.openai.models.*;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinition;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinitionFunction;
+import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormatJsonSchema;
+import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsToolCall;
+import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
+import com.azure.ai.openai.models.ChatCompletionsToolSelection;
+import com.azure.ai.openai.models.ChatMessageImageContentItem;
+import com.azure.ai.openai.models.ChatMessageImageUrl;
+import com.azure.ai.openai.models.ChatMessageTextContentItem;
+import com.azure.ai.openai.models.ChatRequestAssistantMessage;
+import com.azure.ai.openai.models.ChatRequestMessage;
+import com.azure.ai.openai.models.ChatRequestSystemMessage;
+import com.azure.ai.openai.models.ChatRequestToolMessage;
+import com.azure.ai.openai.models.ChatRequestUserMessage;
+import com.azure.ai.openai.models.ChatResponseMessage;
+import com.azure.ai.openai.models.CompletionsFinishReason;
+import com.azure.ai.openai.models.CompletionsUsage;
+import com.azure.ai.openai.models.FunctionCall;
+import com.azure.ai.openai.models.ImageGenerationData;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
@@ -20,9 +43,16 @@ import com.azure.core.util.BinaryData;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.azure.json.AzureJsonArraySchema;
 import dev.langchain4j.model.azure.json.AzureJsonBooleanSchema;
 import dev.langchain4j.model.azure.json.AzureJsonEnumSchema;
@@ -37,7 +67,15 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.*;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -47,14 +85,23 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -239,7 +286,7 @@ class InternalAzureOpenAiHelper {
         if (toolSpecification.parameters() != null) {
             return toOpenAiParameters(toolSpecification.parameters());
         } else {
-            return toOpenAiParametersOld(toolSpecification.parameters());
+            return toOpenAiParametersOld(toolSpecification.toolParameters());
         }
     }
 
@@ -255,12 +302,12 @@ class InternalAzureOpenAiHelper {
         if (toolParameters == null) {
             return BinaryData.fromObject(NO_PARAMETER_DATA);
         }
-        parameters.setProperties(toolParameters.properties());
+        parameters.setProperties(toMap(toolParameters.properties()));
         parameters.setRequired(toolParameters.required());
         return BinaryData.fromObject(parameters);
     }
 
-    private static BinaryData toOpenAiParametersOld(JsonObjectSchema toolParameters) {
+    private static BinaryData toOpenAiParametersOld(ToolParameters toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
             return BinaryData.fromObject(NO_PARAMETER_DATA);
@@ -274,7 +321,7 @@ class InternalAzureOpenAiHelper {
 
         private final String type = "object";
 
-        private Map<String, JsonSchemaElement>properties = new HashMap<>();
+        private Map<String, Map<String, Object>> properties = new HashMap<>();
 
         private List<String> required = new ArrayList<>();
 
@@ -282,11 +329,11 @@ class InternalAzureOpenAiHelper {
             return this.type;
         }
 
-        public Map<String, JsonSchemaElement> getProperties() {
+        public Map<String, Map<String, Object>> getProperties() {
             return properties;
         }
 
-        public void setProperties(Map<String, JsonSchemaElement> properties) {
+        public void setProperties(Map<String, Map<String, Object>> properties) {
             this.properties = properties;
         }
 

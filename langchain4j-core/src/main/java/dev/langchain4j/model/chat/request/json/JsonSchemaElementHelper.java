@@ -146,7 +146,8 @@ public class JsonSchemaElementHelper {
     }
 
     private static Class<?> getActualType(Type type) {
-        if (type instanceof ParameterizedType parameterizedType) {
+        if (type instanceof ParameterizedType) {
+            ParameterizedType parameterizedType = (ParameterizedType) type;
             Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
             if (actualTypeArguments.length == 1) {
                 return (Class<?>) actualTypeArguments[0];
@@ -170,19 +171,27 @@ public class JsonSchemaElementHelper {
         return true;
     }
 
+    public static Map<String, Map<String, Object>> toMap(Map<String, JsonSchemaElement> properties) {
+        Map<String, Map<String, Object>> map = new LinkedHashMap<>();
+        properties.forEach((property, value) -> map.put(property, toMap(value)));
+        return map;
+    }
+
     public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement) {
-        if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
+        if (jsonSchemaElement instanceof JsonObjectSchema) {
+            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("type", "object");
             if (jsonObjectSchema.description() != null) {
                 properties.put("description", jsonObjectSchema.description());
             }
-            properties.put("properties", jsonObjectSchema.properties());
+            properties.put("properties", toMap(jsonObjectSchema.properties()));
             if (jsonObjectSchema.required() != null) {
                 properties.put("required", jsonObjectSchema.required());
             }
             return properties;
-        } else if (jsonSchemaElement instanceof JsonArraySchema jsonArraySchema) {
+        } else if (jsonSchemaElement instanceof JsonArraySchema) {
+            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchemaElement;
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("type", "array");
             if (jsonArraySchema.description() != null) {
@@ -190,7 +199,8 @@ public class JsonSchemaElementHelper {
             }
             properties.put("items", toMap(jsonArraySchema.items()));
             return properties;
-        } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
+        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
+            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchemaElement;
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("type", "string");
             if (jsonEnumSchema.description() != null) {
@@ -198,28 +208,32 @@ public class JsonSchemaElementHelper {
             }
             properties.put("enum", jsonEnumSchema.enumValues());
             return properties;
-        } else if (jsonSchemaElement instanceof JsonStringSchema jsonStringSchema) {
+        } else if (jsonSchemaElement instanceof JsonStringSchema) {
+            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchemaElement;
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("type", "string");
             if (jsonStringSchema.description() != null) {
                 properties.put("description", jsonStringSchema.description());
             }
             return properties;
-        } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
+        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
+            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchemaElement;
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("type", "integer");
             if (jsonIntegerSchema.description() != null) {
                 properties.put("description", jsonIntegerSchema.description());
             }
             return properties;
-        } else if (jsonSchemaElement instanceof JsonNumberSchema jsonNumberSchema) {
+        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
+            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("type", "number");
             if (jsonNumberSchema.description() != null) {
                 properties.put("description", jsonNumberSchema.description());
             }
             return properties;
-        } else if (jsonSchemaElement instanceof JsonBooleanSchema jsonBooleanSchema) {
+        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
+            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("type", "boolean");
             if (jsonBooleanSchema.description() != null) {

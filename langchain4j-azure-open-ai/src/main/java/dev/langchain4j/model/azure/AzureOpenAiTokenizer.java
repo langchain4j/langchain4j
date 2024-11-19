@@ -7,7 +7,14 @@ import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.IntArrayList;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.request.json.*;
 
@@ -19,7 +26,13 @@ import java.util.function.Supplier;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.*;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_0301;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_1106;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_1106_PREVIEW;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0125_PREVIEW;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_TURBO;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_VISION_PREVIEW;
 import static java.util.Collections.singletonList;
 
 /**
