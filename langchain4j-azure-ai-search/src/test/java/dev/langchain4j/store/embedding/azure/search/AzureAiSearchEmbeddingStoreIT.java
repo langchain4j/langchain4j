@@ -42,7 +42,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT
     private final AzureAiSearchEmbeddingStore embeddingStore = AzureAiSearchEmbeddingStore.builder()
             .endpoint(AZURE_SEARCH_ENDPOINT)
             .apiKey(AZURE_SEARCH_KEY)
-            .indexName(randomUUID())
+            .indexName("ccc" + randomUUID())
             .dimensions(embeddingModel.dimension())
             .build();
 

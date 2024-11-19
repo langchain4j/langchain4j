@@ -25,7 +25,7 @@ public class AzureAiSearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemo
     private final AzureAiSearchEmbeddingStore embeddingStore = AzureAiSearchEmbeddingStore.builder()
             .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
             .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-            .indexName(randomUUID())
+            .indexName("bbb" + randomUUID())
             .dimensions(embeddingModel.dimension())
             .build();
 

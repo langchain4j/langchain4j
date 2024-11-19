@@ -49,6 +49,7 @@ public class OpenAiTokenizer implements Tokenizer {
     /**
      * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-3.5-turbo" model.
      * <s>It should be suitable for all current OpenAI models, as they all use the same cl100k_base encoding.</s>
+     *
      * @deprecated Please use other constructors and specify the model name explicitly.
      */
     @Deprecated(forRemoval = true)

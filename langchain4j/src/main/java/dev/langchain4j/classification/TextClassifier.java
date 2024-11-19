@@ -23,8 +23,8 @@ public interface TextClassifier<L> {
      */
     default List<L> classify(String text) {
         return classifyWithScores(text).scoredLabels().stream()
-            .map(ScoredLabel::label)
-            .collect(toList());
+                .map(ScoredLabel::label)
+                .collect(toList());
     }
 
     /**

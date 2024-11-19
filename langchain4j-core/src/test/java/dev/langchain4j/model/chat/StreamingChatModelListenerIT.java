@@ -101,7 +101,7 @@ public abstract class StreamingChatModelListenerIT {
 
             @Override
             public void onError(ChatModelErrorContext errorContext) {
-                fail("onError() must not be called");
+                fail("onError() must not be called. Exception: " + errorContext.error().getMessage());
             }
         };
 

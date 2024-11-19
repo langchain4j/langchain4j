@@ -40,7 +40,7 @@ class TextClassifierTest implements WithAssertions {
         assertThat(classifier.classify("cat fish")).containsOnly(Categories.CAT, Categories.FISH);
 
         assertThat(classifier.classify(TextSegment.from("dog fish")))
-            .containsOnly(Categories.DOG, Categories.FISH);
+                .containsOnly(Categories.DOG, Categories.FISH);
 
         assertThat(classifier.classify(Document.from("dog cat"))).containsOnly(Categories.CAT, Categories.DOG);
     }
@@ -51,26 +51,26 @@ class TextClassifierTest implements WithAssertions {
 
         ClassificationResult<Categories> results = classifier.classifyWithScores("cat fish");
         assertThat(results.scoredLabels().stream()
-            .map(ScoredLabel::label)
-            .collect(Collectors.toList())).containsOnly(Categories.CAT, Categories.FISH);
+                .map(ScoredLabel::label)
+                .collect(Collectors.toList())).containsOnly(Categories.CAT, Categories.FISH);
         assertThat(results.scoredLabels().stream()
-            .map(ScoredLabel::score)
-            .collect(Collectors.toList())).allMatch(score -> score == 1.0);
+                .map(ScoredLabel::score)
+                .collect(Collectors.toList())).allMatch(score -> score == 1.0);
 
         results = classifier.classifyWithScores(TextSegment.from("cat fish"));
         assertThat(results.scoredLabels().stream()
-            .map(ScoredLabel::label)
-            .collect(Collectors.toList())).containsOnly(Categories.CAT, Categories.FISH);
+                .map(ScoredLabel::label)
+                .collect(Collectors.toList())).containsOnly(Categories.CAT, Categories.FISH);
         assertThat(results.scoredLabels().stream()
-            .map(ScoredLabel::score)
-            .collect(Collectors.toList())).allMatch(score -> score == 1.0);
+                .map(ScoredLabel::score)
+                .collect(Collectors.toList())).allMatch(score -> score == 1.0);
 
         results = classifier.classifyWithScores(Document.from("dog cat"));
         assertThat(results.scoredLabels().stream()
-            .map(ScoredLabel::label)
-            .collect(Collectors.toList())).containsOnly(Categories.DOG, Categories.CAT);
+                .map(ScoredLabel::label)
+                .collect(Collectors.toList())).containsOnly(Categories.DOG, Categories.CAT);
         assertThat(results.scoredLabels().stream()
-            .map(ScoredLabel::score)
-            .collect(Collectors.toList())).allMatch(score -> score == 1.0);
+                .map(ScoredLabel::score)
+                .collect(Collectors.toList())).allMatch(score -> score == 1.0);
     }
 }

@@ -1,47 +1,52 @@
-name: release
+name: Nightly Build JDK 21
 
 on:
+  schedule:
+    - cron: '0 4 * * *'  # daily at 04:00 UTC
   workflow_dispatch:
 
 jobs:
-
-  release:
+  java_build:
+    if: github.repository == 'langchain4j/langchain4j'
+    strategy:
+      fail-fast: false # do not cancel jobs on error
+      matrix:
+        java_version:
+          - 21
+        include:
+          - java_version: '21'
+            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
+      max-parallel: 1
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK ${{ matrix.java_version }}
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
-          cache: maven
-          server-id: ossrh
-          server-username: OSSRH_USERNAME
-          server-password: OSSRH_PASSWORD
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-          gpg-passphrase: GPG_PASSPHRASE
+          cache: 'maven'
 
       - name: Authenticate to Google Cloud
+        # Needed for langchain4j-vertex-ai and langchain4j-vertex-ai-gemini modules
         uses: 'google-github-actions/auth@v2'
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
-      - name: Setup Testcontainers Cloud Client
-        uses: atomicjar/testcontainers-cloud-setup-action@v1
-        with:
-          token: ${{ secrets.TC_CLOUD_TOKEN }}
-
-      - name: release
+      - name: Build with JDK ${{ matrix.java_version }}
         run: |
-          mvn -B -U --fail-at-end \
-            -DskipTests -DskipITs -DskipAnthropicITs \
-            -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs \
-            -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs \
-            -pl !langchain4j-core,!langchain4j-parent \
-            -Psign clean deploy
+          ## compile and verify javadocs on ALL modules
+          mvn -B -U -T8C test javadoc:aggregate \
+            --fail-at-end \
+            ${{ matrix.mvn_opts }}
+          
+          ## run tests for some modules
+          mvn -B -U verify \
+              --fail-at-end \
+              -Dmaven.test.failure.ignore=true \
+              ${{ matrix.mvn_opts }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -78,13 +83,23 @@ jobs:
           VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          CI_DELAY_SECONDS_AZURE_OPENAI: 1
+          CI_DELAY_SECONDS_BEDROCK: 2
+          CI_DELAY_SECONDS_GITHUB_MODELS: 3
+          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 5
+          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 7
+          CI_DELAY_SECONDS_VOYAGE_AI: 22
+
+      - name: Upload Test Reports
+        if: always() # always run even if the previous step failed or was cancelled
+        uses: actions/upload-artifact@v3
+        with:
+          name: Test-Reports-${{ matrix.java-version }}
+          path: '**/target/*-reports/*'
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v4
-        if: success() || failure() # always run even if the previous step fails
+        if: always() # always run even if the previous step failed or was cancelled
         with:
           report_paths: '**/target/*-reports/TEST-*.xml'
           annotate_only: true

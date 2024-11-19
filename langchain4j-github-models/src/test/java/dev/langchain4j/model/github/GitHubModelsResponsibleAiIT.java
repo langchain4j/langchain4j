@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -20,7 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * We run those tests on GitHub Models as they are easier to set up on this platform.
  * WARNING: this class has on purpose some violent and self harm test cases, this is why they are in a specific class.
  */
-public class AzureResponsibleAIIT {
+@EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
+public class GitHubModelsResponsibleAiIT {
 
     // The filters are running above Chat Models, so we test with just one small and low-cost model.
     private final String CHAT_MODEL= GitHubModelsChatModelName.PHI_3_MINI_INSTRUCT_4K.toString();
@@ -135,7 +137,7 @@ public class AzureResponsibleAIIT {
             }
         });
 
-        String answer = futureAnswer.get(30, SECONDS);
+        String ignored = futureAnswer.get(30, SECONDS);
         Response<AiMessage> response = futureResponse.get(30, SECONDS);
 
         assertThat(response.finishReason()).isEqualTo(CONTENT_FILTER);

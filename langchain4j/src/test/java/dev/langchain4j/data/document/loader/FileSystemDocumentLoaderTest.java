@@ -3,7 +3,6 @@ package dev.langchain4j.data.document.loader;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocuments;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocumentsRecursively;
-import static java.util.stream.Collectors.toList;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -85,7 +84,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // then
         List<String> fileNames = documents.stream()
                 .map(document -> document.metadata().getString(Document.FILE_NAME))
-                .collect(toList());
+                .toList();
+
         assertThat(fileNames).containsExactlyInAnyOrder(
                 "miles-of-smiles-terms-of-use.txt",
                 "test-file.banana",
@@ -146,7 +146,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // then
         List<String> fileNames = documents.stream()
                 .map(document -> document.metadata().getString(Document.FILE_NAME))
-                .collect(toList());
+                .toList();
+
         assertThat(fileNames).containsExactlyInAnyOrder("test-file.banana");
 
         // when-then
@@ -169,7 +170,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // then
         List<String> fileNames = documents.stream()
                 .map(document -> document.metadata().getString(Document.FILE_NAME))
-                .collect(toList());
+                .toList();
+
         assertThat(fileNames).containsExactlyInAnyOrder(
                 "miles-of-smiles-terms-of-use.txt",
                 "test-file.banana",
@@ -207,7 +209,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // then
         List<String> fileNames = documents.stream()
                 .map(document -> document.metadata().getString(Document.FILE_NAME))
-                .collect(toList());
+                .toList();
+
         assertThat(fileNames).containsExactlyInAnyOrder("test-file.banana");
 
         // when-then
@@ -231,7 +234,7 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // then
         List<String> fileNames = documents.stream()
                 .map(document -> document.metadata().getString(Document.FILE_NAME))
-                .collect(toList());
+                .toList();
         assertThat(fileNames).containsExactlyInAnyOrder("test-file.banana", "test-file-2.banana", "test-file-3.banana", "test-file-4.banana");
 
         // when-then
@@ -253,9 +256,9 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         List<Document> documents = loadDocumentsRecursively(resourceDirectory, pathMatcher, new TextDocumentParser());
 
         // then
-        List<String> fileNames = documents.stream()
-                .map(document -> document.metadata().getString(Document.FILE_NAME))
-                .collect(toList());
+        List<String> fileNames = documents.stream().map(document -> document.metadata().getString(Document.FILE_NAME))
+                .toList();
+
         assertThat(fileNames).containsExactlyInAnyOrder("test-file-2.banana");
 
         // when-then

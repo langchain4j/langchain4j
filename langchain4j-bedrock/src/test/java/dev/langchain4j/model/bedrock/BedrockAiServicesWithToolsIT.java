@@ -2,6 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.AiServicesWithNewToolsIT;
+import org.junit.jupiter.api.AfterEach;
 
 import java.util.List;
 
@@ -21,5 +22,13 @@ class BedrockAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
     @Override
     protected boolean verifyModelInteractions() {
         return false;
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_BEDROCK");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }
