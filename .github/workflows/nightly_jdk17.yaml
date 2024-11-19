@@ -1,8 +1,8 @@
-name: Nightly Build
+name: Nightly Build JDK 17
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # daily at midnight UTC
+    - cron: '0 0 * * *'  # daily at 00:00 UTC
   workflow_dispatch:
 
 jobs:
@@ -13,11 +13,8 @@ jobs:
       matrix:
         java_version:
           - 17
-          - 21
         include:
           - java_version: '17'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
-          - java_version: '21'
             mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
       max-parallel: 1
     runs-on: ubuntu-latest
@@ -66,7 +63,7 @@ jobs:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           GCP_PROJECT_NUM: ${{ secrets.GCP_PROJECT_NUM }}
           GCP_VERTEXAI_ENDPOINT: ${{ secrets.GCP_VERTEXAI_ENDPOINT }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
@@ -81,14 +78,16 @@ jobs:
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           OVHAI_AI_API_KEY: ${{ secrets.OVHAI_AI_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          RAPID_API_KEY: ${{ secrets.RAPID_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
           CI_DELAY_SECONDS_AZURE_OPENAI: 1
-          CI_DELAY_SECONDS_BEDROCK: 1
+          CI_DELAY_SECONDS_BEDROCK: 2
+          CI_DELAY_SECONDS_GITHUB_MODELS: 3
           CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 5
-          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 5
+          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 7
           CI_DELAY_SECONDS_VOYAGE_AI: 22
 
       - name: Upload Test Reports

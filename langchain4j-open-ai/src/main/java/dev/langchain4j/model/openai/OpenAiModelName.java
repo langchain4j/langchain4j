@@ -1,16 +1,10 @@
 package dev.langchain4j.model.openai;
 
 /**
- * This class is deprecated. Use one of the following enums instead:
- * <pre>
- * {@link OpenAiChatModelName}
- * {@link OpenAiEmbeddingModelName}
- * {@link OpenAiImageModelName}
- * {@link OpenAiLanguageModelName}
- * {@link OpenAiModerationModelName}
- * </pre>
+ * @deprecated use one of the following enums instead: {@link OpenAiChatModelName}, {@link OpenAiEmbeddingModelName}
+ * {@link OpenAiImageModelName}, {@link OpenAiLanguageModelName}, {@link OpenAiModerationModelName}
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class OpenAiModelName {
 
     // Use with OpenAiChatModel and OpenAiStreamingChatModel

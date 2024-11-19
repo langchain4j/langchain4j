@@ -62,6 +62,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
     private final ScoringModel scoringModel;
     private final Function<Map<Query, Collection<List<Content>>>, Query> querySelector;
     private final Double minScore;
+    private final Integer maxResults;
 
     public ReRankingContentAggregator(ScoringModel scoringModel) {
         this(scoringModel, DEFAULT_QUERY_SELECTOR, null);
@@ -70,9 +71,17 @@ public class ReRankingContentAggregator implements ContentAggregator {
     public ReRankingContentAggregator(ScoringModel scoringModel,
                                       Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
                                       Double minScore) {
+        this(scoringModel, querySelector, minScore, null);
+    }
+
+    public ReRankingContentAggregator(ScoringModel scoringModel,
+                                      Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
+                                      Double minScore,
+                                      Integer maxResults) {
         this.scoringModel = ensureNotNull(scoringModel, "scoringModel");
         this.querySelector = getOrDefault(querySelector, DEFAULT_QUERY_SELECTOR);
         this.minScore = minScore;
+        this.maxResults = getOrDefault(maxResults, Integer.MAX_VALUE);
     }
 
     public static ReRankingContentAggregatorBuilder builder() {
@@ -130,6 +139,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
                 .sorted(Map.Entry.<TextSegment, Double>comparingByValue().reversed())
                 .map(Map.Entry::getKey)
                 .map(Content::from)
+                .limit(maxResults)
                 .collect(toList());
     }
 
@@ -137,6 +147,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
         private ScoringModel scoringModel;
         private Function<Map<Query, Collection<List<Content>>>, Query> querySelector;
         private Double minScore;
+        private Integer maxResults;
 
         ReRankingContentAggregatorBuilder() {
         }
@@ -156,8 +167,13 @@ public class ReRankingContentAggregator implements ContentAggregator {
             return this;
         }
 
+        public ReRankingContentAggregatorBuilder maxResults(Integer maxResults) {
+            this.maxResults = maxResults;
+            return this;
+        }
+
         public ReRankingContentAggregator build() {
-            return new ReRankingContentAggregator(this.scoringModel, this.querySelector, this.minScore);
+            return new ReRankingContentAggregator(this.scoringModel, this.querySelector, this.minScore, this.maxResults);
         }
 
         public String toString() {

@@ -97,7 +97,7 @@ public abstract class ChatModelListenerIT {
 
             @Override
             public void onError(ChatModelErrorContext errorContext) {
-                fail("onError() must not be called");
+                fail("onError() must not be called. Exception: " + errorContext.error().getMessage());
             }
         };
 

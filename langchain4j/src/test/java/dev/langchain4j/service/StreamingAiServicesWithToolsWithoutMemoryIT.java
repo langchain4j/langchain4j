@@ -12,6 +12,7 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -32,17 +33,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class StreamingAiServicesWithToolsWithoutMemoryIT {
 
     @Spy
     StreamingChatLanguageModel spyModel = OpenAiStreamingChatModel.builder()
-            .baseUrl(System.getenv("OPENAI_BASE_URL"))
-            .apiKey(System.getenv("OPENAI_API_KEY"))
-            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .temperature(0.0)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+        .baseUrl(System.getenv("OPENAI_BASE_URL"))
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+        .temperature(0.0)
+        .logRequests(true)
+        .logResponses(true)
+        .build();
 
     @Captor
     ArgumentCaptor<ChatRequest> chatRequestCaptor;
@@ -68,21 +70,21 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices
-                .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
-                .tools(calculator)
-                .build();
+            .builder(Assistant.class)
+            .streamingChatLanguageModel(spyModel)
+            .tools(calculator)
+            .build();
 
         String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
 
         // when
         CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
-                .onError(future::completeExceptionally)
-                .start();
+            .onNext(token -> {
+            })
+            .onComplete(future::complete)
+            .onError(future::completeExceptionally)
+            .start();
         Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
 
         // then
@@ -90,10 +92,10 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         verify(calculator).squareRoot(485906798473894056.0);
         verifyNoMoreInteractions(calculator);
@@ -121,35 +123,35 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         Calculator calculator = spy(new Calculator());
 
         StreamingChatLanguageModel model = OpenAiStreamingChatModel
-                .builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_4_O_MINI)
-                .parallelToolCalls(false) // to force the model to call tools sequentially
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
+            .builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_4_O_MINI)
+            .parallelToolCalls(false) // to force the model to call tools sequentially
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
 
         StreamingChatLanguageModel spyModel = spy(model);
 
         Assistant assistant = AiServices
-                .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
-                .tools(calculator)
-                .build();
+            .builder(Assistant.class)
+            .streamingChatLanguageModel(spyModel)
+            .tools(calculator)
+            .build();
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
         // when
         CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
-                .onError(future::completeExceptionally)
-                .start();
+            .onNext(token -> {
+            })
+            .onComplete(future::complete)
+            .onError(future::completeExceptionally)
+            .start();
         Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
 
         // then
@@ -157,10 +159,10 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         verify(calculator).squareRoot(485906798473894056.0);
         verify(calculator).squareRoot(97866249624785.0);
@@ -198,21 +200,21 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         Calculator calculator = spy(new Calculator());
 
         Assistant assistant = AiServices
-                .builder(Assistant.class)
-                .streamingChatLanguageModel(spyModel)
-                .tools(calculator)
-                .build();
+            .builder(Assistant.class)
+            .streamingChatLanguageModel(spyModel)
+            .tools(calculator)
+            .build();
 
         String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
 
         // when
         CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
         assistant.chat(userMessage)
-                .onNext(token -> {
-                })
-                .onComplete(future::complete)
-                .onError(future::completeExceptionally)
-                .start();
+            .onNext(token -> {
+            })
+            .onComplete(future::complete)
+            .onError(future::completeExceptionally)
+            .start();
         Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
 
         // then
@@ -220,10 +222,10 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         verify(calculator).squareRoot(485906798473894056.0);
         verify(calculator).squareRoot(97866249624785.0);

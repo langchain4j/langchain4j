@@ -12,13 +12,10 @@ public class LC4jOllamaContainer extends OllamaContainer {
 
     private static final Logger log = LoggerFactory.getLogger(LC4jOllamaContainer.class);
 
-    private final DockerImageName dockerImageName;
-
     private String model;
 
     public LC4jOllamaContainer(DockerImageName dockerImageName) {
         super(dockerImageName);
-        this.dockerImageName = dockerImageName;
     }
 
     public LC4jOllamaContainer withModel(String model) {
@@ -31,8 +28,8 @@ public class LC4jOllamaContainer extends OllamaContainer {
         if (this.model != null) {
             try {
                 log.info("Start pulling the '{}' model ... would take several minutes ...", this.model);
-                execInContainer("ollama", "pull", this.model);
-                log.info("Model pulling competed!");
+                ExecResult r = execInContainer("ollama", "pull", this.model);
+                log.info("Model pulling competed! {}", r);
             } catch (IOException | InterruptedException e) {
                 throw new RuntimeException("Error pulling model", e);
             }

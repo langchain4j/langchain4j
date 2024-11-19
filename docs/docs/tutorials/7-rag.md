@@ -39,7 +39,7 @@ We plan to expand the RAG toolbox to include full-text and hybrid search in the 
 
 ## RAG Stages
 The RAG process is divided into 2 distinct stages: indexing and retrieval.
-LangChain4j provides tools for both stages.
+LangChain4j provides tooling for both stages.
 
 ### Indexing
 
@@ -73,6 +73,15 @@ Here is a simplified diagram of the retrieval stage:
 [![](/img/rag-retrieval.png)](/tutorials/rag)
 
 
+## RAG Flavours in LangChain4j
+
+LangChain4j offers three flavors of RAG:
+- [Easy RAG](/tutorials/rag/#easy-rag): the easiest way to start with RAG
+- [Naive RAG](/tutorials/rag/#naive-rag): a basic implementation of RAG using vector search
+- [Advanced RAG](/tutorials/rag/#advanced-rag): a modular RAG framework that allows for additional steps such as
+query transformation, retrieval from multiple sources, and re-ranking
+
+
 ## Easy RAG
 LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get started with RAG.
 You don't have to learn about embeddings, choose a vector store, find the right embedding model,
@@ -96,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 
@@ -196,36 +205,8 @@ and retrieve relevant content from an `EmbeddingStore` that contains our documen
 String answer = assistant.chat("How to do Easy RAG with LangChain4j?");
 ```
 
-## Accessing Sources
-If you wish to access the sources (retrieved `Content`s used to augment the message),
-you can easily do so by wrapping the return type in the `Result` class:
-```java
-interface Assistant {
 
-    Result<String> chat(String userMessage);
-}
-
-Result<String> result = assistant.chat("How to do Easy RAG with LangChain4j?");
-
-String answer = result.content();
-List<Content> sources = result.sources();
-```
-
-When streaming, a `Consumer<List<Content>>` can be specified using the `onRetrieved()` method:
-```java
-interface Assistant {
-
-    TokenStream chat(String userMessage);
-}
-
-assistant.chat("How to do Easy RAG with LangChain4j?")
-    .onRetrieved(sources -> ...)
-    .onNext(token -> ...)
-    .onError(error -> ...)
-    .start();
-```
-
-## RAG APIs
+## Core RAG APIs
 LangChain4j offers a rich set of APIs to make it easy for you to build custom RAG pipelines,
 ranging from simple ones to advanced ones.
 In this section, we will cover the main domain classes and APIs.
@@ -240,8 +221,8 @@ but future updates will enable it to support images and tables as well.
 <summary>Useful methods</summary>
 
 - `Document.text()` returns the text of the `Document`
-- `Document.metadata()` returns the `Metadata` of the `Document` (see below)
-- `Document.toTextSegment()` converts the `Document` into a `TextSegment` (see below)
+- `Document.metadata()` returns the `Metadata` of the `Document` (see "Metadata" section below)
+- `Document.toTextSegment()` converts the `Document` into a `TextSegment` (see "TextSegment" section below)
 - `Document.from(String, Metadata)` creates a `Document` from text and `Metadata`
 - `Document.from(String)` creates a `Document` from text with empty `Metadata`
 </details>
@@ -285,6 +266,8 @@ You can create a `Document` from a `String`, but a simpler method is to use one 
 - `AmazonS3DocumentLoader` from the `langchain4j-document-loader-amazon-s3` module
 - `AzureBlobStorageDocumentLoader` from the `langchain4j-document-loader-azure-storage-blob` module
 - `GitHubDocumentLoader` from the `langchain4j-document-loader-github` module
+- `GoogleCloudStorageDocumentLoader` from the `langchain4j-document-loader-google-cloud-storage` module
+- `SeleniumDocumentLoader` from the `langchain4j-document-loader-selenium` module
 - `TencentCosDocumentLoader` from the `langchain4j-document-loader-tencent-cos` module
 
 
@@ -316,7 +299,7 @@ List<Document> documents = FileSystemDocumentLoader.loadDocumentsRecursively("/h
 
 You can also load documents without explicitly specifying a `DocumentParser`.
 In this case, a default `DocumentParser` will be used.
-The default one is loaded through SPI (e.g. from `langchain4j-document-parser-apache-tika` or `langchain4j-easy-rag`).
+The default one is loaded through SPI (e.g. from `langchain4j-document-parser-apache-tika` or `langchain4j-easy-rag`, if one of them is imported).
 If no `DocumentParser`s are found through SPI, a `TextDocumentParser` is used as a fallback.
 
 
@@ -501,11 +484,12 @@ It has the following attributes:
 - `Filter filter`: The filter to be applied to the `Metadata` during search. Only `TextSegment`s whose `Metadata` matches the `Filter` will be returned.
 
 #### Filter
+The `Filter` allows filtering by `Metadata` entries when performing a vector search.
 More details about `Filter` can be found [here](https://github.com/langchain4j/langchain4j/pull/610).
 
 
 #### EmbeddingSearchResult
-The EmbeddingSearchResult represents a result of a search in an `EmbeddingStore`.
+The `EmbeddingSearchResult` represents a result of a search in an `EmbeddingStore`.
 It contains the list of `EmbeddingMatch`es.
 
 
@@ -570,12 +554,51 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
 ```
 
 
-## Advanced RAG
-More details are coming soon.
-In the meantime, please read [this](https://github.com/langchain4j/langchain4j/pull/538).
+## Naive RAG
 
+Once our documents are ingested (see previous sections), we can create
+an `EmbeddingStoreContentRetriever` to enable naive RAG functionality.
+
+When using [AI Services](/tutorials/ai-services), naive RAG can be configured as follows:
+```java
+ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+    .embeddingStore(embeddingStore)
+    .embeddingModel(embeddingModel)
+    .maxResults(5)
+    .minScore(0.75)
+    .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatLanguageModel(model)
+    .contentRetriever(contentRetriever)
+    .build();
+```
+
+[Naive RAG Example](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_2_naive/Naive_RAG_Example.java)
+
+
+## Advanced RAG
+
+Advanced RAG can be implemented with LangChain4j with the following core components:
+- `QueryTransformer`
+- `QueryRouter`
+- `ContentRetriever`
+- `ContentAggregator`
+- `ContentInjector`
+
+The following diagram shows how these components work together:
 [![](/img/advanced-rag.png)](/tutorials/rag)
 
+The process is as follows:
+1. The user produces a `UserMessage`, which is converted into a `Query`
+2. The `QueryTransformer` transforms the `Query` into one or multiple `Query`s
+3. Each `Query` is routed by the `QueryRouter` to one or more `ContetRetriever`s
+4. Each `ContetRetriever` retrieves relevant `Content`s for each `Query`
+5. The `ContentAggregator` combines all retrieved `Content`s into a single final ranked list
+6. This list of `Content`s is injected into the original `UserMessage`
+7. Finally, the `UserMessage`, containing the original query along with the injected relevant content, is sent to the LLM
+
+Please refer to the Javadoc of each component for more details.
 
 ### Retrieval Augmentor
 
@@ -671,6 +694,8 @@ The underlying data source can be virtually anything:
 - SQL database
 - etc.
 
+The list of `Content` returned by `ContentRetriever` is ordered by relevance, from highest to lowest.
+
 #### Embedding Store Content Retriever
 `EmbeddingStoreContentRetriever` retrieves relevant `Content` from the `EmbeddingStore` using
 the `EmbeddingModel` to embed the `Query`.
@@ -729,10 +754,17 @@ See javadoc of the `SqlDatabaseContentRetriever` for more information.
 Here is an [example](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_10_Advanced_RAG_SQL_Database_Retreiver_Example.java).
 
 #### Azure AI Search Content Retriever
-`AzureAiSearchContentRetriever` can be found in the `langchain4j-azure-ai-search` module.
+`AzureAiSearchContentRetriever` is an integration with
+[Azure AI Search](https://azure.microsoft.com/en-us/products/ai-services/ai-search).
+It supports full-text, vector, and hybrid search, as well as re-ranking. 
+It can be found in the `langchain4j-azure-ai-search` module.
+Please refer to the `AzureAiSearchContentRetriever` Javadoc for more information.
 
 #### Neo4j Content Retriever
-`Neo4jContentRetriever` can be found in the `langchain4j-neo4j` module.
+`Neo4jContentRetriever` is an integration with the [Neo4j](https://neo4j.com/) graph database.
+It converts natural language queries into Neo4j Cypher queries
+and retrieves relevant information by running these queries in Neo4j.
+It can be found in the `langchain4j-neo4j` module.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).
@@ -745,17 +777,21 @@ It routes each `Query` to all configured `ContentRetriever`s.
 `LanguageModelQueryRouter` uses the LLM to decide where to route the given `Query`.
 
 ### Content Aggregator
-More details are coming soon.
+The `ContentAggregator` is responsible for aggregating multiple ranked lists of `Content` from:
+- multiple `Query`s
+- multiple `ContentRetriever`s
+- both
 
 #### Default Content Aggregator
-`DefaultContentAggregator`
-
-More details are coming soon.
+The `DefaultContentAggregator` is the default implementation of `ContentAggregator`,
+which performs two-stage Reciprocal Rank Fusion (RRF).
+Please see `DefaultContentAggregator` Javadoc for more details.
 
 #### Re-Ranking Content Aggregator
-`ReRankingContentAggregator`
-
-More details are coming soon.
+The `ReRankingContentAggregator` uses a `ScoringModel`, like Cohere, to perform re-ranking.
+The complete list of supported scoring (re-ranking) models can be found
+[here](https://docs.langchain4j.dev/category/scoring-reranking-models).
+Please see `ReRankingContentAggregator` Javadoc for more details.
 
 ### Content Injector
 
@@ -812,6 +848,39 @@ DefaultRetrievalAugmentor.builder()
         .executor(executor)
         .build;
 ```
+
+
+## Accessing Sources
+
+If you wish to access the sources (retrieved `Content`s used to augment the message)
+when using [AI Services](/tutorials/ai-services),
+you can easily do so by wrapping the return type in the `Result` class:
+```java
+interface Assistant {
+
+    Result<String> chat(String userMessage);
+}
+
+Result<String> result = assistant.chat("How to do Easy RAG with LangChain4j?");
+
+String answer = result.content();
+List<Content> sources = result.sources();
+```
+
+When streaming, a `Consumer<List<Content>>` can be specified using the `onRetrieved()` method:
+```java
+interface Assistant {
+
+    TokenStream chat(String userMessage);
+}
+
+assistant.chat("How to do Easy RAG with LangChain4j?")
+    .onRetrieved(sources -> ...)
+    .onNext(token -> ...)
+    .onError(error -> ...)
+    .start();
+```
+
 
 ## Examples
 

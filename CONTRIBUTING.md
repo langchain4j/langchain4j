@@ -46,7 +46,7 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 
 - [Integration with Anthropic](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-anthropic) is a good example.
 - Use the official SDK if available.
-- If the official SDK is not available, use Retrofit and Jackson to implement the client.
+- If the official SDK is not available, use Java 11 HTTP Client and Jackson to implement the client.
 - Document the new integration [here](https://github.com/langchain4j/langchain4j/blob/main/README.md), [here](https://github.com/langchain4j/langchain4j/tree/main/docs/docs/integrations/language-models) and [here](https://github.com/langchain4j/langchain4j/blob/main/docs/docs/integrations/language-models/index.md).
 - Add an example to the [examples repository](https://github.com/langchain4j/langchain4j-examples), similar to [this](https://github.com/langchain4j/langchain4j-examples/tree/main/anthropic-examples).
 - Add a new module to the appropriate section of the [BOM](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-bom/pom.xml).
@@ -56,7 +56,7 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 
 - [Integration with Chroma](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-chroma) is a good example.
 - Use the official SDK if available.
-- If the official SDK is not available, use Retrofit and Jackson to implement the client.
+- If the official SDK is not available, use Java 11 HTTP Client and Jackson to implement the client.
 - Add a `{IntegrationName}EmbeddingStoreIT`. It should extend from `EmbeddingStoreWithFilteringIT` (when store supports metadata filtering) or `EmbeddingStoreIT` and pass all tests.
 - Add a `{IntegrationName}EmbeddingStoreRemovalIT`. It should extend from `EmbeddingStoreWithRemovalIT` and pass all tests.
 - Document the new integration [here](https://github.com/langchain4j/langchain4j/blob/main/README.md), [here](https://github.com/langchain4j/langchain4j/tree/main/docs/docs/integrations/embedding-stores) and [here](https://github.com/langchain4j/langchain4j/blob/main/docs/docs/integrations/embedding-stores/index.md).

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 14
+sidebar_position: 18
 ---
 
 # PGVector
@@ -13,7 +13,7 @@ https://github.com/pgvector/pgvector
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-pgvector</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 

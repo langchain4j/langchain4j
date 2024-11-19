@@ -61,9 +61,7 @@ import static dev.langchain4j.data.message.ChatMessageType.AI;
 import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
 import static dev.langchain4j.data.message.ChatMessageType.USER;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -97,34 +95,26 @@ class QwenHelper {
     }
 
     static String toSingleText(ChatMessage message) {
-        switch (message.type()) {
-            case USER:
-                return ((UserMessage) message).contents()
-                        .stream()
-                        .filter(TextContent.class::isInstance)
-                        .map(TextContent.class::cast)
-                        .map(TextContent::text)
-                        .collect(Collectors.joining("\n"));
-            case AI:
-                return ((AiMessage) message).text();
-            case SYSTEM:
-                return ((SystemMessage) message).text();
-            case TOOL_EXECUTION_RESULT:
-                return ((ToolExecutionResultMessage) message).text();
-            default:
-                return "";
-        }
+        return switch (message.type()) {
+            case USER -> ((UserMessage) message).contents()
+                    .stream()
+                    .filter(TextContent.class::isInstance)
+                    .map(TextContent.class::cast)
+                    .map(TextContent::text)
+                    .collect(Collectors.joining("\n"));
+            case AI -> ((AiMessage) message).text();
+            case SYSTEM -> ((SystemMessage) message).text();
+            case TOOL_EXECUTION_RESULT -> ((ToolExecutionResultMessage) message).text();
+            default -> "";
+        };
     }
 
     static String nameFrom(ChatMessage message) {
-        switch (message.type()) {
-            case USER:
-                return ((UserMessage) message).name();
-            case TOOL_EXECUTION_RESULT:
-                return ((ToolExecutionResultMessage) message).toolName();
-            default:
-                return null;
-        }
+        return switch (message.type()) {
+            case USER -> ((UserMessage) message).name();
+            case TOOL_EXECUTION_RESULT -> ((ToolExecutionResultMessage) message).toolName();
+            default -> null;
+        };
     }
 
     static String toolCallIdFrom(ChatMessage message) {
@@ -155,24 +145,19 @@ class QwenHelper {
     }
 
     static List<Map<String, Object>> toMultiModalContents(ChatMessage message) {
-        switch (message.type()) {
-            case USER:
-                return ((UserMessage) message).contents()
-                        .stream()
-                        .map(QwenHelper::toMultiModalContent)
-                        .collect(Collectors.toList());
-            case AI:
-                return Collections.singletonList(
-                        Collections.singletonMap("text", ((AiMessage) message).text()));
-            case SYSTEM:
-                return Collections.singletonList(
-                        Collections.singletonMap("text", ((SystemMessage) message).text()));
-            case TOOL_EXECUTION_RESULT:
-                return Collections.singletonList(
-                        Collections.singletonMap("text", ((ToolExecutionResultMessage) message).text()));
-            default:
-                return Collections.emptyList();
-        }
+        return switch (message.type()) {
+            case USER -> ((UserMessage) message).contents()
+                    .stream()
+                    .map(QwenHelper::toMultiModalContent)
+                    .collect(Collectors.toList());
+            case AI -> Collections.singletonList(
+                    Collections.singletonMap("text", ((AiMessage) message).text()));
+            case SYSTEM -> Collections.singletonList(
+                    Collections.singletonMap("text", ((SystemMessage) message).text()));
+            case TOOL_EXECUTION_RESULT -> Collections.singletonList(
+                    Collections.singletonMap("text", ((ToolExecutionResultMessage) message).text()));
+            default -> Collections.emptyList();
+        };
     }
 
     static Map<String, Object> toMultiModalContent(Content content) {
@@ -263,6 +248,10 @@ class QwenHelper {
                 .map(GenerationResult::getOutput)
                 .map(GenerationOutput::getChoices)
                 .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getContent)
+                .filter(Utils::isNotNullOrBlank)
                 .isPresent();
     }
 
@@ -331,16 +320,12 @@ class QwenHelper {
                 choice.getFinishReason() :
                 "tool_calls";
 
-        switch (finishReason) {
-            case "stop":
-                return STOP;
-            case "length":
-                return LENGTH;
-            case "tool_calls":
-                return TOOL_EXECUTION;
-            default:
-                return null;
-        }
+        return switch (finishReason) {
+            case "stop" -> STOP;
+            case "length" -> LENGTH;
+            case "tool_calls" -> TOOL_EXECUTION;
+            default -> null;
+        };
     }
 
     static FinishReason finishReasonFrom(MultiModalConversationResult result) {
@@ -352,14 +337,11 @@ class QwenHelper {
                 .map(MultiModalConversationOutput.Choice::getFinishReason)
                 .orElse("");
 
-        switch (finishReason) {
-            case "stop":
-                return STOP;
-            case "length":
-                return LENGTH;
-            default:
-                return null;
-        }
+        return switch (finishReason) {
+            case "stop" -> STOP;
+            case "length" -> LENGTH;
+            default -> null;
+        };
     }
 
     public static boolean isMultimodalModel(String modelName) {
@@ -385,6 +367,7 @@ class QwenHelper {
         return ToolFunction.builder().function(functionDefinition).build();
     }
 
+    @SuppressWarnings("deprecation")
     private static JsonObject toParameters(ToolSpecification toolSpecification) {
         if (toolSpecification.parameters() != null) {
             return JsonUtils.toJsonObject(toMap(toolSpecification.parameters()));
@@ -399,24 +382,15 @@ class QwenHelper {
         if (isFunctionToolCalls(result)) {
             String text = answerFrom(result);
             return isNullOrBlank(text) ?
-                    new AiMessage(functionToolCallsFrom(result)) :
-                    new AiMessage(text, functionToolCallsFrom(result));
+                    new AiMessage(toolExecutionRequestsFrom(result)) :
+                    new AiMessage(text, toolExecutionRequestsFrom(result));
         } else {
             return new AiMessage(answerFrom(result));
         }
     }
 
-    private static List<ToolExecutionRequest> functionToolCallsFrom(GenerationResult result) {
-        List<ToolCallBase> toolCalls = Optional.of(result)
-                .map(GenerationResult::getOutput)
-                .map(GenerationOutput::getChoices)
-                .filter(choices -> !choices.isEmpty())
-                .map(choices -> choices.get(0))
-                .map(Choice::getMessage)
-                .map(Message::getToolCalls)
-                .orElseThrow(IllegalStateException::new);
-
-        return toolCalls.stream()
+    private static List<ToolExecutionRequest> toolExecutionRequestsFrom(GenerationResult result) {
+        return toolCallsFrom(result).stream()
                 .filter(ToolCallFunction.class::isInstance)
                 .map(ToolCallFunction.class::cast)
                 .map(toolCall -> ToolExecutionRequest.builder()
@@ -425,6 +399,17 @@ class QwenHelper {
                         .arguments(toolCall.getFunction().getArguments())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    static List<ToolCallBase> toolCallsFrom(GenerationResult result) {
+        return Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getToolCalls)
+                .orElseThrow(IllegalStateException::new);
     }
 
     static String toolCallIdFromMessage(GenerationResult result) {

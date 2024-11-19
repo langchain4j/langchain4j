@@ -22,7 +22,7 @@ class OllamaChatModelVisionIT extends AbstractOllamaVisionModelInfrastructure {
 
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .timeout(Duration.ofMinutes(3))
                 .modelName(BAKLLAVA_MODEL)
                 .temperature(0.0)

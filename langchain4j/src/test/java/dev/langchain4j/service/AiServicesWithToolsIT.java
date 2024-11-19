@@ -30,9 +30,8 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -64,6 +63,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class AiServicesWithToolsIT {
 
     static Stream<ChatLanguageModel> models() {
@@ -159,8 +159,8 @@ class AiServicesWithToolsIT {
         assertThat(response.content().text()).contains("11.1");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -232,8 +232,8 @@ class AiServicesWithToolsIT {
         assertThat(response.content().text()).contains("11.1", "22.2");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -326,8 +326,8 @@ class AiServicesWithToolsIT {
         assertThat(response.content().text()).contains("11.1", "22.2");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -655,35 +655,32 @@ class AiServicesWithToolsIT {
         }
     }
 
-    @Data
-    static class Query {
+    static record Query(
 
         @Description("List of fields to fetch records")
-        List<String> select;
+        List<String> select,
 
         @Description("List of conditions to filter on. Pass null if no condition")
-        List<Condition> where;
+        List<Condition> where,
 
         @Description("limit on number of records")
-        Integer limit;
+        Integer limit,
 
         @Description("offset for fetching records")
-        Integer offset;
-    }
+        Integer offset)
+    {}
 
-    @Data
-    @AllArgsConstructor
-    static class Condition {
+    static record Condition(
 
         @Description("Field to filter on")
-        String field;
+        String field,
 
         @Description("Operator to apply")
-        Operator operator;
+        Operator operator,
 
         @Description("Value to compare with")
-        String value;
-    }
+        String value)
+    {}
 
     enum Operator {
 
@@ -970,7 +967,8 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    public void should_execute_multi_tool_in_parallel_and_context_included_in_result(ChatLanguageModel chatLanguageModel) {
+    @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+    void should_execute_multi_tool_in_parallel_and_context_included_in_result(ChatLanguageModel chatLanguageModel) {
 
         // given
         TransactionService transactionService = spy(new TransactionService());

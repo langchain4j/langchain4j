@@ -14,9 +14,6 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.Response;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +36,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -124,15 +122,12 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithPojoParameter {
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Person {
+        record Person(
 
-            String name;
-            int age;
-            Double height;
-            boolean married;
+                String name,
+                int age,
+                Double height,
+                boolean married) {
         }
 
         @Tool
@@ -192,21 +187,13 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithNestedPojoParameter {
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Person {
-
-            String name;
-            Address address;
+        record Person(
+                String name,
+                Address address
+        ) {
         }
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Address {
-
-            String city;
+        record Address(String city) {
         }
 
         @Tool
@@ -267,13 +254,10 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithRecursion {
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Person {
-
-            String name;
-            List<Person> children;
+        record Person(
+                String name,
+                List<Person> children
+        ) {
         }
 
         @Tool
@@ -283,7 +267,7 @@ public abstract class AiServicesWithNewToolsIT {
         static final String REFERENCE = generateUUIDFrom(ToolWithRecursion.Person.class.getName());
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
-                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                .properties(new LinkedHashMap<>() {{
                     put("name", new JsonStringSchema());
                     put("children", JsonArraySchema.builder()
                             .items(JsonReferenceSchema.builder()
@@ -693,12 +677,7 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithListOfPojoParameter {
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Person {
-
-            String name;
+        record Person(String name) {
         }
 
         @Tool
@@ -757,7 +736,7 @@ public abstract class AiServicesWithNewToolsIT {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfPojoParameter.EXPECTED_SPECIFICATION);
             }

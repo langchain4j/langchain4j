@@ -26,7 +26,7 @@ For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `l
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 
@@ -77,7 +77,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 
@@ -120,7 +120,29 @@ The following components will be automatically wired into the AI Service if avai
 - `ChatMemoryProvider`
 - `ContentRetriever`
 - `RetrievalAugmentor`
-- All methods annotated with `@Tool` (note that these methods must be defined in a class that is a Spring **bean**)
+- All methods of any `@Component` or `@Service` class that are annotated with `@Tool`
+An example:
+```java
+@Component
+public class BookingTools {
+
+    private final BookingService bookingService;
+
+    public BookingTools(BookingService bookingService) {
+        this.bookingService = bookingService;
+    }
+
+    @Tool
+    public Booking getBookingDetails(String bookingNumber, String customerName, String customerSurname) {
+        return bookingService.getBookingDetails(bookingNumber, customerName, customerSurname);
+    }
+
+    @Tool
+    public void cancelBooking(String bookingNumber, String customerName, String customerSurname) {
+        bookingService.cancelBooking(bookingNumber, customerName, customerSurname);
+    }
+}
+```
 
 :::note
 If multiple components of the same type are present in the application context, the application will fail to start.
@@ -164,6 +186,20 @@ In this case, you must explicitly specify **all** components.
 :::
 
 More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
+
+## Flux
+
+When streaming, you can use `Flux<String>` as a return type of AI Service:
+```java
+@AiService
+interface Assistant {
+
+    @SystemMessage("You are a polite assistant")
+    Flux<String> chat(String userMessage);
+}
+```
+For this, please import `langchain4j-reactor` module.
+See more details [here](/tutorials/ai-services#flux).
 
 ## Supported versions
 
