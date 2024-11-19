@@ -14,7 +14,7 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
@@ -33,7 +33,7 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .timeout(Duration.ofMinutes(1))
                 .build();
 

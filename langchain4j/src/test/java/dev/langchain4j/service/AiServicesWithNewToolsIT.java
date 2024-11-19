@@ -36,7 +36,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -214,7 +213,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_pojo_with_nested_pojo() {
+    protected void should_execute_tool_with_pojo_with_nested_pojo() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -640,7 +639,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_collection_of_integers_parameter() {
+    protected void should_execute_tool_with_collection_of_integers_parameter() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -700,7 +699,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_list_of_POJOs_parameter() {
+    protected void should_execute_tool_with_list_of_POJOs_parameter() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -736,7 +735,7 @@ public abstract class AiServicesWithNewToolsIT {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfPojoParameter.EXPECTED_SPECIFICATION);
             }

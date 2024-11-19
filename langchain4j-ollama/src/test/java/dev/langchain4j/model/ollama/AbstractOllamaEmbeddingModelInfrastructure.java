@@ -12,18 +12,11 @@ class AbstractOllamaEmbeddingModelInfrastructure {
     static LC4jOllamaContainer ollama;
 
     static {
-        ollama = new LC4jOllamaContainer(OllamaImage.resolve(OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE))
-                .withModel(ALL_MINILM_MODEL);
+        if (isNullOrEmpty(OLLAMA_BASE_URL)) {
+            ollama = new LC4jOllamaContainer(OllamaImage.resolve(OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE))
+                    .withModel(ALL_MINILM_MODEL);
             ollama.start();
             ollama.commitToImage(LOCAL_OLLAMA_IMAGE);
-        }
-    }
-
-    public static String ollamaBaseUrl() {
-        if (isNullOrEmpty(OLLAMA_BASE_URL)) {
-            return ollama.getEndpoint();
-        } else {
-            return OLLAMA_BASE_URL;
         }
     }
 }

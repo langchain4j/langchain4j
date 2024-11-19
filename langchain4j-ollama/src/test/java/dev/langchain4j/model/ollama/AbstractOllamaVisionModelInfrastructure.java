@@ -10,20 +10,11 @@ class AbstractOllamaVisionModelInfrastructure {
     static LC4jOllamaContainer ollama;
 
     static {
-        String ollamaBaseUrl = System.getenv("OLLAMA_BASE_URL");
-        if (isNullOrEmpty(ollamaBaseUrl)) {
+        if (isNullOrEmpty(OLLAMA_BASE_URL)) {
             ollama = new LC4jOllamaContainer(OllamaImage.resolve(OllamaImage.OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE))
-                .withModel(OllamaImage.BAKLLAVA_MODEL);
+                    .withModel(OllamaImage.BAKLLAVA_MODEL);
             ollama.start();
             ollama.commitToImage(LOCAL_OLLAMA_IMAGE);
-        }
-    }
-
-    public static String ollamaBaseUrl() {
-        if (isNullOrEmpty(OLLAMA_BASE_URL)) {
-            return ollama.getEndpoint();
-        } else {
-            return OLLAMA_BASE_URL;
         }
     }
 }

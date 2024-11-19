@@ -19,6 +19,7 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.TOOL_MODEL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -40,7 +41,7 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
             .build();
 
     ChatLanguageModel ollamaChatModel = OllamaChatModel.builder()
-            .baseUrl(ollamaBaseUrl())
+            .baseUrl(ollamaBaseUrl(ollama))
             .modelName(TOOL_MODEL)
             .temperature(0.0)
             .logRequests(true)

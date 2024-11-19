@@ -4,6 +4,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.ChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollama;
 import static dev.langchain4j.model.ollama.OllamaImage.TOOL_MODEL;
 import static java.util.Collections.singletonList;
 
@@ -12,7 +13,7 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
     @Override
     protected ChatLanguageModel createModel(ChatModelListener listener) {
         return OllamaChatModel.builder()
-                .baseUrl(AbstractOllamaToolsLanguageModelInfrastructure.ollamaBaseUrl())
+                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
@@ -31,7 +32,7 @@ class OllamaChatModelListenerIT extends ChatModelListenerIT {
     @Override
     protected ChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OllamaChatModel.builder()
-                .baseUrl(AbstractOllamaToolsLanguageModelInfrastructure.ollamaBaseUrl())
+                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
                 .modelName("banana")
                 .maxRetries(0)
                 .logRequests(true)
