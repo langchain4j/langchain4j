@@ -448,6 +448,13 @@
                                 <version>2.50.0</version>
                             </palantirJavaFormat>
                         </java>
+                        <!--
+                        <pom>
+                            <sortPom>
+                                <nrOfIndentSpace>4</nrOfIndentSpace>
+                            </sortPom>
+                        </pom>
+                        -->
                     </configuration>
                 </plugin>
             </plugins>
