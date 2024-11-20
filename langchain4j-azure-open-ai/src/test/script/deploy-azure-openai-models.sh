@@ -146,6 +146,18 @@ az cognitiveservices account deployment create \
   --sku-capacity 1 \
   --sku-name "Standard"
 
+echo "Deploying a gpt-4o-mini model..."
+echo "----------------------"
+az cognitiveservices account deployment create \
+  --name "$AI_SERVICE" \
+  --resource-group "$RESOURCE_GROUP" \
+  --deployment-name "gpt-4o-mini" \
+  --model-name "gpt-4o-mini" \
+  --model-version "2024-07-18"  \
+  --model-format "OpenAI" \
+  --sku-capacity 1 \
+  --sku-name "Standard"
+
 # Embedding Models
 echo "Deploying Embedding Models"
 echo "=========================="
@@ -158,6 +170,30 @@ az cognitiveservices account deployment create \
   --deployment-name "text-embedding-ada-002-2" \
   --model-name "text-embedding-ada-002" \
   --model-version "2"  \
+  --model-format "OpenAI" \
+  --sku-capacity 1 \
+  --sku-name "Standard"
+
+echo "Deploying a text-embedding-3-small model..."
+echo "----------------------"
+az cognitiveservices account deployment create \
+  --name "$AI_SERVICE" \
+  --resource-group "$RESOURCE_GROUP" \
+  --deployment-name "text-embedding-3-small" \
+  --model-name "text-embedding-3-small" \
+  --model-version "1"  \
+  --model-format "OpenAI" \
+  --sku-capacity 1 \
+  --sku-name "Standard"
+
+echo "Deploying a text-embedding-3-large model..."
+echo "----------------------"
+az cognitiveservices account deployment create \
+  --name "$AI_SERVICE" \
+  --resource-group "$RESOURCE_GROUP" \
+  --deployment-name "text-embedding-3-large" \
+  --model-name "text-embedding-3-large" \
+  --model-version "1"  \
   --model-format "OpenAI" \
   --sku-capacity 1 \
   --sku-name "Standard"
