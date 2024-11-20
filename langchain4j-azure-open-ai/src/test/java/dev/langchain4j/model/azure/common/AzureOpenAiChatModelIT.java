@@ -20,6 +20,11 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsToolChoiceAnyWithMultipleTools() {
+        return false; // TODO implement
+    }
+
+    @Override
     protected boolean supportsJsonResponseFormat() {
         return false; // TODO implement
     }

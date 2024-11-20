@@ -20,7 +20,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
 class OllamaChatModelIT extends AbstractChatModelIT {
 
-    static String MODEL_NAME = TOOL_MODEL;
+    private static final String MODEL_NAME = TOOL_MODEL;
 
     static LC4jOllamaContainer ollama;
 
@@ -69,7 +69,12 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoice() {
+    protected boolean supportsToolChoiceAnyWithMultipleTools() {
+        return false; // TODO check if Ollama supports this
+    }
+
+    @Override
+    protected boolean supportsToolChoiceAnyWithSingleTool() {
         return false; // TODO check if Ollama supports this
     }
 

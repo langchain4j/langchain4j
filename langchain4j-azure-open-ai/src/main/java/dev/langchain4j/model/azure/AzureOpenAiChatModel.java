@@ -19,11 +19,6 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import java.util.ArrayList;
@@ -39,9 +34,9 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
-import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
@@ -238,28 +233,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     }
 
     @Override
-    public ChatResponse chat(ChatRequest chatRequest) {
-
-        ResponseFormat responseFormat = chatRequest.responseFormat();
-        if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
-            // TODO check supportedCapabilities() instead?
-            throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
-        }
-
-        Response<AiMessage> response = generate(
-            chatRequest.messages(),
-            chatRequest.toolSpecifications(),
-            chatRequest.toolChoice()
-        );
-
-        return ChatResponse.builder()
-            .aiMessage(response.content())
-            .tokenUsage(response.tokenUsage())
-            .finishReason(response.finishReason())
-            .build();
-    }
-
-    @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         return generate(messages, null, null);
     }
@@ -271,12 +244,12 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, List.of(toolSpecification), ANY);
+        return generate(messages, singletonList(toolSpecification), toolSpecification);
     }
 
     private Response<AiMessage> generate(List<ChatMessage> messages,
                                          List<ToolSpecification> toolSpecifications,
-                                         ToolChoice toolChoice
+                                         ToolSpecification toolThatMustBeExecuted
     ) {
         ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(messages))
                 .setModel(deploymentName)
@@ -294,11 +267,12 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 .setSeed(seed)
                 .setResponseFormat(responseFormat);
 
+        if (toolThatMustBeExecuted != null) {
+            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
+            options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
+        }
         if (!isNullOrEmpty(toolSpecifications)) {
             options.setTools(toToolDefinitions(toolSpecifications));
-        }
-        if (toolChoice != null) {
-            options.setToolChoice(toToolChoice(toolChoice));
         }
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
@@ -321,14 +295,14 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             );
 
             ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                chatCompletions.getId(),
-                options.getModel(),
-                response
+                    chatCompletions.getId(),
+                    options.getModel(),
+                    response
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                modelListenerResponse,
-                modelListenerRequest,
-                attributes
+                    modelListenerResponse,
+                    modelListenerRequest,
+                    attributes
             );
             listeners.forEach(listener -> {
                 try {
@@ -342,10 +316,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating response, {}", httpResponseException.getValue());
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                httpResponseException,
-                modelListenerRequest,
-            null,
-                attributes
+                    httpResponseException,
+                    modelListenerRequest,
+                    null,
+                    attributes
             );
 
             listeners.forEach(listener -> {

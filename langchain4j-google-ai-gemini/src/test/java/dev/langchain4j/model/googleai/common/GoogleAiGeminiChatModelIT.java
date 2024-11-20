@@ -19,7 +19,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoice() {
+    protected boolean supportsToolChoiceAnyWithMultipleTools() {
         return false; // TODO implement
     }
 

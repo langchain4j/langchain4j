@@ -18,7 +18,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
 class OllamaStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
 
-    static String MODEL_NAME = TINY_DOLPHIN_MODEL;
+    private static final String MODEL_NAME = TINY_DOLPHIN_MODEL;
 
     static LC4jOllamaContainer ollama;
 

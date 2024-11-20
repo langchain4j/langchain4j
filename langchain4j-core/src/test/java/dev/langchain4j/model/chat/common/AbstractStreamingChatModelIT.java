@@ -35,7 +35,6 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
  * <p>
  * Make sure these dependencies are present in the module where this test class is extended:
  * <pre>
- *
  * <dependency>
  *     <groupId>dev.langchain4j</groupId>
  *     <artifactId>langchain4j-core</artifactId>
@@ -49,6 +48,7 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
  *     <type>test-jar</type>
  *     <scope>test</scope>
  * </dependency>
+ * </pre>
  */
 @TestInstance(PER_CLASS)
 public abstract class AbstractStreamingChatModelIT {
@@ -212,7 +212,7 @@ public abstract class AbstractStreamingChatModelIT {
         // TODO
     }
 
-    @EnabledIf("supportsToolChoice")
+    @EnabledIf("supportsToolChoiceAnyWithMultipleTools")
     @ParameterizedTest
     @MethodSource("models")
     void should_force_LLM_to_call_any_tool(StreamingChatLanguageModel model) throws Exception {
@@ -291,7 +291,7 @@ public abstract class AbstractStreamingChatModelIT {
         }
     }
 
-    @EnabledIf("supportsToolChoice")
+    @EnabledIf("supportsToolChoiceAnyWithSingleTool")
     @ParameterizedTest
     @MethodSource("models")
     void should_force_LLM_to_call_specific_tool(StreamingChatLanguageModel model) throws Exception {
@@ -365,7 +365,11 @@ public abstract class AbstractStreamingChatModelIT {
         return true;
     }
 
-    protected boolean supportsToolChoice() {
+    protected boolean supportsToolChoiceAnyWithSingleTool() {
+        return supportsTools();
+    }
+
+    protected boolean supportsToolChoiceAnyWithMultipleTools() {
         return supportsTools();
     }
 
