@@ -9,13 +9,10 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.TestUtils;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
@@ -24,15 +21,15 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.data.Percentage.withPercentage;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class MongoDbEmbeddingStoreMiscIT {
+
+    private MongoDbTestFixture fixture;
 
     public static class ContainerIT extends MongoDbEmbeddingStoreMiscIT {
         @BeforeAll
         static void start() {
-            MongoDbTestFixture.assertDoContainerTests();
+            assertDoContainerTests();
         }
 
         @Override
@@ -41,14 +38,12 @@ class MongoDbEmbeddingStoreMiscIT {
         }
     }
 
-    MongoDbTestFixture helper;
-
     MongoClient createClient() {
         return createClientFromEnv();
     }
 
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return helper.getEmbeddingStore();
+        return fixture.getEmbeddingStore();
     }
 
     protected EmbeddingModel embeddingModel() {
@@ -57,15 +52,15 @@ class MongoDbEmbeddingStoreMiscIT {
 
     @AfterEach
     void afterEach() {
-        if (helper != null) {
-            helper.afterTests();
+        if (fixture != null) {
+            fixture.afterTests();
         }
     }
 
     @Test
     void should_find_relevant_with_filter() {
         // given
-        helper = new MongoDbTestFixture(createClient()).initialize(builder -> builder
+        fixture = new MongoDbTestFixture(createClient()).initialize(builder -> builder
                         .filter(Filters.and(Filters.eq("metadata.test-key", "test-value"))));
 
         waitForIndex();
@@ -104,7 +99,7 @@ class MongoDbEmbeddingStoreMiscIT {
                 .queryEmbedding(EMBEDDING_MODEL.embed("dummy").content())
                 .maxResults(1)
                 .build();
-        TestUtils.awaitUntilAsserted(
+        awaitUntilAsserted(
                 () -> assertThatNoException().isThrownBy(() -> embeddingStore().search(embeddingSearchRequest)));
     }
 }
