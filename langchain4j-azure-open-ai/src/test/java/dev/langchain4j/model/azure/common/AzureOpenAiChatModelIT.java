@@ -8,15 +8,15 @@ import java.util.List;
 
 class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
+    static final AzureOpenAiChatModel AZURE_OPEN_AI_CHAT_MODEL = AzureOpenAiChatModel.builder()
+            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+            .deploymentName("gpt-4o-mini")
+            .build();
+
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(
-                AzureOpenAiChatModel.builder()
-                        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                        .deploymentName("gpt-4o-mini")
-                        .build()
-        );
+        return List.of(AZURE_OPEN_AI_CHAT_MODEL);
     }
 
     @Override

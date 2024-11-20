@@ -8,15 +8,16 @@ import java.util.List;
 
 class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
+    static final VertexAiGeminiStreamingChatModel VERTEX_AI_GEMINI_STREAMING_CHAT_MODEL =
+            VertexAiGeminiStreamingChatModel.builder()
+                    .project(System.getenv("GCP_PROJECT_ID"))
+                    .location(System.getenv("GCP_LOCATION"))
+                    .modelName("gemini-1.5-flash")
+                    .build();
+
     @Override
     protected List<StreamingChatLanguageModel> models() {
-        return List.of(
-                VertexAiGeminiStreamingChatModel.builder()
-                        .project(System.getenv("GCP_PROJECT_ID"))
-                        .location(System.getenv("GCP_LOCATION"))
-                        .modelName("gemini-1.5-flash")
-                        .build()
-        );
+        return List.of(VERTEX_AI_GEMINI_STREAMING_CHAT_MODEL);
     }
 
     @Override

@@ -8,14 +8,14 @@ import java.util.List;
 
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
+    static final GoogleAiGeminiChatModel GOOGLE_AI_GEMINI_CHAT_MODEL = GoogleAiGeminiChatModel.builder()
+            .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+            .modelName("gemini-1.5-flash")
+            .build();
+
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(
-                GoogleAiGeminiChatModel.builder()
-                        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                        .modelName("gemini-1.5-flash")
-                        .build()
-        );
+        return List.of(GOOGLE_AI_GEMINI_CHAT_MODEL);
     }
 
     @Override

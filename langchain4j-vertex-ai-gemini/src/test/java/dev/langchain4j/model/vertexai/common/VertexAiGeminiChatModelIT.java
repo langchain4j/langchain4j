@@ -8,15 +8,15 @@ import java.util.List;
 
 class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
 
+    static final VertexAiGeminiChatModel VERTEX_AI_GEMINI_CHAT_MODEL = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName("gemini-1.5-flash")
+            .build();
+
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(
-                VertexAiGeminiChatModel.builder()
-                        .project(System.getenv("GCP_PROJECT_ID"))
-                        .location(System.getenv("GCP_LOCATION"))
-                        .modelName("gemini-1.5-flash")
-                        .build()
-        );
+        return List.of(VERTEX_AI_GEMINI_CHAT_MODEL);
     }
 
     @Override

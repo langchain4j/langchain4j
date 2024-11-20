@@ -22,7 +22,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
 
     private static final String MODEL_NAME = TOOL_MODEL;
 
-    static LC4jOllamaContainer ollama;
+    private static LC4jOllamaContainer ollama;
 
     static {
         if (isNullOrEmpty(OLLAMA_BASE_URL)) {
@@ -33,21 +33,22 @@ class OllamaChatModelIT extends AbstractChatModelIT {
         }
     }
 
+    static final OllamaChatModel OLLAMA_CHAT_MODEL = OllamaChatModel.builder()
+            .baseUrl(ollamaBaseUrl(ollama))
+            .modelName(MODEL_NAME)
+            .temperature(0.0)
+            .build();
+
+    static final OpenAiChatModel OPEN_AI_CHAT_MODEL = OpenAiChatModel.builder()
+            .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
+            .baseUrl(ollamaBaseUrl(ollama) + "/v1") // TODO add "/v1" by default?
+            .modelName(MODEL_NAME)
+            .temperature(0.0)
+            .build();
+
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(
-                OllamaChatModel.builder()
-                        .baseUrl(ollamaBaseUrl(ollama))
-                        .modelName(MODEL_NAME)
-                        .temperature(0.0)
-                        .build(),
-                OpenAiChatModel.builder()
-                        .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
-                        .baseUrl(ollamaBaseUrl(ollama) + "/v1") // TODO add "/v1" by default?
-                        .modelName(MODEL_NAME)
-                        .temperature(0.0)
-                        .build()
-        );
+        return List.of(OLLAMA_CHAT_MODEL, OPEN_AI_CHAT_MODEL);
     }
 
     @Override

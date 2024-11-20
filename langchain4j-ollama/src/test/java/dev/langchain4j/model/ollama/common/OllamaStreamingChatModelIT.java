@@ -20,7 +20,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     private static final String MODEL_NAME = TINY_DOLPHIN_MODEL;
 
-    static LC4jOllamaContainer ollama;
+    private static LC4jOllamaContainer ollama;
 
     static {
         if (isNullOrEmpty(OLLAMA_BASE_URL)) {
@@ -31,21 +31,22 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
         }
     }
 
+    static final OllamaStreamingChatModel OLLAMA_STREAMING_CHAT_MODEL = OllamaStreamingChatModel.builder()
+            .baseUrl(ollamaBaseUrl(ollama))
+            .modelName(MODEL_NAME)
+            .temperature(0.0)
+            .build();
+
+    static final OpenAiStreamingChatModel OPEN_AI_STREAMING_CHAT_MODEL = OpenAiStreamingChatModel.builder()
+            .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
+            .baseUrl(ollamaBaseUrl(ollama) + "/v1") // TODO add "/v1" by default?
+            .modelName(MODEL_NAME)
+            .temperature(0.0)
+            .build();
+
     @Override
     protected List<StreamingChatLanguageModel> models() {
-        return List.of(
-                OllamaStreamingChatModel.builder()
-                        .baseUrl(ollamaBaseUrl(ollama))
-                        .modelName(MODEL_NAME)
-                        .temperature(0.0)
-                        .build(),
-                OpenAiStreamingChatModel.builder()
-                        .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
-                        .baseUrl(ollamaBaseUrl(ollama) + "/v1") // TODO add "/v1" by default?
-                        .modelName(MODEL_NAME)
-                        .temperature(0.0)
-                        .build()
-        );
+        return List.of(OLLAMA_STREAMING_CHAT_MODEL, OPEN_AI_STREAMING_CHAT_MODEL);
     }
 
     @Override
