@@ -46,7 +46,7 @@ class OpenAiTokenizerTest {
         assertThat(tokenizer.estimateTokenCountInText("Hello!")).isEqualTo(2);
         assertThat(tokenizer.estimateTokenCountInText("Hello, how are you?")).isEqualTo(6);
 
-        assertThat(tokenizer.estimateTokenCountInText("")).isEqualTo(0);
+        assertThat(tokenizer.estimateTokenCountInText("")).isZero();
         assertThat(tokenizer.estimateTokenCountInText("\n")).isEqualTo(1);
         assertThat(tokenizer.estimateTokenCountInText("\n\n")).isEqualTo(1);
         assertThat(tokenizer.estimateTokenCountInText("\n \n\n")).isEqualTo(2);
@@ -78,11 +78,11 @@ class OpenAiTokenizerTest {
 
     @Test
     void should_count_arguments() {
-        assertThat(countArguments(null)).isEqualTo(0);
-        assertThat(countArguments("")).isEqualTo(0);
-        assertThat(countArguments(" ")).isEqualTo(0);
-        assertThat(countArguments("{}")).isEqualTo(0);
-        assertThat(countArguments("{ }")).isEqualTo(0);
+        assertThat(countArguments(null)).isZero();
+        assertThat(countArguments("")).isZero();
+        assertThat(countArguments(" ")).isZero();
+        assertThat(countArguments("{}")).isZero();
+        assertThat(countArguments("{ }")).isZero();
 
         assertThat(countArguments("{\"one\":1}")).isEqualTo(1);
         assertThat(countArguments("{\"one\": 1}")).isEqualTo(1);

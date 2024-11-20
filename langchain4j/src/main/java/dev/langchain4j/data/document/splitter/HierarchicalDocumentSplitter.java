@@ -5,7 +5,6 @@ import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
-import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,7 +13,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static dev.langchain4j.internal.Utils.firstChars;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Base class for hierarchical document splitters.
@@ -23,9 +24,14 @@ import static dev.langchain4j.internal.ValidationUtils.*;
  * when a single segment is too long.
  */
 public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
-    @Getter(lazy = true)
-    private final HierarchicalDocumentSplitter overlapSentenceSplitter =
-            new DocumentBySentenceSplitter(1, 0, null, null);
+    private HierarchicalDocumentSplitter overlapSentenceSplitter;
+
+    private HierarchicalDocumentSplitter getOverlapSentenceSplitter() {
+        if (overlapSentenceSplitter == null) {
+            overlapSentenceSplitter = new DocumentBySentenceSplitter(1, 0, null, null);
+        }
+        return overlapSentenceSplitter;
+    }
 
     private static final String INDEX = "index";
 
@@ -36,6 +42,7 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
     /**
      * Creates a new instance of {@link HierarchicalDocumentSplitter}.
+     *
      * @param maxSegmentSizeInChars The maximum size of a segment in characters.
      * @param maxOverlapSizeInChars The maximum size of the overlap between segments in characters.
      */
@@ -45,9 +52,10 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
     /**
      * Creates a new instance of {@link HierarchicalDocumentSplitter}.
+     *
      * @param maxSegmentSizeInChars The maximum size of a segment in characters.
      * @param maxOverlapSizeInChars The maximum size of the overlap between segments in characters.
-     * @param subSplitter The sub-splitter to use when a single segment is too long.
+     * @param subSplitter           The sub-splitter to use when a single segment is too long.
      */
     protected HierarchicalDocumentSplitter(int maxSegmentSizeInChars,
                                            int maxOverlapSizeInChars,
@@ -57,9 +65,10 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
     /**
      * Creates a new instance of {@link HierarchicalDocumentSplitter}.
+     *
      * @param maxSegmentSizeInTokens The maximum size of a segment in tokens.
      * @param maxOverlapSizeInTokens The maximum size of the overlap between segments in tokens.
-     * @param tokenizer The tokenizer to use to estimate the number of tokens in a text.
+     * @param tokenizer              The tokenizer to use to estimate the number of tokens in a text.
      */
     protected HierarchicalDocumentSplitter(int maxSegmentSizeInTokens,
                                            int maxOverlapSizeInTokens,
@@ -69,10 +78,11 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
     /**
      * Creates a new instance of {@link HierarchicalDocumentSplitter}.
+     *
      * @param maxSegmentSizeInTokens The maximum size of a segment in tokens.
      * @param maxOverlapSizeInTokens The maximum size of the overlap between segments in tokens.
-     * @param tokenizer The tokenizer to use to estimate the number of tokens in a text.
-     * @param subSplitter The sub-splitter to use when a single segment is too long.
+     * @param tokenizer              The tokenizer to use to estimate the number of tokens in a text.
+     * @param subSplitter            The sub-splitter to use when a single segment is too long.
      */
     protected HierarchicalDocumentSplitter(int maxSegmentSizeInTokens,
                                            int maxOverlapSizeInTokens,
@@ -87,6 +97,7 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
     /**
      * Splits the provided text into parts.
      * Implementation API.
+     *
      * @param text The text to be split.
      * @return An array of parts.
      */
@@ -94,12 +105,14 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
     /**
      * Delimiter string to use to re-join the parts.
+     *
      * @return The delimiter.
      */
     protected abstract String joinDelimiter();
 
     /**
      * The default sub-splitter to use when a single segment is too long.
+     *
      * @return The default sub-splitter.
      */
     protected abstract DocumentSplitter defaultSubSplitter();
@@ -176,6 +189,7 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
     /**
      * Returns the overlap region at the end of the provided segment text.
+     *
      * @param segmentText The segment text.
      * @return The overlap region, or an empty string if there is no overlap.
      */
@@ -222,9 +236,9 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
      * <p>The segment inherits all metadata from the document. The segment also includes
      * an "index" metadata key representing the segment position within the document.
      *
-     * @param text The text of the segment.
+     * @param text     The text of the segment.
      * @param document The document to which the segment belongs.
-     * @param index The index of the segment within the document.
+     * @param index    The index of the segment within the document.
      */
     static TextSegment createSegment(String text, Document document, int index) {
         Metadata metadata = document.metadata().copy().put(INDEX, String.valueOf(index));

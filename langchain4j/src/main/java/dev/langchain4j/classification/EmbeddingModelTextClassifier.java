@@ -98,11 +98,11 @@ public class EmbeddingModelTextClassifier<L> implements TextClassifier<L> {
 
         this.exampleEmbeddingsByLabel = new HashMap<>();
         examplesByLabel.forEach((label, examples) ->
-            exampleEmbeddingsByLabel.put(label, embeddingModel.embedAll(
-                examples.stream()
-                    .map(TextSegment::from)
-                    .collect(toList())).content()
-            )
+                exampleEmbeddingsByLabel.put(label, embeddingModel.embedAll(
+                        examples.stream()
+                                .map(TextSegment::from)
+                                .collect(toList())).content()
+                )
         );
 
         this.maxResults = ensureGreaterThanZero(maxResults, "maxResults");
@@ -135,11 +135,11 @@ public class EmbeddingModelTextClassifier<L> implements TextClassifier<L> {
         });
 
         return new ClassificationResult<>(
-            scoredLabels.stream()
-                // sorting in descending order to return highest score first
-                .sorted(comparingDouble(classificationResult -> 1 - classificationResult.score()))
-                .limit(maxResults)
-                .collect(toList())
+                scoredLabels.stream()
+                        // sorting in descending order to return highest score first
+                        .sorted(comparingDouble(classificationResult -> 1 - classificationResult.score()))
+                        .limit(maxResults)
+                        .collect(toList())
         );
     }
 

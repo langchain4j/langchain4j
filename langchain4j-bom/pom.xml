@@ -65,12 +65,6 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-chatglm</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-cohere</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -149,12 +143,6 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-qianfan</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-vertex-ai</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -174,12 +162,6 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-workers-ai</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-zhipu-ai</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -290,12 +272,6 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-tablestore</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-vearch</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
