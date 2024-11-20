@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
 
+import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 
@@ -77,6 +78,41 @@ class BedrockEmbeddingIT {
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(5);
         assertThat(tokenUsage.outputTokenCount()).isNull();
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(5);
+
+        assertThat(response.finishReason()).isNull();
+
+        assertThat(embeddingModel.dimension()).isEqualTo(256);
+    }
+
+    @Test
+    void testBedrockTitanEmbeddingModelV2WithVPCe() {
+        BedrockTitanEmbeddingModel embeddingModel = BedrockTitanEmbeddingModel
+                .builder()
+                .region(Region.US_EAST_1)
+                .maxRetries(1)
+                .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV2.getValue())
+                .dimensions(256)
+                .normalize(true)
+                .endpointOverride(URI.create("https://bedrock-runtime.us-east-1.amazonaws.com"))
+                .build();
+
+        assertThat(embeddingModel).isNotNull();
+
+        List<TextSegment> segments = Collections.singletonList(TextSegment.from("Brazil"));
+
+        Response<List<Embedding>> response = embeddingModel.embedAll(segments);
+        assertThat(response).isNotNull();
+
+        List<Embedding> embeddings = response.content();
+        assertThat(embeddings).hasSize(1);
+
+        Embedding embedding = embeddings.get(0);
+        assertThat(embedding.vector()).hasSize(256);
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);
+        assertThat(tokenUsage.outputTokenCount()).isNull();
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(2);
 
         assertThat(response.finishReason()).isNull();
 

@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.awssdk.regions.Region;
 
+import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -770,6 +771,31 @@ class BedrockChatModelIT {
 
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+
+    @Test
+    void testBedrockAnthropicV3_5SonnetChatModelWithVPCe() {
+
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+                .builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3_5SonnetV1.getValue())
+                .maxRetries(1)
+                .timeout(Duration.ofMinutes(2L))
+                .endpointOverride(URI.create("https://bedrock-runtime.us-east-1.amazonaws.com"))
+                .build();
+
+        assertThat(bedrockChatModel).isNotNull();
+        assertThat(bedrockChatModel.getTimeout().toMinutes()).isEqualTo(2L);
+
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hello from Brazil"));
+
+        assertThat(response).isNotNull();
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
 
