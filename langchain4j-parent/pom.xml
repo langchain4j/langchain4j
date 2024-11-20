@@ -436,6 +436,20 @@
                     <artifactId>maven-enforcer-plugin</artifactId>
                     <version>3.5.0</version>
                 </plugin>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>2.43.0</version>
+                    <configuration>
+                        <!-- optional: limit format enforcement to just the files changed by this feature branch -->
+                        <ratchetFrom>origin/main</ratchetFrom>
+                        <java>
+                            <palantirJavaFormat>
+                                <version>2.50.0</version>
+                            </palantirJavaFormat>
+                        </java>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -467,6 +481,19 @@
                         <goals>
                             <goal>analyze-only</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>validate</phase>
                     </execution>
                 </executions>
             </plugin>

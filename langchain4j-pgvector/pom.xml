@@ -14,7 +14,6 @@
     <properties>
         <pgvector-java.version>0.1.6</pgvector-java.version>
         <postgresql.version>42.7.3</postgresql.version>
-        <spotless.version>2.40.0</spotless.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
@@ -96,12 +95,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
             <scope>test</scope>
@@ -139,9 +132,7 @@
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
-                <version>${spotless.version}</version>
                 <configuration>
-                    <ratchetFrom>origin/main</ratchetFrom>
                     <formats>
                         <format>
                             <includes>
@@ -158,7 +149,7 @@
                     </formats>
                     <java>
                         <googleJavaFormat>
-                            <version>1.8.0</version>
+                            <version>1.24.0</version>
                             <style>AOSP</style>
                             <reflowLongStrings>true</reflowLongStrings>
                             <formatJavadoc>false</formatJavadoc>
