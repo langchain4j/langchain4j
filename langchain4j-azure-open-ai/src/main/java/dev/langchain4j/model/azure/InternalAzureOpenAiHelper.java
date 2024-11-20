@@ -53,29 +53,12 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.azure.json.AzureJsonArraySchema;
-import dev.langchain4j.model.azure.json.AzureJsonBooleanSchema;
-import dev.langchain4j.model.azure.json.AzureJsonEnumSchema;
-import dev.langchain4j.model.azure.json.AzureJsonIntegerSchema;
-import dev.langchain4j.model.azure.json.AzureJsonNumberSchema;
-import dev.langchain4j.model.azure.json.AzureJsonObjectSchema;
-import dev.langchain4j.model.azure.json.AzureJsonReferenceSchema;
-import dev.langchain4j.model.azure.json.AzureJsonSchemaElement;
-import dev.langchain4j.model.azure.json.AzureJsonStringSchema;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
-import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -88,7 +71,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -490,88 +472,9 @@ class InternalAzureOpenAiHelper {
             }
             ChatCompletionsJsonSchemaResponseFormatJsonSchema schema = new ChatCompletionsJsonSchemaResponseFormatJsonSchema(jsonSchema.name());
             schema.setStrict(strict);
-            schema.setSchema(BinaryData.fromObject(toAzureOpenAiJsonSchemaElement(jsonSchema.rootElement(), strict)));
+            Map<String, Object> schemaMap = toMap(jsonSchema.rootElement(), strict);
+            schema.setSchema(BinaryData.fromObject(schemaMap));
             return new ChatCompletionsJsonSchemaResponseFormat(schema);
         }
-    }
-
-    private static AzureJsonSchemaElement toAzureOpenAiJsonSchemaElement(
-            JsonSchemaElement jsonSchemaElement,
-            boolean strict) {
-
-        if (jsonSchemaElement instanceof JsonObjectSchema) {
-            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
-            AzureJsonObjectSchema.Builder builder = AzureJsonObjectSchema.builder()
-                    .description(jsonObjectSchema.description())
-                    .properties(toAzureOpenAiProperties(jsonObjectSchema.properties(), strict))
-                    .additionalProperties(strict ? Boolean.FALSE : jsonObjectSchema.additionalProperties())
-                    .definitions(toAzureOpenAiProperties(jsonObjectSchema.definitions(), strict));
-            if (jsonObjectSchema.required() != null) {
-                builder.required(jsonObjectSchema.required());
-            }
-            if (strict) {
-                builder
-                        // when strict, all fields must be required:
-                        // https://platform.openai.com/docs/guides/structured-outputs/all-fields-must-be-required
-                        .required(new ArrayList<>(jsonObjectSchema.properties().keySet()))
-                        // when strict, additionalProperties must be false:
-                        // https://platform.openai.com/docs/guides/structured-outputs/additionalproperties-false-must-always-be-set-in-objects
-                        .additionalProperties(false);
-            }
-            return builder.build();
-        } else if (jsonSchemaElement instanceof JsonArraySchema) {
-            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchemaElement;
-            return AzureJsonArraySchema.builder()
-                    .description(jsonArraySchema.description())
-                    .items(toAzureOpenAiJsonSchemaElement(jsonArraySchema.items(), strict))
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
-            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchemaElement;
-            return AzureJsonEnumSchema.builder()
-                    .description(jsonEnumSchema.description())
-                    .enumValues(jsonEnumSchema.enumValues())
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonStringSchema) {
-            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchemaElement;
-            return AzureJsonStringSchema.builder()
-                    .description(jsonStringSchema.description())
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
-            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchemaElement;
-            return AzureJsonIntegerSchema.builder()
-                    .description(jsonIntegerSchema.description())
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
-            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
-            return AzureJsonNumberSchema.builder()
-                    .description(jsonNumberSchema.description())
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
-            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
-            return AzureJsonBooleanSchema.builder()
-                    .description(jsonBooleanSchema.description())
-                    .build();
-        } else if (jsonSchemaElement instanceof JsonReferenceSchema) {
-            JsonReferenceSchema jsonReferenceSchema = (JsonReferenceSchema) jsonSchemaElement;
-            return AzureJsonReferenceSchema.builder()
-                    .reference("#/$defs/" + jsonReferenceSchema.reference())
-                    .build();
-        } else {
-            throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
-        }
-    }
-
-    private static Map<String, AzureJsonSchemaElement> toAzureOpenAiProperties(
-            Map<String, JsonSchemaElement> properties,
-            boolean strict) {
-
-        if (properties == null) {
-            return null;
-        }
-
-        Map<String, AzureJsonSchemaElement> azureOpenAiProperties = new LinkedHashMap<>();
-        properties.forEach((key, value) ->
-                azureOpenAiProperties.put(key, toAzureOpenAiJsonSchemaElement(value, strict)));
-        return azureOpenAiProperties;
     }
 }
