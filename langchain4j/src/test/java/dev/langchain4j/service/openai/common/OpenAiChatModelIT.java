@@ -11,7 +11,7 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
 class OpenAiChatModelIT extends AbstractChatModelIT {
 
-    OpenAiChatModel.OpenAiChatModelBuilder openAiChatModelBuilder = OpenAiChatModel.builder()
+    static final OpenAiChatModel.OpenAiChatModelBuilder OPEN_AI_CHAT_MODEL_BUILDER = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -20,19 +20,16 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(
-                openAiChatModelBuilder
+                OPEN_AI_CHAT_MODEL_BUILDER
                         .build(),
-                openAiChatModelBuilder
+                OPEN_AI_CHAT_MODEL_BUILDER
                         .strictTools(true)
                         .build(),
-                openAiChatModelBuilder
-                        .strictJsonSchema(true)
+                OPEN_AI_CHAT_MODEL_BUILDER
                         .responseFormat("json_schema")
+                        .strictJsonSchema(true)
                         .build()
-                // TODO
-//                openAiChatModelBuilder
-//                        .responseFormat("json_object")
-//                        .build()
+                // TODO json_object?
         );
     }
 }
