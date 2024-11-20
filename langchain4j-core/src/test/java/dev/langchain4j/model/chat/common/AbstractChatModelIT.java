@@ -22,7 +22,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
-import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -217,7 +217,7 @@ public abstract class AbstractChatModelIT {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("I live in Munich"))
                 .toolSpecifications(WEATHER_TOOL, calculatorTool)
-                .toolChoice(ANY) // this will FORCE the LLM to execute any tool
+                .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
                 .build();
 
         // when
@@ -251,7 +251,7 @@ public abstract class AbstractChatModelIT {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("I live in Munich"))
                 .toolSpecifications(WEATHER_TOOL)
-                .toolChoice(ANY) // this will FORCE the LLM to execute weatherTool
+                .toolChoice(REQUIRED) // this will FORCE the LLM to execute weatherTool
                 .build();
 
         // when

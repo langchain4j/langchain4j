@@ -52,7 +52,7 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toOpenAiMess
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.tokenUsageFrom;
-import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
 
@@ -284,7 +284,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, List.of(toolSpecification), ANY);
+        return generate(messages, List.of(toolSpecification), REQUIRED);
     }
 
     private Response<AiMessage> generate(List<ChatMessage> messages,

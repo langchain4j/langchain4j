@@ -23,7 +23,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static dev.langchain4j.model.chat.common.AbstractChatModelIT.WEATHER_TOOL;
-import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -229,7 +229,7 @@ public abstract class AbstractStreamingChatModelIT {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("I live in Munich"))
                 .toolSpecifications(WEATHER_TOOL, calculatorTool)
-                .toolChoice(ANY) // this will FORCE the LLM to call any tool
+                .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
                 .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
@@ -300,7 +300,7 @@ public abstract class AbstractStreamingChatModelIT {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("I live in Munich"))
                 .toolSpecifications(WEATHER_TOOL)
-                .toolChoice(ANY) // this will FORCE the LLM to call weatherTool
+                .toolChoice(REQUIRED) // this will FORCE the LLM to execute weatherTool
                 .build();
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();

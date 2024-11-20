@@ -42,7 +42,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.model.chat.request.ToolChoice.ANY;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
@@ -178,7 +178,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     @Override
     public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification,
                          StreamingResponseHandler<AiMessage> handler) {
-        chat(messages, List.of(toolSpecification), ANY, convertHandler(handler));
+        chat(messages, List.of(toolSpecification), REQUIRED, convertHandler(handler));
     }
 
     private void chat(List<ChatMessage> messages,

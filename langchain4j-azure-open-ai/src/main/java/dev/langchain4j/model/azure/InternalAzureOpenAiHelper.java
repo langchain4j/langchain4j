@@ -453,7 +453,7 @@ class InternalAzureOpenAiHelper {
     static ChatCompletionsToolSelection toToolChoice(ToolChoice toolChoice) {
         ChatCompletionsToolSelectionPreset preset = switch (toolChoice) {
             case AUTO -> ChatCompletionsToolSelectionPreset.AUTO;
-            case ANY -> ChatCompletionsToolSelectionPreset.REQUIRED;
+            case REQUIRED -> ChatCompletionsToolSelectionPreset.REQUIRED;
         };
         return new ChatCompletionsToolSelection(preset);
     }

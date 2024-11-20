@@ -540,7 +540,7 @@ public class InternalOpenAiHelper {
     public static ToolChoiceMode toOpenAiToolChoice(ToolChoice toolChoice) {
         return switch (toolChoice) {
             case AUTO -> ToolChoiceMode.AUTO;
-            case ANY -> ToolChoiceMode.REQUIRED;
+            case REQUIRED -> ToolChoiceMode.REQUIRED;
         };
     }
 

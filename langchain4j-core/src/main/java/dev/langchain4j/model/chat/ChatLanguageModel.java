@@ -8,7 +8,6 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 
@@ -16,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Arrays.asList;
 
 /**
@@ -48,12 +48,12 @@ public interface ChatLanguageModel {
         if (isNullOrEmpty(chatRequest.toolSpecifications())) {
             response = generate(chatRequest.messages());
         } else {
-            if (chatRequest.toolChoice() == ToolChoice.ANY) {
+            if (chatRequest.toolChoice() == REQUIRED) {
                 if (chatRequest.toolSpecifications().size() == 1) {
                     response = generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0));
                 } else {
                     throw new UnsupportedOperationException(
-                            "ToolChoice.ANY is currently supported only when there is a single tool");
+                            "ToolChoice.REQUIRED is currently supported only when there is a single tool");
                 }
             } else {
                 response = generate(chatRequest.messages(), chatRequest.toolSpecifications());

@@ -15,5 +15,5 @@ public enum ToolChoice {
     /**
      * TODO
      */
-    ANY
+    REQUIRED
 }

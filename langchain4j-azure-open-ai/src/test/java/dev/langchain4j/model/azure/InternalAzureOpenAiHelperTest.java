@@ -152,7 +152,7 @@ class InternalAzureOpenAiHelperTest {
     @Test
     void should_map_tool_choice() {
         assertThat(toToolChoice(ToolChoice.AUTO).getPreset()).isEqualTo(AUTO);
-        assertThat(toToolChoice(ToolChoice.ANY).getPreset()).isEqualTo(REQUIRED);
+        assertThat(toToolChoice(ToolChoice.REQUIRED).getPreset()).isEqualTo(REQUIRED);
     }
 
     @ParameterizedTest
