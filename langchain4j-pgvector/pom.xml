@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -11,16 +9,16 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
+    <artifactId>langchain4j-pgvector</artifactId>
+    <name>LangChain4j :: Integration :: PGVector</name>
+    <description>It uses the pgvector-java library</description>
+
     <properties>
         <pgvector-java.version>0.1.6</pgvector-java.version>
         <postgresql.version>42.7.3</postgresql.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
-
-    <artifactId>langchain4j-pgvector</artifactId>
-    <name>LangChain4j :: Integration :: PGVector</name>
-    <description>It uses the pgvector-java library</description>
 
     <dependencies>
 
@@ -139,8 +137,8 @@
                                 <include>*.md</include>
                                 <include>.gitignore</include>
                             </includes>
-                            <trimTrailingWhitespace/>
-                            <endWithNewline/>
+                            <trimTrailingWhitespace></trimTrailingWhitespace>
+                            <endWithNewline></endWithNewline>
                             <indent>
                                 <tabs>true</tabs>
                                 <spacesPerTab>4</spacesPerTab>
