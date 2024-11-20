@@ -122,6 +122,7 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                 .region(region)
                 .credentialsProvider(credentialsProvider)
                 .overrideConfiguration(c-> c.apiCallTimeout(timeout))
+                .endpointOverride(endpointOverride)
                 .build();
         return client;
     }
