@@ -6,10 +6,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.jetbrains.annotations.NotNull;
@@ -29,7 +31,9 @@ import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.CAT_IMAGE_URL;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.randomString;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20240620;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -163,6 +167,66 @@ class AnthropicStreamingChatModelIT {
 
         // then
         assertThat(response.content().text()).isNotBlank();
+    }
+
+    @Test
+    void should_cache_system_message() {
+
+        // given
+        AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .beta("prompt-caching-2024-07-31")
+            .modelName(CLAUDE_3_HAIKU_20240307)
+            .cacheSystemMessages(true)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        SystemMessage systemMessage = SystemMessage.from("What types of messages are supported in LangChain?".repeat(172) + randomString(2));
+        UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(asList(userMessage, systemMessage), handler);
+        AnthropicTokenUsage responseAnthropicTokenUsage = (AnthropicTokenUsage) handler.get().tokenUsage();
+
+        // then
+        assertThat(responseAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+    }
+
+    @Test
+    void should_cache_tools() {
+
+        // given
+        AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .beta("prompt-caching-2024-07-31")
+            .modelName(CLAUDE_3_HAIKU_20240307)
+            .cacheTools(true)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+            .name("calculator")
+            .description("returns a sum of two numbers".repeat(214) + randomString(2))
+            .parameters(JsonObjectSchema.builder()
+                .addIntegerProperty("first")
+                .addIntegerProperty("second")
+                .build())
+            .build();
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(userMessage), List.of(toolSpecification), handler);
+        AnthropicTokenUsage responseAnthropicTokenUsage = (AnthropicTokenUsage) handler.get().tokenUsage();
+
+        // then
+        assertThat(responseAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
     }
 
     @Test

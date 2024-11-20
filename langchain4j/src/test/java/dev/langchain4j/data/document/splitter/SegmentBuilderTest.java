@@ -15,7 +15,7 @@ class SegmentBuilderTest implements WithAssertions {
     }
 
     @Test
-    public void test_by_words() {
+    void test_by_words() {
         SegmentBuilder builder = new SegmentBuilder(10,
                 text -> text.split(" ").length,
                 " ; ");
@@ -51,7 +51,7 @@ class SegmentBuilderTest implements WithAssertions {
         builder.reset();
 
         assertThat(builder.isNotEmpty()).isFalse();
-        assertThat(builder.getSize()).isEqualTo(0);
+        assertThat(builder.getSize()).isZero();
         assertThat(builder.toString()).isEqualTo("");
     }
 
