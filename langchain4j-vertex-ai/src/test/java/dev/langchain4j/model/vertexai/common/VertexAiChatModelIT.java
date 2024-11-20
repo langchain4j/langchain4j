@@ -37,7 +37,22 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsImageInputsAsBase64EncodedStrings() {
+        return false; // TODO check if supported
+    }
+
+    @Override
+    protected boolean supportsImageInputsFromPublicURLs() {
+        return false; // TODO check if supported
+    }
+
+    @Override
     protected boolean assertFinishReason() {
+        return false; // TODO fix
+    }
+
+    @Override
+    protected boolean assertExceptionType() {
         return false; // TODO fix
     }
 }

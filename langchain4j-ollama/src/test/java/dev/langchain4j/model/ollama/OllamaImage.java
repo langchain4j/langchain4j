@@ -11,10 +11,15 @@ public class OllamaImage {
 
     public static final String OLLAMA_IMAGE = "ollama/ollama:latest";
 
-    public static final String BAKLLAVA_MODEL = "bakllava";
+    public static String localOllamaImage(String modelName) {
+        return String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, modelName);
+    }
+
+    public static final String BAKLLAVA_MODEL = "bakllava"; // TODO use llama?
 
     public static final String TINY_DOLPHIN_MODEL = "tinydolphin";
-    public static final String TOOL_MODEL = "llama3.1";
+    public static final String LLAMA_3_1 = "llama3.1";
+    public static final String LLAMA_3_2_VISION = "llama3.2-vision";
 
     public static final String ALL_MINILM_MODEL = "all-minilm";
 

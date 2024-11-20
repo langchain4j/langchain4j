@@ -16,7 +16,7 @@ import static java.util.Arrays.asList;
 public class ChatRequest {
 
     private final List<ChatMessage> messages;
-    private final List<ToolSpecification> toolSpecifications; // TODO introduce "tools" section?
+    private final List<ToolSpecification> toolSpecifications;
     private final ToolChoice toolChoice;
     private final ResponseFormat responseFormat;
 
@@ -49,9 +49,9 @@ public class ChatRequest {
         if (o == null || getClass() != o.getClass()) return false;
         ChatRequest that = (ChatRequest) o;
         return Objects.equals(this.messages, that.messages)
-            && Objects.equals(this.toolSpecifications, that.toolSpecifications)
-            && Objects.equals(this.toolChoice, that.toolChoice)
-            && Objects.equals(this.responseFormat, that.responseFormat);
+                && Objects.equals(this.toolSpecifications, that.toolSpecifications)
+                && Objects.equals(this.toolChoice, that.toolChoice)
+                && Objects.equals(this.responseFormat, that.responseFormat);
     }
 
     @Override
@@ -62,11 +62,11 @@ public class ChatRequest {
     @Override
     public String toString() {
         return "ChatRequest {" +
-            " messages = " + messages +
-            ", toolSpecifications = " + toolSpecifications +
-            ", toolChoice = " + toolChoice +
-            ", responseFormat = " + responseFormat +
-            " }";
+                " messages = " + messages +
+                ", toolSpecifications = " + toolSpecifications +
+                ", toolChoice = " + toolChoice +
+                ", responseFormat = " + responseFormat +
+                " }";
     }
 
     public static Builder builder() {

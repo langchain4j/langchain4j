@@ -3,7 +3,9 @@ package dev.langchain4j.model.chat.common;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -14,14 +16,17 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.Base64;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -52,6 +57,9 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 @TestInstance(PER_CLASS)
 public abstract class AbstractChatModelIT {
 
+    static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
+
     static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
             .name("weather")
             .parameters(JsonObjectSchema.builder()
@@ -71,7 +79,17 @@ public abstract class AbstractChatModelIT {
 
     protected abstract List<ChatLanguageModel> models();
 
-    // TODO test image inputs
+    protected List<ChatLanguageModel> modelsSupportingTools() {
+        return models();
+    }
+
+    protected List<ChatLanguageModel> modelsSupportingStructuredOutputs() {
+        return models();
+    }
+
+    protected List<ChatLanguageModel> modelsSupportingVision() {
+        return models();
+    }
 
     @ParameterizedTest
     @MethodSource("models")
@@ -91,8 +109,8 @@ public abstract class AbstractChatModelIT {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage = chatResponse.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -120,9 +138,11 @@ public abstract class AbstractChatModelIT {
         assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("liebe");
     }
 
+    // TOOLS
+
     @EnabledIf("supportsTools")
     @ParameterizedTest
-    @MethodSource("models")
+    @MethodSource("modelsSupportingTools")
     void should_execute_a_tool_then_answer(ChatLanguageModel model) {
 
         // given
@@ -145,8 +165,8 @@ public abstract class AbstractChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         TokenUsage tokenUsage = chatResponse.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -173,8 +193,8 @@ public abstract class AbstractChatModelIT {
         assertThat(aiMessage2.toolExecutionRequests()).isNull(); // TODO make it empty
 
         TokenUsage tokenUsage2 = chatResponse2.tokenUsage();
-        assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage2.inputTokenCount()).isPositive();
+        assertThat(tokenUsage2.outputTokenCount()).isPositive();
         assertThat(tokenUsage2.totalTokenCount())
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
 
@@ -195,14 +215,18 @@ public abstract class AbstractChatModelIT {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> model.chat(chatRequest))
-                .isExactlyInstanceOf(IllegalArgumentException.class) // TODO use UnsupportedOperationException?
-                .hasMessageContaining("not supported");
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
+        if (assertExceptionType()) {
+            throwableAssert
+                    .isExactlyInstanceOf(IllegalArgumentException.class) // TODO use another exception type?
+                    .hasMessageContaining("not support");
+
+        }
     }
 
     @EnabledIf("supportsToolChoiceAnyWithMultipleTools")
     @ParameterizedTest
-    @MethodSource("models")
+    @MethodSource("modelsSupportingTools")
     void should_force_LLM_to_execute_any_tool(ChatLanguageModel model) {
 
         // given
@@ -232,8 +256,8 @@ public abstract class AbstractChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         TokenUsage tokenUsage = chatResponse.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -244,7 +268,7 @@ public abstract class AbstractChatModelIT {
 
     @EnabledIf("supportsToolChoiceAnyWithSingleTool")
     @ParameterizedTest
-    @MethodSource("models")
+    @MethodSource("modelsSupportingTools")
     void should_force_LLM_to_execute_specific_tool(ChatLanguageModel model) {
 
         // given
@@ -266,8 +290,8 @@ public abstract class AbstractChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         TokenUsage tokenUsage = chatResponse.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -276,9 +300,11 @@ public abstract class AbstractChatModelIT {
         }
     }
 
+    // STRUCTURED OUTPUTS
+
     @EnabledIf("supportsJsonResponseFormat")
     @ParameterizedTest
-    @MethodSource("models")
+    @MethodSource("modelsSupportingStructuredOutputs")
     void should_respect_JSON_response_format(ChatLanguageModel model) {
 
         // given
@@ -297,8 +323,8 @@ public abstract class AbstractChatModelIT {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage = chatResponse.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -320,14 +346,18 @@ public abstract class AbstractChatModelIT {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> model.chat(chatRequest))
-                .isExactlyInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("JSON response type is not supported by this model provider");
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
+        if (assertExceptionType()) {
+            throwableAssert
+                    .isExactlyInstanceOf(UnsupportedOperationException.class) // TODO use another exception type?
+                    .hasMessage("JSON response type is not supported by this model provider");
+
+        }
     }
 
     @EnabledIf("supportsJsonResponseFormatWithSchema")
     @ParameterizedTest
-    @MethodSource("models")
+    @MethodSource("modelsSupportingStructuredOutputs")
     void should_respect_JSON_response_format_with_schema(ChatLanguageModel model) {
 
         // given
@@ -345,8 +375,8 @@ public abstract class AbstractChatModelIT {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage = chatResponse.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -367,13 +397,171 @@ public abstract class AbstractChatModelIT {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> model.chat(chatRequest))
-                .isExactlyInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("JSON response type is not supported by this model provider");
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
+        if (assertExceptionType()) {
+            throwableAssert
+                    .isExactlyInstanceOf(UnsupportedOperationException.class) // TODO use another exception type?
+                    .hasMessage("JSON response type is not supported by this model provider");
+
+        }
+    }
+
+    // MULTI MODALITY
+
+    // TODO images: as public url, as private url, as base64, as URI of file?
+
+    @EnabledIf("supportsImageInputsAsBase64EncodedStrings")
+    @ParameterizedTest
+    @MethodSource("modelsSupportingVision")
+    void should_accept_single_image_as_base64_encoded_string(ChatLanguageModel model) {
+
+        // given
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see?"),
+                ImageContent.from(base64Data, "image/png")
+        );
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).containsIgnoringCase("cat");
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+        }
+    }
+
+    @DisabledIf("supportsImageInputsAsBase64EncodedStrings")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(ChatLanguageModel model) {
+
+        // given
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see?"),
+                ImageContent.from(base64Data, "image/png")
+        );
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .build();
+
+        // when-then
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
+        if (assertExceptionType()) {
+            throwableAssert
+                    .isExactlyInstanceOf(IllegalArgumentException.class) // TODO use another exception type?
+                    .hasMessageContaining("not support");
+        }
+    }
+
+    @EnabledIf("supportsImageInputsFromPublicURLs")
+    @ParameterizedTest
+    @MethodSource("modelsSupportingVision")
+    void should_accept_single_image_from_public_URL(ChatLanguageModel model) {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see?"),
+                ImageContent.from(CAT_IMAGE_URL)
+        );
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).containsIgnoringCase("cat");
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+        }
+    }
+
+    @DisabledIf("supportsImageInputsFromPublicURLs")
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_fail_if_images_from_public_URLs_are_not_supported(ChatLanguageModel model) {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see?"),
+                ImageContent.from(CAT_IMAGE_URL)
+        );
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .build();
+
+        // when-then
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
+        if (assertExceptionType()) {
+            throwableAssert
+                    .isExactlyInstanceOf(IllegalArgumentException.class) // TODO use another exception type?
+                    .hasMessageContaining("not support");
+        }
+    }
+
+    @EnabledIf("supportsImageInputsFromPublicURLs")
+    @ParameterizedTest
+    @MethodSource("modelsSupportingVision")
+    void should_accept_multiple_images_from_public_URLs(ChatLanguageModel model) {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see?"),
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from(DICE_IMAGE_URL)
+        );
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+        }
     }
 
     protected boolean supportsTools() {
-        return true; // TODO check model capability instead?
+        return true;
     }
 
     protected boolean supportsToolChoiceAnyWithSingleTool() {
@@ -392,7 +580,19 @@ public abstract class AbstractChatModelIT {
         return true;
     }
 
+    protected boolean supportsImageInputsAsBase64EncodedStrings() {
+        return true;
+    }
+
+    protected boolean supportsImageInputsFromPublicURLs() {
+        return true;
+    }
+
     protected boolean assertFinishReason() {
+        return true;
+    }
+
+    protected boolean assertExceptionType() {
         return true;
     }
 }

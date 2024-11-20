@@ -10,7 +10,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     static final GoogleAiGeminiChatModel GOOGLE_AI_GEMINI_CHAT_MODEL = GoogleAiGeminiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-            .modelName("gemini-1.5-flash")
+            .modelName("gemini-1.5-flash-8b")
             .build();
 
     @Override
@@ -23,7 +23,17 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
+    @Override
+    protected boolean supportsImageInputsFromPublicURLs() {
+        return false; // TODO check if supported
+    }
+
     protected boolean assertFinishReason() {
+        return false; // TODO fix
+    }
+
+    @Override
+    protected boolean assertExceptionType() {
         return false; // TODO fix
     }
 }

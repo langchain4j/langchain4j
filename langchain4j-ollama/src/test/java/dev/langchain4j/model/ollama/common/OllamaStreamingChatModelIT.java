@@ -9,11 +9,11 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.LOCAL_OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
+import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
 class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -24,10 +24,11 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static {
         if (isNullOrEmpty(OLLAMA_BASE_URL)) {
-            ollama = new LC4jOllamaContainer(resolve(OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE))
+            String localOllamaImage = localOllamaImage(MODEL_NAME);
+            ollama = new LC4jOllamaContainer(resolve(OLLAMA_IMAGE, localOllamaImage))
                     .withModel(MODEL_NAME);
             ollama.start();
-            ollama.commitToImage(LOCAL_OLLAMA_IMAGE);
+            ollama.commitToImage(localOllamaImage);
         }
     }
 
@@ -38,8 +39,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     static final OpenAiStreamingChatModel OPEN_AI_STREAMING_CHAT_MODEL = OpenAiStreamingChatModel.builder()
-            .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
-            .baseUrl(ollamaBaseUrl(ollama) + "/v1") // TODO add "/v1" by default?
+            .apiKey("does not matter")
+            .baseUrl(ollamaBaseUrl(ollama) + "/v1")
             .modelName(MODEL_NAME)
             .temperature(0.0)
             .build();

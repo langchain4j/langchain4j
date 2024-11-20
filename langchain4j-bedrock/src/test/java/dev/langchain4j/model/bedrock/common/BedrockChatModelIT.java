@@ -35,4 +35,9 @@ class BedrockChatModelIT extends AbstractChatModelIT {
     protected boolean supportsJsonResponseFormatWithSchema() {
         return false; // TODO check if supported
     }
+
+    @Override
+    protected boolean supportsImageInputsFromPublicURLs() {
+        return false; // Bedrock supports only Base64-encoded images
+    }
 }
