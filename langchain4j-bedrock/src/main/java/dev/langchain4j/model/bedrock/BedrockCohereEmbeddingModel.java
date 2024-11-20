@@ -22,8 +22,7 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
 
     private final String model;
 
-    @Builder.Default
-    private final String inputType = InputType.SEARCH_DOCUMENT.getValue();
+    private final String inputType;
 
     @Override
     protected List<Map<String, Object>> getRequestParameters(List<TextSegment> textSegments) {
