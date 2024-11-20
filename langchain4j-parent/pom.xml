@@ -26,6 +26,7 @@
         <azure.storage-blob.version>12.28.1</azure.storage-blob.version>
         <azure.storage-common.version>12.27.1</azure.storage-common.version>
         <azure.identity.version>1.14.1</azure.identity.version>
+        <javet.version>4.0.0</javet.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.1.0</jtokkit.version>
@@ -37,6 +38,7 @@
         <testcontainers.version>1.20.3</testcontainers.version>
         <bytebuddy.version>1.15.10</bytebuddy.version>
         <mockito.version>5.14.1</mockito.version>
+        <openjdk.jmh.version>1.37</openjdk.jmh.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
         <httpclient5.version>5.2.1</httpclient5.version>
@@ -105,6 +107,24 @@
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
                 <version>${langchain4j-embeddings.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.caoccao.javet</groupId>
+                <artifactId>javet</artifactId>
+                <version>${javet.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.caoccao.javet</groupId>
+                <artifactId>javet-macos</artifactId>
+                <version>${javet.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.caoccao.javet</groupId>
+                <artifactId>javet-linux-arm64</artifactId>
+                <version>${javet.version}</version>
             </dependency>
 
             <dependency>
@@ -277,6 +297,18 @@
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>apache-client</artifactId>
                 <version>${aws-opensearch.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.openjdk.jmh</groupId>
+                <artifactId>jmh-core</artifactId>
+                <version>${openjdk.jmh.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.openjdk.jmh</groupId>
+                <artifactId>jmh-generator-annprocess</artifactId>
+                <version>${openjdk.jmh.version}</version>
             </dependency>
 
             <dependency>
