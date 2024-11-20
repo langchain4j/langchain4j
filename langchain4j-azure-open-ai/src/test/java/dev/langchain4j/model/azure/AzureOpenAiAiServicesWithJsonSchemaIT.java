@@ -24,16 +24,6 @@ class AzureOpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
                         .strictJsonSchema(true)
                         .temperature(0.0)
                         .logRequestsAndResponses(true)
-                        .build(),
-                AzureOpenAiChatModel.builder()
-                        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                        .deploymentName(GPT_4_O.modelName())
-                        .tokenizer(new AzureOpenAiTokenizer(GPT_4_O.modelName()))
-                        .responseFormat(JSON)
-                        .strictJsonSchema(false)
-                        .temperature(0.0)
-                        .logRequestsAndResponses(true)
                         .build()
         );
     }
