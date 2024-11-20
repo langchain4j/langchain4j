@@ -743,6 +743,6 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     protected boolean verifyModelInteractions() {
-        return false; // TODO remove?
+        return false;
     }
 }

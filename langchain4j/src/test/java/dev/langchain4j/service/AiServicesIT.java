@@ -37,7 +37,6 @@ import static dev.langchain4j.service.AiServicesIT.IssueCategory.OVERALL_EXPERIE
 import static dev.langchain4j.service.AiServicesIT.IssueCategory.SERVICE_ISSUE;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
-import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -924,7 +923,7 @@ class AiServicesIT {
 
     static ChatRequest chatRequest(String userMessage) {
         return ChatRequest.builder()
-            .messages(dev.langchain4j.data.message.UserMessage.from(userMessage))
-            .build();
+                .messages(dev.langchain4j.data.message.UserMessage.from(userMessage))
+                .build();
     }
 }
