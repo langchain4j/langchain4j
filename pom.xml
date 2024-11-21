@@ -17,7 +17,6 @@
     <modules>
 
         <module>langchain4j-parent</module>
-        <module>langchain4j-bom</module>
 
         <module>langchain4j-core</module>
         <module>langchain4j</module>
@@ -137,6 +136,32 @@
                             <goal>aggregate</goal>
                         </goals>
                         <phase>site</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.sundr</groupId>
+                <artifactId>sundr-maven-plugin</artifactId>
+                <version>0.200.0</version>
+                <executions>
+                    <execution>
+                        <inherited>false</inherited>
+                        <goals>
+                            <goal>generate-bom</goal>
+                        </goals>
+                        <configuration>
+                            <boms>
+                                <bom>
+                                    <artifactId>langchain4j-bom</artifactId>
+                                    <name>LangChain4j :: BOM</name>
+                                    <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
+                                    <properties>
+                                        <skipStagingRepositoryClose>true</skipStagingRepositoryClose>
+                                        <sonar.skip>true</sonar.skip>
+                                    </properties>
+                                </bom>
+                            </boms>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
