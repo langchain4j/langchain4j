@@ -50,6 +50,7 @@ import java.util.Optional;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -249,16 +250,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<String> ids = embeddings.stream()
                 .map(ignored -> randomUUID())
                 .collect(toList());
-        addAllInternal(ids, embeddings, null);
-        return ids;
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-        addAllInternal(ids, embeddings, embedded);
+        addAll(ids, embeddings, null);
         return ids;
     }
 
@@ -310,14 +302,15 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    @Override
+    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
 
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("[do not add empty embeddings to opensearch]");
-            return;
+            return emptyList();
         }
 
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
@@ -330,6 +323,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             log.error("[I/O OpenSearch Exception]", ex);
             throw new OpenSearchRequestFailedException(ex.getMessage());
         }
+        return ids;
     }
 
     private void createIndexIfNotExist(int dimension) throws IOException {

@@ -216,7 +216,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void add(@NonNull String id, @NonNull Embedding embedding) {
-        addInternal(Collections.singletonList(id), Collections.singletonList(embedding), null);
+        addAll(Collections.singletonList(id), Collections.singletonList(embedding), null);
     }
 
     @Override
@@ -230,17 +230,9 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(@NonNull List<Embedding> embeddings, @Nullable List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(i -> UUID.randomUUID().toString())
-                .collect(Collectors.toList());
-        addInternal(ids, embeddings, embedded);
-        return ids;
-    }
-
-    private void addInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (ids == null || embeddings == null || ids.isEmpty() || embeddings.isEmpty()) {
-            return;
+            return Collections.emptyList();
         }
 
         int size = ids.size();
@@ -260,6 +252,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             collection.upsert(ids.get(i), document);
         }
+        return ids;
     }
 
     @Override

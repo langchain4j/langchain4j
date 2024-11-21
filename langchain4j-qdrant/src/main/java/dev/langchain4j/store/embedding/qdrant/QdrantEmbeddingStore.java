@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.qdrant;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static io.qdrant.client.PointIdFactory.id;
 import static io.qdrant.client.ValueFactory.value;
@@ -25,6 +26,9 @@ import io.qdrant.client.grpc.Points.PointStruct;
 import io.qdrant.client.grpc.Points.PointsSelector;
 import io.qdrant.client.grpc.Points.ScoredPoint;
 import io.qdrant.client.grpc.Points.SearchPoints;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -40,6 +44,8 @@ import javax.annotation.Nullable;
  * support for storing {@link dev.langchain4j.data.document.Metadata}.
  */
 public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
+    private static final Logger log = LoggerFactory.getLogger(QdrantEmbeddingStore.class);
+
 
   private final QdrantClient client;
   private final String payloadTextKey;
@@ -109,31 +115,25 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
 
-    addAllInternal(ids, embeddings, null);
-
-    return ids;
-  }
-
-  @Override
-  public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
-
-    List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
-
-    addAllInternal(ids, embeddings, textSegments);
+    addAll(ids, embeddings, null);
 
     return ids;
   }
 
   private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
-    addAllInternal(
+    addAll(
         singletonList(id),
         singletonList(embedding),
         textSegment == null ? null : singletonList(textSegment));
   }
 
-  private void addAllInternal(
+  @Override
+  public List<String> addAll(
       List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) throws RuntimeException {
-
+    if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+         log.info("Empty embeddings - no ops");
+         return ids;
+    }
     try {
       List<PointStruct> points = new ArrayList<>(embeddings.size());
 
@@ -164,6 +164,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     } catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException(e);
     }
+    return ids;
   }
 
   public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {

@@ -188,11 +188,10 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (embedded != null) {
             ValidationUtils.ensureEq(embeddings.size(), embedded.size(), "the size of embeddings should be the same as the size of embedded");
         }
-        List<String> ids = new ArrayList<>(embeddings.size());
         List<Exception> exceptions = new ArrayList<>();
         for (int i = 0; i < embeddings.size(); i++) {
             Embedding embedding = embeddings.get(i);
@@ -201,9 +200,7 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
                 textSegment = embedded.get(i);
             }
             try {
-                String id = UUID.randomUUID().toString();
-                innerAdd(id, embedding, textSegment);
-                ids.add(id);
+                innerAdd(ids.get(i), embedding, textSegment);
             } catch (Exception e) {
                 exceptions.add(e);
             }

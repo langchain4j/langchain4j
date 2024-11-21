@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 import org.neo4j.driver.Driver;
@@ -168,15 +169,6 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .toList();
-        addAllInternal(ids, embeddings, embedded);
-        return ids;
-    }
-
-    @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
 
         var embeddingValue = Values.value(request.queryEmbedding().vector());
@@ -203,20 +195,22 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     /*
     Private methods
     */
-    
+
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    @Override
+    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("[do not add empty embeddings to neo4j]");
-            return;
+            return emptyList();
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
         bulk(ids, embeddings, embedded);
+        return ids;
     }
 
     private void bulk(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {

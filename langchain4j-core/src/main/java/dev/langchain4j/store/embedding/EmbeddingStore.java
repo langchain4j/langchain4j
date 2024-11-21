@@ -6,9 +6,11 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.filter.Filter;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Collections.singletonList;
 
@@ -55,11 +57,36 @@ public interface EmbeddingStore<Embedded> {
     /**
      * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
      *
+     * @param ids A list of embeddings ids associated with the added embeddings.
+     * @param embeddings A list of embeddings to be added to the store.
+     * @param embedded   A list of original contents that were embedded.
+     * @return A list of IDs associated with the added embeddings.
+     */
+    List<String> addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded);
+
+    /**
+     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
+     *
      * @param embeddings A list of embeddings to be added to the store.
      * @param embedded   A list of original contents that were embedded.
      * @return A list of auto-generated IDs associated with the added embeddings.
      */
-    List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded);
+    default List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
+        return addAll(generateIds(embeddings.size()), embeddings, embedded);
+    }
+
+
+    /**
+     * Generates list of UUID strings
+     * @param dimension  - dimension of list
+     */
+    default List<String> generateIds(long dimension) {
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < dimension; i++) {
+            ids.add(randomUUID());
+        }
+        return ids;
+    }
 
     /**
      * Removes a single embedding from the store by ID.

@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -250,18 +251,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
-        addAllInternal(ids, embeddings, null);
-        return ids;
-    }
-
-    /**
-     * Add a list of embeddings, and the list of related content, to the store.
-     */
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
-        addAllInternal(ids, embeddings, embedded);
-        return ids;
+        return addAll(ids, embeddings, null);
     }
 
     @Override
@@ -368,17 +358,18 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(
+        addAll(
                 singletonList(id),
                 singletonList(embedding),
                 embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(
+    @Override
+    public List<String> addAll(
             List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
-            return;
+            return emptyList();
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(),
@@ -412,6 +403,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 log.debug("Added embedding: {}", indexingResult.getKey());
             }
         }
+        return ids;
     }
 
     float[] doublesListToFloatArray(List<Double> doubles) {
