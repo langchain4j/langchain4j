@@ -27,9 +27,11 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -570,5 +572,11 @@ public class InternalOpenAiHelper {
                 handler.onError(error);
             }
         };
+    }
+
+    public static void validate(ChatRequest chatRequest) {
+        if (chatRequest.topK() != null) {
+            throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
+        }
     }
 }

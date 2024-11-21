@@ -9,7 +9,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -104,11 +103,7 @@ public abstract class AbstractStreamingChatModelIT {
         assertThat(tokenAccumulator.toString()).isEqualTo(aiMessage.text());
 
         if (assertTokenUsage()) {
-            TokenUsage tokenUsage = chatResponse.tokenUsage();
-            assertThat(tokenUsage.inputTokenCount()).isPositive();
-            assertThat(tokenUsage.outputTokenCount()).isPositive();
-            assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            AbstractChatModelIT.assertTokenUsage(chatResponse);
         }
 
         if (assertFinishReason()) {
@@ -172,11 +167,7 @@ public abstract class AbstractStreamingChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         if (assertTokenUsage()) {
-            TokenUsage tokenUsage = chatResponse.tokenUsage();
-            assertThat(tokenUsage.inputTokenCount()).isPositive();
-            assertThat(tokenUsage.outputTokenCount()).isPositive();
-            assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            AbstractChatModelIT.assertTokenUsage(chatResponse);
         }
 
         if (assertFinishReason()) {
@@ -270,11 +261,7 @@ public abstract class AbstractStreamingChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         if (assertTokenUsage()) {
-            TokenUsage tokenUsage = chatResponse.tokenUsage();
-            assertThat(tokenUsage.inputTokenCount()).isPositive();
-            assertThat(tokenUsage.outputTokenCount()).isPositive();
-            assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            AbstractChatModelIT.assertTokenUsage(chatResponse);
         }
 
         if (assertFinishReason()) {
@@ -341,11 +328,7 @@ public abstract class AbstractStreamingChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         if (assertTokenUsage()) {
-            TokenUsage tokenUsage = chatResponse.tokenUsage();
-            assertThat(tokenUsage.inputTokenCount()).isPositive();
-            assertThat(tokenUsage.outputTokenCount()).isPositive();
-            assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            AbstractChatModelIT.assertTokenUsage(chatResponse);
         }
 
         if (assertFinishReason()) {

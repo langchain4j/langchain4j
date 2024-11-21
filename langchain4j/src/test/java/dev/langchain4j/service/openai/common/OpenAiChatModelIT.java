@@ -32,4 +32,9 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 // TODO json_object?
         );
     }
+
+    @Override
+    protected String modelName() {
+        return "gpt-4o-2024-11-20";
+    }
 }
