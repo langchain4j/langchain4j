@@ -34,7 +34,9 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 VearchConfig vearchConfig,
                                 Boolean normalizeEmbeddings) {
         // Step 0: initialize some attribute
-        baseUrl = ensureNotNull(baseUrl, "baseUrl");
+        if (baseUrl == null) {
+            throw illegalArgument("baseUrl shoul not be null");
+        }
         this.vearchConfig = getOrDefault(vearchConfig, VearchConfig.getDefaultConfig());
         this.normalizeEmbeddings = getOrDefault(normalizeEmbeddings, false);
 
@@ -233,7 +235,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             case VECTOR:
                 return valueToStore == null ? emptyList() : valueToStore;
             default:
-                throw new RuntimeException("Unsupported SpacePropertyParam type " + propertyParam.type);
+                throw new IllegalArgumentException("Unsupported SpacePropertyParam type " + propertyParam.type);
         }
     }
 
