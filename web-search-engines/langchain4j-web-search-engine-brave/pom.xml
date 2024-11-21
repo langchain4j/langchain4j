@@ -30,11 +30,9 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Custom Search API Client Library for Java -->
         <dependency>
-            <groupId>com.google.apis</groupId>
-            <artifactId>google-api-services-customsearch</artifactId>
-            <version>v1-rev20240821-2.0.0</version>
+            <groupId>com.squareup.retrofit2</groupId>
+            <artifactId>retrofit</artifactId>
         </dependency>
 
         <dependency>
