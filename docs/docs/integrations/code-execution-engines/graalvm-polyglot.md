@@ -11,7 +11,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-code-execution-engine-graalvm-polyglot</artifactId>
-    <version>0.36.1</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 

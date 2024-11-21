@@ -36,7 +36,7 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>0.36.1</version>
+    <version>0.36.2</version>
 </dependency>
 
 <dependency>
