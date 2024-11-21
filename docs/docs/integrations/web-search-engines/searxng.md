@@ -1,10 +1,10 @@
 ---
-sidebar_position: 4
+sidebar_position: 3
 ---
 
-# Tavily
+# SearXNG
 
-https://tavily.com/
+https://github.com/searxng/searxng
 
 ## Maven Dependency
 
@@ -12,14 +12,14 @@ https://tavily.com/
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-web-search-engine-tavily</artifactId>
-    <version>0.36.1</version>
+    <artifactId>langchain4j-community-web-search-engine-searxng</artifactId>
+    <version>0.36.0</version>
 </dependency>
 ```
 
 ## APIs
 
-- `TavilyWebSearchEngine`
+- `SearxngWebSearchEngine`
 
 ## Examples
 
