@@ -185,6 +185,10 @@ While we are gradually migrating to Jackson, Gson is still used for parsing the 
 so Jackson annotations on your POJOs will have no effect.
 :::
 
+You can find many examples of supported use cases
+[here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaIT.java)
+and [here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaWithDescriptionsIT.java).
+
 ### Limitations
 When using Structured Outputs with AI Services, there are some limitations:
 - It works only with supported OpenAI and Gemini models.
