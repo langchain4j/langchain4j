@@ -21,9 +21,9 @@ Currently unmarried, he enjoys the freedom to focus on his personal goals and in
 
 Currently, depending on the LLM and the LLM provider, there are four ways how this can be achieved
 (from most to least reliable):
-- [Structured Outputs](/tutorials/structured-outputs#structured-outputs)
+- [Structured Outputs](/tutorials/structured-outputs#structured-outputs-1)
 - [Tools (Function Calling)](/tutorials/structured-outputs#tools-function-calling)
-- [Prompting + JSON Mode](/tutorials/structured-outputs#prompting-json-mode)
+- [Prompting + JSON Mode](/tutorials/structured-outputs#prompting--json-mode)
 - [Prompting](/tutorials/structured-outputs#prompting)
 
 
@@ -96,8 +96,8 @@ Person person = new ObjectMapper().readValue(output, Person.class);
 System.out.println(person); // Person[name=John, age=42, height=1.75, married=false]
 ```
 Notes:
-- [1] - This is required to activate the Structured Outputs feature for OpenAI, see more details [here](/integrations/language-models/open-ai#structured-outputs-for-json-mode).
-- [2] - This is required to activate the Structured Outputs feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
+- [1] - This is required to enable the Structured Outputs feature for OpenAI, see more details [here](/integrations/language-models/open-ai#structured-outputs-for-response-format).
+- [2] - This is required to enable the Structured Outputs feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
 - [3] - Response format type can be either `TEXT` (default) or `JSON`.
 - [4] - OpenAI requires specifying the name for the schema.
 - [5] - In most cases, the root element must be of `JsonObjectSchema` type,
@@ -113,16 +113,15 @@ LangChain4j offers `ResponseFormat` and `JsonSchema` types.
 
 The structure of the schema is defined using `JsonSchemaElement` interface,
 with the following subtypes:
-- `JsonStringSchema` - to support `String`, `char`/`Character`, etc.
-- `JsonIntegerSchema` - to support `int`/`Integer`, `long`/`Long`, `BigInteger`, etc.
-- `JsonNumberSchema` - to support `float`/`Float`, `double`/`Double`, `BigDecimal`, etc.
+- `JsonStringSchema` - to support `String`, `char`/`Character` types.
+- `JsonIntegerSchema` - to support `int`/`Integer`, `long`/`Long`, `BigInteger` types.
+- `JsonNumberSchema` - to support `float`/`Float`, `double`/`Double`, `BigDecimal` types.
 - `JsonBooleanSchema` - to support `boolean`/`Boolean` types.
-- `JsonEnumSchema` - to support `enum`s.
-- `JsonArraySchema` - to support arrays and other collection types.
+- `JsonEnumSchema` - to support `enum` types.
+- `JsonArraySchema` - to support arrays and collection (e.g., `List`, `Set`) types.
 - `JsonObjectSchema` - to support object types.
 - `JsonReferenceSchema` - to support recursion (e.g., `Person` has a `Set<Person> children` field).
 
-See more information in the Javadoc of these types.
 
 ### High Level Structured Outputs API
 
@@ -167,10 +166,10 @@ Notes:
 as these beans are created automatically. More info on this:
 [for Quarkus](https://docs.quarkiverse.io/quarkus-langchain4j/dev/ai-services.html),
 [for Spring Boot](https://docs.langchain4j.dev/tutorials/spring-boot-integration#spring-boot-starter-for-declarative-ai-services).
-- [2] - This is required to activate the Structured Outputs feature for OpenAI, see more details [here](/integrations/language-models/open-ai#structured-outputs-for-json-mode).
-- [3] - This is required to activate the Structured Outputs feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
+- [2] - This is required to enable the Structured Outputs feature for OpenAI, see more details [here](/integrations/language-models/open-ai#structured-outputs-for-response-format).
+- [3] - This is required to enable the Structured Outputs feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
 
-When AI Service returns a POJO **and** used `ChatLanguageModel` supports/enables Structured Outputs feature,
+When AI Service returns a POJO **and** used `ChatLanguageModel` supports Structured Outputs **and** Structured Outputs are enabled,
 `JsonSchema`/`ResponseFormat` will be generated automatically from the specified return type.
 :::note
 Make sure to explicitly enable Structured Outputs feature when configuring `ChatLanguageModel`,
@@ -200,7 +199,8 @@ We are [working](https://github.com/langchain4j/langchain4j/pull/1938) on suppor
   - Nested POJOs
   - `List<T>`, `Set<T>` and `T[]`, where `T` is a scalar, an enum or a POJO
 - All fields and sub-fields in the generated `JsonSchema` are marked as `required`, there is currently no way to make them optional.
-- Classes and fields can be annotated with `@Description` to guide the LLM, foe example:
+- Classes and fields can be (optionally) annotated with `@Description` to provide more information to the LLM.
+For example:
 ```java
 @Description("a person")
 record Person(@Description("person's name") String name,
