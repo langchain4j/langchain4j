@@ -23,9 +23,9 @@ import static java.lang.String.format;
 final class MongoDbTestFixture {
 
     public static final EmbeddingModel EMBEDDING_MODEL = new AllMiniLmL6V2QuantizedEmbeddingModel();
-    private static final String USERNAME = getenv("MONGODB_ATLAS_USERNAME");
-    private static final String PASSWORD = getenv("MONGODB_ATLAS_PASSWORD");
-    private static final String HOST = getenv("MONGODB_ATLAS_HOST");
+    private static final String USERNAME = getenv("MONGODB_USERNAME");
+    private static final String PASSWORD = getenv("MONGODB_PASSWORD");
+    private static final String HOST = getenv("MONGODB_HOST");
     private static final String CONNECTION_STRING = getenv("MONGODB_CONNECTION_STRING");
 
     private static final String DATABASE_NAME = "test_database";
