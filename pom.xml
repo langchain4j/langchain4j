@@ -159,6 +159,18 @@
                                         <skipStagingRepositoryClose>true</skipStagingRepositoryClose>
                                         <sonar.skip>true</sonar.skip>
                                     </properties>
+                                    <imports>
+                                        <import>
+                                            <groupId>dev.langchain4j</groupId>
+                                            <artifactId>langchain4j-embeddings-bom</artifactId>
+                                            <version>${project.version}</version>
+                                            <dependencyManagement>
+                                                <includes>
+                                                    <include>*:*</include>
+                                                </includes>
+                                            </dependencyManagement>
+                                        </import>
+                                    </imports>
                                 </bom>
                             </boms>
                         </configuration>
