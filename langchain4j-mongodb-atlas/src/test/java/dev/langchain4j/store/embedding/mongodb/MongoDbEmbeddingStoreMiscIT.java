@@ -24,14 +24,14 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class MongoDbEmbeddingStoreMiscIT {
 
-    MongoDbTestFixture helper;
+    MongoDbTestFixture fixture;
 
     MongoClient createClient() {
         return createDefaultClient();
     }
 
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return helper.getEmbeddingStore();
+        return fixture.getEmbeddingStore();
     }
 
     protected EmbeddingModel embeddingModel() {
@@ -40,15 +40,15 @@ class MongoDbEmbeddingStoreMiscIT {
 
     @AfterEach
     void afterEach() {
-        if (helper != null) {
-            helper.afterTests();
+        if (fixture != null) {
+            fixture.afterTests();
         }
     }
 
     @Test
     void should_find_relevant_with_native_filter() {
         // given
-        helper = new MongoDbTestFixture(createClient()).initialize(builder -> builder
+        fixture = new MongoDbTestFixture(createClient()).initialize(builder -> builder
                         .filter(Filters.and(Filters.eq("metadata.test-key", "test-value"))));
 
         TextSegment segment = TextSegment.from("this segment should be found", Metadata.from("test-key", "test-value"));
@@ -80,9 +80,9 @@ class MongoDbEmbeddingStoreMiscIT {
 
     @Test
     void should_fail_when_index_absent() {
-        helper = new MongoDbTestFixture(createClient());
+        fixture = new MongoDbTestFixture(createClient());
         try {
-            helper = helper.initialize(builder -> builder.createIndex(false));
+            fixture = fixture.initialize(builder -> builder.createIndex(false));
             fail("Expected exception");
         } catch (RuntimeException r) {
             assertTrue(r.getMessage().contains("Search Index 'test_index' not found"));

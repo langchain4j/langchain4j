@@ -40,7 +40,7 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
             .build();
 
     ChatLanguageModel ollamaChatModel = OllamaChatModel.builder()
-            .baseUrl(ollama.getEndpoint())
+            .baseUrl(ollamaBaseUrl())
             .modelName(TOOL_MODEL)
             .temperature(0.0)
             .logRequests(true)

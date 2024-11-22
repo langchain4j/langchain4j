@@ -11,11 +11,11 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.Map;
+import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -38,7 +38,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     private final Double temperature;
     private final Tokenizer tokenizer;
 
-    @Builder
     public OpenAiStreamingLanguageModel(String baseUrl,
                                         String apiKey,
                                         String organizationId,
@@ -137,9 +136,20 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
 
     public static class OpenAiStreamingLanguageModelBuilder {
 
+        private String baseUrl;
+        private String apiKey;
+        private String organizationId;
+        private String modelName;
+        private Double temperature;
+        private Duration timeout;
+        private Proxy proxy;
+        private Boolean logRequests;
+        private Boolean logResponses;
+        private Tokenizer tokenizer;
+        private Map<String, String> customHeaders;
+
         public OpenAiStreamingLanguageModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public OpenAiStreamingLanguageModelBuilder modelName(String modelName) {
@@ -150,6 +160,88 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         public OpenAiStreamingLanguageModelBuilder modelName(OpenAiLanguageModelName modelName) {
             this.modelName = modelName.toString();
             return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder organizationId(String organizationId) {
+            this.organizationId = organizationId;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder tokenizer(Tokenizer tokenizer) {
+            this.tokenizer = tokenizer;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModel build() {
+            return new OpenAiStreamingLanguageModel(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.organizationId,
+                    this.modelName,
+                    this.temperature,
+                    this.timeout,
+                    this.proxy,
+                    this.logRequests,
+                    this.logResponses,
+                    this.tokenizer,
+                    this.customHeaders
+            );
+        }
+
+        @Override
+        public String toString() {
+            return new StringJoiner(", ", OpenAiStreamingLanguageModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("baseUrl='" + baseUrl + "'")
+                    .add("organizationId='" + organizationId + "'")
+                    .add("modelName='" + modelName + "'")
+                    .add("temperature=" + temperature)
+                    .add("timeout=" + timeout)
+                    .add("proxy=" + proxy)
+                    .add("logRequests=" + logRequests)
+                    .add("logResponses=" + logResponses)
+                    .add("tokenizer=" + tokenizer)
+                    .add("customHeaders=" + customHeaders)
+                    .toString();
         }
     }
 }

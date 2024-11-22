@@ -27,7 +27,7 @@ MongoDB also offers [Atlas CLI](https://www.mongodb.com/docs/atlas/cli/current/)
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mongodb-atlas</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
 </dependency>
 ```
 

@@ -26,7 +26,7 @@ public class AzureAiSearchContentRetrieverRemovalIT extends EmbeddingStoreWithRe
     private final AzureAiSearchContentRetriever contentRetrieverWithVector = AzureAiSearchContentRetriever.builder()
             .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
             .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-            .indexName(randomUUID())
+            .indexName("aaa" + randomUUID())
             .dimensions(embeddingModel.dimension())
             .embeddingModel(embeddingModel)
             .queryType(HYBRID)
