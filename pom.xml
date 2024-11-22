@@ -170,6 +170,17 @@
                                                 </includes>
                                             </dependencyManagement>
                                         </import>
+                                        <import>
+                                            <groupId>dev.langchain4j</groupId>
+                                            <artifactId>langchain4j-spring-boot-bom</artifactId>
+                                            <version>${project.version}</version>
+                                            <dependencyManagement>
+                                                <includes>
+                                                    <include>*:*</include>
+                                                </includes>
+                                            </dependencyManagement>
+                                        </import>
+
                                     </imports>
                                 </bom>
                             </boms>
