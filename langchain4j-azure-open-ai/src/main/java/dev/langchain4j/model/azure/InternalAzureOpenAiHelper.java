@@ -459,8 +459,7 @@ class InternalAzureOpenAiHelper {
         if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return null;
         } else if (responseFormat.type() != ResponseFormatType.JSON) {
-            logger.warn("Unsupported response format: " + responseFormat);
-            return null;
+            throw new IllegalArgumentException("Unsupported response format: " + responseFormat);
         }
 
         JsonSchema jsonSchema = responseFormat.jsonSchema();
