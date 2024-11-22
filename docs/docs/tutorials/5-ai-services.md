@@ -100,7 +100,7 @@ greatly simplifies using AI Services in Quarkus applications.
 More information can be found [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/ai-services.html).
 
 ## AI Services in Spring Boot Application
-[LangChain4j Spring Boot starter](/tutorials/spring-boot-integration)
+[LangChain4j Spring Boot starter](/tutorials/spring-boot-integration/#spring-boot-starter-for-declarative-ai-services)
 greatly simplifies using AI Services in Spring Boot applications.
 
 ## @SystemMessage
@@ -251,6 +251,11 @@ AI services currently do not support multimodality,
 please use the [low-level API](/tutorials/chat-and-language-models#multimodality) for this.
 
 ## Structured Outputs
+
+:::note
+More info on Structured Outputs can be found [here](/tutorials/structured-outputs).
+:::
+
 If you want to receive a structured output from the LLM,
 you can change the return type of your AI Service method from `String` to something else.
 Currently, AI Services support the following return types:
@@ -272,7 +277,7 @@ Before the method returns, the AI Service will parse the output of the LLM into 
 You can observe appended instructions by [enabling logging](/tutorials/logging).
 
 :::note
-Some LLMs support JSON mode (aka [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/)),
+Some LLMs support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) feature,
 where the LLM API has an option to specify a JSON schema for the desired output. If such a feature is supported and enabled, 
 instructions will not be appended to the end of the `UserMessage`. In this case, the JSON schema will be automatically
 created from your POJO and passed to the LLM. This will guarantee that the LLM adheres to this JSON schema.
@@ -534,7 +539,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>0.36.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 ```java

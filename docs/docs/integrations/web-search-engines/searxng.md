@@ -1,10 +1,10 @@
 ---
-sidebar_position: 1
+sidebar_position: 3
 ---
 
-# Google Custom Search
+# SearXNG
 
-https://programmablesearchengine.google.com/
+https://github.com/searxng/searxng
 
 ## Maven Dependency
 
@@ -12,14 +12,14 @@ https://programmablesearchengine.google.com/
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-web-search-engine-google-custom</artifactId>
-    <version>0.36.2</version>
+    <artifactId>langchain4j-community-web-search-engine-searxng</artifactId>
+    <version>0.36.0</version>
 </dependency>
 ```
 
 ## APIs
 
-- `GoogleCustomWebSearchEngine`
+- `SearxngWebSearchEngine`
 
 ## Examples
 
