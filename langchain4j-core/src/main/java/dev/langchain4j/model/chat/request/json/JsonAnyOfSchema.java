@@ -65,9 +65,9 @@ public class JsonAnyOfSchema implements JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonAnyOfSchema{" +
-                "description='" + description + '\'' +
-                ", anyOf=" + anyOf +
-                '}';
+        return "JsonAnyOfSchema {" +
+                "description = " + quoted(description) +
+                ", anyOf = " + anyOf +
+                " }";
     }
 }
