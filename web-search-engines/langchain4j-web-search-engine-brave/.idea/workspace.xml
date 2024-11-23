@@ -5,13 +5,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="67987dcf-16c5-4fd7-8da3-acd2d6995ccf" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/BraveApi.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/BraveClient.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchEngine.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchRequest.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchResponse.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../langchain4j-parent/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../../langchain4j-parent/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../../pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/encodings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/jarRepositories.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/BraveApi.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/BraveClient.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchEngine.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/dev/langchain4j/web/search/brave/Main.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../langchain4j-web-search-engine-tavily/src/main/java/dev/langchain4j/web/search/tavily/TavilyWebSearchEngine.java" beforeDir="false" afterPath="$PROJECT_DIR$/../langchain4j-web-search-engine-tavily/src/main/java/dev/langchain4j/web/search/tavily/TavilyWebSearchEngine.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -52,24 +62,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Application.Main.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/home/suhas-koheda/Java/langchain4j/web-search-engines/langchain4j-web-search-engine-brave",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "Modules",
-    "project.structure.proportion": "0.0",
-    "project.structure.side.proportion": "0.2",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Application.Main.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/suhas-koheda/Java/langchain4j/web-search-engines/langchain4j-web-search-engine-brave&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="Main" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="dev.langchain4j.web.search.brave.Main" />
@@ -107,7 +117,10 @@
       <option name="presentableId" value="Default" />
       <updated>1732183102855</updated>
       <workItem from="1732183104369" duration="7712000" />
-      <workItem from="1732215546259" duration="826000" />
+      <workItem from="1732215546259" duration="1023000" />
+      <workItem from="1732387588590" duration="26000" />
+      <workItem from="1732399239991" duration="440000" />
+      <workItem from="1732399695468" duration="246000" />
     </task>
     <servers />
   </component>
