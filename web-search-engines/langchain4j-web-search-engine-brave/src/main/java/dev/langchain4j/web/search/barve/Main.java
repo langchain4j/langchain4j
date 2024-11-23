@@ -1,4 +1,4 @@
-package dev.langchain4j.web.search.brave;
+package dev.langchain4j.web.search.barve;
 
 public class Main {
     public static void main(String[] args) {
