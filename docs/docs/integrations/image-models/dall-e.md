@@ -12,7 +12,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>0.36.1</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -21,7 +21,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.36.1</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 

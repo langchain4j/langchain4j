@@ -19,7 +19,7 @@ The simplest way to begin is with the OpenAI integration:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>0.36.1</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -30,14 +30,14 @@ the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.36.1</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
 - For Gradle in `build.gradle`:
 ```groovy
-implementation 'dev.langchain4j:langchain4j-open-ai:0.36.1'
-implementation 'dev.langchain4j:langchain4j:0.36.1'
+implementation 'dev.langchain4j:langchain4j-open-ai:0.36.2'
+implementation 'dev.langchain4j:langchain4j:0.36.2'
 ```
 
 <details>
@@ -49,7 +49,7 @@ implementation 'dev.langchain4j:langchain4j:0.36.1'
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-bom</artifactId>
-            <version>0.36.1</version>
+            <version>0.36.2</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>

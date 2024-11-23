@@ -13,13 +13,13 @@ sidebar_position: 16
 Since `0.37.0`, `langchain4j-qianfan` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-qianfan
 :::
 
-`0.36.1` and previous:
+`0.36.2` and previous:
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-qianfan</artifactId>
-    <version>0.36.1</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -271,7 +271,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.36.1</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 - Use

@@ -13,7 +13,7 @@ https://github.com/pgvector/pgvector
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-pgvector</artifactId>
-    <version>0.36.1</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
