@@ -41,7 +41,7 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
     }
 
     @Test
-    public void test_constructor() {
+    void test_constructor() {
         {
             ExampleImpl splitter = new ExampleImpl(1, 1);
             assertThat(splitter.maxSegmentSize).isEqualTo(1);
