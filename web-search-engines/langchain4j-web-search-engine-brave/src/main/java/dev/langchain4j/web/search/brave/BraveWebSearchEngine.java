@@ -59,6 +59,11 @@ public class BraveWebSearchEngine implements WebSearchEngine {
                 .build();
         BraveResponse response =braveClient.search(braveWebSearchRequest);
         System.out.println(response.toString());
+
+
+        //todo : refining the output response to find the web results
+
+
         return null;
     }
 }
