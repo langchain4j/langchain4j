@@ -51,6 +51,7 @@
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
+        <project.root.dir>${project.basedir}/../</project.root.dir>
         <argLine></argLine>
         <!-- Dependency Versions -->
         <openai4j.version>0.23.0</openai4j.version>
@@ -487,9 +488,9 @@
                         <!-- optional: limit format enforcement to just the files changed by this feature branch -->
                         <ratchetFrom>origin/main</ratchetFrom>
                         <java>
-                            <palantirJavaFormat>
-                                <version>2.50.0</version>
-                            </palantirJavaFormat>
+                            <eclipse>
+                                <file>${project.root.dir}/eclipse-formatter.xml</file>
+                            </eclipse>
                         </java>
                         <pom>
                             <sortPom>
