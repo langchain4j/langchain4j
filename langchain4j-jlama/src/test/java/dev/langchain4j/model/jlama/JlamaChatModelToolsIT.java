@@ -4,16 +4,22 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,6 +28,7 @@ class JlamaChatModelToolsIT {
 
     static File tmpDir;
     static ChatLanguageModel model;
+    static StreamingChatLanguageModel streamingModel;
 
     @BeforeAll
     static void setup() {
@@ -29,6 +36,13 @@ class JlamaChatModelToolsIT {
         tmpDir.mkdirs();
 
         model = JlamaChatModel.builder()
+                .modelName("Qwen/Qwen2.5-1.5B-Instruct")
+                .modelCachePath(tmpDir.toPath())
+                .temperature(0.0f)
+                .maxTokens(1024)
+                .build();
+
+        streamingModel = JlamaStreamingChatModel.builder()
                 .modelName("Qwen/Qwen2.5-1.5B-Instruct")
                 .modelCachePath(tmpDir.toPath())
                 .temperature(0.0f)
@@ -69,6 +83,44 @@ class JlamaChatModelToolsIT {
 
         // when
         Response<AiMessage> secondResponse = model.generate(messages);
+
+        // then
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("32");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+    }
+
+    @Test
+    void should_execute_a_tool_then_answer_streaming() {
+        List<ChatMessage> chatMessages = new ArrayList<>();
+        SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant with tool calling capabilities. When you receive a tool call response, use the output to format an answer to the original question.");
+        chatMessages.add(systemMessage);
+        UserMessage userMessage = userMessage("What is the temp in Paris right now?");
+        chatMessages.add(userMessage);
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        streamingModel.generate(chatMessages, weatherToolSpecification, handler);
+        Response<AiMessage> response = handler.get();
+
+        // then
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        chatMessages.add(aiMessage);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo("get_current_temperature");
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"unit\": \"celsius\", \"location\": \"Paris, France\"}");
+
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "{\"unit\": \"celsius\", \"location\": \"Paris, France\", \"temperature\": \"32\"}");
+        chatMessages.add(toolExecutionResultMessage);
+
+        // when
+        handler = new TestStreamingResponseHandler<>();
+        streamingModel.generate(chatMessages, handler);
+        Response<AiMessage> secondResponse = handler.get();
 
         // then
         AiMessage secondAiMessage = secondResponse.content();
