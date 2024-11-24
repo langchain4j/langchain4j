@@ -1,4 +1,4 @@
-package dev.langchain4j.web.search.barve;
+package dev.langchain4j.web.search.brave;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -9,6 +9,6 @@ public interface BraveApi {
 
     @POST("search")
     @Headers({"Content-Type: application/json"})
-    Call<BraveWebSearchResponse> search(@Body BraveWebSearchRequest request);
+    Call<BraveResponse> search(@Body BraveWebSearchRequest request);
 
 }
