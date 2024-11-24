@@ -168,7 +168,9 @@ System.out.println("Gemini> " + tokyoWeather);
 //         with a temperature of 32 degrees.
 ```
 
-## Structured output
+## Structured Outputs
+
+See more info on Structured Outputs [here](/tutorials/structured-outputs).
 
 ### JSON mode
 
