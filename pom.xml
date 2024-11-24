@@ -53,6 +53,7 @@
         <module>langchain4j-chroma</module>
         <module>langchain4j-coherence</module>
         <module>langchain4j-couchbase</module>
+        <module>langchain4j-duckdb</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-infinispan</module>
         <module>langchain4j-milvus</module>
