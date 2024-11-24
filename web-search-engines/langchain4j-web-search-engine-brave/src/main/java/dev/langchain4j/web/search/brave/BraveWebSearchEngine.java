@@ -1,31 +1,41 @@
 package dev.langchain4j.web.search.brave;
 
 import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchInformationResult;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
-class BraveWebSearchEngine implements WebSearchEngine {
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
+
+public class BraveWebSearchEngine implements WebSearchEngine {
 
 
     private static final String DEFAULT_BASE_URL = "https://api.search.brave.com/res/v1/web/search";
 
-    private final String query;
+    private final BraveClient braveClient;
     private final  String apiKey;
     private final Integer count;
     private final String safeSearch;
     private final String resultFilter;
     private final String freshness;
 
-    public BraveWebSearchEngine(String query,
+    public BraveWebSearchEngine(String baseUrl,
                                  String apiKey,
+                                 Duration timeout,
                                  Integer count,
                                  String safeSearch,
                                  String resultFilter,
                                  String freshness) {
-        this.
-        this.query = query;
+        this.braveClient= BraveClient.builder()
+                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
+                .timeout(getOrDefault(timeout, ofSeconds(10)))
+                .build();
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.count = count;
         this.safeSearch = safeSearch;
@@ -35,11 +45,20 @@ class BraveWebSearchEngine implements WebSearchEngine {
 
     @Override
     public WebSearchResults search(final String query) {
-        return WebSearchEngine.super.search(query);
+        return search(WebSearchRequest.from(query));
     }
 
     @Override
     public WebSearchResults search(final WebSearchRequest webSearchRequest) {
+        BraveWebSearchRequest braveWebSearchRequest=BraveWebSearchRequest.builder()
+                .apiKey(apiKey)
+                .count(count)
+                .safeSearch(safeSearch)
+                .resultFilter(resultFilter)
+                .freshness(freshness)
+                .build();
+        BraveResponse response =braveClient.search(braveWebSearchRequest);
+        System.out.println(response.toString());
         return null;
     }
 }

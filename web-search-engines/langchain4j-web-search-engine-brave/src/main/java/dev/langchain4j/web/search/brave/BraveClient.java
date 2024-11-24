@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
+import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
 import retrofit2.Retrofit;
@@ -24,6 +25,7 @@ public class BraveClient {
 
     private final BraveApi braveApi;
 
+    @Builder
     public BraveClient(String baseUrl, Duration timeout) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
