@@ -204,8 +204,7 @@ public class ServiceOutputParser {
     private static String typeOf(Field field, Set<Class<?>> visited) {
         Type type = field.getGenericType();
 
-        if (type instanceof ParameterizedType) {
-            ParameterizedType parameterizedType = (ParameterizedType) type;
+        if (type instanceof ParameterizedType parameterizedType) {
             Type[] typeArguments = parameterizedType.getActualTypeArguments();
 
             if (parameterizedType.getRawType().equals(List.class)

@@ -13,7 +13,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -168,7 +168,9 @@ System.out.println("Gemini> " + tokyoWeather);
 //         with a temperature of 32 degrees.
 ```
 
-## Structured output
+## Structured Outputs
+
+See more info on Structured Outputs [here](/tutorials/structured-outputs).
 
 ### JSON mode
 

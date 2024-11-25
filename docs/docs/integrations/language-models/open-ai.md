@@ -21,7 +21,7 @@ If you are using Quarkus, please refer to the
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -30,7 +30,7 @@ If you are using Quarkus, please refer to the
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -120,9 +120,11 @@ class ChatLanguageModelController {
 
 ## Structured Outputs
 The [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) feature is supported
-for both [tools](/tutorials/tools) and [JSON mode](/tutorials/ai-services#json-mode).
+for both [tools](/tutorials/tools) and [response format](/tutorials/ai-services#json-mode).
 
-### Structured Outputs for tools
+See more info on Structured Outputs [here](/tutorials/structured-outputs).
+
+### Structured Outputs for Tools
 To enable Structured Outputs feature for tools, set `.strictTools(true)` when building the model:
 ```java
 OpenAiChatModel.builder()
@@ -133,9 +135,9 @@ OpenAiChatModel.builder()
 Please note that this will automatically make all tool parameters mandatory (`required` in json schema)
 and set `additionalProperties=false` for each `object` in json schema. This is due to the current OpenAI limitations.
 
-### Structured Outputs for JSON mode
-To enable Structured Outputs feature for JSON mode, set `.responseFormat("json_schema")` and `.strictJsonSchema(true)`
-when building the model:
+### Structured Outputs for Response Format
+To enable Structured Outputs feature for response format,
+set `.responseFormat("json_schema")` and `.strictJsonSchema(true)` when building the model:
 ```java
 OpenAiChatModel.builder()
     ...

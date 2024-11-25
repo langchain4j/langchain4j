@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.36.0-SNAPSHOT</version>
+    <version>0.37.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -28,7 +28,6 @@
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
-        <module>langchain4j-chatglm</module>
         <module>langchain4j-cohere</module>
         <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
@@ -39,13 +38,11 @@
         <module>langchain4j-ollama</module>
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
-        <module>langchain4j-qianfan</module>
         <module>langchain4j-github-models</module>
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
-        <module>langchain4j-zhipu-ai</module>
         <module>langchain4j-voyage-ai</module>
 
         <!-- embedding stores -->
@@ -68,7 +65,6 @@
         <module>langchain4j-qdrant</module>
         <module>langchain4j-redis</module>
         <module>langchain4j-tablestore</module>
-        <module>langchain4j-vearch</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
 

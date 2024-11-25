@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.awssdk.regions.Region;
 
@@ -38,6 +39,7 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelIT {
@@ -698,37 +700,19 @@ class BedrockChatModelIT {
         assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
 
-    @Test
-    void testBedrockLlama13BChatModel() {
+    @ParameterizedTest
+    @EnumSource(value = BedrockLlamaChatModel.Types.class, mode = INCLUDE, names = {
+            "META_LLAMA3_8B_INSTRUCT_V1_0",
+            "META_LLAMA3_70B_INSTRUCT_V1_0"
+    })
+    void testBedrockLlamaChatModel(BedrockLlamaChatModel.Types modelId) {
 
         BedrockLlamaChatModel bedrockChatModel = BedrockLlamaChatModel
                 .builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
-                .model(BedrockLlamaChatModel.Types.MetaLlama2Chat13B.getValue())
-                .maxRetries(1)
-                .build();
-
-        assertThat(bedrockChatModel).isNotNull();
-
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
-
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotBlank();
-        assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
-    }
-
-    @Test
-    void testBedrockLlama70BChatModel() {
-
-        BedrockLlamaChatModel bedrockChatModel = BedrockLlamaChatModel
-                .builder()
-                .temperature(0.50f)
-                .maxTokens(300)
-                .region(Region.US_EAST_1)
-                .model(BedrockLlamaChatModel.Types.MetaLlama2Chat70B.getValue())
+                .model(modelId.getValue())
                 .maxRetries(1)
                 .build();
 

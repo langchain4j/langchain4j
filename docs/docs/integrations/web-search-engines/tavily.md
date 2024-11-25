@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 4
 ---
 
 # Tavily
@@ -13,7 +13,7 @@ https://tavily.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-web-search-engine-tavily</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
