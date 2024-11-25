@@ -4,7 +4,7 @@ sidebar_position: 18
 
 # PGVector
 
-LangChain4j integrates seamlessly with [PGVector] (https://github.com/pgvector/pgvector), allowing developers to store and query vector embeddings directly in PostgreSQL. This integration is ideal for applications like semantic search, recommendation systems, and more.
+LangChain4j integrates seamlessly with [PGVector](https://github.com/pgvector/pgvector), allowing developers to store and query vector embeddings directly in PostgreSQL. This integration is ideal for applications like semantic search, recommendation systems, and more.
 
 
 ## Maven Dependency
@@ -36,13 +36,13 @@ docker run --rm --name langchain4j-postgres-test-container -p 5432:5432 -e POSTG
 ```
 
 Explanation of the Command:
-```docker run```: Runs a new container.
-```--rm```: Automatically removes the container after it stops, ensuring no residual data.
-```--name langchain4j-postgres-test-container```: Names the container langchain4j-postgres-test-container for easy identification.
-```-p 5432:5432```: Maps port 5432 on your local machine to port 5432 in the container.
-```-e POSTGRES_USER=my_user```: Sets the PostgreSQL username to my_user.
-```-e POSTGRES_PASSWORD=my_password```: Sets the PostgreSQL password to my_password.
-```gvector/pgvector```: Specifies the Docker image to use, pre-configured with the PGVector extension.
+```docker run```: Runs a new container.<br>
+```--rm```: Automatically removes the container after it stops, ensuring no residual data.<br>
+```--name langchain4j-postgres-test-container```: Names the container langchain4j-postgres-test-container for easy identification.<br>
+```-p 5432:5432```: Maps port 5432 on your local machine to port 5432 in the container.<br>
+```-e POSTGRES_USER=my_user```: Sets the PostgreSQL username to my_user.<br>
+```-e POSTGRES_PASSWORD=my_password```: Sets the PostgreSQL password to my_password.<br>
+```gvector/pgvector```: Specifies the Docker image to use, pre-configured with the PGVector extension.<br>
 
 ```
 // Initialize the PGVector embedding store
