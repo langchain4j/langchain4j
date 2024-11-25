@@ -47,8 +47,15 @@ public class BraveClient {
     public BraveResponse search(BraveWebSearchRequest braveWebSearchRequest) {
         try{
             Response<BraveResponse> retrofitResponse=braveApi
-                    .search(braveWebSearchRequest.getQuery(),braveWebSearchRequest.getCount(),braveWebSearchRequest.getSafeSearch(),braveWebSearchRequest.getResultFilter(),braveWebSearchRequest.getFreshness())
+                    .search(
+                            braveWebSearchRequest.getApiKey(),
+                            braveWebSearchRequest.getQuery(),
+                            braveWebSearchRequest.getCount(),
+                            braveWebSearchRequest.getSafeSearch(),
+                            braveWebSearchRequest.getResultFilter(),
+                            braveWebSearchRequest.getFreshness())
                     .execute();
+
             if(retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             }
