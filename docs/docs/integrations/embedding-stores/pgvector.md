@@ -29,13 +29,13 @@ LangChain4j integrates seamlessly with [PGVector](https://github.com/pgvector/pg
 ## Examples
 To demonstrate the capabilities of PGVector, you can use a Dockerized PostgreSQL setup. It leverages Testcontainers to run PostgreSQL with PGVector.
 
-### Quick Start with Docker
+#### Quick Start with Docker
 To quickly set up a PostgreSQL instance with the PGVector extension, you can use the following Docker command:
 ```
 docker run --rm --name langchain4j-postgres-test-container -p 5432:5432 -e POSTGRES_USER=my_user -e POSTGRES_PASSWORD=my_password pgvector/pgvector
 ```
 
-Explanation of the Command:
+#### Explanation of the Command:<br>
 ```docker run```: Runs a new container.<br>
 ```--rm```: Automatically removes the container after it stops, ensuring no residual data.<br>
 ```--name langchain4j-postgres-test-container```: Names the container langchain4j-postgres-test-container for easy identification.<br>
