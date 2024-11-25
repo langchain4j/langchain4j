@@ -34,6 +34,7 @@ To quickly set up a PostgreSQL instance with the PGVector extension, you can use
 ```
 docker run --rm --name langchain4j-postgres-test-container -p 5432:5432 -e POSTGRES_USER=my_user -e POSTGRES_PASSWORD=my_password pgvector/pgvector
 ```
+
 Explanation of the Command:
 ```docker run```: Runs a new container.
 ```--rm```: Automatically removes the container after it stops, ensuring no residual data.
@@ -42,5 +43,18 @@ Explanation of the Command:
 ```-e POSTGRES_USER=my_user```: Sets the PostgreSQL username to my_user.
 ```-e POSTGRES_PASSWORD=my_password```: Sets the PostgreSQL password to my_password.
 ```gvector/pgvector```: Specifies the Docker image to use, pre-configured with the PGVector extension.
+
+```
+// Initialize the PGVector embedding store
+        EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
+                .host("localhost")          // Hostname for the Docker container
+                .port(5432)                 // Port mapped from the Docker container
+                .database("postgres")       // Default database created by the container
+                .user("my_user")            // Username set in the Docker command
+                .password("my_password")    // Password set in the Docker command
+                .table("test")              // Custom table name
+                .dimension(384)             // Embedding dimensionality
+                .build();
+```
 
 - [Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/pgvector-example/src/main/java)
