@@ -157,10 +157,10 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("do not add empty embeddings to redis");
-            return ids;
+            return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
@@ -194,7 +194,6 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             throw new RedisRequestFailedException("add embedding failed, msg=" + errResponse.get());
         }
-        return ids;
     }
 
     private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(List<Document> documents, double minScore) {

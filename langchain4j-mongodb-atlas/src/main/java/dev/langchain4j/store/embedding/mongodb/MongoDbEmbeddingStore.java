@@ -304,10 +304,10 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("do not add empty embeddings to MongoDB Atlas");
-            return emptyList();
+            return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
@@ -324,7 +324,6 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
             log.warn(errMsg);
             throw new RuntimeException(errMsg);
         }
-        return ids;
     }
 
     private boolean isCollectionExist(MongoDatabase database, String collectionName) {

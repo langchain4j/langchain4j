@@ -188,11 +188,11 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param segments    an optional list of {@link TextSegment} to add with the embeddings
      */
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings,
+    public void addAll(List<String> ids, List<Embedding> embeddings,
                                List<TextSegment> segments) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             Logger.info("Skipped adding empty embeddings");
-            return emptyList();
+            return;
         }
 
         boolean hasEmbedded = segments != null && !segments.isEmpty();
@@ -212,7 +212,6 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
             map.put(new DocumentChunk.Id(id, 0), createChunk(embedding, segment));
         }
         documentChunks.putAll(map);
-        return ids;
     }
 
     /**

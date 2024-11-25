@@ -147,7 +147,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return list of new row if (same order as the input)
      */
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
+    public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
         if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
             throw new IllegalArgumentException("embeddingList and textSegmentList must not be null and have the same size");
         }
@@ -159,12 +159,8 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         // No upsert needed (ids will be generated)
-        return astraDBCollection
-                .insertManyChunkedJsonDocuments(recordList, itemsPerChunk, concurrentThreads)
-                .stream()
-                .map(JsonDocumentMutationResult::getDocument)
-                .map(Document::getId)
-                .collect(Collectors.toList());
+        astraDBCollection
+                .insertManyChunkedJsonDocuments(recordList, itemsPerChunk, concurrentThreads);
     }
 
     /** {@inheritDoc}  */

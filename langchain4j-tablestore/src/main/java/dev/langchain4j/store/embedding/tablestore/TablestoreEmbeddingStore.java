@@ -188,7 +188,7 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (embedded != null) {
             ValidationUtils.ensureEq(embeddings.size(), embedded.size(), "the size of embeddings should be the same as the size of embedded");
         }
@@ -212,7 +212,6 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             throw exception;
         }
-        return ids;
     }
 
     @Override

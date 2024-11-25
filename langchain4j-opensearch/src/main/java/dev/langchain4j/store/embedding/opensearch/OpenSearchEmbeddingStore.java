@@ -306,11 +306,11 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
 
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("[do not add empty embeddings to opensearch]");
-            return emptyList();
+            return;
         }
 
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
@@ -323,7 +323,6 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             log.error("[I/O OpenSearch Exception]", ex);
             throw new OpenSearchRequestFailedException(ex.getMessage());
         }
-        return ids;
     }
 
     private void createIndexIfNotExist(int dimension) throws IOException {

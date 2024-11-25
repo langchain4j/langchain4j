@@ -167,10 +167,10 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
-            return ids;
+            return;
         }
         List<VectorWithUnsignedIndices> vectors = new ArrayList<>(embeddings.size());
 
@@ -189,7 +189,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         index.upsert(vectors, nameSpace);
-        return ids;
     }
 
     private boolean isIndexExist(Pinecone client, String index) {

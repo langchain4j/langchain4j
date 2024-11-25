@@ -230,9 +230,9 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (ids == null || embeddings == null || ids.isEmpty() || embeddings.isEmpty()) {
-            return Collections.emptyList();
+            return;
         }
 
         int size = ids.size();
@@ -252,7 +252,6 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             collection.upsert(ids.get(i), document);
         }
-        return ids;
     }
 
     @Override

@@ -251,7 +251,8 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
-        return addAll(ids, embeddings, null);
+        addAll(ids, embeddings, null);
+        return ids;
     }
 
     @Override
@@ -365,11 +366,11 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
     }
 
     @Override
-    public List<String> addAll(
+    public void addAll(
             List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
-            return emptyList();
+            return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(),
@@ -403,7 +404,6 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 log.debug("Added embedding: {}", indexingResult.getKey());
             }
         }
-        return ids;
     }
 
     float[] doublesListToFloatArray(List<Double> doubles) {

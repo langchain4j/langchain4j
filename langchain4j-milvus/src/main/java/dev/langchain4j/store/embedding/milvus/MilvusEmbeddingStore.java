@@ -231,9 +231,9 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            return emptyList();
+            return;
         }
         List<InsertParam.Field> fields = new ArrayList<>();
         fields.add(new InsertParam.Field(fieldDefinition.getIdFieldName(), ids));
@@ -245,7 +245,6 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (autoFlushOnInsert) {
             flush(this.milvusClient, this.collectionName);
         }
-        return ids;
     }
 
     /**

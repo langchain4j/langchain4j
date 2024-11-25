@@ -201,16 +201,15 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("[do not add empty embeddings to neo4j]");
-            return emptyList();
+            return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
         bulk(ids, embeddings, embedded);
-        return ids;
     }
 
     private void bulk(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {

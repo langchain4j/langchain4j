@@ -192,7 +192,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         ensureNotNull(embeddings, "embeddings");
         ensureNotNull(embedded, "embedded");
 
@@ -222,7 +222,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             insert.executeBatch();
 
-            return ids;
         }
         catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);

@@ -128,11 +128,11 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
   }
 
   @Override
-  public List<String> addAll(
+  public void addAll(
       List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) throws RuntimeException {
     if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
          log.info("Empty embeddings - no ops");
-         return ids;
+         return;
     }
     try {
       List<PointStruct> points = new ArrayList<>(embeddings.size());
@@ -164,7 +164,6 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     } catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException(e);
     }
-    return ids;
   }
 
   public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {

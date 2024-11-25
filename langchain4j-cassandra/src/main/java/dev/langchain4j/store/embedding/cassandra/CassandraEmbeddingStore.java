@@ -301,7 +301,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return list of new row if (same order as the input)
      */
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
+    public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
         if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
             throw new IllegalArgumentException("embeddingList and textSegmentList must not be null and have the same size");
         }
@@ -309,7 +309,6 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         for (int i = 0; i < embeddingList.size(); i++) {
             addInternal(ids.get(i), embeddingList.get(i), textSegmentList.get(i));
         }
-        return ids;
     }
 
     /**

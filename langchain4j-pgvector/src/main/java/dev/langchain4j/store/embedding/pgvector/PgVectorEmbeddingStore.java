@@ -321,11 +321,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(
+    public void addAll(
             List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
-            return ids;
+            return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(),
@@ -367,7 +367,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return ids;
     }
 
     /**

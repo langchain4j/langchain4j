@@ -137,10 +137,10 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("do not add empty embeddings to Azure CosmosDB NoSQL");
-            return emptyList();
+            return;
         }
 
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
@@ -154,6 +154,5 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
         }
 
         this.container.executeBulkOperations(operations);
-        return ids;
     }
 }

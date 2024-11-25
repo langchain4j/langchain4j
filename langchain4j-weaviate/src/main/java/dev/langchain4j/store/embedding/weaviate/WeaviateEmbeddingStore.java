@@ -245,7 +245,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (embedded != null && embeddings.size() != embedded.size()) {
             throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
         }
@@ -263,7 +263,6 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .withObjects(objects.toArray(new WeaviateObject[0]))
                 .withConsistencyLevel(consistencyLevel)
                 .run();
-        return resIds;
     }
 
     private WeaviateObject buildObject(String id, Embedding embedding, TextSegment segment) {

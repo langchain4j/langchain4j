@@ -132,7 +132,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
   }
 
   @Override
-  public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+  public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
     if (embedded != null && embeddings.size() != embedded.size()) {
       throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
     }
@@ -163,7 +163,6 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
       throw new RuntimeException(e);
     }
 
-    return ids;
   }
 
   /**

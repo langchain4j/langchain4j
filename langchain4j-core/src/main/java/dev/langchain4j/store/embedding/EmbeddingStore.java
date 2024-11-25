@@ -62,31 +62,7 @@ public interface EmbeddingStore<Embedded> {
      * @param embedded   A list of original contents that were embedded.
      * @return A list of IDs associated with the added embeddings.
      */
-    List<String> addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded);
-
-    /**
-     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
-     *
-     * @param embeddings A list of embeddings to be added to the store.
-     * @param embedded   A list of original contents that were embedded.
-     * @return A list of auto-generated IDs associated with the added embeddings.
-     */
-    default List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
-        return addAll(generateIds(embeddings.size()), embeddings, embedded);
-    }
-
-
-    /**
-     * Generates list of UUID strings
-     * @param dimension  - dimension of list
-     */
-    default List<String> generateIds(long dimension) {
-        List<String> ids = new ArrayList<>();
-        for (int i = 0; i < dimension; i++) {
-            ids.add(randomUUID());
-        }
-        return ids;
-    }
+    void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded);
 
     /**
      * Removes a single embedding from the store by ID.
@@ -127,6 +103,32 @@ public interface EmbeddingStore<Embedded> {
     @Experimental
     default void removeAll() {
         throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    /**
+     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
+     *
+     * @param embeddings A list of embeddings to be added to the store.
+     * @param embedded   A list of original contents that were embedded.
+     * @return A list of auto-generated IDs associated with the added embeddings.
+     */
+    default List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
+        final List<String> ids = generateIds(embeddings.size());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
+
+
+    /**
+     * Generates list of UUID strings
+     * @param n  - dimension of list
+     */
+    default List<String> generateIds(int n) {
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            ids.add(randomUUID());
+        }
+        return ids;
     }
 
     /**

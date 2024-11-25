@@ -94,7 +94,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     @Override
-    public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
         if (ids.size()!= embeddings.size() || embeddings.size() != embedded.size()) {
             throw new IllegalArgumentException("The list of ids and embeddings and embedded must have the same size");
         }
@@ -104,8 +104,6 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         for (int i = 0; i < ids.size(); i++) {
             newEntries.add(new Entry<>(ids.get(i), embeddings.get(i), embedded.get(i)));
         }
-
-        return add(newEntries);
     }
 
     private List<String> add(List<Entry<Embedded>> newEntries) {
