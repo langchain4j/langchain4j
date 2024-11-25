@@ -1,5 +1,7 @@
 package dev.langchain4j.web.search.brave;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchInformationResult;
 import dev.langchain4j.web.search.WebSearchRequest;
@@ -7,6 +9,7 @@ import dev.langchain4j.web.search.WebSearchResults;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -45,7 +48,9 @@ public class BraveWebSearchEngine implements WebSearchEngine {
 
     @Override
     public WebSearchResults search(final String query) {
-        return search(WebSearchRequest.from(query));
+        return search(WebSearchRequest.builder()
+                .searchTerms(query)
+                .build());
     }
 
     @Override
@@ -56,10 +61,12 @@ public class BraveWebSearchEngine implements WebSearchEngine {
                 .safeSearch(safeSearch)
                 .resultFilter(resultFilter)
                 .freshness(freshness)
+                .query(webSearchRequest.searchTerms())
                 .build();
         BraveResponse response =braveClient.search(braveWebSearchRequest);
-        System.out.println(response.toString());
 
+        JsonObject obj= JsonParser.parseString(response.toString()).getAsJsonObject();
+        System.out.println(obj.getAsJsonObject("web").getAsJsonArray("results"));
 
         //todo : refining the output response to find the web results
 

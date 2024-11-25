@@ -1,14 +1,22 @@
 package dev.langchain4j.web.search.brave;
 
 import retrofit2.Call;
-import retrofit2.http.Body;
+import retrofit2.http.GET;
 import retrofit2.http.Headers;
-import retrofit2.http.POST;
+import retrofit2.http.Query;
 
 public interface BraveApi {
 
-    @POST("search")
-    @Headers({"Content-Type: application/json","X-Subscription-Token:BSAJsGw6fk3ePFkR_dBzlsY7UYovyDa"})
-    Call<BraveResponse> search(@Body BraveWebSearchRequest request);
-
+    @GET("search")
+    @Headers({
+            "Accept: application/json",
+            "X-Subscription-Token: "
+    })
+    Call<BraveResponse> search(
+            @Query("q") String query,
+            @Query("count") Integer count,
+            @Query("safeSearch") String safeSearch,
+            @Query("resultFilter") String resultFilter,
+            @Query("freshness") String freshness
+    );
 }
