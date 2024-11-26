@@ -1,6 +1,7 @@
 package dev.langchain4j.model.input;
 
 import dev.langchain4j.spi.prompt.PromptTemplateFactory;
+import dev.langchain4j.spi.prompt.Template;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -37,7 +38,7 @@ public class PromptTemplate {
     static final String CURRENT_DATE_TIME = "current_date_time";
 
     private final String templateString;
-    private final PromptTemplateFactory.Template template;
+    private final Template template;
     private final Clock clock;
 
     /**
