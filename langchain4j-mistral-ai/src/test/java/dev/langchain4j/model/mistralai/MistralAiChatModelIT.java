@@ -31,10 +31,10 @@ class MistralAiChatModelIT {
             .addParameter("transactionId", STRING)
             .build();
 
-    ChatLanguageModel mistralLargeModel = MistralAiChatModel.builder()
+    ChatLanguageModel ministral3b = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST)
-            .temperature(0.1)
+            .modelName("ministral-3b-latest")
+            .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -410,7 +410,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_execute_multiple_tools_using_model_open8x22B_then_answer() {
+    void should_execute_multiple_tools_then_answer() {
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
@@ -425,7 +425,7 @@ class MistralAiChatModelIT {
         List<ToolSpecification> toolSpecifications = asList(retrievePaymentStatus, retrievePaymentDate);
 
         // when
-        Response<AiMessage> response = mistralLargeModel.generate(chatMessages, toolSpecifications);
+        Response<AiMessage> response = ministral3b.generate(chatMessages, toolSpecifications);
 
         // then
         AiMessage aiMessage = response.content();
@@ -451,7 +451,7 @@ class MistralAiChatModelIT {
         chatMessages.add(toolExecutionResultMessage2);
 
         // when
-        Response<AiMessage> response2 = mistralLargeModel.generate(chatMessages);
+        Response<AiMessage> response2 = ministral3b.generate(chatMessages);
 
         // then
         AiMessage aiMessage2 = response2.content();
