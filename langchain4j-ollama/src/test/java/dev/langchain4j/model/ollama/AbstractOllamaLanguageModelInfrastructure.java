@@ -6,9 +6,9 @@ import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 
 public class AbstractOllamaLanguageModelInfrastructure {
 
+    public static final String OLLAMA_BASE_URL = System.getenv("OLLAMA_BASE_URL");
+
     private static final String MODEL_NAME = TINY_DOLPHIN_MODEL;
-    //    public static final String OLLAMA_BASE_URL = System.getenv("OLLAMA_BASE_URL");
-    public static final String OLLAMA_BASE_URL = "http://192.168.0.9:11434"; // TODO
 
     static LC4jOllamaContainer ollama;
 
