@@ -13,13 +13,13 @@ LangChain4j integrates seamlessly with [PGVector](https://github.com/pgvector/pg
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-pgvector</artifactId>
-    <version>0.36.2</version>  <!-- Use the latest version -->
+    <version>0.36.2</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-pgvector:0.36.2' // Use the latest version```
+```implementation 'dev.langchain4j:langchain4j-pgvector:0.36.2'```
 
 ## APIs
 
