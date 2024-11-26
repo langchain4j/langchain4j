@@ -12,10 +12,6 @@
     <artifactId>langchain4j-document-loader-google-cloud-storage</artifactId>
     <name>LangChain4j :: Document Loader :: Google Cloud Storage</name>
 
-    <properties>
-        <project.root.dir>${project.parent.basedir}/../</project.root.dir>
-    </properties>
-
     <dependencyManagement>
         <dependencies>
             <dependency>

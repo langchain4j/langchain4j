@@ -12,10 +12,6 @@
     <artifactId>langchain4j-document-transformer-jsoup</artifactId>
     <name>LangChain4j :: Document Transformer :: jsoup</name>
 
-    <properties>
-        <project.root.dir>${project.parent.basedir}/../</project.root.dir>
-    </properties>
-
     <dependencies>
 
         <dependency>

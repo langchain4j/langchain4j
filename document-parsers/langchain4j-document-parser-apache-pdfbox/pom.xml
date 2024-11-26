@@ -12,10 +12,6 @@
     <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
     <name>LangChain4j :: Document Parser :: Apache PDFBox</name>
 
-    <properties>
-        <project.root.dir>${project.parent.basedir}/../</project.root.dir>
-    </properties>
-
     <dependencies>
 
         <dependency>

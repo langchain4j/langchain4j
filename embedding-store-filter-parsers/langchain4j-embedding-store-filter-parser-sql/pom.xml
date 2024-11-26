@@ -12,10 +12,6 @@
     <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
     <name>LangChain4j :: Embedding Store Filter Parser :: SQL</name>
 
-    <properties>
-        <project.root.dir>${project.parent.basedir}/../</project.root.dir>
-    </properties>
-
     <dependencies>
 
         <dependency>

@@ -15,7 +15,6 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.root.dir>${project.parent.basedir}/../</project.root.dir>
     </properties>
 
     <dependencies>

@@ -23,10 +23,6 @@
         </license>
     </licenses>
 
-    <properties>
-        <project.root.dir>${project.parent.basedir}/../</project.root.dir>
-    </properties>
-
     <dependencies>
 
         <dependency>

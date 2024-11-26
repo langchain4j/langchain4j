@@ -14,7 +14,6 @@
 
     <properties>
         <apache.poi.version>5.2.5</apache.poi.version>
-        <project.root.dir>${project.parent.basedir}/../</project.root.dir>
     </properties>
 
     <dependencies>

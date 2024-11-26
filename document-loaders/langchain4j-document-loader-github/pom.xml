@@ -12,9 +12,6 @@
     <artifactId>langchain4j-document-loader-github</artifactId>
     <name>LangChain4j :: Document Loader :: GitHub</name>
 
-    <properties>
-        <project.root.dir>${project.parent.basedir}/../</project.root.dir>
-    </properties>
     <dependencies>
 
         <dependency>

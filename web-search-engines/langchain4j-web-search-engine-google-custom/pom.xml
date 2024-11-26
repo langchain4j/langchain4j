@@ -18,7 +18,6 @@
     <properties>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
-        <project.root.dir>${project.parent.basedir}/../</project.root.dir>
     </properties>
 
     <dependencies>
