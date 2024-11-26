@@ -53,6 +53,7 @@
         <netty.version>4.1.111.Final</netty.version>
         <awaitility.version>4.2.2</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
+        <jspecify.version>1.0.0</jspecify.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
         <kotlin.version>2.0.21</kotlin.version>
     </properties>
@@ -186,6 +187,12 @@
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jspecify</groupId>
+                <artifactId>jspecify</artifactId>
+                <version>${jspecify.version}</version>
             </dependency>
 
             <dependency>
