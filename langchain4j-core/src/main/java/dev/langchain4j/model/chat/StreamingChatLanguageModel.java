@@ -1,19 +1,89 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Collections.singletonList;
 
 /**
+ * TODO review all javadoc in this class
  * Represents a language model that has a chat interface and can stream a response one token at a time.
+ *
+ * @see ChatLanguageModel
  */
 public interface StreamingChatLanguageModel {
+
+    /**
+     * TODO
+     * <p>
+     * A temporary default implementation of this method is necessary
+     * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     *
+     * @param chatRequest
+     * @param handler
+     */
+    @Experimental
+    default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+
+        ResponseFormat responseFormat = chatRequest.responseFormat();
+        if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
+            // TODO check supportedCapabilities() instead?
+            throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
+        }
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onPartialResponse(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(response.content())
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build();
+                handler.onCompleteResponse(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        if (isNullOrEmpty(chatRequest.toolSpecifications())) {
+            generate(chatRequest.messages(), legacyHandler);
+        } else {
+            if (chatRequest.toolChoice() == REQUIRED) {
+                if (chatRequest.toolSpecifications().size() == 1) {
+                    generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0), legacyHandler);
+                } else {
+                    throw new UnsupportedOperationException(
+                            "ToolChoice.REQUIRED is currently supported only when there is a single tool");
+                }
+            } else {
+                generate(chatRequest.messages(), chatRequest.toolSpecifications(), legacyHandler);
+            }
+        }
+    }
 
     /**
      * Generates a response from the model based on a message from a user.

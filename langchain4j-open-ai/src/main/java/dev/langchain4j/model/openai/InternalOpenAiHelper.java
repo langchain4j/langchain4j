@@ -12,6 +12,7 @@ import dev.ai4j.openai4j.chat.ImageUrl;
 import dev.ai4j.openai4j.chat.Message;
 import dev.ai4j.openai4j.chat.Tool;
 import dev.ai4j.openai4j.chat.ToolCall;
+import dev.ai4j.openai4j.chat.ToolChoiceMode;
 import dev.ai4j.openai4j.chat.ToolMessage;
 import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -26,9 +27,13 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -39,6 +44,8 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -492,7 +499,7 @@ public class InternalOpenAiHelper {
 
     static ChatModelResponse createModelListenerResponse(String responseId,
                                                          String responseModel,
-                                                         Response<AiMessage> response) {
+                                                         ChatResponse response) {
         if (response == null) {
             return null;
         }
@@ -502,7 +509,7 @@ public class InternalOpenAiHelper {
                 .model(responseModel)
                 .tokenUsage(response.tokenUsage())
                 .finishReason(response.finishReason())
-                .aiMessage(response.content())
+                .aiMessage(response.aiMessage())
                 .build();
     }
 
@@ -529,6 +536,47 @@ public class InternalOpenAiHelper {
                     .type(JSON_SCHEMA)
                     .jsonSchema(openAiJsonSchema)
                     .build();
+        }
+    }
+
+    public static ToolChoiceMode toOpenAiToolChoice(ToolChoice toolChoice) {
+        return switch (toolChoice) {
+            case AUTO -> ToolChoiceMode.AUTO;
+            case REQUIRED -> ToolChoiceMode.REQUIRED;
+        };
+    }
+
+    public static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
+        return Response.from(
+                chatResponse.aiMessage(),
+                chatResponse.tokenUsage(),
+                chatResponse.finishReason()
+        );
+    }
+
+    static StreamingChatResponseHandler convertHandler(StreamingResponseHandler<AiMessage> handler) {
+        return new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                handler.onNext(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse chatResponse) {
+                handler.onComplete(convertResponse(chatResponse));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+    }
+
+    public static void validate(ChatRequest chatRequest) {
+        if (chatRequest.topK() != null) {
+            throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
         }
     }
 }

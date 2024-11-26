@@ -10,6 +10,7 @@ import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatCompletionsToolCall;
 import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
 import com.azure.ai.openai.models.ChatCompletionsToolSelection;
+import com.azure.ai.openai.models.ChatCompletionsToolSelectionPreset;
 import com.azure.ai.openai.models.ChatMessageImageContentItem;
 import com.azure.ai.openai.models.ChatMessageImageUrl;
 import com.azure.ai.openai.models.ChatMessageTextContentItem;
@@ -51,6 +52,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -408,7 +410,7 @@ class InternalAzureOpenAiHelper {
                         String code = (String) errorCode;
                         if (contentFilterCode.equals(code)) {
                             // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
-                            exceptionFinishReason = FinishReason.CONTENT_FILTER;
+                            exceptionFinishReason = CONTENT_FILTER;
                         }
                     }
                 }
@@ -446,5 +448,13 @@ class InternalAzureOpenAiHelper {
                 .finishReason(response.finishReason())
                 .aiMessage(response.content())
                 .build();
+    }
+
+    static ChatCompletionsToolSelection toToolChoice(ToolChoice toolChoice) {
+        ChatCompletionsToolSelectionPreset preset = switch (toolChoice) {
+            case AUTO -> ChatCompletionsToolSelectionPreset.AUTO;
+            case REQUIRED -> ChatCompletionsToolSelectionPreset.REQUIRED;
+        };
+        return new ChatCompletionsToolSelection(preset);
     }
 }

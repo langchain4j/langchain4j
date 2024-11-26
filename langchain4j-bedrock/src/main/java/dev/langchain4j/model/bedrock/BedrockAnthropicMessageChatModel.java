@@ -450,7 +450,8 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     }
 
     /**
-     * Bedrock Anthropic model ids
+     * Bedrock Anthropic model ids.
+     * See <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html">this</a> for more details.
      */
     @Getter
     public enum Types {

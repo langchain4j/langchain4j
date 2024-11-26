@@ -6,19 +6,83 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 import java.util.Set;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
 
 /**
+ * TODO review all javadoc in this class
  * Represents a language model that has a chat interface.
+ *
+ * @see StreamingChatLanguageModel
  */
 public interface ChatLanguageModel {
+
+    /**
+     * TODO
+     * <p>
+     * A temporary default implementation of this method is necessary
+     * until all {@link ChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     *
+     * @param chatRequest
+     * @return
+     */
+    @Experimental
+    default ChatResponse chat(ChatRequest chatRequest) {
+
+        ResponseFormat responseFormat = chatRequest.responseFormat();
+        if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
+            // TODO check supportedCapabilities() instead?
+            throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
+        }
+
+        Response<AiMessage> response;
+        if (isNullOrEmpty(chatRequest.toolSpecifications())) {
+            response = generate(chatRequest.messages());
+        } else {
+            if (chatRequest.toolChoice() == REQUIRED) {
+                if (chatRequest.toolSpecifications().size() == 1) {
+                    response = generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0));
+                } else {
+                    throw new UnsupportedOperationException(
+                            "ToolChoice.REQUIRED is currently supported only when there is a single tool");
+                }
+            } else {
+                response = generate(chatRequest.messages(), chatRequest.toolSpecifications());
+            }
+        }
+
+        return ChatResponse.builder()
+                .aiMessage(response.content())
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .build();
+    }
+
+    @Experimental
+    default String chat(String userMessage) {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from(userMessage))
+                .build();
+
+        ChatResponse chatResponse = chat(chatRequest);
+
+        return chatResponse.aiMessage().text();
+    }
+
+    @Experimental
+    default Set<Capability> supportedCapabilities() {
+        return Set.of();
+    }
 
     /**
      * Generates a response from the model based on a message from a user.
@@ -84,15 +148,5 @@ public interface ChatLanguageModel {
      */
     default Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
-    }
-
-    @Experimental
-    default ChatResponse chat(ChatRequest request) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Experimental
-    default Set<Capability> supportedCapabilities() {
-        return emptySet();
     }
 }

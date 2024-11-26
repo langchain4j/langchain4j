@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -35,7 +36,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -43,9 +43,11 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AiServicesWithNewToolsIT {
+    // TODO move to common, use parameterized tests
+    // TODO test the same in streaming mode, test token usage is summed for tools
 
     @Captor
-    private ArgumentCaptor<List<ToolSpecification>> toolSpecificationCaptor;
+    private ArgumentCaptor<ChatRequest> chatRequestCaptor;
 
     protected abstract List<ChatLanguageModel> models();
 
@@ -53,6 +55,7 @@ public abstract class AiServicesWithNewToolsIT {
         return models();
     }
 
+    // TODO test token usage is summed for tools
     // TODO single argument: array of primitives, array of enums, array of POJOs, map?
     // TODO up-wrap single POJO and Map? (remove one level of object nesting) Make sure descriptions still work.
 
@@ -76,24 +79,24 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    protected void should_execute_tool_with_primitive_parameters() {
+    void should_execute_tool_with_primitive_parameters() {
 
-        for (var model : models()) {
+        for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithPrimitiveParameters());
+            ToolWithPrimitiveParameters tool = spy(new ToolWithPrimitiveParameters());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tool)
                     .build();
 
-            var text = "How much is 37 plus 87?";
+            String text = "How much is 37 plus 87?";
 
             // when
-            var response = assistant.chat(text);
+            Response<AiMessage> response = assistant.chat(text);
 
             // then
             assertThat(response.content().text()).contains("124");
@@ -103,12 +106,12 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
-                var toolSpecification = toolSpecifications.get(0);
+                ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("add");
                 assertThat(toolSpecification.description()).isNull();
                 assertThat(toolSpecification.parameters()).isEqualTo(ToolWithPrimitiveParameters.EXPECTED_SCHEMA);
@@ -143,20 +146,21 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    protected void should_execute_tool_with_pojo_with_primitives() {
-        for (var model : models()) {
+    void should_execute_tool_with_pojo_with_primitives() {
+
+        for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithPojoParameter());
+            ToolWithPojoParameter tool = spy(new ToolWithPojoParameter());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tool)
                     .build();
 
-            var text = "Use 'process' tool to process the following: Klaus is 37 years old, 1.78m height and single";
+            String text = "Use 'process' tool to process the following: Klaus is 37 years old, 1.78m height and single";
 
             // when
             assistant.chat(text);
@@ -167,12 +171,12 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
-                var toolSpecification = toolSpecifications.get(0);
+                ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("process");
                 assertThat(toolSpecification.description()).isNull();
                 assertThat(toolSpecification.parameters()).isEqualTo(ToolWithPojoParameter.EXPECTED_SCHEMA);
@@ -211,19 +215,19 @@ public abstract class AiServicesWithNewToolsIT {
     @Test
     protected void should_execute_tool_with_pojo_with_nested_pojo() {
 
-        for (var model : models()) {
+        for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithNestedPojoParameter());
+            ToolWithNestedPojoParameter tool = spy(new ToolWithNestedPojoParameter());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tool)
                     .build();
 
-            var text = "Use 'process' tool to process the following: Klaus lives in Langley Falls";
+            String text = "Use 'process' tool to process the following: Klaus lives in Langley Falls";
 
             // when
             assistant.chat(text);
@@ -234,12 +238,12 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
-                var toolSpecification = toolSpecifications.get(0);
+                ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("process");
                 assertThat(toolSpecification.description()).isNull();
                 assertThat(toolSpecification.parameters()).isEqualTo(ToolWithNestedPojoParameter.EXPECTED_SCHEMA);
@@ -282,21 +286,21 @@ public abstract class AiServicesWithNewToolsIT {
 
     @Test
     @EnabledIf("supportsRecursion")
-    protected void should_execute_tool_with_pojo_with_recursion() {
+    void should_execute_tool_with_pojo_with_recursion() {
 
-        for (var model : models()) {
+        for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithRecursion());
+            ToolWithRecursion tool = spy(new ToolWithRecursion());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tool)
                     .build();
 
-            var text = "Use 'process' tool to process the following: Francine has 2 children: Steve and Hayley";
+            String text = "Use 'process' tool to process the following: Francine has 2 children: Steve and Hayley";
 
             // when
             assistant.chat(text);
@@ -315,12 +319,12 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
-                var toolSpecification = toolSpecifications.get(0);
+                ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("process");
                 assertThat(toolSpecification.description()).isNull();
                 assertThat(toolSpecification.parameters()).isEqualTo(ToolWithRecursion.EXPECTED_SCHEMA);
@@ -341,24 +345,24 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    protected void should_execute_tool_without_parameters() {
+    void should_execute_tool_without_parameters() {
 
-        for (var model : models()) {
+        for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            var tools = spy(new ToolWithoutParameters());
+            ToolWithoutParameters tools = spy(new ToolWithoutParameters());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tools)
                     .build();
 
-            var text = "What is the time now? Respond in HH:MM:SS format.";
+            String text = "What is the time now? Respond in HH:MM:SS format.";
 
             // when
-            var response = assistant.chat(text);
+            Response<AiMessage> response = assistant.chat(text);
 
             // then
             assertThat(response.content().text()).contains("17:11:45");
@@ -368,12 +372,12 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
-                var toolSpecification = toolSpecifications.get(0);
+                ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("currentTime");
                 assertThat(toolSpecification.description()).isNull();
                 assertThat(toolSpecification.parameters()).isNull();
@@ -406,24 +410,24 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    protected void should_execute_tool_with_enum_parameter() {
+    void should_execute_tool_with_enum_parameter() {
 
-        for (var model : models()) {
+        for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithEnumParameter());
+            ToolWithEnumParameter tool = spy(new ToolWithEnumParameter());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tool)
                     .build();
 
-            var text = "What is the temperature in Munich in celsius?";
+            String text = "What is the weather in Munich in celsius?";
 
             // when
-            var response = assistant.chat(text);
+            Response<AiMessage> response = assistant.chat(text);
 
             // then
             assertThat(response.content().text()).contains("19");
@@ -433,10 +437,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithEnumParameter.EXPECTED_SPECIFICATION);
             }
@@ -462,21 +466,21 @@ public abstract class AiServicesWithNewToolsIT {
 
     @Test
     @EnabledIf("supportsMapParameters")
-    protected void should_execute_tool_with_map_parameter() {
+    void should_execute_tool_with_map_parameter() {
 
-        for (var model : modelsSupportingMapParametersInTools()) {
+        for (ChatLanguageModel model : modelsSupportingMapParametersInTools()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithMapParameter());
+            ToolWithMapParameter tool = spy(new ToolWithMapParameter());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tool)
                     .build();
 
-            var text = "Process the following: Klaus is 42 years old and Francine is 47 years old";
+            String text = "Process the following: Klaus is 42 years old and Francine is 47 years old";
 
             // when
             assistant.chat(text);
@@ -490,10 +494,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithMapParameter.EXPECTED_SPECIFICATION);
             }
@@ -522,21 +526,21 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    protected void should_execute_tool_with_list_of_strings_parameter() {
+    void should_execute_tool_with_list_of_strings_parameter() {
 
-        for (var model : models()) {
+        for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithListOfStringsParameter());
+            ToolWithListOfStringsParameter tool = spy(new ToolWithListOfStringsParameter());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tool)
                     .build();
 
-            var text = "Process the following names: Klaus and Franny";
+            String text = "Process the following names: Klaus and Franny";
 
             // when
             assistant.chat(text);
@@ -547,10 +551,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfStringsParameter.EXPECTED_SPECIFICATION);
             }
@@ -582,21 +586,21 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    protected void should_execute_tool_with_set_of_enums_parameter() {
+    void should_execute_tool_with_set_of_enums_parameter() {
 
-        for (var model : models()) {
+        for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithSetOfEnumsParameter());
+            ToolWithSetOfEnumsParameter tool = spy(new ToolWithSetOfEnumsParameter());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tool)
                     .build();
 
-            var text = "Process the following colors: RED and GREEN";
+            String text = "Process the following colors: RED and GREEN";
 
             // when
             assistant.chat(text);
@@ -607,10 +611,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithSetOfEnumsParameter.EXPECTED_SPECIFICATION);
             }
@@ -637,19 +641,19 @@ public abstract class AiServicesWithNewToolsIT {
     @Test
     protected void should_execute_tool_with_collection_of_integers_parameter() {
 
-        for (var model : models()) {
+        for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithCollectionOfIntegersParameter());
+            ToolWithCollectionOfIntegersParameter tool = spy(new ToolWithCollectionOfIntegersParameter());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tool)
                     .build();
 
-            var text = "Process the following integers: 37, 73";
+            String text = "Process the following integers: 37, 73";
 
             // when
             assistant.chat(text);
@@ -660,10 +664,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithCollectionOfIntegersParameter.EXPECTED_SPECIFICATION);
             }
@@ -697,19 +701,19 @@ public abstract class AiServicesWithNewToolsIT {
     @Test
     protected void should_execute_tool_with_list_of_POJOs_parameter() {
 
-        for (var model : models()) {
+        for (ChatLanguageModel model : models()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithListOfPojoParameter());
+            ToolWithListOfPojoParameter tool = spy(new ToolWithListOfPojoParameter());
 
-            var assistant = AiServices.builder(Assistant.class)
+            Assistant assistant = AiServices.builder(Assistant.class)
                     .chatLanguageModel(model)
                     .tools(tool)
                     .build();
 
-            var text = "Process the following people: Klaus and Franny";
+            String text = "Process the following people: Klaus and Franny";
 
             // when
             assistant.chat(text);
@@ -728,10 +732,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfPojoParameter.EXPECTED_SPECIFICATION);
             }
@@ -739,6 +743,6 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     protected boolean verifyModelInteractions() {
-        return true;
+        return false;
     }
 }
