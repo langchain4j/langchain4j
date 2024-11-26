@@ -23,28 +23,32 @@ public interface Content {
     TextSegment textSegment();
 
     static Content from(String text) {
-        return new TextContent(text);
+        return new DefaultContent(text);
     }
 
     static Content from(TextSegment textSegment) {
-        return new TextContent(textSegment);
+        return new DefaultContent(textSegment);
     }
 
-    record TextContent(
+    /**
+     * A DefaultContent class that encapsulates a TextSegment.
+     * Implements the Content interface.
+     */
+    record DefaultContent(
             TextSegment textSegment
     ) implements Content {
 
-        public TextContent(TextSegment textSegment) {
+        public DefaultContent(TextSegment textSegment) {
             this.textSegment = ensureNotNull(textSegment, "textSegment");
         }
 
-        public TextContent(String text) {
+        public DefaultContent(String text) {
             this(TextSegment.from(text));
         }
 
         @Override
         public String toString() {
-            return "Content {" +
+            return "DefaultContent {" +
                     " textSegment = " + textSegment +
                     " }";
         }

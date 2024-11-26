@@ -58,6 +58,6 @@ class ContentTest {
 
         // then
         assertThat(content)
-                .hasToString("Content { textSegment = TextSegment { text = \"content\" metadata = {} } }");
+                .hasToString("DefaultContent { textSegment = TextSegment { text = \"content\" metadata = {} } }");
     }
 }
