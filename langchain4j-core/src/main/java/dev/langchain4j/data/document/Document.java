@@ -72,7 +72,7 @@ public interface Document {
      * @return a new Document.
      */
     static Document from(String text) {
-        return new SimpleDocument(text);
+        return new DefaultDocument(text);
     }
 
     /**
@@ -83,7 +83,7 @@ public interface Document {
      * @return a new Document.
      */
     static Document from(String text, Metadata metadata) {
-        return new SimpleDocument(text, metadata);
+        return new DefaultDocument(text, metadata);
     }
 
     /**
@@ -105,16 +105,20 @@ public interface Document {
      * @param metadata the metadata of the document.
      * @return a new Document.
      */
-     static Document document(String text, Metadata metadata) {
+    static Document document(String text, Metadata metadata) {
         return from(text, metadata);
     }
 
-    record SimpleDocument(
+    /**
+     * DefaultDocument is an implementation of the Document interface.
+     * It represents an unstructured piece of text with associated metadata.
+     */
+    record DefaultDocument(
             String text,
             Metadata metadata
     ) implements Document {
 
-        public SimpleDocument(String text, Metadata metadata) {
+        public DefaultDocument(String text, Metadata metadata) {
             this.text = ensureNotBlank(text, "text");
             this.metadata = ensureNotNull(metadata, "metadata");
         }
@@ -125,22 +129,22 @@ public interface Document {
         }
 
         /**
-         * Creates a new SimpleDocument from the given text.
+         * Creates a new DefaultDocument from the given text.
          *
          * <p>The created document will have empty metadata.
          *
          * @param text the text of the document.
          */
-        SimpleDocument(String text) {
+        DefaultDocument(String text) {
             this(text, new Metadata());
         }
 
         @Override
         public String toString() {
-            return "Document {" +
-                    " text = " + quoted(text) + // todo: Be careful with PII
-                    " metadata = " + metadata.toMap() +
-                    " }";
+            return "DefaultDocument {"
+                    + " text = " + quoted(text)  // todo: Be careful with PII
+                    + " metadata = " + metadata.toMap()
+                    + " }";
         }
     }
 }
