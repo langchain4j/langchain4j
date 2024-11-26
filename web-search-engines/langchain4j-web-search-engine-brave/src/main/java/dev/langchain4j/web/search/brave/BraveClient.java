@@ -45,8 +45,8 @@ public class BraveClient {
     }
 
     public BraveResponse search(BraveWebSearchRequest braveWebSearchRequest) {
-        try{
-            Response<BraveResponse> retrofitResponse=braveApi
+        try {
+            Response<BraveResponse> retrofitResponse = braveApi
                     .search(
                             braveWebSearchRequest.getApiKey(),
                             braveWebSearchRequest.getQuery(),
@@ -56,14 +56,12 @@ public class BraveClient {
                             braveWebSearchRequest.getFreshness())
                     .execute();
 
-            if(retrofitResponse.isSuccessful()) {
+            if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
-            }
-            else{
+            } else {
                 throw toException(retrofitResponse);
             }
-        }
-        catch(IOException e){
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

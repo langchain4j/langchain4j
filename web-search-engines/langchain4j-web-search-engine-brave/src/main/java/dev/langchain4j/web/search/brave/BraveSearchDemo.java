@@ -1,5 +1,6 @@
 package dev.langchain4j.web.search.brave;
 
+import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.web.search.WebSearchResults;
 import dev.langchain4j.web.search.brave.BraveWebSearchEngine;
 
@@ -9,9 +10,9 @@ public class BraveSearchDemo {
     public static void main(String[] args) {
         // Parameters for the BraveWebSearchEngine
         String baseUrl = "https://api.search.brave.com/res/v1/web/";
-        String apiKey = ""; // Replace with your API key
+        String apiKey = "BSAJsGw6fk3ePFkR_dBzlsY7UYovyDa"; // Replace with your API key
         Duration timeout = Duration.ofSeconds(10);
-        Integer count = 10;
+        Integer count = 30;
         String safeSearch = "moderate";
         String resultFilter = "web";
         String freshness = "day";
@@ -28,7 +29,7 @@ public class BraveSearchDemo {
         );
 
         // Example query
-        String query = "brave search engine";
+        String query = "I want to plan my visit to Hyderabad India help me plan my trip ";
 
         // Perform the search
         try {

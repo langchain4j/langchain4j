@@ -5,14 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4c77c53f-535e-44eb-90c0-0ec8f6c273d7" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchEngine.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchRequest.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchResponse.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/.idea/compiler.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/barve/BraveApi.java" beforeDir="false" afterPath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/brave/BraveApi.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/barve/BraveWebSearchRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/barve/BraveWebSearchResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/barve/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/brave/Main.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/brave/BraveSearchDemo.java" beforeDir="false" afterPath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/brave/BraveSearchDemo.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchEngine.java" beforeDir="false" afterPath="$PROJECT_DIR$/langchain4j-web-search-engine-brave/src/main/java/dev/langchain4j/web/search/brave/BraveWebSearchEngine.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -75,6 +71,7 @@
       <updated>1732402063922</updated>
       <workItem from="1732402065113" duration="2049000" />
       <workItem from="1732446877123" duration="1914000" />
+      <workItem from="1732656825925" duration="2323000" />
     </task>
     <servers />
   </component>
