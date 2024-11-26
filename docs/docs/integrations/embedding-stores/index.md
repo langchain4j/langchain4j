@@ -25,7 +25,7 @@ sidebar_position: 0
 | [Oracle](/integrations/embedding-stores/oracle)                                       | ✅                | ✅                          | ✅                   |
 | [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                | ✅                          | ✅                   |
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   | ✅                | ✅                          | ✅                   |
-| [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                | ✅                          |                     |
+| [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                | ✅                          | ✅                   |
 | [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                            |                     |
 | [Tablestore](/integrations/embedding-stores/tablestore)                               | ✅                | ✅                          | ✅                   |
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                            |                     |
