@@ -26,13 +26,6 @@ public class PromptTemplate {
 
     private static final PromptTemplateFactory FACTORY = factory();
 
-    private static PromptTemplateFactory factory() {
-        for (PromptTemplateFactory factory : loadFactories(PromptTemplateFactory.class)) {
-            return factory;
-        }
-        return new DefaultPromptTemplateFactory();
-    }
-
     static final String CURRENT_DATE = "current_date";
     static final String CURRENT_TIME = "current_time";
     static final String CURRENT_DATE_TIME = "current_date_time";
@@ -40,6 +33,13 @@ public class PromptTemplate {
     private final String templateString;
     private final Template template;
     private final Clock clock;
+
+    private static PromptTemplateFactory factory() {
+        for (PromptTemplateFactory factory : loadFactories(PromptTemplateFactory.class)) {
+            return factory;
+        }
+        return new DefaultPromptTemplateFactory();
+    }
 
     /**
      * Create a new PromptTemplate.
