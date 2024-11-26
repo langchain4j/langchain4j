@@ -12,6 +12,8 @@ import org.apache.tika.sax.BodyContentHandler;
 import org.xml.sax.ContentHandler;
 
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -36,13 +38,16 @@ public class ApacheTikaDocumentParser implements DocumentParser {
     private final Supplier<Metadata> metadataSupplier;
     private final Supplier<ParseContext> parseContextSupplier;
 
+    private final boolean includeMetadata;
+
     /**
      * Creates an instance of an {@code ApacheTikaDocumentParser} with the default Tika components.
      * It uses {@link AutoDetectParser}, {@link BodyContentHandler} without write limit,
      * empty {@link Metadata} and empty {@link ParseContext}.
+     * Note: By default, no metadata is added to the parsed document.
      */
     public ApacheTikaDocumentParser() {
-        this((Supplier<Parser>) null, null, null, null);
+        this((Supplier<Parser>) null, null, null, null, false);
     }
 
     /**
@@ -64,7 +69,8 @@ public class ApacheTikaDocumentParser implements DocumentParser {
                 () -> getOrDefault(parser, DEFAULT_PARSER_SUPPLIER),
                 () -> getOrDefault(contentHandler, DEFAULT_CONTENT_HANDLER_SUPPLIER),
                 () -> getOrDefault(metadata, DEFAULT_METADATA_SUPPLIER),
-                () -> getOrDefault(parseContext, DEFAULT_PARSE_CONTEXT_SUPPLIER)
+                () -> getOrDefault(parseContext, DEFAULT_PARSE_CONTEXT_SUPPLIER),
+                false
         );
     }
 
@@ -76,18 +82,19 @@ public class ApacheTikaDocumentParser implements DocumentParser {
      * @param contentHandlerSupplier Supplier for Tika content handler. Default: {@link BodyContentHandler} without write limit
      * @param metadataSupplier       Supplier for Tika metadata. Default: empty {@link Metadata}
      * @param parseContextSupplier   Supplier for Tika parse context. Default: empty {@link ParseContext}
+     * @param includeMetadata        Whether to include metadata in the parsed document
      */
     public ApacheTikaDocumentParser(Supplier<Parser> parserSupplier,
                                     Supplier<ContentHandler> contentHandlerSupplier,
                                     Supplier<Metadata> metadataSupplier,
-                                    Supplier<ParseContext> parseContextSupplier) {
+                                    Supplier<ParseContext> parseContextSupplier,
+                                    boolean includeMetadata) {
         this.parserSupplier = getOrDefault(parserSupplier, () -> DEFAULT_PARSER_SUPPLIER);
         this.contentHandlerSupplier = getOrDefault(contentHandlerSupplier, () -> DEFAULT_CONTENT_HANDLER_SUPPLIER);
         this.metadataSupplier = getOrDefault(metadataSupplier, () -> DEFAULT_METADATA_SUPPLIER);
         this.parseContextSupplier = getOrDefault(parseContextSupplier, () -> DEFAULT_PARSE_CONTEXT_SUPPLIER);
+        this.includeMetadata = includeMetadata;
     }
-
-    // TODO allow automatically extract metadata (e.g. creator, last-author, created/modified timestamp, etc)
 
     @Override
     public Document parse(InputStream inputStream) {
@@ -104,7 +111,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
                 throw new BlankDocumentException();
             }
 
-            return Document.from(text);
+            return includeMetadata ? Document.from(text, convert(metadata)) : Document.from(text);
         } catch (BlankDocumentException e) {
             throw e;
         } catch (ZeroByteFileException e) {
@@ -112,5 +119,23 @@ public class ApacheTikaDocumentParser implements DocumentParser {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Converts a Tika {@link Metadata} object into a {@link dev.langchain4j.data.document.Metadata} object.
+     *
+     *
+     * @param tikaMetadata the {@code Metadata} object from the Tika library containing metadata information
+     * @return a {@link dev.langchain4j.data.document.Metadata} object representing in langchain4j format.
+     */
+    private dev.langchain4j.data.document.Metadata convert(Metadata tikaMetadata) {
+
+        final Map<String, String> tikaMetaData = new HashMap<>();
+
+        for (String name : tikaMetadata.names()) {
+            tikaMetaData.put(name, String.join(";", tikaMetadata.getValues(name)));
+        }
+
+        return new dev.langchain4j.data.document.Metadata(tikaMetaData);
     }
 }

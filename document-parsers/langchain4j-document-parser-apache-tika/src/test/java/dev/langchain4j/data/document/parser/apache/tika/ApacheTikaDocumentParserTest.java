@@ -9,6 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.InputStream;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,12 +37,35 @@ class ApacheTikaDocumentParserTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
+            "test-file.doc",
+            "test-file.docx",
+            "test-file.ppt",
+            "test-file.pptx",
+            "test-file.pdf"
+    })
+    void should_parse_doc_ppt_and_pdf_files_with_metadata(String fileName) {
+
+        DocumentParser parser = new ApacheTikaDocumentParser(AutoDetectParser::new, null, null, null, true);
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);
+
+        Document document = parser.parse(inputStream);
+
+        assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
+
+        final Map<String, Object> metadata = document.metadata().toMap();
+        assertThat(metadata).isNotEmpty();
+        assertThat(metadata.get("X-TIKA:Parsed-By")).isNotNull();
+        assertThat(metadata.get("X-TIKA:Parsed-By-Full-Set")).isNotNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
             "test-file.xls",
             "test-file.xlsx"
     })
     void should_parse_xls_files(String fileName) {
 
-        DocumentParser parser = new ApacheTikaDocumentParser(AutoDetectParser::new, null, null, null);
+        DocumentParser parser = new ApacheTikaDocumentParser(AutoDetectParser::new, null, null, null, false);
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);
 
         Document document = parser.parse(inputStream);
