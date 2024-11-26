@@ -19,6 +19,7 @@ import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
 import io.qdrant.client.WithVectorsSelectorFactory;
 import io.qdrant.client.grpc.JsonWithInt.Value;
+import io.qdrant.client.grpc.Points;
 import io.qdrant.client.grpc.Points.DeletePoints;
 import io.qdrant.client.grpc.Points.Filter;
 import io.qdrant.client.grpc.Points.PointStruct;
@@ -26,6 +27,7 @@ import io.qdrant.client.grpc.Points.PointsSelector;
 import io.qdrant.client.grpc.Points.ScoredPoint;
 import io.qdrant.client.grpc.Points.SearchPoints;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -107,21 +109,21 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
   @Override
   public List<String> addAll(List<Embedding> embeddings) {
 
-    List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
+    List<String> ids = embeddings.stream().map(ignored -> randomUUID()).toList();
 
     addAllInternal(ids, embeddings, null);
 
-    return ids;
+    return Collections.unmodifiableList(ids);
   }
 
   @Override
   public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
 
-    List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
+    List<String> ids = embeddings.stream().map(ignored -> randomUUID()).toList();
 
     addAllInternal(ids, embeddings, textSegments);
 
-    return ids;
+    return Collections.unmodifiableList(ids);
   }
 
   private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
@@ -166,6 +168,66 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
   }
 
+  @Override
+  public void remove(String id) {
+      if (id == null || id.isBlank()) {
+          throw new IllegalArgumentException("id cannot be null or blank");
+      }
+      removeAll(Collections.singleton(id));
+  }
+
+  @Override
+  public void removeAll(Collection<String> ids) {
+      if (ids == null || ids.isEmpty()) {
+          throw new IllegalArgumentException("ids cannot be null or empty");
+      }
+      try {
+
+          Points.PointsIdsList pointsIdsList = Points.PointsIdsList.newBuilder()
+                  .addAllIds(ids.stream().map(id -> id(UUID.fromString(id))).toList())
+                  .build();
+          PointsSelector pointsSelector = PointsSelector.newBuilder().setPoints(pointsIdsList).build();
+
+          client
+                  .deleteAsync(
+                          DeletePoints.newBuilder()
+                                  .setCollectionName(collectionName)
+                                  .setPoints(pointsSelector)
+                                  .build())
+                  .get();
+      } catch (InterruptedException | ExecutionException e) {
+          throw new RuntimeException(e);
+      }
+  }
+
+  @Override
+  public void removeAll(dev.langchain4j.store.embedding.filter.Filter filter) {
+      if (filter == null) {
+          throw new IllegalArgumentException("filter cannot be null");
+      }
+      try {
+
+          Filter qdrantFilter = QdrantFilterConverter.convertExpression(filter);
+          PointsSelector pointsSelector = PointsSelector.newBuilder().setFilter(qdrantFilter).build();
+
+          client
+                  .deleteAsync(
+                          DeletePoints.newBuilder()
+                                  .setCollectionName(collectionName)
+                                  .setPoints(pointsSelector)
+                                  .build())
+                  .get();
+      } catch (InterruptedException | ExecutionException e) {
+          throw new RuntimeException(e);
+      }
+  }
+
+  @Override
+  public void removeAll() {
+      clearStore();
+  }
+
+  @Override
   public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
 
     SearchPoints.Builder searchBuilder = SearchPoints.newBuilder()
@@ -189,7 +251,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     if (results.isEmpty()) {
-      return new EmbeddingSearchResult<TextSegment>(emptyList());
+      return new EmbeddingSearchResult<>(emptyList());
     }
 
     List<EmbeddingMatch<TextSegment>> matches = results.stream()
@@ -200,7 +262,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     Collections.reverse(matches);
 
-    return new EmbeddingSearchResult<TextSegment>(matches);
+    return new EmbeddingSearchResult<>(matches);
   }
 
   @Override
