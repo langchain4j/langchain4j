@@ -269,7 +269,7 @@ public String getWebPageContent(@P("URL of the page") String url) {
 }
 ```
 
-### Tool Method Restrictions
+### Tool Method Limitations
 Methods annotated with `@Tool`:
 - can be either static or non-static
 - can have any visibility (public, private, etc.).
@@ -279,9 +279,9 @@ Methods annotated with `@Tool` can accept any number of parameters of various ty
 - Primitive types: `int`, `double`, etc
 - Object types: `String`, `Integer`, `Double`, etc
 - Custom POJOs (can contain nested POJOs)
-- Enums
-- `List`/`Set` of above-mentioned types
-- `Map<K,V>` (you need to manually specify the types of `K` and `V` in the parameter description)
+- `enum`s
+- `List<T>`/`Set<T>` where `T` is one of the above-mentioned types
+- `Map<K,V>` (you need to manually specify the types of `K` and `V` in the parameter description with `@P`)
 
 Methods without parameters are supported as well.
 
@@ -300,6 +300,11 @@ If the method has a `void` return type, "Success" string is sent to the LLM if t
 If the method has a `String` return type, the returned value is sent to the LLM as is, without any conversions.
 
 For other return types, the returned value is converted into a JSON string before being sent to the LLM.
+
+### Exception Handling
+If a method annotated with `@Tool` throws an `Exception`,
+the message of the `Exception` (`e.getMessage()`) will be sent to the LLM as the result of tool's execution.
+This allows the LLM to correct its mistake and retry, if it considers it necessary.
 
 ### `@Tool`
 Any Java method annotated with `@Tool`
