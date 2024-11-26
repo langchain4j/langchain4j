@@ -420,7 +420,7 @@ public abstract class AiServicesWithNewToolsIT {
                     .tools(tool)
                     .build();
 
-            var text = "What is the weather in Munich in celsius?";
+            var text = "What is the temperature in Munich in celsius?";
 
             // when
             var response = assistant.chat(text);
