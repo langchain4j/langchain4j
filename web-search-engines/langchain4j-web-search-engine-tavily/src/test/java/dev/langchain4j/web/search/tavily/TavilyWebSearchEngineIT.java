@@ -77,6 +77,24 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         assertThat(results).anyMatch(result -> result.url().toString().contains("langchain4j.dev"));
     }
 
+
+    @Test
+    void test_complex_url_parsing(){
+
+        // given
+        TavilyWebSearchEngine tavilyWebSearchEngine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .includeAnswer(true)
+                .build();
+
+        // when
+        WebSearchResults webSearchResults = tavilyWebSearchEngine.search("Release notes for ADP Workforce Now");
+
+        // then
+        List<WebSearchOrganicResult> results = webSearchResults.results();
+        assertThat(results).hasSize(5 + 1); // +1 for answer
+    }
+
     @Override
     protected WebSearchEngine searchEngine() {
         return webSearchEngine;
