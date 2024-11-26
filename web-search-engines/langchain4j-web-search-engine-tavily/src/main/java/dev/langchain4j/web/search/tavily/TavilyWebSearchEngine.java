@@ -28,7 +28,7 @@ import static java.util.stream.Collectors.toList;
  * In this case, the {@link WebSearchOrganicResult#url()} of the first result will always be "https://tavily.com/" and
  * the {@link WebSearchOrganicResult#title()} will always be "Tavily Search API".
  */
-public class    TavilyWebSearchEngine implements WebSearchEngine {
+public class TavilyWebSearchEngine implements WebSearchEngine {
 
     private static final String DEFAULT_BASE_URL = "https://api.tavily.com/";
 
