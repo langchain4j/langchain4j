@@ -192,9 +192,6 @@
         <profile>
             <id>openrewrite</id>
             <!-- `mvn -P openrewrite org.openrewrite.maven:rewrite-maven-plugin:run` -->
-            <properties>
-                <spotless.check.skip>true</spotless.check.skip>
-            </properties>
             <build>
                 <plugins>
                     <plugin>
