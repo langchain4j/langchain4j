@@ -98,7 +98,6 @@
 
     <properties>
         <gib.disable>true</gib.disable>
-        <project.root.dir>${project.basedir}</project.root.dir>
     </properties>
 
     <build>
