@@ -1,9 +1,16 @@
 package dev.langchain4j.model.bedrock;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockStreamingChatModel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
+
+import java.util.List;
+
+import static dev.langchain4j.data.message.MessageSanitizer.sanitizeMessages;
 
 @Getter
 @SuperBuilder
@@ -29,5 +36,11 @@ public class BedrockAnthropicStreamingChatModel extends AbstractBedrockStreaming
         Types(String modelID) {
             this.value = modelID;
         }
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
+        super.generate(sanitizedMessages, handler);
     }
 }
