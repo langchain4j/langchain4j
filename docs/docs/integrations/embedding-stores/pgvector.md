@@ -62,7 +62,8 @@ docker run --rm --name langchain4j-postgres-test-container -p 5432:5432 -e POSTG
 ```-e POSTGRES_PASSWORD=my_password```: Sets the PostgreSQL password to my_password.<br>
 ```gvector/pgvector```: Specifies the Docker image to use, pre-configured with the PGVector extension.<br>
 
-```
+```java
+
 // Initialize the PGVector embedding store
         EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
                 .host("localhost")          // Hostname for the Docker container
