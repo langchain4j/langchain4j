@@ -9,7 +9,9 @@ import redis.clients.jedis.JedisPooled;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 public class RedisChatMemoryStore implements ChatMemoryStore {
 
@@ -19,14 +21,13 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
                                 Integer port,
                                 String user,
                                 String password) {
-        String finalHost = ensureNotBlank(host, "host");
-        int finalPort = ensureNotNull(port, "port");
-        if (user != null) {
-            String finalUser = ensureNotBlank(user, "user");
-            String finalPassword = ensureNotBlank(password, "password");
-            this.client = new JedisPooled(finalHost, finalPort, finalUser, finalPassword);
+        ensureNotBlank(host, "host");
+        ensureNotNull(port, "port");
+        if (password != null) {
+            ensureNotBlank(password, "password");
+            this.client = new JedisPooled(host, port, user, password);
         } else {
-            this.client = new JedisPooled(finalHost, finalPort);
+            this.client = new JedisPooled(host, port);
         }
     }
 
