@@ -121,7 +121,7 @@ with the following subtypes:
 - `JsonArraySchema` - to support arrays and collection (e.g., `List`, `Set`) types.
 - `JsonObjectSchema` - to support object types.
 - `JsonReferenceSchema` - to support recursion (e.g., `Person` has a `Set<Person> children` field).
-
+- `JsonAnyOfSchema` - to support subtypes (e.g., `Shape` can be either `Circle` or `Rectangle`).
 
 ### High Level Structured Outputs API
 
