@@ -104,6 +104,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         for (int i = 0; i < ids.size(); i++) {
             newEntries.add(new Entry<>(ids.get(i), embeddings.get(i), embedded.get(i)));
         }
+        add(newEntries);
     }
 
     private List<String> add(List<Entry<Embedded>> newEntries) {
