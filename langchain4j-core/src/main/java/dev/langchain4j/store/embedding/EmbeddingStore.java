@@ -57,6 +57,19 @@ public interface EmbeddingStore<Embedded> {
     /**
      * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
      *
+     * @param embeddings A list of embeddings to be added to the store.
+     * @param embedded   A list of original contents that were embedded.
+     * @return A list of auto-generated IDs associated with the added embeddings.
+     */
+    default List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
+        final List<String> ids = generateIds(embeddings.size());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
+
+    /**
+     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
+     *
      * @param ids A list of IDs associated with the added embeddings.
      * @param embeddings A list of embeddings to be added to the store.
      * @param embedded   A list of original contents that were embedded.
@@ -102,19 +115,6 @@ public interface EmbeddingStore<Embedded> {
     @Experimental
     default void removeAll() {
         throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    /**
-     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
-     *
-     * @param embeddings A list of embeddings to be added to the store.
-     * @param embedded   A list of original contents that were embedded.
-     * @return A list of auto-generated IDs associated with the added embeddings.
-     */
-    default List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
-        final List<String> ids = generateIds(embeddings.size());
-        addAll(ids, embeddings, embedded);
-        return ids;
     }
 
 
