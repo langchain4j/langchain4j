@@ -800,7 +800,7 @@ class BedrockChatModelIT {
     }
 
     @Test
-    void testBedrockAnthropicChatModelWithMessagesToSanitize() {
+    void testBedrockAnthropicMessageChatModelWithMessagesToSanitize() {
         List<ChatMessage> messages = new ArrayList<>();
         String userMessage = "Hello, my name is Ronaldo, what is my name?";
         String userMessage2 = "Hello, my name is Neymar, what is my name?";
