@@ -23,7 +23,7 @@ public class ChatParameters {
     private final Integer maxOutputTokens;
     private final List<String> stopSequences;
 
-    private ChatParameters(ChatParameters.Builder builder) {
+    protected ChatParameters(ChatParameters.Builder builder) {
         this.temperature = builder.temperature;
         this.topP = builder.topP;
         this.topK = builder.topK;
@@ -105,7 +105,7 @@ public class ChatParameters {
         return new Builder();
     }
 
-    public static class Builder {
+    public static class Builder<T extends Builder<T>> {
 
         private Double temperature;
         private Double topP;
@@ -115,39 +115,39 @@ public class ChatParameters {
         private Integer maxOutputTokens;
         private List<String> stopSequences;
 
-        public Builder temperature(Double temperature) {
+        public T temperature(Double temperature) {
             this.temperature = temperature;
-            return this;
+            return (T) this;
         }
 
-        public Builder topP(Double topP) {
+        public T topP(Double topP) {
             this.topP = topP;
-            return this;
+            return (T) this;
         }
 
-        public Builder topK(Integer topK) {
+        public T topK(Integer topK) {
             this.topK = topK;
-            return this;
+            return (T) this;
         }
 
-        public Builder frequencyPenalty(Double frequencyPenalty) {
+        public T frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
-            return this;
+            return (T) this;
         }
 
-        public Builder presencePenalty(Double presencePenalty) {
+        public T presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
-            return this;
+            return (T) this;
         }
 
-        public Builder maxOutputTokens(Integer maxOutputTokens) {
+        public T maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
-            return this;
+            return (T) this;
         }
 
-        public Builder stopSequences(List<String> stopSequences) {
+        public T stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
-            return this;
+            return (T) this;
         }
 
         public ChatParameters build() {

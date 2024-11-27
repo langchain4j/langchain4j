@@ -219,6 +219,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         }
 
         ChatParameters chatParameters = chatRequest.parameters();
+        OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder().build();
+        if (chatParameters instanceof OpenAiChatParameters) {
+            openAiChatParameters = (OpenAiChatParameters) chatParameters;
+        }
 
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .model(getOrDefault(chatRequest.modelName(), this.modelName))
@@ -230,9 +234,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .maxCompletionTokens(this.maxCompletionTokens) // TODO take from chatRequest.maxOutputTokens() if present?
                 .presencePenalty(getOrDefault(chatParameters.presencePenalty(), this.presencePenalty))
                 .frequencyPenalty(getOrDefault(chatParameters.frequencyPenalty(), this.frequencyPenalty))
-                .logitBias(this.logitBias)
+                .logitBias(getOrDefault(openAiChatParameters.logitBias(), this.logitBias))
                 .responseFormat(responseFormat)
-                .seed(this.seed)
+                .seed(getOrDefault(openAiChatParameters.seed(), this.seed))
                 .user(this.user)
                 .parallelToolCalls(this.parallelToolCalls);
 
