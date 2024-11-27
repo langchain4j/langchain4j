@@ -44,6 +44,7 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 
 # Guidelines on adding a new model integration
 
+- Please open PRs with new model integrations in the [langchain4j-community](https://github.com/langchain4j/langchain4j-community) repository
 - [Integration with Anthropic](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-anthropic) is a good example.
 - Use the official SDK if available.
 - If the official SDK is not available, use Java 11 HTTP Client and Jackson to implement the client.
@@ -54,6 +55,7 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 
 # Guidelines on adding a new embedding store integration
 
+- Please open PRs with new embedding store integrations in the [langchain4j-community](https://github.com/langchain4j/langchain4j-community) repository
 - [Integration with Chroma](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-chroma) is a good example.
 - Use the official SDK if available.
 - If the official SDK is not available, use Java 11 HTTP Client and Jackson to implement the client.
