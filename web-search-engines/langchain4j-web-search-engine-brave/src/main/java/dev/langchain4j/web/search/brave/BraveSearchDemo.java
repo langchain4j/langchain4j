@@ -10,7 +10,7 @@ public class BraveSearchDemo {
     public static void main(String[] args) {
         // Parameters for the BraveWebSearchEngine
         String baseUrl = "https://api.search.brave.com/res/v1/web/";
-        String apiKey = "BSAJsGw6fk3ePFkR_dBzlsY7UYovyDa"; // Replace with your API key
+        String apiKey = ""; // Replace with your API key
         Duration timeout = Duration.ofSeconds(10);
         Integer count = 30;
         String safeSearch = "moderate";

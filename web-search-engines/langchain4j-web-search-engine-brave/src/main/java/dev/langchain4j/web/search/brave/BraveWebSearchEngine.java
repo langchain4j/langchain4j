@@ -58,7 +58,7 @@ public class BraveWebSearchEngine implements WebSearchEngine {
      *
      */
 
-    private static final String DEFAULT_BASE_URL = "https://api.search.brave.com/res/v1/web/";
+    private static final String DEFAULT_BASE_URL = "https://api.search.brave.com/";
     private final String apiKey;
     private final Integer count;
     private final String safeSearch;

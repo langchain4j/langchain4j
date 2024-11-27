@@ -8,7 +8,7 @@ import retrofit2.http.Query;
 
 public interface BraveApi {
 
-    @GET("search")
+    @GET("res/v1/web/search")
     @Headers({
             "Accept: application/json"
     })
