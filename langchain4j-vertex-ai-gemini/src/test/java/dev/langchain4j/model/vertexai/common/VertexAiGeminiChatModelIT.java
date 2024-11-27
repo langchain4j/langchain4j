@@ -69,6 +69,16 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
+    @Override
+    protected boolean assertResponseId() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean assertResponseModel() {
+        return false; // TODO implement
+    }
+
     protected boolean assertFinishReason() {
         return false; // TODO fix
     }

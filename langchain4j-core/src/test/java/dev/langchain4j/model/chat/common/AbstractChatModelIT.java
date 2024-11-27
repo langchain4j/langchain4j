@@ -93,7 +93,7 @@ public abstract class AbstractChatModelIT {
         return models();
     }
 
-    // TODO test response id and model name
+    // TODO asser everything (e.g. id, model, token usage, finish reason, etc) in every test?
 
     // BASIC
 
@@ -110,6 +110,14 @@ public abstract class AbstractChatModelIT {
         ChatResponse chatResponse = model.chat(chatRequest);
 
         // then
+        if (assertResponseId()) {
+            assertThat(chatResponse.id()).isNotBlank();
+        }
+
+        if (assertResponseModel()) {
+            assertThat(chatResponse.modelName()).isNotBlank();
+        }
+
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
@@ -228,7 +236,11 @@ public abstract class AbstractChatModelIT {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse);
+        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(5);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(LENGTH);
@@ -557,7 +569,10 @@ public abstract class AbstractChatModelIT {
 
     // MULTI MODALITY
 
-    // TODO images: as public url, as private url, as base64, as URI of file?
+    // TODO images: mixed image sources
+    // TODO images: gs://langchain4j-test/cat.png
+    // TODO images: make sure URI from local file is failing
+    // TODO test other modalities: supported and unsupported
 
     // IMAGES - BASE64
 
@@ -796,6 +811,14 @@ public abstract class AbstractChatModelIT {
 
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
         return supportsSingleImageInputAsPublicURL();
+    }
+
+    protected boolean assertResponseModel() {
+        return true;
+    }
+
+    protected boolean assertResponseId() {
+        return true;
     }
 
     protected boolean assertFinishReason() {

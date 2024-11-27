@@ -24,7 +24,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String modelName() {
-        return "gpt-4o-mini";
+        return "gpt-4o";
     }
 
     @Override

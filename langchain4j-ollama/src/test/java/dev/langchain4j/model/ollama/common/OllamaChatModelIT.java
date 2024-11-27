@@ -174,6 +174,17 @@ class OllamaChatModelIT extends AbstractChatModelIT {
         return false; // vision model only supports a single image per message
     }
 
+
+    @Override
+    protected boolean assertResponseId() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean assertResponseModel() {
+        return false; // TODO implement
+    }
+
     @Override
     protected boolean assertFinishReason() {
         return false; // TODO fix

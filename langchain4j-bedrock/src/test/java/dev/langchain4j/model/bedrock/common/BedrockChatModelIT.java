@@ -76,4 +76,14 @@ class BedrockChatModelIT extends AbstractChatModelIT {
     protected boolean supportsSingleImageInputAsPublicURL() {
         return false; // Bedrock supports only Base64-encoded images
     }
+
+    @Override
+    protected boolean assertResponseId() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean assertResponseModel() {
+        return false; // TODO implement
+    }
 }

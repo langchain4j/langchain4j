@@ -253,35 +253,40 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         ChatLanguageModel.validate(chatRequest);
 
-        Response<AiMessage> response = generate(
+        return generate(
                 chatRequest.messages(),
                 chatRequest.toolSpecifications(),
                 chatRequest.toolChoice()
         );
-
-        return ChatResponse.builder()
-                .aiMessage(response.content())
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
-                .build();
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, null, null);
+        ChatResponse chatResponse = generate(messages, null, null);
+        return convertResponse(chatResponse);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null);
+        ChatResponse chatResponse = generate(messages, toolSpecifications, null);
+        return convertResponse(chatResponse);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, List.of(toolSpecification), REQUIRED);
+        ChatResponse chatResponse = generate(messages, List.of(toolSpecification), REQUIRED);
+        return convertResponse(chatResponse);
     }
 
-    private Response<AiMessage> generate(List<ChatMessage> messages,
+    private static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
+    return Response.from(
+            chatResponse.aiMessage(),
+            chatResponse.tokenUsage(),
+            chatResponse.finishReason()
+    );
+}
+
+    private ChatResponse generate(List<ChatMessage> messages,
                                          List<ToolSpecification> toolSpecifications,
                                          ToolChoice toolChoice
     ) {
@@ -345,7 +350,13 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 }
             });
 
-            return response;
+            return ChatResponse.builder()
+                    .id(chatCompletions.getId())
+                    .modelName(chatCompletions.getModel())
+                    .aiMessage(response.content())
+                    .tokenUsage(response.tokenUsage())
+                    .finishReason(response.finishReason())
+                    .build();
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating response, {}", httpResponseException.getValue());
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
@@ -367,11 +378,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 throw httpResponseException;
             }
 
-            return Response.from(
-                    aiMessage(httpResponseException.getMessage()),
-                    null,
-                    exceptionFinishReason
-            );
+            return ChatResponse.builder()
+                    .aiMessage(aiMessage(httpResponseException.getMessage()))
+                    .finishReason(exceptionFinishReason)
+                    .build();
         }
     }
 
