@@ -6,39 +6,34 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiChatParametersTest {
 
-    @Test
-    void test() {
+    private static final int SEED = 123;
+    private static final double TEMPERATURE = 1.0;
 
-        // given
-        int seed = 123;
-        double temperature = 1.0;
+    @Test
+    void should_set_common_parameters_then_OpenAI_specific_parameters() {
 
         // when
         OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
-                .temperature(temperature)
-                .seed(seed)
+                .temperature(TEMPERATURE)// first set common parameters
+                .seed(SEED) // then set OpenAI-specific parameters
                 .build();
 
         // then
-        assertThat(openAiChatParameters.seed()).isEqualTo(seed);
-        assertThat(openAiChatParameters.temperature()).isEqualTo(temperature);
+        assertThat(openAiChatParameters.seed()).isEqualTo(SEED);
+        assertThat(openAiChatParameters.temperature()).isEqualTo(TEMPERATURE);
     }
 
     @Test
-    void test_reverse_order() {
-
-        // given
-        int seed = 1;
-        double temperature = 1.0;
+    void should_set_OpenAI_specific_parameters_then_common_parameters() {
 
         // when
         OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
-                .seed(seed) // first OpenAiChatParameters parameters
-                .temperature(temperature) // then ChatParameters parameters
+                .seed(SEED) // first set OpenAI-specific parameters
+                .temperature(TEMPERATURE) // then set common parameters
                 .build();
 
         // then
-        assertThat(openAiChatParameters.seed()).isEqualTo(seed);
-        assertThat(openAiChatParameters.temperature()).isEqualTo(temperature);
+        assertThat(openAiChatParameters.seed()).isEqualTo(SEED);
+        assertThat(openAiChatParameters.temperature()).isEqualTo(TEMPERATURE);
     }
 }
