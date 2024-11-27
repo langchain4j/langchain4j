@@ -38,6 +38,27 @@ class UtilsTest {
     }
 
     @Test
+    void test_getOrDefault_List() {
+        List<Integer> nullList = null;
+        List<Integer> emptyList = List.of();
+        List<Integer> list1 = List.of(1);
+        List<Integer> list2 = List.of(2);
+
+        assertThat(Utils.getOrDefault(nullList, nullList)).isSameAs(nullList);
+        assertThat(Utils.getOrDefault(nullList, emptyList)).isSameAs(emptyList);
+
+        assertThat(Utils.getOrDefault(emptyList, nullList)).isSameAs(nullList);
+        assertThat(Utils.getOrDefault(emptyList, emptyList)).isSameAs(emptyList);
+
+        assertThat(Utils.getOrDefault(nullList, list1)).isSameAs(list1);
+        assertThat(Utils.getOrDefault(emptyList, list1)).isSameAs(list1);
+
+        assertThat(Utils.getOrDefault(list1, list2))
+                .isSameAs(list1)
+                .isNotSameAs(list2);
+    }
+
+    @Test
     public void test_isNullOrBlank() {
         assertThat(Utils.isNullOrBlank(null)).isTrue();
         assertThat(Utils.isNullOrBlank("")).isTrue();

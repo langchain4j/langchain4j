@@ -19,6 +19,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
@@ -56,7 +57,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiResponse
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toTools;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.validate;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.validateSupportedParameters;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -165,7 +166,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-        validate(chatRequest);
+        validateSupportedParameters(chatRequest.parameters());
         ResponseFormat openAiResponseFormat = toOpenAiResponseFormat(chatRequest.responseFormat(), this.strictJsonSchema);
         return doChat(chatRequest, getOrDefault(openAiResponseFormat, this.responseFormat));
     }
@@ -217,16 +218,18 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             responseFormat = null;
         }
 
+        ChatParameters chatParameters = chatRequest.parameters();
+
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .model(getOrDefault(chatRequest.modelName(), this.modelName))
                 .messages(toOpenAiMessages(chatRequest.messages()))
-                .temperature(getOrDefault(chatRequest.temperature(), this.temperature))
-                .topP(getOrDefault(chatRequest.topP(), this.topP))
-                .stop(getOrDefault(chatRequest.stopSequences(), this.stop))
-                .maxTokens(getOrDefault(chatRequest.maxOutputTokens(), this.maxTokens))
+                .temperature(getOrDefault(chatParameters.temperature(), this.temperature))
+                .topP(getOrDefault(chatParameters.topP(), this.topP))
+                .stop(getOrDefault(chatParameters.stopSequences(), this.stop))
+                .maxTokens(getOrDefault(chatParameters.maxOutputTokens(), this.maxTokens))
                 .maxCompletionTokens(this.maxCompletionTokens) // TODO take from chatRequest.maxOutputTokens() if present?
-                .presencePenalty(getOrDefault(chatRequest.presencePenalty(), this.presencePenalty))
-                .frequencyPenalty(getOrDefault(chatRequest.frequencyPenalty(), this.frequencyPenalty))
+                .presencePenalty(getOrDefault(chatParameters.presencePenalty(), this.presencePenalty))
+                .frequencyPenalty(getOrDefault(chatParameters.frequencyPenalty(), this.frequencyPenalty))
                 .logitBias(this.logitBias)
                 .responseFormat(responseFormat)
                 .seed(this.seed)

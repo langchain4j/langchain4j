@@ -5,6 +5,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -38,23 +40,14 @@ public interface ChatLanguageModel {
     @Experimental
     default ChatResponse chat(ChatRequest chatRequest) {
 
-        ResponseFormat responseFormat = chatRequest.responseFormat();
-        if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
-            // TODO check supportedCapabilities() instead?
-            throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
-        }
+        validate(chatRequest);
 
         Response<AiMessage> response;
         if (isNullOrEmpty(chatRequest.toolSpecifications())) {
             response = generate(chatRequest.messages());
         } else {
             if (chatRequest.toolChoice() == REQUIRED) {
-                if (chatRequest.toolSpecifications().size() == 1) {
-                    response = generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0));
-                } else {
-                    throw new UnsupportedOperationException(
-                            "ToolChoice.REQUIRED is currently supported only when there is a single tool");
-                }
+                response = generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0));
             } else {
                 response = generate(chatRequest.messages(), chatRequest.toolSpecifications());
             }
@@ -65,6 +58,54 @@ public interface ChatLanguageModel {
                 .tokenUsage(response.tokenUsage())
                 .finishReason(response.finishReason())
                 .build();
+    }
+
+    /**
+     * @deprecated TODO
+     */
+    @Deprecated
+    static void validate(ChatRequest chatRequest) {
+        String errorTemplate = "%s is not supported yet by this model provider";
+
+        if (chatRequest.modelName() != null) {
+            throw new UnsupportedFeatureException(errorTemplate.formatted("'modelName' parameter"));
+        }
+
+        ChatParameters parameters = chatRequest.parameters();
+        if (parameters.temperature() != null) {
+            throw new UnsupportedFeatureException(errorTemplate.formatted("'temperature' parameter"));
+        }
+        if (parameters.topP() != null) {
+            throw new UnsupportedFeatureException(errorTemplate.formatted("'topP' parameter"));
+        }
+        if (parameters.topK() != null) {
+            throw new UnsupportedFeatureException(errorTemplate.formatted("'topK' parameter"));
+        }
+        if (parameters.frequencyPenalty() != null) {
+            throw new UnsupportedFeatureException(errorTemplate.formatted("'frequencyPenalty' parameter"));
+        }
+        if (parameters.presencePenalty() != null) {
+            throw new UnsupportedFeatureException(errorTemplate.formatted("'presencePenalty' parameter"));
+        }
+        if (parameters.maxOutputTokens() != null) {
+            throw new UnsupportedFeatureException(errorTemplate.formatted("'maxOutputTokens' parameter"));
+        }
+        if (parameters.stopSequences() != null) {
+            throw new UnsupportedFeatureException(errorTemplate.formatted("'stopSequences' parameter"));
+        }
+
+        List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
+        if (chatRequest.toolChoice() == REQUIRED
+                && !isNullOrEmpty(toolSpecifications) && toolSpecifications.size() > 1) {
+            throw new UnsupportedFeatureException(
+                    "ToolChoice.REQUIRED is currently supported only when there is a single tool");
+        }
+
+        ResponseFormat responseFormat = chatRequest.responseFormat();
+        if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
+            // TODO check supportedCapabilities() instead?
+            throw new UnsupportedFeatureException(errorTemplate.formatted("JSON response format"));
+        }
     }
 
     @Experimental

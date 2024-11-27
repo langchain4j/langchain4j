@@ -106,12 +106,15 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         GeminiGenerateContentRequest request = createGenerateContentRequest(
             chatRequest.messages(),
             chatRequest.toolSpecifications(),
-            getOrDefault(chatRequest.responseFormat(), this.responseFormat)
+            getOrDefault(chatRequest.responseFormat(), this.responseFormat),
+            chatRequest.parameters()
         );
 
         ChatModelRequest chatModelRequest = createChatModelRequest(
+            chatRequest.modelName(),
             chatRequest.messages(),
-            chatRequest.toolSpecifications()
+            chatRequest.toolSpecifications(),
+            chatRequest.parameters()
         );
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
@@ -150,6 +153,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         notifyListenersOnResponse(response, chatModelRequest, listenerAttributes);
 
         return ChatResponse.builder()
+            .modelName(chatModelRequest.model()) // TODO take actual model from response
             .aiMessage(aiMessage)
             .finishReason(finishReason)
             .tokenUsage(tokenUsage)

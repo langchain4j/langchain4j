@@ -18,6 +18,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.bedrock.internal.Json;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
@@ -420,7 +421,8 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         } else if (content instanceof ImageContent) {
             ImageContent imageContent = (ImageContent) content;
             if (imageContent.image().url() != null) {
-                throw new IllegalArgumentException("Anthropic does not support images as URLs, only as Base64-encoded strings");
+                throw new UnsupportedFeatureException("Image URLs are not supported by Anthropic. " +
+                        "Please provide images as Base64-encoded strings.");
             }
             BedrockAnthropicImageSource imageSource = new BedrockAnthropicImageSource(
                     "base64",

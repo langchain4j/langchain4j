@@ -6,6 +6,7 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 
 import java.util.List;
 
+import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1;
 import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1;
 
 class BedrockChatModelIT extends AbstractChatModelIT {
@@ -22,7 +23,42 @@ class BedrockChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceAnyWithMultipleTools() {
+    protected String modelName() {
+        return AnthropicClaude3HaikuV1.getValue();
+    }
+
+    @Override
+    protected boolean supportsModelNameParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTemperatureParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTopPParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTopKParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsMaxOutputTokensParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsStopSequencesParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
 
@@ -37,7 +73,7 @@ class BedrockChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsImageInputsFromPublicURLs() {
+    protected boolean supportsSingleImageInputAsPublicURL() {
         return false; // Bedrock supports only Base64-encoded images
     }
 }

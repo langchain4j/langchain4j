@@ -24,8 +24,6 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
@@ -253,11 +251,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
 
-        ResponseFormat responseFormat = chatRequest.responseFormat();
-        if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
-            // TODO check supportedCapabilities() instead?
-            throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
-        }
+        ChatLanguageModel.validate(chatRequest);
 
         Response<AiMessage> response = generate(
                 chatRequest.messages(),

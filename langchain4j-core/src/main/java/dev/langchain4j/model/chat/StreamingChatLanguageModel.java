@@ -7,9 +7,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
@@ -40,11 +37,7 @@ public interface StreamingChatLanguageModel {
     @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
-        ResponseFormat responseFormat = chatRequest.responseFormat();
-        if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
-            // TODO check supportedCapabilities() instead?
-            throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
-        }
+        ChatLanguageModel.validate(chatRequest);
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 
@@ -73,12 +66,7 @@ public interface StreamingChatLanguageModel {
             generate(chatRequest.messages(), legacyHandler);
         } else {
             if (chatRequest.toolChoice() == REQUIRED) {
-                if (chatRequest.toolSpecifications().size() == 1) {
-                    generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0), legacyHandler);
-                } else {
-                    throw new UnsupportedOperationException(
-                            "ToolChoice.REQUIRED is currently supported only when there is a single tool");
-                }
+                generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0), legacyHandler);
             } else {
                 generate(chatRequest.messages(), chatRequest.toolSpecifications(), legacyHandler);
             }

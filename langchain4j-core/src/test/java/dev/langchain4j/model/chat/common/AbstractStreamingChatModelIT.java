@@ -203,7 +203,7 @@ public abstract class AbstractStreamingChatModelIT {
         // TODO
     }
 
-    @EnabledIf("supportsToolChoiceAnyWithMultipleTools")
+    @EnabledIf("supportsToolChoiceRequiredWithMultipleTools")
     @ParameterizedTest
     @MethodSource("models")
     void should_force_LLM_to_call_any_tool(StreamingChatLanguageModel model) throws Exception {
@@ -278,7 +278,7 @@ public abstract class AbstractStreamingChatModelIT {
         }
     }
 
-    @EnabledIf("supportsToolChoiceAnyWithSingleTool")
+    @EnabledIf("supportsToolChoiceRequiredWithSingleTool")
     @ParameterizedTest
     @MethodSource("models")
     void should_force_LLM_to_call_specific_tool(StreamingChatLanguageModel model) throws Exception {
@@ -348,11 +348,11 @@ public abstract class AbstractStreamingChatModelIT {
         return true;
     }
 
-    protected boolean supportsToolChoiceAnyWithSingleTool() {
+    protected boolean supportsToolChoiceRequiredWithSingleTool() {
         return supportsTools();
     }
 
-    protected boolean supportsToolChoiceAnyWithMultipleTools() {
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return supportsTools();
     }
 

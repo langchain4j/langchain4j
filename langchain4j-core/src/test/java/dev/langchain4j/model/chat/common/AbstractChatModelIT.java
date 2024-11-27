@@ -89,7 +89,7 @@ public abstract class AbstractChatModelIT {
         return models();
     }
 
-    protected List<ChatLanguageModel> modelsSupportingVision() {
+    protected List<ChatLanguageModel> modelsSupportingImageInputs() {
         return models();
     }
 
@@ -127,6 +127,7 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
+                // TODO .addSystemMessage, .addUserMessage?
                 .messages(
                         SystemMessage.from("Translate messages from user into German"),
                         UserMessage.from("Translate: 'I love you'")
@@ -142,8 +143,8 @@ public abstract class AbstractChatModelIT {
 
     // MODEL PARAMETERS
 
-    // TODO test all parameters
-    // TODO test all unsupported params
+    // TODO test all parameters once HTTP clients are customizable?
+    // TODO test all unsupported parameters
 
     @EnabledIf("supportsModelNameParameter")
     @ParameterizedTest
@@ -155,8 +156,9 @@ public abstract class AbstractChatModelIT {
         ensureModelNameIsDifferentFromDefault(modelName, model);
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story"))
                 .modelName(modelName)
+                .messages(UserMessage.from("Tell me a story"))
+                .maxOutputTokens(1) // to save tokens
                 .build();
 
         // when
@@ -172,7 +174,7 @@ public abstract class AbstractChatModelIT {
         ChatRequest.Builder builder = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"));
         if (supportsMaxOutputTokensParameter()) {
-            builder.maxOutputTokens(1);
+            builder.maxOutputTokens(1); // to save tokens
         }
         ChatRequest chatRequest = builder.build();
 
@@ -191,18 +193,18 @@ public abstract class AbstractChatModelIT {
     void should_fail_if_modelName_parameter_is_not_supported(ChatLanguageModel model) {
 
         // given
-        String modelName = modelName();
-        ensureModelNameIsDifferentFromDefault(modelName, model);
+        String modelName = "dummy";
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story"))
                 .modelName(modelName)
+                .messages(UserMessage.from("Tell me a story"))
                 .build();
 
         // when-then
         assertThatThrownBy(() -> model.chat(chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("modelName");
+                .hasMessageContaining("modelName")
+                .hasMessageContaining("not supported");
     }
 
     @EnabledIf("supportsMaxOutputTokensParameter")
@@ -214,8 +216,8 @@ public abstract class AbstractChatModelIT {
         int maxOutputTokens = 5;
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story"))
                 .maxOutputTokens(maxOutputTokens)
+                .messages(UserMessage.from("Tell me a long story"))
                 .build();
 
         // when
@@ -242,14 +244,15 @@ public abstract class AbstractChatModelIT {
         int maxOutputTokens = 5;
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Tell me a long story"))
                 .maxOutputTokens(maxOutputTokens)
+                .messages(UserMessage.from("Tell me a long story"))
                 .build();
 
         // when-then
         assertThatThrownBy(() -> model.chat(chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("maxOutputTokens");
+                .hasMessageContaining("maxOutputTokens")
+                .hasMessageContaining("not supported");
     }
 
     @EnabledIf("supportsStopSequencesParameter")
@@ -258,11 +261,11 @@ public abstract class AbstractChatModelIT {
     void should_respect_stopSequences_parameter(ChatLanguageModel model) {
 
         // given
-        List<String> stopSequences = List.of("World");
+        List<String> stopSequences = List.of("World", " World");
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Say 'Hello World'"))
                 .stopSequences(stopSequences)
+                .messages(UserMessage.from("Say 'Hello World'"))
                 .build();
 
         // when
@@ -270,7 +273,8 @@ public abstract class AbstractChatModelIT {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isEqualTo("Hello ");
+        assertThat(aiMessage.text()).containsIgnoringCase("Hello");
+        assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         assertTokenUsage(chatResponse);
@@ -289,14 +293,15 @@ public abstract class AbstractChatModelIT {
         List<String> stopSequences = List.of("World");
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Say 'Hello World'"))
                 .stopSequences(stopSequences)
+                .messages(UserMessage.from("Say 'Hello World'"))
                 .build();
 
         // when-then
         assertThatThrownBy(() -> model.chat(chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("stopSequences");
+                .hasMessageContaining("stopSequences")
+                .hasMessageContaining("not supported");
     }
 
     // TOOLS
@@ -310,8 +315,8 @@ public abstract class AbstractChatModelIT {
         UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
                 .toolSpecifications(WEATHER_TOOL)
+                .messages(userMessage)
                 .build();
 
         // when
@@ -333,12 +338,12 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest2 = ChatRequest.builder()
+                .toolSpecifications(WEATHER_TOOL)
                 .messages(
                         userMessage,
                         aiMessage,
                         ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
                 )
-                .toolSpecifications(WEATHER_TOOL)
                 .build();
 
         // when
@@ -363,21 +368,22 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the weather in Munich?"))
                 .toolSpecifications(WEATHER_TOOL)
+                .messages(UserMessage.from("What is the weather in Munich?"))
                 .build();
 
         // when-then
         AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
         if (assertExceptionType()) {
             throwableAssert
-                    .isExactlyInstanceOf(IllegalArgumentException.class) // TODO use another exception type?
-                    .hasMessageContaining("not support");
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("tool")
+                    .hasMessageContaining("not supported");
 
         }
     }
 
-    @EnabledIf("supportsToolChoiceAnyWithMultipleTools")
+    @EnabledIf("supportsToolChoiceRequiredWithMultipleTools")
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
     void should_force_LLM_to_execute_any_tool(ChatLanguageModel model) {
@@ -392,9 +398,9 @@ public abstract class AbstractChatModelIT {
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("I live in Munich"))
                 .toolSpecifications(WEATHER_TOOL, calculatorTool)
                 .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
+                .messages(UserMessage.from("I live in Munich"))
                 .build();
 
         // when
@@ -415,16 +421,16 @@ public abstract class AbstractChatModelIT {
         }
     }
 
-    @EnabledIf("supportsToolChoiceAnyWithSingleTool")
+    @EnabledIf("supportsToolChoiceRequiredWithSingleTool")
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
     void should_force_LLM_to_execute_specific_tool(ChatLanguageModel model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("I live in Munich"))
                 .toolSpecifications(WEATHER_TOOL)
                 .toolChoice(REQUIRED) // this will FORCE the LLM to execute weatherTool
+                .messages(UserMessage.from("I live in Munich"))
                 .build();
 
         // when
@@ -453,10 +459,12 @@ public abstract class AbstractChatModelIT {
     void should_respect_JSON_response_format(ChatLanguageModel model) {
 
         // given
+        ResponseFormat responseFormat = ResponseFormat.JSON;
+
         ChatRequest chatRequest = ChatRequest.builder()
+                .responseFormat(responseFormat)
                 .messages(UserMessage.from("What is the capital of Germany? " +
                         "Answer with a JSON object containing a single 'city' field"))
-                .responseFormat(ResponseFormat.JSON)
                 .build();
 
         // when
@@ -480,18 +488,21 @@ public abstract class AbstractChatModelIT {
     protected void should_fail_if_JSON_response_format_is_not_supported(ChatLanguageModel model) {
 
         // given
+        ResponseFormat responseFormat = ResponseFormat.JSON;
+
         ChatRequest chatRequest = ChatRequest.builder()
+                .responseFormat(responseFormat)
                 .messages(UserMessage.from("What is the capital of Germany? " +
                         "Answer with a JSON object containing a single 'city' field"))
-                .responseFormat(ResponseFormat.JSON)
                 .build();
 
         // when-then
         AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
         if (assertExceptionType()) {
             throwableAssert
-                    .isExactlyInstanceOf(UnsupportedOperationException.class) // TODO use another exception type?
-                    .hasMessage("JSON response type is not supported by this model provider");
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("JSON response format")
+                    .hasMessageContaining("not supported");
 
         }
     }
@@ -503,8 +514,8 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany?"))
                 .responseFormat(RESPONSE_FORMAT)
+                .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
         // when
@@ -529,16 +540,17 @@ public abstract class AbstractChatModelIT {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany?"))
                 .responseFormat(RESPONSE_FORMAT)
+                .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
         // when-then
         AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
         if (assertExceptionType()) {
             throwableAssert
-                    .isExactlyInstanceOf(UnsupportedOperationException.class) // TODO use another exception type?
-                    .hasMessage("JSON response type is not supported by this model provider");
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("JSON response format")
+                    .hasMessageContaining("not supported");
 
         }
     }
@@ -547,9 +559,11 @@ public abstract class AbstractChatModelIT {
 
     // TODO images: as public url, as private url, as base64, as URI of file?
 
-    @EnabledIf("supportsImageInputsAsBase64EncodedStrings")
+    // IMAGES - BASE64
+
+    @EnabledIf("supportsSingleImageInputAsBase64EncodedString")
     @ParameterizedTest
-    @MethodSource("modelsSupportingVision")
+    @MethodSource("modelsSupportingImageInputs")
     void should_accept_single_image_as_base64_encoded_string(ChatLanguageModel model) {
 
         // given
@@ -577,9 +591,44 @@ public abstract class AbstractChatModelIT {
         }
     }
 
-    @DisabledIf("supportsImageInputsAsBase64EncodedStrings")
+    @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
     @ParameterizedTest
-    @MethodSource("models")
+    @MethodSource("modelsSupportingImageInputs")
+    void should_accept_multiple_images_as_base64_encoded_strings(ChatLanguageModel model) {
+
+        // given
+        Base64.Encoder encoder = Base64.getEncoder();
+
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see?"),
+                ImageContent.from(encoder.encodeToString(readBytes(CAT_IMAGE_URL)), "image/png"),
+                ImageContent.from(encoder.encodeToString(readBytes(DICE_IMAGE_URL)), "image/png")
+        );
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        assertTokenUsage(chatResponse);
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+        }
+    }
+
+    @DisabledIf("supportsSingleImageInputAsBase64EncodedString")
+    @ParameterizedTest
+    @MethodSource("modelsSupportingImageInputs")
     protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(ChatLanguageModel model) {
 
         // given
@@ -596,15 +645,18 @@ public abstract class AbstractChatModelIT {
         AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
         if (assertExceptionType()) {
             throwableAssert
-                    .isExactlyInstanceOf(IllegalArgumentException.class) // TODO use another exception type?
-                    .hasMessageContaining("not support");
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("image")
+                    .hasMessageContaining("not supported");
         }
     }
 
-    @EnabledIf("supportsImageInputsFromPublicURLs")
+    // IMAGES - PUBLIC URL
+
+    @EnabledIf("supportsSingleImageInputAsPublicURL")
     @ParameterizedTest
-    @MethodSource("modelsSupportingVision")
-    void should_accept_single_image_from_public_URL(ChatLanguageModel model) {
+    @MethodSource("modelsSupportingImageInputs")
+    void should_accept_single_image_as_public_URL(ChatLanguageModel model) {
 
         // given
         UserMessage userMessage = UserMessage.from(
@@ -630,33 +682,10 @@ public abstract class AbstractChatModelIT {
         }
     }
 
-    @DisabledIf("supportsImageInputsFromPublicURLs")
+    @EnabledIf("supportsMultipleImageInputsAsPublicURLs")
     @ParameterizedTest
-    @MethodSource("models")
-    protected void should_fail_if_images_from_public_URLs_are_not_supported(ChatLanguageModel model) {
-
-        // given
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see?"),
-                ImageContent.from(CAT_IMAGE_URL)
-        );
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(userMessage)
-                .build();
-
-        // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
-        if (assertExceptionType()) {
-            throwableAssert
-                    .isExactlyInstanceOf(IllegalArgumentException.class) // TODO use another exception type?
-                    .hasMessageContaining("not support");
-        }
-    }
-
-    @EnabledIf("supportsImageInputsFromPublicURLs")
-    @ParameterizedTest
-    @MethodSource("modelsSupportingVision")
-    void should_accept_multiple_images_from_public_URLs(ChatLanguageModel model) {
+    @MethodSource("modelsSupportingImageInputs")
+    void should_accept_multiple_images_as_public_URLs(ChatLanguageModel model) {
 
         // given
         UserMessage userMessage = UserMessage.from(
@@ -682,6 +711,30 @@ public abstract class AbstractChatModelIT {
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+        }
+    }
+
+    @DisabledIf("supportsSingleImageInputAsPublicURL")
+    @ParameterizedTest
+    @MethodSource("modelsSupportingImageInputs")
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(ChatLanguageModel model) {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see?"),
+                ImageContent.from(CAT_IMAGE_URL)
+        );
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .build();
+
+        // when-then
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> model.chat(chatRequest));
+        if (assertExceptionType()) {
+            throwableAssert
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("image")
+                    .hasMessageContaining("not supported");
         }
     }
 
@@ -713,11 +766,11 @@ public abstract class AbstractChatModelIT {
         return true;
     }
 
-    protected boolean supportsToolChoiceAnyWithSingleTool() {
+    protected boolean supportsToolChoiceRequiredWithSingleTool() {
         return supportsTools();
     }
 
-    protected boolean supportsToolChoiceAnyWithMultipleTools() {
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return supportsTools();
     }
 
@@ -729,12 +782,20 @@ public abstract class AbstractChatModelIT {
         return true;
     }
 
-    protected boolean supportsImageInputsAsBase64EncodedStrings() {
+    protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return true;
     }
 
-    protected boolean supportsImageInputsFromPublicURLs() {
+    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
+        return supportsSingleImageInputAsBase64EncodedString();
+    }
+
+    protected boolean supportsSingleImageInputAsPublicURL() {
         return true;
+    }
+
+    protected boolean supportsMultipleImageInputsAsPublicURLs() {
+        return supportsSingleImageInputAsPublicURL();
     }
 
     protected boolean assertFinishReason() {

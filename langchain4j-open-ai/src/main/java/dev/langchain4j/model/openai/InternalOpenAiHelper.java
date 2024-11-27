@@ -31,7 +31,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
-import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -584,8 +584,8 @@ public class InternalOpenAiHelper {
         };
     }
 
-    public static void validate(ChatRequest chatRequest) {
-        if (chatRequest.topK() != null) {
+    public static void validateSupportedParameters(ChatParameters chatParameters) {
+        if (chatParameters != null && chatParameters.topK() != null) {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
         }
     }

@@ -20,7 +20,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceAnyWithMultipleTools() {
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
 

@@ -50,6 +50,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -198,7 +199,8 @@ class InternalAzureOpenAiHelper {
                             } else if (content instanceof ImageContent) {
                                 ImageContent imageContent = (ImageContent) content;
                                 if (imageContent.image().url() == null) {
-                                    throw new IllegalArgumentException("Image URL is not present. Base64 encoded images are not supported at the moment.");
+                                    throw new UnsupportedFeatureException("Image URL is not present. " +
+                                            "Base64 encoded images are not supported at the moment.");
                                 }
                                 ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageContent.image().url().toString());
                                 return new ChatMessageImageContentItem(imageUrl);

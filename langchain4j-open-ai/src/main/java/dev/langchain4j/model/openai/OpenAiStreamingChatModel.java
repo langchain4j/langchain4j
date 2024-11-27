@@ -153,7 +153,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         dev.langchain4j.model.chat.request.ResponseFormat responseFormat = chatRequest.responseFormat();
         if (responseFormat != null && responseFormat.type() == JSON) {
-            throw new UnsupportedOperationException("JSON response type is not supported by this model provider");
+            throw new UnsupportedOperationException("JSON response format is not supported by this model provider");
         }
 
         chat(

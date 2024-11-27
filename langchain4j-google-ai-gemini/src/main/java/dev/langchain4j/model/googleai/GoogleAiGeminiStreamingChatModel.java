@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -57,8 +58,9 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
     @Override
     public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        GeminiGenerateContentRequest request = createGenerateContentRequest(messages, toolSpecifications, this.responseFormat);
-        ChatModelRequest chatModelRequest = createChatModelRequest(messages, toolSpecifications);
+        ChatParameters chatParameters = ChatParameters.builder().build(); // TODO
+        GeminiGenerateContentRequest request = createGenerateContentRequest(messages, toolSpecifications, this.responseFormat, chatParameters);
+        ChatModelRequest chatModelRequest = createChatModelRequest(null, messages, toolSpecifications, chatParameters);
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
         ChatModelRequestContext chatModelRequestContext = new ChatModelRequestContext(chatModelRequest, listenerAttributes);

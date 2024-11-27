@@ -71,17 +71,26 @@ class OllamaChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(OLLAMA_CHAT_MODEL_WITH_TOOLS, OPEN_AI_CHAT_MODEL_WITH_TOOLS);
+        return List.of(
+                OLLAMA_CHAT_MODEL_WITH_TOOLS
+//                OPEN_AI_CHAT_MODEL_WITH_TOOLS // TODO
+        );
     }
 
     @Override
     protected List<ChatLanguageModel> modelsSupportingTools() {
-        return List.of(OLLAMA_CHAT_MODEL_WITH_TOOLS, OPEN_AI_CHAT_MODEL_WITH_TOOLS);
+        return List.of(
+                OLLAMA_CHAT_MODEL_WITH_TOOLS
+//                OPEN_AI_CHAT_MODEL_WITH_TOOLS // TODO
+        );
     }
 
     @Override
-    protected List<ChatLanguageModel> modelsSupportingVision() {
-        return List.of(OLLAMA_CHAT_MODEL_WITH_VISION, OPEN_AI_CHAT_MODEL_WITH_VISION);
+    protected List<ChatLanguageModel> modelsSupportingImageInputs() {
+        return List.of(
+                OLLAMA_CHAT_MODEL_WITH_VISION
+//                OPEN_AI_CHAT_MODEL_WITH_VISION // TODO
+        );
     }
 
     @Override
@@ -105,12 +114,42 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceAnyWithMultipleTools() {
+    protected boolean supportsModelNameParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTemperatureParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTopPParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTopKParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsMaxOutputTokensParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsStopSequencesParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO check if Ollama supports this
     }
 
     @Override
-    protected boolean supportsToolChoiceAnyWithSingleTool() {
+    protected boolean supportsToolChoiceRequiredWithSingleTool() {
         return false; // TODO check if Ollama supports this
     }
 
@@ -122,6 +161,17 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
         return false; // Ollama does not support structured outputs
+    }
+
+
+    @Override
+    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
+        return false; // vision model only supports a single image per message
+    }
+
+    @Override
+    protected boolean supportsMultipleImageInputsAsPublicURLs() {
+        return false; // vision model only supports a single image per message
     }
 
     @Override

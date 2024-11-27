@@ -38,6 +38,18 @@ public class Utils {
     return value != null ? value : defaultValue;
   }
 
+    /**
+     * Returns the given list if it is not {@code null} and not empty, otherwise returns the given default list.
+     *
+     * @param list        The list to return if it is not {@code null} and not empty.
+     * @param defaultList The list to return if the list is {@code null} or empty.
+     * @param <T>         The type of the value.
+     * @return the given list if it is not {@code null} and not empty, otherwise returns the given default list.
+     */
+    public static <T> List<T> getOrDefault(List<T> list, List<T> defaultList) {
+        return isNullOrEmpty(list) ? defaultList : list;
+    }
+
   /**
    * Returns the given value if it is not {@code null}, otherwise returns the value returned by the given supplier.
    * @param value The value to return if it is not {@code null}.

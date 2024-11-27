@@ -23,11 +23,51 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    @DisabledIf("supportsImageInputsFromPublicURLs")
+    protected String modelName() {
+        return "gpt-4o-mini";
+    }
+
+    @Override
+    protected boolean supportsModelNameParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTemperatureParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTopPParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTopKParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsMaxOutputTokensParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsStopSequencesParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    @DisabledIf("supportsSingleImageInputAsPublicURL")
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_fail_if_images_from_public_URLs_are_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(ChatLanguageModel model) {
         // TODO fix
+    }
+
+    @Override
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+        return false; // TODO implement
     }
 
     @Override
@@ -41,12 +81,12 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsImageInputsAsBase64EncodedStrings() {
+    protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // TODO check if supported
     }
 
     @Override
-    protected boolean supportsImageInputsFromPublicURLs() {
+    protected boolean supportsSingleImageInputAsPublicURL() {
         return false; // TODO fix
     }
 

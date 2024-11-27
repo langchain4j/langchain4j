@@ -22,6 +22,36 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsModelNameParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTemperatureParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTopPParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsTopKParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsMaxOutputTokensParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsStopSequencesParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
     protected boolean supportsTools() {
         return false; // TODO check if supported
     }
@@ -37,12 +67,12 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsImageInputsAsBase64EncodedStrings() {
+    protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false; // TODO check if supported
     }
 
     @Override
-    protected boolean supportsImageInputsFromPublicURLs() {
+    protected boolean supportsSingleImageInputAsPublicURL() {
         return false; // TODO check if supported
     }
 

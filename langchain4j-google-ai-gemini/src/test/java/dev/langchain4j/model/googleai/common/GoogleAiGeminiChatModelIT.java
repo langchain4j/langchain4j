@@ -19,12 +19,17 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceAnyWithMultipleTools() {
+    protected String modelName() {
+        return "gemini-1.5-flash";
+    }
+
+    @Override
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
 
     @Override
-    protected boolean supportsImageInputsFromPublicURLs() {
+    protected boolean supportsSingleImageInputAsPublicURL() {
         return false; // TODO check if supported
     }
 
