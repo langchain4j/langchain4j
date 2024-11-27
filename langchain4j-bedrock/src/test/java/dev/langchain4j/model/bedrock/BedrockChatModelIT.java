@@ -22,6 +22,7 @@ import software.amazon.awssdk.regions.Region;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -771,6 +772,56 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+
+    @Test
+    void testBedrockAnthropicCompletionChatModelWithMessagesToSanitize() {
+        List<ChatMessage> messages = new ArrayList<>();
+        String userMessage = "Hello, my name is Ronaldo, what is my name?";
+        String userMessage2 = "Hello, my name is Neymar, what is my name?";
+        messages.add(new UserMessage(userMessage));
+        messages.add(new UserMessage(userMessage2));
+
+        BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel
+                .builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicCompletionChatModel.Types.AnthropicClaudeV2.getValue())
+                .maxRetries(1)
+                .build();
+
+        final Response<AiMessage> aiMessageResponse = bedrockChatModel.generate(messages);
+
+        assertThat(aiMessageResponse).isNotNull();
+        assertThat(aiMessageResponse.content().text()).isNotBlank();
+        assertThat(aiMessageResponse.content().text()).contains("Ronaldo");
+        assertThat(aiMessageResponse.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+
+    @Test
+    void testBedrockAnthropicChatModelWithMessagesToSanitize() {
+        List<ChatMessage> messages = new ArrayList<>();
+        String userMessage = "Hello, my name is Ronaldo, what is my name?";
+        String userMessage2 = "Hello, my name is Neymar, what is my name?";
+        messages.add(new UserMessage(userMessage));
+        messages.add(new UserMessage(userMessage2));
+
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+                .builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2.getValue())
+                .maxRetries(1)
+                .build();
+
+        final Response<AiMessage> aiMessageResponse = bedrockChatModel.generate(messages);
+
+        assertThat(aiMessageResponse).isNotNull();
+        assertThat(aiMessageResponse.content().text()).isNotBlank();
+        assertThat(aiMessageResponse.content().text()).contains("Ronaldo");
+        assertThat(aiMessageResponse.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
 
     @AfterEach

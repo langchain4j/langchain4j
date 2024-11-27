@@ -1,12 +1,18 @@
 package dev.langchain4j.model.bedrock;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import static dev.langchain4j.data.message.MessageSanitizer.sanitizeMessages;
 
 @Getter
 @SuperBuilder
@@ -62,5 +68,11 @@ public class BedrockAnthropicCompletionChatModel extends AbstractBedrockChatMode
         Types(String modelID) {
             this.value = modelID;
         }
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
+        return super.generate(sanitizedMessages);
     }
 }

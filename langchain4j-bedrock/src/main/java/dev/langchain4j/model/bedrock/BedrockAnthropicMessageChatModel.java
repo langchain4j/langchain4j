@@ -116,7 +116,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         final String system = getAnthropicSystemPrompt(messages);
 
-        List<BedrockAnthropicMessage> formattedMessages = getAnthropicMessages(messages);
+        List<BedrockAnthropicMessage> formattedMessages = getAnthropicMessages(sanitizedMessages);
 
         Map<String, Object> parameters = getRequestParameters(null);
         parameters.put("messages", formattedMessages);
