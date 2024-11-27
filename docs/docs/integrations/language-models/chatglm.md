@@ -13,7 +13,7 @@ For ChatGLM2, ChatGLM3 and GLM4, their API are compatible with OpenAI. you can r
 ## Maven Dependency
 
 :::note
-Since `0.37.0`, `langchain4j-chatglm` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-chatglm
+Since `0.37.0`, `langchain4j-chatglm` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-chatglm`.
 :::
 
 `0.36.2` and previous:
