@@ -20,7 +20,7 @@
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
-        <openai4j.version>0.23.0</openai4j.version>
+        <openai4j.version>0.24.0</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.11</azure-ai-openai.version>
         <azure-ai-search.version>11.7.3</azure-ai-search.version>
         <azure.storage-blob.version>12.29.0</azure.storage-blob.version>
@@ -49,11 +49,12 @@
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
-        <milvus-sdk-java.version>2.3.9</milvus-sdk-java.version>
+        <milvus-sdk-java.version>2.4.2</milvus-sdk-java.version>
         <netty.version>4.1.111.Final</netty.version>
         <awaitility.version>4.2.2</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
+        <kotlin.version>2.0.21</kotlin.version>
     </properties>
 
     <dependencyManagement>
@@ -138,31 +139,23 @@
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp</artifactId>
                 <version>${okhttp.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.jetbrains.kotlin</groupId>
-                        <artifactId>kotlin-stdlib-jdk8</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
 
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp-sse</artifactId>
                 <version>${okhttp.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.jetbrains.kotlin</groupId>
-                        <artifactId>kotlin-stdlib-jdk8</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
+
 
             <dependency>
                 <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-stdlib-jdk8</artifactId>
-                <version>1.9.25</version>
+                <artifactId>kotlin-bom</artifactId>
+                <version>${kotlin.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
+
             <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (END)  -->
 
             <dependency>
