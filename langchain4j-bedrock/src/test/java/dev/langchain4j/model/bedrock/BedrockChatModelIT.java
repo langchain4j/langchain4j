@@ -782,7 +782,7 @@ class BedrockChatModelIT {
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
-                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3_5SonnetV1.getValue())
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue())
                 .maxRetries(1)
                 .timeout(Duration.ofMinutes(2L))
                 .endpointOverride(URI.create("https://bedrock-runtime.us-east-1.amazonaws.com"))
