@@ -9,7 +9,6 @@
         <Xlint>-options</Xlint>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
-        <maven.javadoc.skip>true</maven.javadoc.skip><!-- use dokka for javadocs -->
     </properties>
 
     <parent>
@@ -170,10 +169,12 @@
                     <execution>
                         <goals>
                             <goal>javadocJar</goal>
+                            <goal>javadoc</goal>
                         </goals>
                         <phase>package</phase>
                         <configuration>
                             <attach>true</attach>
+                            <outputDir>target/apidocs</outputDir>
                         </configuration>
                     </execution>
                 </executions>
