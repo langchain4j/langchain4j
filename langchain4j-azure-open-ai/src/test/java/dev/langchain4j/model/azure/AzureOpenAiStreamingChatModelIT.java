@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -182,11 +183,8 @@ class AzureOpenAiStreamingChatModelIT {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name(toolName)
                 .description("returns a sum of two numbers")
-                .parameters(JsonObjectSchema.builder()
-                        .addIntegerProperty("first")
-                        .addIntegerProperty("second")
-                        .required("first", "second")
-                        .build())
+                .addParameter("first", INTEGER)
+                .addParameter("second", INTEGER)
                 .build();
 
         model.generate(singletonList(userMessage), toolSpecification, new StreamingResponseHandler<AiMessage>() {
