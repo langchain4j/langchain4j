@@ -12,6 +12,7 @@ import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormatJsonSchema;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsTextResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsToolCall;
 import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
 import com.azure.ai.openai.models.ChatCompletionsToolSelection;
@@ -457,14 +458,21 @@ class InternalAzureOpenAiHelper {
 
     static ChatCompletionsResponseFormat toAzureOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
         if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
-            return null;
+            return new ChatCompletionsTextResponseFormat();
         } else if (responseFormat.type() != ResponseFormatType.JSON) {
             throw new IllegalArgumentException("Unsupported response format: " + responseFormat);
         }
 
         JsonSchema jsonSchema = responseFormat.jsonSchema();
         if (jsonSchema == null) {
-            return new ChatCompletionsJsonResponseFormat();
+            if (strict) {
+                // Schema isn't provided when constructing the object, but it can be set later when doing the requests.
+                ChatCompletionsJsonSchemaResponseFormatJsonSchema schema = new ChatCompletionsJsonSchemaResponseFormatJsonSchema("");
+                schema.setStrict(strict);
+                return new ChatCompletionsJsonSchemaResponseFormat(schema);
+            } else {
+                return new ChatCompletionsJsonResponseFormat();
+            }
         } else {
             if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
                 throw new IllegalArgumentException("For Azure OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: " + jsonSchema.rootElement().getClass());
