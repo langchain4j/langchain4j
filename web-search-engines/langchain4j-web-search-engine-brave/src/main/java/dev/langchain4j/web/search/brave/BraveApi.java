@@ -16,7 +16,7 @@ public interface BraveApi {
             @Header("X-Subscription-Token") String apiKey,
             @Query("q") String query,
             @Query("count") Integer count,
-            @Query("safeSearch") String safeSearch,
+            @Query("safesearch") String safeSearch,
             @Query("resultFilter") String resultFilter,
             @Query("freshness") String freshness
     );

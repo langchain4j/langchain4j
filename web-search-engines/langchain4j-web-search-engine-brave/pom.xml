@@ -8,7 +8,7 @@
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
         <version>0.37.0-SNAPSHOT</version>
-        <relativePath>../../langchain4j-parent/pom.xml</relativePath>
+<!--        <relativePath>../../langchain4j-parent/pom.xml</relativePath>-->
     </parent>
 
     <artifactId>langchain4j-web-search-engine-brave</artifactId>
@@ -56,7 +56,11 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>logging-interceptor</artifactId>
+            <version>4.11.0</version> <!-- Replace with the latest version -->
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

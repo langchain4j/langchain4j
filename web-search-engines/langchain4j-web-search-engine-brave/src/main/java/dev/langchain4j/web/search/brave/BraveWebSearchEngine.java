@@ -110,6 +110,7 @@ public class BraveWebSearchEngine implements WebSearchEngine {
                 .query(webSearchRequest.searchTerms())
                 .build();
         BraveResponse response = braveClient.search(braveWebSearchRequest);
+        System.out.println("Full Response: " + response);
         if (response.getWeb() != null && response.getWeb().getResults() != null) {
             response.getWeb().getResults().forEach(result -> {
                 System.out.println("Title: " + result.getTitle());

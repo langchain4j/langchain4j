@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
 import lombok.Builder;
+
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
 import retrofit2.Retrofit;
@@ -28,6 +29,7 @@ public class BraveClient {
     @Builder
     public BraveClient(String baseUrl, Duration timeout) {
 
+        // Build OkHttpClient with the logging interceptor
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
@@ -41,11 +43,11 @@ public class BraveClient {
                 .build();
 
         this.braveApi = retrofit.create(BraveApi.class);
-
     }
 
     public BraveResponse search(BraveWebSearchRequest braveWebSearchRequest) {
         try {
+            System.out.println(braveWebSearchRequest.getCount()+" "+braveWebSearchRequest.getQuery()+" "+braveWebSearchRequest.getCount()+" "+braveWebSearchRequest.getSafeSearch()+" "+braveWebSearchRequest.getResultFilter()+" "+braveWebSearchRequest.getFreshness());
             Response<BraveResponse> retrofitResponse = braveApi
                     .search(
                             braveWebSearchRequest.getApiKey(),
@@ -53,7 +55,8 @@ public class BraveClient {
                             braveWebSearchRequest.getCount(),
                             braveWebSearchRequest.getSafeSearch(),
                             braveWebSearchRequest.getResultFilter(),
-                            braveWebSearchRequest.getFreshness())
+                            braveWebSearchRequest.getFreshness()
+                    )
                     .execute();
 
             if (retrofitResponse.isSuccessful()) {
@@ -72,5 +75,4 @@ public class BraveClient {
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
     }
-
 }
