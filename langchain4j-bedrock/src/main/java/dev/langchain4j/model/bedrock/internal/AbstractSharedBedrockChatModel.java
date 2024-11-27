@@ -7,7 +7,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 
-import java.net.URI;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -67,7 +66,6 @@ public abstract class AbstractSharedBedrockChatModel {
     protected final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
     @Builder.Default
     protected final List<ChatModelListener> listeners = Collections.emptyList();
-    protected final URI endpointOverride;
 
     /**
      * Convert chat message to string

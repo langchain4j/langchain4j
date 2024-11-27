@@ -150,7 +150,6 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
                 .region(region)
                 .credentialsProvider(credentialsProvider)
                 .overrideConfiguration(c-> c.apiCallTimeout(timeout))
-                .endpointOverride(endpointOverride)
                 .build();
     }
 }
