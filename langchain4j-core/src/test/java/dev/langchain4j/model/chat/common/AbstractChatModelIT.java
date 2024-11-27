@@ -93,7 +93,8 @@ public abstract class AbstractChatModelIT {
         return models();
     }
 
-    // TODO asser everything (e.g. id, model, token usage, finish reason, etc) in every test?
+    // TODO assert everything (e.g. id, model, token usage, finish reason, etc) in every test?
+    // TODO test that it fails when there is a mismatch in parameter types (e.g. OpenAiChatParameters for GoogleAiGeminiChatModel)
 
     // BASIC
 
