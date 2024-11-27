@@ -11,7 +11,7 @@ sidebar_position: 18
 ## Maven Dependency
 
 :::note
-Since `0.37.0`, `langchain4j-zhipu-ai` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-zhipu-ai
+Since `0.37.0`, `langchain4j-zhipu-ai` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-zhipu-ai`
 :::
 
 `0.36.2` and previous:
