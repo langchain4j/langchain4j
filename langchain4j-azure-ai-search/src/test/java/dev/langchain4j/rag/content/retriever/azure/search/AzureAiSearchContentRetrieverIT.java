@@ -12,9 +12,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
-import dev.langchain4j.store.embedding.TestUtils;
-import org.awaitility.core.ThrowingRunnable;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -85,10 +83,12 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
                 .build();
     }
 
-    @BeforeEach
-    void beforeEach() throws InterruptedException {
-        clearStore();
-        Thread.sleep(2_000);
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_AI_SEARCH");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 
     @Test
