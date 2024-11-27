@@ -10,7 +10,7 @@ https://github.com/vearch/vearch
 ## Maven Dependency
 
 :::note
-Since `0.37.0`, `langchain4j-vearch` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-vearch
+Since `0.37.0`, `langchain4j-vearch` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-vearch`.
 :::
 
 `0.36.2` and previous:
