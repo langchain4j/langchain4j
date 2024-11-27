@@ -203,6 +203,9 @@ public class JsonSchemaElementHelper {
             if (strict) {
                 properties.put("additionalProperties", false);
             }
+            if (jsonObjectSchema.definitions() != null) {
+                properties.put("$defs", toMap(jsonObjectSchema.definitions(), strict));
+            }
             return properties;
         } else if (jsonSchemaElement instanceof JsonArraySchema jsonArraySchema) {
             Map<String, Object> properties = new LinkedHashMap<>();
@@ -247,6 +250,24 @@ public class JsonSchemaElementHelper {
             if (jsonBooleanSchema.description() != null) {
                 properties.put("description", jsonBooleanSchema.description());
             }
+            return properties;
+        } else if (jsonSchemaElement instanceof JsonReferenceSchema) {
+            Map<String, Object> properties = new LinkedHashMap<>();
+            String reference = ((JsonReferenceSchema) jsonSchemaElement).reference();
+            if (reference != null) {
+                properties.put("$ref", "#/$defs/" + reference);
+            }
+            return properties;
+        } else if (jsonSchemaElement instanceof JsonAnyOfSchema) {
+            JsonAnyOfSchema jsonAnyOfSchema = (JsonAnyOfSchema) jsonSchemaElement;
+            Map<String, Object> properties = new LinkedHashMap<>();
+            if (jsonAnyOfSchema.description() != null) {
+                properties.put("description", jsonAnyOfSchema.description());
+            }
+            jsonAnyOfSchema.anyOf().stream()
+                    .map(element -> toMap(element, strict))
+                    .forEach(map -> map.forEach(properties::put));
+
             return properties;
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
