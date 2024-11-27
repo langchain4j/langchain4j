@@ -70,9 +70,6 @@ jobs:
           MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
           MILVUS_URI: ${{ secrets.MILVUS_URI }}
           MISTRAL_AI_API_KEY: ${{ secrets.MISTRAL_AI_API_KEY }}
-          MONGODB_ATLAS_USERNAME: ${{ secrets.MONGODB_ATLAS_USERNAME }}
-          MONGODB_ATLAS_PASSWORD: ${{ secrets.MONGODB_ATLAS_PASSWORD }}
-          MONGODB_ATLAS_HOST: ${{ secrets.MONGODB_ATLAS_HOST }}
           NOMIC_API_KEY: ${{ secrets.NOMIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
@@ -83,11 +80,12 @@ jobs:
           VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
+          CI_DELAY_SECONDS_AZURE_AI_SEARCH: 3
           CI_DELAY_SECONDS_AZURE_OPENAI: 1
-          CI_DELAY_SECONDS_BEDROCK: 3
-          CI_DELAY_SECONDS_GITHUB_MODELS: 3
+          CI_DELAY_SECONDS_BEDROCK: 4
+          CI_DELAY_SECONDS_GITHUB_MODELS: 4
           CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 5
-          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 7
+          CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 8
           CI_DELAY_SECONDS_VOYAGE_AI: 22
 
       - name: Upload Test Reports

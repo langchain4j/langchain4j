@@ -121,7 +121,7 @@ with the following subtypes:
 - `JsonArraySchema` - to support arrays and collection (e.g., `List`, `Set`) types.
 - `JsonObjectSchema` - to support object types.
 - `JsonReferenceSchema` - to support recursion (e.g., `Person` has a `Set<Person> children` field).
-
+- `JsonAnyOfSchema` - to support subtypes (e.g., `Shape` can be either `Circle` or `Rectangle`).
 
 ### High Level Structured Outputs API
 
@@ -184,6 +184,10 @@ Once LLM responds, the output is parsed into an object and returned to the calle
 While we are gradually migrating to Jackson, Gson is still used for parsing the outputs,
 so Jackson annotations on your POJOs will have no effect.
 :::
+
+You can find many examples of supported use cases
+[here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaIT.java)
+and [here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaWithDescriptionsIT.java).
 
 ### Limitations
 When using Structured Outputs with AI Services, there are some limitations:

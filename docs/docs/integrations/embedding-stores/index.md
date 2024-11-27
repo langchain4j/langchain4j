@@ -19,13 +19,13 @@ sidebar_position: 0
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                          | ✅                   |
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                |                            |                     |
 | [Milvus](/integrations/embedding-stores/milvus)                                       | ✅                | ✅                          | ✅                   |
-| [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                | Only native filter support |                     |
+| [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                | ✅                          | ✅                   |
 | [Neo4j](/integrations/embedding-stores/neo4j)                                         | ✅                |                            |                     |
 | [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                |                            |                     |
 | [Oracle](/integrations/embedding-stores/oracle)                                       | ✅                | ✅                          | ✅                   |
 | [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                | ✅                          | ✅                   |
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   | ✅                | ✅                          | ✅                   |
-| [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                | ✅                          |                     |
+| [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                | ✅                          | ✅                   |
 | [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                            |                     |
 | [Tablestore](/integrations/embedding-stores/tablestore)                               | ✅                | ✅                          | ✅                   |
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                            |                     |
