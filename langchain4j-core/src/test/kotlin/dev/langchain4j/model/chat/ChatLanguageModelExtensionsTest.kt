@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.whenever
 
 @ExtendWith(MockitoExtension::class)
-class ChatLanguageModelExtensionsTest {
+internal class ChatLanguageModelExtensionsTest {
 
     @Mock
     private lateinit var chatLanguageModel: ChatLanguageModel
