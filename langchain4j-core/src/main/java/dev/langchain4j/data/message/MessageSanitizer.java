@@ -1,9 +1,7 @@
-package dev.langchain4j.model.anthropic.internal.sanitizer;
+package dev.langchain4j.data.message;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,9 +11,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 /**
  * Sanitizes the messages to conform to the format expected by the Anthropic API.
  */
-@Slf4j
 public class MessageSanitizer {
 
+    private static final Logger log = LoggerFactory.getLogger(MessageSanitizer.class);
 
     public static List<ChatMessage> sanitizeMessages(List<ChatMessage> messages) {
         ensureNotEmpty(messages, "messages");

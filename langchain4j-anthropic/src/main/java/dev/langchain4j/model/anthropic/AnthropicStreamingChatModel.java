@@ -40,7 +40,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
-import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
+import static dev.langchain4j.data.message.MessageSanitizer.sanitizeMessages;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 

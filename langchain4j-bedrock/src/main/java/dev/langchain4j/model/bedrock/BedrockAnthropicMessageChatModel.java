@@ -47,6 +47,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.data.message.MessageSanitizer.sanitizeMessages;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -112,6 +113,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             ToolSpecification toolChoiceSpecification,
             List<ToolSpecification> toolSpecifications
     ) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         final String system = getAnthropicSystemPrompt(messages);
 
         List<BedrockAnthropicMessage> formattedMessages = getAnthropicMessages(messages);
@@ -138,7 +140,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, messages, toolSpecifications);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
 
