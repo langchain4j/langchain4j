@@ -462,6 +462,9 @@ class InternalAzureOpenAiHelper {
         } else if (responseFormat.type() != ResponseFormatType.JSON) {
             throw new IllegalArgumentException("Unsupported response format: " + responseFormat);
         }
+        if (strict == null) {
+            strict = false;
+        }
 
         JsonSchema jsonSchema = responseFormat.jsonSchema();
         if (jsonSchema == null) {
