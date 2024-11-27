@@ -30,7 +30,9 @@ class EmbeddingStoreTest implements WithAssertions {
         }
 
         @Override
-        public void addAll(List<String> ids, List<Embedding> embeddings, List<String> embedded) { }
+        public void addAll(List<String> ids, List<Embedding> embeddings, List<String> embedded) {
+            return;
+        }
 
         @Override
         public List<EmbeddingMatch<String>> findRelevant(
