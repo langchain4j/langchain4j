@@ -60,7 +60,6 @@ public interface EmbeddingStore<Embedded> {
      * @param ids A list of IDs associated with the added embeddings.
      * @param embeddings A list of embeddings to be added to the store.
      * @param embedded   A list of original contents that were embedded.
-     * @return A list of IDs associated with the added embeddings.
      */
     void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded);
 
