@@ -74,7 +74,9 @@ public interface EmbeddingStore<Embedded> {
      * @param embeddings A list of embeddings to be added to the store.
      * @param embedded   A list of original contents that were embedded.
      */
-    void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded);
+    default void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
+        throw new UnsupportedOperationException("Method need to be implemented manually");
+    }
 
     /**
      * Removes a single embedding from the store by ID.
