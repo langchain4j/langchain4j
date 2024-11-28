@@ -10,7 +10,7 @@ sidebar_position: 16
 ## Maven Dependency
 
 :::note
-Since `0.37.0`, `langchain4j-qianfan` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-qianfan
+Since `0.37.0`, `langchain4j-qianfan` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-qianfan`.
 :::
 
 `0.36.2` and previous:
