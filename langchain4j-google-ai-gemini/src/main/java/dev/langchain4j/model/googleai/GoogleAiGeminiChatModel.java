@@ -10,7 +10,6 @@ import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -105,20 +104,20 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
 
-        validate(chatRequest.parameters());
+        validateRequest(chatRequest);
 
         GeminiGenerateContentRequest request = createGenerateContentRequest(
-            chatRequest.messages(),
-            chatRequest.toolSpecifications(),
-            getOrDefault(chatRequest.responseFormat(), this.responseFormat),
-            chatRequest.parameters()
+                chatRequest.messages(),
+                chatRequest.toolSpecifications(),
+                getOrDefault(chatRequest.responseFormat(), this.responseFormat),
+                chatRequest
         );
 
         ChatModelRequest chatModelRequest = createChatModelRequest(
-            chatRequest.modelName(),
-            chatRequest.messages(),
-            chatRequest.toolSpecifications(),
-            chatRequest.parameters()
+                chatRequest.modelName(),
+                chatRequest.messages(),
+                chatRequest.toolSpecifications(),
+                chatRequest
         );
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
@@ -137,19 +136,18 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         }
     }
 
-    private static void validate(ChatParameters chatParameters) {
-        Class<? extends ChatParameters> chatParametersClass = chatParameters.getClass();
-        if (chatParametersClass != ChatParameters.class
-                && chatParametersClass != GoogleAiGeminiChatParameters.class) {
-            throw new IllegalArgumentException(("%s cannot be used together with %s. " +
-                    "Please use either %s or %s instead.")
+    private static void validateRequest(ChatRequest chatRequest) {
+        Class<? extends ChatRequest> chatRequestClass = chatRequest.getClass();
+        if (chatRequestClass != ChatRequest.class) {
+            throw new IllegalArgumentException("%s cannot be used together with %s. Please use %s instead."
                     .formatted(
-                            chatParametersClass.getSimpleName(),
+                            chatRequestClass.getSimpleName(),
                             GoogleAiGeminiChatModel.class.getSimpleName(),
-                            ChatParameters.class.getSimpleName(),
-                            GoogleAiGeminiChatParameters.class.getSimpleName()
+                            ChatRequest.class.getSimpleName()
                     ));
         }
+        // TODO check chatRequest.frequencyPenalty(), presencePenalty, etc.
+        // TODO fail if one of unsupported params is set
     }
 
     private ChatResponse processResponse(

@@ -10,7 +10,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -159,18 +158,14 @@ public abstract class AbstractChatModelIT {
     @EnabledIf("supportsMaxOutputTokensParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_model_specific_parameters(ChatLanguageModel model) {
+    void should_respect_model_specific_chat_request(ChatLanguageModel model) {
 
         // given
         int maxOutputTokens = 5;
+        UserMessage userMessage = UserMessage.from("Tell me a long story");
 
-        ChatParameters chatParameters = modelSpecificParametersFrom(maxOutputTokens);
-        assertThat(chatParameters).doesNotHaveSameClassAs(ChatParameters.class);
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(chatParameters)
-                .messages(UserMessage.from("Tell me a long story"))
-                .build();
+        ChatRequest chatRequest = createModelSpecificChatRequest(maxOutputTokens, userMessage);
+        assertThat(chatRequest).doesNotHaveSameClassAs(ChatRequest.class);
 
         // when
         ChatResponse chatResponse = model.chat(chatRequest);
@@ -191,44 +186,39 @@ public abstract class AbstractChatModelIT {
         }
     }
 
-    protected ChatParameters modelSpecificParametersFrom(int maxOutputTokens) {
+    protected ChatRequest createModelSpecificChatRequest(int maxOutputTokens, UserMessage userMessage) {
         throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_fail_if_parameters_object_does_not_match_model_type(ChatLanguageModel model) {
+    void should_fail_if_chat_request_does_not_match_chat_model(ChatLanguageModel model) {
 
         // given
-        ChatParameters chatParameters = new ChatParametersThatDoNotMatchModelProvider();
-        assertThat(chatParameters).doesNotHaveSameClassAs(ChatParameters.class);
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(chatParameters)
-                .messages(UserMessage.from("Hello"))
-                .build();
+        ChatRequest chatRequest = new MismatchingChatRequest();
+        assertThat(chatRequest).doesNotHaveSameClassAs(ChatRequest.class);
 
         // when-then
         assertThatThrownBy(() -> model.chat(chatRequest))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("%s cannot be used together with %s.".formatted(
-                        ChatParametersThatDoNotMatchModelProvider.class.getSimpleName(),
+                        MismatchingChatRequest.class.getSimpleName(),
                         model.getClass().getSimpleName()
                 ))
                 .hasMessageContaining("Please use")
-                .hasMessageContaining(ChatParameters.class.getSimpleName());
+                .hasMessageContaining(ChatRequest.class.getSimpleName());
     }
 
-    private static class ChatParametersThatDoNotMatchModelProvider extends ChatParameters {
+    private static class MismatchingChatRequest extends ChatRequest {
 
-        private ChatParametersThatDoNotMatchModelProvider() {
-            super(new Builder());
+        private MismatchingChatRequest() {
+            super(new Builder().messages(UserMessage.from("does not matter")));
         }
 
-        private static class Builder extends ChatParameters.Builder<Builder> {
+        private static class Builder extends ChatRequest.Builder<Builder> {
 
-            public ChatParametersThatDoNotMatchModelProvider build() {
-                return new ChatParametersThatDoNotMatchModelProvider();
+            public MismatchingChatRequest build() {
+                return new MismatchingChatRequest();
             }
         }
     }

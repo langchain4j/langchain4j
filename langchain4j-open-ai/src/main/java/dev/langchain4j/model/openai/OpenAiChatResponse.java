@@ -15,7 +15,7 @@ public class OpenAiChatResponse extends ChatResponse {
     }
 
     public String systemFingerprint() {
-        return systemFingerprint; // TODO test
+        return systemFingerprint;
     }
 
     @Override

@@ -27,11 +27,9 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
-import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -582,22 +580,5 @@ public class InternalOpenAiHelper {
                 handler.onError(error);
             }
         };
-    }
-
-    public static void validateSupportedParameters(ChatParameters chatParameters) {
-        Class<? extends ChatParameters> chatParametersClass = chatParameters.getClass();
-        if (chatParametersClass != ChatParameters.class
-                && chatParametersClass != OpenAiChatParameters.class) {
-            throw new IllegalArgumentException(("%s cannot be used together with OpenAiChatModel. " +
-                    "Please use either %s or %s instead.")
-                    .formatted(
-                            chatParametersClass.getSimpleName(),
-                            ChatParameters.class.getSimpleName(),
-                            OpenAiChatParameters.class.getSimpleName()
-                    ));
-        }
-        if (chatParameters != null && chatParameters.topK() != null) {
-            throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
-        }
     }
 }

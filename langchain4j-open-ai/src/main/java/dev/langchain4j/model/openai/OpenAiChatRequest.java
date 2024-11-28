@@ -1,30 +1,39 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.chat.request.ChatParameters;
+import dev.langchain4j.model.chat.request.ChatRequest;
 
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
 @Experimental
-public class OpenAiChatParameters extends ChatParameters {
-    // TODO name
-    // TODO place
+public class OpenAiChatRequest extends ChatRequest {
 
-    // TODO parallel_tool_calls
     private final Map<String, Integer> logitBias;
     private final Integer seed;
+    // TODO parallel_tool_calls
     // TODO service tier
     // TODO user
     // TODO store, metadata
     // TODO logprobs, top_logprobs?
     // TODO max_completion_tokens?
 
-    private OpenAiChatParameters(Builder builder) {
+    protected OpenAiChatRequest(Builder builder) { // TODO
         super(builder);
         this.logitBias = copyIfNotNull(builder.logitBias);
         this.seed = builder.seed;
+    }
+
+    OpenAiChatRequest(ChatRequest chatRequest) { // TODO
+        super(chatRequest.toBuilder());
+        if (chatRequest instanceof OpenAiChatRequest openAiChatRequest) {
+            this.logitBias = copyIfNotNull(openAiChatRequest.logitBias);
+            this.seed = openAiChatRequest.seed;
+        } else {
+            this.logitBias = null;
+            this.seed = null;
+        }
     }
 
     public Map<String, Integer> logitBias() {
@@ -35,13 +44,13 @@ public class OpenAiChatParameters extends ChatParameters {
         return seed;
     }
 
-    // TODO equals, hashCode, toString
+    // TODO eq, hash, tostr
 
     public static Builder builder() {
         return new Builder();
     }
 
-    public static class Builder extends ChatParameters.Builder<Builder> {
+    public static class Builder extends ChatRequest.Builder<Builder> {
 
         private Map<String, Integer> logitBias;
         private Integer seed;
@@ -56,8 +65,8 @@ public class OpenAiChatParameters extends ChatParameters {
             return this;
         }
 
-        public OpenAiChatParameters build() {
-            return new OpenAiChatParameters(this);
+        public OpenAiChatRequest build() {
+            return new OpenAiChatRequest(this);
         }
     }
 }

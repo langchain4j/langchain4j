@@ -10,7 +10,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.request.ChatParameters;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -91,7 +91,7 @@ abstract class BaseGeminiChatModel {
         List<ChatMessage> messages,
         List<ToolSpecification> toolSpecifications,
         ResponseFormat responseFormat,
-        ChatParameters chatParameters
+        ChatRequest chatRequest
     ) {
         GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(messages, systemInstruction);
@@ -106,13 +106,13 @@ abstract class BaseGeminiChatModel {
             .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
             .generationConfig(GeminiGenerationConfig.builder()
                 .candidateCount(1) // Multiple candidates aren't supported by langchain4j
-                .maxOutputTokens(getOrDefault(chatParameters.maxOutputTokens(), this.maxOutputTokens))
+                .maxOutputTokens(getOrDefault(chatRequest.maxOutputTokens(), this.maxOutputTokens))
                 .responseMimeType(computeMimeType(responseFormat))
                 .responseSchema(schema)
-                .stopSequences(getOrDefault(chatParameters.stopSequences(), this.stopSequences))
-                .temperature(getOrDefault(chatParameters.temperature(), this.temperature))
-                .topK(getOrDefault(chatParameters.topK(), this.topK))
-                .topP(getOrDefault(chatParameters.topP(), this.topP))
+                .stopSequences(getOrDefault(chatRequest.stopSequences(), this.stopSequences))
+                .temperature(getOrDefault(chatRequest.temperature(), this.temperature))
+                .topK(getOrDefault(chatRequest.topK(), this.topK))
+                .topP(getOrDefault(chatRequest.topP(), this.topP))
                 .build())
             .safetySettings(this.safetySettings)
             .tools(FunctionMapper.fromToolSepcsToGTool(toolSpecifications, this.allowCodeExecution))
@@ -124,13 +124,13 @@ abstract class BaseGeminiChatModel {
         String modelName,
         List<ChatMessage> messages,
         List<ToolSpecification> toolSpecifications,
-        ChatParameters chatParameters
+        ChatRequest chatRequest
     ) {
         return ChatModelRequest.builder()
             .model(getOrDefault(modelName, this.modelName))
-            .temperature(getOrDefault(chatParameters.temperature(), this.temperature))
-            .topP(getOrDefault(chatParameters.topP(), this.topP))
-            .maxTokens(getOrDefault(chatParameters.maxOutputTokens(), this.maxOutputTokens))
+            .temperature(getOrDefault(chatRequest.temperature(), this.temperature))
+            .topP(getOrDefault(chatRequest.topP(), this.topP))
+            .maxTokens(getOrDefault(chatRequest.maxOutputTokens(), this.maxOutputTokens))
             .messages(messages)
             .toolSpecifications(toolSpecifications)
             .build();

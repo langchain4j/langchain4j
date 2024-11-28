@@ -3,11 +3,9 @@ package dev.langchain4j.service.openai.common;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiChatParameters;
+import dev.langchain4j.model.openai.OpenAiChatRequest;
 import dev.langchain4j.model.openai.OpenAiChatResponse;
 import org.junit.jupiter.api.Test;
 
@@ -48,9 +46,10 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatParameters modelSpecificParametersFrom(int maxOutputTokens) {
-        return OpenAiChatParameters.builder()
+    protected ChatRequest createModelSpecificChatRequest(int maxOutputTokens, UserMessage userMessage) {
+        return OpenAiChatRequest.builder()
                 .maxOutputTokens(maxOutputTokens)
+                .messages(userMessage)
                 .build();
     }
 
@@ -58,7 +57,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     void should_respect_logitBias_parameter() {
 
         // given
-        OpenAiChatModel model = OPEN_AI_CHAT_MODEL_BUILDER
+        OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
                 .maxTokens(20) // to save tokens
                 .build();
 
@@ -66,17 +65,13 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 "72782", 100 // token ID for "Paris", see https://platform.openai.com/tokenizer -> "Token IDs"
         );
 
-        OpenAiChatParameters parameters = OpenAiChatParameters.builder()
+        OpenAiChatRequest chatRequest = OpenAiChatRequest.builder()
                 .logitBias(logitBias)
-                .build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(parameters)
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
         // when
-        ChatResponse chatResponse = model.chat(chatRequest);
+        OpenAiChatResponse chatResponse = chatModel.chat(chatRequest);
 
         // then
         assertThat(chatResponse.aiMessage().text())
@@ -88,16 +83,16 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     void should_return_system_fingerprint() {
 
         // given
-        OpenAiChatModel model = OPEN_AI_CHAT_MODEL_BUILDER
+        OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
                 .build();
 
-        ChatRequest chatRequest = ChatRequest.builder()
+        OpenAiChatRequest chatRequest = OpenAiChatRequest.builder()
                 .messages(UserMessage.from("Hi"))
                 .maxOutputTokens(1) // to save tokens
                 .build();
 
         // when
-        OpenAiChatResponse chatResponse = model.chat(chatRequest);
+        OpenAiChatResponse chatResponse = chatModel.chat(chatRequest);
 
         // then
         assertThat(chatResponse.systemFingerprint()).isNotBlank();

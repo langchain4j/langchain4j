@@ -6,7 +6,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -71,35 +70,33 @@ public interface ChatLanguageModel {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'modelName' parameter"));
         }
 
-        ChatParameters chatParameters = chatRequest.parameters();
-
-        Class<? extends ChatParameters> chatParametersClass = chatParameters.getClass();
-        if (chatParametersClass != ChatParameters.class) {
+        Class<? extends ChatRequest> chatRequestClass = chatRequest.getClass();
+        if (chatRequestClass != ChatRequest.class) {
             throw new IllegalArgumentException("%s cannot be used together with %s. Please use %s instead.".formatted(
-                    chatParametersClass.getSimpleName(),
+                    chatRequestClass.getSimpleName(),
                     getClass().getSimpleName(),
-                    ChatParameters.class.getSimpleName()
+                    ChatRequest.class.getSimpleName()
             ));
         }
-        if (chatParameters.temperature() != null) {
+        if (chatRequest.temperature() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'temperature' parameter"));
         }
-        if (chatParameters.topP() != null) {
+        if (chatRequest.topP() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'topP' parameter"));
         }
-        if (chatParameters.topK() != null) {
+        if (chatRequest.topK() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'topK' parameter"));
         }
-        if (chatParameters.frequencyPenalty() != null) {
+        if (chatRequest.frequencyPenalty() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'frequencyPenalty' parameter"));
         }
-        if (chatParameters.presencePenalty() != null) {
+        if (chatRequest.presencePenalty() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'presencePenalty' parameter"));
         }
-        if (chatParameters.maxOutputTokens() != null) {
+        if (chatRequest.maxOutputTokens() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'maxOutputTokens' parameter"));
         }
-        if (chatParameters.stopSequences() != null) {
+        if (chatRequest.stopSequences() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'stopSequences' parameter"));
         }
 
