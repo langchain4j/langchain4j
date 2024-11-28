@@ -1,13 +1,13 @@
     package dev.langchain4j.web.search.brave;
 
-    import dev.langchain4j.service.SystemMessage;
+
     import dev.langchain4j.web.search.WebSearchResults;
-    import dev.langchain4j.web.search.brave.BraveWebSearchEngine;
+
     import java.io.UnsupportedEncodingException;
-    import java.net.URLEncoder;
 
 
-    import java.nio.charset.StandardCharsets;
+
+
     import java.time.Duration;
 
     public class BraveSearchDemo {
