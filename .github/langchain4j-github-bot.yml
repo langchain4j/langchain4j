@@ -35,6 +35,3 @@ workflows:
           - ./doc*
         users:
           minContributions: 5
-      unless:
-        files:
-          - ./.github
