@@ -12,14 +12,20 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Experimental
 public class ChatResponse {
+    // TODO name
+    // TODO place
+    // TODO structure
+
+    // TODO custom model provider stuff (system_fingerprint, service_tier, created, logprobs?)
+    // TODO return raw response? as a json string?
 
     private final String id;
     private final String modelName;
     private final AiMessage aiMessage;
-    private final TokenUsage tokenUsage;
+    private final TokenUsage tokenUsage; // TODO custom TokenUsage
     private final FinishReason finishReason;
 
-    private ChatResponse(Builder builder) {
+    protected ChatResponse(Builder builder) { // TODO
         this.id = builder.id;
         this.modelName = builder.modelName;
         this.aiMessage = ensureNotNull(builder.aiMessage, "aiMessage");
@@ -75,11 +81,11 @@ public class ChatResponse {
                 " }";
     }
 
-    public static Builder builder() {
+    public static Builder builder() { // TODO
         return new Builder();
     }
 
-    public static class Builder {
+    public static class Builder<T extends Builder<T>> {
 
         private String id;
         private String modelName;
@@ -87,29 +93,29 @@ public class ChatResponse {
         private TokenUsage tokenUsage;
         private FinishReason finishReason;
 
-        public Builder id(String id) {
+        public T id(String id) {
             this.id = id;
-            return this;
+            return (T) this;
         }
 
-        public Builder modelName(String modelName) {
+        public T modelName(String modelName) {
             this.modelName = modelName;
-            return this;
+            return (T) this;
         }
 
-        public Builder aiMessage(AiMessage aiMessage) {
+        public T aiMessage(AiMessage aiMessage) {
             this.aiMessage = aiMessage;
-            return this;
+            return (T) this;
         }
 
-        public Builder tokenUsage(TokenUsage tokenUsage) {
+        public T tokenUsage(TokenUsage tokenUsage) {
             this.tokenUsage = tokenUsage;
-            return this;
+            return (T) this;
         }
 
-        public Builder finishReason(FinishReason finishReason) {
+        public T finishReason(FinishReason finishReason) {
             this.finishReason = finishReason;
-            return this;
+            return (T) this;
         }
 
         public ChatResponse build() {

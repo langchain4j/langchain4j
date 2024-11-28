@@ -165,7 +165,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public ChatResponse chat(ChatRequest chatRequest) {
+    public OpenAiChatResponse chat(ChatRequest chatRequest) {
         validateSupportedParameters(chatRequest.parameters());
         ResponseFormat openAiResponseFormat = toOpenAiResponseFormat(chatRequest.responseFormat(), this.strictJsonSchema);
         return doChat(chatRequest, getOrDefault(openAiResponseFormat, this.responseFormat));
@@ -210,7 +210,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         return convertResponse(chatResponse);
     }
 
-    private ChatResponse doChat(ChatRequest chatRequest, ResponseFormat responseFormat) {
+    private OpenAiChatResponse doChat(ChatRequest chatRequest, ResponseFormat responseFormat) {
 
         if (responseFormat != null
                 && responseFormat.type() == JSON_SCHEMA
@@ -267,12 +267,13 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         try {
             ChatCompletionResponse openAiResponse = withRetry(() -> client.chatCompletion(openAiRequest).execute(), maxRetries);
 
-            ChatResponse chatResponse = ChatResponse.builder()
+            OpenAiChatResponse chatResponse = OpenAiChatResponse.builder()
                     .id(openAiResponse.id())
                     .modelName(openAiResponse.model())
                     .aiMessage(aiMessageFrom(openAiResponse))
                     .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
                     .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
+                    .systemFingerprint(openAiResponse.systemFingerprint())
                     .build();
 
             ChatModelResponse modelListenerResponse = createModelListenerResponse(

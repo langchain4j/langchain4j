@@ -24,6 +24,7 @@ public class ChatParameters {
     private final List<String> stopSequences;
 
     protected ChatParameters(ChatParameters.Builder builder) {
+        // TODO validate params? ranges?
         this.temperature = builder.temperature;
         this.topP = builder.topP;
         this.topK = builder.topK;
@@ -101,7 +102,7 @@ public class ChatParameters {
                 " }";
     }
 
-    public static Builder builder() {
+    public static Builder builder() { // TODO
         return new Builder();
     }
 

@@ -12,12 +12,16 @@ public class OpenAiChatParameters extends ChatParameters {
     // TODO name
     // TODO place
 
-    // TODO a way to create OpenAiChatParameters from ChatParameters?
-
+    // TODO parallel_tool_calls
     private final Map<String, Integer> logitBias;
     private final Integer seed;
+    // TODO service tier
+    // TODO user
+    // TODO store, metadata
+    // TODO logprobs, top_logprobs?
+    // TODO max_completion_tokens?
 
-    private OpenAiChatParameters(OpenAiChatParameters.Builder builder) {
+    private OpenAiChatParameters(Builder builder) {
         super(builder);
         this.logitBias = copyIfNotNull(builder.logitBias);
         this.seed = builder.seed;
@@ -37,7 +41,7 @@ public class OpenAiChatParameters extends ChatParameters {
         return new Builder();
     }
 
-    public static class Builder extends ChatParameters.Builder<OpenAiChatParameters.Builder> {
+    public static class Builder extends ChatParameters.Builder<Builder> {
 
         private Map<String, Integer> logitBias;
         private Integer seed;

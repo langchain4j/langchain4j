@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatParameters;
+import dev.langchain4j.model.openai.OpenAiChatResponse;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -81,6 +82,25 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         assertThat(chatResponse.aiMessage().text())
                 .containsIgnoringCase("Paris")
                 .doesNotContainIgnoringCase("Berlin");
+    }
+
+    @Test
+    void should_return_system_fingerprint() {
+
+        // given
+        OpenAiChatModel model = OPEN_AI_CHAT_MODEL_BUILDER
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .maxOutputTokens(1) // to save tokens
+                .build();
+
+        // when
+        OpenAiChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(chatResponse.systemFingerprint()).isNotBlank();
     }
 
     // TODO test all OpenAI parameters

@@ -29,6 +29,8 @@ public class ChatRequest {
 
     private final ResponseFormat responseFormat;
 
+    // TODO custom map of params? to be used for new params/features before typesafe versions are released? at least for popular providers
+
     private ChatRequest(Builder builder) {
         this.modelName = builder.modelName;
         this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));
