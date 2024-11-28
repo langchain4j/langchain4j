@@ -187,6 +187,35 @@ In this case, you must explicitly specify **all** components.
 
 More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
 
+### Listening for AI Service Registration Events
+
+After you have completed the development of the AI Service in a declarative manner, you can also listen for the
+`AiServiceRegisteredEvent` by implementing the `ApplicationListener<AiServiceRegisteredEvent>` interface.
+
+This event is triggered when AI services are registered in the Spring context, 
+allowing you to obtain information about all registered AI services and their tools at runtime. 
+This provides the application with dynamic configuration, debugging, and extension capabilities,
+making it particularly suitable for scenarios that require specific actions based on service registration status.
+Here is an example:
+```java
+@SpringBootApplication
+class AiServiceWithToolsApplication implements ApplicationListener<AiServiceRegisteredEvent> {
+
+    public static void main(String[] args) {
+        SpringApplication.run(AiServiceWithToolsApplication.class, args);
+    }
+
+    @Override
+    public void onApplicationEvent(AiServiceRegisteredEvent event) {
+        Class<?> aiServiceClass = event.aiServiceClass();
+        List<ToolSpecification> toolSpecifications = event.toolSpecifications();
+        for (int i = 0; i < toolSpecifications.size(); i++) {
+            System.out.printf("[%s]: [Tool-%s]: %s%n", aiServiceClass.getSimpleName(), i + 1, toolSpecifications.get(i));
+        }
+    }
+}
+```
+
 ## Flux
 
 When streaming, you can use `Flux<String>` as a return type of AI Service:
