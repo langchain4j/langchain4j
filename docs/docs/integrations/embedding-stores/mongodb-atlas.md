@@ -10,13 +10,16 @@ sidebar_position: 14
 
 ## Prerequisites
 
-You must have an Atlas cluster that runs one of the following MongoDB versions:
+Vector Search requires the following or later MongoDB versions:
 
 - 6.0.11
 - 7.0.2
-- Later versions (including Release Candidates).
 
-To use Atlas Vector search, you need to have an Atlas deployment. MongoDB offers a free forever cluster that you can use for testing. See the [Get Started with Atlas](https://www.mongodb.com/docs/atlas/getting-started/) tutorial to learn more. Once you deploy a cluster, you can create a vector search index by using the index JSON editor.
+Vector Search is available on Atlas, and as of 2024 is available in early access for Community Edition.
+
+MongoDB offers a free forever cluster. See the [Get Started with Atlas](https://www.mongodb.com/docs/atlas/getting-started/) tutorial to learn more. Once you deploy a cluster, you can create a vector search index by using the index JSON editor. Alternatively, the LangChain4j `MongoDbEmbeddingStore` builder offers a `createIndex` option to automate index creation.
+
+MongoDB also offers [Atlas CLI](https://www.mongodb.com/docs/atlas/cli/current/) for local development.
 
 ## Maven Dependency
 
@@ -34,6 +37,5 @@ To use Atlas Vector search, you need to have an Atlas deployment. MongoDB offers
 
 ## Examples
 
-- [MongoDbEmbeddingStoreCloudIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-mongodb-atlas/src/test/java/dev/langchain4j/store/embedding/mongodb/MongoDbEmbeddingStoreCloudIT.java)
-- [MongoDbEmbeddingStoreLocalIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-mongodb-atlas/src/test/java/dev/langchain4j/store/embedding/mongodb/MongoDbEmbeddingStoreLocalIT.java)
+- [MongoDbEmbeddingStoreIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-mongodb-atlas/src/test/java/dev/langchain4j/store/embedding/mongodb/MongoDbEmbeddingStoreIT.java)
 
