@@ -4,6 +4,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * This class needs to be thread safe because it is called when a streaming result comes back
  * and there is no guarantee that this thread will be the same as the one that initiated the request,
@@ -13,6 +16,7 @@ class OllamaStreamingResponseBuilder {
 
     private StringBuffer contentBuilder = new StringBuffer();
     private volatile TokenUsage tokenUsage;
+    private volatile List<ToolCall> toolsCall;
 
     void append(ChatResponse partialResponse) {
         if (partialResponse == null) {
@@ -26,6 +30,11 @@ class OllamaStreamingResponseBuilder {
             );
         }
 
+        if (partialResponse.getMessage().getToolCalls() != null && !partialResponse.getMessage().getToolCalls().isEmpty()) {
+            this.toolsCall = new ArrayList<>();
+            this.toolsCall.addAll(partialResponse.getMessage().getToolCalls());
+        }
+
         String content = partialResponse.getMessage().getContent();
         if (content != null) {
             contentBuilder.append(content);
@@ -33,6 +42,12 @@ class OllamaStreamingResponseBuilder {
     }
 
     Response<AiMessage> build() {
+        if (toolsCall != null && !toolsCall.isEmpty()) {
+            return Response.from(
+                    AiMessage.aiMessage(
+                            OllamaMessagesUtils.toToolExecutionRequest(toolsCall)), tokenUsage);
+
+        }
         if (contentBuilder.toString().isEmpty()) {
             return null;
         }
