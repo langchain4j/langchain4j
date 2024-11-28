@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -103,6 +104,9 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
+
+        validate(chatRequest.parameters());
+
         GeminiGenerateContentRequest request = createGenerateContentRequest(
             chatRequest.messages(),
             chatRequest.toolSpecifications(),
@@ -130,6 +134,21 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         } catch (RuntimeException e) {
             notifyListenersOnError(e, chatModelRequest, listenerAttributes);
             throw e;
+        }
+    }
+
+    private static void validate(ChatParameters chatParameters) {
+        Class<? extends ChatParameters> chatParametersClass = chatParameters.getClass();
+        if (chatParametersClass != ChatParameters.class
+                && chatParametersClass != GoogleAiGeminiChatParameters.class) {
+            throw new IllegalArgumentException(("%s cannot be used together with %s. " +
+                    "Please use either %s or %s instead.")
+                    .formatted(
+                            chatParametersClass.getSimpleName(),
+                            GoogleAiGeminiChatModel.class.getSimpleName(),
+                            ChatParameters.class.getSimpleName(),
+                            GoogleAiGeminiChatParameters.class.getSimpleName()
+                    ));
         }
     }
 

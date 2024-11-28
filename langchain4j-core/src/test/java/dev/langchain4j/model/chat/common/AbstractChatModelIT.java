@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -155,6 +156,83 @@ public abstract class AbstractChatModelIT {
     // TODO test all parameters once HTTP clients are customizable?
     // TODO test all unsupported parameters
 
+    @EnabledIf("supportsMaxOutputTokensParameter")
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_respect_model_specific_parameters(ChatLanguageModel model) {
+
+        // given
+        int maxOutputTokens = 5;
+
+        ChatParameters chatParameters = modelSpecificParametersFrom(maxOutputTokens);
+        assertThat(chatParameters).doesNotHaveSameClassAs(ChatParameters.class);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(chatParameters)
+                .messages(UserMessage.from("Tell me a long story"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.finishReason()).isEqualTo(LENGTH);
+        }
+    }
+
+    protected ChatParameters modelSpecificParametersFrom(int maxOutputTokens) {
+        throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_fail_if_parameters_object_does_not_match_model_type(ChatLanguageModel model) {
+
+        // given
+        ChatParameters chatParameters = new ChatParametersThatDoNotMatchModelProvider();
+        assertThat(chatParameters).doesNotHaveSameClassAs(ChatParameters.class);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(chatParameters)
+                .messages(UserMessage.from("Hello"))
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(chatRequest))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("%s cannot be used together with %s.".formatted(
+                        ChatParametersThatDoNotMatchModelProvider.class.getSimpleName(),
+                        model.getClass().getSimpleName()
+                ))
+                .hasMessageContaining("Please use")
+                .hasMessageContaining(ChatParameters.class.getSimpleName());
+    }
+
+    private static class ChatParametersThatDoNotMatchModelProvider extends ChatParameters {
+
+        private ChatParametersThatDoNotMatchModelProvider() {
+            super(new Builder());
+        }
+
+        private static class Builder extends ChatParameters.Builder<Builder> {
+
+            public ChatParametersThatDoNotMatchModelProvider build() {
+                return new ChatParametersThatDoNotMatchModelProvider();
+            }
+        }
+    }
+
     @EnabledIf("supportsModelNameParameter")
     @ParameterizedTest
     @MethodSource("models")
@@ -193,7 +271,7 @@ public abstract class AbstractChatModelIT {
     }
 
     protected String modelName() {
-        throw new RuntimeException("please implement this method");
+        throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
     }
 
     @DisabledIf("supportsModelNameParameter")
@@ -239,7 +317,7 @@ public abstract class AbstractChatModelIT {
 
         TokenUsage tokenUsage = chatResponse.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(5);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 

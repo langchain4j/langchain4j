@@ -64,33 +64,42 @@ public interface ChatLanguageModel {
      * @deprecated TODO
      */
     @Deprecated
-    static void validate(ChatRequest chatRequest) {
+    default void validate(ChatRequest chatRequest) {
         String errorTemplate = "%s is not supported yet by this model provider";
 
         if (chatRequest.modelName() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'modelName' parameter"));
         }
 
-        ChatParameters parameters = chatRequest.parameters();
-        if (parameters.temperature() != null) {
+        ChatParameters chatParameters = chatRequest.parameters();
+
+        Class<? extends ChatParameters> chatParametersClass = chatParameters.getClass();
+        if (chatParametersClass != ChatParameters.class) {
+            throw new IllegalArgumentException("%s cannot be used together with %s. Please use %s instead.".formatted(
+                    chatParametersClass.getSimpleName(),
+                    getClass().getSimpleName(),
+                    ChatParameters.class.getSimpleName()
+            ));
+        }
+        if (chatParameters.temperature() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'temperature' parameter"));
         }
-        if (parameters.topP() != null) {
+        if (chatParameters.topP() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'topP' parameter"));
         }
-        if (parameters.topK() != null) {
+        if (chatParameters.topK() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'topK' parameter"));
         }
-        if (parameters.frequencyPenalty() != null) {
+        if (chatParameters.frequencyPenalty() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'frequencyPenalty' parameter"));
         }
-        if (parameters.presencePenalty() != null) {
+        if (chatParameters.presencePenalty() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'presencePenalty' parameter"));
         }
-        if (parameters.maxOutputTokens() != null) {
+        if (chatParameters.maxOutputTokens() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'maxOutputTokens' parameter"));
         }
-        if (parameters.stopSequences() != null) {
+        if (chatParameters.stopSequences() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'stopSequences' parameter"));
         }
 

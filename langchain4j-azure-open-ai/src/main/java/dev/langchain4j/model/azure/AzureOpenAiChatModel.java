@@ -251,7 +251,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
 
-        ChatLanguageModel.validate(chatRequest);
+        validate(chatRequest);
 
         return generate(
                 chatRequest.messages(),

@@ -3,6 +3,7 @@ package dev.langchain4j.service.openai.common;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -43,6 +44,13 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected String modelName() {
         return "gpt-4o-2024-11-20";
+    }
+
+    @Override
+    protected ChatParameters modelSpecificParametersFrom(int maxOutputTokens) {
+        return OpenAiChatParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Test

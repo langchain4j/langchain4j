@@ -37,8 +37,6 @@ public interface StreamingChatLanguageModel {
     @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
-        ChatLanguageModel.validate(chatRequest);
-
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 
             @Override

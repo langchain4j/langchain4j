@@ -585,6 +585,17 @@ public class InternalOpenAiHelper {
     }
 
     public static void validateSupportedParameters(ChatParameters chatParameters) {
+        Class<? extends ChatParameters> chatParametersClass = chatParameters.getClass();
+        if (chatParametersClass != ChatParameters.class
+                && chatParametersClass != OpenAiChatParameters.class) {
+            throw new IllegalArgumentException(("%s cannot be used together with OpenAiChatModel. " +
+                    "Please use either %s or %s instead.")
+                    .formatted(
+                            chatParametersClass.getSimpleName(),
+                            ChatParameters.class.getSimpleName(),
+                            OpenAiChatParameters.class.getSimpleName()
+                    ));
+        }
         if (chatParameters != null && chatParameters.topK() != null) {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
         }

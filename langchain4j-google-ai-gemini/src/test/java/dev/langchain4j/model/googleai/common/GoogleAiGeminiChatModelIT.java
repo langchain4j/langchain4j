@@ -2,7 +2,9 @@ package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatParameters;
 
 import java.util.List;
 
@@ -21,6 +23,13 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     @Override
     protected String modelName() {
         return "gemini-1.5-flash";
+    }
+
+    @Override
+    protected ChatParameters modelSpecificParametersFrom(int maxOutputTokens) {
+        return GoogleAiGeminiChatParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
     }
 
     @Override
