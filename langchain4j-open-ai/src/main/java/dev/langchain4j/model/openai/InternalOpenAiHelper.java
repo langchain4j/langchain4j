@@ -45,9 +45,9 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -462,15 +462,25 @@ public class InternalOpenAiHelper {
                 .build();
     }
 
-    public static TokenUsage tokenUsageFrom(Usage openAiUsage) {
+    public static OpenAiTokenUsage tokenUsageFrom(Usage openAiUsage) {
         if (openAiUsage == null) {
             return null;
         }
-        return new TokenUsage(
-                openAiUsage.promptTokens(),
-                openAiUsage.completionTokens(),
-                openAiUsage.totalTokens()
+
+        OutputTokensDetails outputTokensDetails = new OutputTokensDetails(
+                openAiUsage.completionTokensDetails().reasoningTokens(),
+                null, // TODO
+                null, // TODO
+                null // TODO
         );
+
+        return OpenAiTokenUsage.builder()
+                .inputTokenCount(openAiUsage.promptTokens())
+                .outputTokenCount(openAiUsage.completionTokens())
+                .totalTokenCount(openAiUsage.totalTokens())
+                .inputTokensDetails(null) // TODO
+                .outputTokensDetails(outputTokensDetails)
+                .build();
     }
 
     public static FinishReason finishReasonFrom(String openAiFinishReason) {

@@ -7,6 +7,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatRequest;
 import dev.langchain4j.model.openai.OpenAiChatResponse;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -80,22 +81,36 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Test
-    void should_return_system_fingerprint() {
+    void should_return_custom_response() {
 
         // given
         OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
                 .build();
 
+        int maxOutputTokens = 1;
+
         OpenAiChatRequest chatRequest = OpenAiChatRequest.builder()
                 .messages(UserMessage.from("Hi"))
-                .maxOutputTokens(1) // to save tokens
+                .maxOutputTokens(maxOutputTokens) // to save tokens
                 .build();
 
         // when
         OpenAiChatResponse chatResponse = chatModel.chat(chatRequest);
 
         // then
+        assertThat(chatResponse.created()).isPositive();
         assertThat(chatResponse.systemFingerprint()).isNotBlank();
+
+        OpenAiTokenUsage tokenUsage = chatResponse.tokenUsage();
+
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.inputTokensDetails()).isNull();
+
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+        assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isZero();
+
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 
     // TODO test all OpenAI parameters

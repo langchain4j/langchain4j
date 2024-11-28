@@ -249,8 +249,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .logitBias(getOrDefault(openAiChatRequest.logitBias(), this.logitBias))
                 .responseFormat(responseFormat)
                 .seed(getOrDefault(openAiChatRequest.seed(), this.seed))
-                .user(this.user)
-                .parallelToolCalls(this.parallelToolCalls);
+                .user(getOrDefault(openAiChatRequest.user(), this.user))
+                .parallelToolCalls(getOrDefault(openAiChatRequest.parallelToolCalls(), this.parallelToolCalls));
 
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
             requestBuilder.tools(toTools(chatRequest.toolSpecifications(), strictTools));
@@ -285,6 +285,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                     .aiMessage(aiMessageFrom(openAiResponse))
                     .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
                     .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
+                    .created(openAiResponse.created().longValue())
                     .systemFingerprint(openAiResponse.systemFingerprint())
                     .build();
 
