@@ -31,7 +31,4 @@ workflows:
   rules:
     - allow:
         files:
-          - ./src
-          - ./doc*
-        users:
-          minContributions: 5
+          - "**/*"
