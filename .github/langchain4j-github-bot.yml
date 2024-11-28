@@ -1,7 +1,7 @@
 ---
 # The format of this file is documented here:
 # https://github.com/langchain4j/langchain4j-github-bot
-features: [ TRIAGE_ISSUES_AND_PULL_REQUESTS, APPROVE_WORKFLOWS]
+features: [TRIAGE_ISSUES_AND_PULL_REQUESTS,APPROVE_WORKFLOWS]
 
 triage:
   rules:
