@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat
 
+import dev.langchain4j.Experimental
 import dev.langchain4j.data.message.AiMessage
 import dev.langchain4j.data.message.ChatMessage
 import dev.langchain4j.model.chat.request.ChatRequest
@@ -26,6 +27,7 @@ import kotlinx.coroutines.coroutineScope
  * @see ChatRequest
  * @see ChatResponse
  */
+@Experimental
 suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse {
     val model = this
     return coroutineScope { model.chat(request) }
@@ -55,6 +57,7 @@ suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse {
  * @see ChatRequest.Builder
  * @see chatAsync
  */
+@Experimental
 suspend fun ChatLanguageModel.chatAsync(requestBuilder: ChatRequest.Builder): ChatResponse =
     chatAsync(requestBuilder.build())
 
@@ -81,6 +84,7 @@ suspend fun ChatLanguageModel.chatAsync(requestBuilder: ChatRequest.Builder): Ch
  * @see ChatResponse
  * @see ChatRequest.Builder
  */
+@Experimental
 fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatResponse =
     this.chat(requestBuilder.build())
 
@@ -107,6 +111,7 @@ fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatResponse =
  * @see Response
  * @see AiMessage
  */
+@Experimental
 suspend fun ChatLanguageModel.generateAsync(messages: List<ChatMessage>): Response<AiMessage> {
     val model = this
     return coroutineScope { model.generate(messages) }
