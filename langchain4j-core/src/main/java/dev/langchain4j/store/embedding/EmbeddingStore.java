@@ -75,7 +75,7 @@ public interface EmbeddingStore<Embedded> {
      * @param embedded   A list of original contents that were embedded.
      */
     default void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
-        throw new UnsupportedOperationException("Method need to be implemented manually");
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     /**
