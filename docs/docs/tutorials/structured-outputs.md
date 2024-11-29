@@ -111,7 +111,7 @@ with the following subtypes:
 - `JsonReferenceSchema` - to support recursion (e.g., `Person` has a `Set<Person> children` field).
 - `JsonAnyOfSchema` - to support subtypes (e.g., `Shape` can be either `Circle` or `Rectangle`).
 
-### `JsonObjectSchema`
+#### `JsonObjectSchema`
 
 `JsonObjectSchema` represents an object with nested properties.
 It is usually a root element of the `JsonSchema`.
@@ -367,7 +367,7 @@ You can find many examples of supported use cases
 [here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaIT.java)
 and [here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaWithDescriptionsIT.java).
 
-### Adding Description
+#### Adding Description
 
 If an LLM does not provide the desired output, classes and fields can be annotated with `@Description`
 to give more information and instructions to the LLM.
@@ -381,7 +381,7 @@ record Person(@Description("person's name") String name,
 }
 ```
 
-### Limitations
+#### Limitations
 When using Structured Outputs with AI Services, there are some limitations:
 - It works only with supported OpenAI and Gemini models.
 - Support for Structured Outputs needs to be enabled explicitly when configuring `ChatLanguageModel`.
