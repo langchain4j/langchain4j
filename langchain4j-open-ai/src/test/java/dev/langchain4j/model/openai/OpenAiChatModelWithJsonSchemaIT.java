@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -18,6 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonSchemaElementFrom;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,7 +66,7 @@ class OpenAiChatModelWithJsonSchemaIT {
                 .rootElement(JsonObjectSchema.builder()
                         .addProperty("shapes", JsonArraySchema.builder()
                                 .items(JsonAnyOfSchema.builder()
-                                        .anyOf(List.of(circleSchema, rectangleSchema))
+                                        .anyOf(circleSchema, rectangleSchema)
                                         .build())
                                 .build())
                         .required(List.of("shapes"))
@@ -74,8 +74,8 @@ class OpenAiChatModelWithJsonSchemaIT {
                 .build();
 
         ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(JSON)
                 .jsonSchema(jsonSchema)
-                .type(ResponseFormatType.JSON)
                 .build();
 
         UserMessage userMessage = UserMessage.from("""
