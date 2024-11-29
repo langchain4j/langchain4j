@@ -17,7 +17,7 @@ import static java.util.Arrays.asList;
 public class ChatRequest {
     // TODO reconsider structure of this class
 
-    private final String modelName; // TODO model? move to ChatParameters?
+    private final String modelName; // TODO name: model?
     private final Double temperature;
     private final Double topP;
     private final Integer topK;
@@ -58,7 +58,7 @@ public class ChatRequest {
         return builder;
     }
 
-    public String modelName() { // TODO names
+    public String modelName() { // TODO name
         return modelName;
     }
 
@@ -146,7 +146,7 @@ public class ChatRequest {
     @Override
     public String toString() {
         return "ChatRequest {" +
-                " modelName = " + quoted(modelName) + // TODO names
+                " modelName = " + quoted(modelName) + // TODO name
                 ", temperature = " + temperature +
                 ", topP = " + topP +
                 ", topK = " + topK +
@@ -185,37 +185,37 @@ public class ChatRequest {
             return (T) this;
         }
 
-        public T temperature(Double temperature) { // TODO remove?
+        public T temperature(Double temperature) {
             this.temperature = temperature;
             return (T) this;
         }
 
-        public T topP(Double topP) { // TODO remove?
+        public T topP(Double topP) {
             this.topP = topP;
             return (T) this;
         }
 
-        public T topK(Integer topK) { // TODO remove?
+        public T topK(Integer topK) {
             this.topK = topK;
             return (T) this;
         }
 
-        public T frequencyPenalty(Double frequencyPenalty) { // TODO remove?
+        public T frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
             return (T) this;
         }
 
-        public T presencePenalty(Double presencePenalty) { // TODO remove?
+        public T presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
             return (T) this;
         }
 
-        public T maxOutputTokens(Integer maxOutputTokens) { // TODO remove?
+        public T maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
             return (T) this;
         }
 
-        public T stopSequences(List<String> stopSequences) { // TODO remove?
+        public T stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return (T) this;
         }
@@ -248,7 +248,7 @@ public class ChatRequest {
             return (T) this;
         }
 
-        // TODO consider adding responseFormat(JsonSchema) or jsonSchema(JsonSchema)
+        // TODO add responseFormat(JsonSchema) or jsonSchema(JsonSchema)
 
         public ChatRequest build() {
             return new ChatRequest(this);

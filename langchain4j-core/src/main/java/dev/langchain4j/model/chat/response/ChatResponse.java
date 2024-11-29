@@ -16,13 +16,12 @@ public class ChatResponse {
     // TODO place
     // TODO structure
 
-    // TODO custom model provider stuff (system_fingerprint, service_tier, created, logprobs?)
     // TODO return raw response? as a json string?
 
     private final String id;
     private final String modelName;
     private final AiMessage aiMessage;
-    private final TokenUsage tokenUsage; // TODO custom TokenUsage
+    private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
 
     protected ChatResponse(Builder builder) { // TODO
