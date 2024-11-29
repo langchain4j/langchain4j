@@ -153,47 +153,7 @@ ToolSpecification toolSpecification = ToolSpecification.builder()
     .build();
 ```
 
-<details>
-<summary>More details</summary>
-
-There are several ways to add properties to a `JsonObjectSchema`:
-1. You can add all the properties at once using the `properties(Map<String, JsonSchemaElement> properties)` method:
-```java
-JsonObjectSchema.builder()
-    .properties(Map.of(
-        "city", JsonStringSchema.builder()
-                    .description("The city for which the weather forecast should be returned")
-                    .build(),
-        "temperatureUnit", JsonEnumSchema.builder()
-                    .enumValues("CELSIUS", "FAHRENHEIT")
-                    .build()
-    ))
-    .required("city")
-    .build();
-```
-2. You can add properties individually using the `addProperty(String name, JsonSchemaElement jsonSchemaElement)` method:
-```java
-JsonObjectSchema.builder()
-    .addProperty("city", JsonStringSchema.builder()
-        .description("The city for which the weather forecast should be returned")
-        .build())
-    .addProperty("temperatureUnit", JsonEnumSchema.builder()
-        .enumValues("CELSIUS", "FAHRENHEIT")
-        .build())
-    .required("city")
-    .build();
-```
-3. You can add properties individually using one of the `add{Type}Property(String name)` or `add{Type}Property(String name, String description)` methods:
-```java
-JsonObjectSchema.builder()
-    .addStringProperty("city", "The city for which the weather forecast should be returned")
-    .addEnumProperty("temperatureUnit", List.of("CELSIUS", "FAHRENHEIT"))
-    .required("city")
-    .build();
-```
-
-Please refer to the Javadoc of the `JsonObjectSchema` for more details.
-</details>
+You can find more information on `JsonObjectSchema` [here](/tutorials/structured-outputs#jsonobjectschema).
 
 2. Using helper methods:
 - `ToolSpecifications.toolSpecificationsFrom(Class)`
