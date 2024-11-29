@@ -29,7 +29,6 @@
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
         <module>langchain4j-cohere</module>
-        <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-jina</module>
         <module>langchain4j-local-ai</module>

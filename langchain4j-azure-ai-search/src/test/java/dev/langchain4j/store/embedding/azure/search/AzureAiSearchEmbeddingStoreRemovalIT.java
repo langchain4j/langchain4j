@@ -5,10 +5,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
-import dev.langchain4j.store.embedding.TestUtils;
-import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,17 +36,24 @@ public class AzureAiSearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemo
         return embeddingModel;
     }
 
-    @BeforeEach
-    void beforeEach() throws InterruptedException {
-        Thread.sleep(2_000);
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        deleteIndex();
+        sleep();
     }
 
-    @AfterEach
-    void afterEach() {
+    private void deleteIndex() {
         try {
             embeddingStore.deleteIndex();
         } catch (RuntimeException e) {
             log.error("Failed to delete the index. You should look at deleting it manually.", e);
+        }
+    }
+
+    private static void sleep() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_AI_SEARCH");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
     }
 }

@@ -20,6 +20,7 @@ import java.time.LocalTime;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -27,7 +28,6 @@ import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -880,7 +880,7 @@ public abstract class AiServicesWithJsonSchemaIT {
 
     @Test
     @EnabledIf("supportsRecursion")
-    void should_execute_tool_with_pojo_with_recursion() {
+    void should_extract_pojo_with_recursion() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -911,24 +911,20 @@ public abstract class AiServicesWithJsonSchemaIT {
                             .jsonSchema(JsonSchema.builder()
                                     .name("Person")
                                     .rootElement(JsonObjectSchema.builder()
-                                            .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                put("name", new JsonStringSchema());
-                                                put("children", JsonArraySchema.builder()
-                                                        .items(JsonReferenceSchema.builder()
-                                                                .reference(reference)
-                                                                .build())
-                                                        .build());
-                                            }})
+                                            .addStringProperty("name")
+                                            .addProperty("children", JsonArraySchema.builder()
+                                                    .items(JsonReferenceSchema.builder()
+                                                            .reference(reference)
+                                                            .build())
+                                                    .build())
                                             .required("name", "children")
-                                            .definitions(singletonMap(reference, JsonObjectSchema.builder()
-                                                    .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                                        put("name", new JsonStringSchema());
-                                                        put("children", JsonArraySchema.builder()
-                                                                .items(JsonReferenceSchema.builder()
-                                                                        .reference(reference)
-                                                                        .build())
-                                                                .build());
-                                                    }})
+                                            .definitions(Map.of(reference, JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addProperty("children", JsonArraySchema.builder()
+                                                            .items(JsonReferenceSchema.builder()
+                                                                    .reference(reference)
+                                                                    .build())
+                                                            .build())
                                                     .required("name", "children")
                                                     .build()))
                                             .build())

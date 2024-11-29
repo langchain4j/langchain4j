@@ -21,6 +21,10 @@ import static java.util.Arrays.stream;
 
 public class JsonSchemaElementHelper {
 
+    public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz) {
+        return jsonSchemaElementFrom(clazz, clazz, null, new LinkedHashMap<>());
+    }
+
     public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz,
                                                           Type type,
                                                           String fieldDescription,

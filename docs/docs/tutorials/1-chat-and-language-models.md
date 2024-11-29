@@ -78,7 +78,7 @@ Usually, you, as a developer, should define the content of this message.
 Normally, you would write here instructions on what the LLM's role is in this conversation,
 how it should behave, in what style to answer, etc.
 LLMs are trained to pay more attention to `SystemMessage` than to other types of messages,
-so be careful and it's better not to give an end user free access to define or inject some input into a `SystemMessage`.
+so be careful, and it's better not to give an end user free access to define or inject some input into a `SystemMessage`.
 Usually, it is located at the start of the conversation.
 
 Now that we know all types of `ChatMessage`, let's see how we can combine them in the conversation.
@@ -177,3 +177,7 @@ See more details [here](https://platform.openai.com/docs/guides/vision#low-or-hi
 
 #### PDF File Content
 `PdfFileContent` is similar to the `ImageContent`, but represents binary contents of a PDF file.
+
+### Kotlin Extensions
+
+The `ChatLanguageModel` [Kotlin extensions](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/kotlin/dev/langchain4j/model/chat/ChatLanguageModelExtensions.kt) provide asynchronous methods for handling chat interactions with a language model, utilizing Kotlin's [coroutine](https://kotlinlang.org/docs/coroutines-guide.html) capabilities. The `chatAsync` methods allow non-blocking processing of `ChatRequest` or `ChatRequest.Builder` configurations, returning `ChatResponse` with the model's reply. Similarly, `generateAsync` handles the asynchronous generation of responses from chat messages. These extensions simplify building chat requests and handling conversations efficiently in Kotlin applications. Note that these methods are marked as experimental and may evolve over time.

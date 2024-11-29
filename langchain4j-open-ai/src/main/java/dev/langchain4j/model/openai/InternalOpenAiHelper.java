@@ -29,6 +29,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -344,6 +345,15 @@ public class InternalOpenAiHelper {
         } else if (jsonSchemaElement instanceof JsonReferenceSchema jsonReferenceSchema) {
             return dev.ai4j.openai4j.chat.JsonReferenceSchema.builder()
                     .reference("#/$defs/" + jsonReferenceSchema.reference())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonAnyOfSchema) {
+            JsonAnyOfSchema jsonAnyOfSchema = (JsonAnyOfSchema) jsonSchemaElement;
+            return dev.ai4j.openai4j.chat.JsonAnyOfSchema.builder()
+                    .description(jsonAnyOfSchema.description())
+                    .anyOf(jsonAnyOfSchema.anyOf()
+                            .stream()
+                            .map(it -> toOpenAiJsonSchemaElement(it, strict))
+                            .collect(toList()))
                     .build();
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());

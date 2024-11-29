@@ -5,6 +5,7 @@ import dev.langchain4j.Experimental;
 /**
  * A base interface for a JSON schema element.
  *
+ * @see JsonAnyOfSchema
  * @see JsonArraySchema
  * @see JsonBooleanSchema
  * @see JsonEnumSchema
