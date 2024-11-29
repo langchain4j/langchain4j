@@ -198,12 +198,8 @@ This provides the application with dynamic configuration, debugging, and extensi
 making it particularly suitable for scenarios that require specific actions based on service registration status.
 Here is an example:
 ```java
-@SpringBootApplication
-class AiServiceWithToolsApplication implements ApplicationListener<AiServiceRegisteredEvent> {
-
-    public static void main(String[] args) {
-        SpringApplication.run(AiServiceWithToolsApplication.class, args);
-    }
+@Component
+class AiServiceRegistrar implements ApplicationListener<AiServiceRegisteredEvent> {
 
     @Override
     public void onApplicationEvent(AiServiceRegisteredEvent event) {
