@@ -17,6 +17,8 @@ import static java.util.Arrays.asList;
 public class ChatRequest {
     // TODO reconsider structure of this class
 
+    // TODO api key, base url, custom http headers, etc: in a separate section?
+
     private final String modelName; // TODO name: model?
     private final Double temperature;
     private final Double topP;
