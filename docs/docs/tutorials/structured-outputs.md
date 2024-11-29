@@ -140,20 +140,20 @@ JsonSchemaElement rootElement = JsonObjectSchema.builder()
 
 2. You can add properties individually using the `addProperty(String name, JsonSchemaElement jsonSchemaElement)` method:
 ```java
-JsonObjectSchema.builder()
-    .addProperty("city", citySchema)
-    .addProperty("temperatureUnit", temperatureUnitSchema)
-    .required("city")
-    .build();
+JsonSchemaElement rootElement = JsonObjectSchema.builder()
+        .addProperty("city", citySchema)
+        .addProperty("temperatureUnit", temperatureUnitSchema)
+        .required("city")
+        .build();
 ```
 
 3. You can add properties individually using one of the `add{Type}Property(String name)` or `add{Type}Property(String name, String description)` methods:
 ```java
-JsonObjectSchema.builder()
-    .addStringProperty("city", "The city for which the weather forecast should be returned")
-    .addEnumProperty("temperatureUnit", List.of("CELSIUS", "FAHRENHEIT"))
-    .required("city")
-    .build();
+JsonSchemaElement rootElement = JsonObjectSchema.builder()
+        .addStringProperty("city", "The city for which the weather forecast should be returned")
+        .addEnumProperty("temperatureUnit", List.of("CELSIUS", "FAHRENHEIT"))
+        .required("city")
+        .build();
 ```
 
 Please refer to the Javadoc of the `JsonObjectSchema` for more details.
@@ -163,7 +163,16 @@ Please refer to the Javadoc of the `JsonObjectSchema` for more details.
 
 An example of creating `JsonStringSchema`:
 ```java
-JsonSchemaElement stringSchema = JsonIntegerSchema.builder()
+JsonSchemaElement stringSchema = JsonStringSchema.builder()
+        .description("The name of the person")
+        .build();
+```
+
+#### `JsonIntegerSchema`
+
+An example of creating `JsonIntegerSchema`:
+```java
+JsonSchemaElement integerSchema = JsonIntegerSchema.builder()
         .description("The age of the person")
         .build();
 ```
@@ -193,7 +202,7 @@ An example of creating `JsonEnumSchema`:
 JsonSchemaElement enumSchema = JsonEnumSchema.builder()
         .description("Marital status of the person")
         .enumValues("SINGLE", "MARRIED", "DIVORCED") // allowed values can be set either via varargs
-        .enumValues(List.of("SINGLE", "MARRIED", "DIVORCED")) // or as a List
+        .enumValues(List.of("SINGLE", "MARRIED", "DIVORCED")) // or as a list
         .build();
 ```
 
