@@ -11,7 +11,7 @@ https://duckdb.org/
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-duckdb</artifactId>
+    <artifactId>langchain4j-community-duckdb</artifactId>
     <version>0.37.0</version>
 </dependency>
 ```
