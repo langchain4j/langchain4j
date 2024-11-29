@@ -86,10 +86,6 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
         generate(messages, List.of(), handler);
     }
 
-    @Override
-    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, List.of(toolSpecification), handler);
-    }
 
     @Override
     public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
