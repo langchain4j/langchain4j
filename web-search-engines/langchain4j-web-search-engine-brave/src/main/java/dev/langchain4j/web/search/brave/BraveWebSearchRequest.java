@@ -3,15 +3,22 @@ package dev.langchain4j.web.search.brave;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Getter
-@Builder
-public class BraveWebSearchRequest {
+class BraveWebSearchRequest {
 
-    private String query;
-    private String apiKey;
-    private Integer count;
-    private String safeSearch;
-    private String resultFilter;
-    private String freshness;
+    private final String apiKey;
+    private final String query;
+    private final Map<String,Object> optionalParams;
 
+    @Builder
+    BraveWebSearchRequest(String apiKey,
+                          String query,
+                          Map<String,Object> optionalParams){
+        this.apiKey = apiKey;
+        this.query = query;
+        this.optionalParams = new HashMap<>(optionalParams);
+    }
 }

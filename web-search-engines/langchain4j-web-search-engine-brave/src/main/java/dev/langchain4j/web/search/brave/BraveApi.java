@@ -5,19 +5,18 @@ import retrofit2.http.GET;
 import retrofit2.http.Header;
 import retrofit2.http.Headers;
 import retrofit2.http.Query;
+import retrofit2.http.QueryMap;
 
-public interface BraveApi {
+import java.util.Map;
+
+interface BraveApi {
 
     @GET("res/v1/web/search")
     @Headers({
             "Accept: application/json"
     })
-    Call<BraveResponse> search(
+    Call<BraveWebSearchResponse> search(
             @Header("X-Subscription-Token") String apiKey,
-            @Query("q") String query,
-            @Query("count") Integer count,
-            @Query("safesearch") String safeSearch,
-            @Query("resultFilter") String resultFilter,
-            @Query("freshness") String freshness
+            @QueryMap Map<String,Object> params
     );
 }

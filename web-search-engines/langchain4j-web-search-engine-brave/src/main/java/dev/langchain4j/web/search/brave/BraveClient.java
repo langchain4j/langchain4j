@@ -15,8 +15,10 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
-public class BraveClient {
+class BraveClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
@@ -45,17 +47,14 @@ public class BraveClient {
         this.braveApi = retrofit.create(BraveApi.class);
     }
 
-    public BraveResponse search(BraveWebSearchRequest braveWebSearchRequest) {
+    public BraveWebSearchResponse search(BraveWebSearchRequest braveWebSearchRequest) {
         try {
-            System.out.println(braveWebSearchRequest.getCount()+" "+braveWebSearchRequest.getQuery()+" "+braveWebSearchRequest.getCount()+" "+braveWebSearchRequest.getSafeSearch()+" "+braveWebSearchRequest.getResultFilter()+" "+braveWebSearchRequest.getFreshness());
-            Response<BraveResponse> retrofitResponse = braveApi
+            Map<String,Object> params=new HashMap<>(braveWebSearchRequest.getOptionalParams());
+            params.put("q",braveWebSearchRequest.getQuery());
+            Response<BraveWebSearchResponse> retrofitResponse = braveApi
                     .search(
                             braveWebSearchRequest.getApiKey(),
-                            braveWebSearchRequest.getQuery(),
-                            braveWebSearchRequest.getCount(),
-                            braveWebSearchRequest.getSafeSearch(),
-                            braveWebSearchRequest.getResultFilter(),
-                            braveWebSearchRequest.getFreshness()
+                            params
                     )
                     .execute();
 
@@ -69,7 +68,7 @@ public class BraveClient {
         }
     }
 
-    private static RuntimeException toException(Response<BraveResponse> retrofitResponse) throws IOException {
+    private static RuntimeException toException(Response<BraveWebSearchResponse> retrofitResponse) throws IOException {
         int code = retrofitResponse.code();
         String body = retrofitResponse.errorBody().string();
         String errorMessage = String.format("status code: %s; body: %s", code, body);

@@ -5,7 +5,10 @@ import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -15,10 +18,7 @@ import static java.time.Duration.ofSeconds;
  * An implementation of a{@link WebSearchEngine} that uses
  * <a href="https://brave.com/search/api//">Brave Search API</a> for performing web searches.
  */
-public class BraveWebSearchEngine implements WebSearchEngine {
-
-    private final BraveClient braveClient;
-
+class BraveWebSearchEngine implements WebSearchEngine {
     /**
      * Constructs a new BraveSearchEngine with the specified parameters.
      *
@@ -34,15 +34,9 @@ public class BraveWebSearchEngine implements WebSearchEngine {
      *                      - strict: Drops all adult content from search results.
      *
      * @param resultFilter  Available result filter values are:
-     *                      - discussions
-     *                      - faq
-     *                      - infobox
-     *                      - news
-     *                      - query
      *                      - summarizer
-     *                      - videos
      *                      - web (set to default as web)
-     *                      - locations
+     *                      - image
      *                      Example result filter param:
      *                      result_filter=discussions,videos returns only discussions and videos responses.
      *                      Another example where only location results are required, set the result_filter param to result_filter=locations.
@@ -60,12 +54,8 @@ public class BraveWebSearchEngine implements WebSearchEngine {
 
     private static final String DEFAULT_BASE_URL = "https://api.search.brave.com/";
     private final String apiKey;
-    private final Integer count;
-    private final String safeSearch;
-    private final String resultFilter;
-    private final String freshness;
-
-
+    private final BraveClient braveClient;
+    private final Map<String,Object> optionalParams;
     /**
      * This constructor has a  Builder method for building Brave Search Client with the default parameters:
      *      baseUrl : It acts as the base URL where the requests are sent - a trailing route /search is added by the retrofit while request is made by user
@@ -75,43 +65,26 @@ public class BraveWebSearchEngine implements WebSearchEngine {
     public BraveWebSearchEngine(String baseUrl,
                                 String apiKey,
                                 Duration timeout,
-                                Integer count,
-                                String safeSearch,
-                                String resultFilter,
-                                String freshness) {
-
+                                Map<String, Object> optionalParams
+    ) {
         this.braveClient = BraveClient.builder()
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .timeout(getOrDefault(timeout, ofSeconds(10)))
                 .build();
-
+        this.optionalParams = getOrDefault(copyIfNotNull(optionalParams), new HashMap<>());
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.count = count;
-        this.safeSearch = safeSearch;
-        this.resultFilter = resultFilter;
-        this.freshness = freshness;
-    }
-
-    @Override
-    public WebSearchResults search(final String query) {
-        return search(WebSearchRequest.builder()
-                .searchTerms(query)
-                .build());
     }
 
     @Override
     public WebSearchResults search(final WebSearchRequest webSearchRequest) {
-        BraveWebSearchRequest braveWebSearchRequest = BraveWebSearchRequest.builder()
-                .apiKey(apiKey)
-                .count(count)
-                .safeSearch(safeSearch)
-                .resultFilter(resultFilter)
-                .freshness(freshness)
-                .query(webSearchRequest.searchTerms())
-                .build();
-        BraveResponse response = braveClient.search(braveWebSearchRequest);
-        System.out.println("Full Response: " + response);
-        if (response.getWeb() != null && response.getWeb().getResults() != null) {
+
+            BraveWebSearchRequest request=BraveWebSearchRequest.builder()
+                    .apiKey(apiKey)
+                    .query(webSearchRequest.searchTerms())
+                    .optionalParams(optionalParams)
+                    .build();
+            BraveWebSearchResponse response=braveClient.search(request);
+            if (response.getWeb() != null && response.getWeb().getResults() != null) {
             response.getWeb().getResults().forEach(result -> {
                 System.out.println("Title: " + result.getTitle());
                 System.out.println("URL: " + result.getUrl());

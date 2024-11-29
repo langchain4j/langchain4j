@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class BraveResponse {
+class BraveWebSearchResponse {
 
     private Query query;
     private String type;
