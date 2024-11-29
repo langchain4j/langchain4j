@@ -67,7 +67,7 @@ ResponseFormat responseFormat = ResponseFormat.builder()
                         .addIntegerProperty("age")
                         .addNumberProperty("height")
                         .addBooleanProperty("married")
-                        .required("name", "age", "height", "married")
+                        .required("name", "age", "height", "married") // see [4] below
                         .build())
                 .build())
         .build();
@@ -110,6 +110,7 @@ Notes:
 - [2] - OpenAI requires specifying the name for the schema.
 - [3] - In most cases, the root element must be of `JsonObjectSchema` type,
 however Gemini allows `JsonEnumSchema` and `JsonArraySchema` as well.
+- [4] - Required properties must be explicitly specified; otherwise, they are considered optional.
 
 The structure of the schema is defined using `JsonSchemaElement` interface,
 with the following subtypes:
@@ -125,7 +126,7 @@ with the following subtypes:
 
 #### `JsonObjectSchema`
 
-`JsonObjectSchema` represents an object with nested properties.
+The `JsonObjectSchema` represents an object with nested properties.
 It is usually a root element of the `JsonSchema`.
 
 There are several ways to add properties to a `JsonObjectSchema`:
@@ -310,6 +311,12 @@ System.out.println(chatResponse.aiMessage().text()); // {"shapes":[{"radius":5},
 :::note
 The `JsonReferenceSchema` is currently supported only by OpenAI.
 :::
+
+#### Adding Description
+More information is coming soon.
+
+#### Limitations
+More information is coming soon.
 
 
 ### Using JSON Schema with AI Services
