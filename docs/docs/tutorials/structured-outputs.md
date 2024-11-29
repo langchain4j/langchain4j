@@ -4,6 +4,13 @@ sidebar_position: 11
 
 # Structured Outputs
 
+:::note
+The term "Structured Outputs" is overloaded and can refer to two things:
+- The general ability of the LLM to generate outputs in a structured format (this is what we cover on this page)
+- The [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs) feature of OpenAI,
+which applies to both response format and tools (function calling).
+:::
+
 Many LLMs and LLM providers support generating outputs in a structured format, typically JSON.
 These outputs can be easily mapped to Java objects and used in other parts of your application.
 
@@ -21,31 +28,61 @@ Currently unmarried, he enjoys the freedom to focus on his personal goals and in
 
 Currently, depending on the LLM and the LLM provider, there are four ways how this can be achieved
 (from most to least reliable):
-- [Structured Outputs](/tutorials/structured-outputs#structured-outputs-1)
+- [JSON Schema](/tutorials/structured-outputs#json-schema)
 - [Tools (Function Calling)](/tutorials/structured-outputs#tools-function-calling)
 - [Prompting + JSON Mode](/tutorials/structured-outputs#prompting--json-mode)
 - [Prompting](/tutorials/structured-outputs#prompting)
 
 
-## Structured Outputs
-Some LLM providers support a specialized "Structured Outputs" feature that allows specifying JSON schema for the desired output.
-You can view all supported LLM providers [here](/integrations/language-models) in the "Structured Outputs" column.
+## JSON Schema
+Some LLM providers (e.g., OpenAI and Google Gemini) allow specifying JSON schema for the desired output.
+You can view all supported LLM providers [here](/integrations/language-models) in the "JSON Schema" column.
 
 When a JSON schema is specified in the request, the LLM is expected to generate an output that adheres to this schema.
 
 :::note
-Please note that the JSON schema is specified in a separate attribute in the request to the LLM provider's API
+Please note that the JSON schema is specified in a dedicated attribute in the request to the LLM provider's API
 and does not require additional free-form instructions to be included in the prompt (e.g., in system or user messages).
 :::
 
-LangChain4j supports the Structured Outputs feature in both the low-level `ChatLanguageModel` API
+:::note
+When using JSON Schema and OpenAI, the [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)
+feature of OpenAI is used under the hood.
+:::
+
+LangChain4j supports the JSON Schema feature in both the low-level `ChatLanguageModel` API
 and the high-level AI Service API.
 
-### Low Level Structured Outputs API
+### Using JSON Schema with the Low Level API
 
 In the low-level `ChatLanguageModel` API, JSON schema can be specified
 using LLM-provider-agnostic `ResponseFormat` and `JsonSchema` when creating a `ChatRequest`:
 ```java
+ResponseFormat responseFormat = ResponseFormat.builder()
+        .type(JSON) // see [1] below
+        .jsonSchema(JsonSchema.builder()
+                .name("Person") // see [2] below
+                .rootElement(JsonObjectSchema.builder() // see [3] below
+                        .addStringProperty("name")
+                        .addIntegerProperty("age")
+                        .addNumberProperty("height")
+                        .addBooleanProperty("married")
+                        .required("name", "age", "height", "married")
+                        .build())
+                .build())
+        .build();
+
+UserMessage userMessage = UserMessage.from("""
+        John is 42 years old and lives an independent life.
+        He stands 1.75 meters tall and carries himself with confidence.
+        Currently unmarried, he enjoys the freedom to focus on his personal goals and interests.
+        """);
+
+ChatRequest chatRequest = ChatRequest.builder()
+        .responseFormat(responseFormat)
+        .messages(userMessage)
+        .build();
+
 ChatLanguageModel chatModel = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
@@ -58,31 +95,6 @@ ChatLanguageModel chatModel = GoogleAiGeminiChatModel.builder()
         .modelName("gemini-1.5-flash")
         .temperature(0.0)
         .logRequestsAndResponses(true)
-        .build();
-
-UserMessage userMessage = UserMessage.from("""
-        John is 42 years old and lives an independent life.
-        He stands 1.75 meters tall and carries himself with confidence.
-        Currently unmarried, he enjoys the freedom to focus on his personal goals and interests.
-        """);
-
-ResponseFormat responseFormat = ResponseFormat.builder()
-        .type(JSON) // see [1] below
-        .jsonSchema(JsonSchema.builder()
-                .name("Person") // see [2] below
-                .rootElement(JsonObjectSchema.builder() // see [3] below
-                        .addStringProperty("name")
-                        .addIntegerProperty("age")
-                        .addNumberProperty("height")
-                        .addBooleanProperty("married")
-                        .required("name", "age", "height", "married")
-                        .build())
-                 .build())
-        .build();
-
-ChatRequest chatRequest = ChatRequest.builder()
-        .messages(userMessage)
-        .responseFormat(responseFormat)
         .build();
 
 ChatResponse chatResponse = chatModel.chat(chatRequest);
@@ -157,7 +169,6 @@ JsonSchemaElement rootElement = JsonObjectSchema.builder()
 ```
 
 Please refer to the Javadoc of the `JsonObjectSchema` for more details.
-
 
 #### `JsonStringSchema`
 
@@ -301,7 +312,7 @@ The `JsonReferenceSchema` is currently supported only by OpenAI.
 :::
 
 
-### High Level Structured Outputs API
+### Using JSON Schema with AI Services
 
 When using [AI Services](/tutorials/ai-services), one can achieve the same much easier and with less code:
 ```java
@@ -344,13 +355,14 @@ Notes:
 as these beans are created automatically. More info on this:
 [for Quarkus](https://docs.quarkiverse.io/quarkus-langchain4j/dev/ai-services.html),
 [for Spring Boot](https://docs.langchain4j.dev/tutorials/spring-boot-integration#spring-boot-starter-for-declarative-ai-services).
-- [2] - This is required to enable the Structured Outputs feature for OpenAI, see more details [here](/integrations/language-models/open-ai#structured-outputs-for-response-format).
-- [3] - This is required to enable the Structured Outputs feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
+- [2] - This is required to enable the JSON Schema feature for OpenAI, see more details [here](/integrations/language-models/open-ai#structured-outputs-for-response-format).
+- [3] - This is required to enable the JSON Schema feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
 
-When AI Service returns a POJO **and** used `ChatLanguageModel` supports Structured Outputs **and** Structured Outputs are enabled on `ChatLanguageModel`,
-`JsonSchema`/`ResponseFormat` will be generated automatically from the specified return type.
+When an AI Service returns a POJO **and** the `ChatLanguageModel` supports the JSON Schema feature
+**and** the JSON Schema feature is enabled on the `ChatLanguageModel`,
+a `ResponseFormat` with `JsonSchema` will be generated automatically based on the specified return type.
 :::note
-Make sure to explicitly enable Structured Outputs feature when configuring `ChatLanguageModel`,
+Make sure to explicitly enable JSON Schema feature when configuring `ChatLanguageModel`,
 as it is disabled by default.
 :::
 
@@ -382,9 +394,9 @@ record Person(@Description("person's name") String name,
 ```
 
 #### Limitations
-When using Structured Outputs with AI Services, there are some limitations:
+When using JSON Schema with AI Services, there are some limitations:
 - It works only with supported OpenAI and Gemini models.
-- Support for Structured Outputs needs to be enabled explicitly when configuring `ChatLanguageModel`.
+- Support for JSON Schema needs to be enabled explicitly when configuring `ChatLanguageModel`.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming).
 - Currently, it works only when return type is a (single) POJO or a `Result<POJO>`.
 If you need other types (e.g., `List<POJO>`, `enum`, etc.), please wrap these into a POJO.
@@ -395,13 +407,22 @@ We are [working](https://github.com/langchain4j/langchain4j/pull/1938) on suppor
   - Nested POJOs
   - `List<T>`, `Set<T>` and `T[]`, where `T` is a scalar, an `enum` or a POJO
 - All fields and sub-fields in the generated `JsonSchema` are automatically marked as `required`, there is currently no way to make them optional.
-- When LLM does not support Structured Outputs feature, or it is not enabled, or return type is not a POJO,
+- When LLM does not support JSON Schema feature, or it is not enabled, or return type is not a POJO,
 AI Service will fall back to [prompting](/tutorials/structured-outputs#prompting).
 - Recursion is currently supported only by OpenAI.
 
 
 ## Tools (Function Calling)
+
+This method assumes (mis)using [tools](/tutorials/tools) to produce structured outputs.
+A single tool is specified in the request to the LLM, and the tool parameters describe the desired structure of the output.
+If `ToolChoice` is supported by the LLM provider, one can also set `ToolChoice.REQUIRED`
+to force the LLM to call this tool.
+Once the LLM returns an `AiMessage` with a `ToolExecutionRequest`,
+the arguments (which is a valid JSON) are parsed into a POJO.
+
 More info is coming soon.
+
 In the meantime, please read [this section](/tutorials/tools)
 and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/).
 
@@ -413,7 +434,13 @@ and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-man
 
 
 ## Prompting
+
+When using prompting, one has to specify the format of the desired output in free-form text
+within a system or user message and hope that the LLM will abide. This approach is quite unreliable.
+If LLM and LLM provider supports the methods described above, it is better to use those.
+
 More info is coming soon.
+
 In the meantime, please read [this section](/tutorials/ai-services#structured-outputs)
 and [this article](https://glaforge.dev/posts/2024/11/18/data-extraction-the-many-ways-to-get-llms-to-spit-json-content/).
 
