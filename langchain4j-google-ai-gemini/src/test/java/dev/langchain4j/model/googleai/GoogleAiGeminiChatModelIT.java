@@ -431,7 +431,7 @@ public class GoogleAiGeminiChatModelIT {
             .build());
 
         // then
-        assertThat(response.finishReason()).isEqualTo(FinishReasonMapper.fromGFinishReasonToFinishReason(GeminiFinishReason.SAFETY));
+        assertThat(response.finishReason()).isEqualTo(FinishReasonMapper.fromGFinishReasonToFinishReason(GeminiFinishReason.STOP));
     }
 
     @Test

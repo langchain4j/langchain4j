@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="d6160941-06b2-4fbb-9f99-65ce1d4f5987" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/src/main/java/dev/langchain4j/model/googleai/GoogleAiGeminiStreamingChatModel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/dev/langchain4j/model/googleai/GoogleAiGeminiStreamingChatModel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/dev/langchain4j/model/googleai/GoogleAiGeminiChatModelIT.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/dev/langchain4j/model/googleai/GoogleAiGeminiChatModelIT.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/dev/langchain4j/model/googleai/GoogleAiGeminiStreamingChatModelIT.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/dev/langchain4j/model/googleai/GoogleAiGeminiStreamingChatModelIT.java" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Suhas-Koheda&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Suhas-Koheda/langchain4j.git&quot;,
+    &quot;accountId&quot;: &quot;3d1bc056-f7e2-4ba6-af26-060d9ce1edd1&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
+  <component name="ProjectId" id="2paEylbLpexIlUaKvyHc9z4bY8A" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "JUnit.GoogleAiGeminiChatModelIT.should_support_safety_settings.executor": "Run",
+    "JUnit.GoogleAiGeminiStreamingChatModelIT.should_answer_in_json.executor": "Run",
+    "JUnit.GoogleAiGeminiStreamingChatModelIT.should_answer_simple_question.executor": "Run",
+    "JUnit.GoogleAiGeminiStreamingChatModelIT.should_configure_generation.executor": "Run",
+    "JUnit.GoogleAiGeminiStreamingChatModelIT.should_execute_python_code.executor": "Run",
+    "JUnit.GoogleAiGeminiStreamingChatModelIT.should_respect_system_instruction.executor": "Run",
+    "JUnit.GoogleAiGeminiStreamingChatModelIT.should_support_JSON_array_in_tools.executor": "Run",
+    "JUnit.GoogleAiGeminiStreamingChatModelIT.should_support_multiturn_chatting.executor": "Run",
+    "JUnit.GoogleAiGeminiStreamingChatModelIT.should_support_safety_settings.executor": "Run",
+    "JUnit.GoogleAiGeminiStreamingChatModelIT.should_support_tool_config.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "git-widget-placeholder": "geminiai",
+    "last_opened_file_path": "/home/suhas-koheda/Java/langchain4j/langchain4j-google-ai-gemini",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "configurable.group.appearance",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RunManager" selected="JUnit.GoogleAiGeminiStreamingChatModelIT.should_support_tool_config">
+    <configuration name="GoogleAiGeminiChatModelIT.should_support_safety_settings" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="langchain4j-google-ai-gemini" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="dev.langchain4j.model.googleai.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="dev.langchain4j.model.googleai" />
+      <option name="MAIN_CLASS_NAME" value="dev.langchain4j.model.googleai.GoogleAiGeminiChatModelIT" />
+      <option name="METHOD_NAME" value="should_support_safety_settings" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="GoogleAiGeminiStreamingChatModelIT.should_execute_python_code" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="langchain4j-google-ai-gemini" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="dev.langchain4j.model.googleai.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="dev.langchain4j.model.googleai" />
+      <option name="MAIN_CLASS_NAME" value="dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModelIT" />
+      <option name="METHOD_NAME" value="should_execute_python_code" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="GoogleAiGeminiStreamingChatModelIT.should_support_JSON_array_in_tools" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="langchain4j-google-ai-gemini" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="dev.langchain4j.model.googleai.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="dev.langchain4j.model.googleai" />
+      <option name="MAIN_CLASS_NAME" value="dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModelIT" />
+      <option name="METHOD_NAME" value="should_support_JSON_array_in_tools" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="GoogleAiGeminiStreamingChatModelIT.should_support_safety_settings" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="langchain4j-google-ai-gemini" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="dev.langchain4j.model.googleai.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="dev.langchain4j.model.googleai" />
+      <option name="MAIN_CLASS_NAME" value="dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModelIT" />
+      <option name="METHOD_NAME" value="should_support_safety_settings" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="GoogleAiGeminiStreamingChatModelIT.should_support_tool_config" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="langchain4j-google-ai-gemini" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="dev.langchain4j.model.googleai.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="dev.langchain4j.model.googleai" />
+      <option name="MAIN_CLASS_NAME" value="dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModelIT" />
+      <option name="METHOD_NAME" value="should_support_tool_config" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="JUnit.GoogleAiGeminiStreamingChatModelIT.should_support_tool_config" />
+        <item itemvalue="JUnit.GoogleAiGeminiStreamingChatModelIT.should_support_safety_settings" />
+        <item itemvalue="JUnit.GoogleAiGeminiChatModelIT.should_support_safety_settings" />
+        <item itemvalue="JUnit.GoogleAiGeminiStreamingChatModelIT.should_support_JSON_array_in_tools" />
+        <item itemvalue="JUnit.GoogleAiGeminiStreamingChatModelIT.should_execute_python_code" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-fdfe4dae3a2d-intellij.indexing.shared.core-IU-243.21565.193" />
+        <option value="bundled-js-predefined-d6986cc7102b-e768b9ed790e-JavaScript-IU-243.21565.193" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="d6160941-06b2-4fbb-9f99-65ce1d4f5987" name="Changes" comment="" />
+      <created>1732996042639</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1732996042639</updated>
+      <workItem from="1732996043819" duration="92000" />
+      <workItem from="1732996155974" duration="746000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>
