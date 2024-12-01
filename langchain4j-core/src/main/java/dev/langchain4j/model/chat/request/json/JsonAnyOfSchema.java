@@ -8,6 +8,7 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static java.util.Arrays.asList;
 
 @Experimental
 public class JsonAnyOfSchema implements JsonSchemaElement {
@@ -44,6 +45,10 @@ public class JsonAnyOfSchema implements JsonSchemaElement {
         public Builder anyOf(List<JsonSchemaElement> anyOf) {
             this.anyOf = anyOf;
             return this;
+        }
+
+        public Builder anyOf(JsonSchemaElement... anyOf) {
+            return anyOf(asList(anyOf));
         }
 
         public JsonAnyOfSchema build() {
