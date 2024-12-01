@@ -26,7 +26,7 @@ internal class ChatLanguageModelExtensionsTest {
     private lateinit var chatRequest: ChatRequest
 
     @Mock
-    private lateinit var chatRequestBuilder: ChatRequest.Builder
+    private lateinit var chatRequestBuilder: ChatRequest.Builder<*>
 
     @Mock
     private lateinit var aiMessage: AiMessage
