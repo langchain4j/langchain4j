@@ -3,6 +3,7 @@ package dev.langchain4j.model.chat.request;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Objects;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
 
 @Experimental
@@ -250,7 +252,15 @@ public class ChatRequest {
             return (T) this;
         }
 
-        // TODO add responseFormat(JsonSchema) or jsonSchema(JsonSchema)
+        public T responseFormat(JsonSchema jsonSchema) {
+            if (jsonSchema != null) {
+                this.responseFormat = ResponseFormat.builder()
+                        .type(JSON)
+                        .jsonSchema(jsonSchema)
+                        .build();
+            }
+            return (T) this;
+        }
 
         public ChatRequest build() {
             return new ChatRequest(this);
