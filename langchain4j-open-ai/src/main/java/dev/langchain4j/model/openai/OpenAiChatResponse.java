@@ -7,16 +7,22 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 public class OpenAiChatResponse extends ChatResponse {
 
     private final Long created;
+    private final String serviceTier;
     private final String systemFingerprint;
 
     private OpenAiChatResponse(Builder builder) { // TODO
         super(builder);
         this.created = builder.created;
+        this.serviceTier = builder.serviceTier;
         this.systemFingerprint = builder.systemFingerprint;
     }
 
     public Long created() {
         return created;
+    }
+
+    public String serviceTier() {
+        return serviceTier;
     }
 
     public String systemFingerprint() {
@@ -37,10 +43,16 @@ public class OpenAiChatResponse extends ChatResponse {
     public static class Builder extends ChatResponse.Builder<Builder> {
 
         private Long created;
+        private String serviceTier;
         private String systemFingerprint;
 
         public Builder created(Long created) {
             this.created = created;
+            return this;
+        }
+
+        public Builder serviceTier(String serviceTier) {
+            this.serviceTier = serviceTier;
             return this;
         }
 

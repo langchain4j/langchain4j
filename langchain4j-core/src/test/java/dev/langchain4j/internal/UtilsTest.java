@@ -59,6 +59,27 @@ class UtilsTest {
     }
 
     @Test
+    void test_getOrDefault_Map() {
+        Map<String, String> nullMap = null;
+        Map<String, String> emptyMap = Map.of();
+        Map<String, String> map1 = Map.of("one", "1");
+        Map<String, String> map2 = Map.of("two", "2");
+
+        assertThat(Utils.getOrDefault(nullMap, nullMap)).isSameAs(nullMap);
+        assertThat(Utils.getOrDefault(nullMap, emptyMap)).isSameAs(emptyMap);
+
+        assertThat(Utils.getOrDefault(emptyMap, nullMap)).isSameAs(nullMap);
+        assertThat(Utils.getOrDefault(emptyMap, emptyMap)).isSameAs(emptyMap);
+
+        assertThat(Utils.getOrDefault(nullMap, map1)).isSameAs(map1);
+        assertThat(Utils.getOrDefault(emptyMap, map1)).isSameAs(map1);
+
+        assertThat(Utils.getOrDefault(map1, map2))
+                .isSameAs(map1)
+                .isNotSameAs(map2);
+    }
+
+    @Test
     public void test_isNullOrBlank() {
         assertThat(Utils.isNullOrBlank(null)).isTrue();
         assertThat(Utils.isNullOrBlank("")).isTrue();

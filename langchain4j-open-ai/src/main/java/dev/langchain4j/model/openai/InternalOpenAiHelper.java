@@ -14,6 +14,8 @@ import dev.ai4j.openai4j.chat.Tool;
 import dev.ai4j.openai4j.chat.ToolCall;
 import dev.ai4j.openai4j.chat.ToolChoiceMode;
 import dev.ai4j.openai4j.chat.ToolMessage;
+import dev.ai4j.openai4j.shared.CompletionTokensDetails;
+import dev.ai4j.openai4j.shared.PromptTokensDetails;
 import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
@@ -45,6 +47,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -467,19 +470,24 @@ public class InternalOpenAiHelper {
             return null;
         }
 
-        OutputTokensDetails outputTokensDetails = new OutputTokensDetails(
-                openAiUsage.completionTokensDetails().reasoningTokens(),
-                null, // TODO
-                null, // TODO
-                null // TODO
-        );
+        PromptTokensDetails promptTokensDetails = openAiUsage.promptTokensDetails();
+        InputTokensDetails inputTokensDetails = null;
+        if (promptTokensDetails != null) {
+            inputTokensDetails = new InputTokensDetails(promptTokensDetails.cachedTokens());
+        }
+
+        CompletionTokensDetails completionTokensDetails = openAiUsage.completionTokensDetails();
+        OutputTokensDetails outputTokensDetails = null;
+        if (completionTokensDetails != null) {
+            outputTokensDetails = new OutputTokensDetails(completionTokensDetails.reasoningTokens());
+        }
 
         return OpenAiTokenUsage.builder()
                 .inputTokenCount(openAiUsage.promptTokens())
+                .inputTokensDetails(inputTokensDetails)
                 .outputTokenCount(openAiUsage.completionTokens())
-                .totalTokenCount(openAiUsage.totalTokens())
-                .inputTokensDetails(null) // TODO
                 .outputTokensDetails(outputTokensDetails)
+                .totalTokenCount(openAiUsage.totalTokens())
                 .build();
     }
 

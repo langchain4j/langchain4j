@@ -50,6 +50,17 @@ public class Utils {
         return isNullOrEmpty(list) ? defaultList : list;
     }
 
+    /**
+     * Returns the given map if it is not {@code null} and not empty, otherwise returns the given default map.
+     *
+     * @param map        The map to return if it is not {@code null} and not empty.
+     * @param defaultMap The map to return if the map is {@code null} or empty.
+     * @return the given map if it is not {@code null} and not empty, otherwise returns the given default map.
+     */
+    public static <K, V> Map<K, V> getOrDefault(Map<K, V> map, Map<K, V> defaultMap) {
+        return isNullOrEmpty(map) ? defaultMap : map;
+    }
+
   /**
    * Returns the given value if it is not {@code null}, otherwise returns the value returned by the given supplier.
    * @param value The value to return if it is not {@code null}.

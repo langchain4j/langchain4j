@@ -5,16 +5,12 @@ import dev.langchain4j.model.output.TokenUsage;
 public class OpenAiTokenUsage extends TokenUsage {
 
     public record InputTokensDetails( // TODO or PromptTokensDetails ?
-                                      Integer cachedTokens,
-                                      Integer audioTokens
+                                      Integer cachedTokens
     ) {
     }
 
     public record OutputTokensDetails( // TODO or CompletionTokensDetails ?
-                                       Integer reasoningTokens,
-                                       Integer audioTokens,
-                                       Integer acceptedPredictionTokens,
-                                       Integer rejectedPredictionTokens
+                                       Integer reasoningTokens
     ) {
     }
 
@@ -42,23 +38,13 @@ public class OpenAiTokenUsage extends TokenUsage {
     public static class Builder {
 
         private Integer inputTokenCount;
-        private Integer outputTokenCount;
-        private Integer totalTokenCount;
         private InputTokensDetails inputTokensDetails;
+        private Integer outputTokenCount;
         private OutputTokensDetails outputTokensDetails;
+        private Integer totalTokenCount;
 
         public Builder inputTokenCount(Integer inputTokenCount) {
             this.inputTokenCount = inputTokenCount;
-            return this;
-        }
-
-        public Builder outputTokenCount(Integer outputTokenCount) {
-            this.outputTokenCount = outputTokenCount;
-            return this;
-        }
-
-        public Builder totalTokenCount(Integer totalTokenCount) {
-            this.totalTokenCount = totalTokenCount;
             return this;
         }
 
@@ -67,8 +53,18 @@ public class OpenAiTokenUsage extends TokenUsage {
             return this;
         }
 
+        public Builder outputTokenCount(Integer outputTokenCount) {
+            this.outputTokenCount = outputTokenCount;
+            return this;
+        }
+
         public Builder outputTokensDetails(OutputTokensDetails outputTokensDetails) {
             this.outputTokensDetails = outputTokensDetails;
+            return this;
+        }
+
+        public Builder totalTokenCount(Integer totalTokenCount) {
+            this.totalTokenCount = totalTokenCount;
             return this;
         }
 

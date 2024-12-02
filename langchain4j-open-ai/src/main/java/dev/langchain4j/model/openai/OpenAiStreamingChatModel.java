@@ -38,6 +38,7 @@ import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -80,6 +81,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final String user;
     private final Boolean strictTools;
     private final Boolean parallelToolCalls;
+    private final Boolean store;
+    private final Map<String, String> metadata;
+    private final String serviceTier;
     private final Tokenizer tokenizer;
     private final List<ChatModelListener> listeners;
 
@@ -100,6 +104,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     String user,
                                     Boolean strictTools,
                                     Boolean parallelToolCalls,
+                                    Boolean store,
+                                    Map<String, String> metadata,
+                                    String serviceTier,
                                     Duration timeout,
                                     Proxy proxy,
                                     Boolean logRequests,
@@ -140,6 +147,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.user = user;
         this.strictTools = getOrDefault(strictTools, false);
         this.parallelToolCalls = parallelToolCalls;
+        this.store = store;
+        this.metadata = copyIfNotNull(metadata);
+        this.serviceTier = serviceTier;
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
@@ -204,7 +214,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             .responseFormat(responseFormat)
             .seed(seed)
             .user(user)
-            .parallelToolCalls(parallelToolCalls);
+            .parallelToolCalls(parallelToolCalls)
+            .store(store)
+            .metadata(metadata)
+            .serviceTier(serviceTier);
 
         if (!isNullOrEmpty(toolSpecifications)) {
             requestBuilder.tools(toTools(toolSpecifications, strictTools));
@@ -349,6 +362,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         private String user;
         private Boolean strictTools;
         private Boolean parallelToolCalls;
+        private Boolean store;
+        private Map<String, String> metadata;
+        private String serviceTier;
         private Duration timeout;
         private Proxy proxy;
         private Boolean logRequests;
@@ -451,6 +467,21 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             return this;
         }
 
+        public OpenAiStreamingChatModelBuilder store(Boolean store) {
+            this.store = store;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder metadata(Map<String, String> metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder serviceTier(String serviceTier) {
+            this.serviceTier = serviceTier;
+            return this;
+        }
+
         public OpenAiStreamingChatModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -505,6 +536,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 this.user,
                 this.strictTools,
                 this.parallelToolCalls,
+                this.store,
+                this.metadata,
+                this.serviceTier,
                 this.timeout,
                 this.proxy,
                 this.logRequests,
@@ -534,6 +568,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .add("user='" + user + "'")
                 .add("strictTools=" + strictTools)
                 .add("parallelToolCalls=" + parallelToolCalls)
+                .add("store=" + store)
+                .add("metadata=" + metadata)
+                .add("serviceTier=" + serviceTier)
                 .add("timeout=" + timeout)
                 .add("proxy=" + proxy)
                 .add("logRequests=" + logRequests)

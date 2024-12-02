@@ -117,6 +117,36 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Test
+    void should_propagate_all_OpenAI_parameters() {
+
+        // given
+        OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+                .logRequests(true) // verifying manually in the logs for now
+                .logResponses(true)
+                .build();
+
+        OpenAiChatRequest chatRequest = OpenAiChatRequest.builder()
+                .seed(12345)
+                .user("Klaus")
+                .store(true)
+                .metadata(Map.of(
+                        "one", "1",
+                        "two", "2"
+                ))
+                .serviceTier("default")
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        OpenAiChatResponse chatResponse = chatModel.chat(chatRequest);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
+
+        // TODO verify that parameters are propagated after https://github.com/langchain4j/langchain4j/issues/1044
+    }
+
+    @Test
     void should_return_custom_response() {
 
         // given
@@ -124,10 +154,12 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .build();
 
         int maxOutputTokens = 1;
+        String serviceTier = "default";
 
         OpenAiChatRequest chatRequest = OpenAiChatRequest.builder()
                 .messages(UserMessage.from("Hi"))
                 .maxOutputTokens(maxOutputTokens) // to save tokens
+                .serviceTier(serviceTier) // required to get the "serviceTier" attribute in the response
                 .build();
 
         // when
@@ -135,12 +167,13 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         // then
         assertThat(chatResponse.created()).isPositive();
+        assertThat(chatResponse.serviceTier()).isEqualTo(serviceTier);
         assertThat(chatResponse.systemFingerprint()).isNotBlank();
 
         OpenAiTokenUsage tokenUsage = chatResponse.tokenUsage();
 
         assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.inputTokensDetails()).isNull();
+        assertThat(tokenUsage.inputTokensDetails().cachedTokens()).isZero();
 
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
         assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isZero();

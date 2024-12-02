@@ -14,9 +14,9 @@ public class OpenAiChatRequest extends ChatRequest {
     private final Boolean parallelToolCalls;
     private final Integer seed;
     private final String user;
-    // TODO service tier
-    // TODO store, metadata
-    // TODO logprobs, top_logprobs?
+    private final Boolean store;
+    private final Map<String, String> metadata;
+    private final String serviceTier; // TODO or enum?
     // TODO max_completion_tokens?
 
     protected OpenAiChatRequest(Builder builder) { // TODO
@@ -25,6 +25,9 @@ public class OpenAiChatRequest extends ChatRequest {
         this.parallelToolCalls = builder.parallelToolCalls;
         this.seed = builder.seed;
         this.user = builder.user;
+        this.store = builder.store;
+        this.metadata = copyIfNotNull(builder.metadata);
+        this.serviceTier = builder.serviceTier;
     }
 
     OpenAiChatRequest(ChatRequest chatRequest) { // TODO
@@ -34,11 +37,17 @@ public class OpenAiChatRequest extends ChatRequest {
             this.parallelToolCalls = openAiChatRequest.parallelToolCalls;
             this.seed = openAiChatRequest.seed;
             this.user = openAiChatRequest.user;
+            this.store = openAiChatRequest.store;
+            this.metadata = openAiChatRequest.metadata;
+            this.serviceTier = openAiChatRequest.serviceTier;
         } else {
             this.logitBias = null;
             this.parallelToolCalls = null;
             this.seed = null;
             this.user = null;
+            this.store = null;
+            this.metadata = null;
+            this.serviceTier = null;
         }
     }
 
@@ -58,6 +67,18 @@ public class OpenAiChatRequest extends ChatRequest {
         return user;
     }
 
+    public Boolean store() {
+        return store;
+    }
+
+    public Map<String, String> metadata() {
+        return metadata;
+    }
+
+    public String serviceTier() {
+        return serviceTier;
+    }
+
     // TODO eq, hash, tostr
 
     public static Builder builder() {
@@ -70,6 +91,9 @@ public class OpenAiChatRequest extends ChatRequest {
         private Boolean parallelToolCalls;
         private Integer seed;
         private String user;
+        private Boolean store;
+        private Map<String, String> metadata;
+        private String serviceTier;
 
         public Builder logitBias(Map<String, Integer> logitBias) {
             this.logitBias = logitBias;
@@ -88,6 +112,21 @@ public class OpenAiChatRequest extends ChatRequest {
 
         public Builder user(String user) {
             this.user = user;
+            return this;
+        }
+
+        public Builder store(Boolean store) {
+            this.store = store;
+            return this;
+        }
+
+        public Builder metadata(Map<String, String> metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        public Builder serviceTier(String serviceTier) {
+            this.serviceTier = serviceTier;
             return this;
         }
 
