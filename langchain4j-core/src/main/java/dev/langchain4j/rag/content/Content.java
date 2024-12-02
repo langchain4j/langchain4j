@@ -6,6 +6,7 @@ import dev.langchain4j.rag.content.injector.ContentInjector;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 
+import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -23,18 +24,26 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 public class Content {
 
     private final TextSegment textSegment;
+    private final Map<String, Object> metadata;
 
     public Content(String text) {
-        this(TextSegment.from(text));
+        this(TextSegment.from(text), Map.of());
     }
 
     public Content(TextSegment textSegment) {
+        this(textSegment, Map.of());
+    }
+
+    public Content(TextSegment textSegment, Map<String, Object> metadata) {
         this.textSegment = ensureNotNull(textSegment, "textSegment");
+        this.metadata = metadata == null ? Map.of() : metadata;
     }
 
     public TextSegment textSegment() {
         return textSegment;
     }
+
+    public Map<String, Object> metadata() { return metadata; }
 
     @Override
     public boolean equals(Object o) {
@@ -52,8 +61,9 @@ public class Content {
     @Override
     public String toString() {
         return "Content {" +
-                " textSegment = " + textSegment +
-                " }";
+                "textSegment=" + textSegment +
+                ", metadata=" + metadata +
+                '}';
     }
 
     public static Content from(String text) {
@@ -62,5 +72,9 @@ public class Content {
 
     public static Content from(TextSegment textSegment) {
         return new Content(textSegment);
+    }
+
+    public static Content from(TextSegment textSegment, Map<String, Object> metadata) {
+        return new Content(textSegment, metadata);
     }
 }

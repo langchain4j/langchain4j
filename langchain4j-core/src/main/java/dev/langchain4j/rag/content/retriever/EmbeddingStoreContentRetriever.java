@@ -6,7 +6,6 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -14,6 +13,7 @@ import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -21,7 +21,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.stream.Collectors.toList;
 
 /**
  * A {@link ContentRetriever} that retrieves from an {@link EmbeddingStore}.
@@ -240,9 +239,14 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
 
         return searchResult.matches().stream()
-                .map(EmbeddingMatch::embedded)
-                .map(Content::from)
-                .collect(toList());
+                .map(embeddingMatch -> {
+                    Map<String, Object> metadata = Map.of(
+                            "score", embeddingMatch.score(),
+                            "embeddingId", embeddingMatch.embeddingId()
+                    );
+                    return Content.from(embeddingMatch.embedded(), metadata);
+                })
+                .toList();
     }
 
     @Override
