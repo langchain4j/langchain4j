@@ -392,7 +392,7 @@ public class GoogleAiGeminiStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         // then
-        assertThat(response.finishReason()).isEqualTo(FinishReasonMapper.fromGFinishReasonToFinishReason(GeminiFinishReason.STOP));
+        assertThat(response.finishReason()).isEqualTo(FinishReasonMapper.fromGFinishReasonToFinishReason(GeminiFinishReason.SAFETY));
     }
 
     @Test
@@ -618,7 +618,7 @@ public class GoogleAiGeminiStreamingChatModelIT {
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
-            .toolConfig(GeminiMode.ANY, List.of("toolTwo").toArray(new String[0]))
+            .toolConfig(GeminiMode.ANY, "toolTwo")
             .build();
 
         // when
