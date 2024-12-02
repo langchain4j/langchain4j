@@ -61,9 +61,9 @@ public class Content {
     @Override
     public String toString() {
         return "Content {" +
-                "textSegment=" + textSegment +
-                ", metadata=" + metadata +
-                '}';
+                " textSegment = " + textSegment +
+                ", metadata = " + metadata +
+                " }";
     }
 
     public static Content from(String text) {
