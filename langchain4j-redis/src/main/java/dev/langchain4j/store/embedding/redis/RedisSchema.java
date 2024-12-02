@@ -70,11 +70,11 @@ class RedisSchema {
         List<SchemaField> fields = new ArrayList<>();
         fields.add(TextField.of(JSON_PATH_PREFIX + scalarFieldName).as(scalarFieldName).weight(1.0));
         fields.add(VectorField.builder()
-            .fieldName(JSON_PATH_PREFIX + vectorFieldName)
-            .algorithm(vectorAlgorithm)
-            .attributes(vectorAttrs)
-            .as(vectorFieldName)
-            .build());
+                .fieldName(JSON_PATH_PREFIX + vectorFieldName)
+                .algorithm(vectorAlgorithm)
+                .attributes(vectorAttrs)
+                .as(vectorFieldName)
+                .build());
         // Add Metadata fields
         fields.addAll(metadataConfig.values());
 

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 25
+sidebar_position: 26
 ---
 
 # Weaviate
@@ -13,7 +13,7 @@ https://weaviate.io/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-weaviate</artifactId>
-    <version>0.36.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 

@@ -7,6 +7,7 @@ Thank you for investing your time and effort in contributing to our project, we 
 - Keep the code compatible with Java 17.
 - Avoid adding new dependencies as much as possible (new dependencies with test scope are OK). If absolutely necessary, try to use the same libraries which are already used in the project. Make sure you run `mvn dependency:analyze` to identify unnecessary dependencies.
 - Write unit and/or integration tests for your code. This is critical: no tests, no review!
+- The tests should cover both positive and negative cases.
 - Make sure you run all unit tests on all modules with `mvn clean test`
 - Avoid making breaking changes. Always keep backward compatibility in mind. For example, instead of removing fields/methods/etc, mark them `@Deprecated` and make sure they still work as before.
 - Follow existing naming conventions.
@@ -44,9 +45,10 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 
 # Guidelines on adding a new model integration
 
+- Please open PRs with new model integrations in the [langchain4j-community](https://github.com/langchain4j/langchain4j-community) repository
 - [Integration with Anthropic](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-anthropic) is a good example.
 - Use the official SDK if available.
-- If the official SDK is not available, use Retrofit and Jackson to implement the client.
+- If the official SDK is not available, use Java 11 HTTP Client and Jackson to implement the client.
 - Document the new integration [here](https://github.com/langchain4j/langchain4j/blob/main/README.md), [here](https://github.com/langchain4j/langchain4j/tree/main/docs/docs/integrations/language-models) and [here](https://github.com/langchain4j/langchain4j/blob/main/docs/docs/integrations/language-models/index.md).
 - Add an example to the [examples repository](https://github.com/langchain4j/langchain4j-examples), similar to [this](https://github.com/langchain4j/langchain4j-examples/tree/main/anthropic-examples).
 - Add a new module to the appropriate section of the [BOM](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-bom/pom.xml).
@@ -54,9 +56,10 @@ Please note that we do not have the capacity to review PRs immediately. We ask f
 
 # Guidelines on adding a new embedding store integration
 
+- Please open PRs with new embedding store integrations in the [langchain4j-community](https://github.com/langchain4j/langchain4j-community) repository
 - [Integration with Chroma](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-chroma) is a good example.
 - Use the official SDK if available.
-- If the official SDK is not available, use Retrofit and Jackson to implement the client.
+- If the official SDK is not available, use Java 11 HTTP Client and Jackson to implement the client.
 - Add a `{IntegrationName}EmbeddingStoreIT`. It should extend from `EmbeddingStoreWithFilteringIT` (when store supports metadata filtering) or `EmbeddingStoreIT` and pass all tests.
 - Add a `{IntegrationName}EmbeddingStoreRemovalIT`. It should extend from `EmbeddingStoreWithRemovalIT` and pass all tests.
 - Document the new integration [here](https://github.com/langchain4j/langchain4j/blob/main/README.md), [here](https://github.com/langchain4j/langchain4j/tree/main/docs/docs/integrations/embedding-stores) and [here](https://github.com/langchain4j/langchain4j/blob/main/docs/docs/integrations/embedding-stores/index.md).
