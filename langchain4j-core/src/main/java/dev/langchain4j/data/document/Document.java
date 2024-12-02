@@ -135,7 +135,7 @@ public interface Document {
          *
          * @param text the text of the document.
          */
-        DefaultDocument(String text) {
+        public DefaultDocument(String text) {
             this(text, new Metadata());
         }
 
