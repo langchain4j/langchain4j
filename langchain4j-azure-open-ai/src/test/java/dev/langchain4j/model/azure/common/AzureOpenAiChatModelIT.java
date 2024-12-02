@@ -11,6 +11,8 @@ import java.util.List;
 
 class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
+    // TODO https://github.com/langchain4j/langchain4j/issues/2219
+
     static final AzureOpenAiChatModel AZURE_OPEN_AI_CHAT_MODEL = AzureOpenAiChatModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))

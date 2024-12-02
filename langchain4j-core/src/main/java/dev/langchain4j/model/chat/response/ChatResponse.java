@@ -12,14 +12,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Experimental
 public class ChatResponse {
-    // TODO name
-    // TODO place
-    // TODO structure
-
-    // TODO return raw response? as a json string?
 
     private final String id;
-    private final String modelName;
+    private final String modelName; // TODO name
     private final AiMessage aiMessage;
     private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
@@ -36,7 +31,7 @@ public class ChatResponse {
         return id;
     }
 
-    public String modelName() {
+    public String modelName() { // TODO name
         return modelName;
     }
 
@@ -73,7 +68,7 @@ public class ChatResponse {
     public String toString() {
         return "ChatResponse {" +
                 " id = " + quoted(id) +
-                ", modelName = " + quoted(modelName) +
+                ", modelName = " + quoted(modelName) + // TODO name
                 ", aiMessage = " + aiMessage +
                 ", tokenUsage = " + tokenUsage +
                 ", finishReason = " + finishReason +
@@ -97,7 +92,7 @@ public class ChatResponse {
             return (T) this;
         }
 
-        public T modelName(String modelName) {
+        public T modelName(String modelName) { // TODO name
             this.modelName = modelName;
             return (T) this;
         }

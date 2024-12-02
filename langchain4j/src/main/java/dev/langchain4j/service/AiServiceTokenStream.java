@@ -38,7 +38,6 @@ public class AiServiceTokenStream implements TokenStream {
     private Consumer<ToolExecution> toolExecutionHandler;
 
     private Consumer<ChatResponse> completeResponseHandler;
-    @Deprecated(forRemoval = true)
     private Consumer<Response<AiMessage>> completionHandler;
 
     private Consumer<Throwable> errorHandler;

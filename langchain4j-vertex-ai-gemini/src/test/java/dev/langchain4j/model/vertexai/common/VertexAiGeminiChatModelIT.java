@@ -8,6 +8,9 @@ import java.util.List;
 
 class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
 
+    // TODO https://github.com/langchain4j/langchain4j/issues/2219
+    // TODO https://github.com/langchain4j/langchain4j/issues/2220
+
     static final VertexAiGeminiChatModel VERTEX_AI_GEMINI_CHAT_MODEL = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))

@@ -17,9 +17,6 @@ import static java.util.Arrays.asList;
 
 @Experimental
 public class ChatRequest {
-    // TODO reconsider structure of this class
-
-    // TODO api key, base url, custom http headers, etc: in a separate section?
 
     private final String modelName; // TODO name: model?
     private final Double temperature;
@@ -32,15 +29,12 @@ public class ChatRequest {
 
     private final List<ChatMessage> messages;
 
-    // TODO separate section for tools?
     private final List<ToolSpecification> toolSpecifications;
     private final ToolChoice toolChoice;
 
     private final ResponseFormat responseFormat;
 
     private final Builder builder;
-
-    // TODO custom map of params? to be used for new params/features before typesafe versions are released? at least for popular providers
 
     protected ChatRequest(Builder builder) {
         this.modelName = builder.modelName;

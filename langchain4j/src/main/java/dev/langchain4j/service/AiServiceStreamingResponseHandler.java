@@ -37,7 +37,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final Consumer<String> partialResponseHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
-    @Deprecated
     private final Consumer<Response<AiMessage>> completionHandler;
 
     private final Consumer<Throwable> errorHandler;

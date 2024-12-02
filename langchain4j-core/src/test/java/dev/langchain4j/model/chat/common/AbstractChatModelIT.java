@@ -59,6 +59,9 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 @TestInstance(PER_CLASS)
 public abstract class AbstractChatModelIT {
 
+    // TODO https://github.com/langchain4j/langchain4j/issues/2219
+    // TODO https://github.com/langchain4j/langchain4j/issues/2220
+
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
@@ -93,8 +96,6 @@ public abstract class AbstractChatModelIT {
         return models();
     }
 
-    // TODO assert everything (e.g. id, model, token usage, finish reason, etc) in every test?
-    // TODO test that it fails when there is a mismatch in parameter types (e.g. OpenAiChatParameters for GoogleAiGeminiChatModel)
 
     // BASIC
 
@@ -151,9 +152,6 @@ public abstract class AbstractChatModelIT {
     }
 
     // MODEL PARAMETERS
-
-    // TODO test all parameters once HTTP clients are customizable?
-    // TODO test all unsupported parameters
 
     @EnabledIf("supportsMaxOutputTokensParameter")
     @ParameterizedTest
@@ -637,11 +635,6 @@ public abstract class AbstractChatModelIT {
     }
 
     // MULTI MODALITY
-
-    // TODO images: mixed image sources
-    // TODO images: gs://langchain4j-test/cat.png
-    // TODO images: make sure URI from local file is failing
-    // TODO test other modalities: supported and unsupported
 
     // IMAGES - BASE64
 

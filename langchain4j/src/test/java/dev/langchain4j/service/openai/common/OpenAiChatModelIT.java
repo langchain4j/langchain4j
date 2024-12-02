@@ -1,9 +1,11 @@
 package dev.langchain4j.service.openai.common;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatRequest;
 import dev.langchain4j.model.openai.OpenAiChatResponse;
@@ -18,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
 class OpenAiChatModelIT extends AbstractChatModelIT {
+
+    // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
     static final OpenAiChatModel.OpenAiChatModelBuilder OPEN_AI_CHAT_MODEL_BUILDER = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -81,6 +85,38 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Test
+    void should_respect_parallelToolCalls_parameter() {
+
+        // given
+        OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+                .build();
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("add")
+                .description("adds two numbers")
+                .parameters(JsonObjectSchema.builder()
+                        .addIntegerProperty("a")
+                        .addNumberProperty("b")
+                        .required("a", "b")
+                        .build())
+                .build();
+
+        OpenAiChatRequest.Builder chatRequestBuilder = OpenAiChatRequest.builder()
+                .messages(UserMessage.from("How much is 2+2 and 3+3?"))
+                .toolSpecifications(toolSpecification);
+
+        // when
+        OpenAiChatResponse chatResponse = chatModel.chat(chatRequestBuilder.parallelToolCalls(true).build());
+        // then
+        assertThat(chatResponse.aiMessage().toolExecutionRequests()).hasSize(2);
+
+        // when
+        OpenAiChatResponse chatResponse2 = chatModel.chat(chatRequestBuilder.parallelToolCalls(false).build());
+        // then
+        assertThat(chatResponse2.aiMessage().toolExecutionRequests()).hasSize(1);
+    }
+
+    @Test
     void should_return_custom_response() {
 
         // given
@@ -112,6 +148,4 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
-
-    // TODO test all OpenAI parameters
 }

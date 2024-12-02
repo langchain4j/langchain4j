@@ -8,6 +8,8 @@ import java.util.List;
 
 class VertexAiChatModelIT extends AbstractChatModelIT {
 
+    // TODO https://github.com/langchain4j/langchain4j/issues/2219
+
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(

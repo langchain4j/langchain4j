@@ -10,6 +10,9 @@ import java.util.List;
 
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
+    // TODO https://github.com/langchain4j/langchain4j/issues/2219
+    // TODO https://github.com/langchain4j/langchain4j/issues/2220
+
     static final GoogleAiGeminiChatModel GOOGLE_AI_GEMINI_CHAT_MODEL = GoogleAiGeminiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
             .modelName("gemini-1.5-flash-8b")

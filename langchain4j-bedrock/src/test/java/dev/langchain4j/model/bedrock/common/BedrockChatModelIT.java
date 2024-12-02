@@ -11,6 +11,8 @@ import static dev.langchain4j.model.bedrock.BedrockAnthropicMessageChatModel.Typ
 
 class BedrockChatModelIT extends AbstractChatModelIT {
 
+    // TODO https://github.com/langchain4j/langchain4j/issues/2219
+
     static final BedrockAnthropicMessageChatModel BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL =
             BedrockAnthropicMessageChatModel.builder()
                     .model(AnthropicClaude3SonnetV1.getValue())

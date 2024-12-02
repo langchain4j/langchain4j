@@ -21,6 +21,8 @@ import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 
 class OllamaChatModelIT extends AbstractChatModelIT {
 
+    // TODO https://github.com/langchain4j/langchain4j/issues/2219
+
     private static final String MODEL_WITH_TOOLS = LLAMA_3_1;
     private static LC4jOllamaContainer ollamaWithTools;
 
