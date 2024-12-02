@@ -9,11 +9,7 @@ import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Query;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -71,7 +67,8 @@ public class CompressingQueryTransformer implements QueryTransformer {
     @Override
     public Collection<Query> transform(Query query) {
         if (query.metadata() == null || query.metadata().chatMemory() == null) {
-            return singletonList(query);
+            throw new IllegalStateException("ChatMemory is missing " +
+                    "(if you wish to use CompressingQueryTransformer, please configure ChatMemory or ChatMemoryProvider)");
         }
 
         List<ChatMessage> chatMemory = query.metadata().chatMemory();
