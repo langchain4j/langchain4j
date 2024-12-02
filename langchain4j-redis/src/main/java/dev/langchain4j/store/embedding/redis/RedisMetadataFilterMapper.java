@@ -209,14 +209,14 @@ class RedisMetadataFilterMapper {
         String keyPrefix = toKeyPrefix(key);
         if (fieldType instanceof TagField) {
             String inFilter = values.stream()
-                .map(Object::toString)
-                .collect(Collectors.joining(OR_DELIMITER));
+                    .map(Object::toString)
+                    .collect(Collectors.joining(OR_DELIMITER));
 
             return keyPrefix + Boundary.TAG_BOUNDARY.toSingleString(inFilter);
         } else if (fieldType instanceof TextField) {
             String inFilter = values.stream()
-                .map(Boundary.TEXT_BOUNDARY::toSingleString)
-                .collect(Collectors.joining(OR_DELIMITER));
+                    .map(Boundary.TEXT_BOUNDARY::toSingleString)
+                    .collect(Collectors.joining(OR_DELIMITER));
 
             return keyPrefix + Boundary.TEXT_IN_BOUNDARY.toSingleString(inFilter);
         } else {
