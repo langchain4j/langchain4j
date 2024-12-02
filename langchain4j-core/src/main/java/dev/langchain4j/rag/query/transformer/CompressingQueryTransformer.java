@@ -67,7 +67,7 @@ public class CompressingQueryTransformer implements QueryTransformer {
     @Override
     public Collection<Query> transform(Query query) {
         if (query.metadata() == null || query.metadata().chatMemory() == null) {
-            throw new IllegalStateException("ChatMemory is missing " +
+            throw new IllegalStateException("ChatMemory is not configured. " +
                     "(if you wish to use CompressingQueryTransformer, please configure ChatMemory or ChatMemoryProvider)");
         }
 
