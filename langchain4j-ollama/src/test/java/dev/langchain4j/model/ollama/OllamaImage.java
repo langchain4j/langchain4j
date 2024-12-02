@@ -15,7 +15,7 @@ public class OllamaImage {
         return String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, modelName);
     }
 
-    public static final String BAKLLAVA_MODEL = "bakllava"; // TODO use llama?
+    public static final String BAKLLAVA_MODEL = "bakllava"; // TODO use llama3.2?
 
     public static final String TINY_DOLPHIN_MODEL = "tinydolphin";
     public static final String LLAMA_3_1 = "llama3.1";

@@ -177,7 +177,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             throw new IllegalArgumentException("%s cannot be used together with %s. Please use either %s or %s instead."
                     .formatted(
                             chatRequestClass.getSimpleName(),
-                            OpenAiChatModel.class.getSimpleName(), // TODO
+                            OpenAiChatModel.class.getSimpleName(), // TODO for streaming
                             ChatRequest.class.getSimpleName(),
                             OpenAiChatRequest.class.getSimpleName()
                     ));
