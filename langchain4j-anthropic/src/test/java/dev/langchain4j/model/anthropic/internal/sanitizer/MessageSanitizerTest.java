@@ -1,9 +1,10 @@
-package dev.langchain4j.data.message;
+package dev.langchain4j.model.anthropic.internal.sanitizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.*;
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;

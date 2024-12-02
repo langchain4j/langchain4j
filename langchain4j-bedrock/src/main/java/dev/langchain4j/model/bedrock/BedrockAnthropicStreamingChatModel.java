@@ -10,7 +10,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
-import static dev.langchain4j.data.message.MessageSanitizer.sanitizeMessages;
+import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
 
 @Getter
 @SuperBuilder

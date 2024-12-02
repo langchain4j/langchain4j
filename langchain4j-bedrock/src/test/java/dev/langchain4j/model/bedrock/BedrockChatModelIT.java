@@ -69,7 +69,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -96,7 +96,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -557,7 +557,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -583,7 +583,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -605,7 +605,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -627,7 +627,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -656,7 +656,7 @@ class BedrockChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -677,7 +677,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -699,7 +699,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @ParameterizedTest
@@ -725,7 +725,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -751,7 +751,7 @@ class BedrockChatModelIT {
 
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -772,7 +772,7 @@ class BedrockChatModelIT {
 
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test

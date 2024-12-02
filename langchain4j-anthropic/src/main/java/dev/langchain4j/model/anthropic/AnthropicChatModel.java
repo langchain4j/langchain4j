@@ -33,7 +33,7 @@ import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createMode
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
-import static dev.langchain4j.data.message.MessageSanitizer.sanitizeMessages;
+import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 import static java.util.Collections.emptyList;
 
 /**
