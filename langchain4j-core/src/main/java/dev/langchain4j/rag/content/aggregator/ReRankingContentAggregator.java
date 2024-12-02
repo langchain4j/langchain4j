@@ -125,7 +125,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
         List<TextSegment> segments = contents.stream()
                 .map(Content::textSegment)
-                .collect(toList());
+                .toList();
 
         List<Double> scores = scoringModel.scoreAll(segments, query.text()).content();
 
@@ -137,10 +137,9 @@ public class ReRankingContentAggregator implements ContentAggregator {
         return segmentToScore.entrySet().stream()
                 .filter(entry -> minScore == null || entry.getValue() >= minScore)
                 .sorted(Map.Entry.<TextSegment, Double>comparingByValue().reversed())
-                .map(Map.Entry::getKey)
-                .map(Content::from)
+                .map(entry -> new Content(entry.getKey(), Map.of("score", entry.getValue())))
                 .limit(maxResults)
-                .collect(toList());
+                .toList();
     }
 
     public static class ReRankingContentAggregatorBuilder {

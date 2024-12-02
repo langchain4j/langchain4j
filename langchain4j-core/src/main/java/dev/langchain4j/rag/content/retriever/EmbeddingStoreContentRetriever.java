@@ -239,13 +239,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
 
         return searchResult.matches().stream()
-                .map(embeddingMatch -> {
-                    Map<String, Object> metadata = Map.of(
-                            "score", embeddingMatch.score(),
-                            "embeddingId", embeddingMatch.embeddingId()
-                    );
-                    return Content.from(embeddingMatch.embedded(), metadata);
-                })
+                .map(Content::from)
                 .toList();
     }
 

@@ -5,7 +5,7 @@ import dev.langchain4j.rag.content.aggregator.ContentAggregator;
 import dev.langchain4j.rag.content.injector.ContentInjector;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import java.util.Map;
 import java.util.Objects;
 
@@ -74,7 +74,8 @@ public class Content {
         return new Content(textSegment);
     }
 
-    public static Content from(TextSegment textSegment, Map<String, Object> metadata) {
-        return new Content(textSegment, metadata);
+    public static Content from(EmbeddingMatch<TextSegment> embeddingMatch) {
+        return new Content(embeddingMatch.embedded(),
+                Map.of("score", embeddingMatch.score(), "embeddingId", embeddingMatch.embeddingId()));
     }
 }

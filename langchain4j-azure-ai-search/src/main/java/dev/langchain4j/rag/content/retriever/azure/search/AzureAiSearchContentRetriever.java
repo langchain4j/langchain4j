@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
@@ -176,9 +177,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
             List<EmbeddingMatch<TextSegment>> searchResult = super.search(request).matches();
             return searchResult.stream()
-                    .map(EmbeddingMatch::embedded)
                     .map(Content::from)
-                    .collect(toList());
+                    .toList();
         } else if (azureAiSearchQueryType == AzureAiSearchQueryType.FULL_TEXT) {
             String content = query.text();
             return findRelevantWithFullText(content, maxResults, minScore);
@@ -247,7 +247,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
     private List<Content> mapResultsToContentList(SearchPagedIterable searchResults, AzureAiSearchQueryType azureAiSearchQueryType, double minScore) {
         List<Content> result = new ArrayList<>();
         getEmbeddingMatches(searchResults, minScore, azureAiSearchQueryType).forEach(embeddingMatch -> {
-            Content content = Content.from(embeddingMatch.embedded());
+            Content content = Content.from(embeddingMatch);
             result.add(content);
         });
         return result;
