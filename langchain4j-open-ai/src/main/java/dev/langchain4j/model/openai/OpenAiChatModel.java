@@ -147,12 +147,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
-        this.stop = stop;
+        this.stop = copyIfNotNull(stop);
         this.maxTokens = maxTokens;
         this.maxCompletionTokens = maxCompletionTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
-        this.logitBias = logitBias;
+        this.logitBias = copyIfNotNull(logitBias);
         this.responseFormat = responseFormat == null ? null : ResponseFormat.builder()
                 .type(ResponseFormatType.valueOf(responseFormat.toUpperCase(Locale.ROOT)))
                 .build();

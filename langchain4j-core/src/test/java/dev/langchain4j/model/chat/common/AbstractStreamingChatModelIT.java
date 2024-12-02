@@ -15,13 +15,11 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static dev.langchain4j.model.chat.common.AbstractChatModelIT.WEATHER_TOOL;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -50,11 +48,37 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
  * </pre>
  */
 @TestInstance(PER_CLASS)
-public abstract class AbstractStreamingChatModelIT {
+public abstract class AbstractStreamingChatModelIT extends BaseChatModelIT<StreamingChatLanguageModel> {
 
-    protected abstract List<StreamingChatLanguageModel> models();
+    @Override
+    protected ChatResponse chat(StreamingChatLanguageModel chatModel, ChatRequest chatRequest) {
+        CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
 
-    // TODO make sure all tests as in sync model
+        chatModel.chat(chatRequest, new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse chatResponse) {
+                futureChatResponse.complete(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureChatResponse.completeExceptionally(error);
+            }
+        });
+
+        try {
+            return futureChatResponse.get(60, SECONDS);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // TODO de-duplicate tests
 
     @ParameterizedTest
     @MethodSource("models")
@@ -187,7 +211,7 @@ public abstract class AbstractStreamingChatModelIT {
     @DisabledIf("supportsTools")
     @ParameterizedTest
     @MethodSource("models")
-    void should_fail_if_tools_are_not_supported(StreamingChatLanguageModel model) throws Exception {
+    void should_fail_if_tools_are_not_supported(StreamingChatLanguageModel model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
