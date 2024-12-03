@@ -4,6 +4,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import org.jspecify.annotations.NonNull;
 
 import java.util.Objects;
 
@@ -16,7 +17,7 @@ public class ChatResponse {
     private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
 
-    private ChatResponse(Builder builder) {
+    private ChatResponse(@NonNull Builder builder) {
         this.aiMessage = ensureNotNull(builder.aiMessage, "aiMessage");
         this.tokenUsage = builder.tokenUsage;
         this.finishReason = builder.finishReason;
