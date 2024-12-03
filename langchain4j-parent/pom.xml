@@ -36,9 +36,9 @@
         <slf4j-api.version>2.0.16</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.11.3</junit.version>
-        <testcontainers.version>1.20.3</testcontainers.version>
+        <testcontainers.version>1.20.4</testcontainers.version>
         <bytebuddy.version>1.15.10</bytebuddy.version>
-        <mockito.version>5.14.1</mockito.version>
+        <mockito.version>5.14.2</mockito.version>
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
         <assertj.version>3.24.2</assertj.version>
         <assertk.version>0.28.1</assertk.version>
