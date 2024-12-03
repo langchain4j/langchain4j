@@ -165,7 +165,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
         return false; // Ollama does not support structured outputs
     }
 
-
     @Override
     protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
         return false; // vision model only supports a single image per message
@@ -175,7 +174,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
         return false; // vision model only supports a single image per message
     }
-
 
     @Override
     protected boolean assertResponseId() {

@@ -12,7 +12,10 @@ class OllamaAiServiceIT extends AbstractAiServiceIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(OLLAMA_CHAT_MODEL_WITH_TOOLS, OPEN_AI_CHAT_MODEL_WITH_TOOLS);
+        return List.of(
+                OLLAMA_CHAT_MODEL_WITH_TOOLS,
+                OPEN_AI_CHAT_MODEL_WITH_TOOLS
+        );
     }
 
     @Override

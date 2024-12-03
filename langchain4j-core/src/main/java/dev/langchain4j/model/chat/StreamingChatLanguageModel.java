@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -115,9 +116,10 @@ public interface StreamingChatLanguageModel {
      *                           The model autonomously decides whether to use any of these tools.
      * @param handler            The handler for streaming the response.
      *                           {@link AiMessage} can contain either a textual response or a request to execute one of the tools.
+     * @throws UnsupportedFeatureException if tools are not supported by the underlying LLM API
      */
     default void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        throw new IllegalArgumentException("Tools are currently not supported by this model");
+        throw new UnsupportedFeatureException("tools are currently not supported by " + getClass().getSimpleName());
     }
 
     /**
@@ -129,8 +131,9 @@ public interface StreamingChatLanguageModel {
      * @param toolSpecification The specification of a tool that <b>must</b> be executed.
      *                          The model is <b>forced</b> to execute this tool.
      * @param handler           The handler for streaming the response.
+     * @throws UnsupportedFeatureException if tools are not supported by the underlying LLM API
      */
     default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        throw new IllegalArgumentException("Tools are currently not supported by this model");
+        throw new UnsupportedFeatureException("tool choice is currently not supported by " + getClass().getSimpleName());
     }
 }
