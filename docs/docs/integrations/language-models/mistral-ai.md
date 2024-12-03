@@ -1,5 +1,5 @@
 ---
-sidebar_position: 12
+sidebar_position: 13
 ---
 
 # MistralAI
@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.34.0</version>
+    <version>0.36.2</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>0.34.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:0.34.0'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:0.34.0'
+implementation 'dev.langchain4j:langchain4j:0.36.2'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:0.36.2'
 ```
 ### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
@@ -80,8 +80,10 @@ import dev.langchain4j.model.mistralai.MistralAiChatModel;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        ChatLanguageModel model = MistralAiChatModel
-                .withApiKey(ApiKeys.MISTRALAI_API_KEY);
+        ChatLanguageModel model = MistralAiChatModel.builder()
+                .apiKey(ApiKeys.MISTRALAI_API_KEY)
+                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+                .build();
 
         String response = model.generate("Say 'Hello World'");
         System.out.println(response);
@@ -107,8 +109,10 @@ import java.util.concurrent.CompletableFuture;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        MistralAiStreamingChatModel model = MistralAiStreamingChatModel
-                .withApiKey(ApiKeys.MISTRALAI_API_KEY);
+        MistralAiStreamingChatModel model = MistralAiStreamingChatModel.builder()
+                .apiKey(ApiKeys.MISTRALAI_API_KEY)
+                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+                .build();
 
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();         
         model.generate("Tell me a joke about Java", new StreamingResponseHandler() {
@@ -171,11 +175,11 @@ import java.util.*;
 public class PaymentTransactionTool {
 
    private final Map<String, List<String>> paymentData = Map.of(
-            "transaction_id", Arrays.asList("T1001", "T1002", "T1003", "T1004", "T1005"),
-            "customer_id", Arrays.asList("C001", "C002", "C003", "C002", "C001"),
-            "payment_amount", Arrays.asList("125.50", "89.99", "120.00", "54.30", "210.20"),
-            "payment_date", Arrays.asList("2021-10-05", "2021-10-06", "2021-10-07", "2021-10-05", "2021-10-08"),
-            "payment_status", Arrays.asList("Paid", "Unpaid", "Paid", "Paid", "Pending"));
+            "transaction_id", List.of("T1001", "T1002", "T1003", "T1004", "T1005"),
+            "customer_id", List.of("C001", "C002", "C003", "C002", "C001"),
+            "payment_amount", List.of("125.50", "89.99", "120.00", "54.30", "210.20"),
+            "payment_date", List.of("2021-10-05", "2021-10-06", "2021-10-07", "2021-10-05", "2021-10-08"),
+            "payment_status", List.of("Paid", "Unpaid", "Paid", "Paid", "Pending"));
    
     ...
 }
@@ -370,6 +374,21 @@ Toggling the safe prompt will prepend your messages with the following `@SystemM
 Always assist with care, respect, and truth. Respond with utmost utility yet securely. Avoid harmful, unethical, prejudiced, or negative content. Ensure replies promote fairness and positivity.
 ```
 
+## Creating `MistralAiModerationModel`
+
+### Plain Java
+```java
+ModerationModel model = new MistralAiModerationModel.Builder()
+    .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+    .modelName("mistral-moderation-latest")
+    .logRequests(true)
+    .logResponses(false)
+    .build();
+```
+
+```java
+Moderation moderation = model.moderate("I want to kill them.").content();
+```
 
 ## Examples
 - [Mistral AI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples/src/main/java)

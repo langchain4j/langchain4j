@@ -13,13 +13,13 @@ Typically, you will find all the parameters and their meaning on the model provi
 For example, OpenAI API's parameters can be found at https://platform.openai.com/docs/api-reference/chat
 (most up-to-date version)and include options like:
 
-| Parameter          | Description                                                                                                                                                                                          | Type      |
-|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| `modelName`        | The name of the model to use (gtp-3.5-turbo, gpt-4-1106-preview, ...)                                                                                                                                | `String`  |
-| `temperature`      | What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.                 | `Double`  |
-| `max_tokens`       | The maximum number of tokens that can be generated in the chat completion.                                                                                                                           | `Integer` |
-| `frequencyPenalty` | Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.           | `Double`  |
-| `...`              | ...                                                                                                                                                                                                  | `...`     |
+| Parameter          | Description                                                                                                                                                                                | Type      |
+|--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `modelName`        | The name of the model to use (e.g., gpt-4o, gpt-4o-mini, etc.)                                                                                                                             | `String`  |
+| `temperature`      | What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.       | `Double`  |
+| `max_tokens`       | The maximum number of tokens that can be generated in the chat completion.                                                                                                                 | `Integer` |
+| `frequencyPenalty` | Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim. | `Double`  |
+| `...`              | ...                                                                                                                                                                                        | `...`     |
 
 For the full list of parameters in OpenAI LLMs, see the [OpenAI Language Model page](/integrations/language-models/open-ai).
 Full lists of parameters and default values per model can be found under the separate model pages

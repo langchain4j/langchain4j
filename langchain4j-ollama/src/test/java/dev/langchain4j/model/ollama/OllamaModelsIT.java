@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
     OllamaModels ollamaModels = OllamaModels.builder()
-            .baseUrl(ollama.getEndpoint())
+            .baseUrl(ollamaBaseUrl())
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -27,6 +27,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         // then
         assertThat(response.content().size()).isGreaterThan(0);
         assertThat(response.content().get(0).getName()).contains(TINY_DOLPHIN_MODEL);
+        assertThat(response.content().get(0).getModifiedAt()).isNotNull();
     }
 
     @Test
@@ -61,7 +62,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(response.content().getParameters()).isNotBlank();
         assertThat(response.content().getModifiedAt()).isNotNull();
         assertThat(response.content().getModelInfo().keySet().size()).isPositive();
-        assertThat(response.content().getModelInfo().containsKey("general.architecture")).isTrue();
+        assertThat(response.content().getModelInfo()).containsKey("general.architecture");
         assertThat(response.content().getDetails().getFamily()).isEqualTo("llama");
     }
 
@@ -71,7 +72,7 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // load model
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .modelName(TINY_DOLPHIN_MODEL)
                 .temperature(0.0)
                 .numPredict(1)

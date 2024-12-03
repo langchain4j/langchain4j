@@ -146,7 +146,7 @@ public class UserMessage implements ChatMessage {
      *
      * @deprecated Use {@link #singleText()} or {@link #contents()} instead.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public String text() {
         return singleText();
     }

@@ -24,7 +24,7 @@ public class AnthropicCreateMessageRequest {
 
     public String model;
     public List<AnthropicMessage> messages;
-    public String system;
+    public List<AnthropicTextContent> system;
     public int maxTokens;
     public List<String> stopSequences;
     public boolean stream;
@@ -32,4 +32,5 @@ public class AnthropicCreateMessageRequest {
     public Double topP;
     public Integer topK;
     public List<AnthropicTool> tools;
+    public AnthropicToolChoice toolChoice;
 }

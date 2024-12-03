@@ -12,7 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ToolExecutionRequestUtilTest implements WithAssertions {
 
@@ -68,7 +69,7 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
     @MethodSource
     void should_remove_trailing_comma(String inputJson, String expectedOutputJson) {
         String outputJson = ToolExecutionRequestUtil.removeTrailingComma(inputJson);
-        assertEquals(expectedOutputJson, outputJson);
+        assertThat(outputJson).isEqualTo(expectedOutputJson);
     }
 
     private static Stream<Arguments> should_remove_trailing_comma() {

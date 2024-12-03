@@ -8,12 +8,17 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.SearchIndexModel;
+import com.mongodb.client.model.SearchIndexType;
 import com.mongodb.client.model.search.VectorSearchOptions;
 import com.mongodb.client.result.InsertManyResult;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
@@ -23,65 +28,61 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
 
 import static com.mongodb.client.model.Aggregates.*;
 import static com.mongodb.client.model.Projections.*;
 import static com.mongodb.client.model.search.SearchPath.fieldPath;
-import static com.mongodb.client.model.search.VectorSearchOptions.vectorSearchOptions;
+import static com.mongodb.client.model.search.VectorSearchOptions.approximateVectorSearchOptions;
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.store.embedding.mongodb.IndexMapping.defaultIndexMapping;
-import static dev.langchain4j.store.embedding.mongodb.MappingUtils.fromIndexMapping;
-import static dev.langchain4j.store.embedding.mongodb.MappingUtils.toMongoDbDocument;
+import static dev.langchain4j.store.embedding.mongodb.MappingUtils.*;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbMetadataFilterMapper.map;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 /**
- * Represents a <a href="https://www.mongodb.com/">MongoDB</a> index as an embedding store.
+ * Represents a <a href="https://www.mongodb.com/">MongoDB</a> indexed collection as an embedding store.
  * <p>
- * More <a href="https://www.mongodb.com/docs/atlas/atlas-search/field-types/knn-vector/">info</a>
- * to set up MongoDb as vectorDatabase.
+ * More <a href="https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-overview/">info</a>
+ * on using MongoDb vector search.
  * <p>
  * <a href="https://www.mongodb.com/developer/products/atlas/semantic-search-mongodb-atlas-vector-search/">tutorial</a>
- * how to use a knn-vector in MongoDB Atlas (great starting point).
+ * how to use vector search with MongoDB Atlas (great starting point).
+ * <p>
+ * To deploy a local instance of Atlas, see
+ * <a href="https://www.mongodb.com/docs/atlas/cli/current/atlas-cli-deploy-local/">this guide</a>.
  * <p>
  * If you are using a free tier, {@code #createIndex = true} might not be supported,
  * so you will need to create an index manually.
- * In your Atlas web console go to: DEPLOYMENT -&gt; Database -&gt; {your cluster} -&gt; Atlas Search -&gt; Create Index Search
- * -&gt; "JSON Editor" under "Atlas Search" -&gt; Next -&gt; Select your database in the left pane
- * -&gt; Insert the following JSON into the right pane (set "dimensions" and "metadata"-&gt;"fields" to desired values)
+ * In your Atlas web console go to: DEPLOYMENT -&gt; Database -&gt; {your cluster} -&gt; Atlas Search tab
+ * -&gt; Create Index Search -&gt; "JSON Editor" under "Atlas Vector Search" (not "Atlas Search") -&gt; Next
+ * -&gt; Select your database in the left pane -&gt; Insert the following JSON into the right pane
+ * (set "numDimensions" and additional metadata fields to desired values)
  * <pre>
  * {
- *   "mappings": {
- *     "dynamic": false,
- *     "fields": {
- *       "embedding": {
- *         "dimensions": 384,
- *         "similarity": "cosine",
- *         "type": "knnVector"
- *       },
- *       "metadata": {
- *         "dynamic": false,
- *         "fields": {
- *           "test-key": {
- *             "type": "token"
- *           }
- *         },
- *         "type": "document"
- *       }
- *     }
- *   }
+ *   "fields" : [ {
+ *     "type" : "vector",
+ *     "path" : "embedding",
+ *     "numDimensions" : 384,
+ *     "similarity" : "cosine"
+ *   }, {
+ *     "type" : "filter",
+ *     "path" : "metadata.test-key"
+ *   } ]
  * }
  * </pre>
  * -&gt; Next -&gt; Create Search Index
  */
 public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
+    private static final int SECONDS_TO_WAIT_FOR_INDEX = 20;
 
     private static final Logger log = LoggerFactory.getLogger(MongoDbEmbeddingStore.class);
 
@@ -89,7 +90,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final String indexName;
     private final long maxResultRatio;
-    private final VectorSearchOptions vectorSearchOptions;
+    private final Bson globalPrefilter;
 
     public MongoDbEmbeddingStore(MongoClient mongoClient,
                                  String databaseName,
@@ -118,11 +119,16 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         this.collection = database.getCollection(collectionName, MongoDbDocument.class).withCodecRegistry(codecRegistry);
-        this.vectorSearchOptions = filter == null ? vectorSearchOptions() : vectorSearchOptions().filter(filter);
+        this.globalPrefilter = filter;
 
-        // create index if not exist
-        if (Boolean.TRUE.equals(createIndex) && !isIndexExist(this.indexName)) {
-            createIndex(this.indexName, getOrDefault(indexMapping, defaultIndexMapping()));
+        if (!indexExists(this.indexName)) {
+            if (createIndex) {
+                createIndex(this.indexName, getOrDefault(indexMapping, defaultIndexMapping()));
+            } else {
+                throw new RuntimeException(String.format(
+                        "Search Index '%s' not found and must be created via createIndex(true), or manually as a vector search index (not a regular index), via the createSearchIndexes command",
+                        this.indexName));
+            }
         }
     }
 
@@ -226,7 +232,10 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public MongoDbEmbeddingStore build() {
-            return new MongoDbEmbeddingStore(mongoClient, databaseName, collectionName, indexName, maxResultRatio, createCollectionOptions, filter, indexMapping, createIndex);
+            return new MongoDbEmbeddingStore(
+                    mongoClient, databaseName, collectionName, indexName,
+                    maxResultRatio, createCollectionOptions, filter,
+                    indexMapping, createIndex);
         }
     }
 
@@ -268,41 +277,65 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        List<Double> queryVector = referenceEmbedding.vectorAsList().stream()
+    public void removeAll() {
+        collection.deleteMany(Filters.empty());
+    }
+
+    @Override
+    public void removeAll(Collection<String> ids) {
+        ensureNotEmpty(ids, "ids");
+        collection.deleteMany(Filters.in("_id", ids));
+    }
+
+    @Override
+    public void removeAll(Filter filter) {
+        ensureNotNull(filter, "filter");
+        collection.deleteMany(map(filter));
+    }
+
+    @Override
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        List<Double> queryVector = request.queryEmbedding().vectorAsList().stream()
                 .map(Float::doubleValue)
                 .collect(toList());
-        long numCandidates = maxResults * maxResultRatio;
+        long numCandidates = request.maxResults() * maxResultRatio;
 
-        List<Bson> pipeline = Arrays.asList(
-                vectorSearch(
-                        fieldPath("embedding"),
-                        queryVector,
-                        indexName,
-                        numCandidates,
-                        maxResults,
-                        vectorSearchOptions),
-                project(
-                        fields(
-                                metaVectorSearchScore("score"),
-                                include("embedding", "metadata", "text")
-                        )
-                ),
-                match(
-                        Filters.gte("score", minScore)
-                ));
+        Bson postFilter = null;
+        if (request.minScore() > 0) {
+            postFilter = Filters.gte("score", request.minScore());
+        }
+        if (request.filter() != null) {
+            Bson newFilter = map(request.filter());
+            postFilter = postFilter == null ? newFilter : Filters.and(postFilter, newFilter);
+        }
+
+        VectorSearchOptions vectorSearchOptions = this.globalPrefilter == null
+                ? approximateVectorSearchOptions(numCandidates)
+                : approximateVectorSearchOptions(numCandidates).filter(this.globalPrefilter);
+
+        ArrayList<Bson> pipeline = new ArrayList<>();
+        pipeline.add(vectorSearch(
+                fieldPath("embedding"),
+                queryVector,
+                indexName,
+                request.maxResults(),
+                vectorSearchOptions));
+        pipeline.add(project(fields(
+                metaVectorSearchScore("score"),
+                include("embedding", "metadata", "text"))));
+        if (postFilter != null) {
+            Bson match = match(postFilter);
+            pipeline.add(match);
+        }
 
         try {
             AggregateIterable<MongoDbMatchedDocument> results = collection.aggregate(pipeline, MongoDbMatchedDocument.class);
-
-            return StreamSupport.stream(results.spliterator(), false)
+            List<EmbeddingMatch<TextSegment>> result = StreamSupport.stream(results.spliterator(), false)
                     .map(MappingUtils::toEmbeddingMatch)
-                    .collect(Collectors.toList());
-
+                    .collect(toList());
+            return new EmbeddingSearchResult<>(result);
         } catch (MongoCommandException e) {
-            if (log.isErrorEnabled()) {
-                log.error("Error in MongoDBEmbeddingStore.findRelevant", e);
-            }
+            log.error("Error in MongoDBEmbeddingStore.search", e);
             throw new RuntimeException(e);
         }
     }
@@ -321,14 +354,15 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         List<MongoDbDocument> documents = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {
-            MongoDbDocument document = toMongoDbDocument(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i));
+            String id = ids.get(i);
+            MongoDbDocument document = toMongoDbDocument(id, embeddings.get(i), embedded == null ? null : embedded.get(i));
             documents.add(document);
         }
 
         InsertManyResult result = collection.insertMany(documents);
-        if (!result.wasAcknowledged() && log.isWarnEnabled()) {
+        if (!result.wasAcknowledged()) {
             String errMsg = String.format("[MongoDbEmbeddingStore] Add document failed, Document=%s", documents);
-            log.warn(errMsg);
+            log.error(errMsg);
             throw new RuntimeException(errMsg);
         }
     }
@@ -342,13 +376,48 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         database.createCollection(collectionName, createCollectionOptions);
     }
 
-    private boolean isIndexExist(String indexName) {
+    private boolean indexExists(String indexName) {
+        Document indexRecord = indexRecord(collection, indexName);
+        return indexRecord != null && !indexRecord.getString("status").equals("DOES_NOT_EXIST");
+    }
+
+    private static Document indexRecord(
+            MongoCollection<MongoDbDocument> collection, String indexName) {
         return StreamSupport.stream(collection.listSearchIndexes().spliterator(), false)
-                .anyMatch(index -> indexName.equals(index.getString("name")));
+                .filter(index -> indexName.equals(index.getString("name")))
+                .findAny().orElse(null);
     }
 
     private void createIndex(String indexName, IndexMapping indexMapping) {
-        Document index = fromIndexMapping(indexMapping);
-        collection.createSearchIndex(indexName, index);
+        collection.createSearchIndexes(List.of(new SearchIndexModel(
+                indexName,
+                fromIndexMapping(indexMapping),
+                SearchIndexType.vectorSearch())));
+
+        waitForIndex(collection, indexName);
+    }
+
+    static void waitForIndex(MongoCollection<MongoDbDocument> collection, String indexName) {
+        long startTime = System.nanoTime();
+        long timeoutNanos = TimeUnit.SECONDS.toNanos(SECONDS_TO_WAIT_FOR_INDEX);
+        while (System.nanoTime() - startTime < timeoutNanos) {
+            Document indexRecord = indexRecord(collection, indexName);
+            if (indexRecord != null) {
+                if ("FAILED".equals(indexRecord.getString("status"))) {
+                    throw new RuntimeException("Search index has failed status.");
+                }
+                if (indexRecord.getBoolean("queryable")) {
+                    return;
+                }
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+        }
+        log.warn("Index {} was not created or did not exit INITIAL_SYNC within {} seconds",
+                indexName, SECONDS_TO_WAIT_FOR_INDEX);
     }
 }

@@ -47,4 +47,18 @@ class OllamaDateDeserializerTest {
         assertThat(offsetDateTime.getHour()).isEqualTo(0);
         assertThat(offsetDateTime.getNano()).isEqualTo(0);
     }
+
+
+    @Test
+    void should_trim_nanoseconds_and_deserialize_utc_date_with_negative_offset() throws IOException {
+        when(jsonParser.getText()).thenReturn("2024-06-15T05:18:13.974383393-07:00");
+
+        OffsetDateTime offsetDateTime = new OllamaDateDeserializer().deserialize(jsonParser, deserializationContext);
+
+        assertThat(offsetDateTime.getOffset()).isEqualTo(ZoneOffset.ofHours(-7));
+        assertThat(offsetDateTime.getYear()).isEqualTo(2024);
+        assertThat(offsetDateTime.getMonthValue()).isEqualTo(6);
+        assertThat(offsetDateTime.getHour()).isEqualTo(5);
+        assertThat(offsetDateTime.getNano()).isEqualTo(0);
+    }
 }

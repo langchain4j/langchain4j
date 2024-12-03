@@ -14,7 +14,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 @JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicContent {
 
-    public String type;
+    public AnthropicContentBlockType type;
 
     // when type = "text"
     public String text;

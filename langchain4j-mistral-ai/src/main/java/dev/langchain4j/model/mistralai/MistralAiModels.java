@@ -50,12 +50,6 @@ public class MistralAiModels {
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
-    /**
-     * Creates a new instance of MistralAiModels with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return a new instance of MistralAiModels
-     */
     public static MistralAiModels withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

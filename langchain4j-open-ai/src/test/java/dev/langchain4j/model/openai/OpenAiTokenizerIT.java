@@ -19,8 +19,21 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.*;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_0125;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_1106;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_0125_PREVIEW;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_1106_PREVIEW;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K_0314;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K_0613;
+import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_TURBO_PREVIEW;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
@@ -62,7 +75,7 @@ class OpenAiTokenizerIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
-                .maxTokens(1) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -127,7 +140,7 @@ class OpenAiTokenizerIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
-                .maxTokens(1) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -343,7 +356,7 @@ class OpenAiTokenizerIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
-                .maxTokens(1) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -770,7 +783,7 @@ class OpenAiTokenizerIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
-                .maxTokens(2) // we don't need outputs, let's not waste tokens
+                .maxCompletionTokens(2) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();

@@ -8,7 +8,6 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import redis.clients.jedis.JedisPooled;
 
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
@@ -34,17 +33,14 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        try (JedisPooled jedis = new JedisPooled(redis.getHost(), redis.getFirstMappedPort())) {
-            jedis.flushDB(); // TODO fix: why redis returns embeddings from different indexes?
-        }
-
         embeddingStore = RedisEmbeddingStore.builder()
-                .host(redis.getHost())
-                .port(redis.getFirstMappedPort())
-                .indexName(randomUUID())
-                .dimension(384)
-                .metadataKeys(createMetadata().toMap().keySet())
-                .build();
+            .host(redis.getHost())
+            .port(redis.getFirstMappedPort())
+            .indexName(randomUUID())
+            .prefix(randomUUID() + ":")
+            .dimension(384)
+            .metadataKeys(createMetadata().toMap().keySet())
+            .build();
     }
 
     @Override

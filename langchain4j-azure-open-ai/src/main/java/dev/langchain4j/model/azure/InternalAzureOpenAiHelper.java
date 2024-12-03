@@ -4,7 +4,26 @@ import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.OpenAIServiceVersion;
-import com.azure.ai.openai.models.*;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinition;
+import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ChatCompletionsToolCall;
+import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
+import com.azure.ai.openai.models.ChatCompletionsToolSelection;
+import com.azure.ai.openai.models.ChatMessageImageContentItem;
+import com.azure.ai.openai.models.ChatMessageImageUrl;
+import com.azure.ai.openai.models.ChatMessageTextContentItem;
+import com.azure.ai.openai.models.ChatRequestAssistantMessage;
+import com.azure.ai.openai.models.ChatRequestMessage;
+import com.azure.ai.openai.models.ChatRequestSystemMessage;
+import com.azure.ai.openai.models.ChatRequestToolMessage;
+import com.azure.ai.openai.models.ChatRequestUserMessage;
+import com.azure.ai.openai.models.ChatResponseMessage;
+import com.azure.ai.openai.models.CompletionsFinishReason;
+import com.azure.ai.openai.models.CompletionsUsage;
+import com.azure.ai.openai.models.FunctionCall;
+import com.azure.ai.openai.models.FunctionDefinition;
+import com.azure.ai.openai.models.ImageGenerationData;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
@@ -23,9 +42,16 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -35,12 +61,22 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -50,17 +86,17 @@ class InternalAzureOpenAiHelper {
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
-    public static OpenAIClient setupSyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix) {
-        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+    public static OpenAIClient setupSyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
         return openAIClientBuilder.buildClient();
     }
 
-    public static OpenAIAsyncClient setupAsyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix) {
-        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+    public static OpenAIAsyncClient setupAsyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
         return openAIClientBuilder.buildAsyncClient();
     }
 
-    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix) {
+    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -70,11 +106,15 @@ class InternalAzureOpenAiHelper {
         clientOptions.setProxyOptions(proxyOptions);
 
         String userAgent = DEFAULT_USER_AGENT;
-        if (userAgentSuffix!=null && !userAgentSuffix.isEmpty()) {
+        if (userAgentSuffix != null && !userAgentSuffix.isEmpty()) {
             userAgent = DEFAULT_USER_AGENT + "-" + userAgentSuffix;
         }
-        Header header = new Header("User-Agent", userAgent);
-        clientOptions.setHeaders(Collections.singletonList(header));
+        List<Header> headers = new ArrayList<>();
+        headers.add(new Header("User-Agent", userAgent));
+        if (customHeaders != null) {
+            customHeaders.forEach((name, value) -> headers.add(new Header(name, value)));
+        }
+        clientOptions.setHeaders(headers);
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
@@ -207,14 +247,22 @@ class InternalAzureOpenAiHelper {
     private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
-        functionDefinition.setParameters(toOpenAiParameters(toolSpecification.parameters()));
+        functionDefinition.setParameters(getParameters(toolSpecification));
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
     public static ChatCompletionsToolSelection toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toOpenAiParameters(toolThatMustBeExecuted.parameters()).toString());
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), getParameters(toolThatMustBeExecuted).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
         return ChatCompletionsToolSelection.fromBinaryData(BinaryData.fromObject(toolToCall));
+    }
+
+    private static BinaryData getParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            return toOpenAiParameters(toolSpecification.parameters());
+        } else {
+            return toOpenAiParametersOld(toolSpecification.toolParameters());
+        }
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
@@ -224,7 +272,17 @@ class InternalAzureOpenAiHelper {
         NO_PARAMETER_DATA.put("properties", new HashMap<>());
     }
 
-    private static BinaryData toOpenAiParameters(ToolParameters toolParameters) {
+    private static BinaryData toOpenAiParameters(JsonObjectSchema toolParameters) {
+        Parameters parameters = new Parameters();
+        if (toolParameters == null) {
+            return BinaryData.fromObject(NO_PARAMETER_DATA);
+        }
+        parameters.setProperties(toMap(toolParameters.properties()));
+        parameters.setRequired(toolParameters.required());
+        return BinaryData.fromObject(parameters);
+    }
+
+    private static BinaryData toOpenAiParametersOld(ToolParameters toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
             return BinaryData.fromObject(NO_PARAMETER_DATA);
@@ -365,13 +423,13 @@ class InternalAzureOpenAiHelper {
                                                        List<ChatMessage> messages,
                                                        List<ToolSpecification> toolSpecifications) {
         return ChatModelRequest.builder()
-            .model(options.getModel())
-            .temperature(options.getTemperature())
-            .topP(options.getTopP())
-            .maxTokens(options.getMaxTokens())
-            .messages(messages)
-            .toolSpecifications(toolSpecifications)
-            .build();
+                .model(options.getModel())
+                .temperature(options.getTemperature())
+                .topP(options.getTopP())
+                .maxTokens(options.getMaxTokens())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
     }
 
     static ChatModelResponse createModelListenerResponse(String responseId,
@@ -382,11 +440,11 @@ class InternalAzureOpenAiHelper {
         }
 
         return ChatModelResponse.builder()
-            .id(responseId)
-            .model(responseModel)
-            .tokenUsage(response.tokenUsage())
-            .finishReason(response.finishReason())
-            .aiMessage(response.content())
-            .build();
+                .id(responseId)
+                .model(responseModel)
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .aiMessage(response.content())
+                .build();
     }
 }

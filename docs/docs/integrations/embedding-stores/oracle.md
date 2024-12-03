@@ -1,5 +1,5 @@
 ---
-sidebar_position: 13
+sidebar_position: 18
 ---
 
 # Oracle
@@ -12,7 +12,7 @@ the [AI Vector Search Feature](https://docs.oracle.com/en/database/oracle/oracle
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-oracle</artifactId>
-    <version>0.34.0</version>
+    <version>0.36.2</version>
 
 </dependency>
 ```

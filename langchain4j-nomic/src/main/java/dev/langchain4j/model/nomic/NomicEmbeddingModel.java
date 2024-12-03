@@ -8,6 +8,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -27,6 +28,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final NomicClient client;
     private final String modelName;
     private final String taskType;
+    private final Integer maxSegmentsPerBatch;
     private final Integer maxRetries;
 
     @Builder
@@ -35,6 +37,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
             String apiKey,
             String modelName,
             String taskType,
+            Integer maxSegmentsPerBatch,
             Duration timeout,
             Integer maxRetries,
             Boolean logRequests,
@@ -49,9 +52,16 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .build();
         this.modelName = getOrDefault(modelName, "nomic-embed-text-v1");
         this.taskType = taskType;
+        this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 500);
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
+    /**
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     * <b>The default value for the model name will be removed in future releases!</b>
+     */
+    @Deprecated(forRemoval = true)
     public static NomicEmbeddingModel withApiKey(String apiKey) {
         return NomicEmbeddingModel.builder().apiKey(apiKey).build();
     }
@@ -59,19 +69,46 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        EmbeddingRequest request = EmbeddingRequest.builder()
-                .model(modelName)
-                .texts(textSegments.stream().map(TextSegment::text).collect(toList()))
-                .taskType(taskType)
-                .build();
+        List<String> texts = textSegments.stream()
+                .map(TextSegment::text)
+                .collect(toList());
 
-        EmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
+        return embedTexts(texts);
+    }
 
-        List<Embedding> embeddings = response.getEmbeddings().stream()
-                .map(Embedding::from).collect(toList());
+    private Response<List<Embedding>> embedTexts(List<String> texts) {
 
-        TokenUsage tokenUsage = new TokenUsage(response.getUsage().getTotalTokens(), 0);
+        List<Embedding> embeddings = new ArrayList<>();
+        int inputTokenCount = 0;
 
-        return Response.from(embeddings, tokenUsage);
+        for (int i = 0; i < texts.size(); i += maxSegmentsPerBatch) {
+            List<String> batch = texts.subList(i, Math.min(i + maxSegmentsPerBatch, texts.size()));
+
+            EmbeddingRequest request = EmbeddingRequest.builder()
+                    .model(modelName)
+                    .texts(batch)
+                    .taskType(taskType)
+                    .build();
+
+            EmbeddingResponse response = withRetry(() -> this.client.embed(request), maxRetries);
+
+            embeddings.addAll(getEmbeddings(response));
+            inputTokenCount += getTokenUsage(response);
+        }
+
+        return Response.from(embeddings, new TokenUsage(inputTokenCount, 0));
+    }
+
+    private List<Embedding> getEmbeddings(EmbeddingResponse response) {
+        return response.getEmbeddings().stream()
+                .map(Embedding::from)
+                .collect(toList());
+    }
+
+    private Integer getTokenUsage(EmbeddingResponse response) {
+        if (response.getUsage() != null) {
+            return response.getUsage().getTotalTokens();
+        }
+        return 0;
     }
 }

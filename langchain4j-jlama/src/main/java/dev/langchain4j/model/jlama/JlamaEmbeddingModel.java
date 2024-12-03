@@ -3,6 +3,7 @@ package dev.langchain4j.model.jlama;
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.ModelSupport;
 import com.github.tjake.jlama.model.bert.BertModel;
+import com.github.tjake.jlama.model.functions.Generator;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.RetryUtils;
@@ -20,6 +21,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final BertModel model;
+    private final Generator.PoolingType poolingType;
 
     @Builder
     public JlamaEmbeddingModel(Path modelCachePath,
@@ -27,6 +29,7 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                                String authToken,
                                Integer threadCount,
                                Boolean quantizeModelAtRuntime,
+                               Generator.PoolingType poolingType,
                                Path workingDirectory) {
 
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
@@ -46,10 +49,12 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         if (workingDirectory != null)
             loader = loader.workingDirectory(workingDirectory);
 
-        loader = loader.inferenceType(AbstractModel.InferenceType.FORWARD_PASS);
+        loader = loader.inferenceType(AbstractModel.InferenceType.FULL_EMBEDDING);
 
         this.model = (BertModel) loader.load();
         this.dimension = model.getConfig().embeddingLength;
+
+        this.poolingType = poolingType == null ? Generator.PoolingType.MODEL : poolingType;
     }
 
     public static JlamaEmbeddingModelBuilder builder() {
@@ -64,7 +69,7 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         List<Embedding> embeddings = new ArrayList<>();
 
         textSegments.forEach(textSegment -> {
-            embeddings.add(Embedding.from(model.embed(textSegment.text())));
+            embeddings.add(Embedding.from(model.embed(textSegment.text(), poolingType)));
         });
 
         return Response.from(embeddings);

@@ -6,10 +6,11 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -122,12 +123,21 @@ public class Utils {
   }
 
   /**
+   * Is the map object {@code null} or empty?
+   * @param map The iterable object to check.
+   * @return {@code true} if the map object is {@code null} or empty map, otherwise {@code false}.
+   * */
+  public static boolean isNullOrEmpty(Map<?, ?> map) {
+      return map == null || map.isEmpty();
+  }
+
+  /**
    * @deprecated Use {@link #isNullOrEmpty(Collection)} instead.
    * @param collection The collection to check.
    * @return {@code true} if the collection is {@code null} or empty, {@code false} otherwise.
    */
   @SuppressWarnings("DeprecatedIsStillUsed")
-  @Deprecated
+  @Deprecated(forRemoval = true)
   public static boolean isCollectionEmpty(Collection<?> collection) {
     return isNullOrEmpty(collection);
   }
@@ -175,9 +185,8 @@ public class Utils {
    */
   public static String generateUUIDFrom(String input) {
       byte[] hashBytes = getSha256Instance().digest(input.getBytes(UTF_8));
-      StringBuilder sb = new StringBuilder();
-      for (byte b : hashBytes) sb.append(String.format("%02x", b));
-      return UUID.nameUUIDFromBytes(sb.toString().getBytes(UTF_8)).toString();
+      String hexFormat = HexFormat.of().formatHex(hashBytes);
+      return UUID.nameUUIDFromBytes(hexFormat.getBytes(UTF_8)).toString();
   }
 
   /**
@@ -253,7 +262,7 @@ public class Utils {
         }
       } else {
         // Handle files
-        return Files.readAllBytes(Paths.get(new URI(url)));
+        return Files.readAllBytes(Path.of(new URI(url)));
       }
     } catch (Exception e) {
       throw new RuntimeException(e);
