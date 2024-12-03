@@ -30,6 +30,11 @@ class EmbeddingStoreTest implements WithAssertions {
         }
 
         @Override
+        public List<String> addAll(final List<Embedding> embeddings, final List<String> embedded) {
+            return List.of();
+        }
+
+        @Override
         public void addAll(List<String> ids, List<Embedding> embeddings, List<String> embedded) {
             System.out.println("addAll method executed");
         }

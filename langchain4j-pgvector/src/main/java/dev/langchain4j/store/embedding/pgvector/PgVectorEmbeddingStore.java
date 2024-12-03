@@ -225,6 +225,20 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         return ids;
     }
 
+    /**
+     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
+     *
+     * @param embeddings A list of embeddings to be added to the store.
+     * @param embedded   A list of original contents that were embedded.
+     * @return A list of auto-generated IDs associated with the added embeddings.
+     */
+    @Override
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
+
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");

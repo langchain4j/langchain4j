@@ -94,6 +94,15 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     @Override
+    public List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
+        List<String> ids = embeddings.stream()
+                .map(ignored -> randomUUID())
+                .collect(toList());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
+
+    @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
         if (ids.size()!= embeddings.size() || embeddings.size() != embedded.size()) {
             throw new IllegalArgumentException("The list of ids and embeddings and embedded must have the same size");

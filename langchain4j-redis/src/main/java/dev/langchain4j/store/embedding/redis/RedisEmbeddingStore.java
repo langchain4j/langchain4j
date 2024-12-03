@@ -118,6 +118,15 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+        List<String> ids = embeddings.stream()
+                .map(ignored -> randomUUID())
+                .collect(toList());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
+
+    @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         // Using KNN query on @vector field
         String queryTemplate = "*=>[ KNN %d @%s $BLOB AS %s ]";

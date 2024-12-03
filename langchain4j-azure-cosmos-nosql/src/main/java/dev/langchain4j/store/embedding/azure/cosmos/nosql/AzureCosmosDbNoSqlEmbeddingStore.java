@@ -113,6 +113,15 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
     }
 
     @Override
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+        List<String> ids = embeddings.stream()
+                .map(ignored -> randomUUID())
+                .collect(Collectors.toList());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
+
+    @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         String referenceEmbeddingString = referenceEmbedding.vectorAsList().stream()
                 .map(Object::toString)

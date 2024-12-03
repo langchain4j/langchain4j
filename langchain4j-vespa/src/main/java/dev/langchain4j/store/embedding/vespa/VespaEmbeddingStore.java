@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.vespa;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.vespa.VespaQueryClient.createInstance;
+import static java.util.stream.Collectors.toList;
 
 import ai.vespa.client.dsl.A;
 import ai.vespa.client.dsl.Annotation;
@@ -130,6 +131,15 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
   public List<String> addAll(List<Embedding> embeddings) {
     return addAll(embeddings, null);
   }
+
+    @Override
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+        List<String> ids = embeddings.stream()
+                .map(ignored -> randomUUID())
+                .collect(toList());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
 
   @Override
   public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {

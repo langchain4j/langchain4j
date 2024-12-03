@@ -230,6 +230,15 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
+    public List<String> addAll(@NonNull List<Embedding> embeddings, @Nullable List<TextSegment> embedded) {
+        List<String> ids = embeddings.stream()
+                .map(i -> UUID.randomUUID().toString())
+                .collect(Collectors.toList());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
+
+    @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (ids == null || embeddings == null || ids.isEmpty() || embeddings.isEmpty()) {
             return;

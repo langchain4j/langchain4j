@@ -117,10 +117,20 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     List<String> ids = embeddings.stream().map(ignored -> randomUUID()).toList();
 
-    addAll(ids, embeddings, null);
+      addAll(ids, embeddings, null);
 
-    return ids;
+      return Collections.unmodifiableList(ids);
   }
+
+    @Override
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
+
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).toList();
+
+        addAll(ids, embeddings, textSegments);
+
+        return ids;
+    }
 
   private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
     addAll(

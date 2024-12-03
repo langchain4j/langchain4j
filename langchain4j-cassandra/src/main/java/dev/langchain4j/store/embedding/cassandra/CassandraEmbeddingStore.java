@@ -22,6 +22,7 @@ import lombok.NonNull;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
@@ -291,6 +292,22 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .peek(embeddingTable::putAsync)
                 .map(MetadataVectorRecord::getRowId)
                 .collect(toList());
+    }
+
+    /**
+     * Add multiple embeddings as a single action.
+     *
+     * @param embeddings   embeddings
+     * @param embedded text segments
+     * @return list of new row if (same order as the input)
+     */
+    @Override
+    public List<String> addAll(final List<Embedding> embeddings, final List<TextSegment> embedded) {
+        List<String> ids = embeddings.stream()
+                .map(ignored -> randomUUID())
+                .collect(Collectors.toList());
+        addAll(ids, embeddings, embedded);
+        return ids;
     }
 
     /**

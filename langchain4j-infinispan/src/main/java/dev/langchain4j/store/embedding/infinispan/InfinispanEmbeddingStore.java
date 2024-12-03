@@ -161,6 +161,15 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+        List<String> ids = embeddings.stream()
+                .map(ignored -> randomUUID())
+                .collect(toList());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
+
+    @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         Query<Object[]> query = remoteCache.query("select i, score(i) from " +
             storeConfiguration.langchainItemFullType() + " i where i.embedding <-> " +

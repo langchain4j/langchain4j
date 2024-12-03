@@ -67,7 +67,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.stream.Collectors.toList;
 
 public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final Logger log = LoggerFactory.getLogger(getClass());
@@ -185,6 +187,15 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         return addAll(embeddings, null);
+    }
+
+    @Override
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+        List<String> ids = embeddings.stream()
+                .map(ignored -> randomUUID())
+                .collect(toList());
+        addAll(ids, embeddings, embedded);
+        return ids;
     }
 
     @Override
