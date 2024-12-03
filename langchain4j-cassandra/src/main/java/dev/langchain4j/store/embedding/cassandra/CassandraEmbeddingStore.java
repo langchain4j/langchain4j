@@ -305,7 +305,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
     public List<String> addAll(final List<Embedding> embeddings, final List<TextSegment> embedded) {
         List<String> ids = embeddings.stream()
                 .map(ignored -> randomUUID())
-                .collect(Collectors.toList());
+                .collect(toList());
         addAll(ids, embeddings, embedded);
         return ids;
     }
