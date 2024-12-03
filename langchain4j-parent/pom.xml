@@ -536,7 +536,7 @@
                 <configuration combine.children="append">
                     <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                     <systemPropertyVariables>
-                        <tinylog.level>info</tinylog.level>
+                        <tinylog.level>debug</tinylog.level>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -547,7 +547,7 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration combine.children="append">
                     <systemPropertyVariables>
-                        <tinylog.level>info</tinylog.level>
+                        <tinylog.level>debug</tinylog.level>
                     </systemPropertyVariables>
                 </configuration>
                 <executions>
