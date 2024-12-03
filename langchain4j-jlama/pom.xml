@@ -22,7 +22,7 @@
     </licenses>
 
     <properties>
-        <jlama.version>0.8.2</jlama.version>
+        <jlama.version>0.8.3</jlama.version>
         <jackson.version>2.16.1</jackson.version>
         <spotless.version>2.40.0</spotless.version>
         <java.version>21</java.version>
@@ -75,6 +75,15 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>${project.version}</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
 
