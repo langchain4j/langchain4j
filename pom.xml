@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>dev.langchain4j</groupId>
@@ -9,10 +7,6 @@
     <version>0.37.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
-
-    <properties>
-        <gib.disable>true</gib.disable>
-    </properties>
 
     <modules>
 
@@ -101,14 +95,11 @@
 
     </modules>
 
+    <properties>
+        <gib.disable>true</gib.disable>
+    </properties>
+
     <build>
-        <extensions>
-            <extension>
-                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
-                <artifactId>gitflow-incremental-builder</artifactId>
-                <version>3.15.0</version>
-            </extension>
-        </extensions>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -139,7 +130,27 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>2.43.0</version>
+                <configuration>
+                    <ratchetFrom>origin/main</ratchetFrom>
+                    <pom>
+                        <sortPom>
+                            <nrOfIndentSpace>4</nrOfIndentSpace>
+                        </sortPom>
+                    </pom>
+                </configuration>
+            </plugin>
         </plugins>
+        <extensions>
+            <extension>
+                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
+                <artifactId>gitflow-incremental-builder</artifactId>
+                <version>3.15.0</version>
+            </extension>
+        </extensions>
     </build>
 
     <reporting>
@@ -151,10 +162,10 @@
                 <reportSets>
                     <reportSet>
                         <id>aggregate</id>
-                        <inherited>false</inherited>
                         <reports>
                             <report>aggregate</report>
                         </reports>
+                        <inherited>false</inherited>
                     </reportSet>
                     <reportSet>
                         <id>default</id>

@@ -18,7 +18,10 @@ class JinaScoringModelIT {
     void should_score_single_text() {
 
         // given
-        ScoringModel model = JinaScoringModel.withApiKey(System.getenv("JINA_API_KEY"));
+        ScoringModel model = JinaScoringModel.builder()
+                .apiKey(System.getenv("JINA_API_KEY"))
+                .modelName("jina-reranker-v2-base-multilingual")
+                .build();
 
         String text = "labrador retriever";
         String query = "tell me about dogs";
@@ -27,9 +30,9 @@ class JinaScoringModelIT {
         Response<Double> response = model.score(text, query);
 
         // then
-        assertThat(response.content()).isCloseTo(0.25, withPercentage(1));
+        assertThat(response.content()).isCloseTo(0.1, withPercentage(10));
 
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(12);
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(14);
 
         assertThat(response.finishReason()).isNull();
     }
