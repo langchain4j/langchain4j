@@ -192,7 +192,7 @@ class CompressingQueryTransformerTest {
         UserMessage userMessage = UserMessage.from("Hello");
         Metadata metadata = Metadata.from(userMessage, null, null);
 
-        Query query = Query.from(userMessage.text());
+        Query query = Query.from(userMessage.text(), metadata);
 
         ChatLanguageModel model = mock(ChatLanguageModel.class);
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
