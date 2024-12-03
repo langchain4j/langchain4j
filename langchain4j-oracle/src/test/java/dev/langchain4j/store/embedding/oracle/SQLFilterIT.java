@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -70,10 +70,10 @@ public class SQLFilterIT {
                     .build())
                     .matches();
 
-        assertEquals(1, matches0.size(), matches0.toString());
-        assertEquals(ids.get(0), matches0.get(0).embeddingId());
-        assertEquals(embedding0, matches0.get(0).embedding());
-        assertEquals(textSegment0, matches0.get(0).embedded());
+        assertThat(matches0.size()).as(matches0.toString()).isEqualTo(1);
+        assertThat(matches0.get(0).embeddingId()).isEqualTo(ids.get(0));
+        assertThat(matches0.get(0).embedding()).isEqualTo(embedding0);
+        assertThat(matches0.get(0).embedded()).isEqualTo(textSegment0);
 
         List<EmbeddingMatch<TextSegment>> matches1 =
                 oracleEmbeddingStore.search(EmbeddingSearchRequest.builder()
@@ -84,10 +84,10 @@ public class SQLFilterIT {
                                 .build())
                         .matches();
 
-        assertEquals(1, matches1.size(), matches1.toString());
-        assertEquals(ids.get(1), matches1.get(0).embeddingId());
-        assertEquals(embedding1, matches1.get(0).embedding());
-        assertEquals(textSegment1, matches1.get(0).embedded());
+        assertThat(matches1.size()).as(matches1.toString()).isEqualTo(1);
+        assertThat(matches1.get(0).embeddingId()).isEqualTo(ids.get(1));
+        assertThat(matches1.get(0).embedding()).isEqualTo(embedding1);
+        assertThat(matches1.get(0).embedded()).isEqualTo(textSegment1);
     }
 
     /**
@@ -97,48 +97,36 @@ public class SQLFilterIT {
     @Test
     public void testSQLType() throws SQLException {
 
-        assertEquals(
-                "NVL(x = ?, false)",
-                SQLFilters.create(new IsEqualTo("x", Integer.MIN_VALUE), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(OracleType.NUMBER, type);
-                    return key;
-                }).toSQL());
-        verifyLosslessConversion(OracleType.NUMBER, Integer.MIN_VALUE);
-
-        assertEquals(
-                "NVL(x <> ?, true)",
-                SQLFilters.create(new IsNotEqualTo("x", Long.MAX_VALUE), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(OracleType.NUMBER, type);
-                    return key;
-                }).toSQL());
-        verifyLosslessConversion(OracleType.NUMBER, Long.MAX_VALUE);
-
-        assertEquals(
-                "NVL(x > ?, false)",
-                SQLFilters.create(new IsGreaterThan("x", Float.MAX_VALUE), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(OracleType.BINARY_FLOAT, type); // REAL is 32-bit floating point
-                    return key;
-                }).toSQL());
-        verifyLosslessConversion(OracleType.BINARY_FLOAT, Float.MAX_VALUE);
-
-        assertEquals(
-                "NVL(x < ?, false)",
-                SQLFilters.create(new IsLessThan("x", Double.MIN_VALUE), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(OracleType.BINARY_DOUBLE, type); // FLOAT is 64-bit floating point
-                    return key;
-                }).toSQL());
-        verifyLosslessConversion(OracleType.BINARY_DOUBLE, Double.MIN_VALUE);
-
-        assertEquals(
-                "(NVL(DBMS_LOB.COMPARE(x, ?) = 0, false) OR NVL(DBMS_LOB.COMPARE(x, ?) = 0, false))",
-                SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isIn("a", "b"), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(OracleType.CLOB, type);
-                    return key;
+        assertThat(SQLFilters.create(new IsEqualTo("x", Integer.MIN_VALUE), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(OracleType.NUMBER, type);
+            return key;
+        }).toSQL()).isEqualTo("NVL(x = ?, false)");
+        assertThat(SQLFilters.create(new IsNotEqualTo("x", Long.MAX_VALUE), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(OracleType.NUMBER, type);
+            return key;
+        }).toSQL()).isEqualTo("NVL(x <> ?, true)");
+        assertThat(SQLFilters.create(new IsGreaterThan("x", Float.MAX_VALUE), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(OracleType.BINARY_FLOAT, type); // REAL is 32-bit floating point
+            return key;
+        }).toSQL()).isEqualTo("NVL(x > ?, false)");
+        assertThat(SQLFilters.create(new IsLessThan("x", Double.MIN_VALUE), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(OracleType.BINARY_DOUBLE, type); // FLOAT is 64-bit floating point
+            return key;
+        }).toSQL()).isEqualTo("NVL(x < ?, false)");
+        assertThat(SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isIn("a", "b"), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(OracleType.CLOB, type);
+            return key;
+        }).toSQL()).isEqualTo("(NVL(DBMS_LOB.COMPARE(x, ?) = 0, false) OR NVL(DBMS_LOB.COMPARE(x, ?) = 0, false))");
+        assertThat(SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isNotIn("c", "d"), (key, type) -> {
+            assertEquals("x", key);
+            assertEquals(OracleType.CLOB, type);
+            return key;
+        }).toSQL()).isEqualTo("NOT((NVL(DBMS_LOB.COMPARE(x, ?) = 0, false) OR NVL(DBMS_LOB.COMPARE(x, ?) = 0, false)))");
                 }).toSQL());
         // CLOB is lossless for all Java Strings (assuming the database character set is UTF-8)
 
@@ -167,8 +155,8 @@ public class SQLFilterIT {
 
             preparedStatement.setObject(1, javaObject, sqlType);
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                assertTrue(resultSet.next());
-                assertEquals(javaObject, resultSet.getObject(1, javaObject.getClass()));
+                assertThat(resultSet.next()).isTrue();
+                assertThat(resultSet.getObject(1, javaObject.getClass())).isEqualTo(javaObject);
             }
         }
     }

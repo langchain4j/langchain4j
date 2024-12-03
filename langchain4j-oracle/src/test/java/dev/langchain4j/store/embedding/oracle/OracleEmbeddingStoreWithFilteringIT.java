@@ -26,8 +26,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
 
@@ -91,16 +90,16 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
                                 .build())
                         .matches();
 
-        assertEquals(3, matches0.size(), matches0.toString());
-
-        assertEquals(id0, matches0.get(0).embeddingId());
-        assertEquals(ids.get(0), matches0.get(1).embeddingId());
-        assertEquals(ids.get(1), matches0.get(2).embeddingId());
-
-        assertEquals(embedding0, matches0.get(0).embedding());
-        assertEquals(embedding1, matches0.get(1).embedding());
-        assertEquals(embedding2, matches0.get(2).embedding());
-
+        assertThat(matches0.size()).as(matches0.toString()).isEqualTo(3);
+        assertThat(matches0.get(0).embeddingId()).isEqualTo(id0);
+        assertThat(matches0.get(1).embeddingId()).isEqualTo(ids.get(0));
+        assertThat(matches0.get(2).embeddingId()).isEqualTo(ids.get(1));
+        assertThat(matches0.get(0).embedding()).isEqualTo(embedding0);
+        assertThat(matches0.get(1).embedding()).isEqualTo(embedding1);
+        assertThat(matches0.get(2).embedding()).isEqualTo(embedding2);
+        assertThat(matches0.get(0).embedded()).isEqualTo(textSegment0);
+        assertThat(matches0.get(1).embedded()).isEqualTo(textSegment1);
+        assertThat(matches0.get(2).embedded()).isEqualTo(textSegment2);
         assertEquals(textSegment0, matches0.get(0).embedded());
         assertEquals(textSegment1, matches0.get(1).embedded());
         assertEquals(textSegment2, matches0.get(2).embedded());
@@ -117,7 +116,7 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
                                         .isEqualTo(textSegment0.metadata().getString("a").substring(0, 4000)))
                                 .build())
                         .matches();
-        assertTrue(matches1.isEmpty(), matches1.toString());
+        assertThat(matches1.isEmpty()).as(matches1.toString()).isTrue();
 
         // Round 3: IsGreaterThan on a substring of a metadata value. "CC".compareTo("C") returns a positive value, so
         // the filter should match. "BB".compareTo("C") returns a negative value, so the filter should not match the
@@ -133,10 +132,10 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
                                 .build())
                         .matches();
 
-        assertEquals(1, matches2.size(), matches2.toString());
-
-        assertEquals(id0, matches0.get(0).embeddingId());
-        assertEquals(embedding0, matches0.get(0).embedding());
+        assertThat(matches2.size()).as(matches2.toString()).isEqualTo(1);
+        assertThat(matches0.get(0).embeddingId()).isEqualTo(id0);
+        assertThat(matches0.get(0).embedding()).isEqualTo(embedding0);
+        assertThat(matches0.get(0).embedded()).isEqualTo(textSegment0);
         assertEquals(textSegment0, matches0.get(0).embedded());
     }
 

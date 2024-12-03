@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.oracle;
 
 import oracle.sql.json.OracleJsonObject;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -12,8 +11,7 @@ import java.sql.*;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.*;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests which verify all possible configurations of {@link OracleEmbeddingStore.Builder#vectorIndex(CreateOption)}
@@ -81,7 +79,7 @@ public class VectorIndexIT {
             ) {
                 stmt.setString(1, TABLE_NAME + "_VECTOR_INDEX");
                 ResultSet rs = stmt.executeQuery();
-                Assertions.assertTrue(rs.next(), "A index should be returned");
+                assertThat(rs.next()).as("A index should be returned").isTrue();
                 OracleJsonObject params = rs.getObject("IDX_PARAMS", OracleJsonObject.class);
                 assertIndexType("IVF_FLAT", params);
                 assertTargetAccuracy(targetAccuracy, params);
@@ -89,7 +87,7 @@ public class VectorIndexIT {
                 assertNeighborPartitions(neighborPartitions, params);
                 assertSamplePerPartition(samplePerPartition, params);
                 assertMinVectorsPerPartition(minVectorsPerPartition, params);
-                Assertions.assertFalse(rs.next(), "Only one index should be returned");
+                assertThat(rs.next()).as("Only one index should be returned").isFalse();
             }
             verifySearch(oracleEmbeddingStore);
         } finally {
@@ -205,14 +203,14 @@ public class VectorIndexIT {
              )) {
 
             if (createOption == CreateOption.DO_NOT_CREATE)
-                assertFalse(resultSet.next());
-            else
-                assertTrue(resultSet.next());
-        }
-
-    }
-
-    private void assertIndexType(String expectedIndexType, OracleJsonObject params) {
+                assertThat(resultSet.next()).isFalse();
+                assertThat(resultSet.next()).isTrue();
+        assertThat(params.getString("type")).as("Unexpected index type").isEqualTo("IVF_FLAT");
+        assertThat(params.getInt("accuracy")).as("Unexpected accuracy").isEqualTo(expectedTargetAccuracy);
+        assertThat(params.getInt("degree_of_parallelism")).as("Unexpected degree of parallelism").isEqualTo(expectedDegreeOfParallelism);
+        assertThat(params.getInt("target_centroids")).as("Unexpected neighbor partitions").isEqualTo(expectedNeighborPartitions);
+        assertThat(params.getInt("samples_per_partition")).as("Unexpected samples per partition").isEqualTo(expectedSamplePerPartition);
+        assertThat(params.getInt("min_vectors_per_partition")).as("Unexpected vectors per partition").isEqualTo(expectedMinVectorsPerPartition);
         Assertions.assertEquals("IVF_FLAT", params.getString("type"), "Unexpected index type");
     }
 
