@@ -1,6 +1,8 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
@@ -10,11 +12,22 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
+ * TODO
  * Represents a token stream from language model to which you can subscribe and receive updates
  * when a new token is available, when language model finishes streaming, or when an error occurs during streaming.
  * It is intended to be used as a return type in AI Service.
  */
 public interface TokenStream {
+
+    /**
+     * TODO
+     * The provided consumer will be invoked every time a new token from a language model is available.
+     *
+     * @param partialResponseHandler lambda that consumes tokens of the response
+     * @return token stream instance used to configure or start stream processing
+     */
+    @Experimental
+    TokenStream onPartialResponse(Consumer<String> partialResponseHandler);
 
     /**
      * The provided consumer will be invoked every time a new token from a language model is available.
@@ -43,6 +56,16 @@ public interface TokenStream {
      * @return token stream instance used to configure or start stream processing
      */
     TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler);
+
+    /**
+     * TODO
+     * The provided consumer will be invoked when a language model finishes streaming a response.
+     *
+     * @param completeResponseHandler lambda that will be invoked when language model finishes streaming
+     * @return token stream instance used to configure or start stream processing
+     */
+    @Experimental
+    TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler); // TODO name
 
     /**
      * The provided consumer will be invoked when a language model finishes streaming a response.

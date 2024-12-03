@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -25,7 +27,6 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -44,6 +45,9 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
             .logRequests(true)
             .logResponses(true)
             .build();
+
+    @Captor
+    ArgumentCaptor<ChatRequest> chatRequestCaptor;
 
     interface Assistant {
 
@@ -96,16 +100,15 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         verify(calculator).squareRoot(485906798473894056.0);
         verifyNoMoreInteractions(calculator);
 
-        ArgumentCaptor<List<ChatMessage>> sendMessagesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(spyModel, times(2)).generate(sendMessagesCaptor.capture(), anyList(), any());
-        List<List<ChatMessage>> allGenerateSendMessages = sendMessagesCaptor.getAllValues();
+        verify(spyModel, times(2)).chat(chatRequestCaptor.capture(), any());
+        List<ChatRequest> allChatRequests = chatRequestCaptor.getAllValues();
 
-        List<ChatMessage> firstGenerateSendMessages = allGenerateSendMessages.get(0);
+        List<ChatMessage> firstGenerateSendMessages = allChatRequests.get(0).messages();
         assertThat(firstGenerateSendMessages).hasSize(1);
         assertThat(firstGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) firstGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
 
-        List<ChatMessage> secondGenerateSendMessages = allGenerateSendMessages.get(1);
+        List<ChatMessage> secondGenerateSendMessages = allChatRequests.get(1).messages();
         assertThat(secondGenerateSendMessages).hasSize(3);
         assertThat(secondGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) secondGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
@@ -165,23 +168,22 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         verify(calculator).squareRoot(97866249624785.0);
         verifyNoMoreInteractions(calculator);
 
-        ArgumentCaptor<List<ChatMessage>> sendMessagesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(spyModel, times(3)).generate(sendMessagesCaptor.capture(), anyList(), any());
-        List<List<ChatMessage>> allGenerateSendMessages = sendMessagesCaptor.getAllValues();
+        verify(spyModel, times(3)).chat(chatRequestCaptor.capture(), any());
+        List<ChatRequest> allChatRequests = chatRequestCaptor.getAllValues();
 
-        List<ChatMessage> firstGenerateSendMessages = allGenerateSendMessages.get(0);
+        List<ChatMessage> firstGenerateSendMessages = allChatRequests.get(0).messages();
         assertThat(firstGenerateSendMessages).hasSize(1);
         assertThat(firstGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) firstGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
 
-        List<ChatMessage> secondGenerateSendMessages = allGenerateSendMessages.get(1);
+        List<ChatMessage> secondGenerateSendMessages = allChatRequests.get(1).messages();
         assertThat(secondGenerateSendMessages).hasSize(3);
         assertThat(secondGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) secondGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
         assertThat(secondGenerateSendMessages.get(1).type()).isEqualTo(ChatMessageType.AI);
         assertThat(secondGenerateSendMessages.get(2).type()).isEqualTo(ChatMessageType.TOOL_EXECUTION_RESULT);
 
-        List<ChatMessage> thirdGenerateSendMessages = allGenerateSendMessages.get(2);
+        List<ChatMessage> thirdGenerateSendMessages = allChatRequests.get(2).messages();
         assertThat(thirdGenerateSendMessages).hasSize(5);
         assertThat(thirdGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) thirdGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
@@ -229,16 +231,15 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         verify(calculator).squareRoot(97866249624785.0);
         verifyNoMoreInteractions(calculator);
 
-        ArgumentCaptor<List<ChatMessage>> sendMessagesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(spyModel, times(2)).generate(sendMessagesCaptor.capture(), anyList(), any());
-        List<List<ChatMessage>> allGenerateSendMessages = sendMessagesCaptor.getAllValues();
+        verify(spyModel, times(2)).chat(chatRequestCaptor.capture(), any());
+        List<ChatRequest> allChatRequests = chatRequestCaptor.getAllValues();
 
-        List<ChatMessage> firstGenerateSendMessages = allGenerateSendMessages.get(0);
+        List<ChatMessage> firstGenerateSendMessages = allChatRequests.get(0).messages();
         assertThat(firstGenerateSendMessages).hasSize(1);
         assertThat(firstGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) firstGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);
 
-        List<ChatMessage> secondGenerateSendMessages = allGenerateSendMessages.get(1);
+        List<ChatMessage> secondGenerateSendMessages = allChatRequests.get(1).messages();
         assertThat(secondGenerateSendMessages).hasSize(4);
         assertThat(secondGenerateSendMessages.get(0).type()).isEqualTo(ChatMessageType.USER);
         assertThat(((UserMessage) secondGenerateSendMessages.get(0)).singleText()).isEqualTo(userMessage);

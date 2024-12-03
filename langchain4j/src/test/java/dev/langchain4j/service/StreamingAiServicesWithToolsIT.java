@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
@@ -34,8 +35,6 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherService.TEMPERATURE;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
@@ -126,14 +125,22 @@ class StreamingAiServicesWithToolsIT {
 
         // then
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyModel).generate(
-                eq(singletonList(messages.get(0))),
-                eq(singletonList(EXPECTED_SPECIFICATION)),
+        verify(spyModel).chat(
+                eq(
+                        ChatRequest.builder()
+                                .messages(messages.get(0))
+                                .toolSpecifications(EXPECTED_SPECIFICATION)
+                                .build()
+                ),
                 any()
         );
-        verify(spyModel).generate(
-                eq(asList(messages.get(0), messages.get(1), messages.get(2))),
-                eq(singletonList(EXPECTED_SPECIFICATION)),
+        verify(spyModel).chat(
+                eq(
+                        ChatRequest.builder()
+                                .messages(messages.get(0), messages.get(1), messages.get(2))
+                                .toolSpecifications(EXPECTED_SPECIFICATION)
+                                .build()
+                ),
                 any()
         );
     }
@@ -198,14 +205,22 @@ class StreamingAiServicesWithToolsIT {
         verifyNoMoreInteractions(weatherService);
 
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyModel).generate(
-                eq(singletonList(messages.get(0))),
-                eq(singletonList(WeatherService.EXPECTED_SPECIFICATION)),
+        verify(spyModel).chat(
+                eq(
+                        ChatRequest.builder()
+                                .messages(messages.get(0))
+                                .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
+                                .build()
+                ),
                 any()
         );
-        verify(spyModel).generate(
-                eq(asList(messages.get(0), messages.get(1), messages.get(2))),
-                eq(singletonList(WeatherService.EXPECTED_SPECIFICATION)),
+        verify(spyModel).chat(
+                eq(
+                        ChatRequest.builder()
+                                .messages(messages.get(0), messages.get(1), messages.get(2))
+                                .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
+                                .build()
+                ),
                 any()
         );
     }
@@ -251,14 +266,22 @@ class StreamingAiServicesWithToolsIT {
 
         // then
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyModel).generate(
-                eq(singletonList(messages.get(0))),
-                eq(singletonList(EXPECTED_SPECIFICATION)),
+        verify(spyModel).chat(
+                eq(
+                        ChatRequest.builder()
+                                .messages(messages.get(0))
+                                .toolSpecifications(EXPECTED_SPECIFICATION)
+                                .build()
+                ),
                 any()
         );
-        verify(spyModel).generate(
-                eq(asList(messages.get(0), messages.get(1), messages.get(2))),
-                eq(singletonList(EXPECTED_SPECIFICATION)),
+        verify(spyModel).chat(
+                eq(
+                        ChatRequest.builder()
+                                .messages(messages.get(0), messages.get(1), messages.get(2))
+                                .toolSpecifications(EXPECTED_SPECIFICATION)
+                                .build()
+                ),
                 any()
         );
         verifyNoMoreInteractions(spyModel);

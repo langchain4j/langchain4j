@@ -1,19 +1,79 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Collections.singletonList;
 
 /**
+ * TODO review all javadoc in this class
  * Represents a language model that has a chat interface and can stream a response one token at a time.
+ *
+ * @see ChatLanguageModel
  */
 public interface StreamingChatLanguageModel {
+
+    /**
+     * TODO
+     * <p>
+     * A temporary default implementation of this method is necessary
+     * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     *
+     * @param chatRequest
+     * @param handler
+     */
+    @Experimental
+    default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+
+        validate(chatRequest, getClass());
+
+        StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
+
+            @Override
+            public void onNext(String token) {
+                handler.onPartialResponse(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(response.content())
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build();
+                handler.onCompleteResponse(chatResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+
+        if (isNullOrEmpty(chatRequest.toolSpecifications())) {
+            generate(chatRequest.messages(), legacyHandler);
+        } else {
+            if (chatRequest.toolChoice() == REQUIRED) {
+                generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0), legacyHandler);
+            } else {
+                generate(chatRequest.messages(), chatRequest.toolSpecifications(), legacyHandler);
+            }
+        }
+    }
 
     /**
      * Generates a response from the model based on a message from a user.
@@ -56,9 +116,10 @@ public interface StreamingChatLanguageModel {
      *                           The model autonomously decides whether to use any of these tools.
      * @param handler            The handler for streaming the response.
      *                           {@link AiMessage} can contain either a textual response or a request to execute one of the tools.
+     * @throws UnsupportedFeatureException if tools are not supported by the underlying LLM API
      */
     default void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        throw new IllegalArgumentException("Tools are currently not supported by this model");
+        throw new UnsupportedFeatureException("tools are currently not supported by " + getClass().getSimpleName());
     }
 
     /**
@@ -70,8 +131,9 @@ public interface StreamingChatLanguageModel {
      * @param toolSpecification The specification of a tool that <b>must</b> be executed.
      *                          The model is <b>forced</b> to execute this tool.
      * @param handler           The handler for streaming the response.
+     * @throws UnsupportedFeatureException if tools are not supported by the underlying LLM API
      */
     default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        throw new IllegalArgumentException("Tools are currently not supported by this model");
+        throw new UnsupportedFeatureException("tool choice is currently not supported by " + getClass().getSimpleName());
     }
 }

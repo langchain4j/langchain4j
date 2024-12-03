@@ -7,19 +7,32 @@ import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Experimental
 public class ChatResponse {
 
+    private final String id;
+    private final String modelName; // TODO name
     private final AiMessage aiMessage;
     private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
 
-    private ChatResponse(Builder builder) {
+    protected ChatResponse(Builder builder) { // TODO
+        this.id = builder.id;
+        this.modelName = builder.modelName;
         this.aiMessage = ensureNotNull(builder.aiMessage, "aiMessage");
         this.tokenUsage = builder.tokenUsage;
         this.finishReason = builder.finishReason;
+    }
+
+    public String id() {
+        return id;
+    }
+
+    public String modelName() { // TODO name
+        return modelName;
     }
 
     public AiMessage aiMessage() {
@@ -39,48 +52,64 @@ public class ChatResponse {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ChatResponse that = (ChatResponse) o;
-        return Objects.equals(this.aiMessage, that.aiMessage)
+        return Objects.equals(this.id, that.id)
+                && Objects.equals(this.modelName, that.modelName)
+                && Objects.equals(this.aiMessage, that.aiMessage)
                 && Objects.equals(this.tokenUsage, that.tokenUsage)
                 && Objects.equals(this.finishReason, that.finishReason);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(aiMessage, tokenUsage, finishReason);
+        return Objects.hash(id, modelName, aiMessage, tokenUsage, finishReason);
     }
 
     @Override
     public String toString() {
         return "ChatResponse {" +
-                " aiMessage = " + aiMessage +
+                " id = " + quoted(id) +
+                ", modelName = " + quoted(modelName) + // TODO name
+                ", aiMessage = " + aiMessage +
                 ", tokenUsage = " + tokenUsage +
                 ", finishReason = " + finishReason +
                 " }";
     }
 
-    public static Builder builder() {
+    public static Builder builder() { // TODO
         return new Builder();
     }
 
-    public static class Builder {
+    public static class Builder<T extends Builder<T>> {
 
+        private String id;
+        private String modelName;
         private AiMessage aiMessage;
         private TokenUsage tokenUsage;
         private FinishReason finishReason;
 
-        public Builder aiMessage(AiMessage aiMessage) {
+        public T id(String id) {
+            this.id = id;
+            return (T) this;
+        }
+
+        public T modelName(String modelName) { // TODO name
+            this.modelName = modelName;
+            return (T) this;
+        }
+
+        public T aiMessage(AiMessage aiMessage) {
             this.aiMessage = aiMessage;
-            return this;
+            return (T) this;
         }
 
-        public Builder tokenUsage(TokenUsage tokenUsage) {
+        public T tokenUsage(TokenUsage tokenUsage) {
             this.tokenUsage = tokenUsage;
-            return this;
+            return (T) this;
         }
 
-        public Builder finishReason(FinishReason finishReason) {
+        public T finishReason(FinishReason finishReason) {
             this.finishReason = finishReason;
-            return this;
+            return (T) this;
         }
 
         public ChatResponse build() {

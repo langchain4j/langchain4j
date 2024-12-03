@@ -58,7 +58,7 @@ suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse {
  * @see chatAsync
  */
 @Experimental
-suspend fun ChatLanguageModel.chatAsync(requestBuilder: ChatRequest.Builder): ChatResponse =
+suspend fun ChatLanguageModel.chatAsync(requestBuilder: ChatRequest.Builder<*>): ChatResponse =
     chatAsync(requestBuilder.build())
 
 /**
@@ -85,7 +85,7 @@ suspend fun ChatLanguageModel.chatAsync(requestBuilder: ChatRequest.Builder): Ch
  * @see ChatRequest.Builder
  */
 @Experimental
-fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatResponse =
+fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder<*>): ChatResponse =
     this.chat(requestBuilder.build())
 
 /**

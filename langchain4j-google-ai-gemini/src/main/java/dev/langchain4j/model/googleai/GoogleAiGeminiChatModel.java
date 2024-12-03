@@ -103,15 +103,21 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
+
+        validateRequest(chatRequest);
+
         GeminiGenerateContentRequest request = createGenerateContentRequest(
-            chatRequest.messages(),
-            chatRequest.toolSpecifications(),
-            getOrDefault(chatRequest.responseFormat(), this.responseFormat)
+                chatRequest.messages(),
+                chatRequest.toolSpecifications(),
+                getOrDefault(chatRequest.responseFormat(), this.responseFormat),
+                chatRequest
         );
 
         ChatModelRequest chatModelRequest = createChatModelRequest(
-            chatRequest.messages(),
-            chatRequest.toolSpecifications()
+                chatRequest.modelName(),
+                chatRequest.messages(),
+                chatRequest.toolSpecifications(),
+                chatRequest
         );
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
@@ -128,6 +134,20 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             notifyListenersOnError(e, chatModelRequest, listenerAttributes);
             throw e;
         }
+    }
+
+    private static void validateRequest(ChatRequest chatRequest) {
+        Class<? extends ChatRequest> chatRequestClass = chatRequest.getClass();
+        if (chatRequestClass != ChatRequest.class) {
+            throw new IllegalArgumentException("%s cannot be used together with %s. Please use %s instead."
+                    .formatted(
+                            chatRequestClass.getSimpleName(),
+                            GoogleAiGeminiChatModel.class.getSimpleName(),
+                            ChatRequest.class.getSimpleName()
+                    ));
+        }
+        // TODO check chatRequest.frequencyPenalty(), presencePenalty, etc.
+        // TODO fail if one of unsupported params is set
     }
 
     private ChatResponse processResponse(
@@ -150,6 +170,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         notifyListenersOnResponse(response, chatModelRequest, listenerAttributes);
 
         return ChatResponse.builder()
+            .modelName(chatModelRequest.model()) // TODO take actual model from response
             .aiMessage(aiMessage)
             .finishReason(finishReason)
             .tokenUsage(tokenUsage)
