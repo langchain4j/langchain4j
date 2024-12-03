@@ -39,7 +39,7 @@ public interface ChatLanguageModel {
     @Experimental
     default ChatResponse chat(ChatRequest chatRequest) {
 
-        validate(chatRequest);
+        validate(chatRequest, getClass());
 
         Response<AiMessage> response;
         if (isNullOrEmpty(chatRequest.toolSpecifications())) {
@@ -59,11 +59,7 @@ public interface ChatLanguageModel {
                 .build();
     }
 
-    /**
-     * @deprecated TODO
-     */
-    @Deprecated
-    default void validate(ChatRequest chatRequest) {
+    static void validate(ChatRequest chatRequest, Class<?> modelClass) {
         String errorTemplate = "%s is not supported yet by this model provider";
 
         if (chatRequest.modelName() != null) {
@@ -74,7 +70,7 @@ public interface ChatLanguageModel {
         if (chatRequestClass != ChatRequest.class) {
             throw new IllegalArgumentException("%s cannot be used together with %s. Please use %s instead.".formatted(
                     chatRequestClass.getSimpleName(),
-                    getClass().getSimpleName(),
+                    modelClass.getSimpleName(),
                     ChatRequest.class.getSimpleName()
             ));
         }

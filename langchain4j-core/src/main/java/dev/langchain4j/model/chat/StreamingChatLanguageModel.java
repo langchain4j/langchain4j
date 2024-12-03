@@ -14,6 +14,7 @@ import dev.langchain4j.model.output.Response;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Collections.singletonList;
 
@@ -36,6 +37,8 @@ public interface StreamingChatLanguageModel {
      */
     @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+
+        validate(chatRequest, getClass());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 

@@ -21,12 +21,12 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+    protected boolean supportsToolChoiceRequiredWithSingleTool() {
         return false; // TODO implement
     }
 
     @Override
-    protected boolean supportsToolChoiceRequiredWithSingleTool() {
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
 
@@ -37,11 +37,6 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean assertThreads() {
-        return false; // TODO fix
-    }
-
-    @Override
-    protected boolean assertTimesOnPartialResponseIsCalled() {
         return false; // TODO fix
     }
 }

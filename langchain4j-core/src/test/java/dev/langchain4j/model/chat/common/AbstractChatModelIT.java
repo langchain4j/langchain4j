@@ -28,10 +28,11 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
  * </pre>
  */
 @TestInstance(PER_CLASS)
-public abstract class AbstractChatModelIT extends BaseChatModelIT<ChatLanguageModel> {
+public abstract class AbstractChatModelIT extends AbstractBaseChatModelIT<ChatLanguageModel> {
 
     @Override
-    protected ChatResponse chat(ChatLanguageModel chatModel, ChatRequest chatRequest) {
-        return chatModel.chat(chatRequest);
+    protected ModelInvocationResult invoke(ChatLanguageModel chatModel, ChatRequest chatRequest) {
+        ChatResponse chatResponse = chatModel.chat(chatRequest);
+        return new ModelInvocationResult(chatResponse, null);
     }
 }

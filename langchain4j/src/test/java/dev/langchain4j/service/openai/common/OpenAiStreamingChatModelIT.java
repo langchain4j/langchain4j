@@ -1,7 +1,10 @@
 package dev.langchain4j.service.openai.common;
 
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.openai.OpenAiChatRequest;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 
 import java.util.List;
@@ -25,8 +28,27 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                         .build(),
                 OPEN_AI_STREAMING_CHAT_MODEL_BUILDER
                         .strictTools(true)
+                        .build(),
+                OPEN_AI_STREAMING_CHAT_MODEL_BUILDER
+                        .responseFormat("json_schema")
+                        .strictJsonSchema(true)
                         .build()
-                // TODO json_object? json_schema?
+                // TODO json_object?
         );
     }
+
+    @Override
+    protected String modelName() {
+        return "gpt-4o-2024-11-20";
+    }
+
+    @Override
+    protected ChatRequest createModelSpecificChatRequest(int maxOutputTokens, UserMessage userMessage) {
+        return OpenAiChatRequest.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .messages(userMessage)
+                .build();
+    }
+
+    // TODO OpenAI-specific tests
 }

@@ -25,11 +25,6 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected String modelName() {
-        return "gpt-4o";
-    }
-
-    @Override
     protected boolean supportsModelNameParameter() {
         return false; // TODO implement
     }
@@ -90,6 +85,16 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
         return false; // TODO fix
+    }
+
+    @Override
+    protected boolean assertResponseId() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean assertResponseModel() {
+        return false; // TODO implement
     }
 
     protected boolean assertFinishReason() {

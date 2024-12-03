@@ -27,6 +27,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
@@ -38,12 +39,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 /**
- * Contains all compatibility tests that each {@link ChatLanguageModel} or {@link StreamingChatLanguageModel} must pass.
+ * Contains all compatibility tests that each {@link ChatLanguageModel}
+ * and {@link StreamingChatLanguageModel} must pass.
  *
- * @param <Model> The type of the model: either {@link ChatLanguageModel} or {@link StreamingChatLanguageModel}
+ * @param <M> The type of the model: either {@link ChatLanguageModel} or {@link StreamingChatLanguageModel}
  */
 @TestInstance(PER_CLASS)
-public abstract class BaseChatModelIT<Model> {
+public abstract class AbstractBaseChatModelIT<M> {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
@@ -68,28 +70,28 @@ public abstract class BaseChatModelIT<Model> {
                     .build())
             .build();
 
-    protected abstract List<Model> models();
+    protected abstract List<M> models();
 
-    protected List<Model> modelsSupportingTools() {
+    protected List<M> modelsSupportingTools() {
         return models();
     }
 
-    protected List<Model> modelsSupportingStructuredOutputs() {
+    protected List<M> modelsSupportingStructuredOutputs() {
         return models();
     }
 
-    protected List<Model> modelsSupportingImageInputs() {
+    protected List<M> modelsSupportingImageInputs() {
         return models();
     }
 
-    protected abstract ChatResponse chat(Model model, ChatRequest chatRequest);
+    protected abstract ModelInvocationResult invoke(M model, ChatRequest chatRequest);
 
 
     // BASIC
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_answer_user_message(Model model) {
+    void should_answer_user_message(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -97,7 +99,8 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ModelInvocationResult modelInvocationResult = invoke(model, chatRequest);
+        ChatResponse chatResponse = modelInvocationResult.chatResponse();
 
         // then
         if (assertResponseId()) {
@@ -112,16 +115,30 @@ public abstract class BaseChatModelIT<Model> {
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+        }
+
+        if (model instanceof StreamingChatLanguageModel) {
+            StreamingMetadata streamingMetadata = modelInvocationResult.streamingMetadata();
+            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+            assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
         }
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_system_message(Model model) {
+    void should_respect_system_message(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -133,7 +150,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("liebe");
@@ -144,7 +161,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsMaxOutputTokensParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_model_specific_chat_request(Model model) {
+    void should_respect_model_specific_chat_request(M model) {
 
         // given
         int maxOutputTokens = 5;
@@ -154,7 +171,7 @@ public abstract class BaseChatModelIT<Model> {
         assertThat(chatRequest).doesNotHaveSameClassAs(ChatRequest.class);
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -178,14 +195,14 @@ public abstract class BaseChatModelIT<Model> {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_fail_if_chat_request_does_not_match_chat_model(Model model) {
+    void should_fail_if_chat_request_does_not_match_chat_model(M model) {
 
         // given
         ChatRequest chatRequest = new MismatchingChatRequest();
         assertThat(chatRequest).doesNotHaveSameClassAs(ChatRequest.class);
 
         // when-then
-        assertThatThrownBy(() -> chat(model, chatRequest))
+        assertThatThrownBy(() -> invoke(model, chatRequest))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("%s cannot be used together with %s.".formatted(
                         MismatchingChatRequest.class.getSimpleName(),
@@ -193,6 +210,8 @@ public abstract class BaseChatModelIT<Model> {
                 ))
                 .hasMessageContaining("Please use")
                 .hasMessageContaining(ChatRequest.class.getSimpleName());
+
+        // TODO for streaming: should model.chat() fail or should exception be propagated into streaming handler onError()
     }
 
     private static class MismatchingChatRequest extends ChatRequest {
@@ -203,8 +222,8 @@ public abstract class BaseChatModelIT<Model> {
 
         private static class Builder extends ChatRequest.Builder<Builder> {
 
-            public BaseChatModelIT.MismatchingChatRequest build() {
-                return new BaseChatModelIT.MismatchingChatRequest();
+            public AbstractBaseChatModelIT.MismatchingChatRequest build() {
+                return new AbstractBaseChatModelIT.MismatchingChatRequest();
             }
         }
     }
@@ -212,7 +231,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsModelNameParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_modelName_parameter(Model model) {
+    void should_respect_modelName_parameter(M model) {
 
         // given
         String modelName = modelName();
@@ -225,7 +244,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         assertThat(chatResponse.aiMessage().text()).isNotBlank();
@@ -233,7 +252,7 @@ public abstract class BaseChatModelIT<Model> {
         assertThat(chatResponse.modelName()).isEqualTo(modelName);
     }
 
-    private void ensureModelNameIsDifferentFromDefault(String modelName, Model model) {
+    private void ensureModelNameIsDifferentFromDefault(String modelName, M model) {
         ChatRequest.Builder builder = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"));
         if (supportsMaxOutputTokensParameter()) {
@@ -241,7 +260,7 @@ public abstract class BaseChatModelIT<Model> {
         }
         ChatRequest chatRequest = builder.build();
 
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         assertThat(chatResponse.modelName()).isNotEqualTo(modelName);
     }
@@ -253,7 +272,7 @@ public abstract class BaseChatModelIT<Model> {
     @DisabledIf("supportsModelNameParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_fail_if_modelName_parameter_is_not_supported(Model model) {
+    void should_fail_if_modelName_parameter_is_not_supported(M model) {
 
         // given
         String modelName = "dummy";
@@ -264,7 +283,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> chat(model, chatRequest))
+        assertThatThrownBy(() -> invoke(model, chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("modelName")
                 .hasMessageContaining("not supported");
@@ -273,7 +292,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsMaxOutputTokensParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_maxOutputTokens_parameter(Model model) {
+    void should_respect_maxOutputTokens_parameter(M model) {
 
         // given
         int maxOutputTokens = 5;
@@ -284,7 +303,8 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ModelInvocationResult modelInvocationResult = invoke(model, chatRequest);
+        ChatResponse chatResponse = modelInvocationResult.chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -300,12 +320,24 @@ public abstract class BaseChatModelIT<Model> {
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(LENGTH);
         }
+
+        if (model instanceof StreamingChatLanguageModel) {
+            StreamingMetadata streamingMetadata = modelInvocationResult.streamingMetadata();
+            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+            assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
+            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
+        }
     }
 
     @DisabledIf("supportsMaxOutputTokensParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_fail_if_maxOutputTokens_parameter_is_not_supported(Model model) {
+    void should_fail_if_maxOutputTokens_parameter_is_not_supported(M model) {
 
         // given
         int maxOutputTokens = 5;
@@ -316,7 +348,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> chat(model, chatRequest))
+        assertThatThrownBy(() -> invoke(model, chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("maxOutputTokens")
                 .hasMessageContaining("not supported");
@@ -325,7 +357,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsStopSequencesParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_stopSequences_parameter(Model model) {
+    void should_respect_stopSequences_parameter(M model) {
 
         // given
         List<String> stopSequences = List.of("World", " World");
@@ -336,7 +368,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -344,7 +376,9 @@ public abstract class BaseChatModelIT<Model> {
         assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -354,7 +388,7 @@ public abstract class BaseChatModelIT<Model> {
     @DisabledIf("supportsStopSequencesParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_fail_if_stopSequences_parameter_is_not_supported(Model model) {
+    void should_fail_if_stopSequences_parameter_is_not_supported(M model) {
 
         // given
         List<String> stopSequences = List.of("World");
@@ -365,7 +399,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> chat(model, chatRequest))
+        assertThatThrownBy(() -> invoke(model, chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("stopSequences")
                 .hasMessageContaining("not supported");
@@ -376,7 +410,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsTools")
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
-    void should_execute_a_tool_then_answer(Model model) {
+    void should_execute_a_tool_then_answer(M model) {
 
         // given
         UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
@@ -387,7 +421,8 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ModelInvocationResult modelInvocationResult = invoke(model, chatRequest);
+        ChatResponse chatResponse = modelInvocationResult.chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -397,10 +432,26 @@ public abstract class BaseChatModelIT<Model> {
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
+        }
+
+        if (model instanceof StreamingChatLanguageModel) {
+            StreamingMetadata streamingMetadata = modelInvocationResult.streamingMetadata();
+            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+            if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
+                assertThat(aiMessage.text()).isNull();
+            }
+            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
         }
 
         // given
@@ -414,7 +465,8 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse2 = chat(model, chatRequest2);
+        ModelInvocationResult modelInvocationResult2 = invoke(model, chatRequest2);
+        ChatResponse chatResponse2 = modelInvocationResult2.chatResponse();
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
@@ -426,12 +478,24 @@ public abstract class BaseChatModelIT<Model> {
         if (assertFinishReason()) {
             assertThat(chatResponse2.finishReason()).isEqualTo(STOP);
         }
+
+        if (model instanceof StreamingChatLanguageModel) {
+            StreamingMetadata streamingMetadata2 = modelInvocationResult2.streamingMetadata();
+            assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
+            assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata2.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
+        }
     }
 
     @DisabledIf("supportsTools")
     @ParameterizedTest
     @MethodSource("models")
-    void should_fail_if_tools_are_not_supported(Model model) {
+    void should_fail_if_tools_are_not_supported(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -440,7 +504,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> invoke(model, chatRequest));
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -453,7 +517,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsToolChoiceRequiredWithMultipleTools")
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
-    void should_force_LLM_to_execute_any_tool(Model model) {
+    void should_force_LLM_to_execute_any_tool(M model) {
 
         // given
         ToolSpecification calculatorTool = ToolSpecification.builder()
@@ -471,7 +535,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -481,7 +545,9 @@ public abstract class BaseChatModelIT<Model> {
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
@@ -491,7 +557,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsToolChoiceRequiredWithSingleTool")
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
-    void should_force_LLM_to_execute_specific_tool(Model model) {
+    void should_force_LLM_to_execute_specific_tool(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -501,7 +567,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -511,7 +577,9 @@ public abstract class BaseChatModelIT<Model> {
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
@@ -523,7 +591,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsJsonResponseFormat")
     @ParameterizedTest
     @MethodSource("modelsSupportingStructuredOutputs")
-    void should_respect_JSON_response_format(Model model) {
+    void should_respect_JSON_response_format(M model) {
 
         // given
         ResponseFormat responseFormat = ResponseFormat.JSON;
@@ -535,14 +603,16 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).isEqualToIgnoringWhitespace("{\"city\": \"Berlin\"}");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -552,7 +622,7 @@ public abstract class BaseChatModelIT<Model> {
     @DisabledIf("supportsJsonResponseFormat")
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_fail_if_JSON_response_format_is_not_supported(Model model) {
+    protected void should_fail_if_JSON_response_format_is_not_supported(M model) {
 
         // given
         ResponseFormat responseFormat = ResponseFormat.JSON;
@@ -564,7 +634,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> invoke(model, chatRequest));
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -577,7 +647,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsJsonResponseFormatWithSchema")
     @ParameterizedTest
     @MethodSource("modelsSupportingStructuredOutputs")
-    void should_respect_JSON_response_format_with_schema(Model model) {
+    void should_respect_JSON_response_format_with_schema(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -586,14 +656,16 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).isEqualToIgnoringWhitespace("{\"city\": \"Berlin\"}");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -603,7 +675,7 @@ public abstract class BaseChatModelIT<Model> {
     @DisabledIf("supportsJsonResponseFormatWithSchema")
     @ParameterizedTest
     @MethodSource("models")
-    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(Model model) {
+    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -612,7 +684,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> invoke(model, chatRequest));
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -629,7 +701,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsSingleImageInputAsBase64EncodedString")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    void should_accept_single_image_as_base64_encoded_string(Model model) {
+    void should_accept_single_image_as_base64_encoded_string(M model) {
 
         // given
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
@@ -642,14 +714,16 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("cat");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -659,7 +733,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    void should_accept_multiple_images_as_base64_encoded_strings(Model model) {
+    void should_accept_multiple_images_as_base64_encoded_strings(M model) {
 
         // given
         Base64.Encoder encoder = Base64.getEncoder();
@@ -675,7 +749,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -684,7 +758,9 @@ public abstract class BaseChatModelIT<Model> {
                 .containsIgnoringCase("dice");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -694,7 +770,7 @@ public abstract class BaseChatModelIT<Model> {
     @DisabledIf("supportsSingleImageInputAsBase64EncodedString")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(Model model) {
+    protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(M model) {
 
         // given
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
@@ -707,7 +783,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> invoke(model, chatRequest));
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -721,7 +797,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsSingleImageInputAsPublicURL")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    void should_accept_single_image_as_public_URL(Model model) {
+    void should_accept_single_image_as_public_URL(M model) {
 
         // given
         UserMessage userMessage = UserMessage.from(
@@ -733,14 +809,16 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("cat");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -750,7 +828,7 @@ public abstract class BaseChatModelIT<Model> {
     @EnabledIf("supportsMultipleImageInputsAsPublicURLs")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    void should_accept_multiple_images_as_public_URLs(Model model) {
+    void should_accept_multiple_images_as_public_URLs(M model) {
 
         // given
         UserMessage userMessage = UserMessage.from(
@@ -763,7 +841,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when
-        ChatResponse chatResponse = chat(model, chatRequest);
+        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -772,7 +850,9 @@ public abstract class BaseChatModelIT<Model> {
                 .containsIgnoringCase("dice");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.finishReason()).isEqualTo(STOP);
@@ -782,7 +862,7 @@ public abstract class BaseChatModelIT<Model> {
     @DisabledIf("supportsSingleImageInputAsPublicURL")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(Model model) {
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(M model) {
 
         // given
         UserMessage userMessage = UserMessage.from(
@@ -794,7 +874,7 @@ public abstract class BaseChatModelIT<Model> {
                 .build();
 
         // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> invoke(model, chatRequest));
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -863,15 +943,23 @@ public abstract class BaseChatModelIT<Model> {
         return supportsSingleImageInputAsPublicURL();
     }
 
-    protected boolean assertResponseModel() {
-        return true;
-    }
-
     protected boolean assertResponseId() {
         return true;
     }
 
+    protected boolean assertResponseModel() {
+        return true;
+    }
+
+    protected boolean assertTokenUsage() {
+        return true;
+    }
+
     protected boolean assertFinishReason() {
+        return true;
+    }
+
+    protected boolean assertThreads() {
         return true;
     }
 

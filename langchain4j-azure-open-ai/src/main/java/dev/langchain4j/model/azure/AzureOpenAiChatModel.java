@@ -23,7 +23,6 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
@@ -246,18 +245,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         this.seed = seed;
         this.responseFormat = responseFormat;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-    }
-
-    @Override
-    public ChatResponse chat(ChatRequest chatRequest) {
-
-        validate(chatRequest);
-
-        return generate(
-                chatRequest.messages(),
-                chatRequest.toolSpecifications(),
-                chatRequest.toolChoice()
-        );
     }
 
     @Override

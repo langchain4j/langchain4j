@@ -9,7 +9,6 @@ import dev.ai4j.openai4j.chat.ResponseFormatType;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -58,6 +57,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiResponse
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toTools;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.validateRequest;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -175,26 +175,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public OpenAiChatResponse chat(ChatRequest chatRequest) {
-        validateRequest(chatRequest);
+        validateRequest(chatRequest, getClass());
         ResponseFormat openAiResponseFormat = toOpenAiResponseFormat(chatRequest.responseFormat(), this.strictJsonSchema);
         return doChat(chatRequest, getOrDefault(openAiResponseFormat, this.responseFormat));
-    }
-
-    private static void validateRequest(ChatRequest chatRequest) {
-        Class<? extends ChatRequest> chatRequestClass = chatRequest.getClass();
-        if (chatRequestClass != ChatRequest.class
-                && chatRequestClass != OpenAiChatRequest.class) {
-            throw new IllegalArgumentException("%s cannot be used together with %s. Please use either %s or %s instead."
-                    .formatted(
-                            chatRequestClass.getSimpleName(),
-                            OpenAiChatModel.class.getSimpleName(), // TODO for streaming
-                            ChatRequest.class.getSimpleName(),
-                            OpenAiChatRequest.class.getSimpleName()
-                    ));
-        }
-        if (chatRequest.topK() != null) {
-            throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
-        }
     }
 
     @Override

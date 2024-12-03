@@ -17,6 +17,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
@@ -38,17 +39,38 @@ public class OpenAiStreamingResponseBuilder {
 
     private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new ConcurrentHashMap<>();
 
-    private volatile TokenUsage tokenUsage;
-    private volatile FinishReason finishReason;
+    private final AtomicReference<String> id = new AtomicReference<>();
+    private final AtomicReference<Long> created = new AtomicReference<>();
+    private final AtomicReference<String> model = new AtomicReference<>();
+    private final AtomicReference<String> serviceTier = new AtomicReference<>();
+    private final AtomicReference<String> systemFingerprint = new AtomicReference<>();
+    private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
+    private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
 
     public void append(ChatCompletionResponse partialResponse) {
         if (partialResponse == null) {
             return;
         }
 
+        if (!isNullOrBlank(partialResponse.id())) {
+            this.id.set(partialResponse.id());
+        }
+        if (partialResponse.created() != null) {
+            this.created.set(Long.valueOf(partialResponse.created()));
+        }
+        if (!isNullOrBlank(partialResponse.model())) {
+            this.model.set(partialResponse.model());
+        }
+        if (!isNullOrBlank(partialResponse.serviceTier())) {
+            this.serviceTier.set(partialResponse.serviceTier());
+        }
+        if (!isNullOrBlank(partialResponse.systemFingerprint())) {
+            this.systemFingerprint.set(partialResponse.systemFingerprint());
+        }
+
         Usage usage = partialResponse.usage();
         if (usage != null) {
-            this.tokenUsage = tokenUsageFrom(usage);
+            this.tokenUsage.set(tokenUsageFrom(usage));
         }
 
         List<ChatCompletionChoice> choices = partialResponse.choices();
@@ -63,7 +85,7 @@ public class OpenAiStreamingResponseBuilder {
 
         String finishReason = chatCompletionChoice.finishReason();
         if (finishReason != null) {
-            this.finishReason = finishReasonFrom(finishReason);
+            this.finishReason.set(finishReasonFrom(finishReason));
         }
 
         Delta delta = chatCompletionChoice.delta();
@@ -73,7 +95,7 @@ public class OpenAiStreamingResponseBuilder {
 
         String content = delta.content();
         if (content != null) {
-            contentBuilder.append(content);
+            this.contentBuilder.append(content);
             return;
         }
 
@@ -81,32 +103,32 @@ public class OpenAiStreamingResponseBuilder {
             FunctionCall functionCall = delta.functionCall();
 
             if (functionCall.name() != null) {
-                toolNameBuilder.append(functionCall.name());
+                this.toolNameBuilder.append(functionCall.name());
             }
 
             if (functionCall.arguments() != null) {
-                toolArgumentsBuilder.append(functionCall.arguments());
+                this.toolArgumentsBuilder.append(functionCall.arguments());
             }
         }
 
         if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
             ToolCall toolCall = delta.toolCalls().get(0);
 
-            ToolExecutionRequestBuilder toolExecutionRequestBuilder
-                    = indexToToolExecutionRequestBuilder.computeIfAbsent(toolCall.index(), idx -> new ToolExecutionRequestBuilder());
+            ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                    toolCall.index(),
+                    idx -> new ToolExecutionRequestBuilder()
+            );
 
             if (toolCall.id() != null) {
-                toolExecutionRequestBuilder.idBuilder.append(toolCall.id());
+                builder.idBuilder.append(toolCall.id());
             }
 
             FunctionCall functionCall = toolCall.function();
-
             if (functionCall.name() != null) {
-                toolExecutionRequestBuilder.nameBuilder.append(functionCall.name());
+                builder.nameBuilder.append(functionCall.name());
             }
-
             if (functionCall.arguments() != null) {
-                toolExecutionRequestBuilder.argumentsBuilder.append(functionCall.arguments());
+                builder.argumentsBuilder.append(functionCall.arguments());
             }
         }
     }
@@ -118,7 +140,7 @@ public class OpenAiStreamingResponseBuilder {
 
         Usage usage = partialResponse.usage();
         if (usage != null) {
-            this.tokenUsage = tokenUsageFrom(usage);
+            this.tokenUsage.set(tokenUsageFrom(usage));
         }
 
         List<CompletionChoice> choices = partialResponse.choices();
@@ -133,16 +155,25 @@ public class OpenAiStreamingResponseBuilder {
 
         String finishReason = completionChoice.finishReason();
         if (finishReason != null) {
-            this.finishReason = finishReasonFrom(finishReason);
+            this.finishReason.set(finishReasonFrom(finishReason));
         }
 
         String token = completionChoice.text();
         if (token != null) {
-            contentBuilder.append(token);
+            this.contentBuilder.append(token);
         }
     }
 
     public ChatResponse build() {
+
+        OpenAiChatResponse.Builder chatResponseBuilder = OpenAiChatResponse.builder()
+                .id(id.get())
+                .modelName(model.get())
+                .tokenUsage(tokenUsage.get())
+                .finishReason(finishReason.get())
+                .created(created.get())
+                .serviceTier(serviceTier.get())
+                .systemFingerprint(systemFingerprint.get());
 
         String text = contentBuilder.toString();
 
@@ -157,10 +188,8 @@ public class OpenAiStreamingResponseBuilder {
                     AiMessage.from(toolExecutionRequest) :
                     AiMessage.from(text, singletonList(toolExecutionRequest));
 
-            return ChatResponse.builder()
+            return chatResponseBuilder
                     .aiMessage(aiMessage)
-                    .tokenUsage(tokenUsage)
-                    .finishReason(finishReason)
                     .build();
         }
 
@@ -177,18 +206,15 @@ public class OpenAiStreamingResponseBuilder {
                     AiMessage.from(toolExecutionRequests) :
                     AiMessage.from(text, toolExecutionRequests);
 
-            return ChatResponse.builder()
+            return chatResponseBuilder
                     .aiMessage(aiMessage)
-                    .tokenUsage(tokenUsage)
-                    .finishReason(finishReason)
                     .build();
         }
 
         if (!isNullOrBlank(text)) {
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(text))
-                    .tokenUsage(tokenUsage)
-                    .finishReason(finishReason)
+            AiMessage aiMessage = AiMessage.from(text);
+            return chatResponseBuilder
+                    .aiMessage(aiMessage)
                     .build();
         }
 
