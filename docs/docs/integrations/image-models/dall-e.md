@@ -12,7 +12,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>0.33.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -21,7 +21,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.33.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -41,6 +41,7 @@ Add to the `application.properties`:
 ```properties
 langchain4j.open-ai.image-model.api-key=${OPENAI_API_KEY}
 langchain4j.open-ai.image-model.base-url=...
+langchain4j.open-ai.image-model.custom-headers=...
 langchain4j.open-ai.image-model.log-requests=...
 langchain4j.open-ai.image-model.log-responses=...
 langchain4j.open-ai.image-model.max-retries=...

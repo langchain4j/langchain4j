@@ -1,3 +1,7 @@
+---
+sidebar_position: 15
+---
+
 # OVHcloud AI Endpoints
 
 - [OVHclous AI Endpoints Documentation](https://labs.ovhcloud.com/en/ai-endpoints/)
@@ -13,7 +17,7 @@
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ovh-ai</artifactId>
-    <version>0.33.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -49,7 +53,10 @@ import java.util.List;
 public class OvhAiEmbeddingSimpleExample {
 
     public static void main(String[] args) {
-        EmbeddingModel embeddingModel = OvhAiEmbeddingModel.withApiKey(System.getenv("OVH_AI_API_KEY"));
+        EmbeddingModel embeddingModel = OvhAiEmbeddingModel.builder()
+                .apiKey(System.getenv("OVH_AI_API_KEY"))
+                .baseUrl("https://multilingual-e5-base.endpoints.kepler.ai.cloud.ovh.net")
+                .build();
 
         // For simplicity, this example uses an in-memory store, but you can choose any external compatible store for production environments.
         EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();

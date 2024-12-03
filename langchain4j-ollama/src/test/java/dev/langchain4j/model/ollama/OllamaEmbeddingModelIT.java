@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaEmbeddingModelIT extends AbstractOllamaEmbeddingModelInfrastructure {
 
     EmbeddingModel model = OllamaEmbeddingModel.builder()
-            .baseUrl(ollama.getEndpoint())
+            .baseUrl(ollamaBaseUrl())
             .modelName(ALL_MINILM_MODEL)
             .build();
 
@@ -27,7 +27,6 @@ class OllamaEmbeddingModelIT extends AbstractOllamaEmbeddingModelInfrastructure 
 
         // when
         Response<Embedding> response = model.embed(text);
-        System.out.println(response);
 
         // then
         assertThat(response.content().vector()).isNotEmpty();
@@ -48,7 +47,6 @@ class OllamaEmbeddingModelIT extends AbstractOllamaEmbeddingModelInfrastructure 
 
         // when
         Response<List<Embedding>> response = model.embedAll(segments);
-        System.out.println(response);
 
         // then
         assertThat(response.content()).hasSize(2);

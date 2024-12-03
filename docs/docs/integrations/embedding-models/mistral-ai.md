@@ -1,5 +1,5 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 ---
 
 # Mistral AI
@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.33.0</version>
+    <version>0.36.2</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>0.33.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:0.33.0'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:0.33.0'
+implementation 'dev.langchain4j:langchain4j:0.36.2'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:0.36.2'
 ```
 #### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
@@ -65,8 +65,10 @@ import java.util.List;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        EmbeddingModel embeddingModel = MistralAiEmbeddingModel
-                .withApiKey(System.getenv("MISTRAL_AI_API_KEY"));
+        EmbeddingModel embeddingModel = MistralAiEmbeddingModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName("mistral-embed")
+                .build();
 
         // For simplicity, this example uses an in-memory store, but you can choose any external compatible store for production environments.
         EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();

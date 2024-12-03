@@ -15,8 +15,14 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 public abstract class AnthropicMessageContent {
 
     public String type;
+    public AnthropicCacheControl cacheControl;
 
     public AnthropicMessageContent(String type) {
         this.type = type;
+    }
+
+    public AnthropicMessageContent(String type, AnthropicCacheControl cacheControl) {
+        this.type = type;
+        this.cacheControl = cacheControl;
     }
 }

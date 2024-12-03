@@ -126,8 +126,8 @@ public class WebSearchRequest {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof WebSearchRequest
-                && equalTo((WebSearchRequest) another);
+        return another instanceof WebSearchRequest wsr
+                && equalTo(wsr);
     }
 
     private boolean equalTo(WebSearchRequest another){

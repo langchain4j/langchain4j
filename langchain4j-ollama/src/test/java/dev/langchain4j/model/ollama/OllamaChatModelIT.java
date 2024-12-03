@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     ChatLanguageModel model = OllamaChatModel.builder()
-            .baseUrl(ollama.getEndpoint())
+            .baseUrl(ollamaBaseUrl())
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .logRequests(true)
@@ -33,7 +33,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         AiMessage aiMessage = response.content();
@@ -56,7 +55,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         int numPredict = 1; // max output tokens
 
         OllamaChatModel model = OllamaChatModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .modelName(TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
@@ -66,7 +65,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).doesNotContain("Berlin");
@@ -82,7 +80,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<AiMessage> response = model.generate(systemMessage, userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("liebe");
@@ -104,7 +101,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<AiMessage> response = model.generate(messages);
-        System.out.println(response);
 
         // then
         assertThat(response.content().text()).startsWith(">>> 8");
@@ -115,7 +111,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)

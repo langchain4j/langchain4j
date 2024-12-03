@@ -1,10 +1,5 @@
 package dev.langchain4j.model.ovhai.internal.client;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import java.io.IOException;
-import java.util.Arrays;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingRequest;
@@ -13,6 +8,13 @@ import dev.langchain4j.model.ovhai.internal.api.OvhAiApi;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
+
+import java.io.IOException;
+import java.util.List;
+
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 public class DefaultOvhAiClient extends OvhAiClient {
 
@@ -73,10 +75,10 @@ public class DefaultOvhAiClient extends OvhAiClient {
 
     public EmbeddingResponse embed(EmbeddingRequest request) {
         try {
-            retrofit2.Response<float[]> retrofitResponse = ovhAiApi.embed(request, authorizationHeader).execute();
+            retrofit2.Response<List<float[]>> retrofitResponse = ovhAiApi.embed(request, authorizationHeader).execute();
 
             if (retrofitResponse.isSuccessful()) {
-                return new EmbeddingResponse(Arrays.asList(retrofitResponse.body()));
+                return new EmbeddingResponse(retrofitResponse.body());
             } else {
                 throw toException(retrofitResponse);
             }

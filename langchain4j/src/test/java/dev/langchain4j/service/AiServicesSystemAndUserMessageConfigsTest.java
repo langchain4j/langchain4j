@@ -129,6 +129,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -146,6 +147,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -163,6 +165,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -180,6 +183,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -197,6 +201,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -214,6 +219,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -231,6 +237,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -248,6 +255,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -265,6 +273,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -282,6 +291,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -300,6 +310,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -318,6 +329,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -336,6 +348,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -354,6 +367,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -372,6 +386,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -390,6 +405,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -408,6 +424,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -426,6 +443,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -444,6 +462,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -462,6 +481,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("Given a name of a country, answer with a name of it's capital"),
                 userMessage("Country: Germany")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -480,6 +500,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 systemMessage("This message should take precedence over the one provided by systemMessageProvider"),
                 userMessage("What is the capital of Germany?")
         ));
+        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test

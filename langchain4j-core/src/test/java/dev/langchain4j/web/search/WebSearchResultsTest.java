@@ -4,17 +4,12 @@ import dev.langchain4j.data.document.Metadata;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
-import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Stream;
 
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 class WebSearchResultsTest {
 
@@ -25,7 +20,7 @@ class WebSearchResultsTest {
                 singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"))));
 
         assertThat(webSearchResults.results()).hasSize(1);
-        assertThat(webSearchResults.results().get(0).url().toString()).isEqualTo("https://google.com");
+        assertThat(webSearchResults.results().get(0).url()).hasToString("https://google.com");
         assertThat(webSearchResults.searchInformation().totalResults()).isEqualTo(1L);
 
         assertThat(webSearchResults).hasToString("WebSearchResults{searchMetadata=null, searchInformation=WebSearchInformationResult{totalResults=1, pageNumber=null, metadata=null}, results=[WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='null', metadata=null}]}");
@@ -88,22 +83,9 @@ class WebSearchResultsTest {
         searchMetadata.put("key", "value");
 
         // then
-        assertThrows(IllegalArgumentException.class, () -> new WebSearchResults(
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> new WebSearchResults(
                 searchMetadata,
                 null,
-                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),"snippet",null))));
-    }
-
-    @Test
-    void should_throw_illegalArgumentException_without_results(){
-        // given
-        Map<String, Object> searchMetadata = new HashMap<>();
-        searchMetadata.put("key", "value");
-
-        // then
-        assertThrows(IllegalArgumentException.class, () -> new WebSearchResults(
-                searchMetadata,
-                WebSearchInformationResult.from(1L),
-                emptyList()));
+                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"), "snippet", null))));
     }
 }

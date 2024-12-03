@@ -15,11 +15,11 @@ import org.neo4j.driver.GraphDatabase;
 import org.neo4j.driver.Session;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -27,41 +27,35 @@ import static org.mockito.Mockito.when;
 class Neo4jContentRetrieverIT {
 
     @Container
-    private static final Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.16.0"))
+    private static final Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>("neo4j:latest")
             .withoutAuthentication()
-            .withLabsPlugins("apoc");
+            .withPlugins("apoc");
 
-    private static Driver driver;
-
-    private static Neo4jGraph graph;
-
-    private static Neo4jContentRetriever retriever;
+    private Driver driver;
+    private Neo4jGraph graph;
+    private Neo4jContentRetriever retriever;
 
     @Mock
     private ChatLanguageModel chatLanguageModel;
 
     @BeforeAll
     static void beforeAll() {
-
         neo4jContainer.start();
-        driver = GraphDatabase.driver(neo4jContainer.getBoltUrl(), AuthTokens.none());
-        graph = Neo4jGraph.builder().driver(driver).build();
-    }
-
-    @AfterAll
-    static void afterAll() {
-
-        graph.close();
-        driver.close();
-        neo4jContainer.stop();
     }
 
     @BeforeEach
-    void setUp() {
+    void beforeEach() {
+
+        driver = GraphDatabase.driver(neo4jContainer.getBoltUrl(), AuthTokens.none());
 
         try (Session session = driver.session()) {
             session.run("CREATE (book:Book {title: 'Dune'})<-[:WROTE]-(author:Person {name: 'Frank Herbert'})");
         }
+
+        graph = Neo4jGraph.builder()
+                .driver(driver)
+                .build();
+
         retriever = Neo4jContentRetriever.builder()
                 .graph(graph)
                 .chatLanguageModel(chatLanguageModel)
@@ -69,11 +63,17 @@ class Neo4jContentRetrieverIT {
     }
 
     @AfterEach
-    void tearDown() {
-
+    void afterEach() {
         try (Session session = driver.session()) {
             session.run("MATCH (n) DETACH DELETE n");
         }
+        graph.close();
+        driver.close();
+    }
+
+    @AfterAll
+    static void afterAll() {
+        neo4jContainer.stop();
     }
 
     @Test
@@ -86,7 +86,7 @@ class Neo4jContentRetrieverIT {
         List<Content> contents = retriever.retrieve(query);
 
         // Then
-        assertEquals(1, contents.size());
+        assertThat(contents).hasSize(1);
     }
 
     @Test
@@ -99,7 +99,7 @@ class Neo4jContentRetrieverIT {
         List<Content> contents = retriever.retrieve(query);
 
         // Then
-        assertEquals(1, contents.size());
+        assertThat(contents).hasSize(1);
     }
 
     @Test
@@ -110,6 +110,7 @@ class Neo4jContentRetrieverIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -126,7 +127,7 @@ class Neo4jContentRetrieverIT {
         List<Content> contents = neo4jContentRetriever.retrieve(query);
 
         // Then
-        assertEquals(1, contents.size());
+        assertThat(contents).hasSize(1);
     }
 
     @Test
@@ -139,6 +140,6 @@ class Neo4jContentRetrieverIT {
         List<Content> contents = retriever.retrieve(query);
 
         // Then
-        assertEquals(0, contents.size());
+        assertThat(contents).isEmpty();
     }
 }

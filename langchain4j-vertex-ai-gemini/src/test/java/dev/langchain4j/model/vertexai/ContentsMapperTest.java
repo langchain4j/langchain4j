@@ -36,7 +36,7 @@ public class ContentsMapperTest {
         // then
         assertThat(inst.getPartsCount()).isEqualTo(1);
         assertThat(inst.getParts(0).getText()).isEqualTo("You are a smart assistant");
-        assertThat(contents.size()).isEqualTo(2);
+        assertThat(contents).hasSize(2);
         assertThat(contents.get(0).getPartsCount()).isEqualTo(1);
         assertThat(contents.get(0).getParts(0).getText()).isEqualTo("Can you help me, please?");
         assertThat(contents.get(1).getPartsCount()).isEqualTo(1);
@@ -62,16 +62,11 @@ public class ContentsMapperTest {
         Content inst = instructionAndContent.systemInstruction;
         List<Content> contents = instructionAndContent.contents;
 
-        int[] i = { 0 };
-        contents.forEach(content -> {
-            System.out.println(i[0]++ + " " + content);
-        });
-
         // then
         assertThat(inst.getPartsCount()).isEqualTo(1);
         assertThat(inst.getParts(0).getText()).isEqualTo("You are a smart calculator");
 
-        assertThat(contents.size()).isEqualTo(4);
+        assertThat(contents).hasSize(4);
 
         assertThat(contents.get(0).getParts(0).getText()).isEqualTo("Calculate 3+4 and compare the result with 5+6");
 

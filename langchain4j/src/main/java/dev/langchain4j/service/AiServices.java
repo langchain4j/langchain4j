@@ -1,8 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -22,10 +20,17 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
+import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -39,9 +44,16 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * AI Services provide a simpler and more flexible alternative to chains.
+ * AI Services is a high-level API of LangChain4j to interact with {@link ChatLanguageModel} and {@link StreamingChatLanguageModel}.
+ * <p>
  * You can define your own API (a Java interface with one or more methods),
- * and {@code AiServices} will provide an implementation for it.
+ * and {@code AiServices} will provide an implementation for it, hiding all the complexity from you.
+ * <p>
+ * You can find more details <a href="https://docs.langchain4j.dev/tutorials/ai-services">here</a>.
+ * <p>
+ * Please note that AI Service should not be called concurrently for the same @{@link MemoryId},
+ * as it can lead to corrupted {@link ChatMemory}. Currently, AI Service does not implement any mechanism
+ * to prevent concurrent calls for the same @{@link MemoryId}.
  * <p>
  * Currently, AI Services support:
  * <pre>
@@ -52,7 +64,7 @@ import static java.util.stream.Collectors.toList;
  * - Single (shared) {@link ChatMemory}, configured via {@link #chatMemory(ChatMemory)}
  * - Separate (per-user) {@code ChatMemory}, configured via {@link #chatMemoryProvider(ChatMemoryProvider)} and a method parameter annotated with @{@link MemoryId}
  * - RAG, configured via {@link #contentRetriever(ContentRetriever)} or {@link #retrievalAugmentor(RetrievalAugmentor)}
- * - Tools, configured via {@link #tools(List)} or {@link #tools(Object...)} and methods annotated with @{@link Tool}
+ * - Tools, configured via {@link #tools(List)}, {@link #tools(Object...)}, {@link #tools(Map)} or {@link #toolProvider(ToolProvider)} and methods annotated with @{@link Tool}
  * - Various method return types (output parsers), see more details below
  * - Streaming (use {@link TokenStream} as a return type)
  * - Structured prompts as method arguments (see @{@link StructuredPrompt})
@@ -301,6 +313,9 @@ public abstract class AiServices<T> {
      * @see Tool
      */
     public AiServices<T> tools(Object... objectsWithTools) {
+        if (context.toolProvider != null) {
+            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
+        }
         return tools(asList(objectsWithTools));
     }
 
@@ -341,6 +356,20 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures the tool provider that the LLM can use
+     *
+     * @param toolProvider Decides which tools the LLM could use to handle the request
+     * @return builder
+     */
+    public AiServices<T> toolProvider(ToolProvider toolProvider) {
+        if (context.toolSpecifications != null | context.toolExecutors != null) {
+            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
+        }
+        context.toolProvider = toolProvider;
+        return this;
+    }
+
+    /**
      * Configures the tools that the LLM can use.
      *
      * @param tools A map of {@link ToolSpecification} to {@link ToolExecutor} entries.
@@ -350,7 +379,9 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools) {
-
+        if (context.toolProvider != null) {
+            throw new IllegalArgumentException("Either the tools or the tool provider can be configured, but not both!");
+        }
         if (context.toolSpecifications == null) {
             context.toolSpecifications = new ArrayList<>();
         }
@@ -367,17 +398,16 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Deprecated. Use {@link #contentRetriever(ContentRetriever)}
+     * @param retriever The retriever to be used by the AI Service.
+     * @return builder
+     * @deprecated Use {@link #contentRetriever(ContentRetriever)}
      * (e.g. {@link EmbeddingStoreContentRetriever}) instead.
      * <br>
      * Configures a retriever that will be invoked on every method call to fetch relevant information
      * related to the current user message from an underlying source (e.g., embedding store).
      * This relevant information is automatically injected into the message sent to the LLM.
-     *
-     * @param retriever The retriever to be used by the AI Service.
-     * @return builder
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
         if (contentRetrieverSet || retrievalAugmentorSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");

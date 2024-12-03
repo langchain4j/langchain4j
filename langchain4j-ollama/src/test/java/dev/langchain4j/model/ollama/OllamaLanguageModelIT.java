@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     LanguageModel model = OllamaLanguageModel.builder()
-            .baseUrl(ollama.getEndpoint())
+            .baseUrl(ollamaBaseUrl())
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .build();
@@ -23,7 +23,6 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<String> response = model.generate(userMessage);
-        System.out.println(response);
 
         // then
         assertThat(response.content()).contains("Berlin");
@@ -36,7 +35,7 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
         int numPredict = 1; // max output tokens
 
         LanguageModel model = OllamaLanguageModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .modelName(TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
@@ -46,7 +45,6 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         Response<String> response = model.generate(prompt);
-        System.out.println(response);
 
         // then
         assertThat(response.content()).doesNotContain("Berlin");
@@ -58,7 +56,7 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // given
         LanguageModel model = OllamaLanguageModel.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl())
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)

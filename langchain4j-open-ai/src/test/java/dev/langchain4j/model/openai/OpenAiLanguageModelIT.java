@@ -4,11 +4,13 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static dev.langchain4j.model.openai.OpenAiLanguageModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiLanguageModelIT {
 
     LanguageModel model = OpenAiLanguageModel.builder()
@@ -25,7 +27,6 @@ class OpenAiLanguageModelIT {
         String prompt = "What is the capital of Germany?";
 
         Response<String> response = model.generate(prompt);
-        System.out.println(response);
 
         assertThat(response.content()).contains("Berlin");
 

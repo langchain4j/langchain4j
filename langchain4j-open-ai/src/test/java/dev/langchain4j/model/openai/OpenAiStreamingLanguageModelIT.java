@@ -6,6 +6,7 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -14,6 +15,7 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingLanguageModelIT {
 
     StreamingLanguageModel model = OpenAiStreamingLanguageModel.builder()
@@ -36,13 +38,11 @@ class OpenAiStreamingLanguageModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
                 answerBuilder.append(token);
             }
 
             @Override
             public void onComplete(Response<String> response) {
-                System.out.println("onComplete: '" + response + "'");
                 futureAnswer.complete(answerBuilder.toString());
                 futureResponse.complete(response);
             }

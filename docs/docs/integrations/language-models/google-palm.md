@@ -1,12 +1,12 @@
 ---
-sidebar_position: 7
+sidebar_position: 9
 ---
 
 # Google Vertex AI PaLM 2
 
 ## Get started
 
-To get started follow the steps outlined in the `Get started` section of [Vertex AI Gemini integration tutorial](/integrations/language-models/google-gemini) to create a 
+To get started follow the steps outlined in the `Get started` section of [Vertex AI Gemini integration tutorial](/integrations/language-models/google-vertex-ai-gemini) to create a 
 Google Cloud Platform account and establish a new project with access to Vertex AI API.
 
 ## Add dependencies
@@ -17,14 +17,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai</artifactId>
-  <version>0.33.0</version>
+  <version>0.36.2</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai:0.33.0'
+implementation 'dev.langchain4j:langchain4j-vertex-ai:0.36.2'
 ```
 
 ### Try out an example code:

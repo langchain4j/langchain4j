@@ -1,5 +1,5 @@
 ---
-sidebar_position: 14
+sidebar_position: 16
 ---
 
 # Qianfan
@@ -7,20 +7,44 @@ sidebar_position: 14
 ![image](https://github.com/langchain4j/langchain4j/assets/95265298/600f8006-4484-4a75-829c-c8c16a3130c2)
 
 
-## Maven Dependency(Maven依赖)
+## Maven Dependency
+
+:::note
+Since `0.37.0`, `langchain4j-qianfan` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-qianfan`.
+:::
+
+`0.36.2` and previous:
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j</artifactId>
-    <version>0.33.0</version>
+    <artifactId>langchain4j-qianfan</artifactId>
+    <version>0.36.2</version>
 </dependency>
+```
 
+`0.37.0` and later:
+
+```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-qianfan</artifactId>
-    <version>0.33.0</version>
+    <artifactId>langchain4j-community-qianfan</artifactId>
+    <version>0.37.0</version>
 </dependency>
+```
+
+Or, you can use BOM to manage dependencies consistently:
+
+```xml
+<dependencyManagement>
+    <dependency>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-community-bom</artifactId>
+        <version>0.37.0</version>
+        <typ>pom</typ>
+        <scope>import</scope>
+    </dependency>
+</dependencyManagement>
 ```
 
 
@@ -247,7 +271,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.33.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 - Use

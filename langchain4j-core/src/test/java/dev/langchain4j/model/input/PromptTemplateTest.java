@@ -4,7 +4,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.time.*;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -193,7 +198,6 @@ class PromptTemplateTest {
 
         // when
         Prompt prompt = promptTemplate.apply(s);
-        System.out.println(prompt.text());
 
         // then
         assertThat(prompt.text()).isEqualTo("This is " + s + ".");

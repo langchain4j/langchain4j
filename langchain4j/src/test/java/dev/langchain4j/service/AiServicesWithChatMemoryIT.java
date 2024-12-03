@@ -9,6 +9,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -22,14 +23,18 @@ import static dev.langchain4j.data.message.ChatMessageDeserializer.messagesFromJ
 import static dev.langchain4j.data.message.ChatMessageSerializer.messagesToJson;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.ANOTHER_SYSTEM_MESSAGE;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.SYSTEM_MESSAGE;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class AiServicesWithChatMemoryIT {
 
     @Spy
@@ -37,6 +42,7 @@ class AiServicesWithChatMemoryIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_4_O_MINI)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -142,6 +148,7 @@ class AiServicesWithChatMemoryIT {
         ));
         verify(chatMemory).add(aiMessage(fourthAiMessage));
 
+        verify(chatLanguageModel, times(4)).supportedCapabilities();
         verify(chatMemory, times(12)).messages();
     }
 
@@ -171,6 +178,7 @@ class AiServicesWithChatMemoryIT {
                 aiMessage(firstAiMessage),
                 userMessage(secondUserMessage)
         ));
+        verify(chatLanguageModel, times(2)).supportedCapabilities();
 
         verify(chatMemory, times(2)).add(systemMessage(SYSTEM_MESSAGE));
         verify(chatMemory).add(userMessage(firstUserMessage));
@@ -207,6 +215,7 @@ class AiServicesWithChatMemoryIT {
                 systemMessage(ANOTHER_SYSTEM_MESSAGE),
                 userMessage(secondUserMessage)
         ));
+        verify(chatLanguageModel, times(2)).supportedCapabilities();
 
         verify(chatMemory).add(systemMessage(SYSTEM_MESSAGE));
         verify(chatMemory).add(userMessage(firstUserMessage));
@@ -304,5 +313,7 @@ class AiServicesWithChatMemoryIT {
                 userMessage(secondMessageFromSecondUser),
                 aiMessage(secondAiResponseToSecondUser)
         );
+
+        verify(chatLanguageModel, times(4)).supportedCapabilities();
     }
 }

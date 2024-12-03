@@ -6,6 +6,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
@@ -35,6 +36,7 @@ public class CohereScoringModel implements ScoringModel {
             String modelName,
             Duration timeout,
             Integer maxRetries,
+            Proxy proxy,
             Boolean logRequests,
             Boolean logResponses
     ) {
@@ -42,6 +44,7 @@ public class CohereScoringModel implements ScoringModel {
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(apiKey, "apiKey"))
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .proxy(proxy)
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
@@ -49,8 +52,13 @@ public class CohereScoringModel implements ScoringModel {
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
+    /**
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     */
+    @Deprecated(forRemoval = true)
     public static CohereScoringModel withApiKey(String apiKey) {
-        return CohereScoringModel.builder().apiKey(apiKey).build();
+        return builder().apiKey(apiKey).build();
     }
 
     @Override

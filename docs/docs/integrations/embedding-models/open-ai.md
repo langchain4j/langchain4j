@@ -1,5 +1,5 @@
 ---
-sidebar_position: 13
+sidebar_position: 14
 ---
 
 # OpenAI
@@ -15,7 +15,7 @@ sidebar_position: 13
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>0.33.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -24,7 +24,7 @@ sidebar_position: 13
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.33.0</version>
+    <version>0.36.2</version>
 </dependency>
 ```
 
@@ -44,6 +44,7 @@ Add to the `application.properties`:
 ```properties
 langchain4j.open-ai.embedding-model.api-key=${OPENAI_API_KEY}
 langchain4j.open-ai.embedding-model.base-url=...
+langchain4j.open-ai.embedding-model.custom-headers=...
 langchain4j.open-ai.embedding-model.dimensions=...
 langchain4j.open-ai.embedding-model.log-requests=...
 langchain4j.open-ai.embedding-model.log-responses=...
