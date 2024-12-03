@@ -25,8 +25,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.logging.Logger;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A collection of operations which are shared by tests in this package.
@@ -63,6 +62,8 @@ final class CommonTestOperations {
     private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
     private static final PoolDataSource SYSDBA_DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
 
+    public static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.5-slim-faststart";
+
     static {
         try {
             DATA_SOURCE.setConnectionFactoryClassName("oracle.jdbc.datasource.impl.OracleDataSource");
@@ -71,7 +72,7 @@ final class CommonTestOperations {
             if (urlFromEnv == null) {
                 // The Ryuk component is relied upon to stop this container.
                 OracleContainer oracleContainer =
-                    new OracleContainer("gvenzl/oracle-free:23.4-slim-faststart")
+                    new OracleContainer(ORACLE_IMAGE_NAME)
                         .withStartupTimeout(Duration.ofSeconds(600))
                         .withConnectTimeoutSeconds(600)
                         .withDatabaseName("pdb1")
@@ -233,7 +234,7 @@ final class CommonTestOperations {
                 embeddingStore.search(request)
                         .matches()
                         .get(0);
-        assertEquals(ids.get(1), match.embeddingId());
-        assertArrayEquals(vector1, match.embedding().vector());
+        assertThat(match.embeddingId()).isEqualTo(ids.get(1));
+        assertThat(match.embedding().vector()).containsExactly(vector1);
     }
 }

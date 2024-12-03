@@ -168,7 +168,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
             return metadata;
         }
         // Web search type
-        if (!result.getPagemap().isEmpty()) {
+        if (!isNullOrEmpty(result.getPagemap())) {
             result.getPagemap().forEach((key, value) -> {
                 if (key.equals("metatags")) {
                     if (value instanceof List) {

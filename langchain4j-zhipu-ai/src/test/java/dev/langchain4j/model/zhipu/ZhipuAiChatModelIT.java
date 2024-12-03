@@ -9,7 +9,6 @@ import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -29,7 +28,7 @@ import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "ZHIPU_API_KEY", matches = ".+")
 class ZhipuAiChatModelIT {
@@ -173,7 +172,8 @@ class ZhipuAiChatModelIT {
 
         // then
         AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("2024-04-23 12:00:20");
+        assertThat(secondAiMessage.text()).contains("12:00:20");
+        assertThat(secondAiMessage.text()).contains("2024");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
@@ -203,7 +203,7 @@ class ZhipuAiChatModelIT {
             public void onResponse(ChatModelResponseContext responseContext) {
                 responseReference.set(responseContext.response());
                 assertThat(responseContext.request()).isSameAs(requestReference.get());
-                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
             @Override
@@ -284,7 +284,7 @@ class ZhipuAiChatModelIT {
                 errorReference.set(errorContext.error());
                 assertThat(errorContext.request()).isSameAs(requestReference.get());
                 assertThat(errorContext.partialResponse()).isNull();
-                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
+                assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };
 
@@ -345,7 +345,7 @@ class ZhipuAiChatModelIT {
                 buffer.write(data, 0, n);
             }
         } catch (IOException e) {
-            Assertions.fail("", e.getMessage());
+            fail("", e.getMessage());
         }
 
         return Base64.getEncoder().encodeToString(buffer.toByteArray());

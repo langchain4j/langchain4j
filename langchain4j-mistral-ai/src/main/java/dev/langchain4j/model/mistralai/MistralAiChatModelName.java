@@ -28,7 +28,7 @@ public enum MistralAiChatModelName {
     /**
      * @deprecated As of release 0.29.0, replaced by {@link #OPEN_MISTRAL_7B}
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     MISTRAL_TINY("mistral-tiny"),
 
     OPEN_MIXTRAL_8x7B("open-mixtral-8x7b"), // aka mistral-small-2312
@@ -37,7 +37,7 @@ public enum MistralAiChatModelName {
     /**
      * @deprecated As of release 0.29.0, replaced by {@link #MISTRAL_SMALL_LATEST}
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     MISTRAL_SMALL("mistral-small"), // aka mistral-small-2312
 
     MISTRAL_SMALL_LATEST("mistral-small-latest"), // aka mistral-small-2402
@@ -45,12 +45,14 @@ public enum MistralAiChatModelName {
     /**
      * @deprecated As of release 0.29.0, replaced by {@link #MISTRAL_MEDIUM_LATEST}
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     MISTRAL_MEDIUM("mistral-medium"),
 
     MISTRAL_MEDIUM_LATEST("mistral-medium-latest"), // aka mistral-medium-2312
 
-    MISTRAL_LARGE_LATEST("mistral-large-latest"); // aka mistral-large-2402
+    MISTRAL_LARGE_LATEST("mistral-large-latest"), // aka mistral-large-2402
+
+    MISTRAL_MODERATION_LATEST("mistral-moderation-latest");
 
     private final String value;
 

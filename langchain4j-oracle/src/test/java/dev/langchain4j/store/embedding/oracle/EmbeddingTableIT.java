@@ -19,7 +19,8 @@ import java.util.stream.Collectors;
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.dropTable;
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.getDataSource;
 import static dev.langchain4j.store.embedding.oracle.CreateOption.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
@@ -227,7 +228,7 @@ public class EmbeddingTableIT {
                         .stream()
                         .map(TestData::new)
                         .collect(Collectors.toList());
-            assertEquals(Collections.singletonList(testData), matches);
+            assertThat(matches).isEqualTo(Collections.singletonList(testData));
         }
         finally {
             dropTable(tableName);
@@ -274,7 +275,7 @@ public class EmbeddingTableIT {
                             .stream()
                             .map(TestData::new)
                             .collect(Collectors.toList());
-            assertEquals(Collections.emptyList(), matches);
+            assertThat(matches).isEqualTo(Collections.emptyList());
 
         }
         finally {
@@ -305,7 +306,7 @@ public class EmbeddingTableIT {
                 .map(TestData::new)
                 .collect(Collectors.toSet());
 
-        assertEquals(expectedData, actualData);
+        assertThat(actualData).isEqualTo(expectedData);
 
         // Remove no embeddings
         embeddingStore.removeAll(new And(new IsEqualTo("x", 0), new IsNotEqualTo("x", 0)));
@@ -316,7 +317,7 @@ public class EmbeddingTableIT {
                     .map(testData -> testData.id)
                     .collect(Collectors.toList()));
 
-        assertTrue(embeddingStore.search(requestAll).matches().isEmpty());
+        assertThat(embeddingStore.search(requestAll).matches()).isEmpty();
 
     }
 
@@ -336,7 +337,7 @@ public class EmbeddingTableIT {
              ResultSet resultSet =
                      connection.getMetaData().getColumns(null, connection.getSchema(), tableName, "%")) {
             while (resultSet.next()) {
-                assertEquals(tableName, resultSet.getString("TABLE_NAME"));
+                assertThat(resultSet.getString("TABLE_NAME")).isEqualTo(tableName);
                 actualNames.add(resultSet.getString("COLUMN_NAME"));
             }
         }
@@ -347,7 +348,7 @@ public class EmbeddingTableIT {
         expectedNames.add(textColumn);
         expectedNames.add(metadataColumn);
 
-        assertEquals(expectedNames, actualNames);
+        assertThat(actualNames).isEqualTo(expectedNames);
     }
 
     /** Asserts that an exception is caused by a table which does not exist */
@@ -355,7 +356,7 @@ public class EmbeddingTableIT {
         try {
             // Expect "ORA-00942: table or view does not exist"  if the table does not exist
             SQLException sqlException = assertInstanceOf(SQLException.class, runtimeException.getCause());
-            assertEquals(942, sqlException.getErrorCode());
+            assertThat(sqlException.getErrorCode()).isEqualTo(942);
         }
         catch (AssertionError assertionError) {
             assertionError.addSuppressed(runtimeException);

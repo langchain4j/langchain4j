@@ -10,17 +10,29 @@ import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationR
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
 import com.alibaba.dashscope.common.Role;
-import com.alibaba.dashscope.tools.*;
+import com.alibaba.dashscope.tools.FunctionDefinition;
+import com.alibaba.dashscope.tools.ToolBase;
+import com.alibaba.dashscope.tools.ToolCallBase;
+import com.alibaba.dashscope.tools.ToolCallFunction;
+import com.alibaba.dashscope.tools.ToolFunction;
 import com.alibaba.dashscope.utils.JsonUtils;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import com.google.gson.JsonObject;
-import dev.langchain4j.agent.tool.ToolParameters;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -32,15 +44,28 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.data.message.ChatMessageType.*;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.data.message.ChatMessageType.AI;
+import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
+import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
+import static dev.langchain4j.data.message.ChatMessageType.USER;
+import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.stream.Collectors.toList;
 
 @Slf4j
@@ -70,34 +95,26 @@ class QwenHelper {
     }
 
     static String toSingleText(ChatMessage message) {
-        switch (message.type()) {
-            case USER:
-                return ((UserMessage) message).contents()
-                        .stream()
-                        .filter(TextContent.class::isInstance)
-                        .map(TextContent.class::cast)
-                        .map(TextContent::text)
-                        .collect(Collectors.joining("\n"));
-            case AI:
-                return ((AiMessage) message).hasToolExecutionRequests() ? "" : ((AiMessage) message).text();
-            case SYSTEM:
-                return ((SystemMessage) message).text();
-            case TOOL_EXECUTION_RESULT:
-                return ((ToolExecutionResultMessage) message).text();
-            default:
-                return "";
-        }
+        return switch (message.type()) {
+            case USER -> ((UserMessage) message).contents()
+                    .stream()
+                    .filter(TextContent.class::isInstance)
+                    .map(TextContent.class::cast)
+                    .map(TextContent::text)
+                    .collect(Collectors.joining("\n"));
+            case AI -> ((AiMessage) message).text();
+            case SYSTEM -> ((SystemMessage) message).text();
+            case TOOL_EXECUTION_RESULT -> ((ToolExecutionResultMessage) message).text();
+            default -> "";
+        };
     }
 
     static String nameFrom(ChatMessage message) {
-        switch (message.type()) {
-            case USER:
-                return ((UserMessage) message).name();
-            case TOOL_EXECUTION_RESULT:
-                return ((ToolExecutionResultMessage) message).toolName();
-            default:
-                return null;
-        }
+        return switch (message.type()) {
+            case USER -> ((UserMessage) message).name();
+            case TOOL_EXECUTION_RESULT -> ((ToolExecutionResultMessage) message).toolName();
+            default -> null;
+        };
     }
 
     static String toolCallIdFrom(ChatMessage message) {
@@ -128,24 +145,19 @@ class QwenHelper {
     }
 
     static List<Map<String, Object>> toMultiModalContents(ChatMessage message) {
-        switch (message.type()) {
-            case USER:
-                return ((UserMessage) message).contents()
-                        .stream()
-                        .map(QwenHelper::toMultiModalContent)
-                        .collect(Collectors.toList());
-            case AI:
-                return Collections.singletonList(
-                        Collections.singletonMap("text", ((AiMessage) message).text()));
-            case SYSTEM:
-                return Collections.singletonList(
-                        Collections.singletonMap("text", ((SystemMessage) message).text()));
-            case TOOL_EXECUTION_RESULT:
-                return Collections.singletonList(
-                        Collections.singletonMap("text", ((ToolExecutionResultMessage) message).text()));
-            default:
-                return Collections.emptyList();
-        }
+        return switch (message.type()) {
+            case USER -> ((UserMessage) message).contents()
+                    .stream()
+                    .map(QwenHelper::toMultiModalContent)
+                    .collect(Collectors.toList());
+            case AI -> Collections.singletonList(
+                    Collections.singletonMap("text", ((AiMessage) message).text()));
+            case SYSTEM -> Collections.singletonList(
+                    Collections.singletonMap("text", ((SystemMessage) message).text()));
+            case TOOL_EXECUTION_RESULT -> Collections.singletonList(
+                    Collections.singletonMap("text", ((ToolExecutionResultMessage) message).text()));
+            default -> Collections.emptyList();
+        };
     }
 
     static Map<String, Object> toMultiModalContent(Content content) {
@@ -161,11 +173,31 @@ class QwenHelper {
                     // Using the temporary directory for storing temporary files is a safe practice,
                     // as most operating systems will periodically clean up the contents of this directory
                     // or do so upon system reboot.
-                    imageContent = saveImageAsTemporaryFile(image.base64Data(), image.mimeType());
+                    imageContent = saveDataAsTemporaryFile(image.base64Data(), image.mimeType());
 
                     // In this case, the dashscope sdk requires a mutable map.
                     HashMap<String, Object> contentMap = new HashMap<>(1);
                     contentMap.put("image", imageContent);
+                    return contentMap;
+                } else {
+                    return Collections.emptyMap();
+                }
+            case AUDIO:
+                Audio audio = ((AudioContent) content).audio();
+                String audioContent;
+                if (audio.url() != null) {
+                    audioContent = audio.url().toString();
+                    return Collections.singletonMap("audio", audioContent);
+                } else if (Utils.isNotNullOrBlank(audio.base64Data())) {
+                    // The dashscope sdk supports local file url: file://...
+                    // Using the temporary directory for storing temporary files is a safe practice,
+                    // as most operating systems will periodically clean up the contents of this directory
+                    // or do so upon system reboot.
+                    audioContent = saveDataAsTemporaryFile(audio.base64Data(), audio.mimeType());
+
+                    // In this case, the dashscope sdk requires a mutable map.
+                    HashMap<String, Object> contentMap = new HashMap<>(1);
+                    contentMap.put("audio", audioContent);
                     return contentMap;
                 } else {
                     return Collections.emptyMap();
@@ -177,26 +209,26 @@ class QwenHelper {
         }
     }
 
-    private static String saveImageAsTemporaryFile(String base64Data, String mimeType) {
+    static String saveDataAsTemporaryFile(String base64Data, String mimeType) {
         String tmpDir = System.getProperty("java.io.tmpdir", "/tmp");
-        String tmpImageName = UUID.randomUUID().toString();
+        String tmpFileName = UUID.randomUUID().toString();
         if (Utils.isNotNullOrBlank(mimeType)) {
             // e.g. "image/png", "image/jpeg"...
             int lastSlashIndex = mimeType.lastIndexOf("/");
             if (lastSlashIndex >= 0 && lastSlashIndex < mimeType.length() - 1) {
-                String imageSuffix = mimeType.substring(lastSlashIndex + 1);
-                tmpImageName = tmpImageName + "." + imageSuffix;
+                String fileSuffix = mimeType.substring(lastSlashIndex + 1);
+                tmpFileName = tmpFileName + "." + fileSuffix;
             }
         }
 
-        Path tmpImagePath = Paths.get(tmpDir, tmpImageName);
+        Path tmpFilePath = Paths.get(tmpDir, tmpFileName);
         byte[] data = Base64.getDecoder().decode(base64Data);
         try {
-            Files.copy(new ByteArrayInputStream(data), tmpImagePath, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(new ByteArrayInputStream(data), tmpFilePath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return tmpImagePath.toAbsolutePath().toUri().toString();
+        return tmpFilePath.toAbsolutePath().toUri().toString();
     }
 
     static String roleFrom(ChatMessage message) {
@@ -216,6 +248,10 @@ class QwenHelper {
                 .map(GenerationResult::getOutput)
                 .map(GenerationOutput::getChoices)
                 .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getContent)
+                .filter(Utils::isNotNullOrBlank)
                 .isPresent();
     }
 
@@ -231,7 +267,8 @@ class QwenHelper {
                 .orElseGet(() -> Optional.of(result)
                         .map(GenerationResult::getOutput)
                         .map(GenerationOutput::getText)
-                        .orElseThrow(NullPointerException::new));
+                        // Model may send empty content in streaming mode
+                        .orElse(""));
     }
 
     static boolean hasAnswer(MultiModalConversationResult result) {
@@ -258,7 +295,8 @@ class QwenHelper {
                 .map(contents -> contents.get(0))
                 .map(content -> content.get("text"))
                 .map(String.class::cast)
-                .orElseThrow(NullPointerException::new);
+                // Model may send empty content in streaming mode
+                .orElse("");
     }
 
     static TokenUsage tokenUsageFrom(GenerationResult result) {
@@ -282,16 +320,12 @@ class QwenHelper {
                 choice.getFinishReason() :
                 "tool_calls";
 
-        switch (finishReason) {
-            case "stop":
-                return STOP;
-            case "length":
-                return LENGTH;
-            case "tool_calls":
-                return TOOL_EXECUTION;
-            default:
-                return null;
-        }
+        return switch (finishReason) {
+            case "stop" -> STOP;
+            case "length" -> LENGTH;
+            case "tool_calls" -> TOOL_EXECUTION;
+            default -> null;
+        };
     }
 
     static FinishReason finishReasonFrom(MultiModalConversationResult result) {
@@ -303,19 +337,15 @@ class QwenHelper {
                 .map(MultiModalConversationOutput.Choice::getFinishReason)
                 .orElse("");
 
-        switch (finishReason) {
-            case "stop":
-                return STOP;
-            case "length":
-                return LENGTH;
-            default:
-                return null;
-        }
+        return switch (finishReason) {
+            case "stop" -> STOP;
+            case "length" -> LENGTH;
+            default -> null;
+        };
     }
 
     public static boolean isMultimodalModel(String modelName) {
-        // for now, multimodal models start with "qwen-vl"
-        return modelName.startsWith("qwen-vl");
+        return modelName.contains("-vl-") || modelName.contains("-audio-");
     }
 
     static List<ToolBase> toToolFunctions(Collection<ToolSpecification> toolSpecifications) {
@@ -331,34 +361,36 @@ class QwenHelper {
     static ToolBase toToolFunction(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = FunctionDefinition.builder()
                 .name(toolSpecification.name())
-                .description(toolSpecification.description())
-                .parameters(toParameters(toolSpecification.parameters()))
+                .description(getOrDefault(toolSpecification.description(), ""))
+                .parameters(toParameters(toolSpecification))
                 .build();
         return ToolFunction.builder().function(functionDefinition).build();
     }
 
-    private static JsonObject toParameters(ToolParameters toolParameters) {
-        return toolParameters == null ?
-                JsonUtils.toJsonObject(Collections.emptyMap()) :
-                JsonUtils.toJsonObject(toolParameters);
+    @SuppressWarnings("deprecation")
+    private static JsonObject toParameters(ToolSpecification toolSpecification) {
+        if (toolSpecification.parameters() != null) {
+            return JsonUtils.toJsonObject(toMap(toolSpecification.parameters()));
+        } else if (toolSpecification.toolParameters() != null) {
+            return JsonUtils.toJsonObject(toolSpecification.toolParameters());
+        } else {
+            return JsonUtils.toJsonObject(Collections.emptyMap());
+        }
     }
 
     static AiMessage aiMessageFrom(GenerationResult result) {
-        return isFunctionToolCalls(result) ?
-                new AiMessage(functionToolCallsFrom(result)) : new AiMessage(answerFrom(result));
+        if (isFunctionToolCalls(result)) {
+            String text = answerFrom(result);
+            return isNullOrBlank(text) ?
+                    new AiMessage(toolExecutionRequestsFrom(result)) :
+                    new AiMessage(text, toolExecutionRequestsFrom(result));
+        } else {
+            return new AiMessage(answerFrom(result));
+        }
     }
 
-    private static List<ToolExecutionRequest> functionToolCallsFrom(GenerationResult result) {
-        List<ToolCallBase> toolCalls = Optional.of(result)
-                .map(GenerationResult::getOutput)
-                .map(GenerationOutput::getChoices)
-                .filter(choices -> !choices.isEmpty())
-                .map(choices -> choices.get(0))
-                .map(Choice::getMessage)
-                .map(Message::getToolCalls)
-                .orElseThrow(IllegalStateException::new);
-
-        return toolCalls.stream()
+    private static List<ToolExecutionRequest> toolExecutionRequestsFrom(GenerationResult result) {
+        return toolCallsFrom(result).stream()
                 .filter(ToolCallFunction.class::isInstance)
                 .map(ToolCallFunction.class::cast)
                 .map(toolCall -> ToolExecutionRequest.builder()
@@ -367,6 +399,17 @@ class QwenHelper {
                         .arguments(toolCall.getFunction().getArguments())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    static List<ToolCallBase> toolCallsFrom(GenerationResult result) {
+        return Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getToolCalls)
+                .orElseThrow(IllegalStateException::new);
     }
 
     static String toolCallIdFromMessage(GenerationResult result) {
@@ -414,7 +457,7 @@ class QwenHelper {
                 .reduce(new LinkedList<>(), messageAccumulator(), messageCombiner());
 
         // Ensure the last message is a user/tool_execution_result message
-        while(!sanitizedMessages.isEmpty() && !isInputMessageType(sanitizedMessages.getLast().type())) {
+        while (!sanitizedMessages.isEmpty() && !isInputMessageType(sanitizedMessages.getLast().type())) {
             ChatMessage removedMessage = sanitizedMessages.removeLast();
             log.warn("The last message should be a user/tool_execution_result message, but found: {}", removedMessage);
         }
@@ -514,5 +557,62 @@ class QwenHelper {
                 .finishReason(response.finishReason())
                 .aiMessage(response.content())
                 .build();
+    }
+
+    static void onListenRequest(List<ChatModelListener> listeners,
+                                ChatModelRequest modelListenerRequest,
+                                Map<Object, Object> attributes) {
+        ChatModelRequestContext context = new ChatModelRequestContext(modelListenerRequest, attributes);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(context);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
+    }
+
+    static void onListenResponse(List<ChatModelListener> listeners,
+                                 String responseId,
+                                 Response<AiMessage> response,
+                                 ChatModelRequest modelListenerRequest,
+                                 Map<Object, Object> attributes) {
+        ChatModelResponse modelListenerResponse = createModelListenerResponse(
+                responseId, modelListenerRequest.model(), response);
+
+        ChatModelResponseContext context = new ChatModelResponseContext(
+                modelListenerResponse,
+                modelListenerRequest,
+                attributes
+        );
+        listeners.forEach(listener -> {
+            try {
+                listener.onResponse(context);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
+    }
+
+    static void onListenError(List<ChatModelListener> listeners,
+                              String responseId,
+                              Throwable error,
+                              ChatModelRequest modelListenerRequest,
+                              Response<AiMessage> partialResponse, Map<Object, Object> attributes) {
+        ChatModelResponse partialModelListenerResponse = createModelListenerResponse(
+                responseId, modelListenerRequest.model(), partialResponse);
+        ChatModelErrorContext context = new ChatModelErrorContext(
+                error,
+                modelListenerRequest,
+                partialModelListenerResponse,
+                attributes
+        );
+        listeners.forEach(listener -> {
+            try {
+                listener.onError(context);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
     }
 }

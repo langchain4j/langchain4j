@@ -129,6 +129,12 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         return tokenizer.estimateTokenCountInText(text);
     }
 
+    /**
+     * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
+     * if necessary, other parameters.
+     * <b>The default value for the model name will be removed in future releases!</b>
+     */
+    @Deprecated(forRemoval = true)
     public static OpenAiEmbeddingModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

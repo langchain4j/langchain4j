@@ -18,6 +18,9 @@ public final class Delta {
     private String content;
     private List<ToolCall> toolCalls;
 
+    public Delta() {
+    }
+
     private Delta(Builder builder) {
         this.content = builder.content;
         this.toolCalls = builder.toolCalls;

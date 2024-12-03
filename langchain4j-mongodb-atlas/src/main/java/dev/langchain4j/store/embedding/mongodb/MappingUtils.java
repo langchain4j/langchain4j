@@ -11,14 +11,19 @@ import java.util.Set;
 class MappingUtils {
 
     private MappingUtils() throws InstantiationException {
-        throw new InstantiationException("can't instantiate this class");
+        throw new InstantiationException("Can't instantiate this class");
     }
 
     static MongoDbDocument toMongoDbDocument(String id, Embedding embedding, TextSegment textSegment) {
-        if (textSegment == null) {
-            return new MongoDbDocument(id, embedding.vectorAsList(), null, null);
-        }
-        return new MongoDbDocument(id, embedding.vectorAsList(), textSegment.text(), textSegment.metadata().asMap());
+        boolean hasTextSegment = textSegment != null;
+
+        return MongoDbDocument.builder()
+                .id(id)
+                .embedding(embedding.vectorAsList())
+                .text(hasTextSegment ? textSegment.text() : null)
+                // TODO: change to using Metadata.toMap()
+                .metadata(hasTextSegment ? textSegment.metadata().asMap() : null)
+                .build();
     }
 
     static EmbeddingMatch<TextSegment> toEmbeddingMatch(MongoDbMatchedDocument matchedDocument) {

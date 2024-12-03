@@ -1,7 +1,6 @@
 package dev.langchain4j.code.judge0;
 
 import dev.langchain4j.code.CodeExecutionEngine;
-import dev.langchain4j.internal.Json;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,11 +25,11 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
         this.apiKey = apiKey;
         this.languageId = languageId;
         this.client = new OkHttpClient.Builder()
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .callTimeout(timeout)
-                .build();
+            .connectTimeout(timeout)
+            .readTimeout(timeout)
+            .writeTimeout(timeout)
+            .callTimeout(timeout)
+            .build();
     }
 
     @Override
@@ -43,10 +42,10 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
         RequestBody requestBody = RequestBody.create(Json.toJson(submission), MEDIA_TYPE);
 
         Request request = new Request.Builder()
-                .url("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true&fields=*")
-                .addHeader("X-RapidAPI-Key", apiKey)
-                .post(requestBody)
-                .build();
+            .url("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true&fields=*")
+            .addHeader("X-RapidAPI-Key", apiKey)
+            .post(requestBody)
+            .build();
 
         try {
             Response response = client.newCall(request).execute();
@@ -83,6 +82,22 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
             this.language_id = languageId;
             this.source_code = sourceCode;
         }
+
+        public int getLanguage_id() {
+            return language_id;
+        }
+
+        public void setLanguage_id(int language_id) {
+            this.language_id = language_id;
+        }
+
+        public String getSource_code() {
+            return source_code;
+        }
+
+        public void setSource_code(String source_code) {
+            this.source_code = source_code;
+        }
     }
 
     private static class SubmissionResult {
@@ -90,11 +105,51 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
         String stdout;
         Status status;
         String compile_output;
+
+        public String getStdout() {
+            return stdout;
+        }
+
+        public void setStdout(String stdout) {
+            this.stdout = stdout;
+        }
+
+        public Status getStatus() {
+            return status;
+        }
+
+        public void setStatus(Status status) {
+            this.status = status;
+        }
+
+        public String getCompile_output() {
+            return compile_output;
+        }
+
+        public void setCompile_output(String compile_output) {
+            this.compile_output = compile_output;
+        }
     }
 
     private static class Status {
 
         int id;
         String description;
+
+        public int getId() {
+            return id;
+        }
+
+        public void setId(int id) {
+            this.id = id;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
     }
 }

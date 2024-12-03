@@ -16,7 +16,7 @@ import java.util.Base64;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
-@Disabled("expensive to run very often")
+@Disabled("Run manually before release. Expensive to run very often.")
 public class AzureOpenAiImageModelIT {
 
     @Test

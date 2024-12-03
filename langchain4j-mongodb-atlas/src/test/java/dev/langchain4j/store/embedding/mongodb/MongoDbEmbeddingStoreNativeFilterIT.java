@@ -12,12 +12,12 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import lombok.SneakyThrows;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 import org.testcontainers.shaded.com.google.common.collect.Sets;
 
 import java.time.Duration;
@@ -30,7 +30,7 @@ import static org.assertj.core.data.Percentage.withPercentage;
 
 class MongoDbEmbeddingStoreNativeFilterIT {
 
-    static MongoDBAtlasContainer mongodb = new MongoDBAtlasContainer();
+    static MongoDBAtlasLocalContainer mongodb = new MongoDBAtlasLocalContainer("mongodb/mongodb-atlas-local:7.0.9");
 
     static MongoClient client;
 
@@ -52,14 +52,11 @@ class MongoDbEmbeddingStoreNativeFilterIT {
             .build();
 
     @BeforeAll
-    @SneakyThrows
     static void start() {
         mongodb.start();
 
-        MongoCredential credential = MongoCredential.createCredential("root", "admin", "root".toCharArray());
         client = MongoClients.create(
                 MongoClientSettings.builder()
-                        .credential(credential)
                         .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
                         .applyConnectionString(new ConnectionString(mongodb.getConnectionString()))
                         .build());
@@ -86,7 +83,7 @@ class MongoDbEmbeddingStoreNativeFilterIT {
     }
 
     @Test
-    void should_find_relevant_with_filter() {
+    void should_find_relevant_with_filter() throws Exception {
 
         // given
         TextSegment segment = TextSegment.from("this segment should be found", Metadata.from("test-key", "test-value"));
@@ -115,8 +112,7 @@ class MongoDbEmbeddingStoreNativeFilterIT {
         assertThat(match.embedded()).isEqualTo(segment);
     }
 
-    @SneakyThrows
-    private void awaitUntilPersisted() {
+    private void awaitUntilPersisted() throws Exception {
         Thread.sleep(2000);
     }
 }

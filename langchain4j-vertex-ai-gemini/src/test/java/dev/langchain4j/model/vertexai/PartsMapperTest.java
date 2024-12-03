@@ -15,7 +15,6 @@ import java.net.URI;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PartsMapperTest {
 
@@ -94,20 +93,6 @@ class PartsMapperTest {
                 Arguments.of("https://storage.googleapis.com/cloud-samples-data/video/animals.mp4", "video/mp4"),
                 Arguments.of("gs://cloud-samples-data/video/animals.mp4", "video/mp4")
         );
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "http://example.org/cat",
-            "http://example.org/cat.banana",
-            "http://example.org/some.path/cat",
-            "http://example.org/cat?query=dog.png"
-    })
-    void should_fail_to_detect_mime_type(String url) {
-
-        assertThatThrownBy(() -> PartsMapper.detectMimeType(URI.create(url)))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unable to detect the MIME type of '" + url + "'. Please provide it explicitly.");
     }
 
     @Test

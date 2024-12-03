@@ -4,7 +4,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
-import org.assertj.core.util.Files;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +14,7 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JlamaStreamingChatModelIT {
+class JlamaStreamingChatModelIT {
 
     static File tmpDir;
     static StreamingChatLanguageModel model;
@@ -26,9 +25,9 @@ public class JlamaStreamingChatModelIT {
         tmpDir.mkdirs();
 
         model = JlamaStreamingChatModel.builder()
-                .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
+                .modelName("tjake/Llama-3.2-1B-Instruct-JQ4")
                 .modelCachePath(tmpDir.toPath())
-                .maxTokens(30)
+                .maxTokens(64)
                 .temperature(0.0f)
                 .build();
     }

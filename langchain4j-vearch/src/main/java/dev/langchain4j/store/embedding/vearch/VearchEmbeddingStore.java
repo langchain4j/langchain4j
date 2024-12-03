@@ -5,6 +5,8 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
@@ -56,44 +58,6 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         return new Builder();
     }
 
-    public static class Builder {
-
-        private VearchConfig vearchConfig;
-        private String baseUrl;
-        private Duration timeout;
-        private Boolean normalizeEmbeddings;
-
-        public Builder vearchConfig(VearchConfig vearchConfig) {
-            this.vearchConfig = vearchConfig;
-            return this;
-        }
-
-        public Builder baseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
-            return this;
-        }
-
-        public Builder timeout(Duration timeout) {
-            this.timeout = timeout;
-            return this;
-        }
-
-        /**
-         * Set whether to normalize embedding when add to embedding store
-         *
-         * @param normalizeEmbeddings whether to normalize embedding when add to embedding store
-         * @return builder
-         */
-        public Builder normalizeEmbeddings(Boolean normalizeEmbeddings) {
-            this.normalizeEmbeddings = normalizeEmbeddings;
-            return this;
-        }
-
-        public VearchEmbeddingStore build() {
-            return new VearchEmbeddingStore(baseUrl, timeout, vearchConfig, normalizeEmbeddings);
-        }
-    }
-
     @Override
     public String add(Embedding embedding) {
         String id = randomUUID();
@@ -132,26 +96,29 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        double minSimilarity = CosineSimilarity.fromRelevanceScore(minScore);
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+
+        double minSimilarity = CosineSimilarity.fromRelevanceScore(request.minScore());
         List<String> fields = new ArrayList<>(Arrays.asList(vearchConfig.getTextFieldName(), vearchConfig.getEmbeddingFieldName()));
         if (!isNullOrEmpty(vearchConfig.getMetadataFieldNames())) {
             fields.addAll(vearchConfig.getMetadataFieldNames());
         }
-        SearchRequest request = SearchRequest.builder()
+        SearchRequest vearchRequest = SearchRequest.builder()
                 .query(SearchRequest.QueryParam.builder()
                         .sum(singletonList(SearchRequest.VectorParam.builder()
                                 .field(vearchConfig.getEmbeddingFieldName())
-                                .feature(referenceEmbedding.vectorAsList())
+                                .feature(request.queryEmbedding().vectorAsList())
                                 .minScore(minSimilarity)
                                 .build()))
                         .build())
-                .size(maxResults)
+                .size(request.maxResults())
                 .fields(fields)
                 .build();
 
-        SearchResponse response = vearchClient.search(vearchConfig.getDatabaseName(), vearchConfig.getSpaceName(), request);
-        return toEmbeddingMatch(response.getHits());
+        SearchResponse response = vearchClient.search(vearchConfig.getDatabaseName(), vearchConfig.getSpaceName(), vearchRequest);
+
+        List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatch(response.getHits());
+        return new EmbeddingSearchResult<>(matches);
     }
 
     public void deleteSpace() {
@@ -171,6 +138,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<Map<String, Object>> documents = new ArrayList<>(ids.size());
         List<String> metadataFieldNames = vearchConfig.getMetadataFieldNames();
         for (int i = 0; i < ids.size(); i++) {
+            TextSegment textSegment = embedded == null ? null : embedded.get(i);
             Map<String, Object> document = new HashMap<>(4);
             document.put("_id", ids.get(i));
             Map<String, List<Float>> embeddingValue = new HashMap<>(1);
@@ -180,26 +148,24 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             embeddingValue.put("feature", embedding.vectorAsList());
             document.put(vearchConfig.getEmbeddingFieldName(), embeddingValue);
-            if (embedded != null) {
-                document.put(vearchConfig.getTextFieldName(), embedded.get(i).text());
-                if (!isNullOrEmpty(metadataFieldNames)) {
-                    Map<String, Object> metadata = embedded.get(i).metadata().toMap();
-                    for (String metadataFieldName : vearchConfig.getMetadataFieldNames()) {
-                        metadata.putIfAbsent(metadataFieldName, getDefaultValue(metadataFieldName));
+            String text = textSegment == null ? "" : textSegment.text();
+
+            document.put(vearchConfig.getTextFieldName(), text);
+            if (!isNullOrEmpty(metadataFieldNames)) {
+                Map<String, SpacePropertyParam> properties = vearchConfig.getProperties();
+                Map<String, Object> metadata = textSegment == null ? new HashMap<>() : textSegment.metadata().toMap();
+
+                for (String metadataFieldName : vearchConfig.getMetadataFieldNames()) {
+                    if (!properties.containsKey(metadataFieldName)) {
+                        throw new IllegalArgumentException("Metadata field " + metadataFieldName + " not found in vearchConfig properties");
                     }
-                    document.putAll(metadata);
-                }
-            } else {
-                // vearch do not allow nullable value
-                document.put(vearchConfig.getTextFieldName(), "");
-                if (!isNullOrEmpty(metadataFieldNames)) {
-                    for (String metadataFieldName : vearchConfig.getMetadataFieldNames()) {
-                        document.put(metadataFieldName, getDefaultValue(metadataFieldName));
-                    }
+                    document.put(metadataFieldName, transformValue(metadata.get(metadataFieldName), properties.get(metadataFieldName)));
                 }
             }
+
             documents.add(document);
         }
+
         BulkRequest request = BulkRequest.builder()
                 .documents(documents)
                 .build();
@@ -265,23 +231,56 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         return metadataMap;
     }
 
-    private Object getDefaultValue(String fieldName) {
-        SpacePropertyParam param = vearchConfig.getProperties().get(fieldName);
-        if (param == null) {
-            throw new RuntimeException("Missing metadata " + fieldName);
+    private Object transformValue(Object valueToStore, SpacePropertyParam propertyParam) {
+        switch (propertyParam.type) {
+            case STRING:
+                return valueToStore == null ? "" : valueToStore.toString();
+            case FLOAT:
+                return valueToStore == null ? 0.0 : valueToStore;
+            case INTEGER:
+                return valueToStore == null ? 0 : valueToStore;
+            case VECTOR:
+                return valueToStore == null ? emptyList() : valueToStore;
+            default:
+                throw new RuntimeException("Unsupported SpacePropertyParam type " + propertyParam.type);
+        }
+    }
+
+    public static class Builder {
+
+        private VearchConfig vearchConfig;
+        private String baseUrl;
+        private Duration timeout;
+        private Boolean normalizeEmbeddings;
+
+        public Builder vearchConfig(VearchConfig vearchConfig) {
+            this.vearchConfig = vearchConfig;
+            return this;
         }
 
-        switch (param.type) {
-            case STRING:
-                return "";
-            case FLOAT:
-                return 0.0;
-            case INTEGER:
-                return 0;
-            case VECTOR:
-                return emptyList();
-            default:
-                throw new RuntimeException("Unsupported SpacePropertyParam type " + param.type);
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        /**
+         * Set whether to normalize embedding when add to embedding store
+         *
+         * @param normalizeEmbeddings whether to normalize embedding when add to embedding store
+         * @return builder
+         */
+        public Builder normalizeEmbeddings(Boolean normalizeEmbeddings) {
+            this.normalizeEmbeddings = normalizeEmbeddings;
+            return this;
+        }
+
+        public VearchEmbeddingStore build() {
+            return new VearchEmbeddingStore(baseUrl, timeout, vearchConfig, normalizeEmbeddings);
         }
     }
 }

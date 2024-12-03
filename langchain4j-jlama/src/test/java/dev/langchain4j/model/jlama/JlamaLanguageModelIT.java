@@ -2,7 +2,6 @@ package dev.langchain4j.model.jlama;
 
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
-import org.assertj.core.util.Files;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +10,7 @@ import java.io.File;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JlamaLanguageModelIT {
+class JlamaLanguageModelIT {
 
     static File tmpDir;
 
@@ -24,10 +23,10 @@ public class JlamaLanguageModelIT {
         tmpDir.mkdirs();
 
         model = JlamaLanguageModel.builder()
-                .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
+                .modelName("tjake/Llama-3.2-1B-Instruct-JQ4")
                 .modelCachePath(tmpDir.toPath())
                 .temperature(0.0f)
-                .maxTokens(30)
+                .maxTokens(64)
                 .build();
     }
 

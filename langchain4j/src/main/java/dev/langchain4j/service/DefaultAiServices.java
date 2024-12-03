@@ -21,13 +21,13 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
-import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
+import dev.langchain4j.spi.services.TokenStreamAdapter;
 
 import java.io.InputStream;
 import java.lang.reflect.Array;
@@ -37,6 +37,7 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,12 +56,14 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
-    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
+    private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 100;
 
-    private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
+    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
+    private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -137,13 +140,15 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
 
+                        boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
+
                         boolean supportsJsonSchema = supportsJsonSchema();
                         Optional<JsonSchema> jsonSchema = Optional.empty();
-                        if (supportsJsonSchema) {
+                        if (supportsJsonSchema && !streaming) {
                             jsonSchema = jsonSchemaFrom(returnType);
                         }
 
-                        if (!supportsJsonSchema || !jsonSchema.isPresent()) {
+                        if ((!supportsJsonSchema || !jsonSchema.isPresent()) && !streaming) {
                             // TODO append after storing in the memory?
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
@@ -182,15 +187,21 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
 
-                        if (returnType == TokenStream.class) {
-                            return new AiServiceTokenStream(
+                        if (streaming) {
+                            TokenStream tokenStream = new AiServiceTokenStream(
                                     messages,
                                     toolSpecifications,
                                     toolExecutors,
                                     augmentationResult != null ? augmentationResult.contents() : null,
                                     context,
                                     memoryId
-                            ); // TODO moderation
+                            );
+                            // TODO moderation
+                            if (returnType == TokenStream.class) {
+                                return tokenStream;
+                            } else {
+                                return adapt(tokenStream, returnType);
+                            }
                         }
 
                         Response<AiMessage> response;
@@ -286,6 +297,24 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
+                    private boolean canAdaptTokenStreamTo(Type returnType) {
+                        for (TokenStreamAdapter tokenStreamAdapter : tokenStreamAdapters) {
+                            if (tokenStreamAdapter.canAdaptTokenStreamTo(returnType)) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+
+                    private Object adapt(TokenStream tokenStream, Type returnType) {
+                        for (TokenStreamAdapter tokenStreamAdapter : tokenStreamAdapters) {
+                            if (tokenStreamAdapter.canAdaptTokenStreamTo(returnType)) {
+                                return tokenStreamAdapter.adapt(tokenStream);
+                            }
+                        }
+                        throw new IllegalStateException("Can't find suitable TokenStreamAdapter");
+                    }
+
                     private boolean supportsJsonSchema() {
                         return context.chatModel != null
                                 && context.chatModel.supportedCapabilities().contains(RESPONSE_FORMAT_JSON_SCHEMA);
@@ -337,12 +366,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         Map<String, Object> variables = new HashMap<>();
         for (int i = 0; i < parameters.length; i++) {
-            V annotation = parameters[i].getAnnotation(V.class);
-            if (annotation != null) {
-                String variableName = annotation.value();
-                Object variableValue = args[i];
-                variables.put(variableName, variableValue);
-            }
+            String variableName = getVariableName(parameters[i]);
+            Object variableValue = args[i];
+            variables.put(variableName, variableValue);
         }
 
         if (template.contains("{{it}}") && !variables.containsKey("it")) {
@@ -351,6 +377,15 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         return variables;
+    }
+
+    private static String getVariableName(Parameter parameter) {
+        V annotation = parameter.getAnnotation(V.class);
+        if (annotation != null) {
+            return annotation.value();
+        } else {
+            return parameter.getName();
+        }
     }
 
     private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {
