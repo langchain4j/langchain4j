@@ -18,6 +18,7 @@ import java.util.List;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -167,5 +168,36 @@ class CompressingQueryTransformerTest {
                 AI: He is a cool guy \
                 reformulate the following query: How old is he?"""
         );
+    }
+
+    @Test
+    void should_fail_without_metadata() {
+
+        // given
+        UserMessage userMessage = UserMessage.from("Hello");
+
+        Query query = Query.from(userMessage.text());
+
+        ChatLanguageModel model = mock(ChatLanguageModel.class);
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        // then
+        assertThrows(IllegalStateException.class, () -> transformer.transform(query));
+    }
+
+    @Test
+    void should_fail_without_chat_memory_in_metadata() {
+
+        // given
+        UserMessage userMessage = UserMessage.from("Hello");
+        Metadata metadata = Metadata.from(userMessage, null, null);
+
+        Query query = Query.from(userMessage.text());
+
+        ChatLanguageModel model = mock(ChatLanguageModel.class);
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        // then
+        assertThrows(IllegalStateException.class, () -> transformer.transform(query));
     }
 }
