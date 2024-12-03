@@ -29,7 +29,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class OracleEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
+public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
 
     private final OracleEmbeddingStore embeddingStore = CommonTestOperations.newEmbeddingStore();
 
