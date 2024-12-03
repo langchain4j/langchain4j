@@ -34,7 +34,6 @@ class JlamaChatModelToolsIT {
                 .temperature(0.0f)
                 .maxTokens(1024)
                 .build();
-
     }
 
     ToolSpecification weatherToolSpecification = ToolSpecification.builder()
