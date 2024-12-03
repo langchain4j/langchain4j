@@ -1,20 +1,19 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.Headers;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 import okio.Buffer;
-
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-@Slf4j
 class MistralAiRequestLoggingInterceptor implements Interceptor {
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MistralAiRequestLoggingInterceptor.class);
 
     @Override
     public Response intercept(Chain chain) throws IOException {
