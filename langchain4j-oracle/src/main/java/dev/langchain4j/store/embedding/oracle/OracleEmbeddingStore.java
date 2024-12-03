@@ -312,13 +312,14 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             // fetching VECTOR, CLOB, and/or JSON columns, the first request it sends to the database can include a LOB
             // prefetch size (VECTOR and JSON are value-based-lobs). If defineColumnType is not called, then JDBC needs
             // to send an additional request with the LOB prefetch size, after the first request has the database
-            // respond with the column data types.
+            // respond with the column data types. To request all data, the prefetch size is Integer.MAX_VALUE.
             OracleStatement oracleStatement = query.unwrap(OracleStatement.class);
-            oracleStatement.defineColumnType(1, OracleTypes.BINARY_DOUBLE);
-            oracleStatement.defineColumnType(2, OracleTypes.VARCHAR);
-            oracleStatement.defineColumnType(3, OracleTypes.VECTOR_FLOAT32, 524308); // <-- Max vector size, in bytes
-            oracleStatement.defineColumnType(4, OracleTypes.CLOB, Integer.MAX_VALUE);
-            oracleStatement.defineColumnType(5, OracleTypes.JSON, Integer.MAX_VALUE);
+            oracleStatement.defineColumnType(1, OracleTypes.BINARY_DOUBLE); // distance
+            oracleStatement.defineColumnType(2, OracleTypes.VARCHAR); // id
+            oracleStatement.defineColumnType(3, OracleTypes.VECTOR_FLOAT32, Integer.MAX_VALUE); // embedding
+            oracleStatement.defineColumnType(4, OracleTypes.CLOB, Integer.MAX_VALUE); // text
+            oracleStatement.defineColumnType(5, OracleTypes.JSON, Integer.MAX_VALUE); // metadata
+            oracleStatement.setLobPrefetchSize(Integer.MAX_VALUE); // Workaround for Oracle JDBC bug 37030121
 
             List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>(maxResults);
             try (ResultSet resultSet = query.executeQuery()) {

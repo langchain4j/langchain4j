@@ -16,7 +16,9 @@ import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -133,6 +135,14 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
         assertThat(matches0.get(0).embeddingId()).isEqualTo(id0);
         assertThat(matches0.get(0).embedding()).isEqualTo(embedding0);
         assertThat(matches0.get(0).embedded()).isEqualTo(textSegment0);
+    }
+
+    @ParameterizedTest
+    @MethodSource("should_filter_by_metadata")
+    protected void should_filter_by_metadata(Filter metadataFilter,
+                                             List<Metadata> matchingMetadatas,
+                                             List<Metadata> notMatchingMetadatas) {
+        super.should_filter_by_metadata(metadataFilter, matchingMetadatas, notMatchingMetadatas);
     }
 
     /**
