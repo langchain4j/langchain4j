@@ -1,7 +1,6 @@
 package dev.langchain4j.rag.content;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -41,10 +40,13 @@ class ContentTest {
 
         // given
         TextSegment segment = TextSegment.from("text");
-        EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(0.2d,"test-eid",null, segment);
+        Map<String, Object> metadata = Map.of(
+                "score", 0.2d,
+                "embeddingId", "test-eid"
+        );
 
         // when
-        Content content = Content.from(embeddingMatch);
+        Content content = Content.from(segment, metadata);
 
         // then
         assertThat(content.textSegment())

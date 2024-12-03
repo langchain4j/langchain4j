@@ -31,7 +31,6 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Represents Azure AI Search Service as a {@link ContentRetriever}.
@@ -177,7 +176,13 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
             List<EmbeddingMatch<TextSegment>> searchResult = super.search(request).matches();
             return searchResult.stream()
-                    .map(Content::from)
+                    .map(embeddingMatch -> Content.from(
+                            embeddingMatch.embedded(),
+                            Map.of(
+                                    "score", embeddingMatch.score(),
+                                    "embeddingId", embeddingMatch.embeddingId()
+                            )
+                    ))
                     .toList();
         } else if (azureAiSearchQueryType == AzureAiSearchQueryType.FULL_TEXT) {
             String content = query.text();
@@ -247,7 +252,13 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
     private List<Content> mapResultsToContentList(SearchPagedIterable searchResults, AzureAiSearchQueryType azureAiSearchQueryType, double minScore) {
         List<Content> result = new ArrayList<>();
         getEmbeddingMatches(searchResults, minScore, azureAiSearchQueryType).forEach(embeddingMatch -> {
-            Content content = Content.from(embeddingMatch);
+            Content content = Content.from(
+                    embeddingMatch.embedded(),
+                    Map.of(
+                            "score", embeddingMatch.score(),
+                            "embeddingId", embeddingMatch.embeddingId()
+                    )
+            );
             result.add(content);
         });
         return result;
