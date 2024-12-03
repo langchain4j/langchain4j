@@ -204,39 +204,38 @@ public class VectorIndexIT {
 
             if (createOption == CreateOption.DO_NOT_CREATE)
                 assertThat(resultSet.next()).isFalse();
+            else
                 assertThat(resultSet.next()).isTrue();
-        assertThat(params.getString("type")).as("Unexpected index type").isEqualTo("IVF_FLAT");
-        assertThat(params.getInt("accuracy")).as("Unexpected accuracy").isEqualTo(expectedTargetAccuracy);
-        assertThat(params.getInt("degree_of_parallelism")).as("Unexpected degree of parallelism").isEqualTo(expectedDegreeOfParallelism);
-        assertThat(params.getInt("target_centroids")).as("Unexpected neighbor partitions").isEqualTo(expectedNeighborPartitions);
-        assertThat(params.getInt("samples_per_partition")).as("Unexpected samples per partition").isEqualTo(expectedSamplePerPartition);
-        assertThat(params.getInt("min_vectors_per_partition")).as("Unexpected vectors per partition").isEqualTo(expectedMinVectorsPerPartition);
-        Assertions.assertEquals("IVF_FLAT", params.getString("type"), "Unexpected index type");
+        }
+    }
+
+    private void assertIndexType(String expectedIndexType, OracleJsonObject params) {
+        assertThat(params.getString("type")).as("Unexpected index type").isEqualTo(expectedIndexType);
     }
 
     private void assertTargetAccuracy(int expectedTargetAccuracy, OracleJsonObject params) {
         if (expectedTargetAccuracy < 0) { return; }
-        Assertions.assertEquals(expectedTargetAccuracy, params.getInt("accuracy"), "Unexpected accuracy");
+        assertThat(params.getInt("accuracy")).as("Unexpected accuracy").isEqualTo(expectedTargetAccuracy);
     }
 
     private void assertDegreeOfParallelism(int expectedDegreeOfParallelism, OracleJsonObject params) {
         if (expectedDegreeOfParallelism < 0) { return; }
-        Assertions.assertEquals(expectedDegreeOfParallelism, params.getInt("degree_of_parallelism"), "Unexpected degree of parallelism");
+        assertThat(params.getInt("degree_of_parallelism")).as("Unexpected degree of parallelism").isEqualTo(expectedDegreeOfParallelism);
     }
 
     private void assertNeighborPartitions(int expectedNeighborPartitions, OracleJsonObject params) {
         if (expectedNeighborPartitions < 0) { return; }
-        Assertions.assertEquals(expectedNeighborPartitions, params.getInt("target_centroids"), "Unexpected neighbor partitions");
+        assertThat(params.getInt("target_centroids")).as("Unexpected neighbor partitions").isEqualTo(expectedNeighborPartitions);
     }
 
     private void assertSamplePerPartition(int expectedSamplePerPartition, OracleJsonObject params) {
         if (expectedSamplePerPartition < 0) { return; }
-        Assertions.assertEquals(expectedSamplePerPartition, params.getInt("samples_per_partition"), "Unexpected samples per partition");
+        assertThat(params.getInt("samples_per_partition")).as("Unexpected samples per partition").isEqualTo(expectedSamplePerPartition);
     }
 
     private void assertMinVectorsPerPartition(int expectedMinVectorsPerPartition, OracleJsonObject params) {
         if (expectedMinVectorsPerPartition < 0) { return; }
-        Assertions.assertEquals(expectedMinVectorsPerPartition, params.getInt("min_vectors_per_partition"), "Unexpected vectors per partition");
+        assertThat(params.getInt("min_vectors_per_partition")).as("Unexpected vectors per partition").isEqualTo(expectedMinVectorsPerPartition);
     }
 
     static Stream<Arguments> createIndexArguments() {

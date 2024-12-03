@@ -100,9 +100,6 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
         assertThat(matches0.get(0).embedded()).isEqualTo(textSegment0);
         assertThat(matches0.get(1).embedded()).isEqualTo(textSegment1);
         assertThat(matches0.get(2).embedded()).isEqualTo(textSegment2);
-        assertEquals(textSegment0, matches0.get(0).embedded());
-        assertEquals(textSegment1, matches0.get(1).embedded());
-        assertEquals(textSegment2, matches0.get(2).embedded());
 
         // Round 2: IsEqualTo on a substring of a metadata value. The substring length is 4000. This has SQLFilter
         // use a VARCHAR comparison. The JSON_VALUE function will have to handle a metadata value which is too
@@ -136,7 +133,6 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
         assertThat(matches0.get(0).embeddingId()).isEqualTo(id0);
         assertThat(matches0.get(0).embedding()).isEqualTo(embedding0);
         assertThat(matches0.get(0).embedded()).isEqualTo(textSegment0);
-        assertEquals(textSegment0, matches0.get(0).embedded());
     }
 
     /**

@@ -98,46 +98,38 @@ public class SQLFilterIT {
     public void testSQLType() throws SQLException {
 
         assertThat(SQLFilters.create(new IsEqualTo("x", Integer.MIN_VALUE), (key, type) -> {
-            assertEquals("x", key);
-            assertEquals(OracleType.NUMBER, type);
+            assertThat(key).isEqualTo("x");
+            assertThat(type).isEqualTo(OracleType.NUMBER);
             return key;
         }).toSQL()).isEqualTo("NVL(x = ?, false)");
         assertThat(SQLFilters.create(new IsNotEqualTo("x", Long.MAX_VALUE), (key, type) -> {
-            assertEquals("x", key);
-            assertEquals(OracleType.NUMBER, type);
+            assertThat(key).isEqualTo("x");
+            assertThat(type).isEqualTo(OracleType.NUMBER);
             return key;
         }).toSQL()).isEqualTo("NVL(x <> ?, true)");
         assertThat(SQLFilters.create(new IsGreaterThan("x", Float.MAX_VALUE), (key, type) -> {
-            assertEquals("x", key);
-            assertEquals(OracleType.BINARY_FLOAT, type); // REAL is 32-bit floating point
+            assertThat(key).isEqualTo("x");
+            assertThat(type).isEqualTo(OracleType.BINARY_FLOAT); // REAL is 32-bit floating point
             return key;
         }).toSQL()).isEqualTo("NVL(x > ?, false)");
         assertThat(SQLFilters.create(new IsLessThan("x", Double.MIN_VALUE), (key, type) -> {
-            assertEquals("x", key);
-            assertEquals(OracleType.BINARY_DOUBLE, type); // FLOAT is 64-bit floating point
+            assertThat(key).isEqualTo("x");
+            assertThat(type).isEqualTo(OracleType.BINARY_DOUBLE); // REAL is 64-bit floating point
             return key;
         }).toSQL()).isEqualTo("NVL(x < ?, false)");
         assertThat(SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isIn("a", "b"), (key, type) -> {
-            assertEquals("x", key);
-            assertEquals(OracleType.CLOB, type);
+            assertThat(key).isEqualTo("x");
+            assertThat(type).isEqualTo(OracleType.CLOB);
             return key;
         }).toSQL()).isEqualTo("(NVL(DBMS_LOB.COMPARE(x, ?) = 0, false) OR NVL(DBMS_LOB.COMPARE(x, ?) = 0, false))");
+        // CLOB is lossless for all Java Strings (assuming the database character set is UTF-8)
         assertThat(SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isNotIn("c", "d"), (key, type) -> {
-            assertEquals("x", key);
-            assertEquals(OracleType.CLOB, type);
+            assertThat(key).isEqualTo("x");
+            assertThat(type).isEqualTo(OracleType.CLOB);
             return key;
         }).toSQL()).isEqualTo("NOT((NVL(DBMS_LOB.COMPARE(x, ?) = 0, false) OR NVL(DBMS_LOB.COMPARE(x, ?) = 0, false)))");
-                }).toSQL());
         // CLOB is lossless for all Java Strings (assuming the database character set is UTF-8)
 
-        assertEquals(
-                "NOT((NVL(DBMS_LOB.COMPARE(x, ?) = 0, false) OR NVL(DBMS_LOB.COMPARE(x, ?) = 0, false)))",
-                SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isNotIn("c", "d"), (key, type) -> {
-                    assertEquals("x", key);
-                    assertEquals(OracleType.CLOB, type);
-                    return key;
-                }).toSQL());
-        // CLOB is lossless for all Java Strings (assuming the database character set is UTF-8)
     }
 
     /**
