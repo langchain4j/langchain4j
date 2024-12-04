@@ -38,7 +38,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected String modelName() {
+    protected String customModelName() {
         return "gpt-4o-2024-11-20";
     }
 

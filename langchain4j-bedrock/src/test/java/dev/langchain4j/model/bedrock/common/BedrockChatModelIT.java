@@ -25,7 +25,7 @@ class BedrockChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected String modelName() {
+    protected String customModelName() {
         return AnthropicClaude3HaikuV1.getValue();
     }
 

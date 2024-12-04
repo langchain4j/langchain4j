@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModelIT<StreamingChatLanguageModel> {
 
     @Override
-    protected ModelInvocationResult invoke(StreamingChatLanguageModel chatModel, ChatRequest chatRequest) {
+    protected ChatResponseAndMetadata chat(StreamingChatLanguageModel chatModel, ChatRequest chatRequest) {
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponses = new StringBuffer();
@@ -77,13 +77,13 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                     timesOnCompleteResponseWasCalled.get(),
                     threads
             );
-            return new ModelInvocationResult(chatResponse, metadata);
+            return new ChatResponseAndMetadata(chatResponse, metadata);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static String valueOrNullIfEmpty(String string) {
+    private static String valueOrNullIfEmpty(String string) { // TODO better name
         return string.isEmpty() ? null : string;
     }
 }

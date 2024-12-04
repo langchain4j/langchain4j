@@ -84,7 +84,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         return models();
     }
 
-    protected abstract ModelInvocationResult invoke(M model, ChatRequest chatRequest);
+    protected abstract ChatResponseAndMetadata chat(M model, ChatRequest chatRequest);
 
 
     // BASIC
@@ -99,8 +99,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ModelInvocationResult modelInvocationResult = invoke(model, chatRequest);
-        ChatResponse chatResponse = modelInvocationResult.chatResponse();
+        ChatResponseAndMetadata chatResponseAndMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = chatResponseAndMetadata.chatResponse();
 
         // then
         if (assertResponseId()) {
@@ -124,7 +124,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
 
         if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata = modelInvocationResult.streamingMetadata();
+            StreamingMetadata streamingMetadata = chatResponseAndMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isGreaterThan(1);
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
@@ -150,7 +150,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("liebe");
@@ -171,7 +171,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(chatRequest).doesNotHaveSameClassAs(ChatRequest.class);
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -202,7 +202,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(chatRequest).doesNotHaveSameClassAs(ChatRequest.class);
 
         // when-then
-        assertThatThrownBy(() -> invoke(model, chatRequest))
+        assertThatThrownBy(() -> chat(model, chatRequest))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("%s cannot be used together with %s.".formatted(
                         MismatchingChatRequest.class.getSimpleName(),
@@ -234,7 +234,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     void should_respect_modelName_parameter(M model) {
 
         // given
-        String modelName = modelName();
+        String modelName = customModelName();
         ensureModelNameIsDifferentFromDefault(modelName, model);
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -244,7 +244,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         assertThat(chatResponse.aiMessage().text()).isNotBlank();
@@ -260,12 +260,12 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
         ChatRequest chatRequest = builder.build();
 
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         assertThat(chatResponse.modelName()).isNotEqualTo(modelName);
     }
 
-    protected String modelName() {
+    protected String customModelName() {
         throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
     }
 
@@ -283,7 +283,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> invoke(model, chatRequest))
+        assertThatThrownBy(() -> chat(model, chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("modelName")
                 .hasMessageContaining("not supported");
@@ -303,8 +303,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ModelInvocationResult modelInvocationResult = invoke(model, chatRequest);
-        ChatResponse chatResponse = modelInvocationResult.chatResponse();
+        ChatResponseAndMetadata chatResponseAndMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = chatResponseAndMetadata.chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -322,7 +322,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
 
         if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata = modelInvocationResult.streamingMetadata();
+            StreamingMetadata streamingMetadata = chatResponseAndMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
@@ -348,7 +348,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> invoke(model, chatRequest))
+        assertThatThrownBy(() -> chat(model, chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("maxOutputTokens")
                 .hasMessageContaining("not supported");
@@ -368,7 +368,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -399,7 +399,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> invoke(model, chatRequest))
+        assertThatThrownBy(() -> chat(model, chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("stopSequences")
                 .hasMessageContaining("not supported");
@@ -421,8 +421,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ModelInvocationResult modelInvocationResult = invoke(model, chatRequest);
-        ChatResponse chatResponse = modelInvocationResult.chatResponse();
+        ChatResponseAndMetadata chatResponseAndMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = chatResponseAndMetadata.chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -441,7 +441,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
 
         if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata = modelInvocationResult.streamingMetadata();
+            StreamingMetadata streamingMetadata = chatResponseAndMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
                 assertThat(aiMessage.text()).isNull();
@@ -465,8 +465,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ModelInvocationResult modelInvocationResult2 = invoke(model, chatRequest2);
-        ChatResponse chatResponse2 = modelInvocationResult2.chatResponse();
+        ChatResponseAndMetadata chatResponseAndMetadata2 = chat(model, chatRequest2);
+        ChatResponse chatResponse2 = chatResponseAndMetadata2.chatResponse();
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
@@ -480,7 +480,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
 
         if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata2 = modelInvocationResult2.streamingMetadata();
+            StreamingMetadata streamingMetadata2 = chatResponseAndMetadata2.streamingMetadata();
             assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
             assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
             assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled()).isEqualTo(1);
@@ -504,7 +504,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> invoke(model, chatRequest));
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -535,7 +535,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -567,7 +567,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -603,7 +603,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -634,7 +634,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> invoke(model, chatRequest));
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -656,7 +656,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -684,7 +684,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> invoke(model, chatRequest));
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -714,7 +714,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -749,7 +749,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -783,7 +783,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> invoke(model, chatRequest));
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -809,7 +809,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -841,7 +841,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponse chatResponse = invoke(model, chatRequest).chatResponse();
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -874,7 +874,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when-then
-        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> invoke(model, chatRequest));
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
         if (assertExceptionType()) {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
