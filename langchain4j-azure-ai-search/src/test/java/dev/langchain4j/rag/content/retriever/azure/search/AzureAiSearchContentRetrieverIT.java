@@ -116,12 +116,15 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         assertThat(relevant).hasSize(3);
         assertThat(relevant.get(0).textSegment()).isNotNull();
         assertThat(relevant.get(0).textSegment().text()).isIn(content1, content3, content5);
+        assertMetadata(relevant.get(0).metadata());
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertThat(relevant.get(1).textSegment()).isNotNull();
         assertThat(relevant.get(1).textSegment().text()).isIn(content1, content3, content5);
+        assertMetadata(relevant.get(1).metadata());
         log.info("#2 relevant item: {}", relevant.get(1).textSegment().text());
         assertThat(relevant.get(2).textSegment()).isNotNull();
         assertThat(relevant.get(2).textSegment().text()).isIn(content1, content3, content5);
+        assertMetadata(relevant.get(2).metadata());
         log.info("#3 relevant item: {}", relevant.get(2).textSegment().text());
     }
 
@@ -153,6 +156,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         assertThat(relevant).hasSizeGreaterThan(0);
         assertThat(relevant.get(0).textSegment().text()).isEqualTo("The house is open");
         assertThat(relevant.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
+        assertMetadata(relevant.get(0).metadata());
 
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
 
@@ -162,6 +166,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         assertThat(relevant2).hasSizeGreaterThan(0);
         assertThat(relevant2.get(0).textSegment().text()).isEqualTo("The house is open");
         assertThat(relevant2.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
+        assertMetadata(relevant2.get(0).metadata());
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search");
@@ -169,6 +174,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         assertThat(relevant3).hasSizeGreaterThan(0);
         assertThat(relevant3.get(0).textSegment().text()).isEqualTo("The house is open");
         assertThat(relevant3.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
+        assertMetadata(relevant3.get(0).metadata());
         log.info("#1 relevant item: {}", relevant3.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search with Reranking");
@@ -176,6 +182,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         assertThat(relevant4).hasSizeGreaterThan(0);
         assertThat(relevant4.get(0).textSegment().text()).isEqualTo("The house is open");
         assertThat(relevant4.get(0).textSegment().metadata().getString("id")).isEqualTo("content3");
+        assertMetadata(relevant4.get(0).metadata());
         log.info("#1 relevant item: {}", relevant4.get(0).textSegment().text());
 
         log.info("Test complete");
@@ -199,12 +206,15 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         assertThat(relevant).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertThat(relevant.get(0).textSegment().text()).contains("Émile-Auguste Chartier");
+        assertMetadata(relevant.get(0).metadata());
+
 
         Query query2 = Query.from("Heidegger");
         List<Content> relevant2 = contentRetrieverWithFullText.retrieve(query2);
         assertThat(relevant2).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertThat(relevant2.get(0).textSegment().text()).contains("Maurice Jean Jacques Merleau-Ponty");
+        assertMetadata(relevant2.get(0).metadata());
     }
 
     @Test
@@ -257,12 +267,14 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         assertThat(relevant).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertThat(relevant.get(0).textSegment().text()).contains("Albert Camus");
+        assertMetadata(relevant.get(0).metadata());
 
         Query query2 = Query.from("École Normale Supérieure");
         List<Content> relevant2 = contentRetrieverWithHybrid.retrieve(query2);
         assertThat(relevant2).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertThat(relevant2.get(0).textSegment().text()).contains("Paul-Michel Foucault");
+        assertMetadata(relevant2.get(0).metadata());
     }
 
     @Test
@@ -298,12 +310,14 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         assertThat(relevant).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertThat(relevant.get(0).textSegment().text()).contains("Albert Camus");
+        assertMetadata(relevant.get(0).metadata());
 
         Query query2 = Query.from("A philosopher who studied at the École Normale Supérieure");
         List<Content> relevant2 = contentRetrieverWithHybridAndReranking.retrieve(query2);
         assertThat(relevant2).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertThat(relevant2.get(0).textSegment().text()).contains("Paul-Michel Foucault");
+        assertMetadata(relevant2.get(0).metadata());
     }
 
     @Override
@@ -331,5 +345,12 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
     @Override
     protected boolean assertEmbedding() {
         return false; // TODO remove this hack after https://github.com/langchain4j/langchain4j/issues/1617 is closed
+    }
+
+    private void assertMetadata(Map<String, Object> metadata) {
+        assertThat(metadata).containsKeys("score","embeddingId");
+        assertThat(metadata.get("score")).isNotNull();
+        assertThat(metadata.get("score")).isInstanceOf(Double.class);
+        assertThat((double)metadata.get("score")).isGreaterThanOrEqualTo(0d);
     }
 }
