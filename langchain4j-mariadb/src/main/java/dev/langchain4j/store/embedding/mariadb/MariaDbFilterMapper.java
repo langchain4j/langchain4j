@@ -44,39 +44,31 @@ abstract class MariaDbFilterMapper {
 
     private String mapEqual(IsEqualTo isEqualTo) {
         String key = formatKey(isEqualTo.key());
-        return format(
-                "%s is not null and %s = %s", key, key, formatValue(isEqualTo.comparisonValue()));
+        return format("%s is not null and %s = %s", key, key, formatValue(isEqualTo.comparisonValue()));
     }
 
     private String mapNotEqual(IsNotEqualTo isNotEqualTo) {
         String key = formatKey(isNotEqualTo.key());
-        return format(
-                "(%s is null or %s != %s)", key, key, formatValue(isNotEqualTo.comparisonValue()));
+        return format("(%s is null or %s != %s)", key, key, formatValue(isNotEqualTo.comparisonValue()));
     }
 
     private String mapGreaterThan(IsGreaterThan isGreaterThan) {
-        return format(
-                "%s > %s",
-                formatKey(isGreaterThan.key()), formatValue(isGreaterThan.comparisonValue()));
+        return format("%s > %s", formatKey(isGreaterThan.key()), formatValue(isGreaterThan.comparisonValue()));
     }
 
     private String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
         return format(
                 "%s >= %s",
-                formatKey(isGreaterThanOrEqualTo.key()),
-                formatValue(isGreaterThanOrEqualTo.comparisonValue()));
+                formatKey(isGreaterThanOrEqualTo.key()), formatValue(isGreaterThanOrEqualTo.comparisonValue()));
     }
 
     private String mapLessThan(IsLessThan isLessThan) {
-        return format(
-                "%s < %s", formatKey(isLessThan.key()), formatValue(isLessThan.comparisonValue()));
+        return format("%s < %s", formatKey(isLessThan.key()), formatValue(isLessThan.comparisonValue()));
     }
 
     private String mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
         return format(
-                "%s <= %s",
-                formatKey(isLessThanOrEqualTo.key()),
-                formatValue(isLessThanOrEqualTo.comparisonValue()));
+                "%s <= %s", formatKey(isLessThanOrEqualTo.key()), formatValue(isLessThanOrEqualTo.comparisonValue()));
     }
 
     private String mapIn(IsIn isIn) {
@@ -85,8 +77,7 @@ abstract class MariaDbFilterMapper {
 
     private String mapNotIn(IsNotIn isNotIn) {
         String key = formatKey(isNotIn.key());
-        return format(
-                "(%s is null or %s not in %s)", key, key, formatValue(isNotIn.comparisonValues()));
+        return format("(%s is null or %s not in %s)", key, key, formatValue(isNotIn.comparisonValues()));
     }
 
     private String mapAnd(And and) {
@@ -105,9 +96,7 @@ abstract class MariaDbFilterMapper {
 
     String formatValue(Object value) {
         if (value instanceof final Collection<?> vals) {
-            return "("
-                    + vals.stream().map(v -> formatValue(v)).collect(Collectors.joining(","))
-                    + ")";
+            return "(" + vals.stream().map(v -> formatValue(v)).collect(Collectors.joining(",")) + ")";
         } else if (value instanceof String || value instanceof UUID) {
             return "'" + value + "'";
         } else {

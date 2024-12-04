@@ -12,11 +12,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class MariaDbEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
+class MariaDbEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
 
     @Container
-    static MariaDBContainer<?> mariadbContainer =
-            new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
+    static MariaDBContainer<?> mariadbContainer = new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
 
     EmbeddingStore<TextSegment> embeddingStore;
 
@@ -24,17 +23,14 @@ class MariaDbEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Override
     protected void ensureStoreIsReady() {
-        embeddingStore =
-                MariaDbEmbeddingStore.builder()
-                        .host(mariadbContainer.getHost())
-                        .port(mariadbContainer.getFirstMappedPort())
-                        .user(mariadbContainer.getUsername())
-                        .password(mariadbContainer.getPassword())
-                        .database(mariadbContainer.getDatabaseName())
-                        .table("test" + nextInt(1000, 2000))
-                        .dimension(384)
-                        .dropTableFirst(true)
-                        .build();
+        embeddingStore = MariaDbEmbeddingStore.builder()
+                .url(mariadbContainer.getJdbcUrl())
+                .user(mariadbContainer.getUsername())
+                .password(mariadbContainer.getPassword())
+                .table("test" + nextInt(1000, 2000))
+                .dimension(384)
+                .dropTableFirst(true)
+                .build();
     }
 
     @Override

@@ -66,6 +66,5 @@ interface MetadataHandler {
      * @param parameterInitialIndex initial parameter index
      * @param metadata metadata values
      */
-    void setMetadata(
-            PreparedStatement upsertStmt, Integer parameterInitialIndex, Metadata metadata);
+    void setMetadata(PreparedStatement upsertStmt, Integer parameterInitialIndex, Metadata metadata);
 }

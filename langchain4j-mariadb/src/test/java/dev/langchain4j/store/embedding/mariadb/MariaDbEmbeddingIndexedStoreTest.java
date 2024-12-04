@@ -12,11 +12,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class MariaDbEmbeddingIndexedStoreIT extends EmbeddingStoreWithFilteringIT {
+class MariaDbEmbeddingIndexedStoreTest extends EmbeddingStoreWithFilteringIT {
 
     @Container
-    static MariaDBContainer<?> mariadbContainer =
-            new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
+    static MariaDBContainer<?> mariadbContainer = new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -24,17 +23,14 @@ class MariaDbEmbeddingIndexedStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Override
     protected void ensureStoreIsReady() {
-        embeddingStore =
-                MariaDbEmbeddingStore.builder()
-                        .host(mariadbContainer.getHost())
-                        .port(mariadbContainer.getFirstMappedPort())
-                        .user(mariadbContainer.getUsername())
-                        .password(mariadbContainer.getPassword())
-                        .database(mariadbContainer.getDatabaseName())
-                        .table("test" + nextInt(1, 1000))
-                        .dimension(embeddingModel.dimension())
-                        .dropTableFirst(true)
-                        .build();
+        embeddingStore = MariaDbEmbeddingStore.builder()
+                .url(mariadbContainer.getJdbcUrl())
+                .user(mariadbContainer.getUsername())
+                .password(mariadbContainer.getPassword())
+                .table("test" + nextInt(1, 1000))
+                .dimension(embeddingModel.dimension())
+                .dropTableFirst(true)
+                .build();
     }
 
     @Override

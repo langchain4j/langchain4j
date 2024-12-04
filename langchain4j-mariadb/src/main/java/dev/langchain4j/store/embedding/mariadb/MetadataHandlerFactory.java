@@ -29,10 +29,10 @@ class MetadataHandlerFactory {
 
         List<String> sqlKeywords = new ArrayList<>();
         try (Connection connection = dataSource.getConnection()) {
-            sqlKeywords =
-                    Arrays.stream(connection.getMetaData().getSQLKeywords().split(","))
-                            .map(str -> str.toLowerCase(Locale.ROOT))
-                            .collect(Collectors.toList());
+            sqlKeywords = Arrays.stream(
+                            connection.getMetaData().getSQLKeywords().split(","))
+                    .map(str -> str.toLowerCase(Locale.ROOT))
+                    .collect(Collectors.toList());
         } catch (SQLException e) {
             // eat
         }
@@ -43,8 +43,7 @@ class MetadataHandlerFactory {
             case COLUMN_PER_KEY:
                 return new ColumnsMetadataHandler(config, sqlKeywords);
             default:
-                throw new RuntimeException(
-                        String.format("Type %s not handled.", config.storageMode()));
+                throw new RuntimeException(String.format("Type %s not handled.", config.storageMode()));
         }
     }
 }

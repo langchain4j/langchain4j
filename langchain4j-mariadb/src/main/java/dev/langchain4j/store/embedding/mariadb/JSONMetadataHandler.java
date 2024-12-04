@@ -17,10 +17,10 @@ import java.util.*;
 class JSONMetadataHandler implements MetadataHandler {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
     public static final String DEFAULT_COLUMN_METADATA = "metadata";
-    final MetadataColumDefinition columnDefinition;
-    final String escapedColumnsName;
-    final JSONFilterMapper filterMapper;
-    final List<String> indexes;
+    private final MetadataColumDefinition columnDefinition;
+    private final String escapedColumnsName;
+    private final JSONFilterMapper filterMapper;
+    private final List<String> indexes;
 
     /**
      * MetadataHandler constructor
@@ -30,14 +30,13 @@ class JSONMetadataHandler implements MetadataHandler {
         List<String> definition = ensureNotEmpty(config.columnDefinitions(), "Metadata definition");
         if (definition.size() > 1) {
             throw new IllegalArgumentException(
-                    "Metadata definition should be an unique column definition, "
-                            + "example: metadata JSON NULL");
+                    "Metadata definition should be an unique column definition, " + "example: metadata JSON NULL");
         }
         this.columnDefinition = MetadataColumDefinition.from(definition.get(0), sqlKeywords);
-        if (this.columnDefinition.getEscapedName() == null) {
+        if (this.columnDefinition.escapedName() == null) {
             this.escapedColumnsName = DEFAULT_COLUMN_METADATA;
         } else {
-            this.escapedColumnsName = this.columnDefinition.getEscapedName();
+            this.escapedColumnsName = this.columnDefinition.escapedName();
         }
 
         this.filterMapper = new JSONFilterMapper(escapedColumnsName);
@@ -46,7 +45,7 @@ class JSONMetadataHandler implements MetadataHandler {
 
     @Override
     public String columnDefinitionsString() {
-        return columnDefinition.getFullDefinition();
+        return columnDefinition.fullDefinition();
     }
 
     @Override
@@ -79,14 +78,11 @@ class JSONMetadataHandler implements MetadataHandler {
 
     @Override
     public String insertClause() {
-        return ", "
-                + String.format(
-                        "%s = VALUES(%s)", this.escapedColumnsName, this.escapedColumnsName);
+        return ", " + String.format("%s = VALUES(%s)", this.escapedColumnsName, this.escapedColumnsName);
     }
 
     @Override
-    public void setMetadata(
-            PreparedStatement upsertStmt, Integer parameterInitialIndex, Metadata metadata) {
+    public void setMetadata(PreparedStatement upsertStmt, Integer parameterInitialIndex, Metadata metadata) {
         try {
             String jsonValue = OBJECT_MAPPER.writeValueAsString(metadata.toMap());
             upsertStmt.setString(parameterInitialIndex, jsonValue);

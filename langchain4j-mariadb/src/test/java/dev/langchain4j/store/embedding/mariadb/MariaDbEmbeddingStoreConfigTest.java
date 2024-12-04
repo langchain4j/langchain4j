@@ -15,11 +15,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-abstract class MariaDbEmbeddingStoreConfigIT extends EmbeddingStoreWithFilteringIT {
+abstract class MariaDbEmbeddingStoreConfigTest extends EmbeddingStoreWithFilteringIT {
 
     @Container
-    static MariaDBContainer<?> mariadbContainer =
-            new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
+    static MariaDBContainer<?> mariadbContainer = new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
 
     static EmbeddingStore<TextSegment> embeddingStore;
 
@@ -31,24 +30,22 @@ abstract class MariaDbEmbeddingStoreConfigIT extends EmbeddingStoreWithFiltering
     static final int TABLE_DIMENSION = 384;
 
     static void configureStore(MetadataStorageConfig config) {
-        String jdbcUrl =
-                mariadbContainer
-                        .withUrlParam("user", mariadbContainer.getUsername())
-                        .withUrlParam("password", mariadbContainer.getPassword())
-                        .withUrlParam("maxQuerySizeToLog", "50000")
-                        .withUrlParam("useBulkStmtsForInserts", "false")
-                        .withUrlParam("connectionCollation", "utf8mb4_bin")
-                        .getJdbcUrl();
+        String jdbcUrl = mariadbContainer
+                .withUrlParam("user", mariadbContainer.getUsername())
+                .withUrlParam("password", mariadbContainer.getPassword())
+                .withUrlParam("maxQuerySizeToLog", "50000")
+                .withUrlParam("useBulkStmtsForInserts", "false")
+                .withUrlParam("connectionCollation", "utf8mb4_bin")
+                .getJdbcUrl();
         try {
             dataSource = new MariaDbPoolDataSource(jdbcUrl);
-            embeddingStore =
-                    MariaDbEmbeddingStore.datasourceBuilder()
-                            .datasource(dataSource)
-                            .table(TABLE_NAME)
-                            .dimension(TABLE_DIMENSION)
-                            .dropTableFirst(true)
-                            .metadataStorageConfig(config)
-                            .build();
+            embeddingStore = MariaDbEmbeddingStore.datasourceBuilder()
+                    .datasource(dataSource)
+                    .table(TABLE_NAME)
+                    .dimension(TABLE_DIMENSION)
+                    .dropTableFirst(true)
+                    .metadataStorageConfig(config)
+                    .build();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

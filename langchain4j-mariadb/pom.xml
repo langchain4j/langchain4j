@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -11,15 +9,15 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <properties>
-        <mariadb-client.version>3.5.1</mariadb-client.version>
-        <spotless.version>2.43.0</spotless.version>
-        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
-    </properties>
-
     <artifactId>langchain4j-mariadb</artifactId>
     <name>LangChain4j :: Integration :: MariaDB</name>
     <description>MariaDB Vector support implementation</description>
+
+    <properties>
+        <mariadb-client.version>3.5.1</mariadb-client.version>
+        <jspecify.version>1.0.0</jspecify.version>
+        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
+    </properties>
 
     <dependencies>
 
@@ -41,9 +39,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>${jspecify.version}</version>
         </dependency>
 
         <dependency>
@@ -57,7 +55,7 @@
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
+            <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -124,39 +122,6 @@
             <plugin>
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
-                <configuration>
-                    <skipCompliance>true</skipCompliance>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-                <version>${spotless.version}</version>
-                <configuration>
-                    <ratchetFrom>origin/main</ratchetFrom>
-                    <formats>
-                        <format>
-                            <includes>
-                                <include>*.md</include>
-                                <include>.gitignore</include>
-                            </includes>
-                            <trimTrailingWhitespace/>
-                            <endWithNewline/>
-                            <indent>
-                                <tabs>true</tabs>
-                                <spacesPerTab>4</spacesPerTab>
-                            </indent>
-                        </format>
-                    </formats>
-                    <java>
-                        <googleJavaFormat>
-                            <version>1.25.0</version>
-                            <style>AOSP</style>
-                            <reflowLongStrings>true</reflowLongStrings>
-                            <formatJavadoc>false</formatJavadoc>
-                        </googleJavaFormat>
-                    </java>
-                </configuration>
             </plugin>
         </plugins>
     </build>

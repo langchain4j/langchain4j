@@ -22,19 +22,17 @@ class JSONMetadataHandlerTest {
         when(statement.executeUpdate(anyString()))
                 .thenAnswer(AdditionalAnswers.answerVoid(q -> sqlStatementQueries.add((String) q)));
 
-        MetadataStorageConfig metadataStorageConfig =
-                DefaultMetadataStorageConfig.builder()
-                        .storageMode(MetadataStorageMode.COMBINED_JSON)
-                        .columnDefinitions(Collections.singletonList("metadata JSON"))
-                        .indexes(Collections.singletonList("country"))
-                        .build();
+        MetadataStorageConfig metadataStorageConfig = DefaultMetadataStorageConfig.builder()
+                .storageMode(MetadataStorageMode.COMBINED_JSON)
+                .columnDefinitions(Collections.singletonList("metadata JSON"))
+                .indexes(Collections.singletonList("country"))
+                .build();
         JSONMetadataHandler jsonMetadataHandler =
                 new JSONMetadataHandler(metadataStorageConfig, Collections.emptyList());
         Assert.assertThrows(
-                RuntimeException.class,
-                () -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
+                RuntimeException.class, () -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
 
-        assertThat(sqlStatementQueries).hasSize(0);
+        assertThat(sqlStatementQueries).isEmpty();
     }
 
     @Test
@@ -44,19 +42,17 @@ class JSONMetadataHandlerTest {
         when(statement.executeUpdate(anyString()))
                 .thenAnswer(AdditionalAnswers.answerVoid(q -> sqlStatementQueries.add((String) q)));
 
-        MetadataStorageConfig metadataStorageConfig =
-                DefaultMetadataStorageConfig.builder()
-                        .storageMode(MetadataStorageMode.COMBINED_JSON)
-                        .columnDefinitions(Collections.singletonList("metadata JSON"))
-                        .indexes(Collections.singletonList("json_path_ops"))
-                        .build();
+        MetadataStorageConfig metadataStorageConfig = DefaultMetadataStorageConfig.builder()
+                .storageMode(MetadataStorageMode.COMBINED_JSON)
+                .columnDefinitions(Collections.singletonList("metadata JSON"))
+                .indexes(Collections.singletonList("json_path_ops"))
+                .build();
         JSONMetadataHandler jsonMetadataHandler =
                 new JSONMetadataHandler(metadataStorageConfig, Collections.emptyList());
         Assert.assertThrows(
-                RuntimeException.class,
-                () -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
+                RuntimeException.class, () -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
 
-        assertThat(sqlStatementQueries).hasSize(0);
+        assertThat(sqlStatementQueries).isEmpty();
     }
 
     @Test
@@ -66,18 +62,16 @@ class JSONMetadataHandlerTest {
         when(statement.executeUpdate(anyString()))
                 .thenAnswer(AdditionalAnswers.answerVoid(q -> sqlStatementQueries.add((String) q)));
 
-        MetadataStorageConfig metadataStorageConfig =
-                DefaultMetadataStorageConfig.builder()
-                        .storageMode(MetadataStorageMode.COMBINED_JSON)
-                        .columnDefinitions(Collections.singletonList("metadata JSON"))
-                        .indexes(Arrays.asList("key1", "key2"))
-                        .build();
+        MetadataStorageConfig metadataStorageConfig = DefaultMetadataStorageConfig.builder()
+                .storageMode(MetadataStorageMode.COMBINED_JSON)
+                .columnDefinitions(Collections.singletonList("metadata JSON"))
+                .indexes(Arrays.asList("key1", "key2"))
+                .build();
         JSONMetadataHandler jsonMetadataHandler =
                 new JSONMetadataHandler(metadataStorageConfig, Collections.emptyList());
         Assert.assertThrows(
-                RuntimeException.class,
-                () -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
+                RuntimeException.class, () -> jsonMetadataHandler.createMetadataIndexes(statement, "embeddings"));
 
-        assertThat(sqlStatementQueries).hasSize(0);
+        assertThat(sqlStatementQueries).isEmpty();
     }
 }

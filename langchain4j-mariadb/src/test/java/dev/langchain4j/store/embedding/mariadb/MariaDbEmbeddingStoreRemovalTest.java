@@ -12,23 +12,19 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class MariaDbEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
+class MariaDbEmbeddingStoreRemovalTest extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    static MariaDBContainer<?> mariadbContainer =
-            new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
+    static MariaDBContainer<?> mariadbContainer = new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
 
-    final EmbeddingStore<TextSegment> embeddingStore =
-            MariaDbEmbeddingStore.builder()
-                    .host(mariadbContainer.getHost())
-                    .port(mariadbContainer.getFirstMappedPort())
-                    .user(mariadbContainer.getUsername())
-                    .password(mariadbContainer.getPassword())
-                    .database(mariadbContainer.getDatabaseName())
-                    .table("test" + nextInt(2000, 3000))
-                    .dimension(384)
-                    .dropTableFirst(true)
-                    .build();
+    final EmbeddingStore<TextSegment> embeddingStore = MariaDbEmbeddingStore.builder()
+            .url(mariadbContainer.getJdbcUrl())
+            .user(mariadbContainer.getUsername())
+            .password(mariadbContainer.getPassword())
+            .table("test" + nextInt(2000, 3000))
+            .dimension(384)
+            .dropTableFirst(true)
+            .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
