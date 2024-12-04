@@ -5,7 +5,7 @@ import java.util.Map;
 
 /**
  * Interface for a template rendering engine.
- *
+ * <p>
  * The engine is responsible for generating a prompt by replacing variables in
  * the template with actual values provided in a map.
  */

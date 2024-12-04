@@ -59,18 +59,7 @@ public class PromptTemplate {
      */
     PromptTemplate(String template, Clock clock) {
         this.templateString = ensureNotBlank(template, "template");
-        this.template = FACTORY.create(new PromptTemplateFactory.Input() {
-
-            @Override
-            public String getTemplate() {
-                return template;
-            }
-
-            @Override
-            public String getName() {
-                return "template";
-            }
-        });
+        this.template = FACTORY.create(() -> template);
         this.clock = ensureNotNull(clock, "clock");
     }
 
