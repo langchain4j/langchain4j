@@ -198,11 +198,11 @@ public abstract class AbstractBaseChatModelIT<M> {
     void should_fail_if_chat_request_does_not_match_chat_model(M model) {
 
         // given
-        ChatRequest chatRequest = new MismatchingChatRequest();
-        assertThat(chatRequest).doesNotHaveSameClassAs(ChatRequest.class);
+        ChatRequest mismatchingChatRequest = new MismatchingChatRequest();
+        assertThat(mismatchingChatRequest).doesNotHaveSameClassAs(ChatRequest.class);
 
         // when-then
-        assertThatThrownBy(() -> chat(model, chatRequest))
+        assertThatThrownBy(() -> chat(model, mismatchingChatRequest))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("%s cannot be used together with %s.".formatted(
                         MismatchingChatRequest.class.getSimpleName(),
