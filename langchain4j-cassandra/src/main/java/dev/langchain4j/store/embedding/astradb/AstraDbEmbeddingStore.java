@@ -147,25 +147,6 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return list of new row if (same order as the input)
      */
     @Override
-    public List<String> addAll(List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
-        List<String> ids = embeddingList.stream()
-                .map(ignored -> randomUUID())
-                .collect(Collectors.toList());
-        addAll(ids, embeddingList, textSegmentList);
-        return ids;
-    }
-
-    /**
-     * Add multiple embeddings as a single action.
-     *
-     * @param embeddingList
-     *      list of embeddings
-     * @param textSegmentList
-     *      list of text segment
-     *
-     * @return list of new row if (same order as the input)
-     */
-    @Override
     public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
         if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
             throw new IllegalArgumentException("embeddingList and textSegmentList must not be null and have the same size");

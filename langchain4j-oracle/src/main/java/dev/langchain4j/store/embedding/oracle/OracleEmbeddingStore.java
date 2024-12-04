@@ -28,7 +28,6 @@ import java.util.function.BiFunction;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.stream.Collectors.toList;
 
 /**
  * <p>
@@ -190,15 +189,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                 Collections.singletonList(embedding),
                 Collections.singletonList(textSegment));
         return id.get(0);
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-        addAll(ids, embeddings, embedded);
-        return ids;
     }
 
     @Override

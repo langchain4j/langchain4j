@@ -191,12 +191,6 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         return ids;
     }
 
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = generateRandomIds(embeddings.size());
-        addAll(ids, embeddings, embedded);
-        return ids;
-    }
-
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
 

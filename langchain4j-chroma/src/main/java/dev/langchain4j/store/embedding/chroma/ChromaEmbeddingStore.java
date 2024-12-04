@@ -148,14 +148,9 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream().map(embedding -> randomUUID()).collect(toList());
-        addAll(ids, embeddings, null);
-        return ids;
-    }
 
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
-        List<String> ids = embeddings.stream().map(embedding -> randomUUID()).collect(toList());
-        addAll(ids, embeddings, textSegments);
+        addAll(ids, embeddings, null);
+
         return ids;
     }
 

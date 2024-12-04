@@ -154,15 +154,6 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-        addAll(ids, embeddings, embedded);
-        return ids;
-    }
-
-    @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
         client.batch().objectsBatchDeleter()

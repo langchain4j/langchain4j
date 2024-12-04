@@ -61,7 +61,11 @@ public interface EmbeddingStore<Embedded> {
      * @param embedded   A list of original contents that were embedded.
      * @return A list of auto-generated IDs associated with the added embeddings.
      */
-    List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded);
+    default List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
+        final List<String> ids = generateIds(embeddings.size());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
 
     /**
      * Adds multiple embeddings and their corresponding contents that have been embedded to the store.

@@ -255,16 +255,6 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         return ids;
     }
 
-    /**
-     * Add a list of embeddings, and the list of related content, to the store.
-     */
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
-        addAll(ids, embeddings, embedded);
-        return ids;
-    }
-
     @Override
     public void remove(String id) {
         ensureNotBlank(id, "id");

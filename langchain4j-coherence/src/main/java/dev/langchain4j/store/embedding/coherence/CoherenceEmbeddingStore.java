@@ -37,10 +37,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
@@ -105,16 +103,6 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         return addAll(embeddings, null);
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> keys = new ArrayList<>(embeddings.size());
-        for (int i = 0; i < embeddings.size(); i++) {
-            keys.add(randomUUID());
-        }
-        addAll(keys, embeddings, embedded);
-        return keys;
     }
 
     @Override

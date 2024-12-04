@@ -254,15 +254,6 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         return ids;
     }
 
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-        addAll(ids, embeddings, embedded);
-        return ids;
-    }
-
     /**
      * This implementation uses the exact k-NN with scoring script to calculate
      * See https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/

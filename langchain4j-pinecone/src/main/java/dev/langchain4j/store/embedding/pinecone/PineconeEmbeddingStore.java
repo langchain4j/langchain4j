@@ -126,18 +126,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
-
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-
-        addAll(ids, embeddings, textSegments);
-
-        return ids;
-    }
-
-    @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
         index.deleteByIds(new ArrayList<>(ids), nameSpace);

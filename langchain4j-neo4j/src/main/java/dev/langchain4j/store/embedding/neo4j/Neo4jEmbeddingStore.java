@@ -169,15 +169,6 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .toList();
-        addAll(ids, embeddings, embedded);
-        return ids;
-    }
-
-    @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
 
         var embeddingValue = Values.value(request.queryEmbedding().vector());
