@@ -165,27 +165,6 @@
                 <version>${retrofit.version}</version>
             </dependency>
 
-            <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (START) -->
-
-            <!-- To resolve version conflicts inside the 'okhttp' library, we are excluding the transitive -->
-            <!-- dependencies causing version divergence errors and including them explicitly. This ensures a consistent -->
-            <!-- version to be used in the project and satisfies Maven Enforcer requirements to avoid version divergence -->
-            <!-- in the project. -->
-
-            <!-- Please check whether version conflicts are gone after upgrading  this library as this will make it -->
-            <!-- possible to remove these exclusions and explicit inclusions below. -->
-            <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp</artifactId>
-                <version>${okhttp.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp-sse</artifactId>
-                <version>${okhttp.version}</version>
-            </dependency>
-
             <dependency>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-bom</artifactId>
@@ -208,12 +187,19 @@
                 <scope>test</scope>
             </dependency>
 
-            <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (END)  -->
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp-bom</artifactId>
+                <version>${okhttp.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
 
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>mockwebserver</artifactId>
                 <version>${okhttp.version}</version>
+                <scope>test</scope>
             </dependency>
 
             <dependency>
@@ -226,12 +212,15 @@
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
+                <artifactId>slf4j-bom</artifactId>
                 <version>${slf4j-api.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <dependency>
@@ -290,9 +279,10 @@
 
             <dependency>
                 <groupId>org.assertj</groupId>
-                <artifactId>assertj-core</artifactId>
+                <artifactId>assertj-bom</artifactId>
                 <version>${assertj.version}</version>
-                <scope>test</scope>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <dependency>
