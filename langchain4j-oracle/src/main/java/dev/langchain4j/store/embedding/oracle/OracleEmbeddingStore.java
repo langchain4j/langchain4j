@@ -23,7 +23,6 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.function.BiFunction;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -50,8 +49,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * If the table does not already exist, it can be created by passing a {@link CreateOption} to
  * {@link Builder#embeddingTable(String, CreateOption)} or to {@link EmbeddingTable.Builder#createOption(CreateOption)}.
  * </p><p>
- * An inverted flat file (IVF) vector index is created on the embedding column. The index is named
- * "{tableName}_EMBEDDING_INDEX", where {tableName} is the name configured using the {@link Builder}.
+ * By default no index is created on the {@link EmbeddingTable}. The {@link Builder#index(Index...)} allows to create
+ * indexes on the embedding and metadata columns of the embedding table. Two builders allow to configure an {@link
+ * Index}: {@link IVFIndexBuilder} to configure an IVF index on the embedding column and {@link JSONIndexBuilder} to
+ * configure function-based indexes on keys of the metadata column.
  * </p><p>
  * Instances of this embedding store are safe for use by multiple threads.
  * </p>
@@ -69,12 +70,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private final EmbeddingTable table;
 
-    /**
-     * The mapping function for use with {@link SQLFilters#create(Filter, BiFunction)}. The function maps a
-     * {@link Metadata} key to a field of the JSON "metadata" column. The builtin JSON_VALUE function is used to
-     * evaluate a JSON path expression.
-     */
-    private final BiFunction<String, SQLType, String> metadataKeyMapper;
 
     /**
      * <code>true</code> if {@link #search(EmbeddingSearchRequest)} should use an exact search, or <code>false</code> if
@@ -94,9 +89,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         dataSource = builder.dataSource;
         table = builder.embeddingTable;
         isExactSearch = builder.isExactSearch;
-        metadataKeyMapper = (key, type) ->
-                "JSON_VALUE(" + table.metadataColumn() + ", '$." + key + "' RETURNING " + type.getName() + ")";
-
 
         try {
             table.create(dataSource);
@@ -104,45 +96,25 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
-
     }
 
     /**
-     * Creates an index on the {@link EmbeddingTable#embeddingColumn()}, if configured to do so by
-     * {@link Builder#vectorIndex(CreateOption)}.
-     *
-     * @param builder Builder that configures an embedding store. Not null.
-     *
-     * @throws SQLException If a database error prevents the index from being created.
+     * Creates all index described by the builder.
+     * @param builder Then builder.
+     * @throws SQLException If an error occurs during index creation.
      */
     private static void createIndex(Builder builder) throws SQLException {
 
-        if (builder.vectorIndexCreateOption == CreateOption.CREATE_NONE)
-            return;
-
-        try (Connection connection = builder.dataSource.getConnection();
-             Statement statement = connection.createStatement()
-        ) {
-            String tableName = builder.embeddingTable.name();
-
-            // If the table name is a quoted identifier, then the index name must also be quoted.
-            String indexName = tableName.startsWith("\"") && tableName.endsWith("\"")
-                    ? "\"" + tableName.substring(1, tableName.length() - 1) + "_embedding_index\""
-                    : tableName + "_embedding_index";
-
-            if (builder.vectorIndexCreateOption == CreateOption.CREATE_OR_REPLACE)
-                statement.addBatch("DROP INDEX IF EXISTS " + indexName);
-
-            // The COSINE metric used here should match the VECTOR_DISTANCE metric of the search method.
-            statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + indexName +
-                        " ON " + tableName + "(" + builder.embeddingTable.embeddingColumn() + ")" +
-                        " ORGANIZATION NEIGHBOR PARTITIONS" +
-                        " WITH DISTANCE COSINE");
-
-            statement.executeBatch();
-        } catch (SQLException sqlException) {
-            throw uncheckSQLException(sqlException);
+        if (builder.indexes != null) {
+            try {
+                for (Index index : builder.indexes) {
+                    index.create(builder.dataSource, builder.embeddingTable);
+                }
+            } catch (SQLException sqlException) {
+                throw uncheckSQLException(sqlException);
+            }
         }
+
     }
 
     @Override
@@ -283,7 +255,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
 
-        SQLFilter sqlFilter = SQLFilters.create(filter, metadataKeyMapper);
+        SQLFilter sqlFilter = SQLFilters.create(filter, table::mapMetadataKey);
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement delete = connection.prepareStatement(
@@ -312,7 +284,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         ensureNotNull(request, "request");
 
-        SQLFilter sqlFilter = SQLFilters.create(request.filter(), metadataKeyMapper);
+        SQLFilter sqlFilter = SQLFilters.create(request.filter(), table::mapMetadataKey);
         final int maxResults = request.maxResults();
 
         // In a 23.4 build of Oracle Database, ORA-06553 will result if the distance column is referenced in the WHERE
@@ -340,13 +312,14 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             // fetching VECTOR, CLOB, and/or JSON columns, the first request it sends to the database can include a LOB
             // prefetch size (VECTOR and JSON are value-based-lobs). If defineColumnType is not called, then JDBC needs
             // to send an additional request with the LOB prefetch size, after the first request has the database
-            // respond with the column data types.
+            // respond with the column data types. To request all data, the prefetch size is Integer.MAX_VALUE.
             OracleStatement oracleStatement = query.unwrap(OracleStatement.class);
-            oracleStatement.defineColumnType(1, OracleTypes.BINARY_DOUBLE);
-            oracleStatement.defineColumnType(2, OracleTypes.VARCHAR);
-            oracleStatement.defineColumnType(3, OracleTypes.VECTOR_FLOAT32, 524308); // <-- Max vector size, in bytes
-            oracleStatement.defineColumnType(4, OracleTypes.CLOB, Integer.MAX_VALUE);
-            oracleStatement.defineColumnType(5, OracleTypes.JSON, Integer.MAX_VALUE);
+            oracleStatement.defineColumnType(1, OracleTypes.BINARY_DOUBLE); // distance
+            oracleStatement.defineColumnType(2, OracleTypes.VARCHAR); // id
+            oracleStatement.defineColumnType(3, OracleTypes.VECTOR_FLOAT32, Integer.MAX_VALUE); // embedding
+            oracleStatement.defineColumnType(4, OracleTypes.CLOB, Integer.MAX_VALUE); // text
+            oracleStatement.defineColumnType(5, OracleTypes.JSON, Integer.MAX_VALUE); // metadata
+            oracleStatement.setLobPrefetchSize(Integer.MAX_VALUE); // Workaround for Oracle JDBC bug 37030121
 
             List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>(maxResults);
             try (ResultSet resultSet = query.executeQuery()) {
@@ -475,6 +448,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         return metadata;
     }
 
+
+
     /**
      * Returns a runtime exception which conveys the same information as a given SQLException. Methods which can not
      * throw a checked exception use this method to convert it into an unchecked exception.
@@ -551,7 +526,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         private DataSource dataSource;
         private EmbeddingTable embeddingTable;
         private boolean isExactSearch = false;
-        private CreateOption vectorIndexCreateOption = CreateOption.CREATE_NONE;
+        private Index[] indexes;
 
         private Builder() {}
 
@@ -580,7 +555,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @throws IllegalArgumentException If the tableName is null.
          */
         public Builder embeddingTable(String tableName) {
-            return embeddingTable(tableName, CreateOption.CREATE_NONE);
+            return embeddingTable(tableName, CreateOption.DO_NOT_CREATE);
         }
 
         /**
@@ -624,16 +599,13 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * Configures the creation of an index on the embedding column of the {@link EmbeddingTable} used by the
-         * embedding store. Depending on which CreateOption is provided, an index may be created when {@link #build()}
-         * is called. The default createOption is {@link CreateOption#CREATE_NONE}.
-         *
-         * @param createOption Option for creating the index. Not null.
-         * @return This builder. Not null.
+         * Configures the indexes that will be created on the {@link EmbeddingTable}. Two types of
+         * indexes can be created {@link IVFIndexBuilder} and {@link JSONIndexBuilder}.
+         * @param indexes Indexes to create.
+         * @return This builder.
          */
-        public Builder vectorIndex(CreateOption createOption) {
-            ensureNotNull(createOption, "createOption");
-            vectorIndexCreateOption = createOption;
+        public Builder index(Index... indexes) {
+            this.indexes = indexes;
             return this;
         }
 

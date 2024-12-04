@@ -7,6 +7,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import oracle.jdbc.OracleConnection;
 import oracle.sql.CHAR;
 import oracle.sql.CharacterSet;
 import oracle.ucp.jdbc.PoolDataSource;
@@ -59,6 +60,7 @@ final class CommonTestOperations {
     private CommonTestOperations() {}
 
     private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
+    private static final PoolDataSource SYSDBA_DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
 
     public static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.5-slim-faststart";
 
@@ -78,19 +80,35 @@ final class CommonTestOperations {
                         .withPassword("testpwd");
                 oracleContainer.start();
 
-                DATA_SOURCE.setURL(oracleContainer.getJdbcUrl());
-                DATA_SOURCE.setUser(oracleContainer.getUsername());
-                DATA_SOURCE.setPassword(oracleContainer.getPassword());
+                initDataSource(DATA_SOURCE,
+                    oracleContainer.getJdbcUrl(), oracleContainer.getUsername(), oracleContainer.getPassword());
+                initDataSource(SYSDBA_DATA_SOURCE,
+                    oracleContainer.getJdbcUrl(), "sys", oracleContainer.getPassword());
+            } else {
+                initDataSource(DATA_SOURCE,
+                    urlFromEnv, System.getenv("ORACLE_JDBC_USER"), System.getenv("ORACLE_JDBC_PASSWORD"));
+                initDataSource(SYSDBA_DATA_SOURCE,
+                    urlFromEnv, System.getenv("ORACLE_JDBC_USER"), System.getenv("ORACLE_JDBC_PASSWORD"));
             }
-            else {
-                DATA_SOURCE.setURL(urlFromEnv);
-                DATA_SOURCE.setUser(System.getenv("ORACLE_JDBC_USER"));
-                DATA_SOURCE.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
-            }
+            SYSDBA_DATA_SOURCE.setConnectionProperty(OracleConnection.CONNECTION_PROPERTY_INTERNAL_LOGON,
+                "SYSDBA");
 
         } catch (SQLException sqlException) {
             throw new AssertionError(sqlException);
         }
+    }
+
+    static void initDataSource(PoolDataSource dataSource, String url, String username, String password) {
+        try {
+            dataSource.setConnectionFactoryClassName("oracle.jdbc.datasource.impl.OracleDataSource");
+            dataSource.setURL(url);
+            dataSource.setUser(username);
+            dataSource.setPassword(password);
+        } catch (
+            SQLException sqlException) {
+            throw new AssertionError(sqlException);
+        }
+
     }
 
     static EmbeddingModel getEmbeddingModel() {
@@ -100,6 +118,8 @@ final class CommonTestOperations {
     static DataSource getDataSource() {
         return DATA_SOURCE;
     }
+
+    static DataSource getSysDBADataSource() { return SYSDBA_DATA_SOURCE; }
 
     /**
      * Returns an embedding store configured to use a table with the common {@link #TABLE_NAME}. Any existing table
