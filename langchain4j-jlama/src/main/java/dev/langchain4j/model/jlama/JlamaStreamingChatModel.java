@@ -3,9 +3,23 @@ package dev.langchain4j.model.jlama;
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
 import com.github.tjake.jlama.safetensors.DType;
+import com.github.tjake.jlama.safetensors.prompt.PromptContext;
 import com.github.tjake.jlama.safetensors.prompt.PromptSupport;
+import com.github.tjake.jlama.safetensors.prompt.Tool;
+import com.github.tjake.jlama.safetensors.prompt.ToolCall;
+import com.github.tjake.jlama.safetensors.prompt.ToolResult;
+import com.github.tjake.jlama.util.JsonSupport;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ContentType;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -15,6 +29,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -55,7 +70,7 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
             loader = loader.workingDirectory(workingDirectory);
 
         this.model = loader.load();
-        this.temperature = temperature == null ? 0.7f : temperature;
+        this.temperature = temperature == null ? 0.3f : temperature;
         this.maxTokens = maxTokens == null ? model.getConfig().contextLength : maxTokens;
     }
 
@@ -68,25 +83,70 @@ public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, List.of(), handler);
+    }
+
+
+    @Override
+    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         if (model.promptSupport().isEmpty())
             throw new UnsupportedOperationException("This model does not support chat generation");
 
         PromptSupport.Builder promptBuilder = model.promptSupport().get().builder();
         for (ChatMessage message : messages) {
             switch (message.type()) {
-                case SYSTEM -> promptBuilder.addSystemMessage(message.text());
-                case USER -> promptBuilder.addUserMessage(message.text());
-                case AI -> promptBuilder.addAssistantMessage(message.text());
+                case SYSTEM -> promptBuilder.addSystemMessage(((SystemMessage)message).text());
+                case USER -> {
+                    StringBuilder finalMessage = new StringBuilder();
+                    UserMessage userMessage = (UserMessage)message;
+                    for (Content content : userMessage.contents()) {
+                        if (content.type() != ContentType.TEXT)
+                            throw new UnsupportedOperationException("Unsupported content type: " + content.type());
+
+                        finalMessage.append(((TextContent)content).text());
+                    }
+                    promptBuilder.addUserMessage(finalMessage.toString());
+                }
+                case AI -> {
+                    AiMessage aiMessage = (AiMessage) message;
+                    if (aiMessage.text() != null)
+                        promptBuilder.addAssistantMessage(aiMessage.text());
+
+                    if (aiMessage.hasToolExecutionRequests())
+                        for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+                            ToolCall toolCall = new ToolCall(toolExecutionRequest.name(), toolExecutionRequest.id(), Json.fromJson(toolExecutionRequest.arguments(), LinkedHashMap.class));
+                            promptBuilder.addToolCall(toolCall);
+                        }
+                }
+                case TOOL_EXECUTION_RESULT -> {
+                    ToolExecutionResultMessage toolMessage = (ToolExecutionResultMessage)message;
+                    ToolResult result = ToolResult.from(toolMessage.toolName(), toolMessage.id(), toolMessage.text());
+                    promptBuilder.addToolResult(result);
+                }
                 default -> throw new IllegalArgumentException("Unsupported message type: " + message.type());
             }
         }
 
+        List<Tool> tools = toolSpecifications.stream().map(JlamaModel::toTool).toList();
+
+        PromptContext promptContext = tools.isEmpty() ? promptBuilder.build() : promptBuilder.build(tools);
+
         try {
-            Generator.Response r = model.generate(id, promptBuilder.build(), temperature, maxTokens, (token, time) -> {
+            Generator.Response r = model.generate(id, promptContext, temperature, maxTokens, (token, time) -> {
                 handler.onNext(token);
             });
 
-            handler.onComplete(Response.from(AiMessage.from(r.responseText), new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason)));
+            if (r.finishReason == Generator.FinishReason.TOOL_CALL) {
+                List<ToolExecutionRequest> toolCalls = r.toolCalls.stream().map(f -> ToolExecutionRequest.builder()
+                        .name(f.getName())
+                        .id(f.getId())
+                        .arguments(JsonSupport.toJson(f.getParameters()))
+                        .build()).toList();
+
+                handler.onComplete(Response.from(AiMessage.from(toolCalls), new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason)));
+            } else {
+                handler.onComplete(Response.from(AiMessage.from(r.responseText), new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason)));
+            }
         } catch (Throwable t) {
             handler.onError(t);
         }

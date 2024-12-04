@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>dev.langchain4j</groupId>
@@ -12,11 +11,9 @@
     <artifactId>langchain4j-document-loader-selenium</artifactId>
     <name>LangChain4j :: Document Loader :: Selenium</name>
 
-    <description>
-        Selenium is a suite of tools for automating web browsers.
+    <description>Selenium is a suite of tools for automating web browsers.
         Integration with LangChain4j adds web document loading through browser automation.
-        https://www.selenium.dev/documentation/about/copyright
-    </description>
+        https://www.selenium.dev/documentation/about/copyright</description>
 
     <properties>
         <selenium.webdriver.version>4.13.0</selenium.webdriver.version>
