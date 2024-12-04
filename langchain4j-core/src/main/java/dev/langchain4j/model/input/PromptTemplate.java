@@ -1,19 +1,18 @@
 package dev.langchain4j.model.input;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.singletonMap;
+
 import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 import dev.langchain4j.spi.prompt.Template;
-
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.singletonMap;
 
 /**
  * Represents a template of a prompt that can be reused multiple times.

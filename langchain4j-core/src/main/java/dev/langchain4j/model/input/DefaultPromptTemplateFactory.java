@@ -1,12 +1,11 @@
 package dev.langchain4j.model.input;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 import dev.langchain4j.spi.prompt.Template;
 import dev.langchain4j.spi.prompt.TemplateRenderingEngine;
-
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class DefaultPromptTemplateFactory implements PromptTemplateFactory {
 

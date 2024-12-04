@@ -18,7 +18,9 @@ public interface PromptTemplateFactory {
          * Get the name of the template.
          * @return the name of the template.
          */
-        default String getName() { return "template"; }
+        default String getName() {
+            return "template";
+        }
     }
 
     /**
@@ -27,5 +29,4 @@ public interface PromptTemplateFactory {
      * @return the prompt template.
      */
     Template create(Input input);
-
 }

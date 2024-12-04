@@ -1,7 +1,6 @@
 package dev.langchain4j.spi.prompt;
 
 import dev.langchain4j.model.input.Prompt;
-
 import java.util.Map;
 
 /**

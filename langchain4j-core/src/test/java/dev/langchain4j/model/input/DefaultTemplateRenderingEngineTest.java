@@ -1,14 +1,13 @@
 package dev.langchain4j.model.input;
 
-import dev.langchain4j.model.input.DefaultPromptTemplateFactory.DefaultTemplate;
-import dev.langchain4j.spi.prompt.Template;
-import org.junit.jupiter.api.Test;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import dev.langchain4j.model.input.DefaultPromptTemplateFactory.DefaultTemplate;
+import dev.langchain4j.spi.prompt.Template;
+import java.util.HashMap;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
 class DefaultTemplateRenderingEngineTest {
 
