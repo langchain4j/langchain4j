@@ -62,12 +62,10 @@
             <artifactId>converter-gson</artifactId>
         </dependency>
 
-        <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (START) -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
         </dependency>
-        <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (END)  -->
 
         <dependency>
             <groupId>org.projectlombok</groupId>

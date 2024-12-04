@@ -52,7 +52,6 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-        <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (START) -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
@@ -62,7 +61,6 @@
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp-sse</artifactId>
         </dependency>
-        <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (END)  -->
 
         <dependency>
             <groupId>org.slf4j</groupId>
