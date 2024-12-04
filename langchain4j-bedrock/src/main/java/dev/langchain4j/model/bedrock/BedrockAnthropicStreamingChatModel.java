@@ -1,7 +1,9 @@
 package dev.langchain4j.model.bedrock;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockStreamingChatModel;
 import lombok.Builder;
@@ -9,7 +11,9 @@ import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
 import java.util.List;
+import java.util.Objects;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
 
 @Getter
@@ -36,6 +40,32 @@ public class BedrockAnthropicStreamingChatModel extends AbstractBedrockStreaming
         Types(String modelID) {
             this.value = modelID;
         }
+    }
+
+    @Override
+    public void generate(final UserMessage userMessage, final StreamingResponseHandler<AiMessage> handler) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(List.of(userMessage));
+        super.generate(sanitizedMessages, handler);
+    }
+
+    @Override
+    public void generate(final List<ChatMessage> messages, final List<ToolSpecification> toolSpecifications, final StreamingResponseHandler<AiMessage> handler) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
+        super.generate(sanitizedMessages, toolSpecifications, handler);
+    }
+
+    @Override
+    public void generate(final List<ChatMessage> messages, final ToolSpecification toolSpecification, final StreamingResponseHandler<AiMessage> handler) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
+        super.generate(sanitizedMessages, toolSpecification, handler);
+    }
+
+    @Override
+    public void generate(final String userMessage, final StreamingResponseHandler<AiMessage> handler) {
+        if (Objects.isNull(userMessage) || userMessage.isEmpty()) {
+            throw illegalArgument("%s cannot be null or empty", "message");
+        }
+        super.generate(userMessage, handler);
     }
 
     @Override

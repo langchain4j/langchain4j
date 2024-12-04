@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
@@ -11,8 +12,11 @@ import lombok.experimental.SuperBuilder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
+import static java.util.Arrays.asList;
 
 @Getter
 @SuperBuilder
@@ -71,8 +75,34 @@ public class BedrockAnthropicCompletionChatModel extends AbstractBedrockChatMode
     }
 
     @Override
+    public String generate(final String userMessage) {
+        if (Objects.isNull(userMessage) || userMessage.isEmpty()) {
+            throw illegalArgument("%s cannot be null or empty", "message");
+        }
+        return super.generate(userMessage);
+    }
+
+    @Override
+    public Response<AiMessage> generate(final ChatMessage... messages) {
+        final ChatMessage[] sanitizedMessages = sanitizeMessages(asList(messages)).toArray(messages);
+        return super.generate(sanitizedMessages);
+    }
+
+    @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         return super.generate(sanitizedMessages);
+    }
+
+    @Override
+    public Response<AiMessage> generate(final List<ChatMessage> messages, final List<ToolSpecification> toolSpecifications) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
+        return super.generate(sanitizedMessages, toolSpecifications);
+    }
+
+    @Override
+    public Response<AiMessage> generate(final List<ChatMessage> messages, final ToolSpecification toolSpecification) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
+        return super.generate(sanitizedMessages, toolSpecification);
     }
 }
