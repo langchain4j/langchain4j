@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.createCollection;
@@ -44,6 +45,7 @@ import static io.milvus.common.clientenum.ConsistencyLevelEnum.EVENTUALLY;
 import static io.milvus.param.IndexType.FLAT;
 import static io.milvus.param.MetricType.COSINE;
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -185,13 +187,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = generateRandomIds(embeddings.size());
-        addAllInternal(ids, embeddings, null);
-        return ids;
-    }
-
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = generateRandomIds(embeddings.size());
-        addAllInternal(ids, embeddings, embedded);
+        addAll(ids, embeddings, null);
         return ids;
     }
 
@@ -227,14 +223,18 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
-        addAllInternal(
+        addAll(
                 singletonList(id),
                 singletonList(embedding),
                 textSegment == null ? null : singletonList(textSegment)
         );
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+            return;
+        }
         List<InsertParam.Field> fields = new ArrayList<>();
         fields.add(new InsertParam.Field(fieldDefinition.getIdFieldName(), ids));
         fields.add(new InsertParam.Field(fieldDefinition.getTextFieldName(), toScalars(textSegments, ids.size())));

@@ -37,10 +37,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -103,13 +103,6 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         return addAll(embeddings, null);
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<DocumentChunk.Id> keys = generateKeys(embeddings.size());
-        addAllInternal(keys, embeddings, embedded);
-        return keys.stream().map(DocumentChunk.Id::toString).collect(Collectors.toList());
     }
 
     @Override
@@ -194,8 +187,9 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param embeddings  the {@link Embedding} to add
      * @param segments    an optional list of {@link TextSegment} to add with the embeddings
      */
-    private void addAllInternal(List<DocumentChunk.Id> ids, List<Embedding> embeddings,
-                                List<TextSegment> segments) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings,
+                               List<TextSegment> segments) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             Logger.info("Skipped adding empty embeddings");
             return;
@@ -214,7 +208,8 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
         for (int i = 0; i < embeddings.size(); i++) {
             Embedding embedding = embeddings.get(i);
             TextSegment segment = hasEmbedded ? segments.get(i) : null;
-            map.put(ids.get(i), createChunk(embedding, segment));
+            final String id = ids.get(i);
+            map.put(new DocumentChunk.Id(id, 0), createChunk(embedding, segment));
         }
         documentChunks.putAll(map);
     }
@@ -270,21 +265,6 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
         Float32Vector vector = new Float32Vector(embedding.vector());
         chunk.setVector(vector);
         return chunk;
-    }
-
-    /**
-     * Generate a number of {@link DocumentChunk.Id} instances.
-     *
-     * @param size  the number of {@link DocumentChunk.Id} instances to create
-     *
-     * @return a list of {@link DocumentChunk.Id} instances
-     */
-    private List<DocumentChunk.Id> generateKeys(int size) {
-        List<DocumentChunk.Id> keys = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            keys.add(new DocumentChunk.Id(new UUID().toString(), 0));
-        }
-        return keys;
     }
 
     /**
