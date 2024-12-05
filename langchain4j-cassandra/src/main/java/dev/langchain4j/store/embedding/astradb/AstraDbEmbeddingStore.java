@@ -136,16 +136,6 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Add multiple embeddings as a single action.
-     *
-     * @param embeddingList
-     *      list of embeddings
-     * @param textSegmentList
-     *      list of text segment
-     *
-     * @return list of new row if (same order as the input)
-     */
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
         if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
