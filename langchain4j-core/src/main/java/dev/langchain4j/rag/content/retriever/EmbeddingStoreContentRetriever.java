@@ -4,6 +4,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.EmbeddingStoreContent;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -13,7 +14,6 @@ import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -225,7 +225,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     }
 
     @Override
-    public List<Content> retrieve(Query query) {
+    public List<EmbeddingStoreContent> retrieve(Query query) {
 
         Embedding embeddedQuery = embeddingModel.embed(query.text()).content();
 
@@ -239,13 +239,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
 
         return searchResult.matches().stream()
-                .map(embeddingMatch -> Content.from(
-                        embeddingMatch.embedded(),
-                        Map.of(
-                                "score", embeddingMatch.score(),
-                                "embeddingId", embeddingMatch.embeddingId()
-                        )
-                ))
+                .map(embeddingMatch -> EmbeddingStoreContent.from(embeddingMatch.embedded(), embeddingMatch.score(), embeddingMatch.embeddingId()))
                 .toList();
     }
 

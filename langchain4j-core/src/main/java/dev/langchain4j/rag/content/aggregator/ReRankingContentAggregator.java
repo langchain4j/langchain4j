@@ -17,7 +17,6 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * A {@link ContentAggregator} that performs re-ranking using a {@link ScoringModel}, such as Cohere.
@@ -137,7 +136,8 @@ public class ReRankingContentAggregator implements ContentAggregator {
         return segmentToScore.entrySet().stream()
                 .filter(entry -> minScore == null || entry.getValue() >= minScore)
                 .sorted(Map.Entry.<TextSegment, Double>comparingByValue().reversed())
-                .map(entry -> new Content(entry.getKey(), Map.of("score", entry.getValue())))
+                .map(Map.Entry::getKey)
+                .map(Content::from)
                 .limit(maxResults)
                 .toList();
     }

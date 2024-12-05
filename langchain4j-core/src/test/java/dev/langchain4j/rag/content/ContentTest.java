@@ -3,8 +3,6 @@ package dev.langchain4j.rag.content;
 import dev.langchain4j.data.segment.TextSegment;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ContentTest {
@@ -36,33 +34,10 @@ class ContentTest {
     }
 
     @Test
-    void test_create_from_embedding_match() {
-
-        // given
-        TextSegment segment = TextSegment.from("text");
-        Map<String, Object> metadata = Map.of(
-                "score", 0.2d,
-                "embeddingId", "test-eid"
-        );
-
-        // when
-        Content content = Content.from(segment, metadata);
-
-        // then
-        assertThat(content.textSegment())
-                .isSameAs(segment);
-        assertThat(content.metadata())
-                .isNotEmpty();
-        assertThat(content.metadata())
-                .containsExactlyEntriesOf(Map.of("score",0.2,"embeddingId","test-eid"));
-
-    }
-
-    @Test
     void test_equals_hashCode() {
 
         // given
-        Content content1 = new Content(TextSegment.from("content"), Map.of("score",1.0d));
+        Content content1 = new Content(TextSegment.from("content"));
         Content content2 = Content.from("content 2");
         Content content3 = Content.from("content");
 
@@ -85,6 +60,6 @@ class ContentTest {
 
         // then
         assertThat(toString)
-                .isEqualTo("Content { textSegment = TextSegment { text = \"content\" metadata = {} }, metadata = {} }");
+                .isEqualTo("Content { textSegment = TextSegment { text = \"content\" metadata = {} } }");
     }
 }
