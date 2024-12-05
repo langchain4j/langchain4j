@@ -1,5 +1,11 @@
 package dev.langchain4j.data.document.loader;
 
+import static dev.langchain4j.data.document.source.FileSystemSource.from;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.nio.file.Files.isDirectory;
+import static java.nio.file.Files.isRegularFile;
+
 import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
@@ -15,22 +21,14 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.data.document.source.FileSystemSource.from;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.nio.file.Files.isDirectory;
-import static java.nio.file.Files.isRegularFile;
 
 public class FileSystemDocumentLoader {
 
     private static final Logger log = LoggerFactory.getLogger(FileSystemDocumentLoader.class);
 
-    private static final DocumentParser DEFAULT_DOCUMENT_PARSER = getOrDefault(loadDocumentParser(), TextDocumentParser::new);
+    private static final DocumentParser DEFAULT_DOCUMENT_PARSER = getOrDefault(DocumentParserLoader.loadDocumentParser(), TextDocumentParser::new);
 
     private FileSystemDocumentLoader() {
     }
@@ -46,6 +44,7 @@ public class FileSystemDocumentLoader {
      * @param documentParser The parser to be used for parsing text from the file.
      * @return document
      * @throws IllegalArgumentException If specified path is not a file.
+     * @see dev.langchain4j.data.document.source.FileSystemSource FileSystemSource
      */
     public static Document loadDocument(Path filePath, DocumentParser documentParser) {
         if (!isRegularFile(filePath)) {
@@ -67,6 +66,7 @@ public class FileSystemDocumentLoader {
      * @param filePath The path to the file.
      * @return document
      * @throws IllegalArgumentException If specified path is not a file.
+     * @see dev.langchain4j.data.document.source.FileSystemSource FileSystemSource
      */
     public static Document loadDocument(Path filePath) {
         return loadDocument(filePath, DEFAULT_DOCUMENT_PARSER);
@@ -116,6 +116,7 @@ public class FileSystemDocumentLoader {
      * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
+     * @see dev.langchain4j.data.document.source.FileSystemSource FileSystemSource
      */
     public static List<Document> loadDocuments(Path directoryPath, DocumentParser documentParser) {
         if (!isDirectory(directoryPath)) {
@@ -141,6 +142,7 @@ public class FileSystemDocumentLoader {
      * @param directoryPath The path to the directory with files.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
+     * @see dev.langchain4j.data.document.source.FileSystemSource FileSystemSource
      */
     public static List<Document> loadDocuments(Path directoryPath) {
         return loadDocuments(directoryPath, DEFAULT_DOCUMENT_PARSER);
@@ -196,6 +198,7 @@ public class FileSystemDocumentLoader {
      * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
+     * @see dev.langchain4j.data.document.source.FileSystemSource FileSystemSource
      */
     public static List<Document> loadDocuments(Path directoryPath,
                                                PathMatcher pathMatcher,
@@ -229,6 +232,7 @@ public class FileSystemDocumentLoader {
      *                      Thus, {@code pathMatcher} should use relative patterns.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
+     * @see dev.langchain4j.data.document.source.FileSystemSource FileSystemSource
      */
     public static List<Document> loadDocuments(Path directoryPath, PathMatcher pathMatcher) {
         return loadDocuments(directoryPath, pathMatcher, DEFAULT_DOCUMENT_PARSER);
@@ -292,6 +296,7 @@ public class FileSystemDocumentLoader {
      * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
+     * @see dev.langchain4j.data.document.source.FileSystemSource FileSystemSource
      */
     public static List<Document> loadDocumentsRecursively(Path directoryPath, DocumentParser documentParser) {
         if (!isDirectory(directoryPath)) {
@@ -317,6 +322,7 @@ public class FileSystemDocumentLoader {
      * @param directoryPath The path to the directory with files.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
+     * @see dev.langchain4j.data.document.source.FileSystemSource FileSystemSource
      */
     public static List<Document> loadDocumentsRecursively(Path directoryPath) {
         return loadDocumentsRecursively(directoryPath, DEFAULT_DOCUMENT_PARSER);
@@ -375,6 +381,7 @@ public class FileSystemDocumentLoader {
      * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
+     * @see dev.langchain4j.data.document.source.FileSystemSource FileSystemSource
      */
     public static List<Document> loadDocumentsRecursively(Path directoryPath,
                                                           PathMatcher pathMatcher,
@@ -411,6 +418,7 @@ public class FileSystemDocumentLoader {
      *                      of {@code directoryPath}.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
+     * @see dev.langchain4j.data.document.source.FileSystemSource FileSystemSource
      */
     public static List<Document> loadDocumentsRecursively(Path directoryPath, PathMatcher pathMatcher) {
         return loadDocumentsRecursively(directoryPath, pathMatcher, DEFAULT_DOCUMENT_PARSER);
@@ -496,21 +504,5 @@ public class FileSystemDocumentLoader {
                 });
 
         return documents;
-    }
-
-    private static DocumentParser loadDocumentParser() {
-
-        Collection<DocumentParserFactory> factories = loadFactories(DocumentParserFactory.class);
-
-        if (factories.size() > 1) {
-            throw new RuntimeException("Conflict: multiple document parsers have been found in the classpath. " +
-                    "Please explicitly specify the one you wish to use.");
-        }
-
-        for (DocumentParserFactory factory : factories) {
-            return factory.create();
-        }
-
-        return null;
     }
 }

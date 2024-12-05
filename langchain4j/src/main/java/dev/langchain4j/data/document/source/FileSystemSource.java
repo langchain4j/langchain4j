@@ -17,7 +17,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 public class FileSystemSource implements DocumentSource {
 
-    public final Path path;
+    private final Path path;
 
     public FileSystemSource(Path path) {
         this.path = ensureNotNull(path, "path");
