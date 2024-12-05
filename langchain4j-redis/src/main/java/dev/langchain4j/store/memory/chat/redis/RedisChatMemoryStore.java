@@ -1,26 +1,22 @@
 package dev.langchain4j.store.memory.chat.redis;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import redis.clients.jedis.JedisPooled;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import redis.clients.jedis.JedisPooled;
 
 public class RedisChatMemoryStore implements ChatMemoryStore {
 
     private final JedisPooled client;
 
-    public RedisChatMemoryStore(String host,
-                                Integer port,
-                                String user,
-                                String password) {
+    public RedisChatMemoryStore(String host, Integer port, String user, String password) {
         String finalHost = ensureNotBlank(host, "host");
         int finalPort = ensureNotNull(port, "port");
         if (user != null) {

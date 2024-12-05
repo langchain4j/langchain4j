@@ -12,14 +12,13 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
+import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
 import redis.clients.jedis.search.schemafields.NumericField;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TagField;
 import redis.clients.jedis.search.schemafields.TextField;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Metadata Filter Mapper according to <a href="https://redis.io/docs/latest/develop/interact/search-and-query/query/">RedisSearch Document</a>
@@ -64,7 +63,8 @@ class RedisMetadataFilterMapper {
         } else if (filter instanceof Or or) {
             return mapOr(or);
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException(
+                    "Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
@@ -199,7 +199,8 @@ class RedisMetadataFilterMapper {
         if (fieldType instanceof NumericField) {
             return toKeyPrefix(key) + Boundary.NUMERIC_BOUNDARY.toRangeString(leftValue, rightValue);
         } else {
-            throw new UnsupportedOperationException("Redis do not support non-Numeric range search, fieldType: " + fieldType);
+            throw new UnsupportedOperationException(
+                    "Redis do not support non-Numeric range search, fieldType: " + fieldType);
         }
     }
 
@@ -208,9 +209,7 @@ class RedisMetadataFilterMapper {
 
         String keyPrefix = toKeyPrefix(key);
         if (fieldType instanceof TagField) {
-            String inFilter = values.stream()
-                    .map(Object::toString)
-                    .collect(Collectors.joining(OR_DELIMITER));
+            String inFilter = values.stream().map(Object::toString).collect(Collectors.joining(OR_DELIMITER));
 
             return keyPrefix + Boundary.TAG_BOUNDARY.toSingleString(inFilter);
         } else if (fieldType instanceof TextField) {
@@ -220,7 +219,8 @@ class RedisMetadataFilterMapper {
 
             return keyPrefix + Boundary.TEXT_IN_BOUNDARY.toSingleString(inFilter);
         } else {
-            throw new UnsupportedOperationException("Redis do not support NumericType \"in\" search, fieldType: " + fieldType);
+            throw new UnsupportedOperationException(
+                    "Redis do not support NumericType \"in\" search, fieldType: " + fieldType);
         }
     }
 
