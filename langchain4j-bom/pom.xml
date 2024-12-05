@@ -71,12 +71,6 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-dashscope</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-github-models</artifactId>
                 <version>${project.version}</version>
             </dependency>

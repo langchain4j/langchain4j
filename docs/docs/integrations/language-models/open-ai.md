@@ -136,21 +136,21 @@ Please note that this will automatically make all tool parameters mandatory (`re
 and set `additionalProperties=false` for each `object` in json schema. This is due to the current OpenAI limitations.
 
 ### Structured Outputs for Response Format
-To enable Structured Outputs feature for response format,
+To enable the Structured Outputs feature for response formatting when using AI Services,
 set `.responseFormat("json_schema")` and `.strictJsonSchema(true)` when building the model:
 ```java
 OpenAiChatModel.builder()
     ...
     .responseFormat("json_schema")
     .strictJsonSchema(true)
-    .build(),
+    .build();
 ```
-In this case `AiServices` will not append "You must answer strictly in the following JSON format: ..." string
-to the end of the last `UserMessage`, but will create a Json schema from the given POJO and pass it to the LLM.
+In this case AI Service will not append "You must answer strictly in the following JSON format: ..." string
+to the end of the last `UserMessage`, but will create a JSON schema from the given POJO and pass it to the LLM.
 Please note that this works only when method return type is a POJO.
-If the return type is something else, (like an enum or a `List<String>`),
+If the return type is something else, (like an `enum` or a `List<String>`),
 the old behaviour is applied (with "You must answer strictly ...").
-All return types will be supported in the near future.
+Other return types will be supported in the near future.
 
 ## Creating `OpenAiStreamingChatModel`
 

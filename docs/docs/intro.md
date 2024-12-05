@@ -74,6 +74,7 @@ For easier integration, LangChain4j also includes integration with
     - Customization of each step in the RAG flow
 - Text classification
 - Tools for tokenization and estimation of token counts
+- [Kotlin Extensions](/tutorials/kotlin): Asynchronous non-blocking handling of chat interactions using Kotlin's coroutine capabilities.
 
 ## 2 levels of abstraction
 LangChain4j operates on two levels of abstraction:

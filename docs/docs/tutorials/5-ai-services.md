@@ -277,10 +277,10 @@ Before the method returns, the AI Service will parse the output of the LLM into 
 You can observe appended instructions by [enabling logging](/tutorials/logging).
 
 :::note
-Some LLMs support [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) feature,
-where the LLM API has an option to specify a JSON schema for the desired output. If such a feature is supported and enabled, 
-instructions will not be appended to the end of the `UserMessage`. In this case, the JSON schema will be automatically
-created from your POJO and passed to the LLM. This will guarantee that the LLM adheres to this JSON schema.
+Some LLM providers (e.g., OpenAI and Google Gemini) allow specifying JSON schema for the desired output.
+If such a feature is supported **and enabled**, free-form text instructions will not be appended to the end of the `UserMessage`.
+In this case, the JSON schema will be automatically generated from your POJO and passed to the LLM.
+This will guarantee that the LLM adheres to this JSON schema.
 :::
 
 Now let's take a look at some examples.
