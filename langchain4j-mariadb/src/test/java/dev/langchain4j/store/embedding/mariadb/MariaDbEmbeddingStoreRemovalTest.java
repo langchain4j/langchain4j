@@ -7,15 +7,16 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
+import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.MariaDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
 class MariaDbEmbeddingStoreRemovalTest extends EmbeddingStoreWithRemovalIT {
+    static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
 
-    @Container
-    static MariaDBContainer<?> mariadbContainer = new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
+    @BeforeAll
+    public static void beforeAll() {
+        mariadbContainer.start();
+    }
 
     final EmbeddingStore<TextSegment> embeddingStore = MariaDbEmbeddingStore.builder()
             .url(mariadbContainer.getJdbcUrl())

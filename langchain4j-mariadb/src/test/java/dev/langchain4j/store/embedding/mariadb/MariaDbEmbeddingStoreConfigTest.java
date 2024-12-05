@@ -6,37 +6,28 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import java.sql.SQLException;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.mariadb.jdbc.MariaDbPoolDataSource;
 import org.testcontainers.containers.MariaDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
 abstract class MariaDbEmbeddingStoreConfigTest extends EmbeddingStoreWithFilteringIT {
-
-    @Container
-    static MariaDBContainer<?> mariadbContainer = new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
+    static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
 
     static EmbeddingStore<TextSegment> embeddingStore;
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    static DataSource dataSource;
+    static MariaDbPoolDataSource dataSource;
 
     static final String TABLE_NAME = "test";
     static final int TABLE_DIMENSION = 384;
 
     static void configureStore(MetadataStorageConfig config) {
-        String jdbcUrl = mariadbContainer
-                .withUrlParam("user", mariadbContainer.getUsername())
-                .withUrlParam("password", mariadbContainer.getPassword())
-                .withUrlParam("maxQuerySizeToLog", "50000")
-                .withUrlParam("useBulkStmtsForInserts", "false")
-                .withUrlParam("connectionCollation", "utf8mb4_bin")
-                .getJdbcUrl();
+        mariadbContainer.start();
+        String jdbcUrl = "%s?useBulkStmtsForInserts=false&connectionCollation=utf8mb4_bin&user=%s&password=%s"
+                .formatted(
+                        mariadbContainer.getJdbcUrl(), mariadbContainer.getUsername(), mariadbContainer.getPassword());
         try {
             dataSource = new MariaDbPoolDataSource(jdbcUrl);
             embeddingStore = MariaDbEmbeddingStore.datasourceBuilder()
@@ -53,7 +44,7 @@ abstract class MariaDbEmbeddingStoreConfigTest extends EmbeddingStoreWithFilteri
 
     @AfterAll
     static void afterAll() {
-        ((MariaDbPoolDataSource) dataSource).close();
+        dataSource.close();
     }
 
     @BeforeEach

@@ -10,20 +10,21 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MariaDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Test upgrade from 029 to latest version
  */
-@Testcontainers
 class MariaDbEmbeddingStoreUpgradeTest {
+    static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
 
-    @Container
-    static MariaDBContainer<?> mariadbContainer = new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
+    @BeforeAll
+    public static void beforeAll() {
+        mariadbContainer.start();
+    }
 
     EmbeddingStore<TextSegment> embeddingStore029;
 

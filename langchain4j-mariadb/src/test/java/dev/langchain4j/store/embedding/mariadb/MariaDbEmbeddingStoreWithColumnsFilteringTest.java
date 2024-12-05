@@ -2,13 +2,11 @@ package dev.langchain4j.store.embedding.mariadb;
 
 import java.util.Arrays;
 import org.junit.jupiter.api.BeforeAll;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
 public class MariaDbEmbeddingStoreWithColumnsFilteringTest extends MariaDbEmbeddingStoreConfigTest {
 
     @BeforeAll
-    static void beforeAll() {
+    static void beforeAllTests() {
         MetadataStorageConfig config = DefaultMetadataStorageConfig.builder()
                 .storageMode(MetadataStorageMode.COLUMN_PER_KEY)
                 .columnDefinitions(Arrays.asList(

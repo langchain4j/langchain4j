@@ -7,19 +7,21 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.MariaDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
 class MariaDbEmbeddingIndexedStoreTest extends EmbeddingStoreWithFilteringIT {
-
-    @Container
-    static MariaDBContainer<?> mariadbContainer = new MariaDBContainer<>(MariaDBImage.DEFAULT_IMAGE);
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     private EmbeddingStore<TextSegment> embeddingStore;
+
+    static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
+
+    @BeforeAll
+    public static void beforeAll() {
+        mariadbContainer.start();
+    }
 
     @Override
     protected void ensureStoreIsReady() {
