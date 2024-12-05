@@ -1,8 +1,15 @@
 package dev.langchain4j.data.document.parser.apache.tika;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.tika.exception.ZeroByteFileException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
@@ -10,14 +17,6 @@ import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.xml.sax.ContentHandler;
-
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Supplier;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 /**
  * Parses files into {@link Document}s using Apache Tika library, automatically detecting the file format.
@@ -31,7 +30,8 @@ public class ApacheTikaDocumentParser implements DocumentParser {
     public static final Supplier<Parser> DEFAULT_PARSER_SUPPLIER = AutoDetectParser::new;
     public static final Supplier<Metadata> DEFAULT_METADATA_SUPPLIER = Metadata::new;
     public static final Supplier<ParseContext> DEFAULT_PARSE_CONTEXT_SUPPLIER = ParseContext::new;
-    public static final Supplier<ContentHandler> DEFAULT_CONTENT_HANDLER_SUPPLIER = () -> new BodyContentHandler(NO_WRITE_LIMIT);
+    public static final Supplier<ContentHandler> DEFAULT_CONTENT_HANDLER_SUPPLIER =
+            () -> new BodyContentHandler(NO_WRITE_LIMIT);
 
     private final Supplier<Parser> parserSupplier;
     private final Supplier<ContentHandler> contentHandlerSupplier;
@@ -61,17 +61,14 @@ public class ApacheTikaDocumentParser implements DocumentParser {
      * @deprecated Use the constructor with suppliers for Tika components if you intend to use this parser for multiple files.
      */
     @Deprecated(forRemoval = true)
-    public ApacheTikaDocumentParser(Parser parser,
-                                    ContentHandler contentHandler,
-                                    Metadata metadata,
-                                    ParseContext parseContext) {
+    public ApacheTikaDocumentParser(
+            Parser parser, ContentHandler contentHandler, Metadata metadata, ParseContext parseContext) {
         this(
                 () -> getOrDefault(parser, DEFAULT_PARSER_SUPPLIER),
                 () -> getOrDefault(contentHandler, DEFAULT_CONTENT_HANDLER_SUPPLIER),
                 () -> getOrDefault(metadata, DEFAULT_METADATA_SUPPLIER),
                 () -> getOrDefault(parseContext, DEFAULT_PARSE_CONTEXT_SUPPLIER),
-                false
-        );
+                false);
     }
 
     /**
@@ -84,11 +81,12 @@ public class ApacheTikaDocumentParser implements DocumentParser {
      * @param parseContextSupplier   Supplier for Tika parse context. Default: empty {@link ParseContext}
      * @param includeMetadata        Whether to include metadata in the parsed document
      */
-    public ApacheTikaDocumentParser(Supplier<Parser> parserSupplier,
-                                    Supplier<ContentHandler> contentHandlerSupplier,
-                                    Supplier<Metadata> metadataSupplier,
-                                    Supplier<ParseContext> parseContextSupplier,
-                                    boolean includeMetadata) {
+    public ApacheTikaDocumentParser(
+            Supplier<Parser> parserSupplier,
+            Supplier<ContentHandler> contentHandlerSupplier,
+            Supplier<Metadata> metadataSupplier,
+            Supplier<ParseContext> parseContextSupplier,
+            boolean includeMetadata) {
         this.parserSupplier = getOrDefault(parserSupplier, () -> DEFAULT_PARSER_SUPPLIER);
         this.contentHandlerSupplier = getOrDefault(contentHandlerSupplier, () -> DEFAULT_CONTENT_HANDLER_SUPPLIER);
         this.metadataSupplier = getOrDefault(metadataSupplier, () -> DEFAULT_METADATA_SUPPLIER);
