@@ -293,13 +293,6 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .collect(toList());
     }
 
-    /**
-     * Add multiple embeddings as a single action.
-     *
-     * @param embeddingList   embeddings
-     * @param textSegmentList text segments
-     * @return list of new row if (same order as the input)
-     */
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
         if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
