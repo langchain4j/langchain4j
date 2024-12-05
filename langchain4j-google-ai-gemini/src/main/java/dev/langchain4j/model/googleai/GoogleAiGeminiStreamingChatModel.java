@@ -15,10 +15,13 @@ import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -88,6 +91,20 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
         } catch (RuntimeException exception) {
             notifyListenersOnError(exception, chatModelRequest, listenerAttributes);
             handler.onError(exception);
+        }
+    }
+
+    public static class GoogleAiGeminiStreamingChatModelBuilder {
+        public GoogleAiGeminiStreamingChatModelBuilder toolConfig(GeminiMode mode, String... allowedFunctionNames){
+            this.toolConfig = new GeminiFunctionCallingConfig(mode, Arrays.asList(allowedFunctionNames));
+            return this;
+        }
+
+        public GoogleAiGeminiStreamingChatModelBuilder safetySettings(Map<GeminiHarmCategory, GeminiHarmBlockThreshold> safetySettingMap) {
+            this.safetySettings = safetySettingMap.entrySet().stream()
+                    .map(entry -> new GeminiSafetySetting(entry.getKey(), entry.getValue())
+                    ).collect(Collectors.toList());
+            return this;
         }
     }
 }

@@ -25,3 +25,10 @@ triage:
       notifyInPullRequest: true
       files:
         - '*-elasticsearch-*/**'
+    - id: mistral
+      labels: [Mistral]
+      title: "mistral"
+      notify: [czelabueno]
+      notifyInPullRequest: true
+      files:
+        - '*-mistral-*/**'

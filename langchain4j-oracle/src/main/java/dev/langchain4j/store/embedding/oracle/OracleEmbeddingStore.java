@@ -192,7 +192,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         ensureNotNull(embeddings, "embeddings");
         ensureNotNull(embedded, "embedded");
 
@@ -200,8 +200,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             throw new IllegalArgumentException("embeddings.size() " + embeddings.size()
                     + " is not equal to embedded.size() " + embedded.size());
         }
-
-        String[] ids = new String[embeddings.size()];
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement insert = connection.prepareStatement(
@@ -213,11 +211,10 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         ) {
 
             for (int i = 0; i < embeddings.size(); i++) {
-                String id = ids[i] = randomUUID();
                 Embedding embedding = ensureIndexNotNull(embeddings, i, "embeddings");
                 TextSegment textSegment = ensureIndexNotNull(embedded, i, "embedded");
 
-                insert.setString(1, id);
+                insert.setString(1, ids.get(i));
                 insert.setObject(2, embedding.vector(), OracleType.VECTOR_FLOAT32);
                 insert.setObject(3, textSegment.text());
                 insert.setObject(4, getOsonFromMetadata(textSegment.metadata()));
@@ -225,7 +222,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             insert.executeBatch();
 
-            return Arrays.asList(ids);
         }
         catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
