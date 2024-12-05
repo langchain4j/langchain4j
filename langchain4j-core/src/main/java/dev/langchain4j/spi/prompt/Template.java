@@ -21,8 +21,6 @@ public interface Template {
      *
      * @param variables the variables to use.
      * @return the rendered template.
-     * @deprecated Use TemplateRenderingEngine to render templates
      */
-    @Deprecated(since = "0.37.0", forRemoval = true)
     String render(Map<String, Object> variables);
 }
