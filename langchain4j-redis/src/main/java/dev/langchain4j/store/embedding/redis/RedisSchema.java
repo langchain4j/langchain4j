@@ -1,18 +1,17 @@
 package dev.langchain4j.store.embedding.redis;
 
-import redis.clients.jedis.search.schemafields.SchemaField;
-import redis.clients.jedis.search.schemafields.TextField;
-import redis.clients.jedis.search.schemafields.VectorField;
-import redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static dev.langchain4j.store.embedding.redis.MetricType.COSINE;
+import static redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm.HNSW;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static dev.langchain4j.store.embedding.redis.MetricType.COSINE;
-import static redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm.HNSW;
+import redis.clients.jedis.search.schemafields.SchemaField;
+import redis.clients.jedis.search.schemafields.TextField;
+import redis.clients.jedis.search.schemafields.VectorField;
+import redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm;
 
 /**
  * Redis Schema Description
@@ -39,14 +38,15 @@ class RedisSchema {
     private final Integer dimension;
     private final MetricType metricType;
 
-    RedisSchema(String indexName,
-                String prefix,
-                String vectorFieldName,
-                String scalarFieldName,
-                VectorAlgorithm vectorAlgorithm,
-                Integer dimension,
-                MetricType metricType,
-                Map<String, SchemaField> metadataConfig) {
+    RedisSchema(
+            String indexName,
+            String prefix,
+            String vectorFieldName,
+            String scalarFieldName,
+            VectorAlgorithm vectorAlgorithm,
+            Integer dimension,
+            MetricType metricType,
+            Map<String, SchemaField> metadataConfig) {
         ensureTrue(prefix.endsWith(":"), "Prefix should end with a ':'");
 
         this.indexName = indexName;
@@ -66,7 +66,9 @@ class RedisSchema {
         vectorAttrs.put("TYPE", "FLOAT32");
         vectorAttrs.put("INITIAL_CAP", 5);
         List<SchemaField> fields = new ArrayList<>();
-        fields.add(TextField.of(JSON_PATH_PREFIX + scalarFieldName).as(scalarFieldName).weight(1.0));
+        fields.add(TextField.of(JSON_PATH_PREFIX + scalarFieldName)
+                .as(scalarFieldName)
+                .weight(1.0));
         fields.add(VectorField.builder()
                 .fieldName(JSON_PATH_PREFIX + vectorFieldName)
                 .algorithm(vectorAlgorithm)
@@ -153,7 +155,15 @@ class RedisSchema {
         }
 
         RedisSchema build() {
-            return new RedisSchema(indexName, prefix, vectorFieldName, scalarFieldName, vectorAlgorithm, dimension, metricType, metadataConfig);
+            return new RedisSchema(
+                    indexName,
+                    prefix,
+                    vectorFieldName,
+                    scalarFieldName,
+                    vectorAlgorithm,
+                    dimension,
+                    metricType,
+                    metadataConfig);
         }
     }
 }
