@@ -1,9 +1,10 @@
-package dev.langchain4j.model.anthropic.internal.sanitizer;
+package dev.langchain4j.model.bedrock.internal.sanitizer;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,11 +13,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 /**
  * Sanitizes the messages to conform to the format expected by the Anthropic API.
- * This class is equal to the BedrockAnthropicMessageSanitizer class in the dev.langchain4j.model.bedrock.internal.sanitizer package.
+ * This class is equal to the MessageSanitizer class in the dev.langchain4j.model.anthropic.internal.sanitizer package.
  * When it is changed in one place, it should be changed in the other place as well.
  */
-@Slf4j
-public class MessageSanitizer {
+public class BedrockAnthropicMessageSanitizer {
+
+    private static final Logger log = LoggerFactory.getLogger(BedrockAnthropicMessageSanitizer.class);
 
     public static List<ChatMessage> sanitizeMessages(List<ChatMessage> messages) {
         ensureNotEmpty(messages, "messages");
@@ -58,5 +60,4 @@ public class MessageSanitizer {
             log.warn("Dropping non-UserMessage in 1st element: {}", removedMessage);
         }
     }
-
 }

@@ -47,9 +47,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.nonNull;
@@ -93,6 +96,20 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     }
 
     @Override
+    public String generate(final String userMessage) {
+        if (Objects.isNull(userMessage) || userMessage.isEmpty()) {
+            throw illegalArgument("%s cannot be null or empty", "message");
+        }
+        return super.generate(userMessage);
+    }
+
+    @Override
+    public Response<AiMessage> generate(final ChatMessage... messages) {
+        final ChatMessage[] sanitizedMessages = sanitizeMessages(asList(messages)).toArray(messages);
+        return super.generate(sanitizedMessages);
+    }
+
+    @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         return generate(messages, emptyList());
     }
@@ -112,9 +129,10 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             ToolSpecification toolChoiceSpecification,
             List<ToolSpecification> toolSpecifications
     ) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         final String system = getAnthropicSystemPrompt(messages);
 
-        List<BedrockAnthropicMessage> formattedMessages = getAnthropicMessages(messages);
+        List<BedrockAnthropicMessage> formattedMessages = getAnthropicMessages(sanitizedMessages);
 
         Map<String, Object> parameters = getRequestParameters(null);
         parameters.put("messages", formattedMessages);
@@ -138,7 +156,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, messages, toolSpecifications);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
 
@@ -195,7 +213,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             throw new IllegalArgumentException("Model ID is required");
         }
 
-        List<String> anthropicModelIdSplit = Arrays.asList(modelId.split("-"));
+        List<String> anthropicModelIdSplit = asList(modelId.split("-"));
 
         if (anthropicModelIdSplit.size() < 2) {
             throw new IllegalArgumentException("Tools are currently not supported by this model");
