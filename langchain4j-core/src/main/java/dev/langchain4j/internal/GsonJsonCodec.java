@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
 import com.google.gson.stream.JsonWriter;
@@ -15,9 +16,13 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -91,6 +96,37 @@ class GsonJsonCodec implements Json.JsonCodec {
                         }
                     }
             )
+            .registerTypeAdapter(Instant.class, (JsonDeserializer<Instant>) (json, type, context) -> {
+                if (json instanceof JsonPrimitive) {
+                    JsonPrimitive jp = (JsonPrimitive) json;
+                    if (jp.isNumber()) {
+                        return Instant.ofEpochMilli(jp.getAsLong());
+                    }
+                }
+                return Instant.parse(json.getAsString());
+            })
+            .registerTypeAdapter(ZonedDateTime.class, (JsonDeserializer<ZonedDateTime>) (json, type, context) -> {
+                if (json.isJsonPrimitive() && json.getAsJsonPrimitive().isString()) {
+                    return ZonedDateTime.parse(json.getAsString());
+                } else if (json.isJsonObject()) {
+                    JsonObject jsonObject = json.getAsJsonObject();
+
+                    int year = jsonObject.get("year").getAsInt();
+                    int month = jsonObject.get("month").getAsInt();
+                    int day = jsonObject.get("day").getAsInt();
+                    int hour = jsonObject.has("hour") ? jsonObject.get("hour").getAsInt() : 0;
+                    int minute = jsonObject.has("minute") ? jsonObject.get("minute").getAsInt() : 0;
+                    int second = jsonObject.has("second") ? jsonObject.get("second").getAsInt() : 0;
+                    String zoneIdString = jsonObject.has("zone") ? jsonObject.get("zone").getAsString() : "UTC";
+
+                    LocalDateTime localDateTime = LocalDateTime.of(year, month, day, hour, minute, second);
+                    ZoneId zoneId = ZoneId.of(zoneIdString);
+
+                    return ZonedDateTime.of(localDateTime, zoneId);
+                }
+
+                throw new JsonParseException("Invalid format for ZonedDateTime: " + json.toString());
+            })
             .create();
 
     @Override
