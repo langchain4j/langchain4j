@@ -10,9 +10,11 @@ import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -32,7 +34,7 @@ import static java.time.Duration.ofSeconds;
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
  */
 public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
-
+    private static final int EMBEDDING_MAX_ARRAY_SIZE = 2048;
     private final OpenAiClient client;
     private final String modelName;
     private final Integer dimensions;
@@ -102,7 +104,39 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
                 .map(TextSegment::text)
                 .toList();
 
-        return embedTexts(texts);
+        List<List<String>> textBatches = splitList(texts, EMBEDDING_MAX_ARRAY_SIZE);
+
+        return embedBatchedTexts(textBatches);
+    }
+
+    public List<List<String>> splitList(final List<String> inputList, final int size) {
+        if (size <= 0) {
+            throw new IllegalArgumentException("Size must be greater than 0");
+        }
+        List<List<String>> result = new ArrayList<>();
+        for (int i = 0; i < inputList.size(); i += size) {
+            int fromIndex = i;
+            int toIndex = Math.min(i + size, inputList.size());
+            result.add(inputList.subList(fromIndex, toIndex));
+        }
+        return result;
+    }
+
+    private Response<List<Embedding>> embedBatchedTexts(List<List<String>> textBatches) {
+        List<Response<List<Embedding>>> responses = new ArrayList<>();
+        for (List<String> batch : textBatches) {
+            Response<List<Embedding>> response = embedTexts(batch);
+            responses.add(response);
+        }
+        return Response.from(
+                responses.stream()
+                        .flatMap(response -> response.content().stream())
+                        .toList(),
+                responses.stream()
+                        .map(Response::tokenUsage)
+                        .reduce(TokenUsage::add)
+                        .orElse(null)
+        );
     }
 
     private Response<List<Embedding>> embedTexts(List<String> texts) {
