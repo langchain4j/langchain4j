@@ -24,7 +24,7 @@ import java.util.List;
  * @see EmbeddingStoreContentRetriever
  * @see WebSearchContentRetriever
  */
-public interface ContentRetriever<T extends Content> {
+public interface ContentRetriever {
 
     /**
      * Retrieves relevant {@link Content}s using a given {@link Query}.
@@ -34,5 +34,5 @@ public interface ContentRetriever<T extends Content> {
      * @param query The {@link Query} to use for retrieval.
      * @return A list of retrieved {@link Content}s.
      */
-    List<T> retrieve(Query query);
+    List<Content> retrieve(Query query);
 }

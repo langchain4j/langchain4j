@@ -1,14 +1,17 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.ReRankedContent;
 import dev.langchain4j.rag.query.Query;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -56,9 +59,11 @@ class ReRankingContentAggregatorTest {
         List<Content> aggregated = aggregator.aggregate(queryToContents);
 
         // then
-        assertThat(aggregated).containsExactly(content2, content1);
+        assertThat(aggregated).hasSize(2);
+        assertThat(aggregated.get(0)).isInstanceOf(ReRankedContent.class);
+        assertReRankedContentOrder(aggregated, content2, content1);
+        assertReRankedContentScore(aggregated,0.7,0.5);
     }
-
 
     static Stream<Arguments> should_rerank_when_single_query_and_single_contents() {
         return Stream.<Arguments>builder()
@@ -113,7 +118,10 @@ class ReRankingContentAggregatorTest {
         List<Content> aggregated = aggregator.aggregate(queryToContents);
 
         // then
-        assertThat(aggregated).containsExactly(content4, content1, content2);
+        assertThat(aggregated).hasSize(3);
+        assertThat(aggregated.get(0)).isInstanceOf(ReRankedContent.class);
+        assertReRankedContentOrder(aggregated, content4, content1, content2);
+        assertReRankedContentScore(aggregated,0.9, 0.7, 0.5);
     }
 
     @Test
@@ -195,10 +203,12 @@ class ReRankingContentAggregatorTest {
         List<Content> aggregated = aggregator.aggregate(queryToContents);
 
         // then
-        assertThat(aggregated)
-                // content4, content6, content7 were fused with content1
-                // content3 and content5 were filtered out by minScore
-                .containsExactly(content1, content8, content2);
+        // content4, content6, content7 were fused with content1
+        // content3 and content5 were filtered out by minScore
+        assertThat(aggregated).hasSize(3);
+        assertThat(aggregated.get(0)).isInstanceOf(ReRankedContent.class);
+        assertReRankedContentOrder(aggregated, content1, content8, content2);
+        assertReRankedContentScore(aggregated,0.6, 0.5, 0.4);
     }
 
     @Test
@@ -266,11 +276,13 @@ class ReRankingContentAggregatorTest {
         List<Content> aggregated = aggregator.aggregate(queryToContents);
 
         // then
-        assertThat(aggregated)
-            // content4, content6, content7 were fused with content1
-            // content3 and content5 were filtered out by minScore
-            // count2 filtered by maxResults
-            .containsExactly(content1, content8);
+        // content4, content6, content7 were fused with content1
+        // content3 and content5 were filtered out by minScore
+        // count2 filtered by maxResults
+        assertThat(aggregated).hasSize(2);
+        assertThat(aggregated.get(0)).isInstanceOf(ReRankedContent.class);
+        assertReRankedContentOrder(aggregated, content1, content8);
+        assertReRankedContentScore(aggregated,0.6, 0.5);
     }
 
     @ParameterizedTest
@@ -305,5 +317,23 @@ class ReRankingContentAggregatorTest {
                         singletonMap(Query.from("query"), asList(emptyList(), emptyList()))
                 ))
                 .build();
+    }
+
+    private void assertReRankedContentOrder(List<Content> actual, Content... expectedContents) {
+        List<TextSegment> expectedTextSegments = Arrays.stream(expectedContents)
+                .map(Content::textSegment)
+                .toList();
+
+        List<TextSegment> actualTextSegments = actual.stream()
+                .map(Content::textSegment)
+                .toList();
+
+        assertThat(actualTextSegments).containsExactlyElementsOf(expectedTextSegments);
+    }
+
+    private void assertReRankedContentScore(List<Content> actual, double... expectedScores) {
+        for (int i = 0; i < actual.size(); i++) {
+            assertThat(((ReRankedContent)actual.get(i)).score()).isEqualTo(expectedScores[i]);
+        }
     }
 }

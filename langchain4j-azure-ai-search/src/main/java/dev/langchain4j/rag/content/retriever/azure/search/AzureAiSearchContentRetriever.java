@@ -164,7 +164,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
     }
 
     @Override
-    public List<EmbeddingStoreContent> retrieve(Query query) {
+    public List<Content> retrieve(Query query) {
         if (azureAiSearchQueryType == AzureAiSearchQueryType.VECTOR) {
             Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
             EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
@@ -176,7 +176,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
             List<EmbeddingMatch<TextSegment>> searchResult = super.search(request).matches();
             return searchResult.stream()
-                    .map(embeddingMatch -> EmbeddingStoreContent.from(embeddingMatch.embedded(), embeddingMatch.score(), embeddingMatch.embeddingId()))
+                    .map(embeddingMatch -> (Content)EmbeddingStoreContent.from(embeddingMatch.embedded(), embeddingMatch.score(), embeddingMatch.embeddingId()))
                     .toList();
         } else if (azureAiSearchQueryType == AzureAiSearchQueryType.FULL_TEXT) {
             String content = query.text();
@@ -194,7 +194,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
     }
 
-    private List<EmbeddingStoreContent> findRelevantWithFullText(String content, int maxResults, double minScore) {
+    private List<Content> findRelevantWithFullText(String content, int maxResults, double minScore) {
         SearchPagedIterable searchResults =
                 searchClient.search(content,
                         new SearchOptions()
@@ -205,7 +205,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.FULL_TEXT, minScore);
     }
 
-    private List<EmbeddingStoreContent> findRelevantWithHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
+    private List<Content> findRelevantWithHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
         List<Float> vector = referenceEmbedding.vectorAsList();
 
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
@@ -223,7 +223,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID, minScore);
     }
 
-    private List<EmbeddingStoreContent> findRelevantWithHybridAndReranking(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
+    private List<Content> findRelevantWithHybridAndReranking(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
         List<Float> vector = referenceEmbedding.vectorAsList();
 
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
@@ -243,11 +243,11 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID_WITH_RERANKING, minScore);
     }
 
-    private List<EmbeddingStoreContent> mapResultsToContentList(SearchPagedIterable searchResults, AzureAiSearchQueryType azureAiSearchQueryType, double minScore) {
-        List<EmbeddingStoreContent> result = new ArrayList<>();
+    private List<Content> mapResultsToContentList(SearchPagedIterable searchResults, AzureAiSearchQueryType azureAiSearchQueryType, double minScore) {
+        List<Content> result = new ArrayList<>();
         getEmbeddingMatches(searchResults, minScore, azureAiSearchQueryType).forEach(embeddingMatch -> {
-            EmbeddingStoreContent embeddingStoreContent = EmbeddingStoreContent.from(embeddingMatch.embedded(), embeddingMatch.score(), embeddingMatch.embeddingId());
-            result.add(embeddingStoreContent);
+            Content content = EmbeddingStoreContent.from(embeddingMatch.embedded(), embeddingMatch.score(), embeddingMatch.embeddingId());
+            result.add(content);
         });
         return result;
     }

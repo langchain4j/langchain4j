@@ -225,7 +225,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     }
 
     @Override
-    public List<EmbeddingStoreContent> retrieve(Query query) {
+    public List<Content> retrieve(Query query) {
 
         Embedding embeddedQuery = embeddingModel.embed(query.text()).content();
 
@@ -239,7 +239,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
 
         return searchResult.matches().stream()
-                .map(embeddingMatch -> EmbeddingStoreContent.from(embeddingMatch.embedded(), embeddingMatch.score(), embeddingMatch.embeddingId()))
+                .map(embeddingMatch -> (Content)EmbeddingStoreContent.from(embeddingMatch.embedded(), embeddingMatch.score(), embeddingMatch.embeddingId()))
                 .toList();
     }
 

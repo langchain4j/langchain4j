@@ -11,6 +11,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.EmbeddingStoreContent;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
@@ -167,10 +168,10 @@ class AzureAiSearchContentRetrieverTest {
                 .search(any(EmbeddingSearchRequest.class));
 
 
-        List<EmbeddingStoreContent> results = retriever.retrieve(Query.from("test"));
+        List<Content> results = retriever.retrieve(Query.from("test"));
         assertThat(results).hasSize(1);
-
-        EmbeddingStoreContent result = results.get(0);
+        assertThat(results.get(0)).isInstanceOf(EmbeddingStoreContent.class);
+        EmbeddingStoreContent result = (EmbeddingStoreContent) results.get(0);
         assertThat(result.score()).isEqualTo(0.2);
         assertThat(result.embeddingId()).isEqualTo("embedding-123");
         assertThat(result.textSegment()).isEqualTo(textSegment);

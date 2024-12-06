@@ -8,6 +8,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.EmbeddingStoreContent;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -112,7 +113,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         String content = "fruit";
         Query query = Query.from(content);
 
-        List<EmbeddingStoreContent> relevant = contentRetrieverWithVector.retrieve(query);
+        List<Content> relevant = contentRetrieverWithVector.retrieve(query);
         assertThat(relevant).hasSize(3);
         assertContent(relevant.get(0));
         assertThat(relevant.get(0).textSegment().text()).isIn(content1, content3, content5);
@@ -149,7 +150,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         Query query = Query.from(content);
 
         log.info("Testing Vector Search");
-        List<EmbeddingStoreContent> relevant = contentRetrieverWithVector.retrieve(query);
+        List<Content> relevant = contentRetrieverWithVector.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         assertContent(relevant.get(0));
         assertThat(relevant.get(0).textSegment().text()).isEqualTo("The house is open");
@@ -159,7 +160,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
 
         log.info("Testing Full Text Search");
         // This uses the same storage as the vector search, so we don't need to add the content again
-        List<EmbeddingStoreContent> relevant2 = contentRetrieverWithFullText.retrieve(query);
+        List<Content> relevant2 = contentRetrieverWithFullText.retrieve(query);
         assertThat(relevant2).hasSizeGreaterThan(0);
         assertContent(relevant2.get(0));
         assertThat(relevant2.get(0).textSegment().text()).isEqualTo("The house is open");
@@ -167,7 +168,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search");
-        List<EmbeddingStoreContent> relevant3 = contentRetrieverWithHybrid.retrieve(query);
+        List<Content> relevant3 = contentRetrieverWithHybrid.retrieve(query);
         assertThat(relevant3).hasSizeGreaterThan(0);
         assertContent(relevant3.get(0));
         assertThat(relevant3.get(0).textSegment().text()).isEqualTo("The house is open");
@@ -175,7 +176,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         log.info("#1 relevant item: {}", relevant3.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search with Reranking");
-        List<EmbeddingStoreContent> relevant4 = contentRetrieverWithHybridAndReranking.retrieve(query);
+        List<Content> relevant4 = contentRetrieverWithHybridAndReranking.retrieve(query);
         assertThat(relevant4).hasSizeGreaterThan(0);
         assertContent(relevant4.get(0));
         assertThat(relevant4.get(0).textSegment().text()).isEqualTo("The house is open");
@@ -199,7 +200,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         awaitUntilAsserted(() -> assertThat(contentRetrieverWithFullText.retrieve(Query.from("a"))).hasSize(contents.size()));
 
         Query query = Query.from("Alain");
-        List<EmbeddingStoreContent> relevant = contentRetrieverWithFullText.retrieve(query);
+        List<Content> relevant = contentRetrieverWithFullText.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertContent(relevant.get(0));
@@ -207,7 +208,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
 
 
         Query query2 = Query.from("Heidegger");
-        List<EmbeddingStoreContent> relevant2 = contentRetrieverWithFullText.retrieve(query2);
+        List<Content> relevant2 = contentRetrieverWithFullText.retrieve(query2);
         assertThat(relevant2).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertContent(relevant2.get(0));
@@ -260,14 +261,14 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         Query query = Query.from("Algeria");
-        List<EmbeddingStoreContent> relevant = contentRetrieverWithHybrid.retrieve(query);
+        List<Content> relevant = contentRetrieverWithHybrid.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertThat(relevant.get(0).textSegment().text()).contains("Albert Camus");
         assertContent(relevant.get(0));
 
         Query query2 = Query.from("École Normale Supérieure");
-        List<EmbeddingStoreContent> relevant2 = contentRetrieverWithHybrid.retrieve(query2);
+        List<Content> relevant2 = contentRetrieverWithHybrid.retrieve(query2);
         assertThat(relevant2).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertContent(relevant2.get(0));
@@ -303,14 +304,14 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(contents.size()));
 
         Query query = Query.from("A philosopher who was in the French Resistance");
-        List<EmbeddingStoreContent> relevant = contentRetrieverWithHybridAndReranking.retrieve(query);
+        List<Content> relevant = contentRetrieverWithHybridAndReranking.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertContent(relevant.get(0));
         assertThat(relevant.get(0).textSegment().text()).contains("Albert Camus");
 
         Query query2 = Query.from("A philosopher who studied at the École Normale Supérieure");
-        List<EmbeddingStoreContent> relevant2 = contentRetrieverWithHybridAndReranking.retrieve(query2);
+        List<Content> relevant2 = contentRetrieverWithHybridAndReranking.retrieve(query2);
         assertThat(relevant2).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertContent(relevant2.get(0));
@@ -344,10 +345,12 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         return false; // TODO remove this hack after https://github.com/langchain4j/langchain4j/issues/1617 is closed
     }
 
-    private void assertContent(EmbeddingStoreContent content) {
-        assertThat(content.textSegment()).isNotNull();
-        assertThat(content.score()).isNotNull();
-        assertThat(content.score()).isGreaterThanOrEqualTo(0d);
-        assertThat(content.embeddingId()).isNotNull();
+    private void assertContent(Content content) {
+        assertThat(content).isInstanceOf(EmbeddingStoreContent.class);
+        EmbeddingStoreContent embeddingStoreContent = (EmbeddingStoreContent) content;
+        assertThat(embeddingStoreContent.textSegment()).isNotNull();
+        assertThat(embeddingStoreContent.score()).isNotNull();
+        assertThat(embeddingStoreContent.score()).isGreaterThanOrEqualTo(0d);
+        assertThat(embeddingStoreContent.embeddingId()).isNotNull();
     }
 }
