@@ -34,7 +34,7 @@ import static java.time.Duration.ofSeconds;
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
  */
 public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
-    private static final int EMBEDDING_MAX_ARRAY_SIZE = 2048;
+    private static final int REQUEST_TEXT_MAX_ARRAY_SIZE = 2048;
     private final OpenAiClient client;
     private final String modelName;
     private final Integer dimensions;
@@ -104,7 +104,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
                 .map(TextSegment::text)
                 .toList();
 
-        List<List<String>> textBatches = splitList(texts, EMBEDDING_MAX_ARRAY_SIZE);
+        List<List<String>> textBatches = splitList(texts, REQUEST_TEXT_MAX_ARRAY_SIZE);
 
         return embedBatchedTexts(textBatches);
     }
