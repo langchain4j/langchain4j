@@ -1,11 +1,12 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * This class needs to be thread safe because it is called when a streaming result comes back
@@ -16,7 +17,7 @@ class OllamaStreamingResponseBuilder {
 
     private StringBuffer contentBuilder = new StringBuffer();
     private volatile TokenUsage tokenUsage;
-    private volatile List<ToolCall> toolsCall;
+    private volatile List<ToolExecutionRequest> toolExecutionRequests = new CopyOnWriteArrayList<>();
 
     void append(ChatResponse partialResponse) {
         if (partialResponse == null) {
@@ -31,8 +32,7 @@ class OllamaStreamingResponseBuilder {
         }
 
         if (partialResponse.getMessage().getToolCalls() != null && !partialResponse.getMessage().getToolCalls().isEmpty()) {
-            this.toolsCall = new ArrayList<>();
-            this.toolsCall.addAll(partialResponse.getMessage().getToolCalls());
+            this.toolExecutionRequests.addAll(OllamaMessagesUtils.toToolExecutionRequest(partialResponse.getMessage().getToolCalls()));
         }
 
         String content = partialResponse.getMessage().getContent();
@@ -42,10 +42,9 @@ class OllamaStreamingResponseBuilder {
     }
 
     Response<AiMessage> build() {
-        if (toolsCall != null && !toolsCall.isEmpty()) {
+        if (toolExecutionRequests != null && !toolExecutionRequests.isEmpty()) {
             return Response.from(
-                    AiMessage.aiMessage(
-                            OllamaMessagesUtils.toToolExecutionRequest(toolsCall)), tokenUsage);
+                    AiMessage.aiMessage(toolExecutionRequests), tokenUsage);
 
         }
         if (contentBuilder.toString().isEmpty()) {
