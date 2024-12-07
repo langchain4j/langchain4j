@@ -37,7 +37,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     private static final int REQUEST_TEXT_MAX_ARRAY_SIZE = 2048;
     private final OpenAiClient client;
     private final String modelName;
-    private final Integer dimensions;
+    private final Integer dimensions;;
     private final String user;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
@@ -109,7 +109,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         return embedBatchedTexts(textBatches);
     }
 
-    public List<List<String>> splitList(final List<String> inputList, final int size) {
+    private List<List<String>> splitList(final List<String> inputList, final int size) {
         if (size <= 0) {
             throw new IllegalArgumentException("Size must be greater than 0");
         }
