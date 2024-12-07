@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -95,16 +94,17 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
-        if (embeddings.size() != embedded.size()) {
-            throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
+        if (ids.size()!= embeddings.size() || embeddings.size() != embedded.size()) {
+            throw new IllegalArgumentException("The list of ids and embeddings and embedded must have the same size");
         }
 
-        List<Entry<Embedded>> newEntries = IntStream.range(0, embeddings.size())
-                .mapToObj(i -> new Entry<>(randomUUID(), embeddings.get(i), embedded.get(i)))
-                .collect(toList());
+        List<Entry<Embedded>> newEntries = new ArrayList<>(ids.size());
 
-        return add(newEntries);
+        for (int i = 0; i < ids.size(); i++) {
+            newEntries.add(new Entry<>(ids.get(i), embeddings.get(i), embedded.get(i)));
+        }
+        add(newEntries);
     }
 
     private List<String> add(List<Entry<Embedded>> newEntries) {
