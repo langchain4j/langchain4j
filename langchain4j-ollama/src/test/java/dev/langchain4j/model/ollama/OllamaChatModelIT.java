@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -112,8 +113,10 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl())
+                .logRequests(true)
+                .logResponses(true)
                 .modelName(TINY_DOLPHIN_MODEL)
-                .format("json")
+                .format(ResponseFormat.JSON)
                 .temperature(0.0)
                 .build();
 

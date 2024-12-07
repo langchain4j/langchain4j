@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
 
 import java.time.Duration;
@@ -16,6 +17,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
@@ -30,7 +32,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
     private final OllamaClient client;
     private final String modelName;
     private final Options options;
-    private final String format;
+    private final ResponseFormat format;
     private final List<ChatModelListener> listeners;
 
     public OllamaStreamingChatModel(String baseUrl,
@@ -43,7 +45,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                                     Integer numPredict,
                                     Integer numCtx,
                                     List<String> stop,
-                                    String format,
+                                    ResponseFormat format,
                                     Duration timeout,
                                     Boolean logRequests,
                                     Boolean logResponses,
@@ -87,7 +89,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .model(modelName)
                 .messages(toOllamaMessages(messages))
                 .options(options)
-                .format(format)
+                .format(toOllamaResponseFormat(format))
                 .stream(true)
                 .build();
 
@@ -106,7 +108,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         private Integer numPredict;
         private Integer numCtx;
         private List<String> stop;
-        private String format;
+        private ResponseFormat format;
         private Duration timeout;
         private Map<String, String> customHeaders;
         private Boolean logRequests;
@@ -168,7 +170,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        public OllamaStreamingChatModelBuilder format(String format) {
+        public OllamaStreamingChatModelBuilder format(ResponseFormat format) {
             this.format = format;
             return this;
         }

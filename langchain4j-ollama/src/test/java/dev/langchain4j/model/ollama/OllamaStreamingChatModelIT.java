@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -135,7 +136,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl())
                 .modelName(TINY_DOLPHIN_MODEL)
-                .format("json")
+                .format(ResponseFormat.JSON)
                 .temperature(0.0)
                 .build();
 
