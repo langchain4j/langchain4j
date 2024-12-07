@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
@@ -163,10 +164,13 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
+
+        final AtomicInteger onNextCounter = new AtomicInteger(0);
         streamingChatModel.generate(messages, new StreamingResponseHandler<>() {
 
             @Override
             public void onNext(String token) {
+                onNextCounter.incrementAndGet();
             }
 
             @Override
@@ -180,12 +184,15 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
             }
         });
 
+
+
         Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
         AiMessage secondAiMessage = secondResponse.content();
 
         // then
         assertThat(secondAiMessage.text()).contains("32");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+        assertThat(onNextCounter.get()).isPositive();
 
     }
 
