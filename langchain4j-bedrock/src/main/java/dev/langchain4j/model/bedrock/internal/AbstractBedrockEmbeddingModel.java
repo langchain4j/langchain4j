@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
@@ -53,8 +54,10 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
         int totalInputToken = 0;
         final List<Embedding> embeddings = new ArrayList<>();
         for (T response : responses) {
-            embeddings.add(response.toEmbedding());
-            totalInputToken += response.getInputTextTokenCount();
+            embeddings.addAll(response.toEmbeddings());
+            if (response.getInputTextTokenCount().isPresent()) {
+                totalInputToken += response.getInputTextTokenCount().get();
+            }
         }
 
         return Response.from(
@@ -75,7 +78,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
      *
      * @return model id
      */
-    protected abstract String getModelId();
+    protected abstract String getModel();
 
     /**
      * Get response class type
@@ -94,7 +97,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
 
         InvokeModelRequest invokeModelRequest = InvokeModelRequest
                 .builder()
-                .modelId(getModelId())
+                .modelId(getModel())
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
         return getClient().invokeModel(invokeModelRequest);
