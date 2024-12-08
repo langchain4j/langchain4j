@@ -112,6 +112,8 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl())
+                .logRequests(true)
+                .logResponses(true)
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)

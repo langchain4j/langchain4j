@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
 
 import java.time.Duration;
@@ -16,6 +17,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
@@ -31,6 +33,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
     private final String modelName;
     private final Options options;
     private final String format;
+    private final ResponseFormat responseFormat;
     private final List<ChatModelListener> listeners;
 
     public OllamaStreamingChatModel(String baseUrl,
@@ -44,12 +47,17 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                                     Integer numCtx,
                                     List<String> stop,
                                     String format,
+                                    ResponseFormat responseFormat,
                                     Duration timeout,
                                     Boolean logRequests,
                                     Boolean logResponses,
                                     Map<String, String> customHeaders,
                                     List<ChatModelListener> listeners
     ) {
+        if (format != null && responseFormat != null) {
+            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
+        }
+
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
@@ -69,6 +77,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .stop(stop)
                 .build();
         this.format = format;
+        this.responseFormat = responseFormat;
         this.listeners = new ArrayList<>(getOrDefault(listeners, emptyList()));
     }
 
@@ -87,7 +96,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .model(modelName)
                 .messages(toOllamaMessages(messages))
                 .options(options)
-                .format(format)
+                .format(this.format != null ? this.format : toOllamaResponseFormat(responseFormat))
                 .stream(true)
                 .build();
 
@@ -107,6 +116,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         private Integer numCtx;
         private List<String> stop;
         private String format;
+        private ResponseFormat responseFormat;
         private Duration timeout;
         private Map<String, String> customHeaders;
         private Boolean logRequests;
@@ -168,8 +178,16 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
+        /**
+         * @deprecated use responseFormat instead
+         */
         public OllamaStreamingChatModelBuilder format(String format) {
             this.format = format;
+            return this;
+        }
+
+        public OllamaStreamingChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
@@ -211,6 +229,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                     numCtx,
                     stop,
                     format,
+                    responseFormat,
                     timeout,
                     logRequests,
                     logResponses,
