@@ -37,16 +37,14 @@ class ContentTest {
     void test_equals_hashCode() {
 
         // given
-        Content content1 = Content.from("content");
+        Content content1 = new Content(TextSegment.from("content"));
         Content content2 = Content.from("content 2");
         Content content3 = Content.from("content");
 
         // then
         assertThat(content1)
                 .isNotEqualTo(content2)
-                .doesNotHaveSameHashCodeAs(content2);
-
-        assertThat(content1)
+                .doesNotHaveSameHashCodeAs(content2)
                 .isEqualTo(content3)
                 .hasSameHashCodeAs(content3);
     }
