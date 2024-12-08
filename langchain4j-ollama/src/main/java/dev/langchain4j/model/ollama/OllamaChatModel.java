@@ -48,7 +48,8 @@ public class OllamaChatModel implements ChatLanguageModel {
     private final OllamaClient client;
     private final String modelName;
     private final Options options;
-    private final ResponseFormat format;
+    private final String format;
+    private final ResponseFormat responseFormat;
     private final Integer maxRetries;
     private final List<ChatModelListener> listeners;
 
@@ -62,13 +63,19 @@ public class OllamaChatModel implements ChatLanguageModel {
                            Integer numPredict,
                            Integer numCtx,
                            List<String> stop,
-                           ResponseFormat format,
+                           String format,
+                           ResponseFormat responseFormat,
                            Duration timeout,
                            Integer maxRetries,
                            Map<String, String> customHeaders,
                            Boolean logRequests,
                            Boolean logResponses,
                            List<ChatModelListener> listeners) {
+
+        if (format != null && responseFormat != null) {
+            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
+        }
+
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
@@ -88,6 +95,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .stop(stop)
                 .build();
         this.format = format;
+        this.responseFormat = responseFormat;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.listeners = new ArrayList<>(getOrDefault(listeners, emptyList()));
     }
@@ -103,14 +111,14 @@ public class OllamaChatModel implements ChatLanguageModel {
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         ensureNotEmpty(messages, "messages");
 
-        return doGenerate(messages, null, this.format);
+        return doGenerate(messages, null, this.format != null ? this.format : toOllamaResponseFormat(responseFormat));
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         ensureNotEmpty(messages, "messages");
 
-        return doGenerate(messages, toolSpecifications, this.format);
+        return doGenerate(messages, toolSpecifications, this.format != null ? this.format : toOllamaResponseFormat(responseFormat));
     }
 
     @Override
@@ -118,7 +126,7 @@ public class OllamaChatModel implements ChatLanguageModel {
         final Response<AiMessage> response = doGenerate(
                 request.messages(),
                 request.toolSpecifications(),
-                getOrDefault(request.responseFormat(), this.format)
+                toOllamaResponseFormat(getOrDefault(request.responseFormat(), this.responseFormat))
         );
 
         return dev.langchain4j.model.chat.response.ChatResponse.builder()
@@ -131,18 +139,18 @@ public class OllamaChatModel implements ChatLanguageModel {
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>();
-        if (this.format != null && ResponseFormatType.JSON.equals(this.format.type())) {
+        if (this.responseFormat != null && ResponseFormatType.JSON.equals(this.responseFormat.type())) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
     }
 
-    private Response<AiMessage> doGenerate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, ResponseFormat responseFormat) {
+    private Response<AiMessage> doGenerate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, String ollamaResponseFormat) {
         ChatRequest request = ChatRequest.builder()
                 .model(modelName)
                 .messages(toOllamaMessages(messages))
                 .options(options)
-                .format(toOllamaResponseFormat(responseFormat))
+                .format(ollamaResponseFormat)
                 .stream(false)
                 .tools(toOllamaTools(toolSpecifications))
                 .build();
@@ -180,7 +188,8 @@ public class OllamaChatModel implements ChatLanguageModel {
         private Integer numPredict;
         private Integer numCtx;
         private List<String> stop;
-        private ResponseFormat format;
+        private String format;
+        private ResponseFormat responseFormat;
         private Duration timeout;
         private Integer maxRetries;
         private Map<String, String> customHeaders;
@@ -243,8 +252,17 @@ public class OllamaChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public OllamaChatModelBuilder format(ResponseFormat format) {
+        /**
+         * @deprecated use responseFormat instead
+         */
+        @Deprecated
+        public OllamaChatModelBuilder format(String format) {
             this.format = format;
+            return this;
+        }
+
+        public OllamaChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
@@ -291,6 +309,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                     numCtx,
                     stop,
                     format,
+                    responseFormat,
                     timeout,
                     maxRetries,
                     customHeaders,

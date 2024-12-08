@@ -40,7 +40,7 @@ class OllamaAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
                 OllamaChatModel.builder()
                         .baseUrl(ollamaBaseUrl())
                         .modelName(TOOL_MODEL)
-                        .format(JSON)
+                        .responseFormat(JSON)
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)

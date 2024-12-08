@@ -32,7 +32,8 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
     private final OllamaClient client;
     private final String modelName;
     private final Options options;
-    private final ResponseFormat format;
+    private final String format;
+    private final ResponseFormat responseFormat;
     private final List<ChatModelListener> listeners;
 
     public OllamaStreamingChatModel(String baseUrl,
@@ -45,13 +46,18 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                                     Integer numPredict,
                                     Integer numCtx,
                                     List<String> stop,
-                                    ResponseFormat format,
+                                    String format,
+                                    ResponseFormat responseFormat,
                                     Duration timeout,
                                     Boolean logRequests,
                                     Boolean logResponses,
                                     Map<String, String> customHeaders,
                                     List<ChatModelListener> listeners
     ) {
+        if (format != null && responseFormat != null) {
+            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
+        }
+
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
@@ -71,6 +77,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .stop(stop)
                 .build();
         this.format = format;
+        this.responseFormat = responseFormat;
         this.listeners = new ArrayList<>(getOrDefault(listeners, emptyList()));
     }
 
@@ -89,7 +96,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .model(modelName)
                 .messages(toOllamaMessages(messages))
                 .options(options)
-                .format(toOllamaResponseFormat(format))
+                .format(this.format != null ? this.format : toOllamaResponseFormat(responseFormat))
                 .stream(true)
                 .build();
 
@@ -108,7 +115,8 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         private Integer numPredict;
         private Integer numCtx;
         private List<String> stop;
-        private ResponseFormat format;
+        private String format;
+        private ResponseFormat responseFormat;
         private Duration timeout;
         private Map<String, String> customHeaders;
         private Boolean logRequests;
@@ -170,8 +178,16 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        public OllamaStreamingChatModelBuilder format(ResponseFormat format) {
+        /**
+         * @deprecated use responseFormat instead
+         */
+        public OllamaStreamingChatModelBuilder format(String format) {
             this.format = format;
+            return this;
+        }
+
+        public OllamaStreamingChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
@@ -213,6 +229,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                     numCtx,
                     stop,
                     format,
+                    responseFormat,
                     timeout,
                     logRequests,
                     logResponses,

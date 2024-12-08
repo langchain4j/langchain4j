@@ -136,7 +136,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl())
                 .modelName(TINY_DOLPHIN_MODEL)
-                .format(ResponseFormat.JSON)
+                .format("json")
                 .temperature(0.0)
                 .build();
 
