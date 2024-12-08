@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -16,6 +17,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaTools;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
@@ -88,6 +90,22 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .messages(toOllamaMessages(messages))
                 .options(options)
                 .format(format)
+                .stream(true)
+                .build();
+
+        client.streamingChat(request, handler, listeners, messages);
+    }
+
+    @Override
+    public void generate(final List<ChatMessage> messages, final List<ToolSpecification> toolSpecifications, final StreamingResponseHandler<AiMessage> handler) {
+        ensureNotEmpty(messages, "messages");
+
+        ChatRequest request = ChatRequest.builder()
+                .model(modelName)
+                .messages(toOllamaMessages(messages))
+                .options(options)
+                .format(format)
+                .tools(toOllamaTools(toolSpecifications))
                 .stream(true)
                 .build();
 
