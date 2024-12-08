@@ -37,7 +37,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     private static final int REQUEST_TEXT_MAX_ARRAY_SIZE = 2048;
     private final OpenAiClient client;
     private final String modelName;
-    private final Integer dimensions;;
+    private final Integer dimensions;
     private final String user;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
