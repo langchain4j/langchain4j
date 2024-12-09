@@ -22,6 +22,7 @@ import software.amazon.awssdk.regions.Region;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -34,6 +35,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.Mistral7bInstructV0_2;
 import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.MistralMixtral8x7bInstructV0_1;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -67,7 +69,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -94,7 +96,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -562,7 +564,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -588,7 +590,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -610,7 +612,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -632,7 +634,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -661,7 +663,7 @@ class BedrockChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -682,7 +684,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -704,7 +706,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @ParameterizedTest
@@ -730,7 +732,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -756,7 +758,7 @@ class BedrockChatModelIT {
 
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test
@@ -777,7 +779,57 @@ class BedrockChatModelIT {
 
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
+    }
+
+    @Test
+    void testBedrockAnthropicCompletionChatModelWithMessagesToSanitize() {
+        List<ChatMessage> messages = new ArrayList<>();
+        String userMessage = "Hello, my name is Ronaldo, what is my name?";
+        String userMessage2 = "Hello, my name is Neymar, what is my name?";
+        messages.add(new UserMessage(userMessage));
+        messages.add(new UserMessage(userMessage2));
+
+        BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel
+                .builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicCompletionChatModel.Types.AnthropicClaudeV2.getValue())
+                .maxRetries(1)
+                .build();
+
+        final Response<AiMessage> aiMessageResponse = bedrockChatModel.generate(messages);
+
+        assertThat(aiMessageResponse).isNotNull();
+        assertThat(aiMessageResponse.content().text()).isNotBlank();
+        assertThat(aiMessageResponse.content().text()).contains("Ronaldo");
+        assertThat(aiMessageResponse.finishReason()).isIn(STOP, LENGTH);
+    }
+
+    @Test
+    void testBedrockAnthropicMessageChatModelWithMessagesToSanitize() {
+        List<ChatMessage> messages = new ArrayList<>();
+        String userMessage = "Hello, my name is Ronaldo, what is my name?";
+        String userMessage2 = "Hello, my name is Neymar, what is my name?";
+        messages.add(new UserMessage(userMessage));
+        messages.add(new UserMessage(userMessage2));
+
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+                .builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2.getValue())
+                .maxRetries(1)
+                .build();
+
+        final Response<AiMessage> aiMessageResponse = bedrockChatModel.generate(messages);
+
+        assertThat(aiMessageResponse).isNotNull();
+        assertThat(aiMessageResponse.content().text()).isNotBlank();
+        assertThat(aiMessageResponse.content().text()).contains("Ronaldo");
+        assertThat(aiMessageResponse.finishReason()).isIn(STOP, LENGTH);
     }
 
     @AfterEach
