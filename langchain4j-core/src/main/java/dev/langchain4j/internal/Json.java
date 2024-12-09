@@ -112,7 +112,6 @@ public class Json {
     public static <T> T fromJson(String json, Type type) {
         return CODEC.fromJson(json, type);
     }
-
     /**
      * Convert the given object to an {@link InputStream}.
      *
