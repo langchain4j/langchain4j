@@ -7,14 +7,15 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -188,5 +189,16 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         // then
         assertThat(future.get())
                 .isExactlyInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void should_return_set_capabilities() {
+        OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollamaBaseUrl())
+                .modelName(TINY_DOLPHIN_MODEL)
+                .capabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
+                .build();
+
+        assertThat(model.supportedCapabilities()).contains(RESPONSE_FORMAT_JSON_SCHEMA);
     }
 }

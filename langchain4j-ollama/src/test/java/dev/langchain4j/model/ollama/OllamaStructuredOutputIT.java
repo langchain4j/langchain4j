@@ -1,6 +1,7 @@
 package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -70,7 +71,35 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
     }
 
     @Test
-    void should_generate_structured_output_streaming_response_format_way() throws ExecutionException, InterruptedException, TimeoutException {
+    void should_generate_structured_output_using_response_format() throws ExecutionException, InterruptedException, TimeoutException {
+
+        // given
+        ChatLanguageModel ollamaChatModel = OllamaChatModel.builder()
+                .baseUrl(ollamaBaseUrl())
+                .modelName(TOOL_MODEL)
+                .temperature(0.0)
+                .responseFormat(ResponseFormat.builder().type(ResponseFormatType.JSON)
+                        .jsonSchema(JsonSchema.builder().rootElement(schema).build())
+                        .build())
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        final Response<AiMessage> chatResponse = ollamaChatModel.generate(UserMessage.from("Tell me about Canada."));
+        final String response = chatResponse.content().text();
+
+        // then
+        CountryInfo countryInfo = OllamaJsonUtils.toObject(response, CountryInfo.class);
+
+        assertThat(countryInfo.name()).isEqualTo("Canada");
+        assertThat(countryInfo.capital()).isEqualTo("Ottawa");
+        assertThat(countryInfo.languages()).contains("English", "French");
+    }
+
+
+    @Test
+    void should_generate_structured_output_using_response_format_streaming() throws ExecutionException, InterruptedException, TimeoutException {
 
         // given
         StreamingChatLanguageModel streamingOllamaChatModelWithResponseFormat = OllamaStreamingChatModel.builder()
@@ -113,51 +142,6 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
         assertThat(countryInfo.languages()).contains("English", "French");
     }
-
-    @Test
-    void should_generate_structured_output_streaming_old_format_way() throws ExecutionException, InterruptedException, TimeoutException {
-        // given
-        StreamingChatLanguageModel streamingOllamaChatModelWithOldFormatWayJsonSchema = OllamaStreamingChatModel.builder()
-                .baseUrl(ollamaBaseUrl())
-                .modelName(TOOL_MODEL)
-                .temperature(0.0)
-                .format(OllamaJsonUtils.toJson(
-                        JsonSchemaElementHelper.toMap(schema)))
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-
-        // when
-        CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
-        streamingOllamaChatModelWithOldFormatWayJsonSchema.generate("Tell me about Canada.", new StreamingResponseHandler<>() {
-
-            @Override
-            public void onNext(String token) {
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                secondFutureResponse.complete(response);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                secondFutureResponse.completeExceptionally(error);
-            }
-        });
-
-
-        // then
-        Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
-        AiMessage secondAiMessage = secondResponse.content();
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(secondAiMessage.text(), CountryInfo.class);
-
-        assertThat(countryInfo.name()).isEqualTo("Canada");
-        assertThat(countryInfo.capital()).isEqualTo("Ottawa");
-        assertThat(countryInfo.languages()).contains("English", "French");
-    }
-
 
     @Test
     void should_throw_exception_when_both_format_parameters_are_set_for_ollama_chat_model() {

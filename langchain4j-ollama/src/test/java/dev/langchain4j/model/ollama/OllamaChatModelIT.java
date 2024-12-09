@@ -10,7 +10,9 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -126,5 +128,16 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // then
         assertThat(json).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
+    }
+
+    @Test
+    void should_return_set_capabilities() {
+        ChatLanguageModel model = OllamaChatModel.builder()
+                .baseUrl(ollamaBaseUrl())
+                .capabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
+                .modelName(TINY_DOLPHIN_MODEL)
+                .build();
+
+        assertThat(model.supportedCapabilities()).contains(RESPONSE_FORMAT_JSON_SCHEMA);
     }
 }
