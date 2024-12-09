@@ -253,7 +253,11 @@ public class OllamaChatModel implements ChatLanguageModel {
         }
 
         /**
-         * @deprecated use responseFormat instead
+         * @deprecated Please use {@link #responseFormat(ResponseFormat)} instead.
+         * For example: {@code responseFormat(ResponseFormat.JSON)}.
+         * <br>
+         * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
+         * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
          */
         @Deprecated
         public OllamaChatModelBuilder format(String format) {
