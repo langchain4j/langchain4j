@@ -3,10 +3,13 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static dev.langchain4j.model.openai.OpenAiModerationModelName.TEXT_MODERATION_LATEST;
 import static org.assertj.core.api.Assertions.assertThat;
 
+
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiModerationModelIT {
 
     ModerationModel model = OpenAiModerationModel.builder()
