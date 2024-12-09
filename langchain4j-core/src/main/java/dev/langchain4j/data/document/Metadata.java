@@ -61,13 +61,13 @@ public class Metadata {
      * Constructs a Metadata object from a map of key-value pairs.
      *
      * @param metadata the map of key-value pairs; must not be {@code null}. {@code null} values are not permitted.
-     *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}, {@link List}
+     *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}, {@link Collection}
      */
     public Metadata(Map<String, ?> metadata) {
         ensureNotNull(metadata, "metadata").forEach((key, value) -> {
             validateParameter(key, value);
-            if (value instanceof List<?>) {
-                validateValueList(key, (List<?>) value);
+            if (value instanceof Collection<?>) {
+                validateValueCollection(key, (Collection<?>) value);
             } else {
                 validateValue(key, value);
             }
@@ -89,10 +89,10 @@ public class Metadata {
         }
     }
 
-    private static void validateValueList(String key, List<?> values) {
+    private static void validateValueCollection(String key, Collection<?> values) {
         values.forEach(value -> {
             if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
-                throw illegalArgument("The metadata key '%s' list contains a value '%s', which is of the unsupported type '%s'. " +
+                throw illegalArgument("The metadata key '%s' collection contains a value '%s', which is of the unsupported type '%s'. " +
                                 "Currently, the supported types are: %s",
                         key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
                 );
@@ -140,27 +140,27 @@ public class Metadata {
     }
 
     /**
-     * Returns the list of {@code String} values associated with the given key.
+     * Returns the collection of {@code String} values associated with the given key.
      *
      * @param key the key
-     * @return the list of {@code String} values associated with the given key, or an empty list if the key is not present.
-     * @throws RuntimeException if the value is not of type List
+     * @return the collection of {@code String} values associated with the given key, or an empty collection if the key is not present.
+     * @throws RuntimeException if the value is not of type Collection
      */
-    public List<String> getStrings(String key) {
+    public Collection<String> getStrings(String key) {
         if (!containsKey(key)) {
             return Collections.emptyList();
         }
 
         Object values = metadata.get(key);
-        if (values instanceof List<?>) {
-            return ((List<?>) values).stream()
+        if (values instanceof Collection<?>) {
+            return ((Collection<?>) values).stream()
                     .filter(String.class::isInstance)
                     .map(String.class::cast)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toCollection((values instanceof Set<?>) ? HashSet::new : ArrayList::new));
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a List<String>.", key, values, values.getClass().getName());
+                "It cannot be returned as a Collection<String>.", key, values, values.getClass().getName());
     }
 
     /**
@@ -188,20 +188,20 @@ public class Metadata {
     }
 
     /**
-     * Returns the list of {@code UUID} values associated with the given key.
+     * Returns the collection of {@code UUID} values associated with the given key.
      *
      * @param key the key
-     * @return the list of {@code UUID} values associated with the given key, or an empty list if the key is not present.
-     * @throws RuntimeException if the value is not of type List
+     * @return the collection of {@code UUID} values associated with the given key, or an empty collection if the key is not present.
+     * @throws RuntimeException if the value is not of type Collection
      */
-    public List<UUID> getUUIDs(String key) {
+    public Collection<UUID> getUUIDs(String key) {
         if (!containsKey(key)) {
             return Collections.emptyList();
         }
 
         Object values = metadata.get(key);
-        if (values instanceof List<?>) {
-            return ((List<?>) values).stream()
+        if (values instanceof Collection<?>) {
+            return ((Collection<?>) values).stream()
                     .map(value -> {
                         if (value instanceof UUID) {
                             return (UUID) value;
@@ -212,11 +212,11 @@ public class Metadata {
                         return null;
                     })
                     .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toCollection((values instanceof Set<?>) ? HashSet::new : ArrayList::new));
         }
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
-                "It cannot be returned as a List<UUID>.", key, values, values.getClass().getName());
+                "It cannot be returned as a Collection<UUID>.", key, values, values.getClass().getName());
     }
 
     /**
@@ -472,9 +472,9 @@ public class Metadata {
      * @param values the values
      * @return {@code this}
      */
-    public Metadata put(String key, List<?> values) {
+    public Metadata put(String key, Collection<?> values) {
         validateParameter(key, values);
-        validateValueList(key, values);
+        validateValueCollection(key, values);
         this.metadata.put(key, values);
         return this;
     }
