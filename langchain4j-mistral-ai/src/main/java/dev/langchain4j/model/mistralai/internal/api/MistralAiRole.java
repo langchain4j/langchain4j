@@ -8,7 +8,6 @@ public enum MistralAiRole {
     @JsonProperty("user") USER,
     @JsonProperty("assistant") ASSISTANT,
     @JsonProperty("tool") TOOL;
-
     MistralAiRole() {
     }
 }
