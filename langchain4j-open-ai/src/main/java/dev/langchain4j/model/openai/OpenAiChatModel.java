@@ -9,6 +9,7 @@ import dev.ai4j.openai4j.chat.ResponseFormatType;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.ModelAware;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -62,7 +63,7 @@ import static java.util.Collections.singletonList;
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
+public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator, ModelAware {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(OpenAiChatModel.class);
     private final OpenAiClient client;
