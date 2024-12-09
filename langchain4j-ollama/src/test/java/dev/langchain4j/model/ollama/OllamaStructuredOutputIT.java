@@ -5,15 +5,17 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.language.LanguageModel;
+import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
@@ -161,6 +163,59 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
                         .responseFormat(ResponseFormat.JSON)
                         .build()
         ).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void language_model_should_generate_structured_output() {
+        // given
+        final LanguageModel languageModel = OllamaLanguageModel.builder()
+                .baseUrl(ollamaBaseUrl())
+                .modelName(TOOL_MODEL)
+                .temperature(0.0)
+                .responseFormat(ResponseFormat.builder().type(ResponseFormatType.JSON)
+                        .jsonSchema(JsonSchema.builder().rootElement(schema).build())
+                        .build())
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        final Response<String> generated = languageModel.generate("Tell me about Canada.");
+
+        // then
+        CountryInfo countryInfo = OllamaJsonUtils.toObject(generated.content(), CountryInfo.class);
+
+        assertThat(countryInfo.name()).isEqualTo("Canada");
+        assertThat(countryInfo.capital()).isEqualTo("Ottawa");
+        assertThat(countryInfo.languages()).contains("English", "French");
+    }
+
+    @Test
+    void streaming_language_model_should_generate_structured_output() {
+        // given
+        final StreamingLanguageModel languageModel = OllamaStreamingLanguageModel.builder()
+                .baseUrl(ollamaBaseUrl())
+                .modelName(TOOL_MODEL)
+                .temperature(0.0)
+                .responseFormat(ResponseFormat.builder().type(ResponseFormatType.JSON)
+                        .jsonSchema(JsonSchema.builder().rootElement(schema).build())
+                        .build())
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        TestStreamingResponseHandler<String> handler = new TestStreamingResponseHandler<>();
+
+
+        // when
+        languageModel.generate("Tell me about Canada.", handler);
+        final Response<String> generated = handler.get();
+
+        CountryInfo countryInfo = OllamaJsonUtils.toObject(generated.content(), CountryInfo.class);
+
+        assertThat(countryInfo.name()).isEqualTo("Canada");
+        assertThat(countryInfo.capital()).isEqualTo("Ottawa");
+        assertThat(countryInfo.languages()).contains("English", "French");
     }
 
 }
