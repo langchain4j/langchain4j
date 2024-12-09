@@ -87,7 +87,7 @@
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <milvus-sdk-java.version>2.4.2</milvus-sdk-java.version>
-        <netty.version>4.1.111.Final</netty.version>
+        <netty.version>4.1.115.Final</netty.version>
         <awaitility.version>4.2.2</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <jspecify.version>1.0.0</jspecify.version>
