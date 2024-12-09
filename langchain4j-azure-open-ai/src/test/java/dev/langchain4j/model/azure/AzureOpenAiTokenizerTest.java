@@ -1,15 +1,16 @@
 package dev.langchain4j.model.azure;
 
 import dev.langchain4j.model.Tokenizer;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.azure.AzureOpenAiTokenizer.countArguments;
-import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.azure.AzureOpenAiTokenizer.countArguments;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class AzureOpenAiTokenizerTest {
 

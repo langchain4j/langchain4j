@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
@@ -278,7 +279,7 @@ class AzureOpenAiChatModelIT {
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new AzureOpenAiTokenizer(gptVersion))
-                .responseFormat(new ChatCompletionsJsonResponseFormat())
+                .responseFormat(ResponseFormat.JSON)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -293,7 +294,13 @@ class AzureOpenAiChatModelIT {
 
     @Disabled("requires deployment of all models")
     @ParameterizedTest(name = "Testing model {0}")
-    @EnumSource(AzureOpenAiChatModelName.class)
+    @EnumSource(value = AzureOpenAiChatModelName.class, mode = EnumSource.Mode.EXCLUDE, names = {
+            "GPT_3_5_TURBO_0301",
+            "GPT_3_5_TURBO_16K",
+            "GPT_4_0125_PREVIEW",
+            "GPT_4_1106_PREVIEW",
+            "GPT_4_TURBO",
+            "GPT_4_32K"})
     void should_support_all_string_model_names(AzureOpenAiChatModelName modelName) {
 
         // given
