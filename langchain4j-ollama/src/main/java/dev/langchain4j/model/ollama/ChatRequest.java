@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.List;
 
@@ -17,6 +18,7 @@ class ChatRequest {
     private String model;
     private List<Message> messages;
     private Options options;
+    @JsonSerialize(using = FormatSerializer.class)
     private String format;
     private Boolean stream;
     private List<Tool> tools;

@@ -1,11 +1,13 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -69,5 +71,15 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // then
         assertThat(response.content()).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
+    }
+
+    @Test
+    void should_throw_exception_when_format_and_response_format_are_used() {
+        assertThatThrownBy(() ->
+                OllamaLanguageModel.builder()
+                        .format("json")
+                        .responseFormat(ResponseFormat.JSON)
+                        .build()
+        ).isInstanceOf(IllegalStateException.class);
     }
 }
