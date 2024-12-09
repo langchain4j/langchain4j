@@ -2,6 +2,7 @@ package dev.langchain4j.internal;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.UUID;
 
 public class TypeUtils {
 
@@ -25,6 +26,7 @@ public class TypeUtils {
 
     public static boolean isJsonString(Class<?> type) {
         return type == String.class || type == char.class || type == Character.class
+            || type == UUID.class
             || CharSequence.class.isAssignableFrom(type);
     }
 
