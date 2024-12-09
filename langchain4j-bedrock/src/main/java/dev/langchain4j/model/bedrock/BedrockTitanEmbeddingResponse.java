@@ -5,6 +5,9 @@ import dev.langchain4j.model.bedrock.internal.BedrockEmbeddingResponse;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+import java.util.Optional;
+
 /**
  * Bedrock Titan embedding response
  */
@@ -16,7 +19,13 @@ public class BedrockTitanEmbeddingResponse implements BedrockEmbeddingResponse {
     private int inputTextTokenCount;
 
     @Override
-    public Embedding toEmbedding() {
-        return new Embedding(embedding);
+    public List<Embedding> toEmbeddings() {
+        return List.of(Embedding.from(embedding));
     }
+
+    @Override
+    public Optional<Integer> getInputTextTokenCount() {
+        return Optional.of(inputTextTokenCount);
+    }
+
 }
