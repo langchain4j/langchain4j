@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,6 +20,7 @@ public class TypeUtilsTest {
         assertThat(TypeUtils.isJsonString(StringBuffer.class)).isTrue();
         assertThat(TypeUtils.isJsonString(StringBuilder.class)).isTrue();
         assertThat(TypeUtils.isJsonString(CharSequence.class)).isTrue();
+        assertThat(TypeUtils.isJsonString(UUID.class)).isTrue();
     }
 
     @Test

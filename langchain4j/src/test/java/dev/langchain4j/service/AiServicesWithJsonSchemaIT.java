@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
@@ -820,6 +821,43 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
     }
 
+    @Test
+    void should_extract_pojo_with_uuid_fields() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            PersonExtractor16 personExtractor = AiServices.create(PersonExtractor16.class, model);
+
+            String text = "Klaus identified by 567b229a-6b0a-4f1e-9006-448cd9dfbfda";
+
+            // when
+            PersonExtractor16.Person person = personExtractor.extractPersonFrom(text);
+
+            // then
+            assertThat(person.name).isEqualTo("Klaus");
+            assertThat(person.id).isEqualTo(UUID.fromString("567b229a-6b0a-4f1e-9006-448cd9dfbfda"));
+
+            verify(model)
+                    .chat(ChatRequest.builder()
+                            .messages(singletonList(userMessage(text)))
+                            .responseFormat(ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(JsonSchema.builder()
+                                            .name("Person")
+                                            .rootElement(JsonObjectSchema.builder()
+                                                    .addStringProperty("id", "String in a UUID format")
+                                                    .addStringProperty("name")
+                                                    .required("id", "name")
+                                                    .build())
+                                            .build())
+                                    .build())
+                            .build());
+            verify(model).supportedCapabilities();
+        }
+    }
 
     interface PersonExtractor14 {
 
@@ -875,6 +913,17 @@ public abstract class AiServicesWithJsonSchemaIT {
 
             String name;
             List<Person> children;
+        }
+
+        Person extractPersonFrom(String text);
+    }
+
+    interface PersonExtractor16 {
+
+        class Person {
+
+            UUID id;
+            String name;
         }
 
         Person extractPersonFrom(String text);

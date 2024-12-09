@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
@@ -734,5 +735,64 @@ public abstract class AiServicesWithNewToolsIT {
 
     protected boolean verifyModelInteractions() {
         return false;
+    }
+
+    static class ToolWithUUIDParameter {
+
+        Map<UUID, String> usernames = Map.of(
+                UUID.fromString("62dbcc27-aaf3-449a-b12d-5a904271a57f"), "Alice",
+                UUID.fromString("d1dbd3c2-25ab-4b10-b4f0-70c34088a248"), "Bob");
+
+        @Tool
+        String getUsernameFromId(UUID id) {
+            return usernames.get(id);
+        }
+
+        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
+                .name("getUsernameFromId")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("arg0" +
+                                "", "String in a UUID format")
+                        .required("arg0")
+                        .build())
+                .build();
+    }
+
+    @Test
+    protected void should_execute_tool_with_uuid_parameter() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            ToolWithUUIDParameter tool = spy(new ToolWithUUIDParameter());
+
+            Assistant assistant = AiServices.builder(Assistant.class)
+                    .chatLanguageModel(model)
+                    .tools(tool)
+                    .build();
+
+            String text = "What is the username with ID 62dbcc27-aaf3-449a-b12d-5a904271a57f?";
+
+            // when
+            var response = assistant.chat(text);
+
+            // then
+            assertThat(response.content().text()).contains("Alice");
+
+            verify(tool).getUsernameFromId(UUID.fromString("62dbcc27-aaf3-449a-b12d-5a904271a57f"));
+            verifyNoMoreInteractions(tool);
+
+            if (verifyModelInteractions()) {
+                verify(model).supportedCapabilities();
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractions(model);
+
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                assertThat(toolSpecifications).hasSize(1);
+                assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithUUIDParameter.EXPECTED_SPECIFICATION);
+            }
+        }
     }
 }

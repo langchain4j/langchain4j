@@ -17,6 +17,7 @@ import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
 import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
 import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
 import static dev.langchain4j.internal.TypeUtils.isJsonString;
+import static dev.langchain4j.internal.TypeUtils.isJsonUUID;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
@@ -31,6 +32,12 @@ public class JsonSchemaElementHelper {
                                                           Type type,
                                                           String fieldDescription,
                                                           Map<Class<?>, VisitedClassMetadata> visited) {
+        if (isJsonUUID(clazz)) {
+            return JsonStringSchema.builder()
+                    .description(fieldDescription == null ? "String in a UUID format" : fieldDescription)
+                    .build();
+        }
+
         if (isJsonString(clazz)) {
             return JsonStringSchema.builder()
                     .description(fieldDescription)
