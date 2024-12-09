@@ -1,5 +1,6 @@
 package dev.langchain4j.model.vertexai;
 
+import com.google.api.gax.core.NoCredentialsProvider;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.*;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
@@ -76,7 +77,8 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
     private final List<ChatModelListener> listeners;
 
     @Builder
-    public VertexAiGeminiChatModel(String project,
+    public VertexAiGeminiChatModel(String apiKey,
+                                   String project,
                                    String location,
                                    String modelName,
                                    Float temperature,
@@ -177,11 +179,23 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             ).build();
         }
 
-        this.vertexAI = new VertexAI.Builder()
-            .setProjectId(ensureNotBlank(project, "project"))
-            .setLocation(ensureNotBlank(location, "location"))
-            .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
-            .build();
+        if (apiKey != null && !apiKey.isEmpty()) {
+            Map<String, String> customHeaders = new HashMap<>();
+            customHeaders.put("user-agent", "LangChain4j");
+            customHeaders.put("X-goog-api-key", "Bearer " + apiKey);
+            this.vertexAI = new VertexAI.Builder()
+                    .setProjectId(ensureNotBlank(project, "project"))
+                    .setLocation(ensureNotBlank(location, "location"))
+                    .setCredentials(NoCredentialsProvider.create().getCredentials())
+                    .setCustomHeaders(customHeaders)
+                    .build();
+        } else {
+            this.vertexAI = new VertexAI.Builder()
+                    .setProjectId(ensureNotBlank(project, "project"))
+                    .setLocation(ensureNotBlank(location, "location"))
+                    .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"))
+                    .build();
+        }
 
         this.generativeModel = new GenerativeModel(
             ensureNotBlank(modelName, "modelName"), vertexAI)
