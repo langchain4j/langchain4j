@@ -554,7 +554,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         }
 
         /**
-         * @deprecated For JSON output, you can replace `.responseFormat(new ChatCompletionsJsonResponseFormat())` by `.responseFormat(ResponseFormat.JSON)`, and use `.strictJsonSchema(true)`to force JSON schema validation.
+         * @deprecated For JSON output, you can replace `.responseFormat(new ChatCompletionsJsonResponseFormat())` by `.responseFormat(ResponseFormat.JSON)`, and use `.strictJsonSchema(true)`to force JSON schema adherence.
          */
         @Deprecated(forRemoval = true)
         public Builder responseFormat(ChatCompletionsResponseFormat chatCompletionsResponseFormat) {
