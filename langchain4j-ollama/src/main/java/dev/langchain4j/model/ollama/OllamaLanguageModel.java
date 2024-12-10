@@ -70,7 +70,7 @@ public class OllamaLanguageModel implements LanguageModel {
                 .numCtx(numCtx)
                 .stop(stop)
                 .build();
-        this.responseFormat = (format != null && format.equals("json") ? ResponseFormat.JSON : responseFormat);
+        this.responseFormat = "json".equals(format) ? ResponseFormat.JSON : responseFormat;
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
@@ -182,6 +182,7 @@ public class OllamaLanguageModel implements LanguageModel {
          * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
          * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
          */
+        @Deprecated
         public OllamaLanguageModelBuilder format(String format) {
             this.format = format;
             return this;

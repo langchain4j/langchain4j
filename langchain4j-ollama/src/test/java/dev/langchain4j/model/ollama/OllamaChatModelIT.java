@@ -134,7 +134,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
     void should_return_set_capabilities() {
         ChatLanguageModel model = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl())
-                .capabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
+                .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                 .modelName(TINY_DOLPHIN_MODEL)
                 .build();
 

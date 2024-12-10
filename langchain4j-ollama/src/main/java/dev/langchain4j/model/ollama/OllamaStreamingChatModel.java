@@ -23,6 +23,7 @@ import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
@@ -57,7 +58,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                                     Boolean logResponses,
                                     Map<String, String> customHeaders,
                                     List<ChatModelListener> listeners,
-                                    Set<Capability> capabilities
+                                    Set<Capability> supportedCapabilities
     ) {
         if (format != null && responseFormat != null) {
             throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
@@ -81,9 +82,9 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .numCtx(numCtx)
                 .stop(stop)
                 .build();
-        this.responseFormat = (format != null && format.equals("json") ? ResponseFormat.JSON : responseFormat);
+        this.responseFormat = "json".equals(format) ? ResponseFormat.JSON : responseFormat;
         this.listeners = new ArrayList<>(getOrDefault(listeners, emptyList()));
-        this.supportedCapabilities = new HashSet<>(getOrDefault(capabilities, emptySet()));
+        this.supportedCapabilities = new HashSet<>(getOrDefault(supportedCapabilities, emptySet()));
     }
 
     public static OllamaStreamingChatModelBuilder builder() {
@@ -131,7 +132,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
-        private Set<Capability> capabilities;
+        private Set<Capability> supportedCapabilities;
 
         public OllamaStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -195,6 +196,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
          * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
          * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
          */
+        @Deprecated
         public OllamaStreamingChatModelBuilder format(String format) {
             this.format = format;
             return this;
@@ -230,9 +232,13 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
             return this;
         }
 
-        public OllamaStreamingChatModelBuilder capabilities(Set<Capability> capabilities) {
-            this.capabilities = capabilities;
+        public OllamaStreamingChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
             return this;
+        }
+
+        public OllamaStreamingChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
+            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
 
         public OllamaStreamingChatModel build() {
@@ -254,7 +260,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                     logResponses,
                     customHeaders,
                     listeners,
-                    capabilities
+                    supportedCapabilities
             );
         }
     }

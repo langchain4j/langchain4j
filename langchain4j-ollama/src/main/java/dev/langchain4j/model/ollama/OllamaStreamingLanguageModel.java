@@ -65,7 +65,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                 .numCtx(numCtx)
                 .stop(stop)
                 .build();
-        this.responseFormat = (format != null && format.equals("json") ? ResponseFormat.JSON : responseFormat);
+        this.responseFormat = "json".equals(format) ? ResponseFormat.JSON : responseFormat;
     }
 
     public static OllamaStreamingLanguageModelBuilder builder() {
@@ -169,6 +169,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
          * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
          * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
          */
+        @Deprecated
         public OllamaStreamingLanguageModelBuilder format(String format) {
             this.format = format;
             return this;

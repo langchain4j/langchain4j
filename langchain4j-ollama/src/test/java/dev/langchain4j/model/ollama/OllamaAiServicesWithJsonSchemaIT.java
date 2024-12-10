@@ -6,11 +6,9 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
 import static dev.langchain4j.model.ollama.OllamaImage.TOOL_MODEL;
 
@@ -44,15 +42,13 @@ class OllamaAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
                 OllamaChatModel.builder()
                         .baseUrl(ollamaBaseUrl())
                         .modelName(TOOL_MODEL)
-                        .responseFormat(JSON)
-                        .capabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
+                        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
                         .build()
         );
     }
-
 
     @Test
     @Disabled("llama 3.1 is cannot do it properly")
