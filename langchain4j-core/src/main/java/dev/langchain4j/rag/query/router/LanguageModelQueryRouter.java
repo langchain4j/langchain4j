@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -21,7 +22,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.DO_NOT_ROUTE;
 import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * A {@link QueryRouter} that utilizes a {@link ChatLanguageModel} to make a routing decision.
@@ -103,7 +103,14 @@ public class LanguageModelQueryRouter implements QueryRouter {
         Prompt prompt = createPrompt(query);
         try {
             String response = chatLanguageModel.generate(prompt.text());
-            return parse(response);
+
+            final var routes = parse(response);
+            if (routes.isEmpty()) {
+                log.warn("No routes found for query: '{}'", query.text());
+                return fallback(query, null);
+            } else {
+                return routes;
+            }
         } catch (Exception e) {
             log.warn("Failed to route query '{}'", query.text(), e);
             return fallback(query, e);
@@ -120,7 +127,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
                 log.debug("Fallback: query '{}' will be routed to all available content retrievers", query.text());
                 yield new ArrayList<>(idToRetriever.values());
             }
-            default -> throw new RuntimeException(e);
+            case FAIL -> throw new RuntimeException("Failed to route query", e);
         };
     }
 
@@ -133,10 +140,19 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     protected Collection<ContentRetriever> parse(String choices) {
         return stream(choices.split(","))
-                .map(String::trim)
-                .map(Integer::parseInt)
+                .map(it -> {
+                    try {
+                        return Integer.parseInt(it.trim());
+                    } catch (NumberFormatException e) {
+                        // ignore it
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .distinct()
                 .map(idToRetriever::get)
-                .collect(toList());
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     /**
