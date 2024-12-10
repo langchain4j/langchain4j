@@ -35,7 +35,7 @@ Currently, depending on the LLM and the LLM provider, there are four ways how th
 
 
 ## JSON Schema
-Some LLM providers (e.g., OpenAI, Google AI Gemini, and Ollama) allow
+Some LLM providers (currently OpenAI, Google AI Gemini, and Ollama) allow
 specifying [JSON schema](https://json-schema.org/overview/what-is-jsonschema) for the desired output.
 You can view all supported LLM providers [here](/integrations/language-models) in the "JSON Schema" column.
 
