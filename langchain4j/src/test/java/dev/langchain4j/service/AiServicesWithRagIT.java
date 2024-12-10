@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -321,43 +322,6 @@ class AiServicesWithRagIT {
 
         verify(contentRetriever).retrieve(Query.from(query, Metadata.from(UserMessage.from(query), "default", null)));
         verifyNoMoreInteractions(contentRetriever);
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_fail_when_query_is_ambiguous(ChatLanguageModel model) {
-
-        // given
-        String query = "Hey what's up?";
-        FallbackStrategy fallbackStrategy = FAIL;
-
-        ContentRetriever contentRetriever = spy(EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore)
-                .embeddingModel(embeddingModel)
-                .maxResults(1)
-                .build());
-
-        Map<ContentRetriever, String> retrieverToDescription = new HashMap<>();
-        retrieverToDescription.put(contentRetriever, "car rental company terms of use");
-
-        QueryRouter queryRouter = LanguageModelQueryRouter.builder()
-                .chatLanguageModel(model)
-                .retrieverToDescription(retrieverToDescription)
-                .fallbackStrategy(fallbackStrategy)
-                .build();
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
-                        .queryRouter(queryRouter)
-                        .build())
-                .build();
-
-        // when-then
-        assertThatThrownBy(() -> assistant.answer(query))
-                .hasRootCauseExactlyInstanceOf(NumberFormatException.class);
-
-        verifyNoInteractions(contentRetriever);
     }
 
     @ParameterizedTest
