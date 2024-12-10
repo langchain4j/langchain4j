@@ -62,10 +62,13 @@ public interface StreamingChatLanguageModel {
     }
 
     /**
-     * Generates a response from the model based on a list of messages and a tool specification.
+     * Generates a response from the model based on a list of messages and a single tool specification.
+     * <b>The model is forced to execute the specified tool.
+     * This is usually achieved by setting `tool_choice=ANY` in the LLM provider API.</b>
      *
      * @param messages          A list of messages.
-     * @param toolSpecification A tool that the model is allowed to execute.
+     * @param toolSpecification The specification of a tool that <b>must</b> be executed.
+     *                          The model is <b>forced</b> to execute this tool.
      * @param handler           The handler for streaming the response.
      */
     default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {

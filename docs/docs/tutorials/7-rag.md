@@ -467,6 +467,7 @@ Currently supported embedding stores can be found [here](/integrations/embedding
 - `EmbeddingStore.add(Embedding, TextSegment)` adds a given `Embedding` with an associated `TextSegment` to the store and returns a random ID
 - `EmbeddingStore.addAll(List<Embedding>)` adds a list of given `Embedding`s to the store and returns a list of random IDs
 - `EmbeddingStore.addAll(List<Embedding>, List<TextSegment>)` adds a list of given `Embedding`s with associated `TextSegment`s to the store and returns a list of random IDs
+- `EmbeddingStore.addAll(List<String> ids, List<Embedding>, List<TextSegment>)` adds a list of given `Embedding`s with associated IDs and `TextSegment`s to the store
 - `EmbeddingStore.search(EmbeddingSearchRequest)` searches for the most similar `Embedding`s
 - `EmbeddingStore.remove(String id)` removes a single `Embedding` from the store by ID
 - `EmbeddingStore.removeAll(Collection<String> ids)` removes multiple `Embedding`s from the store by ID

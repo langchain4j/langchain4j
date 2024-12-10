@@ -129,10 +129,6 @@ public class JlamaChatModel implements ChatLanguageModel {
         return Response.from(AiMessage.from(r.responseText), new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
     }
 
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, List.of(toolSpecification));
-    }
 
     public static class JlamaChatModelBuilder {
         public JlamaChatModelBuilder() {

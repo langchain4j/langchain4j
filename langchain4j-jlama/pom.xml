@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>langchain4j-jlama</artifactId>
-    <name>LangChain4j :: Integration :: Jlama</name>
-    <description>Jlama: LLM Inference Engine for Java - Requires Java 20+</description>
 
     <parent>
         <groupId>dev.langchain4j</groupId>
@@ -13,9 +8,21 @@
         <version>0.37.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
+    <artifactId>langchain4j-jlama</artifactId>
+    <name>LangChain4j :: Integration :: Jlama</name>
+    <description>Jlama: LLM Inference Engine for Java - Requires Java 20+</description>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
 
     <properties>
-        <jlama.version>0.8.2</jlama.version>
+        <jlama.version>0.8.3</jlama.version>
         <jackson.version>2.16.1</jackson.version>
         <spotless.version>2.40.0</spotless.version>
         <java.version>21</java.version>
@@ -50,9 +57,9 @@
         <dependency>
             <groupId>com.github.tjake</groupId>
             <artifactId>jlama-native</artifactId>
+            <version>${jlama.version}</version>
             <!-- supports linux-x86_64, macos-x86_64/aarch_64 and windows-x86_64 -->
             <classifier>${os.detected.classifier}</classifier>
-            <version>${jlama.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -73,6 +80,15 @@
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>${project.version}</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
@@ -87,41 +103,31 @@
         </dependency>
     </dependencies>
 
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
-
     <build>
-        <extensions>
-            <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.7.1</version>
-            </extension>
-        </extensions>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <forkCount>1</forkCount>
-                    <argLine>
-                        --add-modules=jdk.incubator.vector
+                    <argLine>--add-modules=jdk.incubator.vector
                         --add-exports java.base/sun.nio.ch=ALL-UNNAMED
                         --enable-preview
                         --enable-native-access=ALL-UNNAMED
-                        --add-exports java.base/jdk.internal.vm.vector=ALL-UNNAMED
-                    </argLine>
+                        --add-exports java.base/jdk.internal.vm.vector=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <forkCount>1</forkCount>
+                    <argLine>--add-modules=jdk.incubator.vector
+                        --add-exports java.base/sun.nio.ch=ALL-UNNAMED
+                        --enable-preview
+                        --enable-native-access=ALL-UNNAMED
+                        --add-exports java.base/jdk.internal.vm.vector=ALL-UNNAMED</argLine>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -130,16 +136,6 @@
                         </goals>
                     </execution>
                 </executions>
-                <configuration>
-                    <forkCount>1</forkCount>
-                    <argLine>
-                        --add-modules=jdk.incubator.vector
-                        --add-exports java.base/sun.nio.ch=ALL-UNNAMED
-                        --enable-preview
-                        --enable-native-access=ALL-UNNAMED
-                        --add-exports java.base/jdk.internal.vm.vector=ALL-UNNAMED
-                    </argLine>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.honton.chas</groupId>
@@ -150,6 +146,13 @@
                 </configuration>
             </plugin>
         </plugins>
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.7.1</version>
+            </extension>
+        </extensions>
     </build>
 
 </project>
