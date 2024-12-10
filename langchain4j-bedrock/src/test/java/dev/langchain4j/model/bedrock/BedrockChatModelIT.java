@@ -7,7 +7,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Assertions;
@@ -773,31 +772,6 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.finishReason()).isIn(STOP, LENGTH);
-    }
-
-    @Test
-    void testBedrockAnthropicCompletionChatModelWithMessagesToSanitize() {
-        List<ChatMessage> messages = new ArrayList<>();
-        String userMessage = "Hello, my name is Ronaldo, what is my name?";
-        String userMessage2 = "Hello, my name is Neymar, what is my name?";
-        messages.add(new UserMessage(userMessage));
-        messages.add(new UserMessage(userMessage2));
-
-        BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel
-                .builder()
-                .temperature(0.50f)
-                .maxTokens(300)
-                .region(Region.US_EAST_1)
-                .model(BedrockAnthropicCompletionChatModel.Types.AnthropicClaudeV2.getValue())
-                .maxRetries(1)
-                .build();
-
-        final Response<AiMessage> aiMessageResponse = bedrockChatModel.generate(messages);
-
-        assertThat(aiMessageResponse).isNotNull();
-        assertThat(aiMessageResponse.content().text()).isNotBlank();
-        assertThat(aiMessageResponse.content().text()).contains("Ronaldo");
-        assertThat(aiMessageResponse.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test

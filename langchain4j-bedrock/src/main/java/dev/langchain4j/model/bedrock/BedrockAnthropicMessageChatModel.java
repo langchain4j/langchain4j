@@ -37,7 +37,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -47,7 +46,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -93,20 +91,6 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         parameters.put("stop_sequences", getStopSequences());
         parameters.put("anthropic_version", anthropicVersion);
         return parameters;
-    }
-
-    @Override
-    public String generate(final String userMessage) {
-        if (Objects.isNull(userMessage) || userMessage.isEmpty()) {
-            throw illegalArgument("%s cannot be null or empty", "message");
-        }
-        return super.generate(userMessage);
-    }
-
-    @Override
-    public Response<AiMessage> generate(final ChatMessage... messages) {
-        final ChatMessage[] sanitizedMessages = sanitizeMessages(asList(messages)).toArray(messages);
-        return super.generate(sanitizedMessages);
     }
 
     @Override
