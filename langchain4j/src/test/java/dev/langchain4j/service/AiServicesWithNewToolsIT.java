@@ -121,7 +121,9 @@ public abstract class AiServicesWithNewToolsIT {
         record Person(String name, int age, Double height, boolean married) {}
 
         @Tool
-        void process(Person person) {}
+        void process(Person person) {
+            // empty
+        }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
                 .properties(singletonMap(
@@ -440,7 +442,9 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithMapParameter {
 
         @Tool
-        void process(@P("map from name to age") Map<String, Integer> ages) {}
+        void process(@P("map from name to age") Map<String, Integer> ages) {
+            // empty
+        }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
@@ -502,7 +506,9 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithListOfStringsParameter {
 
         @Tool
-        void processNames(List<String> names) {}
+        void processNames(List<String> names) {
+            // empty
+        }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNames")
@@ -562,7 +568,9 @@ public abstract class AiServicesWithNewToolsIT {
         }
 
         @Tool
-        void process(Set<Color> colors) {}
+        void process(Set<Color> colors) {
+            // empty
+        }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
@@ -618,7 +626,9 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithCollectionOfIntegersParameter {
 
         @Tool
-        void processNumbers(Collection<Integer> names) {}
+        void processNumbers(Collection<Integer> names) {
+            // empty
+        }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNumbers")
@@ -675,7 +685,9 @@ public abstract class AiServicesWithNewToolsIT {
         record Person(String name) {}
 
         @Tool
-        void process(List<Person> people) {}
+        void process(List<Person> people) {
+            // empty
+        }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
