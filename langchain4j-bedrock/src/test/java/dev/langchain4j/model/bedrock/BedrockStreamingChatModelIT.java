@@ -35,5 +35,4 @@ class BedrockStreamingChatModelIT {
         //then
         assertThat(response.content().text()).contains("Warsaw");
     }
-
 }
