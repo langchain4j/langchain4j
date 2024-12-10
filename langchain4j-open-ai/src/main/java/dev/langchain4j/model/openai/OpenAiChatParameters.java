@@ -1,14 +1,13 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatParameters;
+import dev.langchain4j.model.chat.request.DefaultChatParameters;
 
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
-@Experimental
-public class OpenAiChatRequest extends ChatRequest {
+public class OpenAiChatParameters extends DefaultChatParameters {
 
     private final Map<String, Integer> logitBias;
     private final Boolean parallelToolCalls;
@@ -19,7 +18,7 @@ public class OpenAiChatRequest extends ChatRequest {
     private final String serviceTier; // TODO or enum?
     // TODO max_completion_tokens?
 
-    protected OpenAiChatRequest(Builder builder) { // TODO
+    private OpenAiChatParameters(Builder builder) { // TODO visibility
         super(builder);
         this.logitBias = copyIfNotNull(builder.logitBias);
         this.parallelToolCalls = builder.parallelToolCalls;
@@ -30,16 +29,16 @@ public class OpenAiChatRequest extends ChatRequest {
         this.serviceTier = builder.serviceTier;
     }
 
-    OpenAiChatRequest(ChatRequest chatRequest) { // TODO
-        super(chatRequest.toBuilder());
-        if (chatRequest instanceof OpenAiChatRequest openAiChatRequest) {
-            this.logitBias = copyIfNotNull(openAiChatRequest.logitBias);
-            this.parallelToolCalls = openAiChatRequest.parallelToolCalls;
-            this.seed = openAiChatRequest.seed;
-            this.user = openAiChatRequest.user;
-            this.store = openAiChatRequest.store;
-            this.metadata = openAiChatRequest.metadata;
-            this.serviceTier = openAiChatRequest.serviceTier;
+    protected OpenAiChatParameters(ChatParameters chatParameters) { // TODO visibility
+        super(chatParameters);
+        if (chatParameters instanceof OpenAiChatParameters openAiChatParameters) {
+            this.logitBias = copyIfNotNull(openAiChatParameters.logitBias);
+            this.parallelToolCalls = openAiChatParameters.parallelToolCalls;
+            this.seed = openAiChatParameters.seed;
+            this.user = openAiChatParameters.user;
+            this.store = openAiChatParameters.store;
+            this.metadata = openAiChatParameters.metadata;
+            this.serviceTier = openAiChatParameters.serviceTier;
         } else {
             this.logitBias = null;
             this.parallelToolCalls = null;
@@ -85,7 +84,7 @@ public class OpenAiChatRequest extends ChatRequest {
         return new Builder();
     }
 
-    public static class Builder extends ChatRequest.Builder<Builder> {
+    public static class Builder extends DefaultChatParameters.Builder<Builder> {
 
         private Map<String, Integer> logitBias;
         private Boolean parallelToolCalls;
@@ -94,6 +93,10 @@ public class OpenAiChatRequest extends ChatRequest {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+
+        public Builder modelName(OpenAiChatModelName modelName) {
+            return super.modelName(modelName.toString());
+        }
 
         public Builder logitBias(Map<String, Integer> logitBias) {
             this.logitBias = logitBias;
@@ -130,8 +133,8 @@ public class OpenAiChatRequest extends ChatRequest {
             return this;
         }
 
-        public OpenAiChatRequest build() {
-            return new OpenAiChatRequest(this);
+        public OpenAiChatParameters build() {
+            return new OpenAiChatParameters(this);
         }
     }
 }

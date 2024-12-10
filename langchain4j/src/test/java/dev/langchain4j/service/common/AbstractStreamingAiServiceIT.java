@@ -71,7 +71,7 @@ public abstract class AbstractStreamingAiServiceIT {
         assertThat(chatResponse.aiMessage().text()).isEqualTo(answer);
 
         if (assertTokenUsage()) {
-            TokenUsage tokenUsage = chatResponse.tokenUsage();
+            TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
             assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
             assertThat(tokenUsage.totalTokenCount())
@@ -79,7 +79,7 @@ public abstract class AbstractStreamingAiServiceIT {
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
 
         verify(model).chat(

@@ -104,8 +104,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                     ChatResponse chatResponse = responseBuilder.build();
                     handler.onComplete(Response.from(
                             chatResponse.aiMessage().text(),
-                            chatResponse.tokenUsage(),
-                            chatResponse.finishReason()
+                            chatResponse.metadata().tokenUsage(),
+                            chatResponse.metadata().finishReason()
                     ));
                 })
                 .onError(handler::onError)

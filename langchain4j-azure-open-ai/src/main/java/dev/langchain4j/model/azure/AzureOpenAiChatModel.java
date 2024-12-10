@@ -25,6 +25,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
@@ -268,8 +269,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     private static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
     return Response.from(
             chatResponse.aiMessage(),
-            chatResponse.tokenUsage(),
-            chatResponse.finishReason()
+            chatResponse.metadata().tokenUsage(),
+            chatResponse.metadata().finishReason()
     );
 }
 
@@ -338,11 +339,13 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             });
 
             return ChatResponse.builder()
-                    .id(chatCompletions.getId())
-                    .modelName(chatCompletions.getModel())
                     .aiMessage(response.content())
-                    .tokenUsage(response.tokenUsage())
-                    .finishReason(response.finishReason())
+                    .metadata(ChatResponseMetadata.builder()
+                            .id(chatCompletions.getId())
+                            .modelName(chatCompletions.getModel())
+                            .tokenUsage(response.tokenUsage())
+                            .finishReason(response.finishReason())
+                            .build())
                     .build();
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating response, {}", httpResponseException.getValue());
@@ -367,7 +370,9 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
             return ChatResponse.builder()
                     .aiMessage(aiMessage(httpResponseException.getMessage()))
-                    .finishReason(exceptionFinishReason)
+                    .metadata(ChatResponseMetadata.builder()
+                            .finishReason(exceptionFinishReason)
+                            .build())
                     .build();
         }
     }

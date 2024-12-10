@@ -1,10 +1,9 @@
 package dev.langchain4j.service.openai.common;
 
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.openai.OpenAiChatRequest;
+import dev.langchain4j.model.chat.request.ChatParameters;
+import dev.langchain4j.model.openai.OpenAiChatParameters;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 
 import java.util.List;
@@ -43,10 +42,9 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected ChatRequest createModelSpecificChatRequest(int maxOutputTokens, UserMessage userMessage) {
-        return OpenAiChatRequest.builder()
+    protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
+        return OpenAiChatParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
-                .messages(userMessage)
                 .build();
     }
 

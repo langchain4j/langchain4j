@@ -33,7 +33,9 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.DefaultChatParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -202,6 +204,10 @@ public class InternalOpenAiHelper {
     }
 
     public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
+        if (isNullOrEmpty(toolSpecifications)) {
+            return null;
+        }
+
         return toolSpecifications.stream()
                 .map((ToolSpecification toolSpecification) -> toTool(toolSpecification, strict))
                 .collect(toList());
@@ -527,17 +533,17 @@ public class InternalOpenAiHelper {
 
     static ChatModelResponse createModelListenerResponse(String responseId,
                                                          String responseModel,
-                                                         ChatResponse response) {
-        if (response == null) {
+                                                         ChatResponse chatResponse) {
+        if (chatResponse == null) {
             return null;
         }
 
         return ChatModelResponse.builder()
                 .id(responseId)
                 .model(responseModel)
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
-                .aiMessage(response.aiMessage())
+                .tokenUsage(chatResponse.metadata().tokenUsage())
+                .finishReason(chatResponse.metadata().finishReason())
+                .aiMessage(chatResponse.aiMessage())
                 .build();
     }
 
@@ -568,6 +574,10 @@ public class InternalOpenAiHelper {
     }
 
     public static ToolChoiceMode toOpenAiToolChoice(ToolChoice toolChoice) {
+        if (toolChoice == null) {
+            return null;
+        }
+
         return switch (toolChoice) {
             case AUTO -> ToolChoiceMode.AUTO;
             case REQUIRED -> ToolChoiceMode.REQUIRED;
@@ -577,8 +587,8 @@ public class InternalOpenAiHelper {
     public static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
         return Response.from(
                 chatResponse.aiMessage(),
-                chatResponse.tokenUsage(),
-                chatResponse.finishReason()
+                chatResponse.metadata().tokenUsage(),
+                chatResponse.metadata().finishReason()
         );
     }
 
@@ -604,19 +614,21 @@ public class InternalOpenAiHelper {
 
     static void validateRequest(ChatRequest chatRequest, Class<?> modelClass) {
 
-        Class<? extends ChatRequest> chatRequestClass = chatRequest.getClass();
-        if (chatRequestClass != ChatRequest.class
-                && chatRequestClass != OpenAiChatRequest.class) {
+        ChatParameters chatParameters = chatRequest.parameters();
+
+        Class<? extends ChatParameters> chatParametersClass = chatParameters.getClass();
+        if (chatParametersClass != DefaultChatParameters.class
+                && chatParametersClass != OpenAiChatParameters.class) { // TODO user will not be able to supply their own param impl?
             throw new IllegalArgumentException("%s cannot be used together with %s. Please use either %s or %s instead."
                     .formatted(
-                            chatRequestClass.getSimpleName(),
+                            chatParametersClass.getSimpleName(),
                             modelClass.getSimpleName(),
                             ChatRequest.class.getSimpleName(),
-                            OpenAiChatRequest.class.getSimpleName()
+                            OpenAiChatParameters.class.getSimpleName()
                     ));
         }
 
-        if (chatRequest.topK() != null) {
+        if (chatParameters.topK() != null) {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
         }
     }

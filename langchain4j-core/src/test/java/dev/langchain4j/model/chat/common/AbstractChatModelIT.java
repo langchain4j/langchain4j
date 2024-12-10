@@ -31,8 +31,8 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 public abstract class AbstractChatModelIT extends AbstractBaseChatModelIT<ChatLanguageModel> {
 
     @Override
-    protected ChatResponseAndMetadata chat(ChatLanguageModel chatModel, ChatRequest chatRequest) {
+    protected ChatResponseAndStreamingMetadata chat(ChatLanguageModel chatModel, ChatRequest chatRequest) {
         ChatResponse chatResponse = chatModel.chat(chatRequest);
-        return new ChatResponseAndMetadata(chatResponse, null);
+        return new ChatResponseAndStreamingMetadata(chatResponse, null);
     }
 }

@@ -11,12 +11,14 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.TestInstance;
@@ -84,7 +86,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         return models();
     }
 
-    protected abstract ChatResponseAndMetadata chat(M model, ChatRequest chatRequest);
+    protected abstract ChatResponseAndStreamingMetadata chat(M model, ChatRequest chatRequest);
 
 
     // BASIC
@@ -99,32 +101,30 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponseAndMetadata chatResponseAndMetadata = chat(model, chatRequest);
-        ChatResponse chatResponse = chatResponseAndMetadata.chatResponse();
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
         // then
-        if (assertResponseId()) {
-            assertThat(chatResponse.id()).isNotBlank();
-        }
-
-        if (assertResponseModel()) {
-            assertThat(chatResponse.modelName()).isNotBlank();
-        }
-
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
+        if (assertResponseId()) {
+            assertThat(chatResponseMetadata.id()).isNotBlank();
         }
-
+        if (assertResponseModel()) {
+            assertThat(chatResponseMetadata.modelName()).isNotBlank();
+        }
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponseMetadata);
+        }
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
         }
 
         if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata = chatResponseAndMetadata.streamingMetadata();
+            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isGreaterThan(1);
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
@@ -158,17 +158,23 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     // MODEL PARAMETERS
 
+    // TODO common params
+
     @EnabledIf("supportsMaxOutputTokensParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_model_specific_chat_request(M model) {
+    void should_respect_common_chat_parameters(M model) {
 
         // given
-        int maxOutputTokens = 5;
-        UserMessage userMessage = UserMessage.from("Tell me a long story");
+        int maxOutputTokens = 3;
+        ChatParameters chatParameters = ChatParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
 
-        ChatRequest chatRequest = createModelSpecificChatRequest(maxOutputTokens, userMessage);
-        assertThat(chatRequest).doesNotHaveSameClassAs(ChatRequest.class);
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(chatParameters)
+                .messages(UserMessage.from("Tell me a long story"))
+                .build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
@@ -178,54 +184,53 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(LENGTH);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
         }
     }
 
-    protected ChatRequest createModelSpecificChatRequest(int maxOutputTokens, UserMessage userMessage) {
-        throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
-    }
-
+    @EnabledIf("supportsMaxOutputTokensParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_fail_if_chat_request_does_not_match_chat_model(M model) {
+    void should_respect_integration_specific_chat_parameters(M model) {
 
         // given
-        ChatRequest mismatchingChatRequest = new MismatchingChatRequest();
-        assertThat(mismatchingChatRequest).doesNotHaveSameClassAs(ChatRequest.class);
+        int maxOutputTokens = 5;
+        ChatParameters chatParameters = createIntegrationSpecificChatParameters(maxOutputTokens);
+        assertThat(chatParameters).doesNotHaveSameClassAs(ChatParameters.class);
 
-        // when-then
-        assertThatThrownBy(() -> chat(model, mismatchingChatRequest))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("%s cannot be used together with %s.".formatted(
-                        MismatchingChatRequest.class.getSimpleName(),
-                        model.getClass().getSimpleName()
-                ))
-                .hasMessageContaining("Please use")
-                .hasMessageContaining(ChatRequest.class.getSimpleName());
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(chatParameters)
+                .messages(UserMessage.from("Tell me a long story"))
+                .build();
 
-        // TODO for streaming: should model.chat() fail or should exception be propagated into streaming handler onError()
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
+        }
     }
 
-    private static class MismatchingChatRequest extends ChatRequest {
-
-        private MismatchingChatRequest() {
-            super(new Builder().messages(UserMessage.from("does not matter")));
-        }
-
-        private static class Builder extends ChatRequest.Builder<Builder> {
-
-            public AbstractBaseChatModelIT.MismatchingChatRequest build() {
-                return new AbstractBaseChatModelIT.MismatchingChatRequest();
-            }
-        }
+    protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
+        throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
     }
 
     @EnabledIf("supportsModelNameParameter")
@@ -249,7 +254,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // then
         assertThat(chatResponse.aiMessage().text()).isNotBlank();
 
-        assertThat(chatResponse.modelName()).isEqualTo(modelName);
+        assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
     }
 
     private void ensureModelNameIsDifferentFromDefault(String modelName, M model) {
@@ -262,7 +267,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
-        assertThat(chatResponse.modelName()).isNotEqualTo(modelName);
+        assertThat(chatResponse.metadata().modelName()).isNotEqualTo(modelName);
     }
 
     protected String customModelName() {
@@ -303,26 +308,26 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponseAndMetadata chatResponseAndMetadata = chat(model, chatRequest);
-        ChatResponse chatResponse = chatResponseAndMetadata.chatResponse();
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(LENGTH);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
         }
 
         if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata = chatResponseAndMetadata.streamingMetadata();
+            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
             assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
@@ -377,11 +382,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+            assertTokenUsage(chatResponse.metadata());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
     }
 
@@ -421,8 +426,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponseAndMetadata chatResponseAndMetadata = chat(model, chatRequest);
-        ChatResponse chatResponse = chatResponseAndMetadata.chatResponse();
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
@@ -433,15 +438,15 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+            assertTokenUsage(chatResponse.metadata());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
         }
 
         if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata = chatResponseAndMetadata.streamingMetadata();
+            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
             assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
             if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
                 assertThat(aiMessage.text()).isNull();
@@ -465,22 +470,22 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         // when
-        ChatResponseAndMetadata chatResponseAndMetadata2 = chat(model, chatRequest2);
-        ChatResponse chatResponse2 = chatResponseAndMetadata2.chatResponse();
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata2 = chat(model, chatRequest2);
+        ChatResponse chatResponse2 = chatResponseAndStreamingMetadata2.chatResponse();
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
         assertThat(aiMessage2.text()).contains("sun");
         assertThat(aiMessage2.toolExecutionRequests()).isNull(); // TODO make it empty
 
-        assertTokenUsage(chatResponse2);
+        assertTokenUsage(chatResponse2.metadata());
 
         if (assertFinishReason()) {
-            assertThat(chatResponse2.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
         }
 
         if (model instanceof StreamingChatLanguageModel) {
-            StreamingMetadata streamingMetadata2 = chatResponseAndMetadata2.streamingMetadata();
+            StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
             assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
             assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
             assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled()).isEqualTo(1);
@@ -546,11 +551,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+            assertTokenUsage(chatResponse.metadata());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
         }
     }
 
@@ -578,11 +583,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
 
         if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+            assertTokenUsage(chatResponse.metadata());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(TOOL_EXECUTION);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
         }
     }
 
@@ -611,11 +616,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+            assertTokenUsage(chatResponse.metadata());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
     }
 
@@ -664,11 +669,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+            assertTokenUsage(chatResponse.metadata());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
     }
 
@@ -722,11 +727,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+            assertTokenUsage(chatResponse.metadata());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
     }
 
@@ -759,11 +764,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+            assertTokenUsage(chatResponse.metadata());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
     }
 
@@ -817,11 +822,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+            assertTokenUsage(chatResponse.metadata());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
     }
 
@@ -851,11 +856,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse);
+            assertTokenUsage(chatResponse.metadata());
         }
 
         if (assertFinishReason()) {
-            assertThat(chatResponse.finishReason()).isEqualTo(STOP);
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
     }
 
@@ -884,18 +889,6 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected boolean supportsModelNameParameter() {
-        return true;
-    }
-
-    protected boolean supportsTemperatureParameter() {
-        return true;
-    }
-
-    protected boolean supportsTopPParameter() {
-        return true;
-    }
-
-    protected boolean supportsTopKParameter() {
         return true;
     }
 
@@ -967,8 +960,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         return true;
     }
 
-    static void assertTokenUsage(ChatResponse chatResponse) {
-        TokenUsage tokenUsage = chatResponse.tokenUsage();
+    static void assertTokenUsage(ChatResponseMetadata chatResponseMetadata) {
+        TokenUsage tokenUsage = chatResponseMetadata.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
         assertThat(tokenUsage.totalTokenCount())

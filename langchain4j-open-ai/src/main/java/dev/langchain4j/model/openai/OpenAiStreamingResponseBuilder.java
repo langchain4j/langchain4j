@@ -166,14 +166,15 @@ public class OpenAiStreamingResponseBuilder {
 
     public ChatResponse build() {
 
-        OpenAiChatResponse.Builder chatResponseBuilder = OpenAiChatResponse.builder()
+        OpenAiChatResponseMetadata chatResponseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(id.get())
                 .modelName(model.get())
                 .tokenUsage(tokenUsage.get())
                 .finishReason(finishReason.get())
                 .created(created.get())
                 .serviceTier(serviceTier.get())
-                .systemFingerprint(systemFingerprint.get());
+                .systemFingerprint(systemFingerprint.get())
+                .build();
 
         String text = contentBuilder.toString();
 
@@ -188,8 +189,9 @@ public class OpenAiStreamingResponseBuilder {
                     AiMessage.from(toolExecutionRequest) :
                     AiMessage.from(text, singletonList(toolExecutionRequest));
 
-            return chatResponseBuilder
+            return ChatResponse.builder()
                     .aiMessage(aiMessage)
+                    .metadata(chatResponseMetadata)
                     .build();
         }
 
@@ -206,15 +208,17 @@ public class OpenAiStreamingResponseBuilder {
                     AiMessage.from(toolExecutionRequests) :
                     AiMessage.from(text, toolExecutionRequests);
 
-            return chatResponseBuilder
+            return ChatResponse.builder()
                     .aiMessage(aiMessage)
+                    .metadata(chatResponseMetadata)
                     .build();
         }
 
         if (!isNullOrBlank(text)) {
             AiMessage aiMessage = AiMessage.from(text);
-            return chatResponseBuilder
+            return ChatResponse.builder()
                     .aiMessage(aiMessage)
+                    .metadata(chatResponseMetadata)
                     .build();
         }
 

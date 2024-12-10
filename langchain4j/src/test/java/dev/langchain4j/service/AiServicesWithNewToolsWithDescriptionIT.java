@@ -112,7 +112,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(model, times(2)).chat(chatRequestCaptor.capture());
         verifyNoMoreInteractions(model);
 
-        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("add");
@@ -185,7 +185,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(model, times(2)).chat(chatRequestCaptor.capture());
         verifyNoMoreInteractions(model);
 
-        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("process");
@@ -257,7 +257,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(model, times(2)).chat(chatRequestCaptor.capture());
         verifyNoMoreInteractions(model);
 
-        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("process");
@@ -338,7 +338,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(model, times(2)).chat(chatRequestCaptor.capture());
         verifyNoMoreInteractions(model);
 
-        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("process");
@@ -402,7 +402,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(model, times(2)).chat(chatRequestCaptor.capture());
         verifyNoMoreInteractions(model);
 
-        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
         assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithEnumParameter.EXPECTED_SPECIFICATION);
     }
@@ -456,7 +456,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(model, times(2)).chat(chatRequestCaptor.capture());
         verifyNoMoreInteractions(model);
 
-        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
         assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithMapParameter.EXPECTED_SPECIFICATION);
     }
@@ -516,7 +516,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(model, times(2)).chat(chatRequestCaptor.capture());
         verifyNoMoreInteractions(model);
 
-        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+        List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
         assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfEnumsParameter.EXPECTED_SPECIFICATION);
     }

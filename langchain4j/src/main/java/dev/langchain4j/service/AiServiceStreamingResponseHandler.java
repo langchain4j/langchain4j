@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -21,6 +22,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.ifNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -119,7 +121,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     completionHandler,
                     errorHandler,
                     temporaryMemory,
-                    TokenUsage.sum(tokenUsage, chatResponse.tokenUsage()),
+                    TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                     toolSpecifications,
                     toolExecutors
             );
@@ -129,15 +131,18 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             if (completeResponseHandler != null) {
                 ChatResponse finalChatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage)
-                        .tokenUsage(TokenUsage.sum(tokenUsage, chatResponse.tokenUsage()))
-                        .finishReason(chatResponse.finishReason())
+                        .metadata(ChatResponseMetadata.builder()
+                                // TODO copy model-specific metadata?
+                                .tokenUsage(TokenUsage.sum(tokenUsage, ifNotNull(chatResponse.metadata(), ChatResponseMetadata::tokenUsage)))
+                                .finishReason(chatResponse.metadata().finishReason())
+                                .build())
                         .build();
                 completeResponseHandler.accept(finalChatResponse);
             } else if (completionHandler != null) {
                 Response<AiMessage> finalResponse = Response.from(
                         aiMessage,
-                        TokenUsage.sum(tokenUsage, chatResponse.tokenUsage()),
-                        chatResponse.finishReason()
+                        TokenUsage.sum(tokenUsage, ifNotNull(chatResponse.metadata(), ChatResponseMetadata::tokenUsage)),
+                        chatResponse.metadata().finishReason()
                 );
                 completionHandler.accept(finalResponse);
             }

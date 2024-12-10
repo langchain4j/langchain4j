@@ -7,8 +7,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 
@@ -52,8 +54,10 @@ public interface StreamingChatLanguageModel {
             public void onComplete(Response<AiMessage> response) {
                 ChatResponse chatResponse = ChatResponse.builder()
                         .aiMessage(response.content())
-                        .tokenUsage(response.tokenUsage())
-                        .finishReason(response.finishReason())
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(response.tokenUsage())
+                                .finishReason(response.finishReason())
+                                .build())
                         .build();
                 handler.onCompleteResponse(chatResponse);
             }
@@ -64,15 +68,22 @@ public interface StreamingChatLanguageModel {
             }
         };
 
-        if (isNullOrEmpty(chatRequest.toolSpecifications())) {
+        ChatParameters chatParameters = chatRequest.parameters();
+
+        if (isNullOrEmpty(chatParameters.toolSpecifications())) {
             generate(chatRequest.messages(), legacyHandler);
         } else {
-            if (chatRequest.toolChoice() == REQUIRED) {
-                generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0), legacyHandler);
+            if (chatParameters.toolChoice() == REQUIRED) {
+                generate(chatRequest.messages(), chatParameters.toolSpecifications().get(0), legacyHandler);
             } else {
-                generate(chatRequest.messages(), chatRequest.toolSpecifications(), legacyHandler);
+                generate(chatRequest.messages(), chatParameters.toolSpecifications(), legacyHandler);
             }
         }
+    }
+
+    @Experimental
+    default ChatParameters chatParameters() {
+        return null;
     }
 
     /**

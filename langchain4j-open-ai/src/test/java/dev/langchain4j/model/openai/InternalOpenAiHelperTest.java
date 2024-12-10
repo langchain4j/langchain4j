@@ -145,6 +145,7 @@ class InternalOpenAiHelperTest {
     void should_map_tool_choice() {
         assertThat(toOpenAiToolChoice(ToolChoice.AUTO)).isEqualTo(ToolChoiceMode.AUTO);
         assertThat(toOpenAiToolChoice(ToolChoice.REQUIRED)).isEqualTo(ToolChoiceMode.REQUIRED);
+        assertThat(toOpenAiToolChoice(null)).isNull();
     }
 
     @ParameterizedTest

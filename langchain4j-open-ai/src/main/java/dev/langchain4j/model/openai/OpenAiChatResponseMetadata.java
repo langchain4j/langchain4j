@@ -1,20 +1,25 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 
 @Experimental
-public class OpenAiChatResponse extends ChatResponse {
+public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
     private final Long created;
     private final String serviceTier;
     private final String systemFingerprint;
 
-    private OpenAiChatResponse(Builder builder) { // TODO
+    private OpenAiChatResponseMetadata(Builder builder) { // TODO
         super(builder);
         this.created = builder.created;
         this.serviceTier = builder.serviceTier;
         this.systemFingerprint = builder.systemFingerprint;
+    }
+
+    @Override
+    public OpenAiTokenUsage tokenUsage() {
+        return (OpenAiTokenUsage) super.tokenUsage();
     }
 
     public Long created() {
@@ -29,18 +34,13 @@ public class OpenAiChatResponse extends ChatResponse {
         return systemFingerprint;
     }
 
-    @Override
-    public OpenAiTokenUsage tokenUsage() {
-        return (OpenAiTokenUsage) super.tokenUsage();
-    }
-
     // TODO eq, hash, tostr
 
     public static Builder builder() {
         return new Builder();
     }
 
-    public static class Builder extends ChatResponse.Builder<Builder> {
+    public static class Builder extends ChatResponseMetadata.Builder<Builder> {
 
         private Long created;
         private String serviceTier;
@@ -61,8 +61,8 @@ public class OpenAiChatResponse extends ChatResponse {
             return this;
         }
 
-        public OpenAiChatResponse build() {
-            return new OpenAiChatResponse(this);
+        public OpenAiChatResponseMetadata build() {
+            return new OpenAiChatResponseMetadata(this);
         }
     }
 }

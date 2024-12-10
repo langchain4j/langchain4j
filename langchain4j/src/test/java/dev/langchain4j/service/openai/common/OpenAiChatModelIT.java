@@ -1,21 +1,26 @@
 package dev.langchain4j.service.openai.common;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiChatRequest;
-import dev.langchain4j.model.openai.OpenAiChatResponse;
+import dev.langchain4j.model.openai.OpenAiChatParameters;
+import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
@@ -27,7 +32,9 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_O_MINI);
+            .modelName(GPT_4_O_MINI)
+            .logRequests(true)
+            .logResponses(true);
 
     @Override
     protected List<ChatLanguageModel> models() {
@@ -51,10 +58,9 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatRequest createModelSpecificChatRequest(int maxOutputTokens, UserMessage userMessage) {
-        return OpenAiChatRequest.builder()
+    protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
+        return OpenAiChatParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
-                .messages(userMessage)
                 .build();
     }
 
@@ -62,21 +68,25 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     void should_respect_logitBias_parameter() {
 
         // given
-        OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
-                .maxTokens(20) // to save tokens
-                .build();
-
         Map<String, Integer> logitBias = Map.of(
                 "72782", 100 // token ID for "Paris", see https://platform.openai.com/tokenizer -> "Token IDs"
         );
 
-        OpenAiChatRequest chatRequest = OpenAiChatRequest.builder()
+        OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
                 .logitBias(logitBias)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(openAiChatParameters)
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
+        ChatLanguageModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+                .maxTokens(20) // to save tokens
+                .build();
+
         // when
-        OpenAiChatResponse chatResponse = chatModel.chat(chatRequest);
+        ChatResponse chatResponse = chatModel.chat(chatRequest);
 
         // then
         assertThat(chatResponse.aiMessage().text())
@@ -88,9 +98,6 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     void should_respect_parallelToolCalls_parameter() {
 
         // given
-        OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
-                .build();
-
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("add")
                 .description("adds two numbers")
@@ -101,17 +108,30 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                         .build())
                 .build();
 
-        OpenAiChatRequest.Builder chatRequestBuilder = OpenAiChatRequest.builder()
+        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
                 .messages(UserMessage.from("How much is 2+2 and 3+3?"))
                 .toolSpecifications(toolSpecification);
 
+        ChatLanguageModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+                .build();
+
         // when
-        OpenAiChatResponse chatResponse = chatModel.chat(chatRequestBuilder.parallelToolCalls(true).build());
+        OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
+                .parallelToolCalls(true)
+                .build();
+        ChatRequest chatRequest = chatRequestBuilder.parameters(openAiChatParameters)
+                .build();
+        ChatResponse chatResponse = chatModel.chat(chatRequest);
         // then
         assertThat(chatResponse.aiMessage().toolExecutionRequests()).hasSize(2);
 
         // when
-        OpenAiChatResponse chatResponse2 = chatModel.chat(chatRequestBuilder.parallelToolCalls(false).build());
+        OpenAiChatParameters openAiChatParameters2 = OpenAiChatParameters.builder()
+                .parallelToolCalls(false)
+                .build();
+        ChatRequest chatRequest2 = chatRequestBuilder.parameters(openAiChatParameters2)
+                .build();
+        ChatResponse chatResponse2 = chatModel.chat(chatRequest2);
         // then
         assertThat(chatResponse2.aiMessage().toolExecutionRequests()).hasSize(1);
     }
@@ -120,12 +140,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     void should_propagate_all_OpenAI_parameters() {
 
         // given
-        OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
-                .logRequests(true) // verifying manually in the logs for now
-                .logResponses(true)
-                .build();
-
-        OpenAiChatRequest chatRequest = OpenAiChatRequest.builder()
+        OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
                 .seed(12345)
                 .user("Klaus")
                 .store(true)
@@ -134,11 +149,20 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                         "two", "2"
                 ))
                 .serviceTier("default")
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(openAiChatParameters)
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
+        ChatLanguageModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+                .logRequests(true) // verifying manually in the logs for now
+                .logResponses(true)
+                .build();
+
         // when
-        OpenAiChatResponse chatResponse = chatModel.chat(chatRequest);
+        ChatResponse chatResponse = chatModel.chat(chatRequest);
 
         // then
         assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
@@ -146,31 +170,77 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         // TODO verify that parameters are propagated after https://github.com/langchain4j/langchain4j/issues/1044
     }
 
+
+    // TODO test model specific default params
+    // TODO test override of default params
+    // TODO test override specific params
+
     @Test
-    void should_return_custom_response() {
+    void should_respect_default_common_chat_parameters() {
 
         // given
-        OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+        int maxOutputTokens = 3;
+        ChatParameters chatParameters = ChatParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
                 .build();
 
+        ChatLanguageModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+                .parameters(chatParameters)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Tell me a long story"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(chatRequest);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
+        }
+    }
+
+    @Test
+    void should_return_model_specific_response_metadata() {
+
+        // given
         int maxOutputTokens = 1;
         String serviceTier = "default";
 
-        OpenAiChatRequest chatRequest = OpenAiChatRequest.builder()
-                .messages(UserMessage.from("Hi"))
+        OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
                 .maxOutputTokens(maxOutputTokens) // to save tokens
                 .serviceTier(serviceTier) // required to get the "serviceTier" attribute in the response
                 .build();
 
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(openAiChatParameters)
+                .messages(UserMessage.from("Hi"))
+                .build();
+
+        OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+                .build();
+
         // when
-        OpenAiChatResponse chatResponse = chatModel.chat(chatRequest);
+        ChatResponse chatResponse = chatModel.chat(chatRequest);
 
         // then
-        assertThat(chatResponse.created()).isPositive();
-        assertThat(chatResponse.serviceTier()).isEqualTo(serviceTier);
-        assertThat(chatResponse.systemFingerprint()).isNotBlank();
+        OpenAiChatResponseMetadata openAiChatResponseMetadata = (OpenAiChatResponseMetadata) chatResponse.metadata();
+        assertThat(openAiChatResponseMetadata.created()).isPositive();
+        assertThat(openAiChatResponseMetadata.serviceTier()).isEqualTo(serviceTier);
+        assertThat(openAiChatResponseMetadata.systemFingerprint()).isNotBlank();
 
-        OpenAiTokenUsage tokenUsage = chatResponse.tokenUsage();
+        OpenAiTokenUsage tokenUsage = openAiChatResponseMetadata.tokenUsage();
 
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.inputTokensDetails().cachedTokens()).isZero();

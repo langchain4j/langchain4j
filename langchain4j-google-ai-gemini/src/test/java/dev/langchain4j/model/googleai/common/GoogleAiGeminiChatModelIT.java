@@ -1,9 +1,8 @@
 package dev.langchain4j.model.googleai.common;
 
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 
 import java.util.List;
@@ -29,10 +28,9 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatRequest createModelSpecificChatRequest(int maxOutputTokens, UserMessage userMessage) {
-        return ChatRequest.builder()
+    protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
+        return ChatParameters.builder() // TODO return specific params
                 .maxOutputTokens(maxOutputTokens)
-                .messages(userMessage)
                 .build();
     }
 

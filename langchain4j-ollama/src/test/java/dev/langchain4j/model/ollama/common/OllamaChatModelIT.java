@@ -121,21 +121,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsTemperatureParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsTopPParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsTopKParameter() {
-        return false; // TODO implement
-    }
-
-    @Override
     protected boolean supportsMaxOutputTokensParameter() {
         return false; // TODO implement
     }

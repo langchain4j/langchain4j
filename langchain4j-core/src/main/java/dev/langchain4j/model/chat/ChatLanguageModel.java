@@ -6,10 +6,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 
 import java.util.List;
@@ -41,28 +43,34 @@ public interface ChatLanguageModel {
 
         validate(chatRequest, getClass());
 
+        ChatParameters chatParameters = chatRequest.parameters();
+
         Response<AiMessage> response;
-        if (isNullOrEmpty(chatRequest.toolSpecifications())) {
+        if (isNullOrEmpty(chatParameters.toolSpecifications())) {
             response = generate(chatRequest.messages());
         } else {
-            if (chatRequest.toolChoice() == REQUIRED) {
-                response = generate(chatRequest.messages(), chatRequest.toolSpecifications().get(0));
+            if (chatParameters.toolChoice() == REQUIRED) {
+                response = generate(chatRequest.messages(), chatParameters.toolSpecifications().get(0));
             } else {
-                response = generate(chatRequest.messages(), chatRequest.toolSpecifications());
+                response = generate(chatRequest.messages(), chatParameters.toolSpecifications());
             }
         }
 
         return ChatResponse.builder()
                 .aiMessage(response.content())
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
                 .build();
     }
 
     static void validate(ChatRequest chatRequest, Class<?> modelClass) {
+        ChatParameters parameters = chatRequest.parameters();
+
         String errorTemplate = "%s is not supported yet by this model provider";
 
-        if (chatRequest.modelName() != null) {
+        if (parameters.modelName() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'modelName' parameter"));
         }
 
@@ -74,36 +82,36 @@ public interface ChatLanguageModel {
                     ChatRequest.class.getSimpleName()
             ));
         }
-        if (chatRequest.temperature() != null) {
+        if (parameters.temperature() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'temperature' parameter"));
         }
-        if (chatRequest.topP() != null) {
+        if (parameters.topP() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'topP' parameter"));
         }
-        if (chatRequest.topK() != null) {
+        if (parameters.topK() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'topK' parameter"));
         }
-        if (chatRequest.frequencyPenalty() != null) {
+        if (parameters.frequencyPenalty() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'frequencyPenalty' parameter"));
         }
-        if (chatRequest.presencePenalty() != null) {
+        if (parameters.presencePenalty() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'presencePenalty' parameter"));
         }
-        if (chatRequest.maxOutputTokens() != null) {
+        if (parameters.maxOutputTokens() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'maxOutputTokens' parameter"));
         }
-        if (chatRequest.stopSequences() != null) {
+        if (parameters.stopSequences() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'stopSequences' parameter"));
         }
 
-        List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
-        if (chatRequest.toolChoice() == REQUIRED
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        if (parameters.toolChoice() == REQUIRED
                 && !isNullOrEmpty(toolSpecifications) && toolSpecifications.size() > 1) {
             throw new UnsupportedFeatureException(
                     "ToolChoice.REQUIRED is currently supported only when there is a single tool");
         }
 
-        ResponseFormat responseFormat = chatRequest.responseFormat();
+        ResponseFormat responseFormat = parameters.responseFormat();
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
             // TODO check supportedCapabilities() instead?
             throw new UnsupportedFeatureException(errorTemplate.formatted("JSON response format"));
@@ -120,6 +128,11 @@ public interface ChatLanguageModel {
         ChatResponse chatResponse = chat(chatRequest);
 
         return chatResponse.aiMessage().text();
+    }
+
+    @Experimental
+    default ChatParameters parameters() {
+        return null;
     }
 
     @Experimental

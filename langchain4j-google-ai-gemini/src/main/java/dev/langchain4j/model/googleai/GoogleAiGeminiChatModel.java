@@ -10,10 +10,12 @@ import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -77,9 +79,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         ChatResponse response = chat(request);
 
-        return Response.from(response.aiMessage(),
-            response.tokenUsage(),
-            response.finishReason());
+        return Response.from(
+                response.aiMessage(),
+                response.metadata().tokenUsage(),
+                response.metadata().finishReason()
+        );
     }
 
     @Override
@@ -96,9 +100,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         ChatResponse response = chat(request);
 
-        return Response.from(response.aiMessage(),
-            response.tokenUsage(),
-            response.finishReason());
+        return Response.from(
+                response.aiMessage(),
+                response.metadata().tokenUsage(),
+                response.metadata().finishReason()
+        );
     }
 
     @Override
@@ -106,17 +112,19 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         validateRequest(chatRequest);
 
+        ChatParameters chatParameters = chatRequest.parameters();
+
         GeminiGenerateContentRequest request = createGenerateContentRequest(
                 chatRequest.messages(),
-                chatRequest.toolSpecifications(),
-                getOrDefault(chatRequest.responseFormat(), this.responseFormat),
+                chatParameters.toolSpecifications(),
+                getOrDefault(chatParameters.responseFormat(), this.responseFormat),
                 chatRequest
         );
 
         ChatModelRequest chatModelRequest = createChatModelRequest(
-                chatRequest.modelName(),
+                chatParameters.modelName(),
                 chatRequest.messages(),
-                chatRequest.toolSpecifications(),
+                chatParameters.toolSpecifications(),
                 chatRequest
         );
 
@@ -170,11 +178,13 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         notifyListenersOnResponse(response, chatModelRequest, listenerAttributes);
 
         return ChatResponse.builder()
-            .modelName(chatModelRequest.model()) // TODO take actual model from response
-            .aiMessage(aiMessage)
-            .finishReason(finishReason)
-            .tokenUsage(tokenUsage)
-            .build();
+                .aiMessage(aiMessage)
+                .metadata(ChatResponseMetadata.builder()
+                        .modelName(chatModelRequest.model()) // TODO take actual model from response
+                        .finishReason(finishReason)
+                        .tokenUsage(tokenUsage)
+                        .build())
+                .build();
     }
 
     private AiMessage createAiMessage(GeminiCandidate candidate, FinishReason finishReason) {
