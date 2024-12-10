@@ -150,8 +150,7 @@ public class JsonSchemaElementHelper {
     }
 
     private static Class<?> getActualType(Type type) {
-        if (type instanceof ParameterizedType) {
-            ParameterizedType parameterizedType = (ParameterizedType) type;
+        if (type instanceof final ParameterizedType parameterizedType) {
             Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
             if (actualTypeArguments.length == 1) {
                 return (Class<?>) actualTypeArguments[0];
