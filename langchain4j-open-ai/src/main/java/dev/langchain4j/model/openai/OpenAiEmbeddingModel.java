@@ -21,7 +21,7 @@ import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
@@ -86,7 +86,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 2048);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
 
-        ensureBetween(this.maxSegmentsPerBatch, 1, 2048, "maxSegmentsPerBatch");
+        ensureGreaterThanZero(this.maxSegmentsPerBatch,  "maxSegmentsPerBatch");
     }
 
     @Override

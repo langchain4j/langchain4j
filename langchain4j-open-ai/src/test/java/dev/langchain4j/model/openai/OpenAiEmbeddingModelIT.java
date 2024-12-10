@@ -23,7 +23,6 @@ class OpenAiEmbeddingModelIT {
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(TEXT_EMBEDDING_3_SMALL)
-            .maxSegmentsPerBatch(10)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -75,7 +74,15 @@ class OpenAiEmbeddingModelIT {
 
     @Test
     void should_embed_multiple_batch_segments() {
-
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(TEXT_EMBEDDING_3_SMALL)
+                .maxSegmentsPerBatch(10)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
         // given
         List<TextSegment> segments = Stream.generate(() -> TextSegment.from("hello world"))
                 .limit(50)
