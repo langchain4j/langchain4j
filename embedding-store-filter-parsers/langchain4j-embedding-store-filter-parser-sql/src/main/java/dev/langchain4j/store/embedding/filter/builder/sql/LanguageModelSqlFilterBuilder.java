@@ -93,18 +93,19 @@ public class LanguageModelSqlFilterBuilder {
                     Adhere to these rules:
                     - **Deliberately go through the question and database schema word by word** to appropriately answer the question
                     - **Use Table Aliases** to prevent ambiguity. For example, `SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id`.
-                    - Prevent SQL injection
+                    - Prevent SQL injection, return SELECT statements only
                     - When creating a ratio, always cast the numerator as float
-                    - Use ANSI SQL standard
+                    - Use only functions specified in ANSI SQL standard
+                    - Do not use line breaks
 
                     ### Input:
                     Generate a SQL query that answers the question `{{query}}`.
-                    This query will run on a database whose schema is represented in this string:
+                    This query will run on a database whose schema is described as following DDL:
+                    ```
                     {{create_table_statement}}
-
-                    ### Response:
-                    Based on your instructions, here is the SQL query I have generated to answer the question `{{query}}`:
-                    ```sql""");
+                    ```
+                    Before returning the result, verify, that SQL query adheres to above mentioned rules.
+                    """);
 
     protected final ChatLanguageModel chatLanguageModel;
     protected final TableDefinition tableDefinition;
@@ -137,13 +138,13 @@ public class LanguageModelSqlFilterBuilder {
 
         String generatedSql = response.content().text();
 
-        String cleanedSql = clean(generatedSql);
+        String cleanedSql = generatedSql.trim();
         log.trace("Cleaned SQL: '{}'", cleanedSql);
 
         try {
             return sqlFilterParser.parse(cleanedSql);
         } catch (Exception e) {
-            log.warn("Failed parsing the following SQL: '{}'", cleanedSql, e);
+            log.warn("Failed parsing the following SQL: '{}' GeneratedSQL='{}'", cleanedSql, generatedSql, e);
             // TODO implement additional strategies (configurable):
             //  - feed the error to the LLM and retry
             //  - return predefined filter
