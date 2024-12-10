@@ -35,39 +35,35 @@ Currently, depending on the LLM and the LLM provider, there are four ways how th
 
 
 ## JSON Schema
-Some LLM providers (e.g., OpenAI and Google Gemini) allow specifying JSON schema for the desired output.
+Some LLM providers (e.g., OpenAI and Google Gemini) allow
+specifying [JSON schema](https://json-schema.org/overview/what-is-jsonschema) for the desired output.
 You can view all supported LLM providers [here](/integrations/language-models) in the "JSON Schema" column.
 
 When a JSON schema is specified in the request, the LLM is expected to generate an output that adheres to this schema.
 
 :::note
 Please note that the JSON schema is specified in a dedicated attribute in the request to the LLM provider's API
-and does not require additional free-form instructions to be included in the prompt (e.g., in system or user messages).
-:::
-
-:::note
-When using JSON Schema and OpenAI, the [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)
-feature of OpenAI is used under the hood.
+and does not require any free-form instructions to be included in the prompt (e.g., in system or user messages).
 :::
 
 LangChain4j supports the JSON Schema feature in both the low-level `ChatLanguageModel` API
 and the high-level AI Service API.
 
-### Using JSON Schema with the Low Level API
+### Using JSON Schema with `ChatLanguageModel`
 
 In the low-level `ChatLanguageModel` API, JSON schema can be specified
 using LLM-provider-agnostic `ResponseFormat` and `JsonSchema` when creating a `ChatRequest`:
 ```java
 ResponseFormat responseFormat = ResponseFormat.builder()
-        .type(JSON) // see [1] below
+        .type(JSON) // type can be either TEXT (default) or JSON
         .jsonSchema(JsonSchema.builder()
-                .name("Person") // see [2] below
-                .rootElement(JsonObjectSchema.builder() // see [3] below
+                .name("Person") // OpenAI requires specifying the name for the schema
+                .rootElement(JsonObjectSchema.builder() // see [1] below
                         .addStringProperty("name")
                         .addIntegerProperty("age")
                         .addNumberProperty("height")
                         .addBooleanProperty("married")
-                        .required("name", "age", "height", "married") // see [4] below
+                        .required("name", "age", "height", "married") // see [2] below
                         .build())
                 .build())
         .build();
@@ -106,28 +102,26 @@ Person person = new ObjectMapper().readValue(output, Person.class);
 System.out.println(person); // Person[name=John, age=42, height=1.75, married=false]
 ```
 Notes:
-- [1] - Response format type can be either `TEXT` (default) or `JSON`.
-- [2] - OpenAI requires specifying the name for the schema.
-- [3] - In most cases, the root element must be of `JsonObjectSchema` type,
+- [1] - In most cases, the root element must be of `JsonObjectSchema` type,
 however Gemini allows `JsonEnumSchema` and `JsonArraySchema` as well.
-- [4] - Required properties must be explicitly specified; otherwise, they are considered optional.
+- [2] - Required properties must be explicitly specified; otherwise, they are considered optional.
 
-The structure of the schema is defined using `JsonSchemaElement` interface,
+The structure of the JSON schema is defined using `JsonSchemaElement` interface,
 with the following subtypes:
-- `JsonStringSchema` - to support `String`, `char`/`Character` types.
-- `JsonIntegerSchema` - to support `int`/`Integer`, `long`/`Long`, `BigInteger` types.
-- `JsonNumberSchema` - to support `float`/`Float`, `double`/`Double`, `BigDecimal` types.
-- `JsonBooleanSchema` - to support `boolean`/`Boolean` types.
-- `JsonEnumSchema` - to support `enum` types.
-- `JsonArraySchema` - to support arrays and collection (e.g., `List`, `Set`) types.
-- `JsonObjectSchema` - to support object types.
+- `JsonObjectSchema` - for object types.
+- `JsonStringSchema` - for `String`, `char`/`Character` types.
+- `JsonIntegerSchema` - for `int`/`Integer`, `long`/`Long`, `BigInteger` types.
+- `JsonNumberSchema` - for `float`/`Float`, `double`/`Double`, `BigDecimal` types.
+- `JsonBooleanSchema` - for `boolean`/`Boolean` types.
+- `JsonEnumSchema` - for `enum` types.
+- `JsonArraySchema` - for arrays and collections (e.g., `List`, `Set`).
 - `JsonReferenceSchema` - to support recursion (e.g., `Person` has a `Set<Person> children` field).
-- `JsonAnyOfSchema` - to support subtypes (e.g., `Shape` can be either `Circle` or `Rectangle`).
+- `JsonAnyOfSchema` - to support polymorphism (e.g., `Shape` can be either `Circle` or `Rectangle`).
 
 #### `JsonObjectSchema`
 
 The `JsonObjectSchema` represents an object with nested properties.
-It is usually a root element of the `JsonSchema`.
+It is usually the root element of the `JsonSchema`.
 
 There are several ways to add properties to a `JsonObjectSchema`:
 1. You can add all the properties at once using the `properties(Map<String, JsonSchemaElement> properties)` method:
@@ -169,7 +163,9 @@ JsonSchemaElement rootElement = JsonObjectSchema.builder()
         .build();
 ```
 
-Please refer to the Javadoc of the `JsonObjectSchema` for more details.
+Please refer to the Javadoc of the 
+[JsonObjectSchema](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/model/chat/request/json/JsonObjectSchema.java)
+for more details.
 
 #### `JsonStringSchema`
 
@@ -213,8 +209,7 @@ An example of creating `JsonEnumSchema`:
 ```java
 JsonSchemaElement enumSchema = JsonEnumSchema.builder()
         .description("Marital status of the person")
-        .enumValues("SINGLE", "MARRIED", "DIVORCED") // allowed values can be set either via varargs
-        .enumValues(List.of("SINGLE", "MARRIED", "DIVORCED")) // or as a list
+        .enumValues(List.of("SINGLE", "MARRIED", "DIVORCED"))
         .build();
 ```
 
@@ -259,7 +254,7 @@ JsonObjectSchema jsonObjectSchema = JsonObjectSchema.builder()
 ```
 
 :::note
-The `JsonObjectSchema` is currently supported only by OpenAI.
+The `JsonReferenceSchema` is currently supported only by OpenAI.
 :::
 
 #### `JsonAnyOfSchema`
@@ -275,13 +270,15 @@ JsonSchemaElement rectangleSchema = JsonObjectSchema.builder()
         .addNumberProperty("height")
         .build();
 
+JsonSchemaElement shapeSchema = JsonAnyOfSchema.builder()
+        .anyOf(circleSchema, rectangleSchema)
+        .build();
+
 JsonSchema jsonSchema = JsonSchema.builder()
         .name("Shapes")
         .rootElement(JsonObjectSchema.builder()
                 .addProperty("shapes", JsonArraySchema.builder()
-                        .items(JsonAnyOfSchema.builder()
-                                .anyOf(circleSchema, rectangleSchema)
-                                .build())
+                        .items(shapeSchema)
                         .build())
                 .required(List.of("shapes"))
                 .build())
@@ -309,14 +306,26 @@ System.out.println(chatResponse.aiMessage().text()); // {"shapes":[{"radius":5},
 ```
 
 :::note
-The `JsonReferenceSchema` is currently supported only by OpenAI.
+The `JsonAnyOfSchema` is currently supported only by OpenAI.
 :::
 
 #### Adding Description
-More information is coming soon.
+
+All of the `JsonSchemaElement` subtypes, except for `JsonReferenceSchema`, have a `description` property.
+If an LLM does not provide the desired output, descriptions can be provided
+to give more instructions and examples of correct outputs to the LLM, for example:
+```java
+JsonSchemaElement stringSchema = JsonStringSchema.builder()
+        .description("The name of the person, for example: John Doe")
+        .build();
+```
 
 #### Limitations
-More information is coming soon.
+
+When using JSON Schema with `ChatLanguageModel`, there are some limitations:
+- It works only with supported OpenAI and Gemini models.
+- It does not work in the [streaming mode](/tutorials/ai-services#streaming) yet.
+- `JsonReferenceSchema` and `JsonAnyOfSchema` are currently supported only by OpenAI.
 
 
 ### Using JSON Schema with AI Services
@@ -365,9 +374,13 @@ as these beans are created automatically. More info on this:
 - [2] - This is required to enable the JSON Schema feature for OpenAI, see more details [here](/integrations/language-models/open-ai#structured-outputs-for-response-format).
 - [3] - This is required to enable the JSON Schema feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
 
-When an AI Service returns a POJO **and** the `ChatLanguageModel` supports the JSON Schema feature
-**and** the JSON Schema feature is enabled on the `ChatLanguageModel`,
-a `ResponseFormat` with `JsonSchema` will be generated automatically based on the specified return type.
+When all the following conditions are met:
+- AI Service method returns a POJO
+- The used `ChatLanguageModel` [supports](https://docs.langchain4j.dev/integrations/language-models/) the JSON Schema feature
+- The JSON Schema feature is enabled on the used `ChatLanguageModel`
+
+then the `ResponseFormat` with `JsonSchema` will be generated automatically based on the specified return type.
+
 :::note
 Make sure to explicitly enable JSON Schema feature when configuring `ChatLanguageModel`,
 as it is disabled by default.
@@ -389,18 +402,18 @@ and [here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/
 #### Adding Description
 
 If an LLM does not provide the desired output, classes and fields can be annotated with `@Description`
-to give more information and instructions to the LLM.
-For example:
+to give more instructions and examples of correct outputs to the LLM, for example:
 ```java
 @Description("a person")
-record Person(@Description("person's name") String name,
-              @Description("person's age") int age,
-              @Description("person's height") double height,
-              @Description("is person married or not") boolean married) {
+record Person(@Description("person's first and last name, for example: John Doe") String name,
+              @Description("person's age, for example: 42") int age,
+              @Description("person's height in meters, hor example: 1.78") double height,
+              @Description("is person married or not, for example: false") boolean married) {
 }
 ```
 
 #### Limitations
+
 When using JSON Schema with AI Services, there are some limitations:
 - It works only with supported OpenAI and Gemini models.
 - Support for JSON Schema needs to be enabled explicitly when configuring `ChatLanguageModel`.
@@ -417,16 +430,16 @@ We are [working](https://github.com/langchain4j/langchain4j/pull/1938) on suppor
 - When LLM does not support JSON Schema feature, or it is not enabled, or return type is not a POJO,
 AI Service will fall back to [prompting](/tutorials/structured-outputs#prompting).
 - Recursion is currently supported only by OpenAI.
+- Polymorphism is not supported yet. The returned POJO and its nested POJOs must be concrete classes;
+interfaces or abstract classes are not supported.
 
 
 ## Tools (Function Calling)
 
 This method assumes (mis)using [tools](/tutorials/tools) to produce structured outputs.
 A single tool is specified in the request to the LLM, and the tool parameters describe the desired structure of the output.
-If `ToolChoice` is supported by the LLM provider, one can also set `ToolChoice.REQUIRED`
-to force the LLM to call this tool.
-Once the LLM returns an `AiMessage` with a `ToolExecutionRequest`,
-the arguments (which is a valid JSON) are parsed into a POJO.
+Once the LLM returns an `AiMessage` containing a `ToolExecutionRequest`,
+the JSON string in `ToolExecutionRequest.arguments()` is parsed into a POJO.
 
 More info is coming soon.
 

@@ -43,6 +43,9 @@ import static dev.langchain4j.store.embedding.mongodb.IndexMapping.defaultIndexM
 import static dev.langchain4j.store.embedding.mongodb.MappingUtils.*;
 import static dev.langchain4j.store.embedding.mongodb.MongoDbMetadataFilterMapper.map;
 import static java.util.Arrays.asList;
+import static dev.langchain4j.store.embedding.mongodb.MappingUtils.fromIndexMapping;
+import static dev.langchain4j.store.embedding.mongodb.MappingUtils.toMongoDbDocument;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -263,16 +266,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<String> ids = embeddings.stream()
                 .map(ignored -> randomUUID())
                 .collect(toList());
-        addAllInternal(ids, embeddings, null);
-        return ids;
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-        addAllInternal(ids, embeddings, embedded);
+        addAll(ids, embeddings, null);
         return ids;
     }
 
@@ -341,10 +335,11 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("do not add empty embeddings to MongoDB Atlas");
             return;
