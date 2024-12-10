@@ -5,7 +5,8 @@ import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastruc
 
 abstract class AbstractOllamaStructuredOutputLanguageModelInfrastructure {
 
-    private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, OllamaImage.TOOL_MODEL);
+    private static final String LOCAL_OLLAMA_IMAGE =
+            String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, OllamaImage.TOOL_MODEL);
 
     static LangChain4jOllamaContainer ollama;
 

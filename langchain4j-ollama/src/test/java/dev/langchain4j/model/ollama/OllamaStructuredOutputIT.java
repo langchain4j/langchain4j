@@ -21,8 +21,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.ollama.OllamaImage.TOOL_MODEL;
@@ -35,7 +33,11 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
     JsonObjectSchema schema = JsonObjectSchema.builder()
             .addProperty("name", JsonStringSchema.builder().build())
             .addProperty("capital", JsonStringSchema.builder().build())
-            .addProperty("languages", JsonArraySchema.builder().items(JsonStringSchema.builder().build()).build())
+            .addProperty(
+                    "languages",
+                    JsonArraySchema.builder()
+                            .items(JsonStringSchema.builder().build())
+                            .build())
             .required("name", "capital", "languages")
             .build();
 
@@ -56,9 +58,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
                 .messages(userMessage("Tell me about Canada."))
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)
-                        .jsonSchema(JsonSchema.builder()
-                                .rootElement(schema)
-                                .build())
+                        .jsonSchema(JsonSchema.builder().rootElement(schema).build())
                         .build())
                 .build());
 
@@ -73,14 +73,15 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
     }
 
     @Test
-    void should_generate_structured_output_using_response_format() throws ExecutionException, InterruptedException, TimeoutException {
+    void should_generate_structured_output_using_response_format() {
 
         // given
         ChatLanguageModel ollamaChatModel = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl())
                 .modelName(TOOL_MODEL)
                 .temperature(0.0)
-                .responseFormat(ResponseFormat.builder().type(ResponseFormatType.JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(ResponseFormatType.JSON)
                         .jsonSchema(JsonSchema.builder().rootElement(schema).build())
                         .build())
                 .logRequests(true)
@@ -99,16 +100,16 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         assertThat(countryInfo.languages()).contains("English", "French");
     }
 
-
     @Test
-    void should_generate_structured_output_using_response_format_streaming() throws ExecutionException, InterruptedException, TimeoutException {
+    void should_generate_structured_output_using_response_format_streaming() throws Exception {
 
         // given
         StreamingChatLanguageModel streamingOllamaChatModelWithResponseFormat = OllamaStreamingChatModel.builder()
                 .baseUrl(ollamaBaseUrl())
                 .modelName(TOOL_MODEL)
                 .temperature(0.0)
-                .responseFormat(ResponseFormat.builder().type(ResponseFormatType.JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(ResponseFormatType.JSON)
                         .jsonSchema(JsonSchema.builder().rootElement(schema).build())
                         .build())
                 .logRequests(true)
@@ -134,7 +135,6 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
             }
         });
 
-
         // then
         Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
         AiMessage secondAiMessage = secondResponse.content();
@@ -147,22 +147,20 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
 
     @Test
     void should_throw_exception_when_both_format_parameters_are_set_for_ollama_chat_model() {
-        assertThatThrownBy(() ->
-                OllamaChatModel.builder()
-                        .format("json")
-                        .responseFormat(ResponseFormat.JSON)
-                        .build()
-        ).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> OllamaChatModel.builder()
+                .format("json")
+                .responseFormat(ResponseFormat.JSON)
+                .build())
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void should_throw_exception_when_both_format_parameters_are_set_for_ollama_streaming_chat_model() {
-        assertThatThrownBy(() ->
-                OllamaStreamingChatModel.builder()
-                        .format("json")
-                        .responseFormat(ResponseFormat.JSON)
-                        .build()
-        ).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> OllamaStreamingChatModel.builder()
+                .format("json")
+                .responseFormat(ResponseFormat.JSON)
+                .build())
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -172,7 +170,8 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
                 .baseUrl(ollamaBaseUrl())
                 .modelName(TOOL_MODEL)
                 .temperature(0.0)
-                .responseFormat(ResponseFormat.builder().type(ResponseFormatType.JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(ResponseFormatType.JSON)
                         .jsonSchema(JsonSchema.builder().rootElement(schema).build())
                         .build())
                 .logRequests(true)
@@ -197,7 +196,8 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
                 .baseUrl(ollamaBaseUrl())
                 .modelName(TOOL_MODEL)
                 .temperature(0.0)
-                .responseFormat(ResponseFormat.builder().type(ResponseFormatType.JSON)
+                .responseFormat(ResponseFormat.builder()
+                        .type(ResponseFormatType.JSON)
                         .jsonSchema(JsonSchema.builder().rootElement(schema).build())
                         .build())
                 .logRequests(true)
@@ -205,7 +205,6 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
                 .build();
 
         TestStreamingResponseHandler<String> handler = new TestStreamingResponseHandler<>();
-
 
         // when
         languageModel.generate("Tell me about Canada.", handler);
@@ -217,5 +216,4 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
         assertThat(countryInfo.languages()).contains("English", "French");
     }
-
 }

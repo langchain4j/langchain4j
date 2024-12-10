@@ -10,7 +10,7 @@ class FormatSerializer extends JsonSerializer<String> {
     private static final String JSON = "json";
 
     @Override
-    public void serialize(final String format, final JsonGenerator jsonGenerator, final SerializerProvider serializerProvider) throws IOException {
+    public void serialize(String format, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
         if (format.equals(JSON)) {
             jsonGenerator.writeString(JSON);
         } else {
