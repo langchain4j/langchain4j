@@ -118,10 +118,14 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithPojoParameter {
 
-        record Person(String name, int age, Double height, boolean married) {}
+        record Person(String name, int age, Double height, boolean married) {
+            // empty
+        }
 
         @Tool
-        void process(Person person) {}
+        void process(Person person) {
+            // empty
+        }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
                 .properties(singletonMap(
@@ -177,12 +181,18 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithNestedPojoParameter {
 
-        record Person(String name, Address address) {}
+        record Person(String name, Address address) {
+            // empty
+        }
 
-        record Address(String city) {}
+        record Address(String city) {
+            // empty
+        }
 
         @Tool
-        void process(Person person) {}
+        void process(Person person) {
+            // empty
+        }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
                 .properties(singletonMap(
@@ -244,10 +254,14 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithRecursion {
 
-        record Person(String name, List<Person> children) {}
+        record Person(String name, List<Person> children) {
+            // empty
+        }
 
         @Tool
-        void process(Person person) {}
+        void process(Person person) {
+            // empty
+        }
 
         static final String REFERENCE = generateUUIDFrom(ToolWithRecursion.Person.class.getName());
 
@@ -440,7 +454,9 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithMapParameter {
 
         @Tool
-        void process(@P("map from name to age") Map<String, Integer> ages) {}
+        void process(@P("map from name to age") Map<String, Integer> ages) {
+            // empty
+        }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
@@ -502,7 +518,9 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithListOfStringsParameter {
 
         @Tool
-        void processNames(List<String> names) {}
+        void processNames(List<String> names) {
+            // empty
+        }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNames")
@@ -562,7 +580,9 @@ public abstract class AiServicesWithNewToolsIT {
         }
 
         @Tool
-        void process(Set<Color> colors) {}
+        void process(Set<Color> colors) {
+            // empty
+        }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
@@ -618,7 +638,9 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithCollectionOfIntegersParameter {
 
         @Tool
-        void processNumbers(Collection<Integer> names) {}
+        void processNumbers(Collection<Integer> names) {
+            // empty
+        }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNumbers")
@@ -672,10 +694,14 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithListOfPojoParameter {
 
-        record Person(String name) {}
+        record Person(String name) {
+            // empty
+        }
 
         @Tool
-        void process(List<Person> people) {}
+        void process(List<Person> people) {
+            // empty
+        }
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
