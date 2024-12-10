@@ -35,7 +35,7 @@ Currently, depending on the LLM and the LLM provider, there are four ways how th
 
 
 ## JSON Schema
-Some LLM providers (e.g., OpenAI and Google Gemini) allow
+Some LLM providers (e.g., OpenAI, Google AI Gemini, and Ollama) allow
 specifying [JSON schema](https://json-schema.org/overview/what-is-jsonschema) for the desired output.
 You can view all supported LLM providers [here](/integrations/language-models) in the "JSON Schema" column.
 
@@ -89,8 +89,14 @@ ChatLanguageModel chatModel = OpenAiChatModel.builder()
 ChatLanguageModel chatModel = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
         .modelName("gemini-1.5-flash")
-        .temperature(0.0)
         .logRequestsAndResponses(true)
+        .build();
+// OR
+ChatLanguageModel chatModel = OllamaChatModel.builder()
+        .baseUrl("http://localhost:11434")
+        .modelName("llama3.1")
+        .logRequests(true)
+        .logResponses(true)
         .build();
 
 ChatResponse chatResponse = chatModel.chat(chatRequest);
@@ -323,8 +329,9 @@ JsonSchemaElement stringSchema = JsonStringSchema.builder()
 #### Limitations
 
 When using JSON Schema with `ChatLanguageModel`, there are some limitations:
-- It works only with supported OpenAI and Gemini models.
-- It does not work in the [streaming mode](/tutorials/ai-services#streaming) yet.
+- It works only with supported OpenAI, Google AI Gemini, and Ollama models.
+- It does not work in the [streaming mode](/tutorials/ai-services#streaming) for OpenAI yet.
+For Google AI Gemini and Ollama, JSON Schema can be specified via `responseSchema(...)` when creating/building the model.
 - `JsonReferenceSchema` and `JsonAnyOfSchema` are currently supported only by OpenAI.
 
 
@@ -350,8 +357,15 @@ ChatLanguageModel chatModel = GoogleAiGeminiChatModel.builder() // see [1] below
         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
         .modelName("gemini-1.5-flash")
         .responseFormat(ResponseFormat.JSON) // see [3] below
-        .temperature(0.0)
         .logRequestsAndResponses(true)
+        .build();
+// OR
+ChatLanguageModel chatModel = OllamaChatModel.builder() // see [1] below
+        .baseUrl("http://localhost:11434")
+        .modelName("llama3.1")
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // see [4] below
+        .logRequests(true)
+        .logResponses(true)
         .build();
 
 PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatModel); // see [1] below
@@ -373,6 +387,7 @@ as these beans are created automatically. More info on this:
 [for Spring Boot](https://docs.langchain4j.dev/tutorials/spring-boot-integration#spring-boot-starter-for-declarative-ai-services).
 - [2] - This is required to enable the JSON Schema feature for OpenAI, see more details [here](/integrations/language-models/open-ai#structured-outputs-for-response-format).
 - [3] - This is required to enable the JSON Schema feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
+- [3] - This is required to enable the JSON Schema feature for [Ollama](/integrations/language-models/ollama).
 
 When all the following conditions are met:
 - AI Service method returns a POJO
@@ -415,7 +430,7 @@ record Person(@Description("person's first and last name, for example: John Doe"
 #### Limitations
 
 When using JSON Schema with AI Services, there are some limitations:
-- It works only with supported OpenAI and Gemini models.
+- It works only with supported OpenAI, Google AI Gemini, and Ollama models.
 - Support for JSON Schema needs to be enabled explicitly when configuring `ChatLanguageModel`.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming).
 - Currently, it works only when return type is a (single) POJO or a `Result<POJO>`.
