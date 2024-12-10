@@ -387,7 +387,7 @@ as these beans are created automatically. More info on this:
 [for Spring Boot](https://docs.langchain4j.dev/tutorials/spring-boot-integration#spring-boot-starter-for-declarative-ai-services).
 - [2] - This is required to enable the JSON Schema feature for OpenAI, see more details [here](/integrations/language-models/open-ai#structured-outputs-for-response-format).
 - [3] - This is required to enable the JSON Schema feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
-- [3] - This is required to enable the JSON Schema feature for [Ollama](/integrations/language-models/ollama).
+- [4] - This is required to enable the JSON Schema feature for [Ollama](/integrations/language-models/ollama).
 
 When all the following conditions are met:
 - AI Service method returns a POJO
