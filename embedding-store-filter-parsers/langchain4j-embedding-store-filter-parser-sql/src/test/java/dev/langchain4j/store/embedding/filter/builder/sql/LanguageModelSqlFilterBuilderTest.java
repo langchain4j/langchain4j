@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.filter.builder.sql;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
@@ -93,14 +92,14 @@ class LanguageModelSqlFilterBuilderTest {
 
         Query query = Query.from("does not matter");
 
+        when(sqlFilterParser.parse(dirtySql.trim())).thenThrow(new RuntimeException("Invalid SQL"));
         when(sqlFilterParser.parse("SELECT * FROM table WHERE id = 1")).thenReturn(filter);
 
         // when
-        sqlFilterBuilder.build(query);
+        var result = sqlFilterBuilder.build(query);
 
         // then
-        verify(sqlFilterParser).parse(dirtySql.trim());
-        verify(sqlFilterParser).parse("SELECT * FROM table WHERE id = 1");
+        assertThat(result).isSameAs(filter);
         verifyNoMoreInteractions(sqlFilterParser);
     }
 }
