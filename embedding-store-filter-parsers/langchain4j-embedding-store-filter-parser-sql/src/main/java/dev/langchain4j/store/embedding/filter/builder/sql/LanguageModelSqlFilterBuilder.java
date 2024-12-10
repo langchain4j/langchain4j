@@ -1,5 +1,9 @@
 package dev.langchain4j.store.embedding.filter.builder.sql;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.message.AiMessage;
@@ -13,16 +17,11 @@ import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.parser.sql.SqlFilterParser;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Given a natural language {@link Query}, this class creates a suitable {@link Filter} using a language model.
@@ -88,22 +87,24 @@ public class LanguageModelSqlFilterBuilder {
     private static final Logger log = LoggerFactory.getLogger(LanguageModelSqlFilterBuilder.class);
 
     private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "### Instructions:\n" +
-                    "Your task is to convert a question into a SQL query, given a Postgres database schema.\n" +
-                    "Adhere to these rules:\n" +
-                    "- **Deliberately go through the question and database schema word by word** to appropriately answer the question\n" +
-                    "- **Use Table Aliases** to prevent ambiguity. For example, `SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id`.\n" +
-                    "- When creating a ratio, always cast the numerator as float\n" +
-                    "\n" +
-                    "### Input:\n" +
-                    "Generate a SQL query that answers the question `{{query}}`.\n" +
-                    "This query will run on a database whose schema is represented in this string:\n" +
-                    "{{create_table_statement}}\n" +
-                    "\n" +
-                    "### Response:\n" +
-                    "Based on your instructions, here is the SQL query I have generated to answer the question `{{query}}`:\n" +
-                    "```sql"
-    );
+            """
+                    ### Instructions:
+                    Your task is to convert a question into a SQL query, given a Postgres database schema.
+                    Adhere to these rules:
+                    - **Deliberately go through the question and database schema word by word** to appropriately answer the question
+                    - **Use Table Aliases** to prevent ambiguity. For example, `SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id`.
+                    - Prevent SQL injection
+                    - When creating a ratio, always cast the numerator as float
+                    - Use ANSI SQL standard
+
+                    ### Input:
+                    Generate a SQL query that answers the question `{{query}}`.
+                    This query will run on a database whose schema is represented in this string:
+                    {{create_table_statement}}
+
+                    ### Response:
+                    Based on your instructions, here is the SQL query I have generated to answer the question `{{query}}`:
+                    ```sql""");
 
     protected final ChatLanguageModel chatLanguageModel;
     protected final TableDefinition tableDefinition;
@@ -111,16 +112,16 @@ public class LanguageModelSqlFilterBuilder {
     protected final PromptTemplate promptTemplate;
     protected final SqlFilterParser sqlFilterParser;
 
-    public LanguageModelSqlFilterBuilder(ChatLanguageModel chatLanguageModel,
-                                         TableDefinition tableDefinition) {
+    public LanguageModelSqlFilterBuilder(ChatLanguageModel chatLanguageModel, TableDefinition tableDefinition) {
         this(chatLanguageModel, tableDefinition, DEFAULT_PROMPT_TEMPLATE, new SqlFilterParser());
     }
 
     @Builder
-    private LanguageModelSqlFilterBuilder(ChatLanguageModel chatLanguageModel,
-                                          TableDefinition tableDefinition,
-                                          PromptTemplate promptTemplate,
-                                          SqlFilterParser sqlFilterParser) {
+    private LanguageModelSqlFilterBuilder(
+            ChatLanguageModel chatLanguageModel,
+            TableDefinition tableDefinition,
+            PromptTemplate promptTemplate,
+            SqlFilterParser sqlFilterParser) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         this.tableDefinition = ensureNotNull(tableDefinition, "tableDefinition");
         this.createTableStatement = format(tableDefinition);
