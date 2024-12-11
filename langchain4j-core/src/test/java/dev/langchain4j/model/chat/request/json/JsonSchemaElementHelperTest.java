@@ -1,18 +1,15 @@
 package dev.langchain4j.model.chat.request.json;
 
-import org.junit.jupiter.api.Test;
-
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonSchemaElementFrom;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import org.junit.jupiter.api.Test;
+
 class JsonSchemaElementHelperTest {
 
-    static class CustomClass {
-
-    }
+    static class CustomClass {}
 
     @Test
     void test_isCustomClass() {
@@ -44,17 +41,22 @@ class JsonSchemaElementHelperTest {
         JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, new LinkedHashMap<>());
 
         // then
-        assertThat(jsonSchemaElement).isEqualTo(JsonObjectSchema.builder()
-                .addProperty("billingAddress", JsonObjectSchema.builder()
-                        .addStringProperty("city")
-                        .required("city")
-                        .build())
-                .addProperty("shippingAddress", JsonObjectSchema.builder()
-                        .addStringProperty("city")
-                        .required("city")
-                        .build())
-                .required("billingAddress", "shippingAddress")
-                .build());
+        assertThat(jsonSchemaElement)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "billingAddress",
+                                JsonObjectSchema.builder()
+                                        .addStringProperty("city")
+                                        .required("city")
+                                        .build())
+                        .addProperty(
+                                "shippingAddress",
+                                JsonObjectSchema.builder()
+                                        .addStringProperty("city")
+                                        .required("city")
+                                        .build())
+                        .required("billingAddress", "shippingAddress")
+                        .build());
     }
 
     static class Employee {
@@ -78,11 +80,12 @@ class JsonSchemaElementHelperTest {
         JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, new LinkedHashMap<>());
 
         // then
-        assertThat(jsonSchemaElement).isEqualTo(JsonObjectSchema.builder()
-                .addStringProperty("department")
-                .addIntegerProperty("teamSize")
-                .addStringProperty("name")
-                .required("department", "teamSize", "name")
-                .build());
+        assertThat(jsonSchemaElement)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addStringProperty("department")
+                        .addIntegerProperty("teamSize")
+                        .addStringProperty("name")
+                        .required("department", "teamSize", "name")
+                        .build());
     }
 }
