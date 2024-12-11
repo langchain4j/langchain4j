@@ -41,7 +41,7 @@ class ContentTest {
         // given
         TextSegment segment = TextSegment.from("text");
         Map<ContentMetadata, Object> metadata = Map.of(
-                ContentMetadata.SCORE_AFTER_RETRIEVAL, 0.2d,
+                ContentMetadata.SCORE, 0.2d,
                 ContentMetadata.EMBEDDING_ID, "test-eid"
         );
 
@@ -54,7 +54,7 @@ class ContentTest {
         assertThat(content.metadata())
                 .isNotEmpty();
         assertThat(content.metadata())
-                .containsExactlyEntriesOf(Map.of(ContentMetadata.SCORE_AFTER_RETRIEVAL,0.2, ContentMetadata.EMBEDDING_ID,"test-eid"));
+                .containsExactlyEntriesOf(Map.of(ContentMetadata.SCORE,0.2, ContentMetadata.EMBEDDING_ID,"test-eid"));
 
     }
 
@@ -62,7 +62,7 @@ class ContentTest {
     void test_equals_hashCode() {
 
         // given
-        Content content1 = new Content(TextSegment.from("content"), Map.of(ContentMetadata.SCORE_AFTER_RETRIEVAL,1.0d));
+        Content content1 = new Content(TextSegment.from("content"), Map.of(ContentMetadata.SCORE,1.0d));
         Content content2 = Content.from("content 2");
         Content content3 = Content.from("content");
 

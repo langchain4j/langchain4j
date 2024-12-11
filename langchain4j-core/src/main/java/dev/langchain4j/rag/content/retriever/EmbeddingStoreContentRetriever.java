@@ -243,7 +243,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 .map(embeddingMatch -> Content.from(
                         embeddingMatch.embedded(),
                         Map.of(
-                                ContentMetadata.SCORE_AFTER_RETRIEVAL, embeddingMatch.score(),
+                                ContentMetadata.SCORE, embeddingMatch.score(),
                                 ContentMetadata.EMBEDDING_ID, embeddingMatch.embeddingId()
                         )
                 ))

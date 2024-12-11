@@ -137,7 +137,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
         return segmentToScore.entrySet().stream()
                 .filter(entry -> minScore == null || entry.getValue() >= minScore)
                 .sorted(Map.Entry.<TextSegment, Double>comparingByValue().reversed())
-                .map(entry -> new Content(entry.getKey(), Map.of(ContentMetadata.SCORE_AFTER_RERANKING, entry.getValue())))
+                .map(entry -> new Content(entry.getKey(), Map.of(ContentMetadata.RERANKED_SCORE, entry.getValue())))
                 .limit(maxResults)
                 .toList();
     }

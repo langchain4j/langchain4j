@@ -347,9 +347,9 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
 
     private void assertContent(Content content) {
         assertThat(content.textSegment()).isNotNull();
-        assertThat(content.metadata().get(ContentMetadata.SCORE_AFTER_RETRIEVAL)).isNotNull();
-        assertThat(content.metadata().get(ContentMetadata.SCORE_AFTER_RETRIEVAL)).isInstanceOf(Double.class);
-        assertThat((Double) content.metadata().get(ContentMetadata.SCORE_AFTER_RETRIEVAL)).isGreaterThanOrEqualTo(0d);
+        assertThat(content.metadata().get(ContentMetadata.SCORE)).isNotNull();
+        assertThat(content.metadata().get(ContentMetadata.SCORE)).isInstanceOf(Double.class);
+        assertThat((Double) content.metadata().get(ContentMetadata.SCORE)).isGreaterThanOrEqualTo(0d);
         assertThat(content.metadata().get(ContentMetadata.EMBEDDING_ID)).isNotNull();
         assertThat(content.metadata().get(ContentMetadata.EMBEDDING_ID)).isInstanceOf(String.class);
     }

@@ -170,8 +170,8 @@ class AzureAiSearchContentRetrieverTest {
 
         List<Content> results = retriever.retrieve(Query.from("test"));
         assertThat(results).hasSize(1);
-        assertThat(results.get(0).metadata().get(ContentMetadata.SCORE_AFTER_RETRIEVAL)).isInstanceOf(Double.class);
-        assertThat(results.get(0).metadata()).containsEntry(ContentMetadata.SCORE_AFTER_RETRIEVAL,0.2);
+        assertThat(results.get(0).metadata().get(ContentMetadata.SCORE)).isInstanceOf(Double.class);
+        assertThat(results.get(0).metadata()).containsEntry(ContentMetadata.SCORE,0.2);
         assertThat(results.get(0).metadata().get(ContentMetadata.EMBEDDING_ID)).isInstanceOf(String.class);
         assertThat(results.get(0).metadata()).containsEntry(ContentMetadata.EMBEDDING_ID,"embedding-123");
         assertThat(results.get(0).textSegment()).isEqualTo(textSegment);

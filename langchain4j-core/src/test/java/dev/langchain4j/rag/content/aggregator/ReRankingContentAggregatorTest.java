@@ -329,7 +329,7 @@ class ReRankingContentAggregatorTest {
 
     private void assertReRankedContentScore(List<Content> actual, double... expectedScores) {
         for (int i = 0; i < actual.size(); i++) {
-            assertThat((actual.get(i)).metadata()).containsEntry(ContentMetadata.SCORE_AFTER_RERANKING, expectedScores[i]);
+            assertThat((actual.get(i)).metadata()).containsEntry(ContentMetadata.RERANKED_SCORE, expectedScores[i]);
         }
     }
 }
