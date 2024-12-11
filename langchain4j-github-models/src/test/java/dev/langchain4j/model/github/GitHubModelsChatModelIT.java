@@ -299,10 +299,11 @@ class GitHubModelsChatModelIT {
         // given
         String modelNameString = modelName.toString();
 
+        int maxTokens = 3;
         ChatLanguageModel model = GitHubModelsChatModel.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .modelName(modelNameString)
-                .maxTokens(1)
+                .maxTokens(maxTokens) // to save tokens
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -314,10 +315,14 @@ class GitHubModelsChatModelIT {
         // then
         assertThat(response.content().text()).isNotBlank();
 
-        assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
-        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage).isNotNull();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxTokens);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
     private static ToolParameters getToolParameters() {
