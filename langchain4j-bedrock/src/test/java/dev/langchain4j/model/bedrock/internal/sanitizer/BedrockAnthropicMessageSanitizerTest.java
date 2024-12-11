@@ -1,18 +1,17 @@
 package dev.langchain4j.model.bedrock.internal.sanitizer;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class BedrockAnthropicMessageSanitizerTest {
 
@@ -203,7 +202,8 @@ class BedrockAnthropicMessageSanitizerTest {
         assertThat(((UserMessage) sanitized.get(0)).singleText()).isEqualTo(expectedUserMessageContent);
 
         assertInstanceOf(AiMessage.class, sanitized.get(1));
-        ToolExecutionRequest toolExecutionRequest = ((AiMessage) sanitized.get(1)).toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                ((AiMessage) sanitized.get(1)).toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.id()).isEqualTo("12345");
         assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"first\": 2, \"second\": 2}");

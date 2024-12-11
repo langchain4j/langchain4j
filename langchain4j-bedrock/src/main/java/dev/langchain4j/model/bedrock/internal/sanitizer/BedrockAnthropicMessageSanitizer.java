@@ -1,15 +1,14 @@
 package dev.langchain4j.model.bedrock.internal.sanitizer;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sanitizes the messages to conform to the format expected by the Anthropic API.
