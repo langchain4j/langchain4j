@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -13,17 +11,25 @@
 
     <artifactId>langchain4j-vespa</artifactId>
     <name>LangChain4j :: Integration :: Vespa</name>
-    <description>
-        Vespa is a fully featured search engine and vector database.
+    <description>Vespa is a fully featured search engine and vector database.
         Integration with LangChain4j uses:
         - Vespa's client &amp; vespa-feed-client libraries which have Apache License 2.0:
         https://github.com/vespa-engine/vespa/blob/master/LICENSE
         - org.apache.httpcomponents.client5.httpclient5-fluent library which has Apache License 2.0:
-        https://github.com/apache/httpcomponents-client/blob/master/LICENSE.txt
-    </description>
+        https://github.com/apache/httpcomponents-client/blob/master/LICENSE.txt</description>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
 
     <properties>
-        <vespa.version>8.190.2</vespa.version> <!-- the latest Java 8 version -->
+        <vespa.version>8.190.2</vespa.version>
+        <!-- the latest Java 8 version -->
     </properties>
 
     <dependencies>
@@ -56,12 +62,10 @@
             <artifactId>converter-gson</artifactId>
         </dependency>
 
-        <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (START) -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
         </dependency>
-        <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (END)  -->
 
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -99,14 +103,5 @@
         </dependency>
 
     </dependencies>
-
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
 
 </project>

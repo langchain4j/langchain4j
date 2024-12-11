@@ -16,10 +16,11 @@ sidebar_position: 0
 | [ClickHouse](/integrations/embedding-stores/clickhouse)                               | ✅                | ✅                          | ✅                   |
 | [Coherence](/integrations/embedding-stores/coherence)                                 | ✅                | ✅                          | ✅                   |
 | [Couchbase](/integrations/embedding-stores/couchbase)                                 | ✅                |                            | ✅                   |
+| [DuckDB](/integrations/embedding-stores/duckdb)                                       | ✅                | ✅                          | ✅                   |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                          | ✅                   |
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                |                            |                     |
 | [Milvus](/integrations/embedding-stores/milvus)                                       | ✅                | ✅                          | ✅                   |
-| [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                | Only native filter support |                     |
+| [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                | ✅                          | ✅                   |
 | [Neo4j](/integrations/embedding-stores/neo4j)                                         | ✅                |                            |                     |
 | [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                |                            |                     |
 | [Oracle](/integrations/embedding-stores/oracle)                                       | ✅                | ✅                          | ✅                   |
