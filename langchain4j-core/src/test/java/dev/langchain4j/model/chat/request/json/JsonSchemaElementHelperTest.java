@@ -56,4 +56,33 @@ class JsonSchemaElementHelperTest {
                 .required("billingAddress", "shippingAddress")
                 .build());
     }
+
+    static class Employee {
+        private String name;
+    }
+
+    static class Manager extends Employee {
+        int teamSize;
+    }
+
+    static class Executive extends Manager {
+        String department;
+    }
+
+    @Test
+    void should_support_inherited_properties() {
+        // given
+        Class<Executive> clazz = Executive.class;
+
+        // when
+        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, new LinkedHashMap<>());
+
+        // then
+        assertThat(jsonSchemaElement).isEqualTo(JsonObjectSchema.builder()
+                .addStringProperty("department")
+                .addIntegerProperty("teamSize")
+                .addStringProperty("name")
+                .required("department", "teamSize", "name")
+                .build());
+    }
 }

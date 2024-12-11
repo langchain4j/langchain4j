@@ -6,8 +6,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -97,7 +99,7 @@ public class JsonSchemaElementHelper {
         visited.put(type, new VisitedClassMetadata(jsonReferenceSchema, reference, false));
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
-        for (Field field : type.getDeclaredFields()) {
+        for (Field field : getAllFields(type)) {
             String fieldName = field.getName();
             if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
                 continue;
@@ -157,6 +159,15 @@ public class JsonSchemaElementHelper {
             }
         }
         return null;
+    }
+
+    private static Collection<Field> getAllFields(Class<?> clazz) {
+        List<Field> fields = new ArrayList<>();
+        while (clazz != null) {
+            fields.addAll(Arrays.asList(clazz.getDeclaredFields()));
+            clazz = clazz.getSuperclass();
+        }
+        return fields;
     }
 
     static boolean isCustomClass(Class<?> clazz) {
