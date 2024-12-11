@@ -494,7 +494,7 @@ MistralAiChatModel.builder()
 ```java
 OllamaChatModel.builder()
     ...
-    .format("json")
+    .responseFormat(JSON)
     .build();
 ```
 

@@ -132,7 +132,7 @@ class OllamaChatLocalModelTest {
       model = OllamaChatModel.builder()
               .baseUrl(BASE_URL)
               .modelName(MODEL_NAME)
-              .format("json")
+              .responseFormat(JSON)
               .build();
 
       String json = model.generate("List top 10 cites in US");

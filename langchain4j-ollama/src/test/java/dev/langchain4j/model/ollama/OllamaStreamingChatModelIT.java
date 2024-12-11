@@ -1,5 +1,11 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -9,15 +15,9 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -110,12 +110,9 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         List<ChatMessage> messages = asList(
                 UserMessage.from("1 + 1 ="),
                 AiMessage.from(">>> 2"),
-
                 UserMessage.from("2 + 2 ="),
                 AiMessage.from(">>> 4"),
-
-                UserMessage.from("4 + 4 =")
-        );
+                UserMessage.from("4 + 4 ="));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -185,7 +182,17 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         });
 
         // then
-        assertThat(future.get())
-                .isExactlyInstanceOf(NullPointerException.class);
+        assertThat(future.get()).isExactlyInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void should_return_set_capabilities() {
+        OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollamaBaseUrl())
+                .modelName(TINY_DOLPHIN_MODEL)
+                .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+                .build();
+
+        assertThat(model.supportedCapabilities()).contains(RESPONSE_FORMAT_JSON_SCHEMA);
     }
 }
