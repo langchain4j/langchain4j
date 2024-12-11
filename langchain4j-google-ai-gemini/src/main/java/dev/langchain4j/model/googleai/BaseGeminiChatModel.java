@@ -10,6 +10,8 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatParameters;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -89,7 +91,8 @@ abstract class BaseGeminiChatModel {
     protected GeminiGenerateContentRequest createGenerateContentRequest(
         List<ChatMessage> messages,
         List<ToolSpecification> toolSpecifications,
-        ResponseFormat responseFormat
+        ResponseFormat responseFormat,
+        ChatRequest chatRequest
     ) {
         GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(messages, systemInstruction);
@@ -99,18 +102,20 @@ abstract class BaseGeminiChatModel {
             schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
         }
 
+        ChatParameters chatParameters = chatRequest.parameters();
+
         return GeminiGenerateContentRequest.builder()
             .contents(geminiContentList)
             .systemInstruction(!systemInstruction.getParts().isEmpty() ? systemInstruction : null)
             .generationConfig(GeminiGenerationConfig.builder()
                 .candidateCount(1) // Multiple candidates aren't supported by langchain4j
-                .maxOutputTokens(this.maxOutputTokens)
+                .maxOutputTokens(getOrDefault(chatParameters.maxOutputTokens(), this.maxOutputTokens))
                 .responseMimeType(computeMimeType(responseFormat))
                 .responseSchema(schema)
-                .stopSequences(this.stopSequences)
-                .temperature(this.temperature)
-                .topK(this.topK)
-                .topP(this.topP)
+                .stopSequences(getOrDefault(chatParameters.stopSequences(), this.stopSequences))
+                .temperature(getOrDefault(chatParameters.temperature(), this.temperature))
+                .topK(getOrDefault(chatParameters.topK(), this.topK))
+                .topP(getOrDefault(chatParameters.topP(), this.topP))
                 .build())
             .safetySettings(this.safetySettings)
             .tools(FunctionMapper.fromToolSepcsToGTool(toolSpecifications, this.allowCodeExecution))
@@ -119,14 +124,17 @@ abstract class BaseGeminiChatModel {
     }
 
     protected ChatModelRequest createChatModelRequest(
+        String modelName,
         List<ChatMessage> messages,
-        List<ToolSpecification> toolSpecifications
+        List<ToolSpecification> toolSpecifications,
+        ChatRequest chatRequest
     ) {
+        ChatParameters chatParameters = chatRequest.parameters();
         return ChatModelRequest.builder()
-            .model(modelName)
-            .temperature(temperature)
-            .topP(topP)
-            .maxTokens(maxOutputTokens)
+            .model(getOrDefault(modelName, this.modelName))
+            .temperature(getOrDefault(chatParameters.temperature(), this.temperature))
+            .topP(getOrDefault(chatParameters.topP(), this.topP))
+            .maxTokens(getOrDefault(chatParameters.maxOutputTokens(), this.maxOutputTokens))
             .messages(messages)
             .toolSpecifications(toolSpecifications)
             .build();
@@ -160,7 +168,7 @@ abstract class BaseGeminiChatModel {
     protected void notifyListenersOnResponse(Response<AiMessage> response, ChatModelRequest request,
                                              ConcurrentHashMap<Object, Object> attributes) {
         ChatModelResponse chatModelResponse = ChatModelResponse.builder()
-            .model(modelName)
+            .model(request.model()) // TODO take actual model from response
             .tokenUsage(response.tokenUsage())
             .finishReason(response.finishReason())
             .aiMessage(response.content())

@@ -46,6 +46,8 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
+import static dev.langchain4j.model.googleai.GeminiFinishReason.*;
 import static dev.langchain4j.model.googleai.GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HARASSMENT;
 import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH;
@@ -79,7 +81,7 @@ public class GoogleAiGeminiChatModelIT {
         String text = response.aiMessage().text();
         assertThat(text).containsIgnoringCase("Paris");
 
-        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(response.metadata().finishReason()).isEqualTo(FinishReason.STOP);
     }
 
     @Test
@@ -431,7 +433,7 @@ public class GoogleAiGeminiChatModelIT {
             .build());
 
         // then
-        assertThat(response.finishReason()).isEqualTo(FinishReasonMapper.fromGFinishReasonToFinishReason(GeminiFinishReason.SAFETY));
+        assertThat(response.metadata().finishReason()).isEqualTo(fromGFinishReasonToFinishReason(SAFETY));
     }
 
     @Test

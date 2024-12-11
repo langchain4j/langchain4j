@@ -10,10 +10,12 @@ import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -77,9 +79,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         ChatResponse response = chat(request);
 
-        return Response.from(response.aiMessage(),
-            response.tokenUsage(),
-            response.finishReason());
+        return Response.from(
+                response.aiMessage(),
+                response.metadata().tokenUsage(),
+                response.metadata().finishReason()
+        );
     }
 
     @Override
@@ -96,22 +100,32 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         ChatResponse response = chat(request);
 
-        return Response.from(response.aiMessage(),
-            response.tokenUsage(),
-            response.finishReason());
+        return Response.from(
+                response.aiMessage(),
+                response.metadata().tokenUsage(),
+                response.metadata().finishReason()
+        );
     }
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
+
+        validateRequest(chatRequest);
+
+        ChatParameters chatParameters = chatRequest.parameters();
+
         GeminiGenerateContentRequest request = createGenerateContentRequest(
-            chatRequest.messages(),
-            chatRequest.toolSpecifications(),
-            getOrDefault(chatRequest.responseFormat(), this.responseFormat)
+                chatRequest.messages(),
+                chatParameters.toolSpecifications(),
+                getOrDefault(chatParameters.responseFormat(), this.responseFormat),
+                chatRequest
         );
 
         ChatModelRequest chatModelRequest = createChatModelRequest(
-            chatRequest.messages(),
-            chatRequest.toolSpecifications()
+                chatParameters.modelName(),
+                chatRequest.messages(),
+                chatParameters.toolSpecifications(),
+                chatRequest
         );
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
@@ -128,6 +142,20 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
             notifyListenersOnError(e, chatModelRequest, listenerAttributes);
             throw e;
         }
+    }
+
+    private static void validateRequest(ChatRequest chatRequest) {
+        Class<? extends ChatRequest> chatRequestClass = chatRequest.getClass();
+        if (chatRequestClass != ChatRequest.class) {
+            throw new IllegalArgumentException("%s cannot be used together with %s. Please use %s instead."
+                    .formatted(
+                            chatRequestClass.getSimpleName(),
+                            GoogleAiGeminiChatModel.class.getSimpleName(),
+                            ChatRequest.class.getSimpleName()
+                    ));
+        }
+        // TODO check chatRequest.frequencyPenalty(), presencePenalty, etc.
+        // TODO fail if one of unsupported params is set
     }
 
     private ChatResponse processResponse(
@@ -150,10 +178,13 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         notifyListenersOnResponse(response, chatModelRequest, listenerAttributes);
 
         return ChatResponse.builder()
-            .aiMessage(aiMessage)
-            .finishReason(finishReason)
-            .tokenUsage(tokenUsage)
-            .build();
+                .aiMessage(aiMessage)
+                .metadata(ChatResponseMetadata.builder()
+                        .modelName(chatModelRequest.model()) // TODO take actual model from response
+                        .finishReason(finishReason)
+                        .tokenUsage(tokenUsage)
+                        .build())
+                .build();
     }
 
     private AiMessage createAiMessage(GeminiCandidate candidate, FinishReason finishReason) {

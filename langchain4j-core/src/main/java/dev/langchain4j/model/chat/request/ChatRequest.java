@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
@@ -16,25 +15,40 @@ import static java.util.Arrays.asList;
 public class ChatRequest {
 
     private final List<ChatMessage> messages;
-    private final List<ToolSpecification> toolSpecifications; // TODO add section with tools?
-    private final ResponseFormat responseFormat;
+    private final ChatParameters parameters;
 
-    private ChatRequest(Builder builder) {
+    protected ChatRequest(Builder builder) {
         this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));
-        this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
-        this.responseFormat = builder.responseFormat;
+        // TODO check either params or params builder is set
+        if (builder.parameters != null) {
+            this.parameters = builder.parameters;
+        } else {
+            this.parameters = builder.parametersBuilder.build();
+        }
     }
 
     public List<ChatMessage> messages() {
         return messages;
     }
 
-    public List<ToolSpecification> toolSpecifications() {
-        return toolSpecifications;
+    public ChatParameters parameters() { // TODO name
+        return parameters;
     }
 
+    /**
+     * @deprecated use {@link #parameters()} and then {@link ChatParameters#toolSpecifications()}
+     */
+    @Deprecated(forRemoval = true)
+    public List<ToolSpecification> toolSpecifications() {
+        return parameters.toolSpecifications();
+    }
+
+    /**
+     * @deprecated use {@link #parameters()} and then {@link ChatParameters#responseFormat()}
+     */
+    @Deprecated(forRemoval = true)
     public ResponseFormat responseFormat() {
-        return responseFormat;
+        return parameters.responseFormat();
     }
 
     @Override
@@ -43,21 +57,19 @@ public class ChatRequest {
         if (o == null || getClass() != o.getClass()) return false;
         ChatRequest that = (ChatRequest) o;
         return Objects.equals(this.messages, that.messages)
-                && Objects.equals(this.toolSpecifications, that.toolSpecifications)
-                && Objects.equals(this.responseFormat, that.responseFormat);
+                && Objects.equals(this.parameters, that.parameters);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(messages, toolSpecifications, responseFormat);
+        return Objects.hash(messages, parameters);
     }
 
     @Override
     public String toString() {
-        return "ChatRequest {" +
+        return "ChatRequest {" + // TODO names
                 " messages = " + messages +
-                ", toolSpecifications = " + toolSpecifications +
-                ", responseFormat = " + responseFormat +
+                ", parameters = " + parameters +
                 " }";
     }
 
@@ -68,8 +80,8 @@ public class ChatRequest {
     public static class Builder {
 
         private List<ChatMessage> messages;
-        private List<ToolSpecification> toolSpecifications;
-        private ResponseFormat responseFormat;
+        private ChatParameters parameters; // TODO validate that does not overlap with builder
+        private DefaultChatParameters.Builder parametersBuilder = new DefaultChatParameters.Builder();
 
         public Builder messages(List<ChatMessage> messages) {
             this.messages = messages;
@@ -80,21 +92,36 @@ public class ChatRequest {
             return messages(asList(messages));
         }
 
-        public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
-            this.toolSpecifications = toolSpecifications;
+        public Builder parameters(ChatParameters parameters) {
+            this.parameters = parameters;
             return this;
         }
 
+        /**
+         * @deprecated TODO
+         */
+        @Deprecated(forRemoval = true)
+        public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            this.parametersBuilder.toolSpecifications(toolSpecifications);
+            return this;
+        }
+
+        /**
+         * @deprecated TODO
+         */
+        @Deprecated(forRemoval = true)
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }
 
+        /**
+         * @deprecated TODO
+         */
+        @Deprecated(forRemoval = true)
         public Builder responseFormat(ResponseFormat responseFormat) {
-            this.responseFormat = responseFormat;
+            this.parametersBuilder.responseFormat(responseFormat);
             return this;
         }
-
-        // TODO consider adding responseFormat(JsonSchema) or jsonSchema(JsonSchema)
 
         public ChatRequest build() {
             return new ChatRequest(this);

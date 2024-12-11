@@ -5,7 +5,10 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -19,21 +22,23 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.ifNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Handles response from a language model for AI Service that is streamed token-by-token.
  * Handles both regular (text) responses and responses with the request to execute one or multiple tools.
  */
-class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMessage> {
+class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler {
 
     private final Logger log = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
 
     private final AiServiceContext context;
     private final Object memoryId;
 
-    private final Consumer<String> tokenHandler;
+    private final Consumer<String> partialResponseHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
+    private final Consumer<ChatResponse> completeResponseHandler;
     private final Consumer<Response<AiMessage>> completionHandler;
 
     private final Consumer<Throwable> errorHandler;
@@ -46,8 +51,9 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
 
     AiServiceStreamingResponseHandler(AiServiceContext context,
                                       Object memoryId,
-                                      Consumer<String> tokenHandler,
+                                      Consumer<String> partialResponseHandler,
                                       Consumer<ToolExecution> toolExecutionHandler,
+                                      Consumer<ChatResponse> completeResponseHandler,
                                       Consumer<Response<AiMessage>> completionHandler,
                                       Consumer<Throwable> errorHandler,
                                       List<ChatMessage> temporaryMemory,
@@ -57,7 +63,8 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
 
-        this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
+        this.partialResponseHandler = ensureNotNull(partialResponseHandler, "partialResponseHandler");
+        this.completeResponseHandler = completeResponseHandler;
         this.completionHandler = completionHandler;
         this.toolExecutionHandler = toolExecutionHandler;
         this.errorHandler = errorHandler;
@@ -70,14 +77,14 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     }
 
     @Override
-    public void onNext(String token) {
-        tokenHandler.accept(token);
+    public void onPartialResponse(String partialResponse) {
+        partialResponseHandler.accept(partialResponse);
     }
 
     @Override
-    public void onComplete(Response<AiMessage> response) {
+    public void onCompleteResponse(ChatResponse chatResponse) {
 
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = chatResponse.aiMessage();
         addToMemory(aiMessage);
 
         if (aiMessage.hasToolExecutionRequests()) {
@@ -100,29 +107,44 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                 }
             }
 
-            context.streamingChatModel.generate(
-                    messagesToSend(memoryId),
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(messagesToSend(memoryId))
+                    .toolSpecifications(toolSpecifications)
+                    .build();
+
+            StreamingChatResponseHandler handler = new AiServiceStreamingResponseHandler(
+                    context,
+                    memoryId,
+                    partialResponseHandler,
+                    toolExecutionHandler,
+                    completeResponseHandler,
+                    completionHandler,
+                    errorHandler,
+                    temporaryMemory,
+                    TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                     toolSpecifications,
-                    new AiServiceStreamingResponseHandler(
-                            context,
-                            memoryId,
-                            tokenHandler,
-                            toolExecutionHandler,
-                            completionHandler,
-                            errorHandler,
-                            temporaryMemory,
-                            TokenUsage.sum(tokenUsage, response.tokenUsage()),
-                            toolSpecifications,
-                            toolExecutors
-                    )
+                    toolExecutors
             );
+
+            context.streamingChatModel.chat(chatRequest, handler);
         } else {
-            if (completionHandler != null) {
-                completionHandler.accept(Response.from(
+            if (completeResponseHandler != null) {
+                ChatResponse finalChatResponse = ChatResponse.builder()
+                        .aiMessage(aiMessage)
+                        .metadata(ChatResponseMetadata.builder()
+                                // TODO copy model-specific metadata?
+                                .tokenUsage(TokenUsage.sum(tokenUsage, ifNotNull(chatResponse.metadata(), ChatResponseMetadata::tokenUsage)))
+                                .finishReason(chatResponse.metadata().finishReason())
+                                .build())
+                        .build();
+                completeResponseHandler.accept(finalChatResponse);
+            } else if (completionHandler != null) {
+                Response<AiMessage> finalResponse = Response.from(
                         aiMessage,
-                        TokenUsage.sum(tokenUsage, response.tokenUsage()),
-                        response.finishReason())
+                        TokenUsage.sum(tokenUsage, ifNotNull(chatResponse.metadata(), ChatResponseMetadata::tokenUsage)),
+                        chatResponse.metadata().finishReason()
                 );
+                completionHandler.accept(finalResponse);
             }
         }
     }

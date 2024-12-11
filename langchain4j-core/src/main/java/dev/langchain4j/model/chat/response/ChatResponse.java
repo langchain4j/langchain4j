@@ -14,25 +14,35 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 public class ChatResponse {
 
     private final AiMessage aiMessage;
-    private final TokenUsage tokenUsage;
-    private final FinishReason finishReason;
+    private final ChatResponseMetadata metadata;
 
-    private ChatResponse(@NonNull Builder builder) {
+    protected ChatResponse(@NonNull Builder builder) { // TODO
         this.aiMessage = ensureNotNull(builder.aiMessage, "aiMessage");
-        this.tokenUsage = builder.tokenUsage;
-        this.finishReason = builder.finishReason;
+        this.metadata = ensureNotNull(builder.metadata, "metadata");
     }
 
     public AiMessage aiMessage() {
         return aiMessage;
     }
 
-    public TokenUsage tokenUsage() {
-        return tokenUsage;
+    public ChatResponseMetadata metadata() { // TODO name
+        return metadata;
     }
 
+    /**
+     * @deprecated use {@link #metadata()} and then {@link ChatResponseMetadata#tokenUsage()}
+     */
+    @Deprecated(forRemoval = true)
+    public TokenUsage tokenUsage() {
+        return metadata.tokenUsage();
+    }
+
+    /**
+     * @deprecated use {@link #metadata()} and then {@link ChatResponseMetadata#finishReason()}
+     */
+    @Deprecated(forRemoval = true)
     public FinishReason finishReason() {
-        return finishReason;
+        return metadata.finishReason();
     }
 
     @Override
@@ -41,46 +51,38 @@ public class ChatResponse {
         if (o == null || getClass() != o.getClass()) return false;
         ChatResponse that = (ChatResponse) o;
         return Objects.equals(this.aiMessage, that.aiMessage)
-                && Objects.equals(this.tokenUsage, that.tokenUsage)
-                && Objects.equals(this.finishReason, that.finishReason);
+                && Objects.equals(this.metadata, that.metadata);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(aiMessage, tokenUsage, finishReason);
+        return Objects.hash(aiMessage, metadata);
     }
 
     @Override
     public String toString() {
-        return "ChatResponse {" +
+        return "ChatResponse {" + // TODO names
                 " aiMessage = " + aiMessage +
-                ", tokenUsage = " + tokenUsage +
-                ", finishReason = " + finishReason +
+                ", metadata = " + metadata +
                 " }";
     }
 
-    public static Builder builder() {
+    public static Builder builder() { // TODO
         return new Builder();
     }
 
     public static class Builder {
 
         private AiMessage aiMessage;
-        private TokenUsage tokenUsage;
-        private FinishReason finishReason;
+        private ChatResponseMetadata metadata;
 
         public Builder aiMessage(AiMessage aiMessage) {
             this.aiMessage = aiMessage;
             return this;
         }
 
-        public Builder tokenUsage(TokenUsage tokenUsage) {
-            this.tokenUsage = tokenUsage;
-            return this;
-        }
-
-        public Builder finishReason(FinishReason finishReason) {
-            this.finishReason = finishReason;
+        public Builder metadata(ChatResponseMetadata metadata) {
+            this.metadata = metadata;
             return this;
         }
 

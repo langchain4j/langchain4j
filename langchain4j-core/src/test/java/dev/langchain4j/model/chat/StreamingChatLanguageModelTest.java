@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import org.assertj.core.api.WithAssertions;
@@ -48,13 +49,13 @@ class StreamingChatLanguageModelTest implements WithAssertions {
         CollectorResponseHandler<AiMessage> handler = new CollectorResponseHandler<>();
         List<ChatMessage> messages = new ArrayList<>();
 
-        assertThatExceptionOfType(IllegalArgumentException.class)
+        assertThatExceptionOfType(UnsupportedFeatureException.class)
                 .isThrownBy(() -> model.generate(messages, new ArrayList<>(), handler))
-                .withMessageContaining("Tools are currently not supported by this model");
+                .withMessageContaining("tools are currently not supported by StreamingUpperCaseEchoModel");
 
-        assertThatExceptionOfType(IllegalArgumentException.class)
+        assertThatExceptionOfType(UnsupportedFeatureException.class)
                 .isThrownBy(() -> model.generate(messages, ToolSpecification.builder().name("foo").build(), handler))
-                .withMessageContaining("Tools are currently not supported by this model");
+                .withMessageContaining("tools and tool choice are currently not supported by StreamingUpperCaseEchoModel");
     }
 
     @Test
