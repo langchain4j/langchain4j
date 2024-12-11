@@ -9,7 +9,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.EmbeddingStoreContent;
+import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
@@ -346,11 +346,11 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
     }
 
     private void assertContent(Content content) {
-        assertThat(content).isInstanceOf(EmbeddingStoreContent.class);
-        EmbeddingStoreContent embeddingStoreContent = (EmbeddingStoreContent) content;
-        assertThat(embeddingStoreContent.textSegment()).isNotNull();
-        assertThat(embeddingStoreContent.score()).isNotNull();
-        assertThat(embeddingStoreContent.score()).isGreaterThanOrEqualTo(0d);
-        assertThat(embeddingStoreContent.embeddingId()).isNotNull();
+        assertThat(content.textSegment()).isNotNull();
+        assertThat(content.metadata().get(ContentMetadata.SCORE_AFTER_RETRIEVAL)).isNotNull();
+        assertThat(content.metadata().get(ContentMetadata.SCORE_AFTER_RETRIEVAL)).isInstanceOf(Double.class);
+        assertThat((Double) content.metadata().get(ContentMetadata.SCORE_AFTER_RETRIEVAL)).isGreaterThanOrEqualTo(0d);
+        assertThat(content.metadata().get(ContentMetadata.EMBEDDING_ID)).isNotNull();
+        assertThat(content.metadata().get(ContentMetadata.EMBEDDING_ID)).isInstanceOf(String.class);
     }
 }

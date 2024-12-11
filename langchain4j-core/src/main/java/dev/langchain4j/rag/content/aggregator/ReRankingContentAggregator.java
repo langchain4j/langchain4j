@@ -3,7 +3,7 @@ package dev.langchain4j.rag.content.aggregator;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.ReRankedContent;
+import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
 
@@ -137,7 +137,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
         return segmentToScore.entrySet().stream()
                 .filter(entry -> minScore == null || entry.getValue() >= minScore)
                 .sorted(Map.Entry.<TextSegment, Double>comparingByValue().reversed())
-                .map(e -> (Content)ReRankedContent.from(e.getKey(), e.getValue()))
+                .map(entry -> new Content(entry.getKey(), Map.of(ContentMetadata.SCORE_AFTER_RERANKING, entry.getValue())))
                 .limit(maxResults)
                 .toList();
     }

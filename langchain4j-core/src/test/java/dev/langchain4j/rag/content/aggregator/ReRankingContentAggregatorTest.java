@@ -4,7 +4,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.ReRankedContent;
+import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -60,7 +60,6 @@ class ReRankingContentAggregatorTest {
 
         // then
         assertThat(aggregated).hasSize(2);
-        assertThat(aggregated.get(0)).isInstanceOf(ReRankedContent.class);
         assertReRankedContentOrder(aggregated, content2, content1);
         assertReRankedContentScore(aggregated,0.7,0.5);
     }
@@ -119,7 +118,6 @@ class ReRankingContentAggregatorTest {
 
         // then
         assertThat(aggregated).hasSize(3);
-        assertThat(aggregated.get(0)).isInstanceOf(ReRankedContent.class);
         assertReRankedContentOrder(aggregated, content4, content1, content2);
         assertReRankedContentScore(aggregated,0.9, 0.7, 0.5);
     }
@@ -206,7 +204,6 @@ class ReRankingContentAggregatorTest {
         // content4, content6, content7 were fused with content1
         // content3 and content5 were filtered out by minScore
         assertThat(aggregated).hasSize(3);
-        assertThat(aggregated.get(0)).isInstanceOf(ReRankedContent.class);
         assertReRankedContentOrder(aggregated, content1, content8, content2);
         assertReRankedContentScore(aggregated,0.6, 0.5, 0.4);
     }
@@ -280,7 +277,6 @@ class ReRankingContentAggregatorTest {
         // content3 and content5 were filtered out by minScore
         // count2 filtered by maxResults
         assertThat(aggregated).hasSize(2);
-        assertThat(aggregated.get(0)).isInstanceOf(ReRankedContent.class);
         assertReRankedContentOrder(aggregated, content1, content8);
         assertReRankedContentScore(aggregated,0.6, 0.5);
     }
@@ -333,7 +329,7 @@ class ReRankingContentAggregatorTest {
 
     private void assertReRankedContentScore(List<Content> actual, double... expectedScores) {
         for (int i = 0; i < actual.size(); i++) {
-            assertThat(((ReRankedContent)actual.get(i)).score()).isEqualTo(expectedScores[i]);
+            assertThat((actual.get(i)).metadata()).containsEntry(ContentMetadata.SCORE_AFTER_RERANKING, expectedScores[i]);
         }
     }
 }
