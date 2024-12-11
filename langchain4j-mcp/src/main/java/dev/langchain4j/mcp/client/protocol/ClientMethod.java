@@ -8,5 +8,7 @@ public enum ClientMethod {
     @JsonProperty("tools/call")
     TOOLS_CALL,
     @JsonProperty("tools/list")
-    TOOLS_LIST
+    TOOLS_LIST,
+    @JsonProperty("notifications/cancelled")
+    NOTIFICATION_CANCELLED
 }

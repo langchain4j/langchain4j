@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
@@ -17,6 +18,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -28,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 public class HttpMcpTransport implements McpTransport {
 
+    private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
     private final String sseUrl;
     private final OkHttpClient client;
     private final boolean logResponses;
@@ -35,7 +39,6 @@ public class HttpMcpTransport implements McpTransport {
     private EventSource mcpSseEventListener;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
-    private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
 
     // this is obtained from the server after initializing the SSE channel
     private volatile String postUrl;
@@ -91,14 +94,18 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public JsonNode executeTool(McpCallToolRequest operation) {
+    public JsonNode executeTool(
+            McpCallToolRequest operation,
+            Duration timeout,
+            Supplier<CancellationNotification> cancellationNotificationSupplier)
+            throws TimeoutException {
         try {
             Request httpRequest = new Request.Builder()
                     .url(postUrl)
                     .header("Content-Type", "application/json")
                     .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(operation)))
                     .build();
-            return executeAndWait(httpRequest, operation.getId());
+            return executeAndWait(httpRequest, operation.getId(), timeout, cancellationNotificationSupplier);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -117,6 +124,47 @@ public class HttpMcpTransport implements McpTransport {
             return future.get();
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(id);
+        }
+    }
+
+    private JsonNode executeAndWait(
+            Request request,
+            Long id,
+            Duration timeout,
+            Supplier<CancellationNotification> cancellationNotificationSupplier)
+            throws TimeoutException {
+        try {
+            CompletableFuture<JsonNode> future = new CompletableFuture<>();
+            pendingOperations.put(id, future);
+            try (final Response response = client.newCall(request).execute()) {
+                int statusCode = response.code();
+                if (statusCode < 200 || statusCode >= 300) {
+                    throw new RuntimeException("Unexpected status code: " + statusCode);
+                }
+            }
+            long timeoutMillis = timeout.toMillis() == 0 ? Long.MAX_VALUE : timeout.toMillis();
+            return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException timeoutException) {
+            if (cancellationNotificationSupplier != null) {
+                CancellationNotification cancellationNotification = cancellationNotificationSupplier.get();
+                try {
+                    Request cancellationRequest = new Request.Builder()
+                            .url(postUrl)
+                            .header("Content-Type", "application/json")
+                            .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(cancellationNotification)))
+                            .build();
+                    try (Response response = client.newCall(cancellationRequest).execute()) {}
+                } catch (IOException e) {
+                    log.warn("Failed to send cancellation notification", e);
+                }
+            }
+            throw timeoutException;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(id);
         }
     }
 
