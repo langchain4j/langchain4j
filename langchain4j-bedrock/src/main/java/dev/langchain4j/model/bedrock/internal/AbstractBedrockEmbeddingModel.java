@@ -7,6 +7,8 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,6 +41,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
     private final BedrockRuntimeClient client = initClient();
     @Builder.Default
     private final Integer maxRetries = 5;
+    protected final URI endpointOverride;
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
@@ -123,6 +126,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
         return BedrockRuntimeClient.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
+                .endpointOverride(endpointOverride)
                 .build();
     }
 }
