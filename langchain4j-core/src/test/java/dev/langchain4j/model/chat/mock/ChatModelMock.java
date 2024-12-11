@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ public class ChatModelMock implements ChatLanguageModel {
 
         return ChatResponse.builder()
                 .aiMessage(AiMessage.from(staticResponse))
+                .metadata(ChatResponseMetadata.builder().build())
                 .build();
     }
 

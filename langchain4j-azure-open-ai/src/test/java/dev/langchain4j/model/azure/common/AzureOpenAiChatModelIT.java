@@ -25,6 +25,11 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsDefaultChatParameters() {
+        return false; // TODO implement
+    }
+
+    @Override
     protected boolean supportsModelNameParameter() {
         return false; // TODO implement
     }
@@ -64,12 +69,12 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // TODO check if supported
+        return false; // TODO implement
     }
 
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
-        return false; // TODO fix
+        return false; // TODO implement
     }
 
     @Override
@@ -83,6 +88,6 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     protected boolean assertFinishReason() {
-        return false; // TODO fix
+        return false; // TODO implement
     }
 }

@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithSetOfEnumsParameter.Color.GREEN;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithSetOfEnumsParameter.Color.RED;
@@ -105,9 +106,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -170,9 +170,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -237,9 +236,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -318,9 +316,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -371,9 +368,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tools);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -436,9 +432,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -493,9 +488,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -550,9 +544,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -610,9 +603,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -663,9 +655,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
@@ -731,9 +722,8 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);

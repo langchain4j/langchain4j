@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.DefaultChatParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -21,6 +22,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import org.assertj.core.api.AbstractThrowableAssert;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -89,11 +91,11 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected abstract ChatResponseAndStreamingMetadata chat(M model, ChatRequest chatRequest);
 
 
-    // BASIC
+    // MESSAGES
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_answer_user_message(M model) {
+    void should_respect_user_message(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -156,96 +158,29 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("liebe");
     }
 
-    // MODEL PARAMETERS
+    // CHAT PARAMETERS
 
-    // TODO common params
+    // TODO test model specific default params
+    // TODO test override of default params
+    // TODO test override specific params
 
-    @EnabledIf("supportsMaxOutputTokensParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_common_chat_parameters(M model) {
-
-        // given
-        int maxOutputTokens = 3;
-        ChatParameters chatParameters = ChatParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
-                .build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(chatParameters)
-                .messages(UserMessage.from("Tell me a long story"))
-                .build();
-
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
-
-        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
-        }
-    }
-
-    @EnabledIf("supportsMaxOutputTokensParameter")
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_respect_integration_specific_chat_parameters(M model) {
-
-        // given
-        int maxOutputTokens = 5;
-        ChatParameters chatParameters = createIntegrationSpecificChatParameters(maxOutputTokens);
-        assertThat(chatParameters).doesNotHaveSameClassAs(ChatParameters.class);
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(chatParameters)
-                .messages(UserMessage.from("Tell me a long story"))
-                .build();
-
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isNull();
-
-        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
-        }
-    }
-
-    protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
-        throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
-    }
-
     @EnabledIf("supportsModelNameParameter")
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_respect_modelName_parameter(M model) {
+    void should_respect_modelName_in_chat_request(M model) {
 
         // given
         String modelName = customModelName();
         ensureModelNameIsDifferentFromDefault(modelName, model);
 
-        ChatRequest chatRequest = ChatRequest.builder()
+        ChatParameters chatParameters = ChatParameters.builder()
                 .modelName(modelName)
-                .messages(UserMessage.from("Tell me a story"))
                 .maxOutputTokens(1) // to save tokens
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Tell me a story"))
+                .parameters(chatParameters)
                 .build();
 
         // when
@@ -257,11 +192,19 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
     }
 
+    protected String customModelName() {
+        throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
+    }
+
     private void ensureModelNameIsDifferentFromDefault(String modelName, M model) {
+        // TODO check model.parameters().modelName() instead?
         ChatRequest.Builder builder = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"));
         if (supportsMaxOutputTokensParameter()) {
-            builder.maxOutputTokens(1); // to save tokens
+            DefaultChatParameters chatParameters = ChatParameters.builder()
+                    .maxOutputTokens(1) // to save tokens
+                    .build();
+            builder.parameters(chatParameters);
         }
         ChatRequest chatRequest = builder.build();
 
@@ -270,21 +213,49 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(chatResponse.metadata().modelName()).isNotEqualTo(modelName);
     }
 
-    protected String customModelName() {
+    @Test
+    @EnabledIf("supportsModelNameParameter")
+    void should_respect_modelName_in_default_model_parameters() {
+
+        // given
+        String modelName = customModelName();
+        ChatParameters chatParameters = ChatParameters.builder()
+                .modelName(modelName)
+                .maxOutputTokens(1) // to save tokens
+                .build();
+        M model = createModelWith(chatParameters);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Tell me a story"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).isNotBlank();
+
+        assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
+    }
+
+    protected M createModelWith(ChatParameters chatParameters) {
         throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
     }
 
-    @DisabledIf("supportsModelNameParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_fail_if_modelName_parameter_is_not_supported(M model) {
+    @DisabledIf("supportsModelNameParameter")
+    void should_fail_if_modelName_is_not_supported(M model) {
 
         // given
         String modelName = "dummy";
+        ChatParameters chatParameters = ChatParameters.builder()
+                .modelName(modelName)
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .modelName(modelName)
                 .messages(UserMessage.from("Tell me a story"))
+                .parameters(chatParameters)
                 .build();
 
         // when-then
@@ -292,18 +263,74 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("modelName")
                 .hasMessageContaining("not supported");
+
+        if (supportsDefaultChatParameters()) {
+            assertThatThrownBy(() -> createModelWith(chatParameters))
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("modelName")
+                    .hasMessageContaining("not supported");
+        }
     }
 
-    @EnabledIf("supportsMaxOutputTokensParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_maxOutputTokens_parameter(M model) {
+    @EnabledIf("supportsMaxOutputTokensParameter")
+    void should_respect_maxOutputTokens_in_chat_request(M model) {
 
         // given
         int maxOutputTokens = 5;
+        ChatParameters chatParameters = ChatParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Tell me a long story"))
+                .parameters(chatParameters)
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
+        }
+
+        if (model instanceof StreamingChatLanguageModel) {
+            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+            assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
+            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
+        }
+    }
+
+    @Test
+    @EnabledIf("supportsMaxOutputTokensParameter")
+    void should_respect_maxOutputTokens_in_default_model_parameters() {
+
+        // given
+        int maxOutputTokens = 5;
+        ChatParameters chatParameters = ChatParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
+        M model = createModelWith(chatParameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .maxOutputTokens(maxOutputTokens)
                 .messages(UserMessage.from("Tell me a long story"))
                 .build();
 
@@ -339,17 +366,20 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @DisabledIf("supportsMaxOutputTokensParameter")
     @ParameterizedTest
     @MethodSource("models")
+    @DisabledIf("supportsMaxOutputTokensParameter")
     void should_fail_if_maxOutputTokens_parameter_is_not_supported(M model) {
 
         // given
         int maxOutputTokens = 5;
+        ChatParameters chatParameters = ChatParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .maxOutputTokens(maxOutputTokens)
                 .messages(UserMessage.from("Tell me a long story"))
+                .parameters(chatParameters)
                 .build();
 
         // when-then
@@ -357,19 +387,29 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("maxOutputTokens")
                 .hasMessageContaining("not supported");
+
+        if (supportsDefaultChatParameters()) {
+            assertThatThrownBy(() -> createModelWith(chatParameters))
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("maxOutputTokens")
+                    .hasMessageContaining("not supported");
+        }
     }
 
-    @EnabledIf("supportsStopSequencesParameter")
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_stopSequences_parameter(M model) {
+    @EnabledIf("supportsStopSequencesParameter")
+    void should_respect_stopSequences_in_chat_request(M model) {
 
         // given
         List<String> stopSequences = List.of("World", " World");
+        ChatParameters chatParameters = ChatParameters.builder()
+                .stopSequences(stopSequences)
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .stopSequences(stopSequences)
                 .messages(UserMessage.from("Say 'Hello World'"))
+                .parameters(chatParameters)
                 .build();
 
         // when
@@ -390,17 +430,54 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @DisabledIf("supportsStopSequencesParameter")
+    @Test
+    @EnabledIf("supportsStopSequencesParameter")
+    void should_respect_stopSequences_in_default_model_parameters() {
+
+        // given
+        List<String> stopSequences = List.of("World", " World");
+        ChatParameters chatParameters = ChatParameters.builder() // TODO raw?
+                .stopSequences(stopSequences)
+                .build();
+        M model = createModelWith(chatParameters);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Say 'Hello World'"))
+                .parameters(chatParameters)
+                .build();
+
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).containsIgnoringCase("Hello");
+        assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata());
+        }
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+        }
+    }
+
     @ParameterizedTest
     @MethodSource("models")
+    @DisabledIf("supportsStopSequencesParameter")
     void should_fail_if_stopSequences_parameter_is_not_supported(M model) {
 
         // given
         List<String> stopSequences = List.of("World");
+        ChatParameters chatParameters = ChatParameters.builder()
+                .stopSequences(stopSequences)
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .stopSequences(stopSequences)
                 .messages(UserMessage.from("Say 'Hello World'"))
+                .parameters(chatParameters)
                 .build();
 
         // when-then
@@ -408,21 +485,105 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("stopSequences")
                 .hasMessageContaining("not supported");
+
+        if (supportsDefaultChatParameters()) {
+            assertThatThrownBy(() -> createModelWith(chatParameters))
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("stopSequences")
+                    .hasMessageContaining("not supported");
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsMaxOutputTokensParameter")
+    void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(M model) {
+
+        // given
+        // TODO test more/all common params?
+        int maxOutputTokens = 5;
+        ChatParameters chatParameters = createIntegrationSpecificChatParameters(maxOutputTokens);
+        assertThat(chatParameters).doesNotHaveSameClassAs(DefaultChatParameters.class);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(chatParameters)
+                .messages(UserMessage.from("Tell me a long story"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
+        }
+    }
+
+    @Test
+    @EnabledIf("supportsMaxOutputTokensParameter")
+    void should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+
+        // given
+        // TODO test more/all common params?
+        int maxOutputTokens = 5;
+        ChatParameters chatParameters = createIntegrationSpecificChatParameters(maxOutputTokens);
+        assertThat(chatParameters).doesNotHaveSameClassAs(DefaultChatParameters.class);
+
+        M model = createModelWith(chatParameters);
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .parameters(chatParameters)
+                .messages(UserMessage.from("Tell me a long story"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
+        }
+    }
+
+    protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
+        throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
     }
 
     // TOOLS
 
-    @EnabledIf("supportsTools")
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
+    @EnabledIf("supportsTools")
     void should_execute_a_tool_then_answer(M model) {
 
         // given
         UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .toolSpecifications(WEATHER_TOOL)
                 .messages(userMessage)
+                .parameters(ChatParameters.builder()
+                        .toolSpecifications(WEATHER_TOOL)
+                        .build())
                 .build();
 
         // when
@@ -461,12 +622,14 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         ChatRequest chatRequest2 = ChatRequest.builder()
-                .toolSpecifications(WEATHER_TOOL)
                 .messages(
                         userMessage,
                         aiMessage,
                         ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
                 )
+                .parameters(ChatParameters.builder()
+                        .toolSpecifications(WEATHER_TOOL)
+                        .build())
                 .build();
 
         // when
@@ -497,15 +660,17 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @DisabledIf("supportsTools")
     @ParameterizedTest
     @MethodSource("models")
+    @DisabledIf("supportsTools")
     void should_fail_if_tools_are_not_supported(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-                .toolSpecifications(WEATHER_TOOL)
                 .messages(UserMessage.from("What is the weather in Munich?"))
+                .parameters(ChatParameters.builder()
+                        .toolSpecifications(WEATHER_TOOL)
+                        .build())
                 .build();
 
         // when-then
@@ -519,9 +684,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @EnabledIf("supportsToolChoiceRequiredWithMultipleTools")
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
+    @EnabledIf("supportsToolChoiceRequiredWithMultipleTools")
     void should_force_LLM_to_execute_any_tool(M model) {
 
         // given
@@ -534,9 +699,11 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .toolSpecifications(WEATHER_TOOL, calculatorTool)
-                .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
                 .messages(UserMessage.from("I live in Munich"))
+                .parameters(ChatParameters.builder()
+                        .toolSpecifications(WEATHER_TOOL, calculatorTool)
+                        .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
+                        .build())
                 .build();
 
         // when
@@ -559,16 +726,18 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @EnabledIf("supportsToolChoiceRequiredWithSingleTool")
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
+    @EnabledIf("supportsToolChoiceRequiredWithSingleTool")
     void should_force_LLM_to_execute_specific_tool(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-                .toolSpecifications(WEATHER_TOOL)
-                .toolChoice(REQUIRED) // this will FORCE the LLM to execute weatherTool
                 .messages(UserMessage.from("I live in Munich"))
+                .parameters(ChatParameters.builder()
+                        .toolSpecifications(WEATHER_TOOL)
+                        .toolChoice(REQUIRED) // this will FORCE the LLM to execute weatherTool
+                        .build())
                 .build();
 
         // when
@@ -593,18 +762,20 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     // STRUCTURED OUTPUTS
 
-    @EnabledIf("supportsJsonResponseFormat")
     @ParameterizedTest
     @MethodSource("modelsSupportingStructuredOutputs")
+    @EnabledIf("supportsJsonResponseFormat")
     void should_respect_JSON_response_format(M model) {
 
         // given
         ResponseFormat responseFormat = ResponseFormat.JSON;
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .responseFormat(responseFormat)
                 .messages(UserMessage.from("What is the capital of Germany? " +
                         "Answer with a JSON object containing a single 'city' field"))
+                .parameters(ChatParameters.builder()
+                        .responseFormat(responseFormat)
+                        .build())
                 .build();
 
         // when
@@ -624,18 +795,20 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @DisabledIf("supportsJsonResponseFormat")
     @ParameterizedTest
     @MethodSource("models")
+    @DisabledIf("supportsJsonResponseFormat")
     protected void should_fail_if_JSON_response_format_is_not_supported(M model) {
 
         // given
         ResponseFormat responseFormat = ResponseFormat.JSON;
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .responseFormat(responseFormat)
                 .messages(UserMessage.from("What is the capital of Germany? " +
                         "Answer with a JSON object containing a single 'city' field"))
+                .parameters(ChatParameters.builder()
+                        .responseFormat(responseFormat)
+                        .build())
                 .build();
 
         // when-then
@@ -649,15 +822,17 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @EnabledIf("supportsJsonResponseFormatWithSchema")
     @ParameterizedTest
     @MethodSource("modelsSupportingStructuredOutputs")
+    @EnabledIf("supportsJsonResponseFormatWithSchema")
     void should_respect_JSON_response_format_with_schema(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-                .responseFormat(RESPONSE_FORMAT)
                 .messages(UserMessage.from("What is the capital of Germany?"))
+                .parameters(ChatParameters.builder()
+                        .responseFormat(RESPONSE_FORMAT)
+                        .build())
                 .build();
 
         // when
@@ -677,15 +852,17 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @DisabledIf("supportsJsonResponseFormatWithSchema")
     @ParameterizedTest
     @MethodSource("models")
+    @DisabledIf("supportsJsonResponseFormatWithSchema")
     protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
-                .responseFormat(RESPONSE_FORMAT)
                 .messages(UserMessage.from("What is the capital of Germany?"))
+                .parameters(ChatParameters.builder()
+                        .responseFormat(RESPONSE_FORMAT)
+                        .build())
                 .build();
 
         // when-then
@@ -699,13 +876,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    // MULTI MODALITY
+    // MULTI MODALITY: IMAGES: BASE64
 
-    // IMAGES - BASE64
-
-    @EnabledIf("supportsSingleImageInputAsBase64EncodedString")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
+    @EnabledIf("supportsSingleImageInputAsBase64EncodedString")
     void should_accept_single_image_as_base64_encoded_string(M model) {
 
         // given
@@ -735,9 +910,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
+    @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
     void should_accept_multiple_images_as_base64_encoded_strings(M model) {
 
         // given
@@ -772,9 +947,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @DisabledIf("supportsSingleImageInputAsBase64EncodedString")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
+    @DisabledIf("supportsSingleImageInputAsBase64EncodedString")
     protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(M model) {
 
         // given
@@ -797,11 +972,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    // IMAGES - PUBLIC URL
+    // MULTI MODALITY: IMAGES: PUBLIC URL
 
-    @EnabledIf("supportsSingleImageInputAsPublicURL")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
+    @EnabledIf("supportsSingleImageInputAsPublicURL")
     void should_accept_single_image_as_public_URL(M model) {
 
         // given
@@ -830,9 +1005,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @EnabledIf("supportsMultipleImageInputsAsPublicURLs")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
+    @EnabledIf("supportsMultipleImageInputsAsPublicURLs")
     void should_accept_multiple_images_as_public_URLs(M model) {
 
         // given
@@ -864,9 +1039,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    @DisabledIf("supportsSingleImageInputAsPublicURL")
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
+    @DisabledIf("supportsSingleImageInputAsPublicURL")
     protected void should_fail_if_images_as_public_URLs_are_not_supported(M model) {
 
         // given
@@ -886,6 +1061,10 @@ public abstract class AbstractBaseChatModelIT<M> {
                     .hasMessageContaining("image")
                     .hasMessageContaining("not supported");
         }
+    }
+
+    protected boolean supportsDefaultChatParameters() {
+        return true;
     }
 
     protected boolean supportsModelNameParameter() {

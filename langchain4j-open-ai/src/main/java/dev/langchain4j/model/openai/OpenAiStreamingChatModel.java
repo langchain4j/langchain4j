@@ -21,7 +21,9 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.DefaultChatParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
@@ -35,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
@@ -42,6 +45,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerRequest;
@@ -66,30 +71,23 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(OpenAiStreamingChatModel.class);
 
     private final OpenAiClient client;
-    private final String modelName;
-    private final Double temperature;
-    private final Double topP;
-    private final List<String> stop;
-    private final Integer maxTokens;
+
+    private final OpenAiChatParameters parameters;
     private final Integer maxCompletionTokens;
-    private final Double presencePenalty;
-    private final Double frequencyPenalty;
-    private final Map<String, Integer> logitBias;
     private final ResponseFormat responseFormat;
     private final Boolean strictJsonSchema;
-    private final Integer seed;
-    private final String user;
     private final Boolean strictTools;
-    private final Boolean parallelToolCalls;
-    private final Boolean store;
-    private final Map<String, String> metadata;
-    private final String serviceTier;
+
     private final Tokenizer tokenizer;
+
     private final List<ChatModelListener> listeners;
+
+    // TODO change it to accept Builder and make private? Same for all other ctors in other models
 
     public OpenAiStreamingChatModel(String baseUrl,
                                     String apiKey,
                                     String organizationId,
+                                    ChatParameters parameters,
                                     String modelName,
                                     Double temperature,
                                     Double topP,
@@ -116,11 +114,16 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Map<String, String> customHeaders,
                                     List<ChatModelListener> listeners) {
 
+        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
+        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
+            baseUrl = OPENAI_DEMO_URL;
+        }
+
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
+                .baseUrl(baseUrl)
                 .organizationId(organizationId)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
@@ -128,36 +131,64 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
-                .logStreamingResponses(logResponses)
+                .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();
-        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
-        this.temperature = getOrDefault(temperature, 0.7);
-        this.topP = topP;
-        this.stop = copyIfNotNull(stop);
-        this.maxTokens = maxTokens;
-        this.maxCompletionTokens = maxCompletionTokens;
-        this.presencePenalty = presencePenalty;
-        this.frequencyPenalty = frequencyPenalty;
-        this.logitBias = copyIfNotNull(logitBias);
-        this.responseFormat = responseFormat == null ? null : ResponseFormat.builder()
+
+        OpenAiChatParameters openAiParameters;
+        if (parameters instanceof OpenAiChatParameters openAiChatParameters) {
+            openAiParameters = openAiChatParameters;
+        } else {
+            openAiParameters = OpenAiChatParameters.builder().build();
+        }
+
+        ChatParameters commonParameters;
+        if (parameters != null) {
+            commonParameters = parameters;
+        } else {
+            commonParameters = DefaultChatParameters.builder().build();
+        }
+        this.parameters = OpenAiChatParameters.builder()
+                // common parameters
+                .modelName(getOrDefault(getOrDefault(modelName, commonParameters.modelName()), GPT_3_5_TURBO))
+                .temperature(getOrDefault(getOrDefault(temperature, commonParameters.temperature()), 0.7))
+                .topP(getOrDefault(topP, commonParameters.topP()))
+                .frequencyPenalty(getOrDefault(frequencyPenalty, commonParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(presencePenalty, commonParameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(maxTokens, commonParameters.maxOutputTokens())) // TODO maxCompletionTokens
+                .stopSequences(getOrDefault(stop, () -> copyIfNotNull(commonParameters.stopSequences())))
+                .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications())) // TODO use it if response does not have it
+                .toolChoice(commonParameters.toolChoice()) // TODO use it if response does not have it
+                .responseFormat(commonParameters.responseFormat()) // TODO use it if response does not have it
+                // OpenAI-specific parameters
+                .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
+                .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
+                .seed(getOrDefault(seed, openAiParameters.seed()))
+                .user(getOrDefault(user, openAiParameters.user()))
+                .store(getOrDefault(store, openAiParameters.store()))
+                .metadata(getOrDefault(metadata, () -> copyIfNotNull(openAiParameters.metadata())))
+                .serviceTier(getOrDefault(serviceTier, openAiParameters.serviceTier()))
+                .build();
+        this.maxCompletionTokens = maxCompletionTokens; // TODO move into OpenAI-specific params?
+        this.responseFormat = responseFormat == null ? null : ResponseFormat.builder() // TODO move into OpenAI-specific params?
                 .type(ResponseFormatType.valueOf(responseFormat.toUpperCase(Locale.ROOT)))
                 .build();
-        this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
-        this.seed = seed;
-        this.user = user;
-        this.strictTools = getOrDefault(strictTools, false);
-        this.parallelToolCalls = parallelToolCalls;
-        this.store = store;
-        this.metadata = copyIfNotNull(metadata);
-        this.serviceTier = serviceTier;
+        this.strictJsonSchema = getOrDefault(strictJsonSchema, false); // TODO move into OpenAI-specific params?
+        this.strictTools = getOrDefault(strictTools, false); // TODO move into OpenAI-specific params?
+
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
-    public String modelName() {
-        return modelName;
+    public String modelName() { // TODO deprecate?
+        return parameters.modelName();
+    }
+
+    @Override
+    public OpenAiChatParameters parameters() {
+        return parameters;
     }
 
     @Override
@@ -181,7 +212,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                          StreamingResponseHandler<AiMessage> handler) {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
-                .toolSpecifications(toolSpecifications)
+                .parameters(ChatParameters.builder()
+                        .toolSpecifications(toolSpecifications) // TODO raw?
+                        .build())
                 .build();
         doChat(chatRequest, this.responseFormat, convertHandler(handler));
     }
@@ -192,8 +225,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                          StreamingResponseHandler<AiMessage> handler) {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
-                .toolSpecifications(toolSpecification)
-                .toolChoice(REQUIRED)
+                .parameters(ChatParameters.builder()
+                        .toolSpecifications(toolSpecification)
+                        .toolChoice(REQUIRED)
+                        .build())
                 .build();
         doChat(chatRequest, this.responseFormat, convertHandler(handler));
     }
@@ -203,7 +238,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                         StreamingChatResponseHandler handler
     ) {
 
-        OpenAiChatParameters openAiChatParameters = new OpenAiChatParameters(chatRequest.parameters()); // TODO
+        OpenAiChatParameters requestParameters = new OpenAiChatParameters(chatRequest.parameters()); // TODO
 
         if (responseFormat != null
                 && responseFormat.type() == JSON_SCHEMA
@@ -211,45 +246,40 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             responseFormat = null;
         }
 
-        List<ChatMessage> messages = chatRequest.messages();
-
-        ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
+        ChatCompletionRequest openAiRequest = ChatCompletionRequest.builder()
+                .messages(toOpenAiMessages(chatRequest.messages()))
+                // streaming
                 .stream(true)
                 .streamOptions(StreamOptions.builder()
                         .includeUsage(true)
                         .build())
+                // common parameters
+                .model(getOrDefault(requestParameters.modelName(), parameters.modelName()))
+                .temperature(getOrDefault(requestParameters.temperature(), parameters.temperature()))
+                .topP(getOrDefault(requestParameters.topP(), parameters.topP()))
+                .frequencyPenalty(getOrDefault(requestParameters.frequencyPenalty(), parameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(requestParameters.presencePenalty(), parameters.presencePenalty()))
+                .maxTokens(getOrDefault(requestParameters.maxOutputTokens(), parameters.maxOutputTokens())) // TODO maxCompletionTokens
+                .maxCompletionTokens(this.maxCompletionTokens)
+                .stop(getOrDefault(requestParameters.stopSequences(), parameters.stopSequences()))
+                .tools(toTools(getOrDefault(requestParameters.toolSpecifications(), parameters.toolSpecifications()), strictTools))
+                .toolChoice(toOpenAiToolChoice(getOrDefault(requestParameters.toolChoice(), parameters.toolChoice())))
+                .responseFormat(responseFormat) // TODO check default format
+                // OpenAI-specific parameters
+                .logitBias(getOrDefault(requestParameters.logitBias(), parameters.logitBias()))
+                .parallelToolCalls(getOrDefault(requestParameters.parallelToolCalls(), parameters.parallelToolCalls()))
+                .seed(getOrDefault(requestParameters.seed(), parameters.seed()))
+                .user(getOrDefault(requestParameters.user(), parameters.user()))
+                .store(getOrDefault(requestParameters.store(), parameters.store()))
+                .metadata(getOrDefault(requestParameters.metadata(), parameters.metadata()))
+                .serviceTier(getOrDefault(requestParameters.serviceTier(), parameters.serviceTier()))
+                .build();
 
-                .messages(toOpenAiMessages(messages))
-                .responseFormat(responseFormat)
-
-                .model(getOrDefault(openAiChatParameters.modelName(), this.modelName))
-                .temperature(getOrDefault(openAiChatParameters.temperature(), this.temperature))
-                .topP(getOrDefault(openAiChatParameters.topP(), this.topP))
-                .frequencyPenalty(getOrDefault(openAiChatParameters.frequencyPenalty(), this.frequencyPenalty))
-                .presencePenalty(getOrDefault(openAiChatParameters.presencePenalty(), this.presencePenalty))
-                .maxTokens(getOrDefault(openAiChatParameters.maxOutputTokens(), this.maxTokens)) // TODO?
-                .maxCompletionTokens(maxCompletionTokens) // TODO?
-                .stop(getOrDefault(openAiChatParameters.stopSequences(), this.stop))
-
-                .logitBias(getOrDefault(openAiChatParameters.logitBias(), this.logitBias))
-                .parallelToolCalls(getOrDefault(openAiChatParameters.parallelToolCalls(), this.parallelToolCalls))
-                .seed(getOrDefault(openAiChatParameters.seed(), this.seed))
-                .user(getOrDefault(openAiChatParameters.user(), this.user))
-                .store(getOrDefault(openAiChatParameters.store(), this.store))
-                .metadata(getOrDefault(openAiChatParameters.metadata(), this.metadata))
-                .serviceTier(getOrDefault(openAiChatParameters.serviceTier(), this.serviceTier));
-
-        List<ToolSpecification> toolSpecifications = openAiChatParameters.toolSpecifications();
-        if (!isNullOrEmpty(toolSpecifications)) {
-            requestBuilder.tools(toTools(toolSpecifications, strictTools));
-        }
-        if (openAiChatParameters.toolChoice() != null) {
-            requestBuilder.toolChoice(toOpenAiToolChoice(openAiChatParameters.toolChoice()));
-        }
-
-        ChatCompletionRequest openAiRequest = requestBuilder.build();
-
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(openAiRequest, messages, toolSpecifications);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(
+                openAiRequest,
+                chatRequest.messages(),
+                requestParameters.toolSpecifications()
+        );
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
         listeners.forEach(listener -> {
@@ -373,6 +403,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         private String baseUrl;
         private String apiKey;
         private String organizationId;
+
+        private ChatParameters parameters;
         private String modelName;
         private Double temperature;
         private Double topP;
@@ -401,6 +433,25 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended
+        }
+
+        /**
+         * TODO
+         * Sets common {@link ChatParameters} or OpenAI-specific {@link OpenAiChatParameters}
+         *
+         * @param parameters
+         * @return
+         */
+        public OpenAiStreamingChatModelBuilder parameters(ChatParameters parameters) { // TODO names, check everywhere chatParameters vs parameters
+            this.parameters = parameters;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder parameters(Consumer<OpenAiChatParameters.Builder> consumer) { // TODO?
+            OpenAiChatParameters.Builder builder = OpenAiChatParameters.builder();
+            consumer.accept(builder);
+            this.parameters = builder.build();
+            return this;
         }
 
         public OpenAiStreamingChatModelBuilder modelName(String modelName) {
@@ -553,6 +604,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     this.baseUrl,
                     this.apiKey,
                     this.organizationId,
+                    this.parameters,
                     this.modelName,
                     this.temperature,
                     this.topP,
@@ -586,6 +638,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             return new StringJoiner(", ", OpenAiStreamingChatModelBuilder.class.getSimpleName() + "[", "]")
                     .add("baseUrl='" + baseUrl + "'")
                     .add("organizationId='" + organizationId + "'")
+                    .add("parameters='" + parameters + "'")
                     .add("modelName='" + modelName + "'")
                     .add("temperature=" + temperature)
                     .add("topP=" + topP)

@@ -2,10 +2,14 @@ package dev.langchain4j.model.chat.request;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.List;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static java.util.Arrays.asList;
 
 @Experimental
 public class DefaultChatParameters implements ChatParameters {
@@ -24,7 +28,7 @@ public class DefaultChatParameters implements ChatParameters {
     private final ToolChoice toolChoice;
     private final ResponseFormat responseFormat;
 
-    protected DefaultChatParameters(Builder builder) { // TODO visibility
+    protected DefaultChatParameters(Builder builder) { // TODO raw, visibility
         this.modelName = builder.modelName;
         this.temperature = builder.temperature;
         this.topP = builder.topP;
@@ -32,8 +36,8 @@ public class DefaultChatParameters implements ChatParameters {
         this.frequencyPenalty = builder.frequencyPenalty;
         this.presencePenalty = builder.presencePenalty;
         this.maxOutputTokens = builder.maxOutputTokens;
-        this.stopSequences = copyIfNotNull(builder.stopSequences);
-        this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
+        this.stopSequences = copyIfNotNull(builder.stopSequences); // TODO raw?
+        this.toolSpecifications = copyIfNotNull(builder.toolSpecifications); // TODO raw?
         this.toolChoice = builder.toolChoice; // TODO set AUTO by default? only if toolSpecifications are present? validate: can be set only when tools are defined
         this.responseFormat = builder.responseFormat;
     }
@@ -107,7 +111,42 @@ public class DefaultChatParameters implements ChatParameters {
         return responseFormat;
     }
 
-    public static Builder builder() {
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DefaultChatParameters that = (DefaultChatParameters) o;
+        return Objects.equals(modelName, that.modelName)
+                && Objects.equals(temperature, that.temperature)
+                && Objects.equals(topP, that.topP)
+                && Objects.equals(topK, that.topK)
+                && Objects.equals(frequencyPenalty, that.frequencyPenalty)
+                && Objects.equals(presencePenalty, that.presencePenalty)
+                && Objects.equals(maxOutputTokens, that.maxOutputTokens)
+                && Objects.equals(stopSequences, that.stopSequences)
+                && Objects.equals(toolSpecifications, that.toolSpecifications)
+                && Objects.equals(toolChoice, that.toolChoice)
+                && Objects.equals(responseFormat, that.responseFormat);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                modelName,
+                temperature,
+                topP,
+                topK,
+                frequencyPenalty,
+                presencePenalty,
+                maxOutputTokens,
+                stopSequences,
+                toolSpecifications,
+                toolChoice,
+                responseFormat
+        );
+    }
+
+    public static Builder builder() { // TODO raw
         return new Builder();
     }
 
@@ -125,7 +164,7 @@ public class DefaultChatParameters implements ChatParameters {
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
 
-        public T modelName(String modelName) {
+        public T modelName(String modelName) { // TODO another one accepting enum?
             this.modelName = modelName;
             return (T) this;
         }
@@ -165,9 +204,17 @@ public class DefaultChatParameters implements ChatParameters {
             return (T) this;
         }
 
+        public T stopSequences(String... stopSequences) {
+            return stopSequences(asList(stopSequences));
+        }
+
         public T toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return (T) this;
+        }
+
+        public T toolSpecifications(ToolSpecification... toolSpecifications) {
+            return toolSpecifications(asList(toolSpecifications));
         }
 
         public T toolChoice(ToolChoice toolChoice) {
@@ -175,8 +222,25 @@ public class DefaultChatParameters implements ChatParameters {
             return (T) this;
         }
 
+        /**
+         * @see #responseFormat(JsonSchema)
+         */
         public T responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return (T) this;
+        }
+
+        /**
+         * @see #responseFormat(ResponseFormat)
+         */
+        public T responseFormat(JsonSchema jsonSchema) {
+            if (jsonSchema != null) {
+                ResponseFormat responseFormat = ResponseFormat.builder()
+                        .type(JSON)
+                        .jsonSchema(jsonSchema)
+                        .build();
+                return responseFormat(responseFormat);
+            }
             return (T) this;
         }
 

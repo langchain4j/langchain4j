@@ -92,6 +92,11 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsDefaultChatParameters() {
+        return false; // TODO implement
+    }
+
+    @Override
     protected boolean supportsModelNameParameter() {
         return false; // TODO implement
     }
@@ -153,6 +158,6 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean assertFinishReason() {
-        return false; // TODO fix
+        return false; // TODO implement
     }
 }

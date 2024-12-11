@@ -72,9 +72,23 @@ class AiServicesIT {
 
     @AfterEach
     void afterEach() {
-        verifyNoMoreInteractions(chatLanguageModel);
+        verifyNoMoreInteractionsFor(chatLanguageModel);
         verifyNoMoreInteractions(chatMemory);
         verifyNoMoreInteractions(moderationModel);
+    }
+
+    public static void verifyNoMoreInteractionsFor(ChatLanguageModel model) {
+        try {
+            verify(model).parameters();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model).supportedCapabilities();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        verifyNoMoreInteractions(model);
     }
 
     interface EggCounter {
@@ -95,7 +109,6 @@ class AiServicesIT {
         verify(chatLanguageModel).chat(chatRequest("Count the number of eggs mentioned in this sentence:\n" +
                 "|||I have ten eggs in my basket and three in my pocket.|||\n" +
                 "You must answer strictly in the following format: integer number"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -115,7 +128,6 @@ class AiServicesIT {
         assertThat(joke).isNotBlank();
 
         verify(chatLanguageModel).chat(chatRequest("Tell me a joke about AI"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -145,7 +157,6 @@ class AiServicesIT {
         verify(chatLanguageModel).chat(chatRequest(
                 "Extract date from " + text + "\n" +
                         "You must answer strictly in the following format: yyyy-MM-dd"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -162,7 +173,6 @@ class AiServicesIT {
         verify(chatLanguageModel).chat(chatRequest(
                 "Extract time from " + text + "\n" +
                         "You must answer strictly in the following format: HH:mm:ss"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -179,7 +189,6 @@ class AiServicesIT {
         verify(chatLanguageModel).chat(chatRequest(
                 "Extract date and time from " + text + "\n" +
                         "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -211,7 +220,6 @@ class AiServicesIT {
                         "POSITIVE\n" +
                         "NEUTRAL\n" +
                         "NEGATIVE"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     public enum Weather {
@@ -249,7 +257,6 @@ class AiServicesIT {
                 "CLOUDY - The sky is covered with clouds with no rain, often creating a gray and overcast appearance\n" +
                 "RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions\n" +
                 "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     public enum Ingredient {
@@ -281,7 +288,6 @@ class AiServicesIT {
                 "PEPPER\n" +
                 "VINEGAR\n" +
                 "OIL"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     public enum IssueCategory {
@@ -332,7 +338,7 @@ class AiServicesIT {
                 "CONNECTIVITY_ISSUE - The feedback mentions issues with internet connectivity, such as unreliable Wi-Fi\n" +
                 "CHECK_IN_ISSUE - The feedback mentions issues with the check-in process, such as it being tedious and time-consuming\n" +
                 "OVERALL_EXPERIENCE_ISSUE - The feedback mentions a general dissatisfaction with the overall hotel experience due to multiple issues"));
-        verify(chatLanguageModel).supportedCapabilities();
+
     }
 
     interface MapExtractor {
@@ -355,7 +361,6 @@ class AiServicesIT {
         verify(chatLanguageModel).chat(chatRequest(
                 "Return a JSON map with the age of each person in the following text: " + text
         ));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     record Address(
@@ -411,7 +416,6 @@ class AiServicesIT {
                         "\"city\": (type: string)\n" +
                         "})\n" +
                         "}"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -458,7 +462,6 @@ class AiServicesIT {
                         "\"city\": (type: string)\n" +
                         "})\n" +
                         "}"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -514,7 +517,6 @@ class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -537,7 +539,6 @@ class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -560,7 +561,6 @@ class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -583,7 +583,6 @@ class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     interface BadChef {
@@ -657,7 +656,6 @@ class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}"));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -688,7 +686,6 @@ class AiServicesIT {
                                 "}")
                 ).build()
         );
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     @Test
@@ -719,7 +716,6 @@ class AiServicesIT {
                                 "}")
                 ).build()
         );
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     interface ProfessionalChef {
@@ -745,7 +741,6 @@ class AiServicesIT {
                         userMessage(question)
                 ).build()
         );
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -773,7 +768,6 @@ class AiServicesIT {
                         userMessage("Translate the following text: Hello, how are you?")
                 ).build()
         );
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     interface Summarizer {
@@ -801,7 +795,6 @@ class AiServicesIT {
                         userMessage(text + "\nYou must put every item on a separate line.")
                 ).build()
         );
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -826,7 +819,6 @@ class AiServicesIT {
                 .hasMessage("Text \"" + message + "\" violates content policy");
 
         verify(chatLanguageModel).chat(chatRequest(message));
-        verify(chatLanguageModel).supportedCapabilities();
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -845,7 +837,6 @@ class AiServicesIT {
         assertThat(response).isNotBlank();
 
         verify(chatLanguageModel).chat(chatRequest(message));
-        verify(chatLanguageModel).supportedCapabilities();
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -879,7 +870,6 @@ class AiServicesIT {
         assertThat(result.sources()).isNull();
 
         verify(chatLanguageModel).chat(chatRequest(userMessage));
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
 
@@ -918,7 +908,6 @@ class AiServicesIT {
                         "\"bookingId\": (type: string)\n" +
                         "}")
         );
-        verify(chatLanguageModel).supportedCapabilities();
     }
 
     static ChatRequest chatRequest(String userMessage) {

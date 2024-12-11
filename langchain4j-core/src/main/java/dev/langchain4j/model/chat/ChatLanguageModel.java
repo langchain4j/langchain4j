@@ -131,7 +131,7 @@ public interface ChatLanguageModel {
     }
 
     @Experimental
-    default ChatParameters parameters() {
+    default ChatParameters parameters() { // TODO defaultParameters?
         return null;
     }
 
@@ -207,6 +207,6 @@ public interface ChatLanguageModel {
      * @throws UnsupportedFeatureException if tools are not supported by the underlying LLM API
      */
     default Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        throw new UnsupportedFeatureException("tool choice is currently not supported by " + getClass().getSimpleName());
+        throw new UnsupportedFeatureException("tools and tool choice are currently not supported by " + getClass().getSimpleName());
     }
 }

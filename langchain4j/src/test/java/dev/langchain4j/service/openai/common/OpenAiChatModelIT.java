@@ -28,28 +28,42 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
-    static final OpenAiChatModel.OpenAiChatModelBuilder OPEN_AI_CHAT_MODEL_BUILDER = OpenAiChatModel.builder()
-            .baseUrl(System.getenv("OPENAI_BASE_URL"))
-            .apiKey(System.getenv("OPENAI_API_KEY"))
-            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_O_MINI)
-            .logRequests(true)
-            .logResponses(true);
+    public static OpenAiChatModel.OpenAiChatModelBuilder defaultModelBuilder() {
+        return OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .logRequests(true)
+                .logResponses(true);
+    }
 
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(
-                OPEN_AI_CHAT_MODEL_BUILDER
+                defaultModelBuilder()
                         .build(),
-                OPEN_AI_CHAT_MODEL_BUILDER
+                defaultModelBuilder()
                         .strictTools(true)
                         .build(),
-                OPEN_AI_CHAT_MODEL_BUILDER
+                defaultModelBuilder()
                         .responseFormat("json_schema")
                         .strictJsonSchema(true)
                         .build()
                 // TODO json_object?
         );
+    }
+
+    @Override
+    protected ChatLanguageModel createModelWith(ChatParameters chatParameters) {
+        return OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .parameters(chatParameters)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
     }
 
     @Override
@@ -81,7 +95,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
-        ChatLanguageModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+        ChatLanguageModel chatModel = defaultModelBuilder()
                 .maxTokens(20) // to save tokens
                 .build();
 
@@ -109,14 +123,14 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .build();
 
         ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
-                .messages(UserMessage.from("How much is 2+2 and 3+3?"))
-                .toolSpecifications(toolSpecification);
+                .messages(UserMessage.from("How much is 2+2 and 3+3?"));
 
-        ChatLanguageModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+        ChatLanguageModel chatModel = defaultModelBuilder()
                 .build();
 
-        // when
+        // when parallelToolCalls = true
         OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
+                .toolSpecifications(toolSpecification)
                 .parallelToolCalls(true)
                 .build();
         ChatRequest chatRequest = chatRequestBuilder.parameters(openAiChatParameters)
@@ -125,8 +139,9 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         // then
         assertThat(chatResponse.aiMessage().toolExecutionRequests()).hasSize(2);
 
-        // when
+        // when parallelToolCalls = false
         OpenAiChatParameters openAiChatParameters2 = OpenAiChatParameters.builder()
+                .toolSpecifications(toolSpecification)
                 .parallelToolCalls(false)
                 .build();
         ChatRequest chatRequest2 = chatRequestBuilder.parameters(openAiChatParameters2)
@@ -137,7 +152,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Test
-    void should_propagate_all_OpenAI_parameters() {
+    void should_propagate_all_OpenAI_specific_parameters() {
 
         // given
         OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
@@ -156,9 +171,9 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
-        ChatLanguageModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+        ChatLanguageModel chatModel = defaultModelBuilder()
                 .logRequests(true) // verifying manually in the logs for now
-                .logResponses(true)
+                .logResponses(true) // verifying manually in the logs for now
                 .build();
 
         // when
@@ -170,11 +185,6 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         // TODO verify that parameters are propagated after https://github.com/langchain4j/langchain4j/issues/1044
     }
 
-
-    // TODO test model specific default params
-    // TODO test override of default params
-    // TODO test override specific params
-
     @Test
     void should_respect_default_common_chat_parameters() {
 
@@ -184,7 +194,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .maxOutputTokens(maxOutputTokens)
                 .build();
 
-        ChatLanguageModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+        ChatLanguageModel chatModel = defaultModelBuilder()
                 .parameters(chatParameters)
                 .build();
 
@@ -228,7 +238,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .messages(UserMessage.from("Hi"))
                 .build();
 
-        OpenAiChatModel chatModel = OPEN_AI_CHAT_MODEL_BUILDER
+        OpenAiChatModel chatModel = defaultModelBuilder()
                 .build();
 
         // when

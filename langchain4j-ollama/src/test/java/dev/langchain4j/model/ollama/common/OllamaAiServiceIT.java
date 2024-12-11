@@ -20,6 +20,6 @@ class OllamaAiServiceIT extends AbstractAiServiceIT {
 
     @Override
     protected boolean assertFinishReason() {
-        return false; // TODO fix
+        return false; // TODO implement
     }
 }

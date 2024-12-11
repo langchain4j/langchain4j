@@ -15,6 +15,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 
 import java.util.List;
+import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
@@ -82,8 +83,13 @@ public interface StreamingChatLanguageModel {
     }
 
     @Experimental
-    default ChatParameters chatParameters() {
+    default ChatParameters parameters() { // TODO defaultParameters?
         return null;
+    }
+
+    @Experimental
+    default Set<Capability> supportedCapabilities() {
+        return Set.of();
     }
 
     /**
@@ -145,6 +151,6 @@ public interface StreamingChatLanguageModel {
      * @throws UnsupportedFeatureException if tools are not supported by the underlying LLM API
      */
     default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        throw new UnsupportedFeatureException("tool choice is currently not supported by " + getClass().getSimpleName());
+        throw new UnsupportedFeatureException("tools and tool choice are currently not supported by " + getClass().getSimpleName());
     }
 }

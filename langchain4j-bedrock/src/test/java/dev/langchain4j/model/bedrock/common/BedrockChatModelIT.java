@@ -30,6 +30,11 @@ class BedrockChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsDefaultChatParameters() {
+        return false; // TODO implement
+    }
+
+    @Override
     protected boolean supportsModelNameParameter() {
         return false; // TODO implement
     }

@@ -32,11 +32,11 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean assertFinishReason() {
-        return false; // TODO fix
+        return false; // TODO implement
     }
 
     @Override
     protected boolean assertThreads() {
-        return false; // TODO fix
+        return false; // TODO what to do with it?
     }
 }

@@ -7,6 +7,8 @@ import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
@@ -28,10 +30,32 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected ChatLanguageModel createModelWith(ChatParameters chatParameters) {
+        return GoogleAiGeminiChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+
+                // TODO re-implement, support .parameters(chatParameters)
+                .modelName(getOrDefault(chatParameters.modelName(), "gemini-1.5-flash-8b"))
+                .temperature(chatParameters.temperature())
+                .topP(chatParameters.topP())
+                .topK(chatParameters.topK())
+                .maxOutputTokens(chatParameters.maxOutputTokens())
+                .stopSequences(chatParameters.stopSequences())
+                .responseFormat(chatParameters.responseFormat())
+
+                .build();
+    }
+
+    @Override
     protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
         return ChatParameters.builder() // TODO return specific params
                 .maxOutputTokens(maxOutputTokens)
                 .build();
+    }
+
+    @Override
+    protected boolean supportsDefaultChatParameters() {
+        return false; // TODO implement
     }
 
     @Override
@@ -55,7 +79,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     protected boolean assertFinishReason() {
-        return false; // TODO fix
+        return false; // TODO implement
     }
 
     @Override

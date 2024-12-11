@@ -26,6 +26,7 @@ import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesIT.chatRequest;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.ANOTHER_SYSTEM_MESSAGE;
 import static dev.langchain4j.service.AiServicesWithChatMemoryIT.ChatWithMemory.SYSTEM_MESSAGE;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,7 +68,7 @@ class AiServicesWithChatMemoryIT {
 
     @AfterEach
     void afterEach() {
-        verifyNoMoreInteractions(chatLanguageModel);
+        verifyNoMoreInteractionsFor(chatLanguageModel);
         verifyNoMoreInteractions(chatMemory);
     }
 

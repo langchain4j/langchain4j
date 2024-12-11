@@ -192,7 +192,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public OpenAiChatParameters parameters() { // TODO add "default" in name?
+    public OpenAiChatParameters parameters() {
         return parameters; // TODO make sure params are immutable
     }
 
@@ -235,8 +235,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
-                .toolSpecifications(toolSpecification)
-                .toolChoice(REQUIRED)
+                .parameters(ChatParameters.builder()
+                        .toolSpecifications(toolSpecification)
+                        .toolChoice(REQUIRED)
+                        .build())
                 .build();
         ChatResponse chatResponse = doChat(chatRequest, this.responseFormat);
         return convertResponse(chatResponse);
@@ -254,26 +256,26 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         ChatCompletionRequest openAiRequest = ChatCompletionRequest.builder()
                 .messages(toOpenAiMessages(chatRequest.messages()))
-                .responseFormat(responseFormat) // TODO check default format
                 // common parameters
-                .model(getOrDefault(requestParameters.modelName(), this.parameters.modelName()))
-                .temperature(getOrDefault(requestParameters.temperature(), this.parameters.temperature()))
-                .topP(getOrDefault(requestParameters.topP(), this.parameters.topP()))
-                .frequencyPenalty(getOrDefault(requestParameters.frequencyPenalty(), this.parameters.frequencyPenalty()))
-                .presencePenalty(getOrDefault(requestParameters.presencePenalty(), this.parameters.presencePenalty()))
-                .maxTokens(getOrDefault(requestParameters.maxOutputTokens(), this.parameters.maxOutputTokens())) // TODO maxCompletionTokens
+                .model(getOrDefault(requestParameters.modelName(), parameters.modelName()))
+                .temperature(getOrDefault(requestParameters.temperature(), parameters.temperature()))
+                .topP(getOrDefault(requestParameters.topP(), parameters.topP()))
+                .frequencyPenalty(getOrDefault(requestParameters.frequencyPenalty(), parameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(requestParameters.presencePenalty(), parameters.presencePenalty()))
+                .maxTokens(getOrDefault(requestParameters.maxOutputTokens(), parameters.maxOutputTokens())) // TODO maxCompletionTokens
                 .maxCompletionTokens(this.maxCompletionTokens)
-                .stop(getOrDefault(requestParameters.stopSequences(), this.parameters.stopSequences()))
-                .tools(toTools(getOrDefault(requestParameters.toolSpecifications(), this.parameters.toolSpecifications()), strictTools))
-                .toolChoice(toOpenAiToolChoice(getOrDefault(requestParameters.toolChoice(), this.parameters.toolChoice())))
+                .stop(getOrDefault(requestParameters.stopSequences(), parameters.stopSequences()))
+                .tools(toTools(getOrDefault(requestParameters.toolSpecifications(), parameters.toolSpecifications()), strictTools))
+                .toolChoice(toOpenAiToolChoice(getOrDefault(requestParameters.toolChoice(), parameters.toolChoice())))
+                .responseFormat(responseFormat) // TODO check default format
                 // OpenAI-specific parameters
-                .logitBias(getOrDefault(requestParameters.logitBias(), this.parameters.logitBias()))
-                .parallelToolCalls(getOrDefault(requestParameters.parallelToolCalls(), this.parameters.parallelToolCalls()))
-                .seed(getOrDefault(requestParameters.seed(), this.parameters.seed()))
-                .user(getOrDefault(requestParameters.user(), this.parameters.user()))
-                .store(getOrDefault(requestParameters.store(), this.parameters.store()))
-                .metadata(getOrDefault(requestParameters.metadata(), this.parameters.metadata()))
-                .serviceTier(getOrDefault(requestParameters.serviceTier(), this.parameters.serviceTier()))
+                .logitBias(getOrDefault(requestParameters.logitBias(), parameters.logitBias()))
+                .parallelToolCalls(getOrDefault(requestParameters.parallelToolCalls(), parameters.parallelToolCalls()))
+                .seed(getOrDefault(requestParameters.seed(), parameters.seed()))
+                .user(getOrDefault(requestParameters.user(), parameters.user()))
+                .store(getOrDefault(requestParameters.store(), parameters.store()))
+                .metadata(getOrDefault(requestParameters.metadata(), parameters.metadata()))
+                .serviceTier(getOrDefault(requestParameters.serviceTier(), parameters.serviceTier()))
                 .build();
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(

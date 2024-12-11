@@ -116,6 +116,11 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsDefaultChatParameters() {
+        return false; // TODO implement
+    }
+
+    @Override
     protected boolean supportsModelNameParameter() {
         return false; // TODO implement
     }
@@ -172,6 +177,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean assertFinishReason() {
-        return false; // TODO fix
+        return false; // TODO implement
     }
 }

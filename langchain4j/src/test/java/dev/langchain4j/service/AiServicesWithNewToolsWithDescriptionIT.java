@@ -29,6 +29,7 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithNewToolsWithDescriptionIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.AiServicesWithNewToolsWithDescriptionIT.ToolWithListOfEnumsParameter.Color.GREEN;
 import static dev.langchain4j.service.AiServicesWithNewToolsWithDescriptionIT.ToolWithListOfEnumsParameter.Color.RED;
@@ -108,9 +109,8 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(tool).add(37, 87);
         verifyNoMoreInteractions(tool);
 
-        verify(model).supportedCapabilities();
         verify(model, times(2)).chat(chatRequestCaptor.capture());
-        verifyNoMoreInteractions(model);
+        verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
@@ -181,9 +181,8 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(tool).process(new ToolWithPojoParameter.Person("Klaus", 37, 1.78, false));
         verifyNoMoreInteractions(tool);
 
-        verify(model).supportedCapabilities();
         verify(model, times(2)).chat(chatRequestCaptor.capture());
-        verifyNoMoreInteractions(model);
+        verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
@@ -253,9 +252,8 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(tool).process(new ToolWithNestedPojoParameter.Person("Klaus", new ToolWithNestedPojoParameter.Address("Langley Falls")));
         verifyNoMoreInteractions(tool);
 
-        verify(model).supportedCapabilities();
         verify(model, times(2)).chat(chatRequestCaptor.capture());
-        verifyNoMoreInteractions(model);
+        verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
@@ -334,9 +332,8 @@ class AiServicesWithNewToolsWithDescriptionIT {
         );
         verifyNoMoreInteractions(tool);
 
-        verify(model).supportedCapabilities();
         verify(model, times(2)).chat(chatRequestCaptor.capture());
-        verifyNoMoreInteractions(model);
+        verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
@@ -398,9 +395,8 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(tool).currentTemperature("Munich", CELSIUS);
         verifyNoMoreInteractions(tool);
 
-        verify(model).supportedCapabilities();
         verify(model, times(2)).chat(chatRequestCaptor.capture());
-        verifyNoMoreInteractions(model);
+        verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
@@ -452,9 +448,8 @@ class AiServicesWithNewToolsWithDescriptionIT {
         }});
         verifyNoMoreInteractions(tool);
 
-        verify(model).supportedCapabilities();
         verify(model, times(2)).chat(chatRequestCaptor.capture());
-        verifyNoMoreInteractions(model);
+        verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);
@@ -512,9 +507,8 @@ class AiServicesWithNewToolsWithDescriptionIT {
         verify(tool).process(asList(RED, GREEN));
         verifyNoMoreInteractions(tool);
 
-        verify(model).supportedCapabilities();
         verify(model, times(2)).chat(chatRequestCaptor.capture());
-        verifyNoMoreInteractions(model);
+        verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
         assertThat(toolSpecifications).hasSize(1);

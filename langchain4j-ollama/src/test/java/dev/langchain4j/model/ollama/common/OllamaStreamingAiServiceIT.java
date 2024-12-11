@@ -20,11 +20,11 @@ class OllamaStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
 
     @Override
     protected boolean assertTokenUsage() {
-        return false; // TODO fix
+        return false; // TODO implement
     }
 
     @Override
     protected boolean assertFinishReason() {
-        return false; // TODO fix
+        return false; // TODO implement
     }
 }

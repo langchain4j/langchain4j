@@ -3,14 +3,12 @@ package dev.langchain4j.model.chat.request;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
 
 @Experimental
@@ -53,6 +51,7 @@ public class ChatRequest {
         return parameters.responseFormat();
     }
 
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -98,79 +97,29 @@ public class ChatRequest {
             return this;
         }
 
-        public Builder modelName(String modelName) {
-            this.parametersBuilder.modelName(modelName);
-            return this;
-        }
-
-        // TODO convenience methods
-        public Builder temperature(Double temperature) {
-            this.parametersBuilder.temperature(temperature);
-            return this;
-        }
-
-        public Builder topP(Double topP) {
-            this.parametersBuilder.topP(topP);
-            return this;
-        }
-
-        public Builder topK(Integer topK) {
-            this.parametersBuilder.topK(topK);
-            return this;
-        }
-
-        public Builder frequencyPenalty(Double frequencyPenalty) {
-            this.parametersBuilder.frequencyPenalty(frequencyPenalty);
-            return this;
-        }
-
-        public Builder presencePenalty(Double presencePenalty) {
-            this.parametersBuilder.presencePenalty(presencePenalty);
-            return this;
-        }
-
-        public Builder maxOutputTokens(Integer maxOutputTokens) {
-            this.parametersBuilder.maxOutputTokens(maxOutputTokens);
-            return this;
-        }
-
-        public Builder stopSequences(List<String> stopSequences) {
-            this.parametersBuilder.stopSequences(stopSequences);
-            return this;
-        }
-
-        // TODO deprecate?
+        /**
+         * @deprecated TODO
+         */
+        @Deprecated(forRemoval = true)
         public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.parametersBuilder.toolSpecifications(toolSpecifications);
             return this;
         }
 
-        // TODO deprecate?
+        /**
+         * @deprecated TODO
+         */
+        @Deprecated(forRemoval = true)
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }
 
-        // TODO remove/move to params?
-        public Builder toolChoice(ToolChoice toolChoice) {
-            this.parametersBuilder.toolChoice(toolChoice);
-            return this;
-        }
-
-        // TODO deprecate?
+        /**
+         * @deprecated TODO
+         */
+        @Deprecated(forRemoval = true)
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.parametersBuilder.responseFormat(responseFormat);
-            return this;
-        }
-
-        // TODO remove/move to params?
-        public Builder responseFormat(JsonSchema jsonSchema) {
-            if (jsonSchema != null) {
-                ResponseFormat responseFormat = ResponseFormat.builder()
-                        .type(JSON)
-                        .jsonSchema(jsonSchema)
-                        .build();
-                this.parametersBuilder.responseFormat(responseFormat);
-            }
             return this;
         }
 

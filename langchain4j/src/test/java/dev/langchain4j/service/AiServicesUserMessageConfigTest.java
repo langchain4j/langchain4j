@@ -11,6 +11,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static dev.langchain4j.service.AiServicesIT.chatRequest;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
@@ -24,7 +25,7 @@ class AiServicesUserMessageConfigTest {
 
     @AfterEach
     void afterEach() {
-        verifyNoMoreInteractions(chatLanguageModel);
+        verifyNoMoreInteractionsFor(chatLanguageModel);
     }
 
     interface AiService {

@@ -284,7 +284,7 @@ class StreamingAiServicesWithToolsIT {
                 ),
                 any()
         );
-        verifyNoMoreInteractions(spyModel);
+        verifyNoMoreInteractionsFor(spyModel);
     }
 
     static class TransactionServiceExecutor implements ToolExecutor {
@@ -359,6 +359,20 @@ class StreamingAiServicesWithToolsIT {
         assertThat(toolExecutions.get(1).request().name()).isEqualTo("currentTemperature");
         assertThat(toolExecutions.get(1).request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\":\"London\", \"arg1\":\"CELSIUS\"}");
         assertThat(toolExecutions.get(1).result()).isEqualTo(String.valueOf(WeatherService.TEMPERATURE));
+    }
+
+    public static void verifyNoMoreInteractionsFor(StreamingChatLanguageModel model) {
+        try {
+            verify(model).parameters();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model).supportedCapabilities();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        verifyNoMoreInteractions(model);
     }
 
     // TODO all other tests from sync version
