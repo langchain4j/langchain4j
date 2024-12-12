@@ -14,7 +14,6 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static java.net.HttpURLConnection.HTTP_OK;
@@ -71,17 +70,6 @@ public class Utils {
    */
   public static <T> T getOrDefault(T value, Supplier<T> defaultValueSupplier) {
     return value != null ? value : defaultValueSupplier.get();
-  }
-
-    /**
-     * TODO
-     * @param value
-     * @param extractor
-     * @return
-     * @param <T>
-     */
-  public static <O, T> T ifNotNull(O value, Function<O, T> extractor) { // TODO test
-      return value != null ? extractor.apply(value) : null;
   }
 
   /**

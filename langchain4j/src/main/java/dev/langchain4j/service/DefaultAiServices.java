@@ -12,7 +12,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -53,7 +52,6 @@ import java.util.concurrent.Future;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
-import static dev.langchain4j.internal.Utils.ifNotNull;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
@@ -223,7 +221,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse chatResponse = context.chatModel.chat(chatRequest);
 
-                        TokenUsage tokenUsageAccumulator = ifNotNull(chatResponse.metadata(), ChatResponseMetadata::tokenUsage);
+                        TokenUsage tokenUsageAccumulator = chatResponse.metadata().tokenUsage();
 
                         verifyModerationIfNeeded(moderationFuture);
 
@@ -278,10 +276,10 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                             chatResponse = context.chatModel.chat(chatRequest);
 
-                            tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, ifNotNull(chatResponse.metadata(), ChatResponseMetadata::tokenUsage));
+                            tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, chatResponse.metadata().tokenUsage());
                         }
 
-                        FinishReason finishReason = ifNotNull(chatResponse.metadata(), ChatResponseMetadata::finishReason);
+                        FinishReason finishReason = chatResponse.metadata().finishReason();
                         Response<AiMessage> response = Response.from(chatResponse.aiMessage(), tokenUsageAccumulator, finishReason);
 
                         Object parsedResponse = serviceOutputParser.parse(response, returnType);

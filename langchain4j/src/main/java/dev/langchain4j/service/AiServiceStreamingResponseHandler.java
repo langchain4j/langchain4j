@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.ifNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -133,7 +132,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         .aiMessage(aiMessage)
                         .metadata(ChatResponseMetadata.builder()
                                 // TODO copy model-specific metadata?
-                                .tokenUsage(TokenUsage.sum(tokenUsage, ifNotNull(chatResponse.metadata(), ChatResponseMetadata::tokenUsage)))
+                                .tokenUsage(TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()))
                                 .finishReason(chatResponse.metadata().finishReason())
                                 .build())
                         .build();
@@ -141,7 +140,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             } else if (completionHandler != null) {
                 Response<AiMessage> finalResponse = Response.from(
                         aiMessage,
-                        TokenUsage.sum(tokenUsage, ifNotNull(chatResponse.metadata(), ChatResponseMetadata::tokenUsage)),
+                        TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                         chatResponse.metadata().finishReason()
                 );
                 completionHandler.accept(finalResponse);
