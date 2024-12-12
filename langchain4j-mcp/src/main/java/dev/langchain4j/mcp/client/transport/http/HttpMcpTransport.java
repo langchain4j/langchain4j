@@ -19,7 +19,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -94,18 +93,14 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public JsonNode executeTool(
-            McpCallToolRequest operation,
-            Duration timeout,
-            Supplier<CancellationNotification> cancellationNotificationSupplier)
-            throws TimeoutException {
+    public JsonNode executeTool(McpCallToolRequest operation, Duration timeout) throws TimeoutException {
         try {
             Request httpRequest = new Request.Builder()
                     .url(postUrl)
                     .header("Content-Type", "application/json")
                     .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(operation)))
                     .build();
-            return executeAndWait(httpRequest, operation.getId(), timeout, cancellationNotificationSupplier);
+            return executeAndWait(httpRequest, operation.getId(), timeout);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -117,7 +112,7 @@ public class HttpMcpTransport implements McpTransport {
             pendingOperations.put(id, future);
             try (final Response response = client.newCall(request).execute()) {
                 int statusCode = response.code();
-                if (statusCode < 200 || statusCode >= 300) {
+                if (!isExpectedStatusCode(statusCode)) {
                     throw new RuntimeException("Unexpected status code: " + statusCode);
                 }
             }
@@ -129,36 +124,37 @@ public class HttpMcpTransport implements McpTransport {
         }
     }
 
-    private JsonNode executeAndWait(
-            Request request,
-            Long id,
-            Duration timeout,
-            Supplier<CancellationNotification> cancellationNotificationSupplier)
-            throws TimeoutException {
+    private boolean isExpectedStatusCode(int statusCode) {
+        return statusCode >= 200 && statusCode < 300;
+    }
+
+    private JsonNode executeAndWait(Request request, Long id, Duration timeout) throws TimeoutException {
         try {
             CompletableFuture<JsonNode> future = new CompletableFuture<>();
             pendingOperations.put(id, future);
             try (final Response response = client.newCall(request).execute()) {
                 int statusCode = response.code();
-                if (statusCode < 200 || statusCode >= 300) {
-                    throw new RuntimeException("Unexpected status code: " + statusCode);
+                if (!isExpectedStatusCode(statusCode)) {
+                    throw new RuntimeException("Unexpected status code: {}" + statusCode);
                 }
             }
             long timeoutMillis = timeout.toMillis() == 0 ? Long.MAX_VALUE : timeout.toMillis();
             return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeoutException) {
-            if (cancellationNotificationSupplier != null) {
-                CancellationNotification cancellationNotification = cancellationNotificationSupplier.get();
-                try {
-                    Request cancellationRequest = new Request.Builder()
-                            .url(postUrl)
-                            .header("Content-Type", "application/json")
-                            .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(cancellationNotification)))
-                            .build();
-                    try (Response response = client.newCall(cancellationRequest).execute()) {}
-                } catch (IOException e) {
-                    log.warn("Failed to send cancellation notification", e);
+            CancellationNotification cancellationNotification = new CancellationNotification(id, "Timeout");
+            try {
+                Request cancellationRequest = new Request.Builder()
+                        .url(postUrl)
+                        .header("Content-Type", "application/json")
+                        .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(cancellationNotification)))
+                        .build();
+                try (Response response = client.newCall(cancellationRequest).execute()) {
+                    if (!isExpectedStatusCode(response.code())) {
+                        log.warn("Failed to send cancellation notification, the server returned: {}", response.code());
+                    }
                 }
+            } catch (IOException e) {
+                log.warn("Failed to send cancellation notification", e);
             }
             throw timeoutException;
         } catch (Exception e) {
@@ -179,7 +175,7 @@ public class HttpMcpTransport implements McpTransport {
             int timeout = client.callTimeoutMillis() > 0 ? client.callTimeoutMillis() : Integer.MAX_VALUE;
             String relativePostUrl = initializationFinished.get(timeout, TimeUnit.MILLISECONDS);
             postUrl = buildAbsolutePostUrl(relativePostUrl);
-            log.debug("Received the server's POST URL: " + postUrl);
+            log.debug("Received the server's POST URL: {}", postUrl);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

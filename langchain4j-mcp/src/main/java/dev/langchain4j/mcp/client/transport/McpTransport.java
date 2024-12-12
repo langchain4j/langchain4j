@@ -1,14 +1,12 @@
 package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import java.io.Closeable;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
 
 public interface McpTransport extends Closeable {
 
@@ -35,12 +33,7 @@ public interface McpTransport extends Closeable {
      * Executes a tool on the MCP server.
      * @param request the tool execution request
      * @param timeout the maximum time to wait for the tool to complete
-     * @param cancellationNotificationSupplier a supplier that provides a CancellationNotification if it is needed, typically
-     *                                         if the execution timeout is reached
+     * @throws TimeoutException if the tool execution times out (in this case, the transport should also send a CancellationNotification to the server)
      */
-    JsonNode executeTool(
-            McpCallToolRequest request,
-            Duration timeout,
-            Supplier<CancellationNotification> cancellationNotificationSupplier)
-            throws TimeoutException;
+    JsonNode executeTool(McpCallToolRequest request, Duration timeout) throws TimeoutException;
 }

@@ -11,7 +11,6 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.InitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
@@ -38,6 +37,7 @@ public class DefaultMcpClient implements McpClient {
     private final String protocolVersion;
     private final Duration toolExecutionTimeout;
     private final JsonNode RESULT_TIMEOUT;
+    private final String toolExecutionTimeoutErrorMessage;
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -45,13 +45,15 @@ public class DefaultMcpClient implements McpClient {
         clientVersion = getOrDefault(builder.clientVersion, "1.0");
         protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
         toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
+        toolExecutionTimeoutErrorMessage =
+                getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
         RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
         ((ObjectNode) RESULT_TIMEOUT)
                 .putObject("result")
                 .putArray("content")
                 .addObject()
                 .put("type", "text")
-                .put("text", "There was a timeout executing the tool");
+                .put("text", toolExecutionTimeoutErrorMessage);
 
         // Initialize the client...
         transport.start();
@@ -100,8 +102,7 @@ public class DefaultMcpClient implements McpClient {
                 new McpCallToolRequest(idGenerator.getAndIncrement(), executionRequest.name(), arguments);
         JsonNode executionResult = null;
         try {
-            executionResult = transport.executeTool(
-                    operation, toolExecutionTimeout, () -> new CancellationNotification(operation.getId(), "Timeout"));
+            executionResult = transport.executeTool(operation, toolExecutionTimeout);
         } catch (TimeoutException timeout) {
             executionResult = RESULT_TIMEOUT;
         }
@@ -120,6 +121,7 @@ public class DefaultMcpClient implements McpClient {
 
     public static class Builder {
 
+        public String toolExecutionTimeoutErrorMessage;
         private McpTransport transport;
         private String clientName;
         private String clientVersion;
@@ -169,6 +171,15 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder toolExecutionTimeout(Duration toolExecutionTimeout) {
             this.toolExecutionTimeout = toolExecutionTimeout;
+            return this;
+        }
+
+        /**
+         * Sets the error message to return when a tool execution times out.
+         * The default value is "There was a timeout executing the tool".
+         */
+        public Builder toolExecutionTimeoutErrorMessage(String toolExecutionTimeoutErrorMessage) {
+            this.toolExecutionTimeoutErrorMessage = toolExecutionTimeoutErrorMessage;
             return this;
         }
 

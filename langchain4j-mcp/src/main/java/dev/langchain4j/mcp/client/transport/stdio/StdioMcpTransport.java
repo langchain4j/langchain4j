@@ -16,7 +16,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,14 +77,10 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
-    public JsonNode executeTool(
-            McpCallToolRequest operation,
-            Duration timeout,
-            Supplier<CancellationNotification> cancellationNotificationSupplier)
-            throws TimeoutException {
+    public JsonNode executeTool(McpCallToolRequest operation, Duration timeout) throws TimeoutException {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return executeAndWait(requestString, operation.getId(), timeout, cancellationNotificationSupplier);
+            return executeAndWait(requestString, operation.getId(), timeout);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -109,12 +104,7 @@ public class StdioMcpTransport implements McpTransport {
         }
     }
 
-    private JsonNode executeAndWait(
-            String request,
-            Long id,
-            Duration timeout,
-            Supplier<CancellationNotification> cancellationNotificationSupplier)
-            throws TimeoutException {
+    private JsonNode executeAndWait(String request, Long id, Duration timeout) throws TimeoutException {
         try {
             CompletableFuture<JsonNode> future = new CompletableFuture<>();
             pendingOperations.put(id, future);
@@ -122,13 +112,11 @@ public class StdioMcpTransport implements McpTransport {
             long timeoutMillis = timeout.toMillis() == 0 ? Long.MAX_VALUE : timeout.toMillis();
             return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeoutException) {
-            if (cancellationNotificationSupplier != null) {
-                CancellationNotification cancellationNotification = cancellationNotificationSupplier.get();
-                try {
-                    processIOHandler.submit(OBJECT_MAPPER.writeValueAsString(cancellationNotification));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+            CancellationNotification cancellationNotification = new CancellationNotification(id, "Timeout");
+            try {
+                processIOHandler.submit(OBJECT_MAPPER.writeValueAsString(cancellationNotification));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
             throw timeoutException;
         } catch (Exception e) {
