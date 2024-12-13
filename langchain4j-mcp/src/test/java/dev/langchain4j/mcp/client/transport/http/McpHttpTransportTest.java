@@ -50,7 +50,6 @@ public class McpHttpTransportTest {
         port = container.getMappedPort(3001);
         McpTransport transport = new HttpMcpTransport.Builder()
                 .sseUrl("http://localhost:" + port + "/sse")
-                .postUrl("http://localhost:" + port + "/message")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
