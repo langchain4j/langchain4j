@@ -17,7 +17,8 @@ public class SseEventListener extends EventSourceListener {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(SseEventListener.class);
     private final boolean logEvents;
-    private final CompletableFuture<Void> initializationFinished;
+    // this will contain the POST url for sending commands to the server
+    private final CompletableFuture<String> initializationFinished;
 
     public SseEventListener(
             Map<Long, CompletableFuture<JsonNode>> pendingOperations,
@@ -35,7 +36,13 @@ public class SseEventListener extends EventSourceListener {
 
     @Override
     public void onEvent(EventSource eventSource, String id, String type, String data) {
-        if (type.equals("message")) {
+        if (type.equals("endpoint")) {
+            if (initializationFinished.isDone()) {
+                log.warn("Received endpoint event after initialization");
+                return;
+            }
+            initializationFinished.complete(data);
+        } else if (type.equals("message")) {
             if (logEvents) {
                 log.debug("< {}", data);
             }
@@ -66,7 +73,6 @@ public class SseEventListener extends EventSourceListener {
 
     @Override
     public void onOpen(EventSource eventSource, Response response) {
-        initializationFinished.complete(null);
         log.debug("Connected to SSE channel at {}", response.request().url());
     }
 }
