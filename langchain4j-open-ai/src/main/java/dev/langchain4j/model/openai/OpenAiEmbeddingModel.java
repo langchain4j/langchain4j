@@ -115,9 +115,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     }
 
     private List<List<String>> partition(final List<String> inputList, final int size) {
-        if (size <= 0) {
-            throw new IllegalArgumentException("Size must be greater than 0");
-        }
         List<List<String>> result = new ArrayList<>();
         for (int i = 0; i < inputList.size(); i += size) {
             int fromIndex = i;
