@@ -250,17 +250,17 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, null, null, null);
+        return generate(messages, null, null, this.chatCompletionsResponseFormat);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null, null);
+        return generate(messages, toolSpecifications, null, this.chatCompletionsResponseFormat);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, singletonList(toolSpecification), toolSpecification, null);
+        return generate(messages, singletonList(toolSpecification), toolSpecification, this.chatCompletionsResponseFormat);
     }
 
     @Override

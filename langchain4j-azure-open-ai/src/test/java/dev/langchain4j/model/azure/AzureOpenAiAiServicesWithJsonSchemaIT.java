@@ -30,7 +30,6 @@ class AzureOpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
         return true;
     }
 
-
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_OPENAI");
