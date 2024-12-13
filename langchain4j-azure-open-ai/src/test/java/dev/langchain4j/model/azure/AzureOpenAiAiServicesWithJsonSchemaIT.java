@@ -5,7 +5,9 @@ import dev.langchain4j.service.AiServicesWithJsonSchemaIT;
 import org.junit.jupiter.api.AfterEach;
 
 import java.util.List;
+import java.util.Set;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 
 class AzureOpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
@@ -17,6 +19,7 @@ class AzureOpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
                         .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                         .deploymentName("gpt-4o-mini")
+                        .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
                         .responseFormat(JSON)
                         .strictJsonSchema(true)
                         .temperature(0.0)
