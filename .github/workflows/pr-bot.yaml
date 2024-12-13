@@ -13,3 +13,4 @@ jobs:
         uses: langchain4j/pr-bot@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
