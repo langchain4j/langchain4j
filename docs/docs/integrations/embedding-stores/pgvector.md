@@ -62,18 +62,56 @@ docker run --rm --name langchain4j-postgres-test-container -p 5432:5432 -e POSTG
 ```-e POSTGRES_PASSWORD=my_password```: Sets the PostgreSQL password to my_password.<br>
 ```pgvector/pgvector```: Specifies the Docker image to use, pre-configured with the PGVector extension.<br>
 
-```java
+Here are two code examples showing how to create a PgVectorEmbeddingStore. The first uses only the required parameters,
+while the second configures all available parameters.
 
-// Initialize the PGVector embedding store
-        EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
-                .host("localhost")          // Hostname for the Docker container
-                .port(5432)                 // Port mapped from the Docker container
-                .database("postgres")       // Default database created by the container
-                .user("my_user")            // Username set in the Docker command
-                .password("my_password")    // Password set in the Docker command
-                .table("test")              // Custom table name
-                .dimension(384)             // Embedding dimensionality
-                .build();
+1. Only Required Parameters
+
+```java
+EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
+.host("localhost")                           // Required: Host of the PostgreSQL instance
+.port(5432)                                  // Required: Port of the PostgreSQL instance
+.database("postgres")                        // Required: Database name
+.user("my_user")                             // Required: Database user
+.password("my_password")                     // Required: Database password
+.table("my_embeddings")                      // Required: Table name to store embeddings
+.dimension(embeddingModel.dimension())       // Required: Dimension of embeddings
+.build();
 ```
+2. All Parameters Set
+
+In this variant, we include all the commonly used optional parameters like DataSource, useIndex, indexListSize, createTable, dropTableFirst, and metadataStorageConfig. Adjust these values as needed:
+
+ ```java
+DataSource dataSource = ...;                 // Pre-configured DataSource, if available
+
+EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
+// Connection and table parameters
+.datasource(dataSource)                      // Optional: If using a DataSource instead of host/port credentials
+.host("localhost")
+.port(5432)
+.database("postgres")
+.user("my_user")
+.password("my_password")
+.table("my_embeddings")
+
+// Embedding dimension
+.dimension(embeddingModel.dimension())      // Required: Must match the embedding model’s output dimension
+
+// Indexing and performance options
+.useIndex(true)                             // Enable IVFFlat index
+.indexListSize(100)                         // Number of lists for IVFFlat index
+
+// Table creation options
+.createTable(true)                          // Automatically create the table if it doesn’t exist
+.dropTableFirst(false)                      // Don’t drop the table first (set to true if you want a fresh start)
+
+// Metadata storage format
+.metadataStorageConfig(MetadataStorageConfig.combinedJsonb()) // Store metadata as a combined JSONB column
+
+.build();
+```
+Use the first example if you just want the minimal configuration to get started quickly. 
+The second example shows how you can leverage all available builder parameters for more control and customization.
 
 - [Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/pgvector-example/src/main/java)
