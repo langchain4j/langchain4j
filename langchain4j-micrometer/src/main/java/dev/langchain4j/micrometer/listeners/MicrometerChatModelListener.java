@@ -32,6 +32,9 @@ public class MicrometerChatModelListener implements ChatModelListener {
         requestStartTime.set(Instant.now());
 
         Counter.builder("langchain4j.chat.model.request")
+                .tag("gen_ai.operation.name", "chat")
+                .tag("gen_ai.system", "langchain4j")
+                .tag("gen_ai.request.model", requestContext.request().model())
                 .description("The number of requests that were made to the chat model")
                 .register(meterRegistry)
                 .increment();
@@ -42,8 +45,11 @@ public class MicrometerChatModelListener implements ChatModelListener {
         Instant start = requestStartTime.get();
         if (start != null) {
             Timer.builder("gen_ai.client.operation.duration")
-                    .description("GenAI operation duration")
                     .tag("gen_ai.operation.name", "chat")
+                    .tag("gen_ai.system", "langchain4j")
+                    .tag("gen_ai.request.model", responseContext.request().model())
+                    .tag("gen_ai.response.model", responseContext.response().model())
+                    .description("GenAI operation duration")
                     .register(meterRegistry)
                     .record(Duration.between(start, Instant.now()).toSeconds(), TimeUnit.SECONDS);
             requestStartTime.remove();
@@ -51,18 +57,30 @@ public class MicrometerChatModelListener implements ChatModelListener {
 
         if (responseContext.response().tokenUsage() != null) {
             Counter.builder(AiObservationMetricNames.TOKEN_USAGE.value())
+                    .tag("gen_ai.operation.name", "chat")
+                    .tag("gen_ai.system", "langchain4j")
+                    .tag("gen_ai.request.model", responseContext.request().model())
+                    .tag("gen_ai.response.model", responseContext.response().model())
                     .tag(AiObservationMetricAttributes.TOKEN_TYPE.value(), AiTokenType.INPUT.value())
                     .description(DESCRIPTION)
                     .register(meterRegistry)
                     .increment(responseContext.response().tokenUsage().inputTokenCount());
 
             Counter.builder(AiObservationMetricNames.TOKEN_USAGE.value())
+                    .tag("gen_ai.operation.name", "chat")
+                    .tag("gen_ai.system", "langchain4j")
+                    .tag("gen_ai.request.model", responseContext.request().model())
+                    .tag("gen_ai.response.model", responseContext.response().model())
                     .tag(AiObservationMetricAttributes.TOKEN_TYPE.value(), AiTokenType.OUTPUT.value())
                     .description(DESCRIPTION)
                     .register(meterRegistry)
                     .increment(responseContext.response().tokenUsage().outputTokenCount());
 
             Counter.builder(AiObservationMetricNames.TOKEN_USAGE.value())
+                    .tag("gen_ai.operation.name", "chat")
+                    .tag("gen_ai.system", "langchain4j")
+                    .tag("gen_ai.request.model", responseContext.request().model())
+                    .tag("gen_ai.response.model", responseContext.response().model())
                     .tag(AiObservationMetricAttributes.TOKEN_TYPE.value(), AiTokenType.TOTAL.value())
                     .description(DESCRIPTION)
                     .register(meterRegistry)
@@ -75,15 +93,20 @@ public class MicrometerChatModelListener implements ChatModelListener {
         Instant start = requestStartTime.get();
         if (start != null) {
             Timer.builder("gen_ai.client.operation.duration")
-                    .description("GenAI operation duration")
                     .tag("gen_ai.operation.name", "chat")
-                    .tag("status", "error")
+                    .tag("gen_ai.system", "langchain4j")
+                    .tag("gen_ai.request.model", errorContext.request().model())
+                    .tag("error.type", errorContext.error().getClass().getSimpleName())
+                    .description("GenAI operation duration")
                     .register(meterRegistry)
                     .record(Duration.between(start, Instant.now()).toSeconds(), TimeUnit.SECONDS);
             requestStartTime.remove();
         }
 
         Counter.builder("langchain4j.chat.model.error")
+                .tag("gen_ai.operation.name", "chat")
+                .tag("gen_ai.system", "langchain4j")
+                .tag("gen_ai.request.model", errorContext.request().model())
                 .description("The number of errors that occurred during the chat")
                 .register(meterRegistry)
                 .increment();
