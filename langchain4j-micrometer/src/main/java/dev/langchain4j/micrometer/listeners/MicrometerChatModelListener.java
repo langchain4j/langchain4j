@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 public class MicrometerChatModelListener implements ChatModelListener {
 
     private final MeterRegistry meterRegistry;
-    private static final String DESCRIPTION = "The number of tokens used by the model";
+    private static final String DESCRIPTION = "Measures number of input and output tokens used";
     private final ThreadLocal<Instant> requestStartTime;
 
     public MicrometerChatModelListener(MeterRegistry meterRegistry) {
