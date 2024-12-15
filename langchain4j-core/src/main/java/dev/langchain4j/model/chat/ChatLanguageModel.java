@@ -41,18 +41,22 @@ public interface ChatLanguageModel {
     @Experimental
     default ChatResponse chat(ChatRequest chatRequest) {
 
-        validate(chatRequest, getClass());
-
         ChatParameters chatParameters = chatRequest.parameters();
+        validate(chatParameters);
 
         Response<AiMessage> response;
-        if (isNullOrEmpty(chatParameters.toolSpecifications())) {
+        List<ToolSpecification> toolSpecifications = chatParameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
             response = generate(chatRequest.messages());
         } else {
             if (chatParameters.toolChoice() == REQUIRED) {
-                response = generate(chatRequest.messages(), chatParameters.toolSpecifications().get(0));
+                if (toolSpecifications.size() != 1) {
+                    throw new UnsupportedFeatureException(
+                            "ToolChoice.REQUIRED is currently supported only when there is a single tool");
+                }
+                response = generate(chatRequest.messages(), toolSpecifications.get(0));
             } else {
-                response = generate(chatRequest.messages(), chatParameters.toolSpecifications());
+                response = generate(chatRequest.messages(), toolSpecifications);
             }
         }
 
@@ -65,53 +69,35 @@ public interface ChatLanguageModel {
                 .build();
     }
 
-    static void validate(ChatRequest chatRequest, Class<?> modelClass) {
-        ChatParameters parameters = chatRequest.parameters();
-
+    static void validate(ChatParameters chatParameters) {
         String errorTemplate = "%s is not supported yet by this model provider";
 
-        if (parameters.modelName() != null) {
+        if (chatParameters.modelName() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'modelName' parameter"));
         }
-
-        Class<? extends ChatRequest> chatRequestClass = chatRequest.getClass();
-        if (chatRequestClass != ChatRequest.class) {
-            throw new IllegalArgumentException("%s cannot be used together with %s. Please use %s instead.".formatted(
-                    chatRequestClass.getSimpleName(),
-                    modelClass.getSimpleName(),
-                    ChatRequest.class.getSimpleName()
-            ));
-        }
-        if (parameters.temperature() != null) {
+        if (chatParameters.temperature() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'temperature' parameter"));
         }
-        if (parameters.topP() != null) {
+        if (chatParameters.topP() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'topP' parameter"));
         }
-        if (parameters.topK() != null) {
+        if (chatParameters.topK() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'topK' parameter"));
         }
-        if (parameters.frequencyPenalty() != null) {
+        if (chatParameters.frequencyPenalty() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'frequencyPenalty' parameter"));
         }
-        if (parameters.presencePenalty() != null) {
+        if (chatParameters.presencePenalty() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'presencePenalty' parameter"));
         }
-        if (parameters.maxOutputTokens() != null) {
+        if (chatParameters.maxOutputTokens() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'maxOutputTokens' parameter"));
         }
-        if (parameters.stopSequences() != null) {
+        if (chatParameters.stopSequences() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'stopSequences' parameter"));
         }
 
-        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
-        if (parameters.toolChoice() == REQUIRED
-                && !isNullOrEmpty(toolSpecifications) && toolSpecifications.size() > 1) {
-            throw new UnsupportedFeatureException(
-                    "ToolChoice.REQUIRED is currently supported only when there is a single tool");
-        }
-
-        ResponseFormat responseFormat = parameters.responseFormat();
+        ResponseFormat responseFormat = chatParameters.responseFormat();
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
             // TODO check supportedCapabilities() instead?
             throw new UnsupportedFeatureException(errorTemplate.formatted("JSON response format"));
@@ -131,7 +117,7 @@ public interface ChatLanguageModel {
     }
 
     @Experimental
-    default ChatParameters parameters() { // TODO defaultParameters?
+    default ChatParameters defaultParameters() {
         return null;
     }
 

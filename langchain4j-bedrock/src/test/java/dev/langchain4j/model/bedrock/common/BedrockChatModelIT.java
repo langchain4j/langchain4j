@@ -20,8 +20,10 @@ class BedrockChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        // TODO add more models from other providers
-        return List.of(BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL);
+        return List.of(
+                BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL
+                // TODO add more models from other providers
+        );
     }
 
     @Override

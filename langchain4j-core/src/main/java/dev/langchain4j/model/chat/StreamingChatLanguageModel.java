@@ -42,7 +42,8 @@ public interface StreamingChatLanguageModel {
     @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
-        validate(chatRequest, getClass());
+        ChatParameters chatParameters = chatRequest.parameters();
+        validate(chatParameters);
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 
@@ -69,21 +70,24 @@ public interface StreamingChatLanguageModel {
             }
         };
 
-        ChatParameters chatParameters = chatRequest.parameters();
-
-        if (isNullOrEmpty(chatParameters.toolSpecifications())) {
+        List<ToolSpecification> toolSpecifications = chatParameters.toolSpecifications();
+        if (isNullOrEmpty(toolSpecifications)) {
             generate(chatRequest.messages(), legacyHandler);
         } else {
             if (chatParameters.toolChoice() == REQUIRED) {
-                generate(chatRequest.messages(), chatParameters.toolSpecifications().get(0), legacyHandler);
+                if (toolSpecifications.size() != 1) {
+                    throw new UnsupportedFeatureException(
+                            "ToolChoice.REQUIRED is currently supported only when there is a single tool");
+                }
+                generate(chatRequest.messages(), toolSpecifications.get(0), legacyHandler);
             } else {
-                generate(chatRequest.messages(), chatParameters.toolSpecifications(), legacyHandler);
+                generate(chatRequest.messages(), toolSpecifications, legacyHandler);
             }
         }
     }
 
     @Experimental
-    default ChatParameters parameters() { // TODO defaultParameters?
+    default ChatParameters defaultParameters() {
         return null;
     }
 
