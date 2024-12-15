@@ -28,7 +28,7 @@ public class DefaultChatParameters implements ChatParameters {
     private final ToolChoice toolChoice;
     private final ResponseFormat responseFormat;
 
-    protected DefaultChatParameters(Builder builder) { // TODO raw, visibility
+    protected DefaultChatParameters(Builder<?> builder) { // TODO visibility
         this.modelName = builder.modelName;
         this.temperature = builder.temperature;
         this.topP = builder.topP;
@@ -36,8 +36,8 @@ public class DefaultChatParameters implements ChatParameters {
         this.frequencyPenalty = builder.frequencyPenalty;
         this.presencePenalty = builder.presencePenalty;
         this.maxOutputTokens = builder.maxOutputTokens;
-        this.stopSequences = copyIfNotNull(builder.stopSequences); // TODO raw?
-        this.toolSpecifications = copyIfNotNull(builder.toolSpecifications); // TODO raw?
+        this.stopSequences = copyIfNotNull(builder.stopSequences);
+        this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
         this.toolChoice = builder.toolChoice; // TODO set AUTO by default? only if toolSpecifications are present? validate: can be set only when tools are defined
         this.responseFormat = builder.responseFormat;
     }
@@ -146,8 +146,8 @@ public class DefaultChatParameters implements ChatParameters {
         );
     }
 
-    public static Builder builder() { // TODO raw
-        return new Builder();
+    public static Builder<?> builder() { // TODO?
+        return new Builder<>();
     }
 
     public static class Builder<T extends Builder<T>> {

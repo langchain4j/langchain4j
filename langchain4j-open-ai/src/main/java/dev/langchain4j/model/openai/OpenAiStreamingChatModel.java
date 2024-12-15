@@ -213,7 +213,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
                 .parameters(ChatParameters.builder()
-                        .toolSpecifications(toolSpecifications) // TODO raw?
+                        .toolSpecifications(toolSpecifications)
                         .build())
                 .build();
         doChat(chatRequest, this.responseFormat, convertHandler(handler));

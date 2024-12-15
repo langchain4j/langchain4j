@@ -30,7 +30,7 @@ public interface ChatParameters {
 
     ResponseFormat responseFormat();
 
-    static DefaultChatParameters.Builder builder() { // TODO
-        return new DefaultChatParameters.Builder();
+    static DefaultChatParameters.Builder<?> builder() { // TODO
+        return new DefaultChatParameters.Builder<>();
     }
 }

@@ -133,6 +133,7 @@ public class OpenAiChatParameters extends DefaultChatParameters {
             return this;
         }
 
+        @Override
         public OpenAiChatParameters build() {
             return new OpenAiChatParameters(this);
         }

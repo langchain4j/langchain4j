@@ -436,7 +436,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         List<String> stopSequences = List.of("World", " World");
-        ChatParameters chatParameters = ChatParameters.builder() // TODO raw?
+        ChatParameters chatParameters = ChatParameters.builder()
                 .stopSequences(stopSequences)
                 .build();
         M model = createModelWith(chatParameters);
