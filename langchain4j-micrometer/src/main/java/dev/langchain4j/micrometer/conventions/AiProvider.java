@@ -1,27 +1,41 @@
 package dev.langchain4j.micrometer.conventions;
 
-// Copied from AiProvider.java in spring-ai-core
 public enum AiProvider {
-    // Please, keep the alphabetical sorting.
+    // Keep alphabetical sorted.
     /**
      * AI system provided by Anthropic.
      */
     ANTHROPIC("anthropic"),
 
     /**
-     * AI system provided by Azure.
+     * AI inference system provided by Azure.
      */
-    AZURE_OPENAI("azure-openai"),
+    AZURE_AI_INFERENCE("azure_ai_inference"),
 
     /**
-     * AI system provided by Bedrock Converse.
+     * AI system provided by Azure.
      */
-    BEDROCK_CONVERSE("bedrock_converse"),
+    AZUREOPENAI("azure-openai"),
+
+    /**
+     * AI system provided by AWS Bedrock.
+     */
+    BEDROCK("aws.bedrock"),
+
+    /**
+     * AI system provided by Cohere.
+     */
+    COHERE("cohere"),
+
+    /**
+     * AI system provided by IBM Watsonx AI.
+     */
+    IBMWATSONXAI("ibm-watsonx-ai"),
 
     /**
      * AI system provided by Mistral.
      */
-    MISTRAL_AI("mistral_ai"),
+    MISTRALAI("mistral_ai"),
 
     /**
      * AI system provided by Ollama.
@@ -34,9 +48,9 @@ public enum AiProvider {
     OPENAI("openai"),
 
     /**
-     * AI system provided by Spring AI.
+     * AI system provided by Vertex AI.
      */
-    SPRING_AI("spring_ai");
+    VERTEXAI("vertex_ai");
 
     private final String value;
 
