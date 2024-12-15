@@ -17,7 +17,10 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatLanguageModel> models() {
-        return List.of(VERTEX_AI_GEMINI_STREAMING_CHAT_MODEL);
+        return List.of(
+                VERTEX_AI_GEMINI_STREAMING_CHAT_MODEL
+                // TODO add more model configs, see OpenAiChatModelIT
+        );
     }
 
     @Override

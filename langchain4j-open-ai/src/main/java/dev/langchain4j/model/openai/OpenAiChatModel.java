@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
 import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -59,7 +58,6 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiResponse
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toTools;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.validateRequest;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -176,7 +174,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .serviceTier(getOrDefault(serviceTier, openAiParameters.serviceTier()))
                 .build();
         this.maxCompletionTokens = maxCompletionTokens; // TODO move into OpenAI-specific params?
-        this.responseFormat = responseFormat == null ? null : ResponseFormat.builder() // TODO move into OpenAI-specific params?
+        this.responseFormat = responseFormat == null ? null : ResponseFormat.builder() // TODO
                 .type(ResponseFormatType.valueOf(responseFormat.toUpperCase(Locale.ROOT)))
                 .build();
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false); // TODO move into OpenAI-specific params?
@@ -187,7 +185,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
-    public String modelName() { // TODO deprecate?
+    public String modelName() { // TODO deprecate in favour of defaultParameters?
         return this.defaultParameters.modelName();
     }
 
@@ -198,8 +196,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
-        validateRequest(chatRequest, getClass());
-        ResponseFormat openAiResponseFormat = toOpenAiResponseFormat(chatRequest.parameters().responseFormat(), this.strictJsonSchema);
+        ChatParameters parameters = chatRequest.parameters();
+        InternalOpenAiHelper.validate(parameters);
+        ResponseFormat openAiResponseFormat = toOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema);
         return doChat(chatRequest, getOrDefault(openAiResponseFormat, this.responseFormat));
     }
 
@@ -426,15 +425,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
          * @param parameters
          * @return
          */
-        public OpenAiChatModelBuilder parameters(ChatParameters parameters) { // TODO names, check everywhere chatParameters vs parameters
+        public OpenAiChatModelBuilder parameters(ChatParameters parameters) { // TODO names, check everywhere chatParameters vs parameters vs defaultParameters
             this.parameters = parameters;
-            return this;
-        }
-
-        public OpenAiChatModelBuilder parameters(Consumer<OpenAiChatParameters.Builder> consumer) { // TODO?
-            OpenAiChatParameters.Builder builder = OpenAiChatParameters.builder();
-            consumer.accept(builder);
-            this.parameters = builder.build();
             return this;
         }
 

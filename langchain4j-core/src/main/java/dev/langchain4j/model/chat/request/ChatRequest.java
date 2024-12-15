@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
@@ -19,11 +20,29 @@ public class ChatRequest {
 
     protected ChatRequest(Builder builder) {
         this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));
-        // TODO check either params or params builder is set
+
+        DefaultChatParameters.Builder<?> chatParametersBuilder = ChatParameters.builder();
+
+        if (!isNullOrEmpty(builder.toolSpecifications)) {
+            if (builder.parameters != null) {
+                throw new IllegalArgumentException(
+                        "Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
+            }
+            chatParametersBuilder.toolSpecifications(builder.toolSpecifications);
+        }
+
+        if (builder.responseFormat != null) {
+            if (builder.parameters != null) {
+                throw new IllegalArgumentException(
+                        "Cannot set both 'parameters' and 'responseFormat' on ChatRequest");
+            }
+            chatParametersBuilder.responseFormat(builder.responseFormat);
+        }
+
         if (builder.parameters != null) {
             this.parameters = builder.parameters;
         } else {
-            this.parameters = builder.parametersBuilder.build();
+            this.parameters = chatParametersBuilder.build();
         }
     }
 
@@ -81,7 +100,8 @@ public class ChatRequest {
 
         private List<ChatMessage> messages;
         private ChatParameters parameters; // TODO validate that does not overlap with builder
-        private DefaultChatParameters.Builder parametersBuilder = new DefaultChatParameters.Builder();
+        private List<ToolSpecification> toolSpecifications;
+        private ResponseFormat responseFormat;
 
         public Builder messages(List<ChatMessage> messages) {
             this.messages = messages;
@@ -92,7 +112,7 @@ public class ChatRequest {
             return messages(asList(messages));
         }
 
-        public Builder parameters(ChatParameters parameters) {
+        public Builder parameters(ChatParameters parameters) { // TODO name
             this.parameters = parameters;
             return this;
         }
@@ -102,7 +122,7 @@ public class ChatRequest {
          */
         @Deprecated(forRemoval = true)
         public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
-            this.parametersBuilder.toolSpecifications(toolSpecifications);
+            this.toolSpecifications = toolSpecifications;
             return this;
         }
 
@@ -119,7 +139,7 @@ public class ChatRequest {
          */
         @Deprecated(forRemoval = true)
         public Builder responseFormat(ResponseFormat responseFormat) {
-            this.parametersBuilder.responseFormat(responseFormat);
+            this.responseFormat = responseFormat;
             return this;
         }
 

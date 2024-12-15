@@ -19,7 +19,10 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatLanguageModel> models() {
-        return List.of(AZURE_OPEN_AI_STREAMING_CHAT_MODEL);
+        return List.of(
+                AZURE_OPEN_AI_STREAMING_CHAT_MODEL
+                // TODO add more model configs, see OpenAiChatModelIT
+        );
     }
 
     @Override

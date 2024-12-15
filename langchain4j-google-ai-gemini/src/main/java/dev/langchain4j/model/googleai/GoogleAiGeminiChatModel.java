@@ -4,6 +4,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
@@ -110,22 +111,21 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
 
-        validateRequest(chatRequest);
-
         ChatParameters chatParameters = chatRequest.parameters();
+        validate(chatParameters);
 
         GeminiGenerateContentRequest request = createGenerateContentRequest(
                 chatRequest.messages(),
                 chatParameters.toolSpecifications(),
                 getOrDefault(chatParameters.responseFormat(), this.responseFormat),
-                chatRequest
+                chatRequest.parameters()
         );
 
         ChatModelRequest chatModelRequest = createChatModelRequest(
                 chatParameters.modelName(),
                 chatRequest.messages(),
                 chatParameters.toolSpecifications(),
-                chatRequest
+                chatRequest.parameters()
         );
 
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
@@ -144,18 +144,13 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         }
     }
 
-    private static void validateRequest(ChatRequest chatRequest) {
-        Class<? extends ChatRequest> chatRequestClass = chatRequest.getClass();
-        if (chatRequestClass != ChatRequest.class) {
-            throw new IllegalArgumentException("%s cannot be used together with %s. Please use %s instead."
-                    .formatted(
-                            chatRequestClass.getSimpleName(),
-                            GoogleAiGeminiChatModel.class.getSimpleName(),
-                            ChatRequest.class.getSimpleName()
-                    ));
+    private static void validate(ChatParameters chatParameters) {
+        if (chatParameters.frequencyPenalty() != null) {
+            throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by Google AI Gemini");
         }
-        // TODO check chatRequest.frequencyPenalty(), presencePenalty, etc.
-        // TODO fail if one of unsupported params is set
+        if (chatParameters.presencePenalty() != null) {
+            throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by Google AI Gemini");
+        }
     }
 
     private ChatResponse processResponse(

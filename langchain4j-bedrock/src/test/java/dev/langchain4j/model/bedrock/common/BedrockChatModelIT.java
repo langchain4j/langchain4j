@@ -23,6 +23,7 @@ class BedrockChatModelIT extends AbstractChatModelIT {
         return List.of(
                 BEDROCK_ANTHROPIC_MESSAGE_CHAT_MODEL
                 // TODO add more models from other providers
+                // TODO add more model configs, see OpenAiChatModelIT
         );
     }
 

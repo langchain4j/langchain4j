@@ -2,6 +2,8 @@ package dev.langchain4j.model.openai;
 
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.Objects;
+
 public class OpenAiTokenUsage extends TokenUsage {
 
     public record InputTokensDetails( // TODO or PromptTokensDetails ?
@@ -29,6 +31,29 @@ public class OpenAiTokenUsage extends TokenUsage {
 
     public OutputTokensDetails outputTokensDetails() {
         return outputTokensDetails;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        OpenAiTokenUsage that = (OpenAiTokenUsage) o;
+        return Objects.equals(inputTokensDetails, that.inputTokensDetails)
+                && Objects.equals(outputTokensDetails, that.outputTokensDetails);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), inputTokensDetails, outputTokensDetails);
+    }
+
+    @Override
+    public String toString() {
+        return "OpenAiTokenUsage{" +
+                "inputTokensDetails=" + inputTokensDetails +
+                ", outputTokensDetails=" + outputTokensDetails +
+                '}';
     }
 
     public static Builder builder() {

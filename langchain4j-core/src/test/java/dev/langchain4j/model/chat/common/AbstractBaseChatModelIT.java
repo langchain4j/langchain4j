@@ -43,8 +43,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 /**
- * Contains all compatibility tests that each {@link ChatLanguageModel}
- * and {@link StreamingChatLanguageModel} must pass.
+ * Contains all the common tests that every {@link ChatLanguageModel}
+ * and {@link StreamingChatLanguageModel} must successfully pass.
+ * This ensures that {@link ChatLanguageModel} implementations are interchangeable among themselves,
+ * as are {@link StreamingChatLanguageModel} implementations.
  *
  * @param <M> The type of the model: either {@link ChatLanguageModel} or {@link StreamingChatLanguageModel}
  */
@@ -80,7 +82,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         return models();
     }
 
-    protected List<M> modelsSupportingStructuredOutputs() {
+    protected List<M> modelsSupportingStructuredOutputs() { // TODO distinguish between JSON mode and JSON schema
         return models();
     }
 
@@ -198,15 +200,15 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     private void ensureModelNameIsDifferentFromDefault(String modelName, M model) {
         // TODO check model.parameters().modelName() instead?
-        ChatRequest.Builder builder = ChatRequest.builder()
+        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"));
         if (supportsMaxOutputTokensParameter()) {
             DefaultChatParameters chatParameters = ChatParameters.builder()
                     .maxOutputTokens(1) // to save tokens
                     .build();
-            builder.parameters(chatParameters);
+            chatRequestBuilder.parameters(chatParameters);
         }
-        ChatRequest chatRequest = builder.build();
+        ChatRequest chatRequest = chatRequestBuilder.build();
 
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
@@ -296,11 +298,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -343,11 +341,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -518,11 +512,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -554,11 +544,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -570,6 +556,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     // TOOLS
+
+    // TODO test default tools
 
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
@@ -760,7 +748,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    // STRUCTURED OUTPUTS
+    // RESPONSE FORMAT
+
+    // TODO test default response format
 
     @ParameterizedTest
     @MethodSource("modelsSupportingStructuredOutputs")
@@ -875,6 +865,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         }
     }
+
+    // TODO test responseFormat and tools together
 
     // MULTI MODALITY: IMAGES: BASE64
 
@@ -1140,9 +1132,15 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     static void assertTokenUsage(ChatResponseMetadata chatResponseMetadata) {
+        assertTokenUsage(chatResponseMetadata, null);
+    }
+
+    static void assertTokenUsage(ChatResponseMetadata chatResponseMetadata, Integer maxOutputTokens) {
         TokenUsage tokenUsage = chatResponseMetadata.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        if (maxOutputTokens != null) {
+            assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+        }
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }

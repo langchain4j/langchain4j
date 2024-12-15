@@ -21,7 +21,10 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(AZURE_OPEN_AI_CHAT_MODEL);
+        return List.of(
+                AZURE_OPEN_AI_CHAT_MODEL
+                // TODO add more model configs, see OpenAiChatModelIT
+        );
     }
 
     @Override

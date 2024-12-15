@@ -76,6 +76,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_TOOLS
 //                OPEN_AI_CHAT_MODEL_WITH_TOOLS // TODO
+                // TODO add more model configs, see OpenAiChatModelIT
         );
     }
 
@@ -84,6 +85,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_TOOLS
 //                OPEN_AI_CHAT_MODEL_WITH_TOOLS // TODO
+                // TODO add more model configs, see OpenAiChatModelIT
         );
     }
 
@@ -92,6 +94,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_VISION
 //                OPEN_AI_CHAT_MODEL_WITH_VISION // TODO
+                // TODO add more model configs, see OpenAiChatModelIT
         );
     }
 

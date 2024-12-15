@@ -34,8 +34,6 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.request.ChatParameters;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.DefaultChatParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -612,22 +610,7 @@ public class InternalOpenAiHelper {
         };
     }
 
-    static void validateRequest(ChatRequest chatRequest, Class<?> modelClass) {
-
-        ChatParameters chatParameters = chatRequest.parameters();
-
-        Class<? extends ChatParameters> chatParametersClass = chatParameters.getClass();
-        if (chatParametersClass != DefaultChatParameters.class
-                && chatParametersClass != OpenAiChatParameters.class) { // TODO user will not be able to supply their own param impl?
-            throw new IllegalArgumentException("%s cannot be used together with %s. Please use either %s or %s instead."
-                    .formatted(
-                            chatParametersClass.getSimpleName(),
-                            modelClass.getSimpleName(),
-                            ChatRequest.class.getSimpleName(),
-                            OpenAiChatParameters.class.getSimpleName()
-                    ));
-        }
-
+    static void validate(ChatParameters chatParameters) {
         if (chatParameters.topK() != null) {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
         }

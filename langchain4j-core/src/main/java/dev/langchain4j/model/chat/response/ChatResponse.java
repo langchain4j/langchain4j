@@ -16,7 +16,7 @@ public class ChatResponse {
     private final AiMessage aiMessage;
     private final ChatResponseMetadata metadata;
 
-    protected ChatResponse(@NonNull Builder builder) { // TODO
+    protected ChatResponse(@NonNull Builder builder) { // TODO visibility
         this.aiMessage = ensureNotNull(builder.aiMessage, "aiMessage");
         this.metadata = ensureNotNull(builder.metadata, "metadata");
     }

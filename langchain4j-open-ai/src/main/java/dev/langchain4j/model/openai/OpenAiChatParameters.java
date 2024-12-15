@@ -31,7 +31,7 @@ public class OpenAiChatParameters extends DefaultChatParameters {
 
     protected OpenAiChatParameters(ChatParameters chatParameters) { // TODO visibility
         super(chatParameters);
-        if (chatParameters instanceof OpenAiChatParameters openAiChatParameters) {
+        if (chatParameters instanceof OpenAiChatParameters openAiChatParameters) { // TODO is this needed?
             this.logitBias = copyIfNotNull(openAiChatParameters.logitBias);
             this.parallelToolCalls = openAiChatParameters.parallelToolCalls;
             this.seed = openAiChatParameters.seed;
@@ -39,7 +39,7 @@ public class OpenAiChatParameters extends DefaultChatParameters {
             this.store = openAiChatParameters.store;
             this.metadata = openAiChatParameters.metadata;
             this.serviceTier = openAiChatParameters.serviceTier;
-        } else {
+        } else { // TODO is this needed?
             this.logitBias = null;
             this.parallelToolCalls = null;
             this.seed = null;

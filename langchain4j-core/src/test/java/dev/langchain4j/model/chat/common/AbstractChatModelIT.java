@@ -8,24 +8,8 @@ import org.junit.jupiter.api.TestInstance;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 /**
- * This test makes sure that all {@link ChatLanguageModel} implementations behave consistently.
- * <p>
- * Make sure these dependencies are present in the module where this test class is extended:
- * <pre>
- * <dependency>
- *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j-core</artifactId>
- *     <scope>test</scope>
- * </dependency>
- *
- * <dependency>
- *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j-core</artifactId>
- *     <classifier>tests</classifier>
- *     <type>test-jar</type>
- *     <scope>test</scope>
- * </dependency>
- * </pre>
+ * Contains all the common tests that every {@link ChatLanguageModel} must successfully pass.
+ * This ensures that {@link ChatLanguageModel} implementations are interchangeable among themselves.
  */
 @TestInstance(PER_CLASS)
 public abstract class AbstractChatModelIT extends AbstractBaseChatModelIT<ChatLanguageModel> {

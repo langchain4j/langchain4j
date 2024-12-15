@@ -15,24 +15,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 /**
- * This test makes sure that all {@link StreamingChatLanguageModel} implementations behave consistently.
- * <p>
- * Make sure these dependencies are present in the module where this test class is extended:
- * <pre>
- * <dependency>
- *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j-core</artifactId>
- *     <scope>test</scope>
- * </dependency>
- *
- * <dependency>
- *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j-core</artifactId>
- *     <classifier>tests</classifier>
- *     <type>test-jar</type>
- *     <scope>test</scope>
- * </dependency>
- * </pre>
+ * Contains all the common tests that every {@link StreamingChatLanguageModel} must successfully pass.
+ * This ensures that {@link StreamingChatLanguageModel} implementations are interchangeable among themselves.
  */
 @TestInstance(PER_CLASS)
 public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModelIT<StreamingChatLanguageModel> {
@@ -41,7 +25,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
     protected ChatResponseAndStreamingMetadata chat(StreamingChatLanguageModel chatModel, ChatRequest chatRequest) {
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
-        StringBuffer concatenatedPartialResponses = new StringBuffer();
+        StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();
         AtomicInteger timesOnPartialResponseWasCalled = new AtomicInteger();
         AtomicInteger timesOnCompleteResponseWasCalled = new AtomicInteger();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
@@ -50,7 +34,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
             @Override
             public void onPartialResponse(String partialResponse) {
-                concatenatedPartialResponses.append(partialResponse);
+                concatenatedPartialResponsesBuilder.append(partialResponse);
                 timesOnPartialResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
             }
@@ -71,8 +55,9 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
         try {
             ChatResponse chatResponse = futureChatResponse.get(60, SECONDS);
+            String concatenatedPartialResponses = concatenatedPartialResponsesBuilder.toString();
             StreamingMetadata metadata = new StreamingMetadata(
-                    valueOrNullIfEmpty(concatenatedPartialResponses.toString()),
+                    concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
                     timesOnPartialResponseWasCalled.get(),
                     timesOnCompleteResponseWasCalled.get(),
                     threads
@@ -81,9 +66,5 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static String valueOrNullIfEmpty(String string) { // TODO better name
-        return string.isEmpty() ? null : string;
     }
 }

@@ -37,7 +37,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
 import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
@@ -55,7 +54,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiResponseFormat;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toTools;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.validateRequest;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.validate;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -83,7 +82,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final List<ChatModelListener> listeners;
 
     // TODO change it to accept Builder and make private? Same for all other ctors in other models
-
     public OpenAiStreamingChatModel(String baseUrl,
                                     String apiKey,
                                     String organizationId,
@@ -193,7 +191,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        validateRequest(chatRequest, getClass());
+        validate(chatRequest.parameters());
         ResponseFormat openAiResponseFormat = toOpenAiResponseFormat(chatRequest.parameters().responseFormat(), this.strictJsonSchema);
         doChat(chatRequest, getOrDefault(openAiResponseFormat, this.responseFormat), handler);
     }
@@ -240,7 +238,12 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         // TODO reuse code from OpenAiChatModel
 
-        OpenAiChatParameters requestParameters = new OpenAiChatParameters(chatRequest.parameters()); // TODO
+        OpenAiChatParameters requestParameters;
+        if (chatRequest.parameters() instanceof OpenAiChatParameters openAiChatParameters) {
+            requestParameters = openAiChatParameters;
+        } else {
+            requestParameters = new OpenAiChatParameters(chatRequest.parameters()); // TODO
+        }
 
         if (responseFormat != null
                 && responseFormat.type() == JSON_SCHEMA
@@ -444,15 +447,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
          * @param parameters
          * @return
          */
-        public OpenAiStreamingChatModelBuilder parameters(ChatParameters parameters) { // TODO names, check everywhere chatParameters vs parameters
+        public OpenAiStreamingChatModelBuilder parameters(ChatParameters parameters) { // TODO names, check everywhere chatParameters vs parameters vs defaultParameters
             this.parameters = parameters;
-            return this;
-        }
-
-        public OpenAiStreamingChatModelBuilder parameters(Consumer<OpenAiChatParameters.Builder> consumer) { // TODO?
-            OpenAiChatParameters.Builder builder = OpenAiChatParameters.builder();
-            consumer.accept(builder);
-            this.parameters = builder.build();
             return this;
         }
 

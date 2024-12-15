@@ -3,6 +3,8 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 
+import java.util.Objects;
+
 @Experimental
 public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
@@ -10,7 +12,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
     private final String serviceTier;
     private final String systemFingerprint;
 
-    private OpenAiChatResponseMetadata(Builder builder) { // TODO
+    private OpenAiChatResponseMetadata(Builder builder) {
         super(builder);
         this.created = builder.created;
         this.serviceTier = builder.serviceTier;
@@ -34,7 +36,30 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return systemFingerprint;
     }
 
-    // TODO eq, hash, tostr
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        OpenAiChatResponseMetadata that = (OpenAiChatResponseMetadata) o;
+        return Objects.equals(created, that.created)
+                && Objects.equals(serviceTier, that.serviceTier)
+                && Objects.equals(systemFingerprint, that.systemFingerprint);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), created, serviceTier, systemFingerprint);
+    }
+
+    @Override
+    public String toString() {
+        return "OpenAiChatResponseMetadata{" +
+                "created=" + created +
+                ", serviceTier='" + serviceTier + '\'' +
+                ", systemFingerprint='" + systemFingerprint + '\'' +
+                '}';
+    }
 
     public static Builder builder() {
         return new Builder();
@@ -61,6 +86,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
             return this;
         }
 
+        @Override
         public OpenAiChatResponseMetadata build() {
             return new OpenAiChatResponseMetadata(this);
         }
