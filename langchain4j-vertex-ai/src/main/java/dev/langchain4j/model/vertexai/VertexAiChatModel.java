@@ -1,5 +1,6 @@
 package dev.langchain4j.model.vertexai;
 
+import com.google.api.gax.core.NoCredentialsProvider;
 import com.google.cloud.aiplatform.v1.EndpointName;
 import com.google.cloud.aiplatform.v1.PredictResponse;
 import com.google.cloud.aiplatform.v1.PredictionServiceClient;
@@ -23,6 +24,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
@@ -52,7 +54,8 @@ public class VertexAiChatModel implements ChatLanguageModel {
     private final VertexAiParameters vertexAiParameters;
     private final Integer maxRetries;
 
-    public VertexAiChatModel(String endpoint,
+    public VertexAiChatModel(String apiKey,
+                             String endpoint,
                              String project,
                              String location,
                              String publisher,
@@ -63,9 +66,17 @@ public class VertexAiChatModel implements ChatLanguageModel {
                              Double topP,
                              Integer maxRetries) {
         try {
-            this.settings = PredictionServiceSettings.newBuilder()
-                    .setEndpoint(ensureNotBlank(endpoint, "endpoint"))
-                    .build();
+            if (apiKey != null && !apiKey.isEmpty()) {
+                this.settings = PredictionServiceSettings.newBuilder()
+                        .setCredentialsProvider(NoCredentialsProvider.create())
+                        .setHeaderProvider(() -> singletonMap("X-goog-api-key", "Bearer " + apiKey))
+                        .setEndpoint(ensureNotBlank(endpoint, "endpoint"))
+                        .build();
+            } else {
+                this.settings = PredictionServiceSettings.newBuilder()
+                        .setEndpoint(ensureNotBlank(endpoint, "endpoint"))
+                        .build();
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -160,6 +171,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
 
     public static class Builder {
 
+        private String apiKey;
         private String endpoint;
         private String project;
         private String location;
@@ -172,6 +184,11 @@ public class VertexAiChatModel implements ChatLanguageModel {
         private Double topP;
 
         private Integer maxRetries;
+
+        public Builder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
@@ -225,6 +242,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
 
         public VertexAiChatModel build() {
             return new VertexAiChatModel(
+                    apiKey,
                     endpoint,
                     project,
                     location,
