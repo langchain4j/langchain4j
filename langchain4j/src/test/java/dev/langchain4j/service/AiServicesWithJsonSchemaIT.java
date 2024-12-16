@@ -22,6 +22,7 @@ import java.time.LocalTime;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -34,7 +35,6 @@ import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtracto
 import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.SUNNY;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaIT.EnumSetExtractor.WeatherCharacteristic.WINDY;
 import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -57,7 +57,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_primitives() {
+    protected void should_extract_pojo_with_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -251,7 +251,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_nested_pojo() {
+    protected void should_extract_pojo_with_nested_pojo() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -313,7 +313,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_enum() {
+    protected void should_extract_pojo_with_enum() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -362,7 +362,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_array_of_primitives() {
+    protected void should_extract_pojo_with_array_of_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -412,7 +412,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_list_of_primitives() {
+    protected void should_extract_pojo_with_list_of_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -463,7 +463,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_set_of_primitives() {
+    protected void should_extract_pojo_with_set_of_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -519,7 +519,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_array_of_pojos() {
+    protected void should_extract_pojo_with_array_of_pojos() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -580,7 +580,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_list_of_pojos() {
+    protected void should_extract_pojo_with_list_of_pojos() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -641,7 +641,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_set_of_pojos() {
+    protected void should_extract_pojo_with_set_of_pojos() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -703,7 +703,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_array_of_enums() {
+    protected void should_extract_pojo_with_array_of_enums() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -764,7 +764,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_list_of_enums() {
+    protected void should_extract_pojo_with_list_of_enums() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -824,7 +824,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_set_of_enums() {
+    protected void should_extract_pojo_with_set_of_enums() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -881,7 +881,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_local_date_time_fields() {
+    protected void should_extract_pojo_with_local_date_time_fields() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -972,7 +972,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_return_result_with_pojo() {
+    protected void should_return_result_with_pojo() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -1022,7 +1022,7 @@ public abstract class AiServicesWithJsonSchemaIT {
 
     @Test
     @EnabledIf("supportsRecursion")
-    void should_execute_tool_with_pojo_with_recursion() {
+    void should_extract_pojo_with_recursion() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -1047,27 +1047,28 @@ public abstract class AiServicesWithJsonSchemaIT {
             String reference = generateUUIDFrom(PersonExtractor15.Person.class.getName());
 
             verify(model).chat(ChatRequest.builder()
-                .messages(singletonList(userMessage(text)))
-                .responseFormat(ResponseFormat.builder()
-                    .type(JSON)
-                    .jsonSchema(JsonSchema.builder()
-                        .name("Person")
-                        .rootElement(JsonObjectSchema.builder()
-                            .properties(new LinkedHashMap<>() {{
-                                put("name", new JsonStringSchema());
-                                put("children", JsonArraySchema.builder()
-                                    .items(JsonReferenceSchema.builder()
-                                        .reference(reference)
-                                        .build())
-                                    .build());
-                            }})
-                            .required("name", "children")
-                            .definitions(singletonMap(reference, JsonObjectSchema.builder()
-                                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
-                                    put("name", new JsonStringSchema());
-                                    put("children", JsonArraySchema.builder()
-                                        .items(JsonReferenceSchema.builder()
-                                            .reference(reference)
+                    .messages(singletonList(userMessage(text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Person")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addStringProperty("name")
+                                            .addProperty("children", JsonArraySchema.builder()
+                                                    .items(JsonReferenceSchema.builder()
+                                                            .reference(reference)
+                                                            .build())
+                                                    .build())
+                                            .required("name", "children")
+                                            .definitions(Map.of(reference, JsonObjectSchema.builder()
+                                                    .addStringProperty("name")
+                                                    .addProperty("children", JsonArraySchema.builder()
+                                                            .items(JsonReferenceSchema.builder()
+                                                                    .reference(reference)
+                                                                    .build())
+                                                            .build())
+                                                    .required("name", "children")
+                                                    .build()))
                                             .build())
                                         .build());
                                 }})
