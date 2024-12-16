@@ -4,7 +4,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -18,18 +18,17 @@ import lombok.NoArgsConstructor;
 @Builder(toBuilder = true)
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
-public class MistralAiChatCompletionRequest {
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class MistralAiFimCompletionRequest {
 
     private String model;
-    private List<MistralAiChatMessage> messages;
+    private String prompt;
+    private String suffix;
     private Double temperature;
-    private Double topP;
     private Integer maxTokens;
+    private Integer minTokens;
+    private Double topP;
     private Boolean stream;
-    private Boolean safePrompt;
     private Integer randomSeed;
-    private List<MistralAiTool> tools;
-    private MistralAiToolChoiceName toolChoice;
-    private MistralAiResponseFormat responseFormat;
+    private List<String> stop;
 }

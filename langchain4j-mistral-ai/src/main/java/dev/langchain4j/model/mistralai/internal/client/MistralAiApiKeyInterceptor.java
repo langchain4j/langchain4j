@@ -1,10 +1,9 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
+import java.io.IOException;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
-
-import java.io.IOException;
 
 class MistralAiApiKeyInterceptor implements Interceptor {
 

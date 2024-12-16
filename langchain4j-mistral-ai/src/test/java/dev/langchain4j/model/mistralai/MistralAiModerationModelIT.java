@@ -1,19 +1,19 @@
 package dev.langchain4j.model.mistralai;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class MistralAiModerationModelIT {
 
     ModerationModel model = new MistralAiModerationModel.Builder()
-        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-        .modelName("mistral-moderation-latest")
-        .logRequests(true)
-        .logResponses(true)
-        .build();
+            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName("mistral-moderation-latest")
+            .logRequests(true)
+            .logResponses(true)
+            .build();
 
     @Test
     void should_flag() {
@@ -28,6 +28,4 @@ class MistralAiModerationModelIT {
 
         assertThat(moderation.flagged()).isFalse();
     }
-
-
 }

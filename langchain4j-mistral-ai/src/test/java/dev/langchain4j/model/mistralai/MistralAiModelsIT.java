@@ -1,18 +1,17 @@
 package dev.langchain4j.model.mistralai;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class MistralAiModelsIT {
 
     MistralAiModels models = MistralAiModels.withApiKey(System.getenv("MISTRAL_AI_API_KEY"));
 
-    //https://docs.mistral.ai/models/
+    // https://docs.mistral.ai/models/
     @Test
     void should_return_all_model_cards() {
         // when

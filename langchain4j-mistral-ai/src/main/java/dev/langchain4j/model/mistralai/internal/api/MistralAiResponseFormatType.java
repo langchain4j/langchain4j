@@ -12,12 +12,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * </ul>
  */
 public enum MistralAiResponseFormatType {
+    @JsonProperty("text")
+    TEXT,
+    @JsonProperty("json_object")
+    JSON_OBJECT;
 
-    @JsonProperty("text") TEXT,
-    @JsonProperty("json_object") JSON_OBJECT;
-
-    MistralAiResponseFormatType() {
-    }
+    MistralAiResponseFormatType() {}
 
     /**
      * Returns the string representation in lowercase of the response format type.
@@ -25,5 +25,4 @@ public enum MistralAiResponseFormatType {
     public String toString() {
         return this.name().toLowerCase();
     }
-
 }

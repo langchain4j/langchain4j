@@ -10,13 +10,19 @@ public abstract class MistralAiClient {
 
     public abstract MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request);
 
-    public abstract void streamingChatCompletion(MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler);
+    public abstract void streamingChatCompletion(
+            MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler);
 
     public abstract MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request);
 
     public abstract MistralAiModerationResponse moderation(MistralAiModerationRequest request);
 
     public abstract MistralAiModelResponse listModels();
+
+    public abstract MistralAiChatCompletionResponse fimCompletion(MistralAiFimCompletionRequest request);
+
+    public abstract void streamingFimCompletion(
+            MistralAiFimCompletionRequest request, StreamingResponseHandler<String> handler);
 
     @SuppressWarnings("rawtypes")
     public static MistralAiClient.Builder builder() {
@@ -47,7 +53,8 @@ public abstract class MistralAiClient {
 
         public B apiKey(String apiKey) {
             if (apiKey == null || apiKey.trim().isEmpty()) {
-                throw new IllegalArgumentException("MistralAI API Key must be defined. It can be generated here: https://console.mistral.ai/user/api-keys");
+                throw new IllegalArgumentException(
+                        "MistralAI API Key must be defined. It can be generated here: https://console.mistral.ai/user/api-keys");
             }
             this.apiKey = apiKey;
             return (B) this;

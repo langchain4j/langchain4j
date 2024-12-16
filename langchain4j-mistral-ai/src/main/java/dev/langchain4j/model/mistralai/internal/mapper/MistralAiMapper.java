@@ -1,5 +1,14 @@
 package dev.langchain4j.model.mistralai.internal.mapper;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -23,24 +32,12 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiToolType;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
-import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-import static java.util.stream.Collectors.toList;
 
 public class MistralAiMapper {
 
     public static List<MistralAiChatMessage> toMistralAiMessages(List<ChatMessage> messages) {
-        return messages.stream()
-                .map(MistralAiMapper::toMistralAiMessage)
-                .collect(toList());
+        return messages.stream().map(MistralAiMapper::toMistralAiMessage).collect(toList());
     }
 
     static MistralAiChatMessage toMistralAiMessage(ChatMessage message) {
@@ -90,6 +87,7 @@ public class MistralAiMapper {
         if (message instanceof ToolExecutionResultMessage) {
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.TOOL)
+                    .toolCallId((((ToolExecutionResultMessage) message).id()))
                     .name(((ToolExecutionResultMessage) message).toolName())
                     .content(((ToolExecutionResultMessage) message).text())
                     .build();
@@ -115,8 +113,7 @@ public class MistralAiMapper {
         return new TokenUsage(
                 mistralAiUsage.getPromptTokens(),
                 mistralAiUsage.getCompletionTokens(),
-                mistralAiUsage.getTotalTokens()
-        );
+                mistralAiUsage.getTotalTokens());
     }
 
     public static FinishReason finishReasonFrom(String mistralAiFinishReason) {
@@ -163,9 +160,7 @@ public class MistralAiMapper {
     }
 
     public static List<MistralAiTool> toMistralAiTools(List<ToolSpecification> toolSpecifications) {
-        return toolSpecifications.stream()
-                .map(MistralAiMapper::toMistralAiTool)
-                .collect(toList());
+        return toolSpecifications.stream().map(MistralAiMapper::toMistralAiTool).collect(toList());
     }
 
     static MistralAiTool toMistralAiTool(ToolSpecification toolSpecification) {

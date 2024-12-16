@@ -1,5 +1,11 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
@@ -8,16 +14,9 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiEmbeddingResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.stream.Collectors.toList;
+import lombok.Builder;
 
 /**
  * Represents a Mistral AI embedding model, such as mistral-embed.
@@ -44,13 +43,14 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
      * @param maxRetries   the maximum number of retries for API requests. It uses a default value of 3 if not specified
      */
     @Builder
-    public MistralAiEmbeddingModel(String baseUrl,
-                                   String apiKey,
-                                   String modelName,
-                                   Duration timeout,
-                                   Boolean logRequests,
-                                   Boolean logResponses,
-                                   Integer maxRetries) {
+    public MistralAiEmbeddingModel(
+            String baseUrl,
+            String apiKey,
+            String modelName,
+            Duration timeout,
+            Boolean logRequests,
+            Boolean logResponses,
+            Integer maxRetries) {
         this.client = MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
@@ -93,14 +93,12 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .map(mistralAiEmbedding -> Embedding.from(mistralAiEmbedding.getEmbedding()))
                 .collect(toList());
 
-        return Response.from(
-                embeddings,
-                tokenUsageFrom(response.getUsage())
-        );
+        return Response.from(embeddings, tokenUsageFrom(response.getUsage()));
     }
 
     public static MistralAiEmbeddingModelBuilder builder() {
-        for (MistralAiEmbeddingModelBuilderFactory factory : loadFactories(MistralAiEmbeddingModelBuilderFactory.class)) {
+        for (MistralAiEmbeddingModelBuilderFactory factory :
+                loadFactories(MistralAiEmbeddingModelBuilderFactory.class)) {
             return factory.get();
         }
         return new MistralAiEmbeddingModelBuilder();
@@ -108,8 +106,7 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public static class MistralAiEmbeddingModelBuilder {
 
-        public MistralAiEmbeddingModelBuilder() {
-        }
+        public MistralAiEmbeddingModelBuilder() {}
 
         public MistralAiEmbeddingModelBuilder modelName(String modelName) {
             this.modelName = modelName;
