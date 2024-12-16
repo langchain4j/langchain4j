@@ -1,13 +1,14 @@
 package dev.langchain4j.service.output;
 
-import static java.util.stream.Collectors.toList;
-
 import dev.langchain4j.internal.Json;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toList;
 
 @SuppressWarnings("rawtypes")
 class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
@@ -42,10 +43,13 @@ class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
                 items = List.of(items);
             }
 
-            return ((Collection<String>) items)
-                    .stream().map(enumOutputParser::parse).collect(toList());
+            return ((Collection<String>) items).stream()
+                .map(enumOutputParser::parse)
+                .collect(toList());
         }
 
-        return Stream.of(text.split("\n")).map(enumOutputParser::parse).collect(toList());
+        return Stream.of(text.split("\n"))
+            .map(enumOutputParser::parse)
+            .collect(toList());
     }
 }

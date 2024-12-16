@@ -1,26 +1,25 @@
 package dev.langchain4j.service.output;
 
-import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.BIRD;
-import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.CAT;
-import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.DOG;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import java.util.Iterator;
-import java.util.Set;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.Iterator;
+import java.util.Set;
+import java.util.stream.Stream;
+
+import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.BIRD;
+import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.CAT;
+import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.DOG;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 class EnumSetOutputParserTest {
 
     enum Animal {
-        CAT,
-        DOG,
-        BIRD
+        CAT, DOG, BIRD
     }
 
     @ParameterizedTest
@@ -40,51 +39,55 @@ class EnumSetOutputParserTest {
     static Stream<Arguments> should_parse_set_of_enums() {
         return Stream.of(
 
-                // Plain text
-                Arguments.of("CAT", Set.of(CAT)),
-                Arguments.of("CAT\nDOG", Set.of(CAT, DOG)),
+            // Plain text
+            Arguments.of("CAT", Set.of(CAT)),
+            Arguments.of("CAT\nDOG", Set.of(CAT, DOG)),
 
-                // Plain text: wrong case
-                Arguments.of("cat", Set.of(CAT)),
-                Arguments.of("Cat", Set.of(CAT)),
+            // Plain text: wrong case
+            Arguments.of("cat", Set.of(CAT)),
+            Arguments.of("Cat", Set.of(CAT)),
 
-                // Plain text: empty
-                Arguments.of(null, Set.of()),
-                Arguments.of("", Set.of()),
-                Arguments.of(" ", Set.of()),
+            // Plain text: empty
+            Arguments.of(null, Set.of()),
+            Arguments.of("", Set.of()),
+            Arguments.of(" ", Set.of()),
 
-                // Plain text: surrounded by whitespaces
-                Arguments.of(" CAT ", Set.of(CAT)),
-                Arguments.of(" CAT \n DOG ", Set.of(CAT, DOG)),
+            // Plain text: surrounded by whitespaces
+            Arguments.of(" CAT ", Set.of(CAT)),
+            Arguments.of(" CAT \n DOG ", Set.of(CAT, DOG)),
 
-                // JSON
-                Arguments.of("{\"items\":[CAT]}", Set.of(CAT)),
-                Arguments.of("{\"items\":['CAT']}", Set.of(CAT)),
-                Arguments.of("{\"items\":[\"CAT\"]}", Set.of(CAT)),
-                Arguments.of("{\"items\":[CAT, DOG]}", Set.of(CAT, DOG)),
+            // JSON
+            Arguments.of("{\"items\":[CAT]}", Set.of(CAT)),
+            Arguments.of("{\"items\":['CAT']}", Set.of(CAT)),
+            Arguments.of("{\"items\":[\"CAT\"]}", Set.of(CAT)),
+            Arguments.of("{\"items\":[CAT, DOG]}", Set.of(CAT, DOG)),
 
-                // JSON: wrong case
-                Arguments.of("{\"items\":[cat]}", Set.of(CAT)),
-                Arguments.of("{\"items\":[Cat]}", Set.of(CAT)),
+            // JSON: wrong case
+            Arguments.of("{\"items\":[cat]}", Set.of(CAT)),
+            Arguments.of("{\"items\":[Cat]}", Set.of(CAT)),
 
-                // JSON: empty
-                Arguments.of("{}", Set.of()),
-                Arguments.of("{\"items\":[]}", Set.of()),
-                Arguments.of("{\"items\":null}", Set.of()),
+            // JSON: empty
+            Arguments.of("{}", Set.of()),
+            Arguments.of("{\"items\":[]}", Set.of()),
+            Arguments.of("{\"items\":null}", Set.of()),
 
-                // JSON: wrong type
-                Arguments.of("{\"items\":\"CAT\"}", Set.of(CAT)),
+            // JSON: wrong type
+            Arguments.of("{\"items\":\"CAT\"}", Set.of(CAT)),
 
-                // JSON: wrong property name
-                Arguments.of("{\"values\":[CAT]}", Set.of(CAT)),
-                Arguments.of("{\"animals\":[CAT]}", Set.of(CAT)),
+            // JSON: wrong property name
+            Arguments.of("{\"values\":[CAT]}", Set.of(CAT)),
+            Arguments.of("{\"animals\":[CAT]}", Set.of(CAT)),
 
-                // JSON: surrounded by whitespaces
-                Arguments.of(" {\"items\":[CAT]} ", Set.of(CAT)));
+            // JSON: surrounded by whitespaces
+            Arguments.of(" {\"items\":[CAT]} ", Set.of(CAT))
+        );
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"BANANA", "{\"items\":[BANANA]}"})
+    @ValueSource(strings = {
+        "BANANA",
+        "{\"items\":[BANANA]}"
+    })
     void should_fail_to_parse_set_of_enums(String text) {
 
         // given
@@ -92,8 +95,8 @@ class EnumSetOutputParserTest {
 
         // when-then
         assertThatThrownBy(() -> parser.parse(text))
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Unknown enum value: BANANA");
+            .isExactlyInstanceOf(RuntimeException.class)
+            .hasMessageContaining("Unknown enum value: BANANA");
     }
 
     @Test()

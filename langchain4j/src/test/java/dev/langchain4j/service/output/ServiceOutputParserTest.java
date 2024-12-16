@@ -1,19 +1,18 @@
 package dev.langchain4j.service.output;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.spy;
-
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.stubbing.Answer;
+
 import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
@@ -28,12 +27,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.stubbing.Answer;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 
 class ServiceOutputParserTest {
 
@@ -51,42 +52,35 @@ class ServiceOutputParserTest {
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Integer.class, IntOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), long.class, LongOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Long.class, LongOutputParser.class);
-        testWhetherProperOutputParserWasCalled(
-                AiMessage.aiMessage("1"), BigInteger.class, BigIntegerOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), BigInteger.class, BigIntegerOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), float.class, FloatOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Float.class, FloatOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), double.class, DoubleOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), Double.class, DoubleOutputParser.class);
-        testWhetherProperOutputParserWasCalled(
-                AiMessage.aiMessage("1"), BigDecimal.class, BigDecimalOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("1"), BigDecimal.class, BigDecimalOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("2024-07-02"), Date.class, DateOutputParser.class);
-        testWhetherProperOutputParserWasCalled(
-                AiMessage.aiMessage("2024-07-02"), LocalDate.class, LocalDateOutputParser.class);
-        testWhetherProperOutputParserWasCalled(
-                AiMessage.aiMessage("11:38:00"), LocalTime.class, LocalTimeOutputParser.class);
-        testWhetherProperOutputParserWasCalled(
-                AiMessage.aiMessage("2024-07-02T11:38:00"), LocalDateTime.class, LocalDateTimeOutputParser.class);
-        testWhetherProperOutputParserWasCalled(
-                AiMessage.aiMessage(Weather.SUNNY.name()), Weather.class, EnumOutputParser.class);
-        Type listOfWeatherEnumTypes = new TypeToken<List<Weather>>() {}.getType();
-        testWhetherProperOutputParserWasCalled(
-                AiMessage.aiMessage("SUNNY\nCLOUDY"), listOfWeatherEnumTypes, EnumListOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("2024-07-02"), LocalDate.class, LocalDateOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("11:38:00"), LocalTime.class, LocalTimeOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("2024-07-02T11:38:00"), LocalDateTime.class, LocalDateTimeOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage(Weather.SUNNY.name()), Weather.class, EnumOutputParser.class);
+        Type listOfWeatherEnumTypes = new TypeToken<List<Weather>>() {
+        }.getType();
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), listOfWeatherEnumTypes, EnumListOutputParser.class);
 
-        Type setOfWeatherEnumTypes = new TypeToken<Set<Weather>>() {}.getType();
-        testWhetherProperOutputParserWasCalled(
-                AiMessage.aiMessage("SUNNY\nCLOUDY"), setOfWeatherEnumTypes, EnumSetOutputParser.class);
+        Type setOfWeatherEnumTypes = new TypeToken<Set<Weather>>() {
+        }.getType();
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), setOfWeatherEnumTypes, EnumSetOutputParser.class);
 
-        Type listOfStringsType = new TypeToken<List<String>>() {}.getType();
-        testWhetherProperOutputParserWasCalled(
-                AiMessage.aiMessage("SUNNY\nCLOUDY"), listOfStringsType, StringListOutputParser.class);
+        Type listOfStringsType = new TypeToken<List<String>>() {
+        }.getType();
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), listOfStringsType, StringListOutputParser.class);
 
-        Type setOfStringsType = new TypeToken<Set<String>>() {}.getType();
-        testWhetherProperOutputParserWasCalled(
-                AiMessage.aiMessage("SUNNY\nCLOUDY"), setOfStringsType, StringSetOutputParser.class);
+        Type setOfStringsType = new TypeToken<Set<String>>() {
+        }.getType();
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), setOfStringsType, StringSetOutputParser.class);
     }
 
-    private void testWhetherProperOutputParserWasCalled(
-            AiMessage aiMessage, Type rawReturnType, Class<?> expectedOutputParserType) {
+    private void testWhetherProperOutputParserWasCalled(AiMessage aiMessage, Type rawReturnType, Class<?> expectedOutputParserType) {
         // Given
         DefaultOutputParserFactory defaultOutputParserFactory = new DefaultOutputParserFactory();
         OutputParserFactory defaultOutputParserFactorySpy = spy(defaultOutputParserFactory);
@@ -97,12 +91,10 @@ class ServiceOutputParserTest {
         AtomicReference<Optional<OutputParser<?>>> capturedParserReference = new AtomicReference<>();
 
         doAnswer((Answer<Optional<?>>) invocation -> {
-                    Optional<OutputParser<?>> result = (Optional<OutputParser<?>>) invocation.callRealMethod();
-                    capturedParserReference.set(result);
-                    return result;
-                })
-                .when(defaultOutputParserFactorySpy)
-                .get(any(), any());
+            Optional<OutputParser<?>> result = (Optional<OutputParser<?>>) invocation.callRealMethod();
+            capturedParserReference.set(result);
+            return result;
+        }).when(defaultOutputParserFactorySpy).get(any(), any());
 
         // When
         sut.parse(responseStub, rawReturnType);
@@ -115,14 +107,14 @@ class ServiceOutputParserTest {
     /********************************************************************************************
      * Json output parse tests
      ********************************************************************************************/
+
     @ParameterizedTest
-    @ValueSource(
-            strings = {
-                "{\"key\":\"value\"}",
-                "```\n{\"key\":\"value\"}\n```",
-                "```json\n{\"key\":\"value\"}\n```",
-                "Sure, here is your JSON:\n```\n{\"key\":\"value\"}\n```\nLet me know if you need more help."
-            })
+    @ValueSource(strings = {
+            "{\"key\":\"value\"}",
+            "```\n{\"key\":\"value\"}\n```",
+            "```json\n{\"key\":\"value\"}\n```",
+            "Sure, here is your JSON:\n```\n{\"key\":\"value\"}\n```\nLet me know if you need more help."
+    })
     void makeSureJsonBlockIsExtractedBeforeParse(String json) {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
@@ -140,13 +132,12 @@ class ServiceOutputParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(
-            strings = {
-                "{\"keyProperty\" : {\"key\" : \"value\"}}",
-                "```\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```",
-                "```json\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```",
-                "Sure, here is your JSON:\n```\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```\nLet me know if you need more help."
-            })
+    @ValueSource(strings = {
+            "{\"keyProperty\" : {\"key\" : \"value\"}}",
+            "```\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```",
+            "```json\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```",
+            "Sure, here is your JSON:\n```\n{\"keyProperty\" :\n {\"key\" : \"value\"}\n}\n```\nLet me know if you need more help."
+    })
     void makeSureNestedJsonBlockIsExtractedBeforeParse(String json) {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
@@ -164,7 +155,10 @@ class ServiceOutputParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"\"key\":\"value\"}", "{\"key\":\"value\""})
+    @ValueSource(strings = {
+            "\"key\":\"value\"}",
+            "{\"key\":\"value\""
+    })
     void illegalJsonBlockNotExtractedAndFailsParse(String json) {
         // Given
         AiMessage aiMessage = AiMessage.aiMessage(json);
@@ -172,8 +166,7 @@ class ServiceOutputParserTest {
         sut = new ServiceOutputParser();
 
         // When / Then
-        assertThatExceptionOfType(JsonSyntaxException.class)
-                .isThrownBy(() -> sut.parse(responseStub, KeyProperty.class));
+        assertThatExceptionOfType(JsonSyntaxException.class).isThrownBy(() -> sut.parse(responseStub, KeyProperty.class));
     }
 
     static class KeyPropertyWrapper {
@@ -184,12 +177,12 @@ class ServiceOutputParserTest {
         String key;
     }
 
+
     @Test
     void should_parse_pojo() {
 
         // given
-        String json =
-                """
+        String json = """
             {
                 "firstName": "Klaus",
                 "lastName": "Heisler"
@@ -205,14 +198,17 @@ class ServiceOutputParserTest {
         assertThat(person.birthDate).isNull();
     }
 
-    record Pojo(String name) {}
+
+    record Pojo(String name) {
+    }
 
     @ParameterizedTest
     @MethodSource
     void should_parse_list_of_pojo(String json, List<Pojo> expected) {
 
         // given
-        Type type = new TypeToken<List<Pojo>>() {}.getType();
+        Type type = new TypeToken<List<Pojo>>() {
+        }.getType();
 
         // when
         List<Pojo> pojos = (List<Pojo>) sut.parse(Response.from(AiMessage.from(json)), type);
@@ -223,29 +219,45 @@ class ServiceOutputParserTest {
 
     static Stream<Arguments> should_parse_list_of_pojo() {
         return Stream.of(
-                Arguments.of("{\"items\":[{\"name\":\"Klaus\"}]}", List.of(new Pojo("Klaus"))),
-                Arguments.of(
-                        "{\"items\":[{\"name\":\"Klaus\"}, {\"name\":\"Franny\"}]}",
-                        List.of(new Pojo("Klaus"), new Pojo("Franny"))),
 
-                // empty
-                Arguments.of("", List.of()),
-                Arguments.of(" ", List.of()),
-                Arguments.of("{}", List.of()),
-                Arguments.of("{\"items\":[]}", List.of()),
-                Arguments.of("{\"items\":null}", List.of()),
+            Arguments.of(
+                "{\"items\":[{\"name\":\"Klaus\"}]}",
+                List.of(new Pojo("Klaus"))
+            ),
+            Arguments.of(
+                "{\"items\":[{\"name\":\"Klaus\"}, {\"name\":\"Franny\"}]}",
+                List.of(new Pojo("Klaus"), new Pojo("Franny"))
+            ),
 
-                // wrong property name
-                Arguments.of("{\"values\":[{\"name\":\"Klaus\"}]}", List.of(new Pojo("Klaus"))),
-                Arguments.of("{\"people\":[{\"name\":\"Klaus\"}]}", List.of(new Pojo("Klaus"))),
+            // empty
+            Arguments.of("", List.of()),
+            Arguments.of(" ", List.of()),
+            Arguments.of("{}", List.of()),
+            Arguments.of("{\"items\":[]}", List.of()),
+            Arguments.of("{\"items\":null}", List.of()),
 
-                // surrounded by whitespaces
-                Arguments.of(" {\"items\":[{\"name\":\"Klaus\"}]} ", List.of(new Pojo("Klaus"))));
+            // wrong property name
+            Arguments.of(
+                "{\"values\":[{\"name\":\"Klaus\"}]}",
+                List.of(new Pojo("Klaus"))
+            ),
+            Arguments.of(
+                "{\"people\":[{\"name\":\"Klaus\"}]}",
+                List.of(new Pojo("Klaus"))
+            ),
+
+            // surrounded by whitespaces
+            Arguments.of(
+                " {\"items\":[{\"name\":\"Klaus\"}]} ",
+                List.of(new Pojo("Klaus"))
+            )
+        );
     }
 
     /********************************************************************************************
      * Output format instructions tests
      ********************************************************************************************/
+
     public enum Weather {
         SUNNY,
         CLOUDY,
@@ -274,24 +286,26 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_Enum() {
         String formatInstructions = sut.outputFormatInstructions(Weather.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\n" + "You must answer strictly with one of these enums:\n"
-                        + "SUNNY\n"
-                        + "CLOUDY\n"
-                        + "RAINY\n"
-                        + "SNOWY");
+        assertThat(formatInstructions).isEqualTo(
+                "\n" +
+                        "You must answer strictly with one of these enums:\n" +
+                        "SUNNY\n" +
+                        "CLOUDY\n" +
+                        "RAINY\n" +
+                        "SNOWY");
     }
 
     @Test
     void outputFormatInstructions_EnumWithDescriptions() {
         String formatInstructions = sut.outputFormatInstructions(WeatherWithDescription.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\n" + "You must answer strictly with one of these enums:\n"
-                        + "SUNNY - A clear day with bright sunlight and few or no clouds\n"
-                        + "CLOUDY - The sky is covered with clouds, often creating a gray and overcast appearance\n"
-                        + "RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions\n"
-                        + "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions");
+        assertThat(formatInstructions).isEqualTo(
+                "\n" +
+                        "You must answer strictly with one of these enums:\n" +
+                        "SUNNY - A clear day with bright sunlight and few or no clouds\n" +
+                        "CLOUDY - The sky is covered with clouds, often creating a gray and overcast appearance\n" +
+                        "RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions\n" +
+                        "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions");
     }
 
     @Test
@@ -299,12 +313,12 @@ class ServiceOutputParserTest {
 
         String formatInstructions = sut.outputFormatInstructions(Person.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"birthDate\": (type: date string (2023-12-31))\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31))\n" +
+                        "}");
     }
 
     static class PersonWithFirstNameList {
@@ -317,12 +331,12 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithFirstNameList() {
         String formatInstructions = sut.outputFormatInstructions(PersonWithFirstNameList.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: array of string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"birthDate\": (type: date string (2023-12-31))\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: array of string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31))\n" +
+                        "}");
     }
 
     static class PersonWithFirstNameArray {
@@ -335,12 +349,12 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithFirstNameArray() {
         String formatInstructions = sut.outputFormatInstructions(PersonWithFirstNameArray.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: array of string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"birthDate\": (type: date string (2023-12-31))\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: array of string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31))\n" +
+                        "}");
     }
 
     static class PersonWithCalendarDate {
@@ -353,12 +367,12 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithJavaType() {
         String formatInstructions = sut.outputFormatInstructions(PersonWithCalendarDate.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"birthDate\": (type: java.util.Calendar)\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: java.util.Calendar)\n" +
+                        "}");
     }
 
     static class PersonWithStaticField implements Serializable {
@@ -372,12 +386,12 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithStaticFinalField() {
         String formatInstructions = sut.outputFormatInstructions(PersonWithStaticField.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"birthDate\": (type: date string (2023-12-31))\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31))\n" +
+                        "}");
     }
 
     static class Address {
@@ -397,17 +411,17 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithNestedObject() {
         String formatInstructions = sut.outputFormatInstructions(PersonAndAddress.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"birthDate\": (type: date string (2023-12-31)),\n"
-                        + "\"address\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n"
-                        + "\"streetNumber\": (type: integer),\n"
-                        + "\"street\": (type: string),\n"
-                        + "\"city\": (type: string)\n"
-                        + "})\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"address\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
+                        "\"streetNumber\": (type: integer),\n" +
+                        "\"street\": (type: string),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
+                        "}");
     }
 
     static class PersonAndAddressList {
@@ -421,17 +435,17 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithNestedObjectList() {
         String formatInstructions = sut.outputFormatInstructions(PersonAndAddressList.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"birthDate\": (type: date string (2023-12-31)),\n"
-                        + "\"address\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n"
-                        + "\"streetNumber\": (type: integer),\n"
-                        + "\"street\": (type: string),\n"
-                        + "\"city\": (type: string)\n"
-                        + "})\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"address\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
+                        "\"streetNumber\": (type: integer),\n" +
+                        "\"street\": (type: string),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
+                        "}");
     }
 
     static class PersonAndAddressArray {
@@ -445,17 +459,17 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithNestedObjectArray() {
         String formatInstructions = sut.outputFormatInstructions(PersonAndAddressArray.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"birthDate\": (type: date string (2023-12-31)),\n"
-                        + "\"address\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n"
-                        + "\"streetNumber\": (type: integer),\n"
-                        + "\"street\": (type: string),\n"
-                        + "\"city\": (type: string)\n"
-                        + "})\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"address\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
+                        "\"streetNumber\": (type: integer),\n" +
+                        "\"street\": (type: string),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
+                        "}");
     }
 
     static class PersonWithFinalFields {
@@ -474,12 +488,12 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithFinalFields() {
         String formatInstructions = sut.outputFormatInstructions(PersonWithFinalFields.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"birthDate\": (type: date string (2023-12-31))\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31))\n" +
+                        "}");
     }
 
     static class PersonWithParents {
@@ -492,16 +506,16 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithParents() {
         String formatInstructions = sut.outputFormatInstructions(PersonWithParents.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents)\n"
-                        + "})\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents)\n" +
+                        "})\n" +
+                        "}");
     }
 
     static class PersonWithParentArray {
@@ -514,16 +528,16 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithParentArray() {
         String formatInstructions = sut.outputFormatInstructions(PersonWithParentArray.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray)\n"
-                        + "})\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray)\n" +
+                        "})\n" +
+                        "}");
     }
 
     static class PersonWithMotherAndFather {
@@ -537,21 +551,23 @@ class ServiceOutputParserTest {
     void outputFormatInstructions_PersonWithMotherAndFather() {
         String formatInstructions = sut.outputFormatInstructions(PersonWithMotherAndFather.class);
 
-        assertThat(formatInstructions)
-                .isEqualTo("\nYou must answer strictly in the following JSON format: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"mother\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather: {\n"
-                        + "\"firstName\": (type: string),\n"
-                        + "\"lastName\": (type: string),\n"
-                        + "\"mother\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather),\n"
-                        + "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n"
-                        + "}),\n"
-                        + "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n"
-                        + "}");
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"mother\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"mother\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
+                        "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
+                        "}),\n" +
+                        "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
+                        "}");
     }
 
-    static class ClassWithNoFields {}
+    static class ClassWithNoFields {
+
+    }
 
     @Test
     void outputFormatInstructions_ClassWithNoFields() {

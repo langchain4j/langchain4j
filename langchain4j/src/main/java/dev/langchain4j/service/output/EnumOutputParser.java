@@ -1,13 +1,14 @@
 package dev.langchain4j.service.output;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.output.structured.Description;
+
 import java.lang.reflect.Field;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @SuppressWarnings("rawtypes")
 class EnumOutputParser implements OutputParser<Enum> {
@@ -79,8 +80,7 @@ class EnumOutputParser implements OutputParser<Enum> {
             for (Enum enumConstant : enumConstants) {
                 instruction.append("\n").append(enumConstant.name().toUpperCase(Locale.ROOT));
                 Optional<String> optionalEnumDescription = getEnumDescription(enumClass, enumConstant);
-                optionalEnumDescription.ifPresent(
-                        description -> instruction.append(" - ").append(description));
+                optionalEnumDescription.ifPresent(description -> instruction.append(" - ").append(description));
             }
 
             return instruction.toString();
@@ -95,8 +95,7 @@ class EnumOutputParser implements OutputParser<Enum> {
      * @param enumConstant for which description should be returned
      * @return description of the provided enum
      */
-    static Optional<String> getEnumDescription(Class<? extends Enum> enumClass, Enum enumConstant)
-            throws NoSuchFieldException {
+    static Optional<String> getEnumDescription(Class<? extends Enum> enumClass, Enum enumConstant) throws NoSuchFieldException {
         Field field = enumClass.getDeclaredField(enumConstant.name());
 
         if (field.isAnnotationPresent(Description.class)) {
