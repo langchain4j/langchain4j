@@ -1,15 +1,14 @@
 package dev.langchain4j.service.output;
 
-import dev.langchain4j.internal.Json;
+import static java.util.stream.Collectors.toCollection;
 
+import dev.langchain4j.internal.Json;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toCollection;
 
 @SuppressWarnings("rawtypes")
 class EnumSetOutputParser extends EnumCollectionOutputParser<Enum> {
@@ -44,13 +43,10 @@ class EnumSetOutputParser extends EnumCollectionOutputParser<Enum> {
                 items = Set.of(items);
             }
 
-            return ((Collection<String>) items).stream()
-                .map(enumOutputParser::parse)
-                .collect(toCollection(LinkedHashSet::new));
+            return ((Collection<String>) items)
+                    .stream().map(enumOutputParser::parse).collect(toCollection(LinkedHashSet::new));
         }
 
-        return Stream.of(text.split("\n"))
-            .map(enumOutputParser::parse)
-            .collect(toCollection(LinkedHashSet::new));
+        return Stream.of(text.split("\n")).map(enumOutputParser::parse).collect(toCollection(LinkedHashSet::new));
     }
 }

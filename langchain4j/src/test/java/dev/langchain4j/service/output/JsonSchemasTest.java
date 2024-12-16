@@ -1,5 +1,9 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.service.output.JsonSchemas.isEnum;
+import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -9,21 +13,16 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.Result;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.service.output.JsonSchemas.isEnum;
-import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class JsonSchemasTest {
 
@@ -35,8 +34,7 @@ class JsonSchemasTest {
     @Test
     void should_return_json_schema_for_pojos() {
         assertThat(jsonSchemaFrom(Pojo.class)).isPresent();
-        assertThat(jsonSchemaFrom(new TypeToken<Result<Pojo>>() {
-        }.getType())).isPresent();
+        assertThat(jsonSchemaFrom(new TypeToken<Result<Pojo>>() {}.getType())).isPresent();
     }
 
     @Test
@@ -46,10 +44,8 @@ class JsonSchemasTest {
         assertThat(jsonSchemaFrom(Response.class)).isEmpty();
         assertThat(jsonSchemaFrom(Integer.class)).isEmpty();
         assertThat(jsonSchemaFrom(LocalDate.class)).isEmpty();
-        assertThat(jsonSchemaFrom(new TypeToken<Result<String>>() {
-        }.getType())).isEmpty();
+        assertThat(jsonSchemaFrom(new TypeToken<Result<String>>() {}.getType())).isEmpty();
     }
-
 
     // POJO
 
@@ -74,7 +70,8 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonObjectSchema addressSchema = (JsonObjectSchema) rootElement.properties().get("address");
+        JsonObjectSchema addressSchema =
+                (JsonObjectSchema) rootElement.properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address");
     }
 
@@ -99,7 +96,8 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonObjectSchema addressSchema = (JsonObjectSchema) rootElement.properties().get("address");
+        JsonObjectSchema addressSchema =
+                (JsonObjectSchema) rootElement.properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address");
     }
 
@@ -125,16 +123,16 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonObjectSchema addressSchema = (JsonObjectSchema) rootElement.properties().get("address");
+        JsonObjectSchema addressSchema =
+                (JsonObjectSchema) rootElement.properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address 2");
     }
-
 
     // ENUM
 
     enum MaritalStatus {
-
-        SINGLE, MARRIED
+        SINGLE,
+        MARRIED
     }
 
     @Test
@@ -152,15 +150,15 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) rootElement.properties().get("maritalStatus");
+        JsonEnumSchema maritalStatusSchema =
+                (JsonEnumSchema) rootElement.properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status");
     }
 
-
     @Description("marital status")
     enum MaritalStatus2 {
-
-        SINGLE, MARRIED
+        SINGLE,
+        MARRIED
     }
 
     @Test
@@ -177,15 +175,15 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) rootElement.properties().get("maritalStatus");
+        JsonEnumSchema maritalStatusSchema =
+                (JsonEnumSchema) rootElement.properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status");
     }
 
-
     @Description("marital status")
     enum MaritalStatus3 {
-
-        SINGLE, MARRIED
+        SINGLE,
+        MARRIED
     }
 
     @Test
@@ -203,7 +201,8 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) rootElement.properties().get("maritalStatus");
+        JsonEnumSchema maritalStatusSchema =
+                (JsonEnumSchema) rootElement.properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status 2");
     }
 
@@ -234,7 +233,8 @@ class JsonSchemasTest {
     }
 
     private enum TestEnum {
-        VALUE1, VALUE2
+        VALUE1,
+        VALUE2
     }
 
     @ParameterizedTest
@@ -252,17 +252,15 @@ class JsonSchemasTest {
         Method nonEnumOptionalMethod = GenericEnumHolder.class.getDeclaredMethod("getNonEnumOptional");
 
         return Stream.of(
-            Arguments.of(TestEnum.class, true),
-            Arguments.of(enumListMethod.getGenericReturnType(), true),
-            Arguments.of(optionalEnumMethod.getGenericReturnType(), true),
-
-            Arguments.of(String.class, false),
-            Arguments.of(int.class, false),
-            Arguments.of(List.class, false),
-            Arguments.of(Optional.class, false),
-            Arguments.of(nonEnumListMethod.getGenericReturnType(), false),
-            Arguments.of(nonEnumOptionalMethod.getGenericReturnType(), false)
-        );
+                Arguments.of(TestEnum.class, true),
+                Arguments.of(enumListMethod.getGenericReturnType(), true),
+                Arguments.of(optionalEnumMethod.getGenericReturnType(), true),
+                Arguments.of(String.class, false),
+                Arguments.of(int.class, false),
+                Arguments.of(List.class, false),
+                Arguments.of(Optional.class, false),
+                Arguments.of(nonEnumListMethod.getGenericReturnType(), false),
+                Arguments.of(nonEnumOptionalMethod.getGenericReturnType(), false));
     }
 
     private static class GenericEnumHolder<T extends Enum<T>> {

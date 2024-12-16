@@ -1,5 +1,12 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.service.TypeUtils.getRawClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
+import static java.util.Arrays.stream;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -11,19 +18,11 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.TypeUtils;
-
 import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-
-import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.jsonObjectOrReferenceSchemaFrom;
-import static dev.langchain4j.service.TypeUtils.getRawClass;
-import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
-import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static java.util.Arrays.stream;
 
 @Experimental
 public class JsonSchemas {
@@ -54,17 +53,17 @@ public class JsonSchemas {
             Class<?> returnTypeClass = (Class<?>) returnType;
             if (returnTypeClass.isEnum()) {
                 JsonSchema jsonSchema = JsonSchema.builder()
-                    .name(returnTypeClass.getSimpleName())
-                    .rootElement(JsonObjectSchema.builder()
-                        .addProperty("value", enumSchemaFrom(returnTypeClass))
-                        .build())
-                    .build();
+                        .name(returnTypeClass.getSimpleName())
+                        .rootElement(JsonObjectSchema.builder()
+                                .addProperty("value", enumSchemaFrom(returnTypeClass))
+                                .build())
+                        .build();
                 return Optional.of(jsonSchema);
             } else {
                 JsonSchema jsonSchema = JsonSchema.builder()
-                    .name(returnTypeClass.getSimpleName())
-                    .rootElement(objectSchemaFrom(returnTypeClass))
-                    .build();
+                        .name(returnTypeClass.getSimpleName())
+                        .rootElement(objectSchemaFrom(returnTypeClass))
+                        .build();
                 return Optional.of(jsonSchema);
             }
         }
@@ -76,20 +75,21 @@ public class JsonSchemas {
 
     private static JsonEnumSchema enumSchemaFrom(Class<?> actualType) {
         return JsonEnumSchema.builder()
-            .enumValues(stream(actualType.getEnumConstants()).map(Object::toString).toList())
-            .build();
+                .enumValues(stream(actualType.getEnumConstants())
+                        .map(Object::toString)
+                        .toList())
+                .build();
     }
 
     private static JsonSchema arraySchemaFrom(Type returnType, Class<?> actualType, JsonSchemaElement items) {
         return JsonSchema.builder()
-            .name(getRawClass(returnType).getSimpleName() + "_of_" + actualType.getSimpleName())
-            .rootElement(JsonObjectSchema.builder()
-                .addProperty("items", JsonArraySchema.builder()
-                    .items(items)
-                    .build())
-                .required("items")
-                .build())
-            .build();
+                .name(getRawClass(returnType).getSimpleName() + "_of_" + actualType.getSimpleName())
+                .rootElement(JsonObjectSchema.builder()
+                        .addProperty(
+                                "items", JsonArraySchema.builder().items(items).build())
+                        .required("items")
+                        .build())
+                .build();
     }
 
     static boolean isEnum(Type returnType) {
@@ -104,9 +104,9 @@ public class JsonSchemas {
     private static boolean isPojo(Type returnType) {
 
         if (returnType == String.class
-            || returnType == AiMessage.class
-            || returnType == TokenStream.class
-            || returnType == Response.class) {
+                || returnType == AiMessage.class
+                || returnType == TokenStream.class
+                || returnType == Response.class) {
             return false;
         }
 
