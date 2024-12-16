@@ -785,8 +785,7 @@ class BedrockChatModelIT {
     @Test
     void testBedrockAnthropicV3_5SonnetChatModelWithVPCe() {
 
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -804,7 +803,7 @@ class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isIn(STOP, LENGTH);
     }
 
     @Test

@@ -7,7 +7,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -35,12 +34,17 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
 
     @Builder.Default
     private final Region region = Region.US_EAST_1;
+
     @Builder.Default
-    private final AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.builder().build();
+    private final AwsCredentialsProvider credentialsProvider =
+            DefaultCredentialsProvider.builder().build();
+
     @Getter(lazy = true)
     private final BedrockRuntimeClient client = initClient();
+
     @Builder.Default
     private final Integer maxRetries = 5;
+
     protected final URI endpointOverride;
 
     @Override
@@ -60,9 +64,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
             totalInputToken += response.getInputTextTokenCount();
         }
 
-        return Response.from(
-                embeddings,
-                new TokenUsage(totalInputToken));
+        return Response.from(embeddings, new TokenUsage(totalInputToken));
     }
 
     /**
@@ -95,8 +97,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
      */
     protected InvokeModelResponse invoke(final String body) {
 
-        InvokeModelRequest invokeModelRequest = InvokeModelRequest
-                .builder()
+        InvokeModelRequest invokeModelRequest = InvokeModelRequest.builder()
                 .modelId(getModelId())
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
