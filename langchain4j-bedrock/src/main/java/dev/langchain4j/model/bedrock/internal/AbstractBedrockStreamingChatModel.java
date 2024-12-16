@@ -31,8 +31,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithRespo
 @Getter
 @SuperBuilder
 public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBedrockChatModel implements StreamingChatLanguageModel {
-    @Getter
-    private final BedrockRuntimeAsyncClient asyncClient = initAsyncClient();
+
+    private BedrockRuntimeAsyncClient asyncClient;
 
     static class StreamingResponse {
         public String completion;
@@ -105,11 +105,18 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
                 })
                 .build();
         try {
-            asyncClient.invokeModelWithResponseStream(request, h).join();
+            getAsyncClient().invokeModelWithResponseStream(request, h).join();
         } catch (RuntimeException e) {
             log.error("Error on bedrock stream request", e);
         }
 
+    }
+
+    public BedrockRuntimeAsyncClient getAsyncClient() {
+        if (asyncClient == null) {
+            asyncClient = initAsyncClient();
+        }
+        return asyncClient;
     }
 
     /**

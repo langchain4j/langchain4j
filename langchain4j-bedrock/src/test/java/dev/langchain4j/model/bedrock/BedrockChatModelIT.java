@@ -13,6 +13,7 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -40,6 +41,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelIT {
@@ -803,6 +805,32 @@ class BedrockChatModelIT {
         assertThat(aiMessageResponse.content().text()).isNotBlank();
         assertThat(aiMessageResponse.content().text()).contains("Ronaldo");
         assertThat(aiMessageResponse.finishReason()).isIn(STOP, LENGTH);
+    }
+
+    @Test
+    void testInjectClientToModelBuilder() {
+
+        BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel
+                .builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .client(new BedrockRuntimeClient() {
+                    @Override
+                    public String serviceName() {
+                        return "";
+                    }
+
+                    @Override
+                    public void close() {
+
+                    }
+                })
+                .region(Region.US_EAST_1)
+                .model(MistralMixtral8x7bInstructV0_1.getValue())
+                .maxRetries(1)
+                .build();
+
+        assertEquals("", bedrockChatModel.getClient().serviceName());
     }
 
     @AfterEach

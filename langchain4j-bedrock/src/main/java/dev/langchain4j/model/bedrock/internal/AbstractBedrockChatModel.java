@@ -15,6 +15,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -32,8 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Getter
 @SuperBuilder
 public abstract class AbstractBedrockChatModel<T extends BedrockChatModelResponse> extends AbstractSharedBedrockChatModel implements ChatLanguageModel {
-    @Getter(lazy = true)
-    private final BedrockRuntimeClient client = initClient();
+
+    private BedrockRuntimeClient client;
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
@@ -125,6 +127,13 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
         });
 
         return getClient().invokeModel(invokeModelRequest);
+    }
+
+    public BedrockRuntimeClient getClient() {
+        if (client == null) {
+            client = initClient();
+        }
+        return client;
     }
 
     /**
