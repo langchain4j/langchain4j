@@ -5,7 +5,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static java.util.Collections.singletonList;
 
 class AnthropicStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
@@ -26,7 +26,7 @@ class AnthropicStreamingChatModelListenerIT extends StreamingChatModelListenerIT
 
     @Override
     protected String modelName() {
-        return CLAUDE_3_SONNET_20240229.toString();
+        return CLAUDE_3_5_HAIKU_20241022.toString();
     }
 
     @Override
