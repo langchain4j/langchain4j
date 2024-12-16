@@ -10,8 +10,6 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolChoiceName;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiStreamingChatModelBuilderFactory;
-import lombok.Builder;
-
 import java.time.Duration;
 import java.util.List;
 
@@ -56,7 +54,6 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
      * @param logResponses a flag indicating whether to log raw HTTP responses
      * @param timeout      the timeout duration for API requests
      */
-    @Builder
     public MistralAiStreamingChatModel(String baseUrl,
                                        String apiKey,
                                        String modelName,
@@ -170,6 +167,30 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
 
     public static class MistralAiStreamingChatModelBuilder {
 
+        private String baseUrl;
+
+        private String apiKey;
+
+        private String modelName;
+
+        private Double temperature;
+
+        private Double topP;
+
+        private Integer maxTokens;
+
+        private Boolean safePrompt;
+
+        private Integer randomSeed;
+
+        private String responseFormat;
+
+        private Boolean logRequests;
+
+        private Boolean logResponses;
+
+        private Duration timeout;
+
         public MistralAiStreamingChatModelBuilder() {
         }
 
@@ -191,6 +212,130 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
         public MistralAiStreamingChatModelBuilder responseFormat(MistralAiResponseFormatType responseFormat) {
             this.responseFormat = responseFormat.toString();
             return this;
+        }
+
+        /**
+         * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder baseUrl(final String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        /**
+         * @param apiKey       the API key for authentication
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder apiKey(final String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * @param temperature  the temperature parameter for generating chat responses
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder temperature(final Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        /**
+         * @param topP         the top-p parameter for generating chat responses
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder topP(final Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        /**
+         * @param maxTokens    the maximum number of new tokens to generate in a chat response
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder maxTokens(final Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        /**
+         * @param safePrompt   a flag indicating whether to use a safe prompt for generating chat responses
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder safePrompt(final Boolean safePrompt) {
+            this.safePrompt = safePrompt;
+            return this;
+        }
+
+        /**
+         * @param randomSeed   the random seed for generating chat responses
+         *                     (if not specified, a random number is used)
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder randomSeed(final Integer randomSeed) {
+            this.randomSeed = randomSeed;
+            return this;
+        }
+
+        /**
+         * @param logRequests  a flag indicating whether to log raw HTTP requests
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder logRequests(final Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        /**
+         * @param logResponses a flag indicating whether to log raw HTTP responses
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder logResponses(final Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder timeout(final Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+
+        public MistralAiStreamingChatModel build() {
+            return new MistralAiStreamingChatModel(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.modelName,
+                    this.temperature,
+                    this.topP,
+                    this.maxTokens,
+                    this.safePrompt,
+                    this.randomSeed,
+                    this.responseFormat,
+                    this.logRequests,
+                    this.logResponses,
+                    this.timeout);
+        }
+
+        public String toString() {
+            return "MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder("
+                    + "baseUrl=" + this.baseUrl
+                    + ", apiKey=" + this.apiKey == null ? "" : "*****"
+                    + ", modelName=" + this.modelName
+                    + ", temperature=" + this.temperature
+                    + ", topP=" + this.topP
+                    + ", maxTokens=" + this.maxTokens
+                    + ", safePrompt=" + this.safePrompt
+                    + ", randomSeed=" + this.randomSeed
+                    + ", responseFormat=" + this.responseFormat
+                    + ", logRequests=" + this.logRequests
+                    + ", logResponses=" + this.logResponses
+                    + ", timeout=" + this.timeout
+                    + ")";
         }
     }
 }

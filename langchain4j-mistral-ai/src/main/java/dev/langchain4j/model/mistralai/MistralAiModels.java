@@ -5,8 +5,6 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiModelResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiModelsBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
-
 import java.time.Duration;
 import java.util.List;
 
@@ -33,7 +31,6 @@ public class MistralAiModels {
      * @param logResponses a flag whether to log raw HTTP responses
      * @param maxRetries   the maximum number of retries for API requests. It uses the default value of 3 if not specified
      */
-    @Builder
     public MistralAiModels(String baseUrl,
                            String apiKey,
                            Duration timeout,
@@ -72,7 +69,89 @@ public class MistralAiModels {
     }
 
     public static class MistralAiModelsBuilder {
-        public MistralAiModelsBuilder(){
+
+        private String baseUrl;
+
+        private String apiKey;
+
+        private Duration timeout;
+
+        private Boolean logRequests;
+
+        private Boolean logResponses;
+
+        private Integer maxRetries;
+
+        public MistralAiModelsBuilder() {
+        }
+
+        /**
+         * @param baseUrl the base URL of the Mistral AI API. It uses the default value if not specified
+         * @return {@code this}.
+         */
+        public MistralAiModels.MistralAiModelsBuilder baseUrl(final String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        /**
+         * @param apiKey the API key for authentication
+         * @return {@code this}.
+         */
+        public MistralAiModels.MistralAiModelsBuilder apiKey(final String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * @param timeout the timeout duration for API requests. It uses the default value of 60 seconds if not
+         * specified
+         * @return {@code this}.
+         */
+        public MistralAiModels.MistralAiModelsBuilder timeout(final Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        /**
+         * @param logRequests a flag whether to log raw HTTP requests
+         * @return {@code this}.
+         */
+        public MistralAiModels.MistralAiModelsBuilder logRequests(final Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        /**
+         * @param logResponses a flag whether to log raw HTTP responses
+         * @return {@code this}.
+         */
+        public MistralAiModels.MistralAiModelsBuilder logResponses(final Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * @return {@code this}.
+         */
+        public MistralAiModels.MistralAiModelsBuilder maxRetries(final Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public MistralAiModels build() {
+            return new MistralAiModels(this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.maxRetries);
+        }
+
+        public String toString() {
+            return "MistralAiModels.MistralAiModelsBuilder("
+                    + "baseUrl=" + this.baseUrl
+                    + ", apiKey=" + this.apiKey == null ? "" : "*****"
+                    + ", timeout=" + this.timeout
+                    + ", logRequests=" + this.logRequests
+                    + ", logResponses=" + this.logResponses
+                    + ", maxRetries=" + this.maxRetries
+                    + ")";
         }
     }
 }

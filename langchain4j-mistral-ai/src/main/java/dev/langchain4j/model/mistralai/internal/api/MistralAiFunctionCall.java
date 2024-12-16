@@ -4,17 +4,11 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+import java.util.Objects;
+
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(SnakeCaseStrategy.class)
@@ -22,4 +16,93 @@ public class MistralAiFunctionCall {
 
     private String name;
     private String arguments;
+
+    public static class MistralAiFunctionCallBuilder {
+
+        private String name;
+
+        private String arguments;
+
+        MistralAiFunctionCallBuilder() {
+        }
+
+        /**
+         * @return {@code this}.
+         */
+        public MistralAiFunctionCall.MistralAiFunctionCallBuilder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        /**
+         * @return {@code this}.
+         */
+        public MistralAiFunctionCall.MistralAiFunctionCallBuilder arguments(String arguments) {
+            this.arguments = arguments;
+            return this;
+        }
+
+        public MistralAiFunctionCall build() {
+            return new MistralAiFunctionCall(this.name, this.arguments);
+        }
+
+        public String toString() {
+            return "MistralAiFunctionCall.MistralAiFunctionCallBuilder("
+                    + "name=" + this.name
+                    + ", arguments=" + this.arguments
+                    + ")";
+        }
+    }
+
+    public static MistralAiFunctionCall.MistralAiFunctionCallBuilder builder() {
+        return new MistralAiFunctionCall.MistralAiFunctionCallBuilder();
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public String getArguments() {
+        return this.arguments;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setArguments(String arguments) {
+        this.arguments = arguments;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 17 * hash + Objects.hashCode(this.name);
+        hash = 17 * hash + Objects.hashCode(this.arguments);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        final MistralAiFunctionCall other = (MistralAiFunctionCall) obj;
+        return Objects.equals(this.name, other.name)
+                && Objects.equals(this.arguments, other.arguments);
+    }
+
+    public String toString() {
+        return "MistralAiFunctionCall("
+                + "name=" + this.getName()
+                + ", arguments=" + this.getArguments()
+                + ")";
+    }
+
+    public MistralAiFunctionCall() {
+    }
+
+    public MistralAiFunctionCall(String name, String arguments) {
+        this.name = name;
+        this.arguments = arguments;
+    }
 }
