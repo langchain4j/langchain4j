@@ -21,16 +21,16 @@ import org.testcontainers.containers.MariaDBContainer;
 class MariaDbEmbeddingStoreUpgradeTest {
     static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
 
-    @BeforeAll
-    public static void beforeAll() {
-        mariadbContainer.start();
-    }
-
     EmbeddingStore<TextSegment> embeddingStore029;
 
     EmbeddingStore<TextSegment> embeddingStore;
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+    @BeforeAll
+    public static void beforeAll() {
+        mariadbContainer.start();
+    }
 
     @BeforeEach
     void beforeEach() {

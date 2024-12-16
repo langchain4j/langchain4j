@@ -151,10 +151,7 @@ class MariaDbEmbeddingCustomNamingTest {
                     prep.setString(2, removeQuotes(tableName));
                     prep.setString(3, removeQuotes(field));
                     ResultSet rs = prep.executeQuery();
-                    if (rs.next()) {
-                        if (rs.getBoolean(1)) continue;
-                    }
-                    return false;
+                    if (!rs.next() || !rs.getBoolean(1)) return false;
                 }
             }
         }

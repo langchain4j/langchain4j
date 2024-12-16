@@ -13,11 +13,6 @@ import org.testcontainers.containers.MariaDBContainer;
 class MariaDbEmbeddingStoreRemovalTest extends EmbeddingStoreWithRemovalIT {
     static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
 
-    @BeforeAll
-    public static void beforeAll() {
-        mariadbContainer.start();
-    }
-
     final EmbeddingStore<TextSegment> embeddingStore = MariaDbEmbeddingStore.builder()
             .url(mariadbContainer.getJdbcUrl())
             .user(mariadbContainer.getUsername())
@@ -27,7 +22,12 @@ class MariaDbEmbeddingStoreRemovalTest extends EmbeddingStoreWithRemovalIT {
             .dropTableFirst(true)
             .build();
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+    @BeforeAll
+    public static void beforeAll() {
+        mariadbContainer.start();
+    }
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {

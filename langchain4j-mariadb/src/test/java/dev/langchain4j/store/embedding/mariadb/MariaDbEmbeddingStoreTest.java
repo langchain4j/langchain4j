@@ -12,10 +12,9 @@ import org.testcontainers.containers.MariaDBContainer;
 
 class MariaDbEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
 
-    EmbeddingStore<TextSegment> embeddingStore;
-
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
     static MariaDBContainer<?> mariadbContainer = MariaDbTests.defaultContainer;
+    final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    EmbeddingStore<TextSegment> embeddingStore;
 
     @BeforeAll
     public static void beforeAll() {

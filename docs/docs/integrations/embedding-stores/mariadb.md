@@ -4,7 +4,7 @@ sidebar_position: 18
 
 # Mariadb Vector
 
-https://mariadb.com/kb/en/vector-overview/
+<https://mariadb.com/kb/en/vector-overview/>
 
 
 ## Maven Dependency

@@ -98,10 +98,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.metadataHandler = MetadataHandlerFactory.get(config, this.datasource);
         this.distanceType = distanceType == null ? MariaDBDistanceType.COSINE : distanceType;
 
-        createTable = getOrDefault(createTable, true);
-        dropTableFirst = getOrDefault(dropTableFirst, false);
-
-        initTable(dropTableFirst, createTable, dimension);
+        initTable(getOrDefault(dropTableFirst, false), getOrDefault(createTable, true), dimension);
     }
 
     private String validateAndEnquoteIdentifier(String value, String defaultValue) {
@@ -122,7 +119,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         try (Connection connection = datasource.getConnection();
                 Statement statement = connection.createStatement()) {
             if (dropTableFirst) {
-                statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
+                statement.executeUpdate("DROP TABLE IF EXISTS " + table);
             }
             if (createTable) {
                 query = String.format(
