@@ -3,15 +3,19 @@ package dev.langchain4j.mcp.client.transport.stdio;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,10 +77,10 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
-    public JsonNode executeTool(McpCallToolRequest operation) {
+    public JsonNode executeTool(McpCallToolRequest operation, Duration timeout) throws TimeoutException {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return executeAndWait(requestString, operation.getId());
+            return executeAndWait(requestString, operation.getId(), timeout);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -95,6 +99,30 @@ public class StdioMcpTransport implements McpTransport {
             return future.get();
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(id);
+        }
+    }
+
+    private JsonNode executeAndWait(String request, Long id, Duration timeout) throws TimeoutException {
+        try {
+            CompletableFuture<JsonNode> future = new CompletableFuture<>();
+            pendingOperations.put(id, future);
+            processIOHandler.submit(request);
+            long timeoutMillis = timeout.toMillis() == 0 ? Long.MAX_VALUE : timeout.toMillis();
+            return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException timeoutException) {
+            CancellationNotification cancellationNotification = new CancellationNotification(id, "Timeout");
+            try {
+                processIOHandler.submit(OBJECT_MAPPER.writeValueAsString(cancellationNotification));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            throw timeoutException;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(id);
         }
     }
 
