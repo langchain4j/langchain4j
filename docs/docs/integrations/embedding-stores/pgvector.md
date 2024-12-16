@@ -69,14 +69,14 @@ while the second configures all available parameters.
 
 ```java
 EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
-.host("localhost")                           // Required: Host of the PostgreSQL instance
-.port(5432)                                  // Required: Port of the PostgreSQL instance
-.database("postgres")                        // Required: Database name
-.user("my_user")                             // Required: Database user
-.password("my_password")                     // Required: Database password
-.table("my_embeddings")                      // Required: Table name to store embeddings
-.dimension(embeddingModel.dimension())       // Required: Dimension of embeddings
-.build();
+    .host("localhost")                           // Required: Host of the PostgreSQL instance
+    .port(5432)                                  // Required: Port of the PostgreSQL instance
+    .database("postgres")                        // Required: Database name
+    .user("my_user")                             // Required: Database user
+    .password("my_password")                     // Required: Database password
+    .table("my_embeddings")                      // Required: Table name to store embeddings
+    .dimension(embeddingModel.dimension())       // Required: Dimension of embeddings
+    .build();
 ```
 2. All Parameters Set
 
@@ -86,30 +86,30 @@ In this variant, we include all the commonly used optional parameters like DataS
 DataSource dataSource = ...;                 // Pre-configured DataSource, if available
 
 EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
-// Connection and table parameters
-.datasource(dataSource)                      // Optional: If using a DataSource instead of host/port credentials
-.host("localhost")
-.port(5432)
-.database("postgres")
-.user("my_user")
-.password("my_password")
-.table("my_embeddings")
+    // Connection and table parameters
+    .datasource(dataSource)                      // Optional: If using a DataSource instead of host/port credentials
+    .host("localhost")
+    .port(5432)
+    .database("postgres")
+    .user("my_user")
+    .password("my_password")
+    .table("my_embeddings")
 
-// Embedding dimension
-.dimension(embeddingModel.dimension())      // Required: Must match the embedding model’s output dimension
+    // Embedding dimension
+    .dimension(embeddingModel.dimension())      // Required: Must match the embedding model’s output dimension
 
-// Indexing and performance options
-.useIndex(true)                             // Enable IVFFlat index
-.indexListSize(100)                         // Number of lists for IVFFlat index
+    // Indexing and performance options
+    .useIndex(true)                             // Enable IVFFlat index
+    .indexListSize(100)                         // Number of lists for IVFFlat index
 
-// Table creation options
-.createTable(true)                          // Automatically create the table if it doesn’t exist
-.dropTableFirst(false)                      // Don’t drop the table first (set to true if you want a fresh start)
+    // Table creation options
+    .createTable(true)                          // Automatically create the table if it doesn’t exist
+    .dropTableFirst(false)                      // Don’t drop the table first (set to true if you want a fresh start)
 
-// Metadata storage format
-.metadataStorageConfig(MetadataStorageConfig.combinedJsonb()) // Store metadata as a combined JSONB column
+    // Metadata storage format
+    .metadataStorageConfig(MetadataStorageConfig.combinedJsonb()) // Store metadata as a combined JSONB column
 
-.build();
+    .build();
 ```
 Use the first example if you just want the minimal configuration to get started quickly. 
 The second example shows how you can leverage all available builder parameters for more control and customization.
