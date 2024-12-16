@@ -1,7 +1,6 @@
 package dev.langchain4j.model.voyageai;
 
 public enum VoyageAiScoringModelName {
-
     RERANK_1("rerank-1"),
     RERANK_LITE_1("rerank-lite-1"),
 

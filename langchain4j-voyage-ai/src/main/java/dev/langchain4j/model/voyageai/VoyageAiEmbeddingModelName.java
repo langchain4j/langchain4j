@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum VoyageAiEmbeddingModelName {
-
     VOYAGE_3("voyage-3", 1024),
     VOYAGE_3_LITE("voyage-3-lite", 512),
     VOYAGE_3_LARGE("voyage-3-large", 1024),
@@ -35,7 +34,8 @@ public enum VoyageAiEmbeddingModelName {
         return dimension;
     }
 
-    private static final Map<String, Integer> KNOWN_DIMENSION = new HashMap<>(VoyageAiEmbeddingModelName.values().length);
+    private static final Map<String, Integer> KNOWN_DIMENSION =
+            new HashMap<>(VoyageAiEmbeddingModelName.values().length);
 
     static {
         for (VoyageAiEmbeddingModelName embeddingModelName : VoyageAiEmbeddingModelName.values()) {
