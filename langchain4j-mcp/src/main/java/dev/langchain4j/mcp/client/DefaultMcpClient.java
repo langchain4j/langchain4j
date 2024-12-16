@@ -121,7 +121,7 @@ public class DefaultMcpClient implements McpClient {
 
     public static class Builder {
 
-        public String toolExecutionTimeoutErrorMessage;
+        private String toolExecutionTimeoutErrorMessage;
         private McpTransport transport;
         private String clientName;
         private String clientVersion;
