@@ -36,13 +36,7 @@ public class SseEventListener extends EventSourceListener {
 
     @Override
     public void onEvent(EventSource eventSource, String id, String type, String data) {
-        if (type.equals("endpoint")) {
-            if (initializationFinished.isDone()) {
-                log.warn("Received endpoint event after initialization");
-                return;
-            }
-            initializationFinished.complete(data);
-        } else if (type.equals("message")) {
+        if (type.equals("message")) {
             if (logEvents) {
                 log.debug("< {}", data);
             }
@@ -58,6 +52,12 @@ public class SseEventListener extends EventSourceListener {
             } catch (JsonProcessingException e) {
                 log.warn("Failed to parse response data", e);
             }
+        } else if (type.equals("endpoint")) {
+            if (initializationFinished.isDone()) {
+                log.warn("Received endpoint event after initialization");
+                return;
+            }
+            initializationFinished.complete(data);
         }
     }
 
