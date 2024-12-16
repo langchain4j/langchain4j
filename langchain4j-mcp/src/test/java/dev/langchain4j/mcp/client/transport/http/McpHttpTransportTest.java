@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -53,7 +54,10 @@ public class McpHttpTransportTest {
                 .logRequests(true)
                 .logResponses(true)
                 .build();
-        mcpClient = new DefaultMcpClient.Builder().transport(transport).build();
+        mcpClient = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .toolExecutionTimeout(Duration.ofSeconds(4))
+                .build();
     }
 
     @AfterAll
@@ -148,5 +152,28 @@ public class McpHttpTransportTest {
 
         // validate the tool execution result
         assertThat(toolExecutionResultString).isEqualTo("The sum of 5 and 12 is 17.");
+    }
+
+    @Test
+    public void timeout() {
+        // obtain tools from the server
+        ToolProvider toolProvider =
+                McpToolProvider.builder().mcpClients(List.of(mcpClient)).build();
+        ToolProviderResult toolProviderResult = toolProvider.provideTools(null);
+
+        // find the 'longRunningOperation' tool and execute it on the MCP server
+        ToolExecutor executor = toolProviderResult.tools().entrySet().stream()
+                .filter(entry -> entry.getKey().name().equals("longRunningOperation"))
+                .findFirst()
+                .get()
+                .getValue();
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("longRunningOperation")
+                .arguments("{\"duration\": 5, \"steps\": 1}")
+                .build();
+        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
+
+        // validate the tool execution result
+        assertThat(toolExecutionResultString).isEqualTo("There was a timeout executing the tool");
     }
 }

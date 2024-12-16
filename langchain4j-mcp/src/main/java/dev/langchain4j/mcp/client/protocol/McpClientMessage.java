@@ -7,12 +7,10 @@ public class McpClientMessage {
     @JsonInclude
     public final String jsonrpc = "2.0";
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Long id;
 
     public McpClientMessage(Long id) {
-        if (id == null) {
-            throw new IllegalArgumentException("id must not be null");
-        }
         this.id = id;
     }
 
