@@ -1,32 +1,5 @@
 package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.MethodSource;
-import software.amazon.awssdk.regions.Region;
-
-import java.net.URI;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
-import java.util.stream.Stream;
-
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
@@ -42,16 +15,43 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import java.net.URI;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import software.amazon.awssdk.regions.Region;
+
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelIT {
 
-    private static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    private static final String CAT_IMAGE_URL =
+            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
     @Test
     void testBedrockAnthropicV3SonnetChatModel() {
 
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -74,8 +74,7 @@ class BedrockChatModelIT {
     @Test
     void testBedrockAnthropicV3SonnetChatModelImageContent() {
 
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -101,8 +100,7 @@ class BedrockChatModelIT {
     @Test
     void testFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
 
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.00f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -129,7 +127,8 @@ class BedrockChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.id()).isNotBlank();
         assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
@@ -137,7 +136,8 @@ class BedrockChatModelIT {
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount()).isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
@@ -154,7 +154,8 @@ class BedrockChatModelIT {
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
         assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(318);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.totalTokenCount()).isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
@@ -162,8 +163,7 @@ class BedrockChatModelIT {
     @Test
     void testSequentialFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
 
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.00f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -197,13 +197,15 @@ class BedrockChatModelIT {
 
         UserMessage userMessageCalc = UserMessage.from("2+2=?");
 
-        Response<AiMessage> responseCalc = bedrockChatModel.generate(singletonList(userMessageCalc), toolSpecifications);
+        Response<AiMessage> responseCalc =
+                bedrockChatModel.generate(singletonList(userMessageCalc), toolSpecifications);
 
         AiMessage aiMessageCalc = responseCalc.content();
         assertThat(aiMessageCalc.text()).isNull();
         assertThat(aiMessageCalc.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequestCalc = aiMessageCalc.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequestCalc =
+                aiMessageCalc.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequestCalc.id()).isNotBlank();
         assertThat(toolExecutionRequestCalc.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequestCalc.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
@@ -211,7 +213,8 @@ class BedrockChatModelIT {
         TokenUsage tokenUsageCalc = responseCalc.tokenUsage();
         assertThat(tokenUsageCalc.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsageCalc.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsageCalc.totalTokenCount()).isEqualTo(tokenUsageCalc.inputTokenCount() + tokenUsageCalc.outputTokenCount());
+        assertThat(tokenUsageCalc.totalTokenCount())
+                .isEqualTo(tokenUsageCalc.inputTokenCount() + tokenUsageCalc.outputTokenCount());
 
         assertThat(responseCalc.finishReason()).isEqualTo(TOOL_EXECUTION);
 
@@ -228,20 +231,23 @@ class BedrockChatModelIT {
         TokenUsage secondTokenUsageCalc = secondResponseCalc.tokenUsage();
         assertThat(secondTokenUsageCalc.inputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsageCalc.outputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsageCalc.totalTokenCount()).isEqualTo(secondTokenUsageCalc.inputTokenCount() + secondTokenUsageCalc.outputTokenCount());
+        assertThat(secondTokenUsageCalc.totalTokenCount())
+                .isEqualTo(secondTokenUsageCalc.inputTokenCount() + secondTokenUsageCalc.outputTokenCount());
 
         assertThat(secondResponseCalc.finishReason()).isEqualTo(STOP);
 
         UserMessage userMessageTemp = UserMessage.from("Temperature in New York = ?");
 
         sleepIfNeeded();
-        Response<AiMessage> responseTemp = bedrockChatModel.generate(singletonList(userMessageTemp), toolSpecifications);
+        Response<AiMessage> responseTemp =
+                bedrockChatModel.generate(singletonList(userMessageTemp), toolSpecifications);
 
         AiMessage aiMessageTemp = responseTemp.content();
         assertThat(aiMessageTemp.text()).isNull();
         assertThat(aiMessageTemp.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequestTemp = aiMessageTemp.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequestTemp =
+                aiMessageTemp.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequestTemp.id()).isNotBlank();
         assertThat(toolExecutionRequestTemp.name()).isEqualTo("currentTemperature");
         assertThat(toolExecutionRequestTemp.arguments()).isEqualToIgnoringWhitespace("{\"city\": \"New York\"}");
@@ -249,7 +255,8 @@ class BedrockChatModelIT {
         TokenUsage tokenUsageTemp = responseTemp.tokenUsage();
         assertThat(tokenUsageTemp.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsageTemp.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsageTemp.totalTokenCount()).isEqualTo(tokenUsageTemp.inputTokenCount() + tokenUsageTemp.outputTokenCount());
+        assertThat(tokenUsageTemp.totalTokenCount())
+                .isEqualTo(tokenUsageTemp.inputTokenCount() + tokenUsageTemp.outputTokenCount());
 
         assertThat(responseTemp.finishReason()).isEqualTo(TOOL_EXECUTION);
 
@@ -266,7 +273,8 @@ class BedrockChatModelIT {
         TokenUsage secondTokenUsageTemp = secondResponseTemp.tokenUsage();
         assertThat(secondTokenUsageTemp.inputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsageTemp.outputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsageTemp.totalTokenCount()).isEqualTo(secondTokenUsageTemp.inputTokenCount() + secondTokenUsageTemp.outputTokenCount());
+        assertThat(secondTokenUsageTemp.totalTokenCount())
+                .isEqualTo(secondTokenUsageTemp.inputTokenCount() + secondTokenUsageTemp.outputTokenCount());
 
         assertThat(secondResponseTemp.finishReason()).isEqualTo(STOP);
     }
@@ -274,8 +282,7 @@ class BedrockChatModelIT {
     @Test
     void testMultipleFunctionCallingInParallelWithBedrockAnthropicV3SonnetChatModel() {
 
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.00f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -304,12 +311,14 @@ class BedrockChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
 
-        ToolExecutionRequest firstToolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest firstToolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(firstToolExecutionRequest.id()).isNotBlank();
         assertThat(firstToolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(firstToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
-        ToolExecutionRequest secondToolExecutionRequest = aiMessage.toolExecutionRequests().get(1);
+        ToolExecutionRequest secondToolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(1);
         assertThat(secondToolExecutionRequest.id()).isNotBlank();
         assertThat(secondToolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(secondToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
@@ -325,11 +334,7 @@ class BedrockChatModelIT {
         ToolExecutionResultMessage firstToolExecutionResultMessageCalc = from(firstToolExecutionRequest, "4");
         ToolExecutionResultMessage secondToolExecutionResultMessageCalc = from(secondToolExecutionRequest, "6");
         List<ChatMessage> messages = asList(
-                userMessage,
-                aiMessage,
-                firstToolExecutionResultMessageCalc,
-                secondToolExecutionResultMessageCalc
-        );
+                userMessage, aiMessage, firstToolExecutionResultMessageCalc, secondToolExecutionResultMessageCalc);
 
         sleepIfNeeded();
         Response<AiMessage> secondeResponse = bedrockChatModel.generate(messages, toolSpecifications);
@@ -350,8 +355,7 @@ class BedrockChatModelIT {
     @Test
     void testNoParametersFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
 
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.0f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -370,13 +374,15 @@ class BedrockChatModelIT {
 
         UserMessage userMessageCalc = UserMessage.from("Current date and time is = ?");
 
-        Response<AiMessage> responseCalc = bedrockChatModel.generate(singletonList(userMessageCalc), singletonList(currentDateTime));
+        Response<AiMessage> responseCalc =
+                bedrockChatModel.generate(singletonList(userMessageCalc), singletonList(currentDateTime));
 
         AiMessage aiMessageCalc = responseCalc.content();
         assertThat(aiMessageCalc.text()).isNull();
         assertThat(aiMessageCalc.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequestCalc = aiMessageCalc.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequestCalc =
+                aiMessageCalc.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequestCalc.id()).isNotBlank();
         assertThat(toolExecutionRequestCalc.name()).isEqualTo("currentDateTime");
         assertThat(toolExecutionRequestCalc.arguments()).isEqualToIgnoringWhitespace("{}");
@@ -384,7 +390,8 @@ class BedrockChatModelIT {
         TokenUsage tokenUsageCalc = responseCalc.tokenUsage();
         assertThat(tokenUsageCalc.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsageCalc.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsageCalc.totalTokenCount()).isEqualTo(tokenUsageCalc.inputTokenCount() + tokenUsageCalc.outputTokenCount());
+        assertThat(tokenUsageCalc.totalTokenCount())
+                .isEqualTo(tokenUsageCalc.inputTokenCount() + tokenUsageCalc.outputTokenCount());
 
         assertThat(responseCalc.finishReason()).isEqualTo(TOOL_EXECUTION);
 
@@ -394,7 +401,8 @@ class BedrockChatModelIT {
         List<ChatMessage> messagesCalc = asList(userMessageCalc, aiMessageCalc, toolExecutionResultMessageCalc);
 
         sleepIfNeeded();
-        Response<AiMessage> secondResponseCalc = bedrockChatModel.generate(messagesCalc, singletonList(currentDateTime));
+        Response<AiMessage> secondResponseCalc =
+                bedrockChatModel.generate(messagesCalc, singletonList(currentDateTime));
 
         AiMessage secondAiMessageCalc = secondResponseCalc.content();
         assertThat(secondAiMessageCalc.text()).contains(nowDateTime);
@@ -403,15 +411,15 @@ class BedrockChatModelIT {
         TokenUsage secondTokenUsageCalc = secondResponseCalc.tokenUsage();
         assertThat(secondTokenUsageCalc.inputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsageCalc.outputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsageCalc.totalTokenCount()).isEqualTo(secondTokenUsageCalc.inputTokenCount() + secondTokenUsageCalc.outputTokenCount());
+        assertThat(secondTokenUsageCalc.totalTokenCount())
+                .isEqualTo(secondTokenUsageCalc.inputTokenCount() + secondTokenUsageCalc.outputTokenCount());
 
         assertThat(secondResponseCalc.finishReason()).isEqualTo(STOP);
     }
 
     @Test
     void testToolChoiceFunctionCallingWithBedrockAnthropicV3SonnetChatModel() {
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.0f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -438,7 +446,8 @@ class BedrockChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.id()).isNotBlank();
         assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
@@ -446,7 +455,8 @@ class BedrockChatModelIT {
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount()).isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
@@ -460,7 +470,8 @@ class BedrockChatModelIT {
         assertThat(secondAiMessage.text()).isNull();
         assertThat(secondAiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest secondToolExecutionRequest = secondAiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest secondToolExecutionRequest =
+                secondAiMessage.toolExecutionRequests().get(0);
         assertThat(secondToolExecutionRequest.id()).isNotBlank();
         assertThat(secondToolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(secondToolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
@@ -476,8 +487,7 @@ class BedrockChatModelIT {
 
     @Test
     void testFunctionCallingWithBedrockAnthropicChatModelWithoutToolsSupport() {
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.00f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -501,8 +511,7 @@ class BedrockChatModelIT {
         IllegalArgumentException exception = Assertions.assertThrows(
                 IllegalArgumentException.class,
                 () -> bedrockChatModel.generate(singletonList(userMessage), singletonList(calculator)),
-                "Expected generate() to throw, but it didn't"
-        );
+                "Expected generate() to throw, but it didn't");
 
         assertThat(exception.getMessage()).isEqualTo("Tools are currently not supported by this model");
     }
@@ -513,8 +522,7 @@ class BedrockChatModelIT {
         IllegalArgumentException illegalArgumentException = Assertions.assertThrows(
                 IllegalArgumentException.class,
                 () -> BedrockAnthropicMessageChatModel.validateModelIdWithToolsSupport(modelId),
-                "Expected validateModelIdWithToolsSupport() to throw, but it didn't"
-        );
+                "Expected validateModelIdWithToolsSupport() to throw, but it didn't");
 
         assertThat(illegalArgumentException.getMessage()).isEqualTo("Tools are currently not supported by this model");
     }
@@ -523,8 +531,7 @@ class BedrockChatModelIT {
         return Stream.of(
                 BedrockAnthropicMessageChatModel.Types.AnthropicClaudeInstantV1.getValue(),
                 BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2.getValue(),
-                BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue()
-        );
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2_1.getValue());
     }
 
     @ParameterizedTest
@@ -532,23 +539,20 @@ class BedrockChatModelIT {
     void testValidateModelIdWithToolsSupport(String modelId) {
         Assertions.assertDoesNotThrow(
                 () -> BedrockAnthropicMessageChatModel.validateModelIdWithToolsSupport(modelId),
-                "Expected validateModelIdWithToolsSupport() to not throw, but it did"
-        );
+                "Expected validateModelIdWithToolsSupport() to not throw, but it did");
     }
 
     static Stream<String> anthropicModelsWithToolSupport() {
         return Stream.of(
                 BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue(),
                 BedrockAnthropicMessageChatModel.Types.AnthropicClaude3_5SonnetV1.getValue(),
-                BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue()
-        );
+                BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue());
     }
 
     @Test
     void testBedrockAnthropicV3HaikuChatModel() {
 
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -569,8 +573,7 @@ class BedrockChatModelIT {
     @Test
     void testBedrockAnthropicV3HaikuChatModelImageContent() {
 
-        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
-                .builder()
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -595,8 +598,7 @@ class BedrockChatModelIT {
     @Test
     void testBedrockAnthropicV2ChatModelEnumModelType() {
 
-        BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel
-                .builder()
+        BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -617,8 +619,7 @@ class BedrockChatModelIT {
     @Test
     void testBedrockAnthropicV2ChatModelStringModelType() {
 
-        BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel
-                .builder()
+        BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -639,8 +640,7 @@ class BedrockChatModelIT {
     @Test
     void testBedrockTitanChatModel() {
 
-        BedrockTitanChatModel bedrockChatModel = BedrockTitanChatModel
-                .builder()
+        BedrockTitanChatModel bedrockChatModel = BedrockTitanChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -668,8 +668,7 @@ class BedrockChatModelIT {
     @Test
     void testBedrockCohereChatModel() {
 
-        BedrockCohereChatModel bedrockChatModel = BedrockCohereChatModel
-                .builder()
+        BedrockCohereChatModel bedrockChatModel = BedrockCohereChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -689,8 +688,7 @@ class BedrockChatModelIT {
     @Test
     void testBedrockStabilityChatModel() {
 
-        BedrockStabilityAIChatModel bedrockChatModel = BedrockStabilityAIChatModel
-                .builder()
+        BedrockStabilityAIChatModel bedrockChatModel = BedrockStabilityAIChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -700,7 +698,8 @@ class BedrockChatModelIT {
 
         assertThat(bedrockChatModel).isNotNull();
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("Draw me a flower with any human in background."));
+        Response<AiMessage> response =
+                bedrockChatModel.generate(UserMessage.from("Draw me a flower with any human in background."));
 
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
@@ -709,10 +708,10 @@ class BedrockChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = BedrockLlamaChatModel.Types.class, mode = INCLUDE, names = {
-            "META_LLAMA3_8B_INSTRUCT_V1_0",
-            "META_LLAMA3_70B_INSTRUCT_V1_0"
-    })
+    @EnumSource(
+            value = BedrockLlamaChatModel.Types.class,
+            mode = INCLUDE,
+            names = {"META_LLAMA3_8B_INSTRUCT_V1_0", "META_LLAMA3_70B_INSTRUCT_V1_0"})
     void testBedrockLlamaChatModel(BedrockLlamaChatModel.Types modelId) {
 
         // given
@@ -741,8 +740,7 @@ class BedrockChatModelIT {
     @Test
     void testBedrockMistralAi7bInstructChatModel() {
 
-        BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel
-                .builder()
+        BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -767,8 +765,7 @@ class BedrockChatModelIT {
     @Test
     void testBedrockMistralAiMixtral8x7bInstructChatModel() {
 
-        BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel
-                .builder()
+        BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel.builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
@@ -808,6 +805,30 @@ class BedrockChatModelIT {
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+
+    @Test
+    void testBedrockAnthropicMessageChatModelWithMessagesToSanitize() {
+        List<ChatMessage> messages = new ArrayList<>();
+        String userMessage = "Hello, my name is Ronaldo, what is my name?";
+        String userMessage2 = "Hello, my name is Neymar, what is my name?";
+        messages.add(new UserMessage(userMessage));
+        messages.add(new UserMessage(userMessage2));
+
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel.builder()
+                .temperature(0.50f)
+                .maxTokens(300)
+                .region(Region.US_EAST_1)
+                .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaudeV2.getValue())
+                .maxRetries(1)
+                .build();
+
+        final Response<AiMessage> aiMessageResponse = bedrockChatModel.generate(messages);
+
+        assertThat(aiMessageResponse).isNotNull();
+        assertThat(aiMessageResponse.content().text()).isNotBlank();
+        assertThat(aiMessageResponse.content().text()).contains("Ronaldo");
+        assertThat(aiMessageResponse.finishReason()).isIn(STOP, LENGTH);
     }
 
     @AfterEach

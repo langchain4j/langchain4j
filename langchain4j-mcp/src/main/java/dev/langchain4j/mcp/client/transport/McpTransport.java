@@ -5,6 +5,8 @@ import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import java.io.Closeable;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 
 public interface McpTransport extends Closeable {
 
@@ -29,6 +31,9 @@ public interface McpTransport extends Closeable {
 
     /**
      * Executes a tool on the MCP server.
+     * @param request the tool execution request
+     * @param timeout the maximum time to wait for the tool to complete
+     * @throws TimeoutException if the tool execution times out (in this case, the transport should also send a CancellationNotification to the server)
      */
-    JsonNode executeTool(McpCallToolRequest request);
+    JsonNode executeTool(McpCallToolRequest request, Duration timeout) throws TimeoutException;
 }
