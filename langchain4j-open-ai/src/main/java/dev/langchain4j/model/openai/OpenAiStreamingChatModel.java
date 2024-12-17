@@ -233,8 +233,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         // TODO reuse code from OpenAiChatModel
 
         OpenAiChatRequestParameters requestParameters;
-        if (chatRequest.parameters() instanceof OpenAiChatRequestParameters openAiParameters) {
-            requestParameters = openAiParameters;
+        if (chatRequest.parameters() instanceof OpenAiChatRequestParameters openAiChatRequestParameters) {
+            requestParameters = openAiChatRequestParameters;
         } else {
             requestParameters = new OpenAiChatRequestParameters(chatRequest.parameters());
         }
@@ -620,7 +620,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             return new StringJoiner(", ", OpenAiStreamingChatModelBuilder.class.getSimpleName() + "[", "]")
                     .add("baseUrl='" + baseUrl + "'")
                     .add("organizationId='" + organizationId + "'")
-                    .add("parameters='" + defaultRequestParameters + "'")
+                    .add("defaultRequestParameters='" + defaultRequestParameters + "'")
                     .add("modelName='" + modelName + "'")
                     .add("temperature=" + temperature)
                     .add("topP=" + topP)

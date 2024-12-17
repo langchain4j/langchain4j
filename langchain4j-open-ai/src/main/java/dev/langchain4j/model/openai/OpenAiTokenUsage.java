@@ -1,18 +1,22 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.Objects;
 
+@Experimental
 public class OpenAiTokenUsage extends TokenUsage {
 
-    public record InputTokensDetails( // TODO or PromptTokensDetails ?
-                                      Integer cachedTokens
+    @Experimental
+    public record InputTokensDetails(
+            Integer cachedTokens
     ) {
     }
 
-    public record OutputTokensDetails( // TODO or CompletionTokensDetails ?
-                                       Integer reasoningTokens
+    @Experimental
+    public record OutputTokensDetails(
+            Integer reasoningTokens
     ) {
     }
 
@@ -25,10 +29,12 @@ public class OpenAiTokenUsage extends TokenUsage {
         this.outputTokensDetails = builder.outputTokensDetails;
     }
 
+    @Experimental
     public InputTokensDetails inputTokensDetails() {
         return inputTokensDetails;
     }
 
+    @Experimental
     public OutputTokensDetails outputTokensDetails() {
         return outputTokensDetails;
     }
@@ -51,8 +57,11 @@ public class OpenAiTokenUsage extends TokenUsage {
     @Override
     public String toString() {
         return "OpenAiTokenUsage{" +
-                "inputTokensDetails=" + inputTokensDetails +
+                " inputTokenCount = " + inputTokenCount() +
+                ", inputTokensDetails=" + inputTokensDetails +
+                ", outputTokenCount = " + outputTokenCount() +
                 ", outputTokensDetails=" + outputTokensDetails +
+                ", totalTokenCount = " + totalTokenCount() +
                 '}';
     }
 
@@ -73,6 +82,7 @@ public class OpenAiTokenUsage extends TokenUsage {
             return this;
         }
 
+        @Experimental
         public Builder inputTokensDetails(InputTokensDetails inputTokensDetails) {
             this.inputTokensDetails = inputTokensDetails;
             return this;
@@ -83,6 +93,7 @@ public class OpenAiTokenUsage extends TokenUsage {
             return this;
         }
 
+        @Experimental
         public Builder outputTokensDetails(OutputTokensDetails outputTokensDetails) {
             this.outputTokensDetails = outputTokensDetails;
             return this;

@@ -62,7 +62,6 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
     @Override
     public String toString() {
-        // TODO inherited
         return "OpenAiChatResponseMetadata{" +
                 "id='" + id() + '\'' +
                 ", modelName='" + modelName() + '\'' +
