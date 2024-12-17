@@ -13,11 +13,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.output.FinishReason;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -25,10 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static com.azure.ai.openai.models.ChatCompletionsToolSelectionPreset.AUTO;
-import static com.azure.ai.openai.models.ChatCompletionsToolSelectionPreset.REQUIRED;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
@@ -147,17 +141,5 @@ class InternalAzureOpenAiHelperTest {
                 .arguments(functionArguments)
                 .build()
         );
-    }
-
-    @Test
-    void should_map_tool_choice() {
-        assertThat(toToolChoice(ToolChoice.AUTO).getPreset()).isEqualTo(AUTO);
-        assertThat(toToolChoice(ToolChoice.REQUIRED).getPreset()).isEqualTo(REQUIRED);
-    }
-
-    @ParameterizedTest
-    @EnumSource
-    void should_map_all_tool_choices(ToolChoice toolChoice) {
-        assertThat(toToolChoice(toolChoice)).isNotNull();
     }
 }
