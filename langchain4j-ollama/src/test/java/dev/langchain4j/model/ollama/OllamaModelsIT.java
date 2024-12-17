@@ -25,9 +25,16 @@ class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
         Response<List<OllamaModel>> response = ollamaModels.availableModels();
 
         // then
-        assertThat(response.content().size()).isGreaterThan(0);
-        assertThat(response.content().get(0).getName()).contains(TINY_DOLPHIN_MODEL);
-        assertThat(response.content().get(0).getModifiedAt()).isNotNull();
+        List<OllamaModel> ollamaModels = response.content();
+        assertThat(ollamaModels).isNotEmpty();
+        for (OllamaModel ollamaModel : ollamaModels) {
+            assertThat(ollamaModel.getName()).isNotBlank();
+            assertThat(ollamaModel.getSize()).isPositive();
+            assertThat(ollamaModel.getDigest()).isNotBlank();
+            assertThat(ollamaModel.getDetails()).isNotNull(); // TODO assert internals
+            assertThat(ollamaModel.getModel()).isNotBlank();
+            assertThat(ollamaModel.getModifiedAt()).isNotNull();
+        }
     }
 
     @Test
