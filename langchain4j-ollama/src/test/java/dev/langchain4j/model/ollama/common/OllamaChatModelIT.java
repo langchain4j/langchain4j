@@ -5,6 +5,7 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import org.junit.jupiter.api.Disabled;
 
 import java.util.List;
 
@@ -72,17 +73,8 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(
-                OLLAMA_CHAT_MODEL_WITH_TOOLS
-//                OPEN_AI_CHAT_MODEL_WITH_TOOLS // TODO
-                // TODO add more model configs, see OpenAiChatModelIT
-        );
-    }
-
-    @Override
-    protected List<ChatLanguageModel> modelsSupportingTools() {
-        return List.of(
-                OLLAMA_CHAT_MODEL_WITH_TOOLS
-//                OPEN_AI_CHAT_MODEL_WITH_TOOLS // TODO
+                OLLAMA_CHAT_MODEL_WITH_TOOLS,
+                OPEN_AI_CHAT_MODEL_WITH_TOOLS
                 // TODO add more model configs, see OpenAiChatModelIT
         );
     }
@@ -90,10 +82,59 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> modelsSupportingImageInputs() {
         return List.of(
-                OLLAMA_CHAT_MODEL_WITH_VISION
-//                OPEN_AI_CHAT_MODEL_WITH_VISION // TODO
+                OLLAMA_CHAT_MODEL_WITH_VISION,
+                OPEN_AI_CHAT_MODEL_WITH_VISION
                 // TODO add more model configs, see OpenAiChatModelIT
         );
+    }
+
+    @Override
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(ChatLanguageModel model) {
+        if (model instanceof OpenAiChatModel) {
+            return;
+        }
+        super.should_fail_if_stopSequences_parameter_is_not_supported(model);
+    }
+
+    @Override
+    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(ChatLanguageModel model) {
+        if (model instanceof OpenAiChatModel) {
+            return;
+        }
+        super.should_fail_if_maxOutputTokens_parameter_is_not_supported(model);
+    }
+
+    @Override
+    protected void should_fail_if_modelName_is_not_supported(ChatLanguageModel model) {
+        if (model instanceof OpenAiChatModel) {
+            return;
+        }
+        super.should_fail_if_modelName_is_not_supported(model);
+    }
+
+    @Override
+    protected void should_fail_if_JSON_response_format_is_not_supported(ChatLanguageModel model) {
+        if (model instanceof OpenAiChatModel) {
+            return;
+        }
+        super.should_fail_if_JSON_response_format_is_not_supported(model);
+    }
+
+    @Override
+    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(ChatLanguageModel model) {
+        if (model instanceof OpenAiChatModel) {
+            return;
+        }
+        super.should_fail_if_JSON_response_format_with_schema_is_not_supported(model);
+    }
+
+    @Override
+    @Disabled("enable after validation is implemented in OllamaChatModel")
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(ChatLanguageModel model) {
+        if (model instanceof OpenAiChatModel) {
+            return;
+        }
+        super.should_fail_if_images_as_public_URLs_are_not_supported(model);
     }
 
     @Override
@@ -137,8 +178,13 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsSingleImageInputAsPublicURL() {
+        return false; // Ollama supports only base64-encoded images
+    }
+
+    @Override
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return false; // vision model only supports a single image per message
+        return false; // Ollama supports only base64-encoded images
     }
 
     @Override

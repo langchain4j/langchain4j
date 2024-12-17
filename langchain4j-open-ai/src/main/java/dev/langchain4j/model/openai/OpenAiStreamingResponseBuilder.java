@@ -94,9 +94,8 @@ public class OpenAiStreamingResponseBuilder {
         }
 
         String content = delta.content();
-        if (content != null) {
+        if (!isNullOrBlank(content)) {
             this.contentBuilder.append(content);
-            return;
         }
 
         if (delta.functionCall() != null) {

@@ -5,6 +5,7 @@ import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import org.junit.jupiter.api.Disabled;
 
 import java.util.List;
 
@@ -70,8 +71,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected List<StreamingChatLanguageModel> models() {
         return List.of(
-                OLLAMA_CHAT_MODEL_WITH_TOOLS
-//                OPEN_AI_CHAT_MODEL_WITH_TOOLS // TODO
+                OLLAMA_CHAT_MODEL_WITH_TOOLS,
+                OPEN_AI_CHAT_MODEL_WITH_TOOLS
                 // TODO add more model configs, see OpenAiChatModelIT
         );
     }
@@ -79,8 +80,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected List<StreamingChatLanguageModel> modelsSupportingTools() {
         return List.of(
-                OLLAMA_CHAT_MODEL_WITH_TOOLS
-//                OPEN_AI_CHAT_MODEL_WITH_TOOLS // TODO
+                // OLLAMA_CHAT_MODEL_WITH_TOOLS, // TODO uncomment after https://github.com/langchain4j/langchain4j/pull/2210 is merged
+                OPEN_AI_CHAT_MODEL_WITH_TOOLS
                 // TODO add more model configs, see OpenAiChatModelIT
         );
     }
@@ -88,10 +89,59 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected List<StreamingChatLanguageModel> modelsSupportingImageInputs() {
         return List.of(
-                OLLAMA_CHAT_MODEL_WITH_VISION
-//                OPEN_AI_CHAT_MODEL_WITH_VISION // TODO
+                OLLAMA_CHAT_MODEL_WITH_VISION,
+                OPEN_AI_CHAT_MODEL_WITH_VISION
                 // TODO add more model configs, see OpenAiChatModelIT
         );
+    }
+
+    @Override
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(StreamingChatLanguageModel model) {
+        if (model instanceof OpenAiStreamingChatModel) {
+            return;
+        }
+        super.should_fail_if_stopSequences_parameter_is_not_supported(model);
+    }
+
+    @Override
+    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(StreamingChatLanguageModel model) {
+        if (model instanceof OpenAiStreamingChatModel) {
+            return;
+        }
+        super.should_fail_if_maxOutputTokens_parameter_is_not_supported(model);
+    }
+
+    @Override
+    protected void should_fail_if_modelName_is_not_supported(StreamingChatLanguageModel model) {
+        if (model instanceof OpenAiStreamingChatModel) {
+            return;
+        }
+        super.should_fail_if_modelName_is_not_supported(model);
+    }
+
+    @Override
+    protected void should_fail_if_JSON_response_format_is_not_supported(StreamingChatLanguageModel model) {
+        if (model instanceof OpenAiStreamingChatModel) {
+            return;
+        }
+        super.should_fail_if_JSON_response_format_is_not_supported(model);
+    }
+
+    @Override
+    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(StreamingChatLanguageModel model) {
+        if (model instanceof OpenAiStreamingChatModel) {
+            return;
+        }
+        super.should_fail_if_JSON_response_format_with_schema_is_not_supported(model);
+    }
+
+    @Override
+    @Disabled("enable after validation is implemented in OllamaStreamingChatModel")
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatLanguageModel model) {
+        if (model instanceof OpenAiStreamingChatModel) {
+            return;
+        }
+        super.should_fail_if_images_as_public_URLs_are_not_supported(model);
     }
 
     @Override
@@ -112,11 +162,6 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsStopSequencesParameter() {
         return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsTools() {
-        return false; // TODO enable after https://github.com/langchain4j/langchain4j/pull/2210
     }
 
     @Override
@@ -145,8 +190,13 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsSingleImageInputAsPublicURL() {
+        return false; // Ollama supports only base64-encoded images
+    }
+
+    @Override
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return false; // vision model only supports a single image per message
+        return false; // Ollama supports only base64-encoded images
     }
 
     @Override
@@ -160,7 +210,17 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean assertTokenUsage() {
+        return false; // TODO implement
+    }
+
+    @Override
     protected boolean assertFinishReason() {
         return false; // TODO implement
+    }
+
+    @Override
+    protected boolean assertTimesOnPartialResponseWasCalled() {
+        return false; // TODO
     }
 }

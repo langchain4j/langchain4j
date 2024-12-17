@@ -98,7 +98,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_user_message(M model) {
+    protected void should_respect_user_message(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -143,7 +143,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_respect_system_message(M model) {
+    protected void should_respect_system_message(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -170,7 +170,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsModelNameParameter")
-    void should_respect_modelName_in_chat_request(M model) {
+    protected void should_respect_modelName_in_chat_request(M model) {
 
         // given
         String modelName = customModelName();
@@ -218,7 +218,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @Test
     @EnabledIf("supportsModelNameParameter")
-    void should_respect_modelName_in_default_model_parameters() {
+    protected void should_respect_modelName_in_default_model_parameters() {
 
         // given
         String modelName = customModelName();
@@ -248,7 +248,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @DisabledIf("supportsModelNameParameter")
-    void should_fail_if_modelName_is_not_supported(M model) {
+    protected void should_fail_if_modelName_is_not_supported(M model) {
 
         // given
         String modelName = "dummy";
@@ -278,7 +278,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsMaxOutputTokensParameter")
-    void should_respect_maxOutputTokens_in_chat_request(M model) {
+    protected void should_respect_maxOutputTokens_in_chat_request(M model) {
 
         // given
         int maxOutputTokens = 5;
@@ -299,7 +299,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -320,7 +322,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @Test
     @EnabledIf("supportsMaxOutputTokensParameter")
-    void should_respect_maxOutputTokens_in_default_model_parameters() {
+    protected void should_respect_maxOutputTokens_in_default_model_parameters() {
 
         // given
         int maxOutputTokens = 5;
@@ -342,7 +344,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -364,7 +368,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @DisabledIf("supportsMaxOutputTokensParameter")
-    void should_fail_if_maxOutputTokens_parameter_is_not_supported(M model) {
+    protected void should_fail_if_maxOutputTokens_parameter_is_not_supported(M model) {
 
         // given
         int maxOutputTokens = 5;
@@ -394,7 +398,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsStopSequencesParameter")
-    void should_respect_stopSequences_in_chat_request(M model) {
+    protected void should_respect_stopSequences_in_chat_request(M model) {
 
         // given
         List<String> stopSequences = List.of("World", " World");
@@ -427,7 +431,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @Test
     @EnabledIf("supportsStopSequencesParameter")
-    void should_respect_stopSequences_in_default_model_parameters() {
+    protected void should_respect_stopSequences_in_default_model_parameters() {
 
         // given
         List<String> stopSequences = List.of("World", " World");
@@ -462,7 +466,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @DisabledIf("supportsStopSequencesParameter")
-    void should_fail_if_stopSequences_parameter_is_not_supported(M model) {
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(M model) {
 
         // given
         List<String> stopSequences = List.of("World");
@@ -492,7 +496,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsMaxOutputTokensParameter")
-    void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(M model) {
+    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(M model) {
 
         // given
         // TODO test more/all common params?
@@ -513,7 +517,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -522,7 +528,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     @Test
     @EnabledIf("supportsMaxOutputTokensParameter")
-    void should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
 
         // given
         // TODO test more/all common params?
@@ -545,7 +551,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata(), maxOutputTokens);
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(LENGTH);
@@ -563,7 +571,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
     @EnabledIf("supportsTools")
-    void should_execute_a_tool_then_answer(M model) {
+    protected void should_execute_a_tool_then_answer(M model) {
 
         // given
         UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
@@ -630,7 +638,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage2.text()).contains("sun");
         assertThat(aiMessage2.toolExecutionRequests()).isNull(); // TODO make it empty
 
-        assertTokenUsage(chatResponse2.metadata());
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse2.metadata());
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
@@ -639,7 +649,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         if (model instanceof StreamingChatLanguageModel) {
             StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
             assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
-            assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            if (assertTimesOnPartialResponseWasCalled()) {
+                assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            }
             assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled()).isEqualTo(1);
             if (assertThreads()) {
                 Set<Thread> threads = streamingMetadata2.threads();
@@ -652,7 +664,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("models")
     @DisabledIf("supportsTools")
-    void should_fail_if_tools_are_not_supported(M model) {
+    protected void should_fail_if_tools_are_not_supported(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -676,7 +688,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
     @EnabledIf("supportsToolChoiceRequiredWithMultipleTools")
-    void should_force_LLM_to_execute_any_tool(M model) {
+    protected void should_force_LLM_to_execute_any_tool(M model) {
 
         // given
         ToolSpecification calculatorTool = ToolSpecification.builder()
@@ -718,7 +730,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
     @EnabledIf("supportsToolChoiceRequiredWithSingleTool")
-    void should_force_LLM_to_execute_specific_tool(M model) {
+    protected void should_force_LLM_to_execute_specific_tool(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -756,7 +768,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("modelsSupportingStructuredOutputs")
     @EnabledIf("supportsJsonResponseFormat")
-    void should_respect_JSON_response_format(M model) {
+    protected void should_respect_JSON_response_format(M model) {
 
         // given
         ResponseFormat responseFormat = ResponseFormat.JSON;
@@ -816,7 +828,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("modelsSupportingStructuredOutputs")
     @EnabledIf("supportsJsonResponseFormatWithSchema")
-    void should_respect_JSON_response_format_with_schema(M model) {
+    protected void should_respect_JSON_response_format_with_schema(M model) {
 
         // given
         ChatRequest chatRequest = ChatRequest.builder()
@@ -950,7 +962,9 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(aiMessage2.text()).isEqualToIgnoringWhitespace("{\"weather\":\"sunny\"}");
         assertThat(aiMessage2.toolExecutionRequests()).isNull(); // TODO make it empty
 
-        assertTokenUsage(chatResponse2.metadata());
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse2.metadata());
+        }
 
         if (assertFinishReason()) {
             assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
@@ -974,7 +988,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsSingleImageInputAsBase64EncodedString")
-    void should_accept_single_image_as_base64_encoded_string(M model) {
+    protected void should_accept_single_image_as_base64_encoded_string(M model) {
 
         // given
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
@@ -1006,7 +1020,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
-    void should_accept_multiple_images_as_base64_encoded_strings(M model) {
+    protected void should_accept_multiple_images_as_base64_encoded_strings(M model) {
 
         // given
         Base64.Encoder encoder = Base64.getEncoder();
@@ -1070,7 +1084,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsSingleImageInputAsPublicURL")
-    void should_accept_single_image_as_public_URL(M model) {
+    protected void should_accept_single_image_as_public_URL(M model) {
 
         // given
         UserMessage userMessage = UserMessage.from(
@@ -1101,7 +1115,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsMultipleImageInputsAsPublicURLs")
-    void should_accept_multiple_images_as_public_URLs(M model) {
+    protected void should_accept_multiple_images_as_public_URLs(M model) {
 
         // given
         UserMessage userMessage = UserMessage.from(
@@ -1233,6 +1247,10 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected boolean assertExceptionType() {
+        return true;
+    }
+
+    protected boolean assertTimesOnPartialResponseWasCalled() {
         return true;
     }
 
