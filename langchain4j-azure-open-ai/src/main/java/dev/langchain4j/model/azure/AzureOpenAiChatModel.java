@@ -114,7 +114,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 @Deprecated
                                 ChatCompletionsResponseFormat chatCompletionsResponseFormat,
                                 ResponseFormat responseFormat,
-                                boolean strictJsonSchema,
+                                Boolean strictJsonSchema,
                                 List<ChatModelListener> listeners,
                                 Set<Capability> capabilities) {
 
@@ -142,7 +142,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 @Deprecated
                                 ChatCompletionsResponseFormat chatCompletionsResponseFormat,
                                 ResponseFormat responseFormat,
-                                boolean strictJsonSchema,
+                                Boolean strictJsonSchema,
                                 Duration timeout,
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
@@ -176,7 +176,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 @Deprecated
                                 ChatCompletionsResponseFormat chatCompletionsResponseFormat,
                                 ResponseFormat responseFormat,
-                                boolean strictJsonSchema,
+                                Boolean strictJsonSchema,
                                 Duration timeout,
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
@@ -210,7 +210,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 @Deprecated
                                 ChatCompletionsResponseFormat chatCompletionsResponseFormat,
                                 ResponseFormat responseFormat,
-                                boolean strictJsonSchema,
+                                Boolean strictJsonSchema,
                                 Duration timeout,
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
@@ -241,7 +241,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                  @Deprecated
                                  ChatCompletionsResponseFormat chatCompletionsResponseFormat,
                                  ResponseFormat responseFormat,
-                                 boolean strictJsonSchema,
+                                 Boolean strictJsonSchema,
                                  List<ChatModelListener> listeners,
                                  Set<Capability> capabilities) {
 
@@ -606,7 +606,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder strictJsonSchema(boolean strictJsonSchema) {
+        public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
             return this;
         }
