@@ -19,7 +19,6 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     private final Boolean store;
     private final Map<String, String> metadata;
     private final String serviceTier;
-    // TODO max_completion_tokens?
 
     private OpenAiChatRequestParameters(Builder builder) {
         super(builder);
@@ -34,7 +33,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
     OpenAiChatRequestParameters(ChatRequestParameters parameters) {
         super(parameters);
-        if (parameters instanceof OpenAiChatRequestParameters openAiParameters) { // TODO is this needed?
+        if (parameters instanceof OpenAiChatRequestParameters openAiParameters) {
             this.logitBias = copyIfNotNull(openAiParameters.logitBias);
             this.parallelToolCalls = openAiParameters.parallelToolCalls;
             this.seed = openAiParameters.seed;
@@ -42,7 +41,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
             this.store = openAiParameters.store;
             this.metadata = openAiParameters.metadata;
             this.serviceTier = openAiParameters.serviceTier;
-        } else { // TODO is this needed?
+        } else {
             this.logitBias = null;
             this.parallelToolCalls = null;
             this.seed = null;
@@ -119,9 +118,19 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
     @Override
     public String toString() {
-        // TODO inherited
         return "OpenAiChatRequestParameters{" +
-                "logitBias=" + logitBias +
+                "modelName='" + modelName() + '\'' +
+                ", temperature=" + temperature() +
+                ", topP=" + topP() +
+                ", topK=" + topK() +
+                ", frequencyPenalty=" + frequencyPenalty() +
+                ", presencePenalty=" + presencePenalty() +
+                ", maxOutputTokens=" + maxOutputTokens() +
+                ", stopSequences=" + stopSequences() +
+                ", toolSpecifications=" + toolSpecifications() +
+                ", toolChoice=" + toolChoice() +
+                ", responseFormat=" + responseFormat() +
+                ", logitBias=" + logitBias +
                 ", parallelToolCalls=" + parallelToolCalls +
                 ", seed=" + seed +
                 ", user='" + user + '\'' +

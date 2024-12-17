@@ -64,7 +64,11 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
     public String toString() {
         // TODO inherited
         return "OpenAiChatResponseMetadata{" +
-                "created=" + created +
+                "id='" + id() + '\'' +
+                ", modelName='" + modelName() + '\'' +
+                ", tokenUsage=" + tokenUsage() +
+                ", finishReason=" + finishReason() +
+                ", created=" + created +
                 ", serviceTier='" + serviceTier + '\'' +
                 ", systemFingerprint='" + systemFingerprint + '\'' +
                 '}';

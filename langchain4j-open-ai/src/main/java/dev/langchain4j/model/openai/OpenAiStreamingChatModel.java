@@ -111,16 +111,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Map<String, String> customHeaders,
                                     List<ChatModelListener> listeners) {
 
-        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            baseUrl = OPENAI_DEMO_URL;
-        }
-
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
+                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
-                .baseUrl(baseUrl)
                 .organizationId(organizationId)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
@@ -128,7 +123,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
-                .logResponses(logResponses)
+                .logStreamingResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();
@@ -155,9 +150,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .presencePenalty(getOrDefault(presencePenalty, commonParameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(maxTokens, commonParameters.maxOutputTokens())) // TODO maxCompletionTokens
                 .stopSequences(getOrDefault(stop, () -> copyIfNotNull(commonParameters.stopSequences())))
-                .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications())) // TODO use it if response does not have it
-                .toolChoice(commonParameters.toolChoice()) // TODO use it if response does not have it
-                .responseFormat(commonParameters.responseFormat()) // TODO use it if response does not have it
+                .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
+                .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
                 // OpenAI-specific parameters
                 .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
@@ -239,10 +234,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         // TODO reuse code from OpenAiChatModel
 
         OpenAiChatRequestParameters requestParameters;
-        if (chatRequest.parameters() instanceof OpenAiChatRequestParameters openAiChatParameters) {
-            requestParameters = openAiChatParameters;
+        if (chatRequest.parameters() instanceof OpenAiChatRequestParameters openAiParameters) {
+            requestParameters = openAiParameters;
         } else {
-            requestParameters = new OpenAiChatRequestParameters(chatRequest.parameters()); // TODO
+            requestParameters = new OpenAiChatRequestParameters(chatRequest.parameters());
         }
 
         if (responseFormat != null
@@ -269,7 +264,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .stop(getOrDefault(requestParameters.stopSequences(), defaultRequestParameters.stopSequences()))
                 .tools(toTools(getOrDefault(requestParameters.toolSpecifications(), defaultRequestParameters.toolSpecifications()), strictTools))
                 .toolChoice(toOpenAiToolChoice(getOrDefault(requestParameters.toolChoice(), defaultRequestParameters.toolChoice())))
-                .responseFormat(responseFormat) // TODO check default format
+                .responseFormat(getOrDefault(responseFormat, () -> toOpenAiResponseFormat(defaultRequestParameters.responseFormat(), this.strictJsonSchema)))
                 // OpenAI-specific parameters
                 .logitBias(getOrDefault(requestParameters.logitBias(), defaultRequestParameters.logitBias()))
                 .parallelToolCalls(getOrDefault(requestParameters.parallelToolCalls(), defaultRequestParameters.parallelToolCalls()))
@@ -432,13 +427,12 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         }
 
         /**
-         * TODO
-         * Sets common {@link ChatRequestParameters} or OpenAI-specific {@link OpenAiChatRequestParameters}
-         *
-         * @param parameters
-         * @return
+         * Sets default common {@link ChatRequestParameters} or OpenAI-specific {@link OpenAiChatRequestParameters}.
+         * <br>
+         * When a parameter is set via an individual builder method (e.g., {@link #modelName(String)}),
+         * its value takes precedence over the same parameter set via {@link ChatRequestParameters}.
          */
-        public OpenAiStreamingChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) { // TODO names, check everywhere chatParameters vs parameters vs defaultParameters
+        public OpenAiStreamingChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
             return this;
         }

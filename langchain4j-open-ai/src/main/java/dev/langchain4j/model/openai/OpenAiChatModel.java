@@ -138,6 +138,13 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .build();
         this.maxRetries = getOrDefault(maxRetries, 3);
 
+        ChatRequestParameters commonParameters;
+        if (defaultRequestParameters != null) {
+            commonParameters = defaultRequestParameters;
+        } else {
+            commonParameters = DefaultChatRequestParameters.builder().build();
+        }
+
         OpenAiChatRequestParameters openAiParameters;
         if (defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters) {
             openAiParameters = openAiChatRequestParameters;
@@ -145,12 +152,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             openAiParameters = OpenAiChatRequestParameters.builder().build();
         }
 
-        ChatRequestParameters commonParameters;
-        if (defaultRequestParameters != null) {
-            commonParameters = defaultRequestParameters;
-        } else {
-            commonParameters = DefaultChatRequestParameters.builder().build();
-        }
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters
                 .modelName(getOrDefault(getOrDefault(modelName, commonParameters.modelName()), GPT_3_5_TURBO))
@@ -160,9 +161,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .presencePenalty(getOrDefault(presencePenalty, commonParameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(maxTokens, commonParameters.maxOutputTokens())) // TODO maxCompletionTokens
                 .stopSequences(getOrDefault(stop, () -> copyIfNotNull(commonParameters.stopSequences())))
-                .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications())) // TODO use it if response does not have it
-                .toolChoice(commonParameters.toolChoice()) // TODO use it if response does not have it
-                .responseFormat(commonParameters.responseFormat()) // TODO use it if response does not have it
+                .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
+                .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
                 // OpenAI-specific parameters
                 .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
@@ -186,7 +187,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     // TODO deprecate
     public String modelName() {
-        return this.defaultRequestParameters.modelName();
+        return defaultRequestParameters.modelName();
     }
 
     @Override
@@ -264,9 +265,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .maxTokens(getOrDefault(requestParameters.maxOutputTokens(), defaultRequestParameters.maxOutputTokens())) // TODO maxCompletionTokens
                 .maxCompletionTokens(this.maxCompletionTokens)
                 .stop(getOrDefault(requestParameters.stopSequences(), defaultRequestParameters.stopSequences()))
-                .tools(toTools(getOrDefault(requestParameters.toolSpecifications(), defaultRequestParameters.toolSpecifications()), strictTools))
+                .tools(toTools(getOrDefault(requestParameters.toolSpecifications(), defaultRequestParameters.toolSpecifications()), this.strictTools))
                 .toolChoice(toOpenAiToolChoice(getOrDefault(requestParameters.toolChoice(), defaultRequestParameters.toolChoice())))
-                .responseFormat(responseFormat) // TODO check default format
+                .responseFormat(getOrDefault(responseFormat, () -> toOpenAiResponseFormat(defaultRequestParameters.responseFormat(), this.strictJsonSchema)))
                 // OpenAI-specific parameters
                 .logitBias(getOrDefault(requestParameters.logitBias(), defaultRequestParameters.logitBias()))
                 .parallelToolCalls(getOrDefault(requestParameters.parallelToolCalls(), defaultRequestParameters.parallelToolCalls()))
@@ -415,11 +416,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         }
 
         /**
-         * TODO
-         * Sets common {@link ChatRequestParameters} or OpenAI-specific {@link OpenAiChatRequestParameters}
-         *
-         * @param parameters
-         * @return
+         * Sets default common {@link ChatRequestParameters} or OpenAI-specific {@link OpenAiChatRequestParameters}.
+         * <br>
+         * When a parameter is set via an individual builder method (e.g., {@link #modelName(String)}),
+         * its value takes precedence over the same parameter set via {@link ChatRequestParameters}.
          */
         public OpenAiChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
