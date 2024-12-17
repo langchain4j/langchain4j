@@ -242,7 +242,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         this.seed = seed;
         this.chatCompletionsResponseFormat = chatCompletionsResponseFormat;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        this.supportedCapabilities = capabilities;
+        this.supportedCapabilities = copyIfNotNull(capabilities);
     }
 
     @Override
