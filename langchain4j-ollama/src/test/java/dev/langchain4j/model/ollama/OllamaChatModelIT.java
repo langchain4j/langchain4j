@@ -7,13 +7,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -92,12 +87,9 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         List<ChatMessage> messages = asList(
                 UserMessage.from("1 + 1 ="),
                 AiMessage.from(">>> 2"),
-
                 UserMessage.from("2 + 2 ="),
                 AiMessage.from(">>> 4"),
-
-                UserMessage.from("4 + 4 =")
-        );
+                UserMessage.from("4 + 4 ="));
 
         // when
         Response<AiMessage> response = model.generate(messages);
@@ -115,6 +107,8 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         String userMessage = "Return JSON with two fields: name and age of John Doe, 42 years old.";
@@ -124,5 +118,16 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // then
         assertThat(json).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
+    }
+
+    @Test
+    void should_return_set_capabilities() {
+        ChatLanguageModel model = OllamaChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(TINY_DOLPHIN_MODEL)
+                .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+                .build();
+
+        assertThat(model.supportedCapabilities()).contains(RESPONSE_FORMAT_JSON_SCHEMA);
     }
 }
