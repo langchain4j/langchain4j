@@ -33,6 +33,18 @@ public class Result<T> {
         this.toolExecutions = copyIfNotNull(toolExecutions);
     }
 
+    /**
+     *
+     * For use only with result from Tools where returnDirectly=true and the content is nullable
+     */
+    public Result(TokenUsage tokenUsage, List<Content> sources, FinishReason finishReason, List<ToolExecution> toolExecutions) {
+        this.content = null;
+        this.tokenUsage = tokenUsage;
+        this.sources = copyIfNotNull(sources);
+        this.finishReason = finishReason;
+        this.toolExecutions = copyIfNotNull(toolExecutions);
+    }
+
     public static <T> ResultBuilder<T> builder() {
         return new ResultBuilder<T>();
     }
