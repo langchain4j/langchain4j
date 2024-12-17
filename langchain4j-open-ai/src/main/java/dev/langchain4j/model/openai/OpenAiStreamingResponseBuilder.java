@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static java.util.Collections.singletonList;
@@ -94,7 +95,7 @@ public class OpenAiStreamingResponseBuilder {
         }
 
         String content = delta.content();
-        if (!isNullOrBlank(content)) {
+        if (!isNullOrEmpty(content)) {
             this.contentBuilder.append(content);
         }
 
