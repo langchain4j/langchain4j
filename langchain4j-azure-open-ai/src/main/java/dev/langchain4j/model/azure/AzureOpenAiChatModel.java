@@ -295,14 +295,14 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             );
 
             ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                    chatCompletions.getId(),
-                    options.getModel(),
-                    response
+                chatCompletions.getId(),
+                options.getModel(),
+                response
             );
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
-                    attributes
+                modelListenerResponse,
+                modelListenerRequest,
+                attributes
             );
             listeners.forEach(listener -> {
                 try {
@@ -316,10 +316,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating response, {}", httpResponseException.getValue());
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                    httpResponseException,
-                    modelListenerRequest,
-                    null,
-                    attributes
+                httpResponseException,
+                modelListenerRequest,
+                null,
+                attributes
             );
 
             listeners.forEach(listener -> {
