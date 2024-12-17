@@ -48,6 +48,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
@@ -529,18 +530,17 @@ public class InternalOpenAiHelper {
                 .build();
     }
 
-    static ChatModelResponse createModelListenerResponse(String responseId,
-                                                         String responseModel,
-                                                         ChatResponse chatResponse) {
+    static ChatModelResponse createModelListenerResponse(ChatResponse chatResponse) {
         if (chatResponse == null) {
             return null;
         }
 
+        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
         return ChatModelResponse.builder()
-                .id(responseId)
-                .model(responseModel)
-                .tokenUsage(chatResponse.metadata().tokenUsage())
-                .finishReason(chatResponse.metadata().finishReason())
+                .id(chatResponseMetadata.id())
+                .model(chatResponseMetadata.modelName())
+                .tokenUsage(chatResponseMetadata.tokenUsage())
+                .finishReason(chatResponseMetadata.finishReason())
                 .aiMessage(chatResponse.aiMessage())
                 .build();
     }

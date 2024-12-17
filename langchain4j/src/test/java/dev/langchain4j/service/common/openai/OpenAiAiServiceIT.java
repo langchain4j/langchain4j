@@ -1,11 +1,11 @@
-package dev.langchain4j.service.openai.common;
+package dev.langchain4j.service.common.openai;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
 
 import java.util.List;
 
-import static dev.langchain4j.service.openai.common.OpenAiChatModelIT.defaultModelBuilder;
+import static dev.langchain4j.service.common.openai.OpenAiChatModelIT.defaultModelBuilder;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
 class OpenAiAiServiceIT extends AbstractAiServiceIT {

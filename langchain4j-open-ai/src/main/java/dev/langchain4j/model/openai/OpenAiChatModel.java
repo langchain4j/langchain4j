@@ -311,11 +311,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                     .metadata(responseMetadata)
                     .build();
 
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                    openAiResponse.id(),
-                    openAiResponse.model(),
-                    chatResponse
-            );
+            ChatModelResponse modelListenerResponse = createModelListenerResponse(chatResponse);
             ChatModelResponseContext responseContext = new ChatModelResponseContext(
                     modelListenerResponse,
                     modelListenerRequest,

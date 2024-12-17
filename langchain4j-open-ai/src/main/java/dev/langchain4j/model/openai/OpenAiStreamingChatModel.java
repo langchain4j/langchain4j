@@ -306,11 +306,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .onComplete(() -> {
                     ChatResponse chatResponse = openAiResponseBuilder.build();
 
-                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                            chatResponse.metadata().id(),
-                            chatResponse.metadata().modelName(),
-                            chatResponse
-                    );
+                    ChatModelResponse modelListenerResponse = createModelListenerResponse(chatResponse);
                     ChatModelResponseContext responseContext = new ChatModelResponseContext(
                             modelListenerResponse,
                             modelListenerRequest,
@@ -329,12 +325,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .onError(error -> {
                     ChatResponse chatResponse = openAiResponseBuilder.build();
 
-                    ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
-                            chatResponse.metadata().id(),
-                            chatResponse.metadata().modelName(),
-                            chatResponse
-                    );
-
+                    ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(chatResponse);
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(
                             error,
                             modelListenerRequest,

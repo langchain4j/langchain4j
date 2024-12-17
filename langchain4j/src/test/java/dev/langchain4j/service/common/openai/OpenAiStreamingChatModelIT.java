@@ -1,4 +1,4 @@
-package dev.langchain4j.service.openai.common;
+package dev.langchain4j.service.common.openai;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;

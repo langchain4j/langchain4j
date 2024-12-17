@@ -1,4 +1,4 @@
-package dev.langchain4j.service.openai.common;
+package dev.langchain4j.service.common.openai;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
