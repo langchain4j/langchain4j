@@ -22,21 +22,23 @@ import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Arrays.asList;
 
 /**
- * TODO review all javadoc in this class
- * Represents a language model that has a chat interface.
+ * Represents a language model that has a chat API.
  *
  * @see StreamingChatLanguageModel
  */
 public interface ChatLanguageModel {
 
+    // TODO improve javadoc
+
     /**
-     * TODO
+     * This is the main API to interact with the chat model.
+     * All the existing generate(...) methods (see below) will be deprecated and removed before 1.0.0 release.
      * <p>
      * A temporary default implementation of this method is necessary
      * until all {@link ChatLanguageModel} implementations adopt it. It should be removed once that occurs.
      *
-     * @param chatRequest
-     * @return
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @return a {@link ChatResponse}, containing all the outputs from the LLM
      */
     @Experimental
     default ChatResponse chat(ChatRequest chatRequest) {

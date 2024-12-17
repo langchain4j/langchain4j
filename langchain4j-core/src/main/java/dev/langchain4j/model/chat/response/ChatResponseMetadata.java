@@ -9,14 +9,13 @@ import java.util.Objects;
 @Experimental
 public class ChatResponseMetadata {
     // TODO name: ChatMetadata?
-    // TODO place
 
     private final String id; // TODO responseId?
     private final String modelName; // TODO name
     private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
 
-    protected ChatResponseMetadata(Builder<?> builder) { // TODO
+    protected ChatResponseMetadata(Builder<?> builder) {
         this.id = builder.id;
         this.modelName = builder.modelName;
         this.tokenUsage = builder.tokenUsage;
@@ -69,7 +68,7 @@ public class ChatResponseMetadata {
                 '}';
     }
 
-    public static Builder<?> builder() { // TODO
+    public static Builder<?> builder() {
         return new Builder<>();
     }
 

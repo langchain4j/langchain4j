@@ -8,8 +8,8 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 public enum Capability {
 
     /**
-     * TODO
-     * TODO {@link ResponseFormat#jsonSchema()}
+     * Indicates whether {@link ChatLanguageModel} supports responding in JSON format
+     * according to the specified JSON schema.
      *
      * @see ResponseFormat
      * @see JsonSchema

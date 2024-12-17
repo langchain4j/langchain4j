@@ -23,21 +23,23 @@ import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Collections.singletonList;
 
 /**
- * TODO review all javadoc in this class
- * Represents a language model that has a chat interface and can stream a response one token at a time.
+ * Represents a language model that has a chat API and can stream a response one token at a time.
  *
  * @see ChatLanguageModel
  */
 public interface StreamingChatLanguageModel {
 
+    // TODO improve javadoc
+
     /**
-     * TODO
+     * This is the main API to interact with the chat model.
+     * All the existing generate(...) methods (see below) will be deprecated and removed before 1.0.0 release.
      * <p>
      * A temporary default implementation of this method is necessary
      * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
      *
-     * @param chatRequest
-     * @param handler
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
      */
     @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {

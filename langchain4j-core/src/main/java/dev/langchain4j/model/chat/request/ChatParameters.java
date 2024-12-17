@@ -6,7 +6,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import java.util.List;
 
 @Experimental
-public interface ChatParameters {
+public interface ChatParameters { // TODO name: ChatRequestParameters?
 
     String modelName();
 

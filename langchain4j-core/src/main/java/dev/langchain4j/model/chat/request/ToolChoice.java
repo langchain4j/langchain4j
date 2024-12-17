@@ -1,19 +1,19 @@
 package dev.langchain4j.model.chat.request;
 
-/**
- * TODO
- */
+import dev.langchain4j.Experimental;
+
+@Experimental
 public enum ToolChoice {
-    // TODO package
+
+    // TODO improve javadoc
 
     /**
-     * TODO
-     * TODO default?
+     * The language model is free to decide whether to call one or multiple tools.
      */
     AUTO,
 
     /**
-     * TODO
+     * The language model is required to call one or more tools.
      */
     REQUIRED
 }

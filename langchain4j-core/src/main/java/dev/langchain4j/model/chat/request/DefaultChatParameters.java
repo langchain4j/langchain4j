@@ -13,8 +13,6 @@ import static java.util.Arrays.asList;
 
 @Experimental
 public class DefaultChatParameters implements ChatParameters {
-    // TODO name
-    // TODO place
 
     private final String modelName;
     private final Double temperature;
@@ -28,7 +26,7 @@ public class DefaultChatParameters implements ChatParameters {
     private final ToolChoice toolChoice;
     private final ResponseFormat responseFormat;
 
-    protected DefaultChatParameters(Builder<?> builder) { // TODO visibility
+    protected DefaultChatParameters(Builder<?> builder) {
         this.modelName = builder.modelName;
         this.temperature = builder.temperature;
         this.topP = builder.topP;
@@ -38,11 +36,11 @@ public class DefaultChatParameters implements ChatParameters {
         this.maxOutputTokens = builder.maxOutputTokens;
         this.stopSequences = copyIfNotNull(builder.stopSequences);
         this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
-        this.toolChoice = builder.toolChoice; // TODO set AUTO by default? only if toolSpecifications are present? validate: can be set only when tools are defined
+        this.toolChoice = builder.toolChoice;
         this.responseFormat = builder.responseFormat;
     }
 
-    protected DefaultChatParameters(ChatParameters chatParameters) { // TODO visibility
+    protected DefaultChatParameters(ChatParameters chatParameters) {
         this.modelName = chatParameters.modelName();
         this.temperature = chatParameters.temperature();
         this.topP = chatParameters.topP();
@@ -146,7 +144,7 @@ public class DefaultChatParameters implements ChatParameters {
         );
     }
 
-    public static Builder<?> builder() { // TODO?
+    public static Builder<?> builder() {
         return new Builder<>();
     }
 
@@ -164,7 +162,7 @@ public class DefaultChatParameters implements ChatParameters {
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
 
-        public T modelName(String modelName) { // TODO another one accepting enum?
+        public T modelName(String modelName) {
             this.modelName = modelName;
             return (T) this;
         }
@@ -199,20 +197,32 @@ public class DefaultChatParameters implements ChatParameters {
             return (T) this;
         }
 
+        /**
+         * @see #stopSequences(String...)
+         */
         public T stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return (T) this;
         }
 
+        /**
+         * @see #stopSequences(List)
+         */
         public T stopSequences(String... stopSequences) {
             return stopSequences(asList(stopSequences));
         }
 
+        /**
+         * @see #toolSpecifications(ToolSpecification...)
+         */
         public T toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return (T) this;
         }
 
+        /**
+         * @see #toolSpecifications(List)
+         */
         public T toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }

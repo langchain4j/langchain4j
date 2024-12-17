@@ -51,7 +51,7 @@ public class ChatRequest {
     }
 
     @Experimental
-    public ChatParameters parameters() { // TODO name
+    public ChatParameters parameters() {
         return parameters;
     }
 
@@ -81,7 +81,7 @@ public class ChatRequest {
 
     @Override
     public String toString() {
-        return "ChatRequest {" + // TODO names
+        return "ChatRequest {" +
                 " messages = " + messages +
                 ", parameters = " + parameters +
                 " }";
@@ -94,7 +94,7 @@ public class ChatRequest {
     public static class Builder {
 
         private List<ChatMessage> messages;
-        private ChatParameters parameters; // TODO validate that does not overlap with builder
+        private ChatParameters parameters;
         private List<ToolSpecification> toolSpecifications;
         private ResponseFormat responseFormat;
 
@@ -108,7 +108,7 @@ public class ChatRequest {
         }
 
         @Experimental
-        public Builder parameters(ChatParameters parameters) { // TODO name
+        public Builder parameters(ChatParameters parameters) {
             this.parameters = parameters;
             return this;
         }

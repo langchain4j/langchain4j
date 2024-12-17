@@ -18,7 +18,7 @@ public class OpenAiChatParameters extends DefaultChatParameters {
     private final String user;
     private final Boolean store;
     private final Map<String, String> metadata;
-    private final String serviceTier; // TODO or enum?
+    private final String serviceTier;
     // TODO max_completion_tokens?
 
     private OpenAiChatParameters(Builder builder) { // TODO visibility

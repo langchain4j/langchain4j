@@ -16,7 +16,7 @@ public class ChatResponse {
     private final AiMessage aiMessage;
     private final ChatResponseMetadata metadata;
 
-    protected ChatResponse(@NonNull Builder builder) { // TODO visibility
+    protected ChatResponse(@NonNull Builder builder) {
         this.aiMessage = ensureNotNull(builder.aiMessage, "aiMessage");
         this.metadata = ensureNotNull(builder.metadata, "metadata");
     }
@@ -62,7 +62,7 @@ public class ChatResponse {
                 " }";
     }
 
-    public static Builder builder() { // TODO
+    public static Builder builder() {
         return new Builder();
     }
 

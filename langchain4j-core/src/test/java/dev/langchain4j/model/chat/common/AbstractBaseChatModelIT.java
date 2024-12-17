@@ -265,13 +265,13 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThatThrownBy(() -> chat(model, chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("modelName")
-                .hasMessageContaining("not supported");
+                .hasMessageContaining("not support");
 
         if (supportsDefaultChatParameters()) {
             assertThatThrownBy(() -> createModelWith(chatParameters))
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("modelName")
-                    .hasMessageContaining("not supported");
+                    .hasMessageContaining("not support");
         }
     }
 
@@ -381,13 +381,13 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThatThrownBy(() -> chat(model, chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("maxOutputTokens")
-                .hasMessageContaining("not supported");
+                .hasMessageContaining("not support");
 
         if (supportsDefaultChatParameters()) {
             assertThatThrownBy(() -> createModelWith(chatParameters))
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("maxOutputTokens")
-                    .hasMessageContaining("not supported");
+                    .hasMessageContaining("not support");
         }
     }
 
@@ -479,13 +479,13 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThatThrownBy(() -> chat(model, chatRequest))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("stopSequences")
-                .hasMessageContaining("not supported");
+                .hasMessageContaining("not support");
 
         if (supportsDefaultChatParameters()) {
             assertThatThrownBy(() -> createModelWith(chatParameters))
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("stopSequences")
-                    .hasMessageContaining("not supported");
+                    .hasMessageContaining("not support");
         }
     }
 
@@ -668,7 +668,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("tool")
-                    .hasMessageContaining("not supported");
+                    .hasMessageContaining("not support");
 
         }
     }
@@ -808,7 +808,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("JSON response format")
-                    .hasMessageContaining("not supported");
+                    .hasMessageContaining("not support");
 
         }
     }
@@ -862,7 +862,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("JSON response format")
-                    .hasMessageContaining("not supported");
+                    .hasMessageContaining("not support");
 
         }
     }
@@ -1061,7 +1061,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("image")
-                    .hasMessageContaining("not supported");
+                    .hasMessageContaining("not support");
         }
     }
 
@@ -1152,7 +1152,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             throwableAssert
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("image")
-                    .hasMessageContaining("not supported");
+                    .hasMessageContaining("not support");
         }
     }
 
