@@ -46,12 +46,12 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+    protected boolean supportsToolChoiceRequiredWithSingleTool() {
         return false; // TODO implement
     }
 
     @Override
-    protected boolean supportsToolChoiceRequiredWithSingleTool() {
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
         return false; // TODO implement
     }
 

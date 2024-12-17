@@ -420,7 +420,7 @@ public abstract class AiServicesWithNewToolsIT {
                     .tools(tool)
                     .build();
 
-            String text = "What is the weather in Munich in celsius?";
+            String text = "What is the current temperature in Munich in celsius?";
 
             // when
             Response<AiMessage> response = assistant.chat(text);

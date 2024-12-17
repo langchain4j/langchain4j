@@ -24,12 +24,42 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsDefaultRequestParameters() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsModelNameParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsMaxOutputTokensParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsStopSequencesParameter() {
+        return false; // TODO implement
+    }
+
+    @Override
     protected boolean supportsToolChoiceRequiredWithSingleTool() {
         return false; // TODO implement
     }
 
     @Override
     protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormat() {
+        return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormatWithSchema() {
         return false; // TODO implement
     }
 

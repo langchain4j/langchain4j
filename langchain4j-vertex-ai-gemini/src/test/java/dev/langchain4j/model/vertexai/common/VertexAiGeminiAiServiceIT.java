@@ -13,4 +13,9 @@ class VertexAiGeminiAiServiceIT extends AbstractAiServiceIT {
     protected List<ChatLanguageModel> models() {
         return List.of(VERTEX_AI_GEMINI_CHAT_MODEL);
     }
+
+    @Override
+    protected boolean supportsJsonResponseFormatWithSchema() {
+        return false; // TODO implement
+    }
 }
