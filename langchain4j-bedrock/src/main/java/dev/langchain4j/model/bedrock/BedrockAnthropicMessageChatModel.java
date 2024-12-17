@@ -1,5 +1,16 @@
 package dev.langchain4j.model.bedrock;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.joining;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -26,6 +37,15 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
 import dev.langchain4j.model.output.Response;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -35,29 +55,10 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-import static java.util.Objects.nonNull;
-import static java.util.stream.Collectors.joining;
-
 @Getter
 @SuperBuilder
-public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<BedrockAnthropicMessageChatModelResponse> {
+public class BedrockAnthropicMessageChatModel
+        extends AbstractBedrockChatModel<BedrockAnthropicMessageChatModelResponse> {
 
     private static final Logger log = LoggerFactory.getLogger(BedrockAnthropicMessageChatModel.class);
 
@@ -65,10 +66,13 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
 
     @Builder.Default
     private final int topK = 250;
+
     @Builder.Default
     private final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
+
     @Builder.Default
     private final String model = Types.AnthropicClaude3SonnetV1.getValue();
+
     @Builder.Default
     private final ObjectMapper objectMapper = new ObjectMapper()
             .enable(INDENT_OUTPUT)
@@ -110,11 +114,11 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     private Response<AiMessage> generate(
             List<ChatMessage> messages,
             ToolSpecification toolChoiceSpecification,
-            List<ToolSpecification> toolSpecifications
-    ) {
+            List<ToolSpecification> toolSpecifications) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
         final String system = getAnthropicSystemPrompt(messages);
 
-        List<BedrockAnthropicMessage> formattedMessages = getAnthropicMessages(messages);
+        List<BedrockAnthropicMessage> formattedMessages = getAnthropicMessages(sanitizedMessages);
 
         Map<String, Object> parameters = getRequestParameters(null);
         parameters.put("messages", formattedMessages);
@@ -132,37 +136,29 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
 
         final String body = Json.toJson(parameters);
 
-        InvokeModelRequest invokeModelRequest = InvokeModelRequest
-                .builder()
+        InvokeModelRequest invokeModelRequest = InvokeModelRequest.builder()
                 .modelId(getModelId())
                 .body(SdkBytes.fromString(body, Charset.defaultCharset()))
                 .build();
 
-        ChatModelRequest modelListenerRequest = createModelListenerRequest(invokeModelRequest, messages, toolSpecifications);
+        ChatModelRequest modelListenerRequest =
+                createModelListenerRequest(invokeModelRequest, sanitizedMessages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
 
         try {
-            InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
+            InvokeModelResponse invokeModelResponse =
+                    withRetry(() -> invoke(invokeModelRequest, requestContext), getMaxRetries());
             final String response = invokeModelResponse.body().asUtf8String();
             BedrockAnthropicMessageChatModelResponse result = Json.fromJson(response, getResponseClassType());
 
-            Response<AiMessage> responseMessage = Response.from(
-                    aiMessageFrom(result),
-                    result.getTokenUsage(),
-                    result.getFinishReason()
-            );
+            Response<AiMessage> responseMessage =
+                    Response.from(aiMessageFrom(result), result.getTokenUsage(), result.getFinishReason());
 
-            ChatModelResponse modelListenerResponse = createModelListenerResponse(
-                    result.getId(),
-                    result.getModel(),
-                    responseMessage
-            );
-            ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                    modelListenerResponse,
-                    modelListenerRequest,
-                    attributes
-            );
+            ChatModelResponse modelListenerResponse =
+                    createModelListenerResponse(result.getId(), result.getModel(), responseMessage);
+            ChatModelResponseContext responseContext =
+                    new ChatModelResponseContext(modelListenerResponse, modelListenerRequest, attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -174,11 +170,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
 
             return responseMessage;
         } catch (RuntimeException e) {
-            listenerErrorResponse(
-                    e,
-                    modelListenerRequest,
-                    attributes
-            );
+            listenerErrorResponse(e, modelListenerRequest, attributes);
             throw e;
         }
     }
@@ -195,7 +187,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             throw new IllegalArgumentException("Model ID is required");
         }
 
-        List<String> anthropicModelIdSplit = Arrays.asList(modelId.split("-"));
+        List<String> anthropicModelIdSplit = asList(modelId.split("-"));
 
         if (anthropicModelIdSplit.size() < 2) {
             throw new IllegalArgumentException("Tools are currently not supported by this model");
@@ -216,8 +208,7 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
     }
 
     private AiMessage aiMessageFrom(BedrockAnthropicMessageChatModelResponse result) {
-        List<BedrockAnthropicContent> toolUseRequests = result.getContent()
-                .stream()
+        List<BedrockAnthropicContent> toolUseRequests = result.getContent().stream()
                 .filter(content -> content.getType().equals("tool_use"))
                 .collect(Collectors.toList());
 
@@ -243,7 +234,6 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
             throw new RuntimeException(e);
         }
     }
-
 
     private Object toAnthropicToolSpecifications(List<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
@@ -306,7 +296,8 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
 
         if ("object".equals(propertyType)) {
             ObjectNode childPropertiesNode = new ObjectMapper().createObjectNode();
-            childPropertiesNode.setAll(toAnthropicParameterProperties((Map<String, Map<String, Object>>) propertyMetadata.get("properties")));
+            childPropertiesNode.setAll(toAnthropicParameterProperties(
+                    (Map<String, Map<String, Object>>) propertyMetadata.get("properties")));
             propertyNode.set("properties", childPropertiesNode);
             if (Objects.nonNull(propertyMetadata.get("required"))) {
                 ArrayNode requiredNode = new ObjectMapper().createArrayNode();
@@ -389,18 +380,17 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
 
             return contents;
         } else if (message instanceof UserMessage) {
-            return ((UserMessage) message).contents().stream()
-                    .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
-                    .collect(Collectors.toList());
+            return ((UserMessage) message)
+                    .contents().stream()
+                            .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
+                            .collect(Collectors.toList());
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
-            return Collections.singletonList(
-                    BedrockAnthropicContent.builder()
-                            .type("tool_result")
-                            .tool_use_id(toolExecutionResultMessage.id())
-                            .content(toolExecutionResultMessage.text())
-                            .build()
-            );
+            return Collections.singletonList(BedrockAnthropicContent.builder()
+                    .type("tool_result")
+                    .tool_use_id(toolExecutionResultMessage.id())
+                    .content(toolExecutionResultMessage.text())
+                    .build());
         } else {
             throw new IllegalArgumentException("Unknown message type: " + message.type());
         }
@@ -420,13 +410,13 @@ public class BedrockAnthropicMessageChatModel extends AbstractBedrockChatModel<B
         } else if (content instanceof ImageContent) {
             ImageContent imageContent = (ImageContent) content;
             if (imageContent.image().url() != null) {
-                throw new IllegalArgumentException("Anthropic does not support images as URLs, only as Base64-encoded strings");
+                throw new IllegalArgumentException(
+                        "Anthropic does not support images as URLs, only as Base64-encoded strings");
             }
             BedrockAnthropicImageSource imageSource = new BedrockAnthropicImageSource(
                     "base64",
                     ensureNotBlank(imageContent.image().mimeType(), "mimeType"),
-                    ensureNotBlank(imageContent.image().base64Data(), "base64Data")
-            );
+                    ensureNotBlank(imageContent.image().base64Data(), "base64Data"));
             return new BedrockAnthropicContent("image", imageSource);
         } else {
             throw new IllegalArgumentException("Unknown content type: " + content);

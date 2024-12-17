@@ -12,7 +12,9 @@ import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
 
 import java.util.HashMap;
 import java.util.List;
@@ -83,6 +85,16 @@ class OllamaMessagesUtils {
                                 .arguments(toJson(toolCall.getFunction().getArguments()))
                                 .build())
                 .collect(Collectors.toList());
+    }
+
+    static String toOllamaResponseFormat(ResponseFormat responseFormat) {
+        if (responseFormat == null || responseFormat == ResponseFormat.TEXT) {
+            return null;
+        } else if (responseFormat == ResponseFormat.JSON && responseFormat.jsonSchema() == null) {
+            return "json";
+        } else {
+            return OllamaJsonUtils.toJson(JsonSchemaElementHelper.toMap(responseFormat.jsonSchema().rootElement()));
+        }
     }
 
     private static Message messagesWithImageSupport(UserMessage userMessage) {
