@@ -318,7 +318,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             ChatModelErrorContext errorContext = new ChatModelErrorContext(
                 httpResponseException,
                 modelListenerRequest,
-                null,
+            null,
                 attributes
             );
 
