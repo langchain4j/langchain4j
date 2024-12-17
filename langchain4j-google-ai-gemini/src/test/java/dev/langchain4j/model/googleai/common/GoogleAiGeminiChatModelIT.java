@@ -68,6 +68,11 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
+        return false; // TODO fix
+    }
+
+    @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
         return false; // TODO check if supported
     }

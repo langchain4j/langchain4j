@@ -12,18 +12,18 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * TODO
  * Represents a token stream from language model to which you can subscribe and receive updates
- * when a new token is available, when language model finishes streaming, or when an error occurs during streaming.
+ * when a new partial response (usually a single token) is available,
+ * when language model finishes streaming, or when an error occurs during streaming.
  * It is intended to be used as a return type in AI Service.
  */
 public interface TokenStream {
 
     /**
-     * TODO
-     * The provided consumer will be invoked every time a new token from a language model is available.
+     * The provided consumer will be invoked every time a new partial response (usually a single token)
+     * from a language model is available.
      *
-     * @param partialResponseHandler lambda that consumes tokens of the response
+     * @param partialResponseHandler lambda that will be invoked when language model generates new partial response
      * @return token stream instance used to configure or start stream processing
      */
     @Experimental
@@ -58,14 +58,13 @@ public interface TokenStream {
     TokenStream onToolExecuted(Consumer<ToolExecution> toolExecuteHandler);
 
     /**
-     * TODO
-     * The provided consumer will be invoked when a language model finishes streaming a response.
+     * The provided handler will be invoked when a language model finishes streaming a response.
      *
      * @param completeResponseHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
      */
     @Experimental
-    TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler); // TODO name
+    TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler);
 
     /**
      * The provided consumer will be invoked when a language model finishes streaming a response.

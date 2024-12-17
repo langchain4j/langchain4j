@@ -40,8 +40,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse chatResponse) {
-                futureChatResponse.complete(chatResponse);
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureChatResponse.complete(completeResponse);
                 timesOnCompleteResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());
             }

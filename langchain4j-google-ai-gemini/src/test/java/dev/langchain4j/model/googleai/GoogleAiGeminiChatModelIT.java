@@ -81,7 +81,7 @@ public class GoogleAiGeminiChatModelIT {
         String text = response.aiMessage().text();
         assertThat(text).containsIgnoringCase("Paris");
 
-        assertThat(response.metadata().finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
 
     @Test
@@ -433,7 +433,7 @@ public class GoogleAiGeminiChatModelIT {
             .build());
 
         // then
-        assertThat(response.metadata().finishReason()).isEqualTo(fromGFinishReasonToFinishReason(SAFETY));
+        assertThat(response.finishReason()).isEqualTo(fromGFinishReasonToFinishReason(SAFETY));
     }
 
     @Test

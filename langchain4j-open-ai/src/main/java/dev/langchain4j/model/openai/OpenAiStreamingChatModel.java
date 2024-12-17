@@ -81,7 +81,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     private final List<ChatModelListener> listeners;
 
-    // TODO change it to accept Builder and make private? Same for all other ctors in other models
     public OpenAiStreamingChatModel(String baseUrl,
                                     String apiKey,
                                     String organizationId,

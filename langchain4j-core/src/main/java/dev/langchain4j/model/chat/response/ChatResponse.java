@@ -26,7 +26,7 @@ public class ChatResponse {
     }
 
     @Experimental
-    public ChatResponseMetadata metadata() { // TODO name
+    public ChatResponseMetadata metadata() {
         return metadata;
     }
 
@@ -56,7 +56,7 @@ public class ChatResponse {
 
     @Override
     public String toString() {
-        return "ChatResponse {" + // TODO names
+        return "ChatResponse {" +
                 " aiMessage = " + aiMessage +
                 ", metadata = " + metadata +
                 " }";

@@ -9,6 +9,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -80,7 +81,8 @@ public interface StreamingChatLanguageModel {
             if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
                     throw new UnsupportedFeatureException(
-                            "ToolChoice.REQUIRED is currently supported only when there is a single tool");
+                            "%s.%s is currently supported only when there is a single tool".formatted(
+                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
                 }
                 generate(chatRequest.messages(), toolSpecifications.get(0), legacyHandler);
             } else {

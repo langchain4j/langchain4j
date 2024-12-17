@@ -599,8 +599,8 @@ public class InternalOpenAiHelper {
             }
 
             @Override
-            public void onCompleteResponse(ChatResponse chatResponse) {
-                handler.onComplete(convertResponse(chatResponse));
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                handler.onComplete(convertResponse(completeResponse));
             }
 
             @Override

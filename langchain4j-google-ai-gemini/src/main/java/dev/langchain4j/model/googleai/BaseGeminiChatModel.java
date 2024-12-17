@@ -164,7 +164,7 @@ abstract class BaseGeminiChatModel {
     protected void notifyListenersOnResponse(Response<AiMessage> response, ChatModelRequest request,
                                              ConcurrentHashMap<Object, Object> attributes) {
         ChatModelResponse chatModelResponse = ChatModelResponse.builder()
-            .model(request.model()) // TODO take actual model from response
+            .model(request.model()) // TODO take actual model from response or return null?
             .tokenUsage(response.tokenUsage())
             .finishReason(response.finishReason())
             .aiMessage(response.content())

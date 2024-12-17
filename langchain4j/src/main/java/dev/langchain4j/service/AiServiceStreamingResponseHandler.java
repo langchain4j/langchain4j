@@ -81,9 +81,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     @Override
-    public void onCompleteResponse(ChatResponse chatResponse) {
+    public void onCompleteResponse(ChatResponse completeResponse) {
 
-        AiMessage aiMessage = chatResponse.aiMessage();
+        AiMessage aiMessage = completeResponse.aiMessage();
         addToMemory(aiMessage);
 
         if (aiMessage.hasToolExecutionRequests()) {
@@ -120,7 +120,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     completionHandler,
                     errorHandler,
                     temporaryMemory,
-                    TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
+                    TokenUsage.sum(tokenUsage, completeResponse.metadata().tokenUsage()),
                     toolSpecifications,
                     toolExecutors
             );
@@ -132,16 +132,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         .aiMessage(aiMessage)
                         .metadata(ChatResponseMetadata.builder()
                                 // TODO copy model-specific metadata?
-                                .tokenUsage(TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()))
-                                .finishReason(chatResponse.metadata().finishReason())
+                                .tokenUsage(TokenUsage.sum(tokenUsage, completeResponse.metadata().tokenUsage()))
+                                .finishReason(completeResponse.metadata().finishReason())
                                 .build())
                         .build();
                 completeResponseHandler.accept(finalChatResponse);
             } else if (completionHandler != null) {
                 Response<AiMessage> finalResponse = Response.from(
                         aiMessage,
-                        TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
-                        chatResponse.metadata().finishReason()
+                        TokenUsage.sum(tokenUsage, completeResponse.metadata().tokenUsage()),
+                        completeResponse.metadata().finishReason()
                 );
                 completionHandler.accept(finalResponse);
             }

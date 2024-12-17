@@ -175,7 +175,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder()
-                        .modelName(chatModelRequest.model()) // TODO take actual model from response
+                        .modelName(chatModelRequest.model()) // TODO take actual model from response or return null?
                         .finishReason(finishReason)
                         .tokenUsage(tokenUsage)
                         .build())
