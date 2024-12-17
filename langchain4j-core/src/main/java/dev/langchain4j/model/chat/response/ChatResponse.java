@@ -25,6 +25,7 @@ public class ChatResponse {
         return aiMessage;
     }
 
+    @Experimental
     public ChatResponseMetadata metadata() { // TODO name
         return metadata;
     }

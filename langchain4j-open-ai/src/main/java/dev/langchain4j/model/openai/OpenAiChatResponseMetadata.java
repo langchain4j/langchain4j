@@ -24,20 +24,23 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return (OpenAiTokenUsage) super.tokenUsage();
     }
 
+    @Experimental
     public Long created() {
         return created;
     }
 
+    @Experimental
     public String serviceTier() {
         return serviceTier;
     }
 
+    @Experimental
     public String systemFingerprint() {
         return systemFingerprint;
     }
 
     @Override
-    public boolean equals(final Object o) {
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
@@ -49,11 +52,17 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), created, serviceTier, systemFingerprint);
+        return Objects.hash(
+                super.hashCode(),
+                created,
+                serviceTier,
+                systemFingerprint
+        );
     }
 
     @Override
     public String toString() {
+        // TODO inherited
         return "OpenAiChatResponseMetadata{" +
                 "created=" + created +
                 ", serviceTier='" + serviceTier + '\'' +
@@ -71,16 +80,19 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         private String serviceTier;
         private String systemFingerprint;
 
+        @Experimental
         public Builder created(Long created) {
             this.created = created;
             return this;
         }
 
+        @Experimental
         public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
             return this;
         }
 
+        @Experimental
         public Builder systemFingerprint(String systemFingerprint) {
             this.systemFingerprint = systemFingerprint;
             return this;

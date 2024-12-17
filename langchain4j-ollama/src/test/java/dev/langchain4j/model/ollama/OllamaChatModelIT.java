@@ -7,8 +7,13 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.List;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -84,7 +89,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
     void should_respond_to_few_shot() {
 
         // given
-        List<ChatMessage> messages = asList(
+        List<ChatMessage> messages = List.of(
                 UserMessage.from("1 + 1 ="),
                 AiMessage.from(">>> 2"),
                 UserMessage.from("2 + 2 ="),

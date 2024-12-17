@@ -1,10 +1,12 @@
 package dev.langchain4j.model.chat.response;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.Objects;
 
+@Experimental
 public class ChatResponseMetadata {
     // TODO name: ChatMetadata?
     // TODO place
@@ -21,18 +23,22 @@ public class ChatResponseMetadata {
         this.finishReason = builder.finishReason;
     }
 
+    @Experimental
     public String id() { // TODO name
         return id;
     }
 
+    @Experimental
     public String modelName() { // TODO name
         return modelName;
     }
 
+    @Experimental
     public TokenUsage tokenUsage() {
         return tokenUsage;
     }
 
+    @Experimental
     public FinishReason finishReason() {
         return finishReason;
     }
@@ -74,21 +80,25 @@ public class ChatResponseMetadata {
         private TokenUsage tokenUsage;
         private FinishReason finishReason;
 
+        @Experimental
         public T id(String id) { // TODO names
             this.id = id;
             return (T) this;
         }
 
+        @Experimental
         public T modelName(String modelName) { // TODO names
             this.modelName = modelName;
             return (T) this;
         }
 
+        @Experimental
         public T tokenUsage(TokenUsage tokenUsage) {
             this.tokenUsage = tokenUsage;
             return (T) this;
         }
 
+        @Experimental
         public T finishReason(FinishReason finishReason) {
             this.finishReason = finishReason;
             return (T) this;

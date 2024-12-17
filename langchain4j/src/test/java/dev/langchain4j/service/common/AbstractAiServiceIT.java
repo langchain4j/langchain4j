@@ -150,8 +150,10 @@ public abstract class AbstractAiServiceIT {
 //                .build());
 //        verifyNoMoreInteractions(model);
 
-        verify(weatherTools).getWeather("Munich");
-        verifyNoMoreInteractions(weatherTools);
+        if (assertToolInteractions()) {
+            verify(weatherTools).getWeather("Munich");
+            verifyNoMoreInteractions(weatherTools);
+        }
     }
 
     protected boolean supportsTools() {
@@ -167,6 +169,10 @@ public abstract class AbstractAiServiceIT {
     }
 
     protected boolean assertFinishReason() {
+        return true;
+    }
+
+    protected boolean assertToolInteractions() {
         return true;
     }
 }

@@ -50,6 +50,7 @@ public class ChatRequest {
         return messages;
     }
 
+    @Experimental
     public ChatParameters parameters() { // TODO name
         return parameters;
     }
@@ -106,6 +107,7 @@ public class ChatRequest {
             return messages(asList(messages));
         }
 
+        @Experimental
         public Builder parameters(ChatParameters parameters) { // TODO name
             this.parameters = parameters;
             return this;

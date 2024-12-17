@@ -44,6 +44,7 @@ public interface StreamingChatLanguageModel {
 
         ChatParameters chatParameters = chatRequest.parameters();
         validate(chatParameters);
+        validate(chatParameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 

@@ -72,6 +72,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                     .name("Answer")
                     .rootElement(JsonObjectSchema.builder()
                             .addStringProperty("city")
+                            .required("city")
                             .build())
                     .build())
             .build();
@@ -871,7 +872,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
     @EnabledIf("supportsToolsAndJsonResponseFormatWithSchema")
-    void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(M model) {
+    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(M model) {
 
         // given
         UserMessage userMessage = UserMessage.from("What is the weather in Munich?");

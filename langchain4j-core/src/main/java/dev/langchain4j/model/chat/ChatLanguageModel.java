@@ -43,6 +43,7 @@ public interface ChatLanguageModel {
 
         ChatParameters chatParameters = chatRequest.parameters();
         validate(chatParameters);
+        validate(chatParameters.responseFormat());
 
         Response<AiMessage> response;
         List<ToolSpecification> toolSpecifications = chatParameters.toolSpecifications();
@@ -96,8 +97,10 @@ public interface ChatLanguageModel {
         if (chatParameters.stopSequences() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'stopSequences' parameter"));
         }
+    }
 
-        ResponseFormat responseFormat = chatParameters.responseFormat();
+    static void validate(ResponseFormat responseFormat) {
+        String errorTemplate = "%s is not supported yet by this model provider";
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
             // TODO check supportedCapabilities() instead?
             throw new UnsupportedFeatureException(errorTemplate.formatted("JSON response format"));

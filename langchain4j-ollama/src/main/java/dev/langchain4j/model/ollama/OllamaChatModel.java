@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -123,8 +124,11 @@ public class OllamaChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public dev.langchain4j.model.chat.response.ChatResponse chat(final dev.langchain4j.model.chat.request.ChatRequest request) {
-        final Response<AiMessage> response = doGenerate(
+    public dev.langchain4j.model.chat.response.ChatResponse chat(dev.langchain4j.model.chat.request.ChatRequest request) {
+
+        ChatLanguageModel.validate(request.parameters());
+
+        Response<AiMessage> response = doGenerate(
                 request.messages(),
                 request.toolSpecifications(),
                 getOrDefault(request.responseFormat(), this.responseFormat)
@@ -132,8 +136,10 @@ public class OllamaChatModel implements ChatLanguageModel {
 
         return dev.langchain4j.model.chat.response.ChatResponse.builder()
                 .aiMessage(response.content())
-                .finishReason(response.finishReason())
-                .tokenUsage(response.tokenUsage())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
                 .build();
     }
 

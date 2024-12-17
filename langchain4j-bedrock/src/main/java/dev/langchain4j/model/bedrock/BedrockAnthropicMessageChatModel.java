@@ -1,16 +1,5 @@
 package dev.langchain4j.model.bedrock;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-import static java.util.Objects.nonNull;
-import static java.util.stream.Collectors.joining;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -38,6 +27,15 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
 import dev.langchain4j.model.output.Response;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.experimental.SuperBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
+
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,14 +45,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
+
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.bedrock.internal.sanitizer.BedrockAnthropicMessageSanitizer.sanitizeMessages;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.joining;
 
 @Getter
 @SuperBuilder
@@ -383,8 +384,8 @@ public class BedrockAnthropicMessageChatModel
         } else if (message instanceof UserMessage) {
             return ((UserMessage) message)
                     .contents().stream()
-                            .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
-                            .collect(Collectors.toList());
+                    .map(BedrockAnthropicMessageChatModel::mapContentToAnthropic)
+                    .collect(Collectors.toList());
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             return Collections.singletonList(BedrockAnthropicContent.builder()
@@ -411,7 +412,7 @@ public class BedrockAnthropicMessageChatModel
         } else if (content instanceof ImageContent) {
             ImageContent imageContent = (ImageContent) content;
             if (imageContent.image().url() != null) {
-                throw new IllegalArgumentException(
+                throw new UnsupportedFeatureException(
                         "Anthropic does not support images as URLs, only as Base64-encoded strings");
             }
             BedrockAnthropicImageSource imageSource = new BedrockAnthropicImageSource(

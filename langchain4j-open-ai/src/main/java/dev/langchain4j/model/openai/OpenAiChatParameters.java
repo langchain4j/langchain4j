@@ -1,12 +1,15 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.DefaultChatParameters;
 
 import java.util.Map;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
+@Experimental
 public class OpenAiChatParameters extends DefaultChatParameters {
 
     private final Map<String, Integer> logitBias;
@@ -50,35 +53,83 @@ public class OpenAiChatParameters extends DefaultChatParameters {
         }
     }
 
+    @Experimental
     public Map<String, Integer> logitBias() {
         return logitBias;
     }
 
+    @Experimental
     public Boolean parallelToolCalls() {
         return parallelToolCalls;
     }
 
+    @Experimental
     public Integer seed() {
         return seed;
     }
 
+    @Experimental
     public String user() {
         return user;
     }
 
+    @Experimental
     public Boolean store() {
         return store;
     }
 
+    @Experimental
     public Map<String, String> metadata() {
         return metadata;
     }
 
+    @Experimental
     public String serviceTier() {
         return serviceTier;
     }
 
-    // TODO eq, hash, tostr
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        OpenAiChatParameters that = (OpenAiChatParameters) o;
+        return Objects.equals(logitBias, that.logitBias)
+                && Objects.equals(parallelToolCalls, that.parallelToolCalls)
+                && Objects.equals(seed, that.seed)
+                && Objects.equals(user, that.user)
+                && Objects.equals(store, that.store)
+                && Objects.equals(metadata, that.metadata)
+                && Objects.equals(serviceTier, that.serviceTier);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                super.hashCode(),
+                logitBias,
+                parallelToolCalls,
+                seed,
+                user,
+                store,
+                metadata,
+                serviceTier
+        );
+    }
+
+    @Override
+    public String toString() {
+        // TODO inherited
+        return "OpenAiChatParameters{" +
+                "logitBias=" + logitBias +
+                ", parallelToolCalls=" + parallelToolCalls +
+                ", seed=" + seed +
+                ", user='" + user + '\'' +
+                ", store=" + store +
+                ", metadata=" + metadata +
+                ", serviceTier='" + serviceTier + '\'' +
+                '}';
+    }
 
     public static Builder builder() {
         return new Builder();
@@ -94,40 +145,48 @@ public class OpenAiChatParameters extends DefaultChatParameters {
         private Map<String, String> metadata;
         private String serviceTier;
 
+        @Experimental
         public Builder modelName(OpenAiChatModelName modelName) {
             return super.modelName(modelName.toString());
         }
 
+        @Experimental
         public Builder logitBias(Map<String, Integer> logitBias) {
             this.logitBias = logitBias;
             return this;
         }
 
+        @Experimental
         public Builder parallelToolCalls(Boolean parallelToolCalls) {
             this.parallelToolCalls = parallelToolCalls;
             return this;
         }
 
+        @Experimental
         public Builder seed(Integer seed) {
             this.seed = seed;
             return this;
         }
 
+        @Experimental
         public Builder user(String user) {
             this.user = user;
             return this;
         }
 
+        @Experimental
         public Builder store(Boolean store) {
             this.store = store;
             return this;
         }
 
+        @Experimental
         public Builder metadata(Map<String, String> metadata) {
             this.metadata = metadata;
             return this;
         }
 
+        @Experimental
         public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
             return this;

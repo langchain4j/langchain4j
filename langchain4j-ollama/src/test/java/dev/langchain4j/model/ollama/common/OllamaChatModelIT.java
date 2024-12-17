@@ -5,8 +5,6 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 
@@ -99,26 +97,6 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    @ParameterizedTest
-    @MethodSource("models")
-    protected void should_fail_if_JSON_response_format_is_not_supported(ChatLanguageModel model) {
-        // TODO explain
-        if (!(model instanceof OpenAiChatModel)) {
-            super.should_fail_if_JSON_response_format_is_not_supported(model);
-        }
-    }
-
-    @Override
-    @ParameterizedTest
-    @MethodSource("models")
-    protected void should_fail_if_JSON_response_format_with_schema_is_not_supported(ChatLanguageModel model) {
-        // TODO explain
-        if (!(model instanceof OpenAiChatModel)) {
-            super.should_fail_if_JSON_response_format_with_schema_is_not_supported(model);
-        }
-    }
-
-    @Override
     protected boolean supportsDefaultChatParameters() {
         return false; // TODO implement
     }
@@ -149,13 +127,8 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsJsonResponseFormat() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // Ollama does not support structured outputs
+    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
+        return false; // TODO fix
     }
 
     @Override

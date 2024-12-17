@@ -188,7 +188,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
     @Test
     void should_return_set_capabilities() {
         OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                 .build();
