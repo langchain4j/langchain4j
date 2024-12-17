@@ -60,7 +60,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
-            .name("weather")
+            .name("getWeather")
             .parameters(JsonObjectSchema.builder()
                     .addStringProperty("city")
                     .build())
