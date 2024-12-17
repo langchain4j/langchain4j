@@ -468,14 +468,7 @@ class InternalAzureOpenAiHelper {
 
         JsonSchema jsonSchema = responseFormat.jsonSchema();
         if (jsonSchema == null) {
-            if (strict) {
-                // Schema isn't provided when constructing the object, but it can be set later when doing the requests.
-                ChatCompletionsJsonSchemaResponseFormatJsonSchema schema = new ChatCompletionsJsonSchemaResponseFormatJsonSchema("");
-                schema.setStrict(strict);
-                return new ChatCompletionsJsonSchemaResponseFormat(schema);
-            } else {
-                return new ChatCompletionsJsonResponseFormat();
-            }
+            return new ChatCompletionsJsonResponseFormat();
         } else {
             if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
                 throw new IllegalArgumentException("For Azure OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: " + jsonSchema.rootElement().getClass());

@@ -89,7 +89,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     private final List<AzureChatExtensionConfiguration> dataSources;
     private final AzureChatEnhancementConfiguration enhancements;
     private final Long seed;
-    private final ChatCompletionsResponseFormat chatCompletionsResponseFormat;
+    @Deprecated
+    private ChatCompletionsResponseFormat chatCompletionsResponseFormat;
+    private final ResponseFormat responseFormat;
+    private final Boolean strictJsonSchema;
     private final List<ChatModelListener> listeners;
     private Set<Capability> supportedCapabilities;
 
@@ -108,11 +111,14 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 List<AzureChatExtensionConfiguration> dataSources,
                                 AzureChatEnhancementConfiguration enhancements,
                                 Long seed,
+                                @Deprecated
                                 ChatCompletionsResponseFormat chatCompletionsResponseFormat,
+                                ResponseFormat responseFormat,
+                                boolean strictJsonSchema,
                                 List<ChatModelListener> listeners,
                                 Set<Capability> capabilities) {
 
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, chatCompletionsResponseFormat, listeners, capabilities);
+        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, chatCompletionsResponseFormat, responseFormat, strictJsonSchema, listeners, capabilities);
         this.client = client;
     }
 
@@ -133,7 +139,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 List<AzureChatExtensionConfiguration> dataSources,
                                 AzureChatEnhancementConfiguration enhancements,
                                 Long seed,
+                                @Deprecated
                                 ChatCompletionsResponseFormat chatCompletionsResponseFormat,
+                                ResponseFormat responseFormat,
+                                boolean strictJsonSchema,
                                 Duration timeout,
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
@@ -143,7 +152,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 Map<String, String> customHeaders,
                                 Set<Capability> capabilities) {
 
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, chatCompletionsResponseFormat, listeners, capabilities);
+        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, chatCompletionsResponseFormat, responseFormat, strictJsonSchema, listeners, capabilities);
         this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
@@ -164,7 +173,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 List<AzureChatExtensionConfiguration> dataSources,
                                 AzureChatEnhancementConfiguration enhancements,
                                 Long seed,
+                                @Deprecated
                                 ChatCompletionsResponseFormat chatCompletionsResponseFormat,
+                                ResponseFormat responseFormat,
+                                boolean strictJsonSchema,
                                 Duration timeout,
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
@@ -174,7 +186,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 Map<String, String> customHeaders,
                                 Set<Capability> capabilities) {
 
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, chatCompletionsResponseFormat, listeners, capabilities);
+        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, chatCompletionsResponseFormat, responseFormat, strictJsonSchema, listeners, capabilities);
         this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
@@ -195,7 +207,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 List<AzureChatExtensionConfiguration> dataSources,
                                 AzureChatEnhancementConfiguration enhancements,
                                 Long seed,
+                                @Deprecated
                                 ChatCompletionsResponseFormat chatCompletionsResponseFormat,
+                                ResponseFormat responseFormat,
+                                boolean strictJsonSchema,
                                 Duration timeout,
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
@@ -205,7 +220,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 Map<String, String> customHeaders,
                                 Set<Capability> capabilities) {
 
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, chatCompletionsResponseFormat, listeners, capabilities);
+        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, chatCompletionsResponseFormat, responseFormat, strictJsonSchema, listeners, capabilities);
         this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix, customHeaders);
     }
 
@@ -223,7 +238,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                  List<AzureChatExtensionConfiguration> dataSources,
                                  AzureChatEnhancementConfiguration enhancements,
                                  Long seed,
+                                 @Deprecated
                                  ChatCompletionsResponseFormat chatCompletionsResponseFormat,
+                                 ResponseFormat responseFormat,
+                                 boolean strictJsonSchema,
                                  List<ChatModelListener> listeners,
                                  Set<Capability> capabilities) {
 
@@ -242,6 +260,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         this.enhancements = enhancements;
         this.seed = seed;
         this.chatCompletionsResponseFormat = chatCompletionsResponseFormat;
+        this.responseFormat = responseFormat;
+        this.strictJsonSchema = strictJsonSchema;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copyIfNotNull(capabilities);
     }
@@ -253,30 +273,31 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generate(messages, null, null, this.chatCompletionsResponseFormat);
+        return generate(messages, null, null, this.responseFormat);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, toolSpecifications, null, this.chatCompletionsResponseFormat);
+        return generate(messages, toolSpecifications, null, this.responseFormat);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, singletonList(toolSpecification), toolSpecification, this.chatCompletionsResponseFormat);
+        return generate(messages, singletonList(toolSpecification), toolSpecification, this.responseFormat);
     }
 
     @Override
     public ChatResponse chat(ChatRequest request) {
-        boolean strictJsonSchema = false;
-        if (chatCompletionsResponseFormat instanceof ChatCompletionsJsonSchemaResponseFormat) {
-            strictJsonSchema = ((ChatCompletionsJsonSchemaResponseFormat) chatCompletionsResponseFormat).getJsonSchema().isStrict();
+        // If the response format is not specified in the request, use the one specified in the model
+        ResponseFormat responseFormat = request.responseFormat();
+        if (responseFormat == null) {
+            responseFormat = this.responseFormat;
         }
         Response<AiMessage> response = generate(
                 request.messages(),
                 request.toolSpecifications(),
                 null,
-                getOrDefault(toAzureOpenAiResponseFormat(request.responseFormat(), strictJsonSchema), this.chatCompletionsResponseFormat)
+                responseFormat
         );
         return ChatResponse.builder()
                 .aiMessage(response.content())
@@ -288,8 +309,19 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     private Response<AiMessage> generate(List<ChatMessage> messages,
                                          List<ToolSpecification> toolSpecifications,
                                          ToolSpecification toolThatMustBeExecuted,
-                                         ChatCompletionsResponseFormat chatCompletionsResponseFormat
+                                         ResponseFormat responseFormat
     ) {
+        ChatCompletionsResponseFormat chatCompletionsResponseFormat = null;
+        if (this.chatCompletionsResponseFormat != null) {
+            chatCompletionsResponseFormat = this.chatCompletionsResponseFormat;
+        } else {
+            chatCompletionsResponseFormat = toAzureOpenAiResponseFormat(responseFormat, this.strictJsonSchema);
+        }
+        if (chatCompletionsResponseFormat instanceof ChatCompletionsJsonSchemaResponseFormat) {
+            if (!supportedCapabilities.contains(Capability.RESPONSE_FORMAT_JSON_SCHEMA)) {
+                throw new IllegalArgumentException("JSON schema response format is not supported by this model");
+            }
+        }
         ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(messages))
                 .setModel(deploymentName)
                 .setMaxTokens(maxTokens)
@@ -634,9 +666,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             if (this.capabilities == null) {
                 capabilities = new HashSet<>();
             }
-            if (this.responseFormat != null) {
-                this.chatCompletionsResponseFormat = toAzureOpenAiResponseFormat(this.responseFormat, this.strictJsonSchema);
-            }
             if (openAIClient == null) {
                 if (tokenCredential != null) {
                     return new AzureOpenAiChatModel(
@@ -658,6 +687,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             enhancements,
                             seed,
                             chatCompletionsResponseFormat,
+                            responseFormat,
+                            strictJsonSchema,
                             timeout,
                             maxRetries,
                             proxyOptions,
@@ -687,6 +718,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             enhancements,
                             seed,
                             chatCompletionsResponseFormat,
+                            responseFormat,
+                            strictJsonSchema,
                             timeout,
                             maxRetries,
                             proxyOptions,
@@ -716,6 +749,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                         enhancements,
                         seed,
                         chatCompletionsResponseFormat,
+                        responseFormat,
+                        strictJsonSchema,
                         timeout,
                         maxRetries,
                         proxyOptions,
@@ -743,6 +778,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                         enhancements,
                         seed,
                         chatCompletionsResponseFormat,
+                        responseFormat,
+                        strictJsonSchema,
                         listeners,
                         capabilities
                 );
