@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -205,19 +206,23 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
 
-                        ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
-                                .messages(messages)
-                                .toolSpecifications(toolSpecifications);
-
+                        ResponseFormat responseFormat = null;
                         if (supportsJsonSchema && jsonSchema.isPresent()) {
-                            ResponseFormat responseFormat = ResponseFormat.builder()
+                            responseFormat = ResponseFormat.builder()
                                     .type(JSON)
                                     .jsonSchema(jsonSchema.get())
                                     .build();
-                            chatRequestBuilder.responseFormat(responseFormat);
                         }
 
-                        ChatRequest chatRequest = chatRequestBuilder.build();
+                        ChatParameters parameters = ChatParameters.builder()
+                                .toolSpecifications(toolSpecifications)
+                                .responseFormat(responseFormat)
+                                .build();
+
+                        ChatRequest chatRequest = ChatRequest.builder()
+                                .messages(messages)
+                                .parameters(parameters)
+                                .build();
 
                         ChatResponse chatResponse = context.chatModel.chat(chatRequest);
 
@@ -271,7 +276,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                             chatRequest = ChatRequest.builder()
                                     .messages(messages)
-                                    .toolSpecifications(toolSpecifications)
+                                    .parameters(parameters)
                                     .build();
 
                             chatResponse = context.chatModel.chat(chatRequest);

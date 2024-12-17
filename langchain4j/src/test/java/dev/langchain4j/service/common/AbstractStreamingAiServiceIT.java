@@ -89,6 +89,7 @@ public abstract class AbstractStreamingAiServiceIT {
     }
 
     // TODO test threads
+    // TODO all tests from sync, perhaps reuse the same test logic
 
     protected boolean assertTokenUsage() {
         return true;

@@ -17,4 +17,19 @@ class OpenAiAiServiceIT extends AbstractAiServiceIT {
                 // TODO more configs?
         );
     }
+
+    @Override
+    protected List<ChatLanguageModel> modelsSupportingToolsAndJsonResponseFormatWithSchema() {
+        return List.of(
+                defaultModelBuilder()
+                        .responseFormat("json_schema")
+                        .strictJsonSchema(true)
+                        .build(),
+                defaultModelBuilder()
+                        .responseFormat("json_schema")
+                        .strictJsonSchema(false)
+                        .build()
+                // TODO more configs?
+        );
+    }
 }

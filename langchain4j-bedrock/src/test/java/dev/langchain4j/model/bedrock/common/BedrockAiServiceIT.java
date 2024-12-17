@@ -16,4 +16,8 @@ class BedrockAiServiceIT extends AbstractAiServiceIT {
                 // TODO add more models from other providers
         );
     }
+
+    protected boolean supportsJsonResponseFormatWithSchema() {
+        return false; // TODO implement
+    }
 }

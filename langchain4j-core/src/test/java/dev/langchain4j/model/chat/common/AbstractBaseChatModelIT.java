@@ -866,7 +866,107 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    // TODO test responseFormat and tools together
+    // TOOLS + RESPONSE FORMAT
+
+    @ParameterizedTest
+    @MethodSource("modelsSupportingTools")
+    @EnabledIf("supportsToolsAndJsonResponseFormatWithSchema")
+    void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(M model) {
+
+        // given
+        UserMessage userMessage = UserMessage.from("What is the weather in Munich?");
+
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .name("weather")
+                        .rootElement(JsonObjectSchema.builder()
+                                .addEnumProperty("weather", List.of("sunny", "rainy"))
+                                .build())
+                        .build())
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage)
+                .parameters(ChatParameters.builder()
+                        .toolSpecifications(WEATHER_TOOL)
+                        .responseFormat(responseFormat)
+                        .build())
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
+        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+
+        if (assertTokenUsage()) {
+            assertTokenUsage(chatResponse.metadata());
+        }
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(TOOL_EXECUTION);
+        }
+
+        if (model instanceof StreamingChatLanguageModel) {
+            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+            if (streamingMetadata.timesOnPartialResponseWasCalled() == 0) {
+                assertThat(aiMessage.text()).isNull();
+            }
+            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
+        }
+
+        // given
+        ChatRequest chatRequest2 = ChatRequest.builder()
+                .messages(
+                        userMessage,
+                        aiMessage,
+                        ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
+                )
+                .parameters(ChatParameters.builder()
+                        .toolSpecifications(WEATHER_TOOL)
+                        .responseFormat(responseFormat)
+                        .build())
+                .build();
+
+        // when
+        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata2 = chat(model, chatRequest2);
+        ChatResponse chatResponse2 = chatResponseAndStreamingMetadata2.chatResponse();
+
+        // then
+        AiMessage aiMessage2 = chatResponse2.aiMessage();
+        assertThat(aiMessage2.text()).isEqualToIgnoringWhitespace("{\"weather\":\"sunny\"}");
+        assertThat(aiMessage2.toolExecutionRequests()).isNull(); // TODO make it empty
+
+        assertTokenUsage(chatResponse2.metadata());
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse2.metadata().finishReason()).isEqualTo(STOP);
+        }
+
+        if (model instanceof StreamingChatLanguageModel) {
+            StreamingMetadata streamingMetadata2 = chatResponseAndStreamingMetadata2.streamingMetadata();
+            assertThat(streamingMetadata2.concatenatedPartialResponses()).isEqualTo(aiMessage2.text());
+            assertThat(streamingMetadata2.timesOnPartialResponseWasCalled()).isGreaterThan(1);
+            assertThat(streamingMetadata2.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+            if (assertThreads()) {
+                Set<Thread> threads = streamingMetadata2.threads();
+                assertThat(threads).hasSize(1);
+                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            }
+        }
+    }
 
     // MULTI MODALITY: IMAGES: BASE64
 
@@ -1089,6 +1189,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected boolean supportsJsonResponseFormatWithSchema() {
         return true;
+    }
+
+    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
+        return supportsTools() && supportsJsonResponseFormatWithSchema();
     }
 
     protected boolean supportsSingleImageInputAsBase64EncodedString() {

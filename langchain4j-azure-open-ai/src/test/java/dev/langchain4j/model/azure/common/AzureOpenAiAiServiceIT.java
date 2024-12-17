@@ -11,6 +11,12 @@ class AzureOpenAiAiServiceIT extends AbstractAiServiceIT {
 
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(AZURE_OPEN_AI_CHAT_MODEL);
+        return List.of(
+                AZURE_OPEN_AI_CHAT_MODEL
+        );
+    }
+
+    protected boolean supportsJsonResponseFormatWithSchema() {
+        return false; // TODO implement
     }
 }
