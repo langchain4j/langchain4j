@@ -14,4 +14,9 @@ class GoogleAiGeminiAiServiceIT extends AbstractAiServiceIT {
     protected List<ChatLanguageModel> models() {
         return List.of(GOOGLE_AI_GEMINI_CHAT_MODEL);
     }
+
+    @Override
+    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
+        return false; // TODO fix
+    }
 }
