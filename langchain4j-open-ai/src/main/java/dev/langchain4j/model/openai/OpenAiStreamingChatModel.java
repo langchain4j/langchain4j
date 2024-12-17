@@ -44,8 +44,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.createModelListenerRequest;
@@ -128,19 +126,20 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .customHeaders(customHeaders)
                 .build();
 
-        OpenAiChatRequestParameters openAiParameters;
-        if (defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatParameters) {
-            openAiParameters = openAiChatParameters;
-        } else {
-            openAiParameters = OpenAiChatRequestParameters.builder().build();
-        }
-
         ChatRequestParameters commonParameters;
         if (defaultRequestParameters != null) {
             commonParameters = defaultRequestParameters;
         } else {
             commonParameters = DefaultChatRequestParameters.builder().build();
         }
+
+        OpenAiChatRequestParameters openAiParameters;
+        if (defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatRequestParameters) {
+            openAiParameters = openAiChatRequestParameters;
+        } else {
+            openAiParameters = OpenAiChatRequestParameters.builder().build();
+        }
+
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters
                 .modelName(getOrDefault(getOrDefault(modelName, commonParameters.modelName()), GPT_3_5_TURBO))
@@ -152,7 +151,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .stopSequences(getOrDefault(stop, () -> copyIfNotNull(commonParameters.stopSequences())))
                 .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(commonParameters.responseFormat())
+                .responseFormat(commonParameters.responseFormat()) // TODO take from responseFormat, fallback to commonParams
                 // OpenAI-specific parameters
                 .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))

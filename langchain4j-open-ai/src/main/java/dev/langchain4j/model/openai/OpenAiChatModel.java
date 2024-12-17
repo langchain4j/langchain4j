@@ -163,7 +163,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .stopSequences(getOrDefault(stop, () -> copyIfNotNull(commonParameters.stopSequences())))
                 .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(commonParameters.responseFormat())
+                .responseFormat(commonParameters.responseFormat()) // TODO take from responseFormat, fallback to commonParams
                 // OpenAI-specific parameters
                 .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
