@@ -54,18 +54,12 @@ public class ChatRequest {
         return parameters;
     }
 
-    /**
-     * @deprecated use {@link #parameters()} and then {@link ChatParameters#toolSpecifications()}
-     */
-    @Deprecated(forRemoval = true)
+    // TODO deprecate
     public List<ToolSpecification> toolSpecifications() {
         return parameters.toolSpecifications();
     }
 
-    /**
-     * @deprecated use {@link #parameters()} and then {@link ChatParameters#responseFormat()}
-     */
-    @Deprecated(forRemoval = true)
+    // TODO deprecate
     public ResponseFormat responseFormat() {
         return parameters.responseFormat();
     }
@@ -117,27 +111,18 @@ public class ChatRequest {
             return this;
         }
 
-        /**
-         * @deprecated TODO
-         */
-        @Deprecated(forRemoval = true)
+        // TODO deprecate
         public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return this;
         }
 
-        /**
-         * @deprecated TODO
-         */
-        @Deprecated(forRemoval = true)
+        // TODO deprecate
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }
 
-        /**
-         * @deprecated TODO
-         */
-        @Deprecated(forRemoval = true)
+        // TODO deprecate
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;

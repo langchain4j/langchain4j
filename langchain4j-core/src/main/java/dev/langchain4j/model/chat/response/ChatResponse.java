@@ -29,18 +29,12 @@ public class ChatResponse {
         return metadata;
     }
 
-    /**
-     * @deprecated use {@link #metadata()} and then {@link ChatResponseMetadata#tokenUsage()}
-     */
-    @Deprecated(forRemoval = true)
+    // TODO deprecate
     public TokenUsage tokenUsage() {
         return metadata.tokenUsage();
     }
 
-    /**
-     * @deprecated use {@link #metadata()} and then {@link ChatResponseMetadata#finishReason()}
-     */
-    @Deprecated(forRemoval = true)
+    // TODO deprecate
     public FinishReason finishReason() {
         return metadata.finishReason();
     }
