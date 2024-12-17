@@ -268,7 +268,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     @Override
     public ChatResponse chat(ChatRequest request) {
-        boolean strictJsonSchema = ((ChatCompletionsJsonSchemaResponseFormat) chatCompletionsResponseFormat).getJsonSchema().isStrict();
+        boolean strictJsonSchema = false;
+        if (chatCompletionsResponseFormat instanceof ChatCompletionsJsonSchemaResponseFormat) {
+            strictJsonSchema = ((ChatCompletionsJsonSchemaResponseFormat) chatCompletionsResponseFormat).getJsonSchema().isStrict();
+        }
         Response<AiMessage> response = generate(
                 request.messages(),
                 request.toolSpecifications(),
