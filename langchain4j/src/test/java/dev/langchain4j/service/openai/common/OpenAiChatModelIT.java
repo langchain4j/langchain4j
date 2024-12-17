@@ -5,12 +5,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiChatParameters;
+import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
@@ -55,12 +55,12 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatParameters chatParameters) {
+    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
         return OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .parameters(chatParameters)
+                .defaultRequestParameters(parameters)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -72,8 +72,8 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
-        return OpenAiChatParameters.builder()
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return OpenAiChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }
@@ -86,12 +86,12 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 "72782", 100 // token ID for "Paris", see https://platform.openai.com/tokenizer -> "Token IDs"
         );
 
-        OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
+        OpenAiChatRequestParameters openAiParameters = OpenAiChatRequestParameters.builder()
                 .logitBias(logitBias)
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(openAiChatParameters)
+                .parameters(openAiParameters)
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
@@ -129,18 +129,18 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .build();
 
         // when parallelToolCalls = true
-        OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
+        OpenAiChatRequestParameters openAiParameters = OpenAiChatRequestParameters.builder()
                 .toolSpecifications(toolSpecification)
                 .parallelToolCalls(true)
                 .build();
-        ChatRequest chatRequest = chatRequestBuilder.parameters(openAiChatParameters)
+        ChatRequest chatRequest = chatRequestBuilder.parameters(openAiParameters)
                 .build();
         ChatResponse chatResponse = chatModel.chat(chatRequest);
         // then
         assertThat(chatResponse.aiMessage().toolExecutionRequests()).hasSize(2);
 
         // when parallelToolCalls = false
-        OpenAiChatParameters openAiChatParameters2 = OpenAiChatParameters.builder()
+        OpenAiChatRequestParameters openAiChatParameters2 = OpenAiChatRequestParameters.builder()
                 .toolSpecifications(toolSpecification)
                 .parallelToolCalls(false)
                 .build();
@@ -155,7 +155,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     void should_propagate_all_OpenAI_specific_parameters() {
 
         // given
-        OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
+        OpenAiChatRequestParameters openAiParameters = OpenAiChatRequestParameters.builder()
                 .seed(12345)
                 .user("Klaus")
                 .store(true)
@@ -167,7 +167,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(openAiChatParameters)
+                .parameters(openAiParameters)
                 .messages(UserMessage.from("What is the capital of Germany?"))
                 .build();
 
@@ -190,12 +190,12 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
         // given
         int maxOutputTokens = 3;
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
 
         ChatLanguageModel chatModel = defaultModelBuilder()
-                .parameters(chatParameters)
+                .defaultRequestParameters(parameters)
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
@@ -228,13 +228,13 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         int maxOutputTokens = 1;
         String serviceTier = "default";
 
-        OpenAiChatParameters openAiChatParameters = OpenAiChatParameters.builder()
+        OpenAiChatRequestParameters openAiParameters = OpenAiChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens) // to save tokens
                 .serviceTier(serviceTier) // required to get the "serviceTier" attribute in the response
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(openAiChatParameters)
+                .parameters(openAiParameters)
                 .messages(UserMessage.from("Hi"))
                 .build();
 

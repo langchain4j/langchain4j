@@ -2,7 +2,7 @@ package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.request.ChatParameters;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 
 import java.util.List;
@@ -34,31 +34,31 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected ChatLanguageModel createModelWith(ChatParameters chatParameters) {
+    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
 
-                // TODO re-implement, support .parameters(chatParameters)
-                .modelName(getOrDefault(chatParameters.modelName(), "gemini-1.5-flash-8b"))
-                .temperature(chatParameters.temperature())
-                .topP(chatParameters.topP())
-                .topK(chatParameters.topK())
-                .maxOutputTokens(chatParameters.maxOutputTokens())
-                .stopSequences(chatParameters.stopSequences())
-                .responseFormat(chatParameters.responseFormat())
+                // TODO re-implement, support .defaultRequestParameters(ChatRequestParameters)
+                .modelName(getOrDefault(parameters.modelName(), "gemini-1.5-flash-8b"))
+                .temperature(parameters.temperature())
+                .topP(parameters.topP())
+                .topK(parameters.topK())
+                .maxOutputTokens(parameters.maxOutputTokens())
+                .stopSequences(parameters.stopSequences())
+                .responseFormat(parameters.responseFormat())
 
                 .build();
     }
 
     @Override
-    protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
-        return ChatParameters.builder() // TODO return Gemini-specific params
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return ChatRequestParameters.builder() // TODO return Gemini-specific params
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }
 
     @Override
-    protected boolean supportsDefaultChatParameters() {
+    protected boolean supportsDefaultRequestParameters() {
         return false; // TODO implement
     }
 

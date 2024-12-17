@@ -95,7 +95,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsDefaultChatParameters() {
+    protected boolean supportsDefaultRequestParameters() {
         return false; // TODO implement
     }
 

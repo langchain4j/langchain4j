@@ -26,7 +26,7 @@ class VertexAiGeminiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsDefaultChatParameters() {
+    protected boolean supportsDefaultRequestParameters() {
         return false; // TODO implement
     }
 

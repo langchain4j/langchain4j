@@ -363,7 +363,7 @@ class StreamingAiServicesWithToolsIT {
 
     public static void verifyNoMoreInteractionsFor(StreamingChatLanguageModel model) {
         try {
-            verify(model).defaultParameters();
+            verify(model).defaultRequestParameters();
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }

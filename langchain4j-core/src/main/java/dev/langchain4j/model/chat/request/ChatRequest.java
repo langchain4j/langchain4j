@@ -16,19 +16,19 @@ import static java.util.Arrays.asList;
 public class ChatRequest {
 
     private final List<ChatMessage> messages;
-    private final ChatParameters parameters;
+    private final ChatRequestParameters parameters;
 
     protected ChatRequest(Builder builder) {
         this.messages = new ArrayList<>(ensureNotEmpty(builder.messages, "messages"));
 
-        DefaultChatParameters.Builder<?> chatParametersBuilder = ChatParameters.builder();
+        DefaultChatRequestParameters.Builder<?> parametersBuilder = ChatRequestParameters.builder();
 
         if (!isNullOrEmpty(builder.toolSpecifications)) {
             if (builder.parameters != null) {
                 throw new IllegalArgumentException(
                         "Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
             }
-            chatParametersBuilder.toolSpecifications(builder.toolSpecifications);
+            parametersBuilder.toolSpecifications(builder.toolSpecifications);
         }
 
         if (builder.responseFormat != null) {
@@ -36,13 +36,13 @@ public class ChatRequest {
                 throw new IllegalArgumentException(
                         "Cannot set both 'parameters' and 'responseFormat' on ChatRequest");
             }
-            chatParametersBuilder.responseFormat(builder.responseFormat);
+            parametersBuilder.responseFormat(builder.responseFormat);
         }
 
         if (builder.parameters != null) {
             this.parameters = builder.parameters;
         } else {
-            this.parameters = chatParametersBuilder.build();
+            this.parameters = parametersBuilder.build();
         }
     }
 
@@ -51,7 +51,7 @@ public class ChatRequest {
     }
 
     @Experimental
-    public ChatParameters parameters() {
+    public ChatRequestParameters parameters() {
         return parameters;
     }
 
@@ -94,7 +94,7 @@ public class ChatRequest {
     public static class Builder {
 
         private List<ChatMessage> messages;
-        private ChatParameters parameters;
+        private ChatRequestParameters parameters;
         private List<ToolSpecification> toolSpecifications;
         private ResponseFormat responseFormat;
 
@@ -108,7 +108,7 @@ public class ChatRequest {
         }
 
         @Experimental
-        public Builder parameters(ChatParameters parameters) {
+        public Builder parameters(ChatRequestParameters parameters) {
             this.parameters = parameters;
             return this;
         }

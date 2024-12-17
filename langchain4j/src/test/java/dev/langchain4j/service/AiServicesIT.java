@@ -79,7 +79,7 @@ class AiServicesIT {
 
     public static void verifyNoMoreInteractionsFor(ChatLanguageModel model) {
         try {
-            verify(model).defaultParameters();
+            verify(model).defaultRequestParameters();
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }

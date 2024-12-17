@@ -2,8 +2,8 @@ package dev.langchain4j.service.openai.common;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
-import dev.langchain4j.model.chat.request.ChatParameters;
-import dev.langchain4j.model.openai.OpenAiChatParameters;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 
 import java.util.List;
@@ -38,12 +38,12 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected StreamingChatLanguageModel createModelWith(ChatParameters chatParameters) {
+    protected StreamingChatLanguageModel createModelWith(ChatRequestParameters parameters) {
         return OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .parameters(chatParameters)
+                .defaultRequestParameters(parameters)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -55,8 +55,8 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
-        return OpenAiChatParameters.builder()
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return OpenAiChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }

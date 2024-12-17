@@ -10,8 +10,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.request.ChatParameters;
-import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -92,7 +91,7 @@ abstract class BaseGeminiChatModel {
         List<ChatMessage> messages,
         List<ToolSpecification> toolSpecifications,
         ResponseFormat responseFormat,
-        ChatParameters requestParameters
+        ChatRequestParameters requestParameters
     ) {
         GeminiContent systemInstruction = new GeminiContent(GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(messages, systemInstruction);
@@ -125,7 +124,7 @@ abstract class BaseGeminiChatModel {
         String modelName,
         List<ChatMessage> messages,
         List<ToolSpecification> toolSpecifications,
-        ChatParameters requestParameters
+        ChatRequestParameters requestParameters
     ) {
         return ChatModelRequest.builder()
             .model(getOrDefault(modelName, this.modelName))

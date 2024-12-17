@@ -8,10 +8,9 @@ import java.util.Objects;
 
 @Experimental
 public class ChatResponseMetadata {
-    // TODO name: ChatMetadata?
 
-    private final String id; // TODO responseId?
-    private final String modelName; // TODO name
+    private final String id;
+    private final String modelName;
     private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
 
@@ -23,12 +22,12 @@ public class ChatResponseMetadata {
     }
 
     @Experimental
-    public String id() { // TODO name
+    public String id() {
         return id;
     }
 
     @Experimental
-    public String modelName() { // TODO name
+    public String modelName() {
         return modelName;
     }
 
@@ -80,13 +79,13 @@ public class ChatResponseMetadata {
         private FinishReason finishReason;
 
         @Experimental
-        public T id(String id) { // TODO names
+        public T id(String id) {
             this.id = id;
             return (T) this;
         }
 
         @Experimental
-        public T modelName(String modelName) { // TODO names
+        public T modelName(String modelName) {
             this.modelName = modelName;
             return (T) this;
         }

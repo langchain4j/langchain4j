@@ -6,7 +6,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import java.util.List;
 
 @Experimental
-public interface ChatParameters { // TODO name: ChatRequestParameters?
+public interface ChatRequestParameters {
 
     String modelName();
 
@@ -30,7 +30,7 @@ public interface ChatParameters { // TODO name: ChatRequestParameters?
 
     ResponseFormat responseFormat();
 
-    static DefaultChatParameters.Builder<?> builder() { // TODO
-        return new DefaultChatParameters.Builder<>();
+    static DefaultChatRequestParameters.Builder<?> builder() { // TODO
+        return new DefaultChatRequestParameters.Builder<>();
     }
 }

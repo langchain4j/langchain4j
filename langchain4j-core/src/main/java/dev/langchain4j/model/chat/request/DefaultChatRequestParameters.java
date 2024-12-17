@@ -12,7 +12,7 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
 
 @Experimental
-public class DefaultChatParameters implements ChatParameters {
+public class DefaultChatRequestParameters implements ChatRequestParameters {
 
     private final String modelName;
     private final Double temperature;
@@ -26,7 +26,7 @@ public class DefaultChatParameters implements ChatParameters {
     private final ToolChoice toolChoice;
     private final ResponseFormat responseFormat;
 
-    protected DefaultChatParameters(Builder<?> builder) {
+    protected DefaultChatRequestParameters(Builder<?> builder) {
         this.modelName = builder.modelName;
         this.temperature = builder.temperature;
         this.topP = builder.topP;
@@ -40,18 +40,18 @@ public class DefaultChatParameters implements ChatParameters {
         this.responseFormat = builder.responseFormat;
     }
 
-    protected DefaultChatParameters(ChatParameters chatParameters) {
-        this.modelName = chatParameters.modelName();
-        this.temperature = chatParameters.temperature();
-        this.topP = chatParameters.topP();
-        this.topK = chatParameters.topK();
-        this.frequencyPenalty = chatParameters.frequencyPenalty();
-        this.presencePenalty = chatParameters.presencePenalty();
-        this.maxOutputTokens = chatParameters.maxOutputTokens();
-        this.stopSequences = copyIfNotNull(chatParameters.stopSequences());
-        this.toolSpecifications = copyIfNotNull(chatParameters.toolSpecifications());
-        this.toolChoice = chatParameters.toolChoice();
-        this.responseFormat = chatParameters.responseFormat();
+    protected DefaultChatRequestParameters(ChatRequestParameters parameters) {
+        this.modelName = parameters.modelName();
+        this.temperature = parameters.temperature();
+        this.topP = parameters.topP();
+        this.topK = parameters.topK();
+        this.frequencyPenalty = parameters.frequencyPenalty();
+        this.presencePenalty = parameters.presencePenalty();
+        this.maxOutputTokens = parameters.maxOutputTokens();
+        this.stopSequences = copyIfNotNull(parameters.stopSequences());
+        this.toolSpecifications = copyIfNotNull(parameters.toolSpecifications());
+        this.toolChoice = parameters.toolChoice();
+        this.responseFormat = parameters.responseFormat();
     }
 
     @Override
@@ -113,7 +113,7 @@ public class DefaultChatParameters implements ChatParameters {
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        DefaultChatParameters that = (DefaultChatParameters) o;
+        DefaultChatRequestParameters that = (DefaultChatRequestParameters) o;
         return Objects.equals(modelName, that.modelName)
                 && Objects.equals(temperature, that.temperature)
                 && Objects.equals(topP, that.topP)
@@ -142,6 +142,23 @@ public class DefaultChatParameters implements ChatParameters {
                 toolChoice,
                 responseFormat
         );
+    }
+
+    @Override
+    public String toString() {
+        return "DefaultChatRequestParameters{" +
+                "modelName='" + modelName + '\'' +
+                ", temperature=" + temperature +
+                ", topP=" + topP +
+                ", topK=" + topK +
+                ", frequencyPenalty=" + frequencyPenalty +
+                ", presencePenalty=" + presencePenalty +
+                ", maxOutputTokens=" + maxOutputTokens +
+                ", stopSequences=" + stopSequences +
+                ", toolSpecifications=" + toolSpecifications +
+                ", toolChoice=" + toolChoice +
+                ", responseFormat=" + responseFormat +
+                '}';
     }
 
     public static Builder<?> builder() {
@@ -254,8 +271,8 @@ public class DefaultChatParameters implements ChatParameters {
             return (T) this;
         }
 
-        public DefaultChatParameters build() {
-            return new DefaultChatParameters(this);
+        public DefaultChatRequestParameters build() {
+            return new DefaultChatRequestParameters(this);
         }
     }
 }

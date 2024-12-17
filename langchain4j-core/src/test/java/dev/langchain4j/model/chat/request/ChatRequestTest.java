@@ -41,7 +41,7 @@ class ChatRequestTest {
                 .name("tool")
                 .build();
         ResponseFormat responseFormat = ResponseFormat.JSON;
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .toolSpecifications(toolSpecification)
                 .responseFormat(responseFormat)
                 .build();
@@ -49,12 +49,12 @@ class ChatRequestTest {
         // when
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
-                .parameters(chatParameters)
+                .parameters(parameters)
                 .build();
 
         // then
         assertThat(chatRequest.messages()).containsExactly(userMessage);
-        assertThat(chatRequest.parameters()).isEqualTo(chatParameters);
+        assertThat(chatRequest.parameters()).isEqualTo(parameters);
         assertThat(chatRequest.toolSpecifications()).containsExactly(toolSpecification);
         assertThat(chatRequest.responseFormat()).isEqualTo(responseFormat);
     }
@@ -64,7 +64,7 @@ class ChatRequestTest {
 
         assertThatThrownBy(() -> ChatRequest.builder()
                 .messages(UserMessage.from("hi"))
-                .parameters(ChatParameters.builder().build())
+                .parameters(ChatRequestParameters.builder().build())
                 .responseFormat(ResponseFormat.JSON)
                 .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
@@ -76,7 +76,7 @@ class ChatRequestTest {
 
         assertThatThrownBy(() -> ChatRequest.builder()
                 .messages(UserMessage.from("hi"))
-                .parameters(ChatParameters.builder().build())
+                .parameters(ChatRequestParameters.builder().build())
                 .toolSpecifications(ToolSpecification.builder().name("tool").build())
                 .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)

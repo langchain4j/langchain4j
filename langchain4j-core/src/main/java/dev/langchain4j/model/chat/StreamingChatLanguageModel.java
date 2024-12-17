@@ -7,8 +7,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -44,9 +44,9 @@ public interface StreamingChatLanguageModel {
     @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
-        ChatParameters chatParameters = chatRequest.parameters();
-        validate(chatParameters);
-        validate(chatParameters.responseFormat());
+        ChatRequestParameters parameters = chatRequest.parameters();
+        validate(parameters);
+        validate(parameters.responseFormat());
 
         StreamingResponseHandler<AiMessage> legacyHandler = new StreamingResponseHandler<>() {
 
@@ -73,11 +73,11 @@ public interface StreamingChatLanguageModel {
             }
         };
 
-        List<ToolSpecification> toolSpecifications = chatParameters.toolSpecifications();
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
         if (isNullOrEmpty(toolSpecifications)) {
             generate(chatRequest.messages(), legacyHandler);
         } else {
-            if (chatParameters.toolChoice() == REQUIRED) {
+            if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
                     throw new UnsupportedFeatureException(
                             "ToolChoice.REQUIRED is currently supported only when there is a single tool");
@@ -90,7 +90,7 @@ public interface StreamingChatLanguageModel {
     }
 
     @Experimental
-    default ChatParameters defaultParameters() {
+    default ChatRequestParameters defaultRequestParameters() {
         return null;
     }
 

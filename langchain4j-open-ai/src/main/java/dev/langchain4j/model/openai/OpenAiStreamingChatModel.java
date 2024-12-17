@@ -21,9 +21,9 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.DefaultChatParameters;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
@@ -71,7 +71,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     private final OpenAiClient client;
 
-    private final OpenAiChatParameters defaultParameters;
+    private final OpenAiChatRequestParameters defaultRequestParameters;
     private final Integer maxCompletionTokens;
     private final ResponseFormat responseFormat;
     private final Boolean strictJsonSchema;
@@ -85,7 +85,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     public OpenAiStreamingChatModel(String baseUrl,
                                     String apiKey,
                                     String organizationId,
-                                    ChatParameters defaultParameters,
+                                    ChatRequestParameters defaultRequestParameters,
                                     String modelName,
                                     Double temperature,
                                     Double topP,
@@ -134,20 +134,20 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .customHeaders(customHeaders)
                 .build();
 
-        OpenAiChatParameters openAiParameters;
-        if (defaultParameters instanceof OpenAiChatParameters openAiChatParameters) {
+        OpenAiChatRequestParameters openAiParameters;
+        if (defaultRequestParameters instanceof OpenAiChatRequestParameters openAiChatParameters) {
             openAiParameters = openAiChatParameters;
         } else {
-            openAiParameters = OpenAiChatParameters.builder().build();
+            openAiParameters = OpenAiChatRequestParameters.builder().build();
         }
 
-        ChatParameters commonParameters;
-        if (defaultParameters != null) {
-            commonParameters = defaultParameters;
+        ChatRequestParameters commonParameters;
+        if (defaultRequestParameters != null) {
+            commonParameters = defaultRequestParameters;
         } else {
-            commonParameters = DefaultChatParameters.builder().build();
+            commonParameters = DefaultChatRequestParameters.builder().build();
         }
-        this.defaultParameters = OpenAiChatParameters.builder()
+        this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters
                 .modelName(getOrDefault(getOrDefault(modelName, commonParameters.modelName()), GPT_3_5_TURBO))
                 .temperature(getOrDefault(getOrDefault(temperature, commonParameters.temperature()), 0.7))
@@ -180,13 +180,14 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
-    public String modelName() { // TODO deprecate?
-        return defaultParameters.modelName();
+    // TODO deprecate
+    public String modelName() {
+        return defaultRequestParameters.modelName();
     }
 
     @Override
-    public OpenAiChatParameters defaultParameters() {
-        return defaultParameters;
+    public OpenAiChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     @Override
@@ -210,7 +211,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                          StreamingResponseHandler<AiMessage> handler) {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(toolSpecifications)
                         .build())
                 .build();
@@ -223,7 +224,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                          StreamingResponseHandler<AiMessage> handler) {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(toolSpecification)
                         .toolChoice(REQUIRED)
                         .build())
@@ -238,11 +239,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         // TODO reuse code from OpenAiChatModel
 
-        OpenAiChatParameters requestParameters;
-        if (chatRequest.parameters() instanceof OpenAiChatParameters openAiChatParameters) {
+        OpenAiChatRequestParameters requestParameters;
+        if (chatRequest.parameters() instanceof OpenAiChatRequestParameters openAiChatParameters) {
             requestParameters = openAiChatParameters;
         } else {
-            requestParameters = new OpenAiChatParameters(chatRequest.parameters()); // TODO
+            requestParameters = new OpenAiChatRequestParameters(chatRequest.parameters()); // TODO
         }
 
         if (responseFormat != null
@@ -259,25 +260,25 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                         .includeUsage(true)
                         .build())
                 // common parameters
-                .model(getOrDefault(requestParameters.modelName(), defaultParameters.modelName()))
-                .temperature(getOrDefault(requestParameters.temperature(), defaultParameters.temperature()))
-                .topP(getOrDefault(requestParameters.topP(), defaultParameters.topP()))
-                .frequencyPenalty(getOrDefault(requestParameters.frequencyPenalty(), defaultParameters.frequencyPenalty()))
-                .presencePenalty(getOrDefault(requestParameters.presencePenalty(), defaultParameters.presencePenalty()))
-                .maxTokens(getOrDefault(requestParameters.maxOutputTokens(), defaultParameters.maxOutputTokens())) // TODO maxCompletionTokens
+                .model(getOrDefault(requestParameters.modelName(), defaultRequestParameters.modelName()))
+                .temperature(getOrDefault(requestParameters.temperature(), defaultRequestParameters.temperature()))
+                .topP(getOrDefault(requestParameters.topP(), defaultRequestParameters.topP()))
+                .frequencyPenalty(getOrDefault(requestParameters.frequencyPenalty(), defaultRequestParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(requestParameters.presencePenalty(), defaultRequestParameters.presencePenalty()))
+                .maxTokens(getOrDefault(requestParameters.maxOutputTokens(), defaultRequestParameters.maxOutputTokens())) // TODO maxCompletionTokens
                 .maxCompletionTokens(this.maxCompletionTokens)
-                .stop(getOrDefault(requestParameters.stopSequences(), defaultParameters.stopSequences()))
-                .tools(toTools(getOrDefault(requestParameters.toolSpecifications(), defaultParameters.toolSpecifications()), strictTools))
-                .toolChoice(toOpenAiToolChoice(getOrDefault(requestParameters.toolChoice(), defaultParameters.toolChoice())))
+                .stop(getOrDefault(requestParameters.stopSequences(), defaultRequestParameters.stopSequences()))
+                .tools(toTools(getOrDefault(requestParameters.toolSpecifications(), defaultRequestParameters.toolSpecifications()), strictTools))
+                .toolChoice(toOpenAiToolChoice(getOrDefault(requestParameters.toolChoice(), defaultRequestParameters.toolChoice())))
                 .responseFormat(responseFormat) // TODO check default format
                 // OpenAI-specific parameters
-                .logitBias(getOrDefault(requestParameters.logitBias(), defaultParameters.logitBias()))
-                .parallelToolCalls(getOrDefault(requestParameters.parallelToolCalls(), defaultParameters.parallelToolCalls()))
-                .seed(getOrDefault(requestParameters.seed(), defaultParameters.seed()))
-                .user(getOrDefault(requestParameters.user(), defaultParameters.user()))
-                .store(getOrDefault(requestParameters.store(), defaultParameters.store()))
-                .metadata(getOrDefault(requestParameters.metadata(), defaultParameters.metadata()))
-                .serviceTier(getOrDefault(requestParameters.serviceTier(), defaultParameters.serviceTier()))
+                .logitBias(getOrDefault(requestParameters.logitBias(), defaultRequestParameters.logitBias()))
+                .parallelToolCalls(getOrDefault(requestParameters.parallelToolCalls(), defaultRequestParameters.parallelToolCalls()))
+                .seed(getOrDefault(requestParameters.seed(), defaultRequestParameters.seed()))
+                .user(getOrDefault(requestParameters.user(), defaultRequestParameters.user()))
+                .store(getOrDefault(requestParameters.store(), defaultRequestParameters.store()))
+                .metadata(getOrDefault(requestParameters.metadata(), defaultRequestParameters.metadata()))
+                .serviceTier(getOrDefault(requestParameters.serviceTier(), defaultRequestParameters.serviceTier()))
                 .build();
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(
@@ -409,7 +410,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         private String apiKey;
         private String organizationId;
 
-        private ChatParameters parameters;
+        private ChatRequestParameters defaultRequestParameters;
         private String modelName;
         private Double temperature;
         private Double topP;
@@ -442,13 +443,13 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         /**
          * TODO
-         * Sets common {@link ChatParameters} or OpenAI-specific {@link OpenAiChatParameters}
+         * Sets common {@link ChatRequestParameters} or OpenAI-specific {@link OpenAiChatRequestParameters}
          *
          * @param parameters
          * @return
          */
-        public OpenAiStreamingChatModelBuilder parameters(ChatParameters parameters) { // TODO names, check everywhere chatParameters vs parameters vs defaultParameters
-            this.parameters = parameters;
+        public OpenAiStreamingChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) { // TODO names, check everywhere chatParameters vs parameters vs defaultParameters
+            this.defaultRequestParameters = parameters;
             return this;
         }
 
@@ -602,7 +603,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     this.baseUrl,
                     this.apiKey,
                     this.organizationId,
-                    this.parameters,
+                    this.defaultRequestParameters,
                     this.modelName,
                     this.temperature,
                     this.topP,
@@ -636,7 +637,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             return new StringJoiner(", ", OpenAiStreamingChatModelBuilder.class.getSimpleName() + "[", "]")
                     .add("baseUrl='" + baseUrl + "'")
                     .add("organizationId='" + organizationId + "'")
-                    .add("parameters='" + parameters + "'")
+                    .add("parameters='" + defaultRequestParameters + "'")
                     .add("modelName='" + modelName + "'")
                     .add("temperature=" + temperature)
                     .add("topP=" + topP)

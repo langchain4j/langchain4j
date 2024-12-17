@@ -11,7 +11,7 @@ import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.request.ChatParameters;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -111,20 +111,20 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
 
-        ChatParameters chatParameters = chatRequest.parameters();
-        validate(chatParameters);
+        ChatRequestParameters parameters = chatRequest.parameters();
+        validate(parameters);
 
         GeminiGenerateContentRequest request = createGenerateContentRequest(
                 chatRequest.messages(),
-                chatParameters.toolSpecifications(),
-                getOrDefault(chatParameters.responseFormat(), this.responseFormat),
+                parameters.toolSpecifications(),
+                getOrDefault(parameters.responseFormat(), this.responseFormat),
                 chatRequest.parameters()
         );
 
         ChatModelRequest chatModelRequest = createChatModelRequest(
-                chatParameters.modelName(),
+                parameters.modelName(),
                 chatRequest.messages(),
-                chatParameters.toolSpecifications(),
+                parameters.toolSpecifications(),
                 chatRequest.parameters()
         );
 
@@ -144,11 +144,11 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         }
     }
 
-    private static void validate(ChatParameters chatParameters) {
-        if (chatParameters.frequencyPenalty() != null) {
+    private static void validate(ChatRequestParameters parameters) {
+        if (parameters.frequencyPenalty() != null) {
             throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by Google AI Gemini");
         }
-        if (chatParameters.presencePenalty() != null) {
+        if (parameters.presencePenalty() != null) {
             throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by Google AI Gemini");
         }
     }

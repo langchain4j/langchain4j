@@ -1,8 +1,8 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.chat.request.ChatParameters;
-import dev.langchain4j.model.chat.request.DefaultChatParameters;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 
 import java.util.Map;
 import java.util.Objects;
@@ -10,7 +10,7 @@ import java.util.Objects;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
 @Experimental
-public class OpenAiChatParameters extends DefaultChatParameters {
+public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
     private final Map<String, Integer> logitBias;
     private final Boolean parallelToolCalls;
@@ -21,7 +21,7 @@ public class OpenAiChatParameters extends DefaultChatParameters {
     private final String serviceTier;
     // TODO max_completion_tokens?
 
-    private OpenAiChatParameters(Builder builder) { // TODO visibility
+    private OpenAiChatRequestParameters(Builder builder) {
         super(builder);
         this.logitBias = copyIfNotNull(builder.logitBias);
         this.parallelToolCalls = builder.parallelToolCalls;
@@ -32,16 +32,16 @@ public class OpenAiChatParameters extends DefaultChatParameters {
         this.serviceTier = builder.serviceTier;
     }
 
-    protected OpenAiChatParameters(ChatParameters chatParameters) { // TODO visibility
-        super(chatParameters);
-        if (chatParameters instanceof OpenAiChatParameters openAiChatParameters) { // TODO is this needed?
-            this.logitBias = copyIfNotNull(openAiChatParameters.logitBias);
-            this.parallelToolCalls = openAiChatParameters.parallelToolCalls;
-            this.seed = openAiChatParameters.seed;
-            this.user = openAiChatParameters.user;
-            this.store = openAiChatParameters.store;
-            this.metadata = openAiChatParameters.metadata;
-            this.serviceTier = openAiChatParameters.serviceTier;
+    OpenAiChatRequestParameters(ChatRequestParameters parameters) {
+        super(parameters);
+        if (parameters instanceof OpenAiChatRequestParameters openAiParameters) { // TODO is this needed?
+            this.logitBias = copyIfNotNull(openAiParameters.logitBias);
+            this.parallelToolCalls = openAiParameters.parallelToolCalls;
+            this.seed = openAiParameters.seed;
+            this.user = openAiParameters.user;
+            this.store = openAiParameters.store;
+            this.metadata = openAiParameters.metadata;
+            this.serviceTier = openAiParameters.serviceTier;
         } else { // TODO is this needed?
             this.logitBias = null;
             this.parallelToolCalls = null;
@@ -93,7 +93,7 @@ public class OpenAiChatParameters extends DefaultChatParameters {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
-        OpenAiChatParameters that = (OpenAiChatParameters) o;
+        OpenAiChatRequestParameters that = (OpenAiChatRequestParameters) o;
         return Objects.equals(logitBias, that.logitBias)
                 && Objects.equals(parallelToolCalls, that.parallelToolCalls)
                 && Objects.equals(seed, that.seed)
@@ -120,7 +120,7 @@ public class OpenAiChatParameters extends DefaultChatParameters {
     @Override
     public String toString() {
         // TODO inherited
-        return "OpenAiChatParameters{" +
+        return "OpenAiChatRequestParameters{" +
                 "logitBias=" + logitBias +
                 ", parallelToolCalls=" + parallelToolCalls +
                 ", seed=" + seed +
@@ -135,7 +135,7 @@ public class OpenAiChatParameters extends DefaultChatParameters {
         return new Builder();
     }
 
-    public static class Builder extends DefaultChatParameters.Builder<Builder> {
+    public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
 
         private Map<String, Integer> logitBias;
         private Boolean parallelToolCalls;
@@ -193,8 +193,8 @@ public class OpenAiChatParameters extends DefaultChatParameters {
         }
 
         @Override
-        public OpenAiChatParameters build() {
-            return new OpenAiChatParameters(this);
+        public OpenAiChatRequestParameters build() {
+            return new OpenAiChatRequestParameters(this);
         }
     }
 }

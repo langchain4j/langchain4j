@@ -11,9 +11,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.request.ChatParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.DefaultChatParameters;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -176,14 +176,14 @@ public abstract class AbstractBaseChatModelIT<M> {
         String modelName = customModelName();
         ensureModelNameIsDifferentFromDefault(modelName, model);
 
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .modelName(modelName)
                 .maxOutputTokens(1) // to save tokens
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"))
-                .parameters(chatParameters)
+                .parameters(parameters)
                 .build();
 
         // when
@@ -204,10 +204,10 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"));
         if (supportsMaxOutputTokensParameter()) {
-            DefaultChatParameters chatParameters = ChatParameters.builder()
+            DefaultChatRequestParameters parameters = ChatRequestParameters.builder()
                     .maxOutputTokens(1) // to save tokens
                     .build();
-            chatRequestBuilder.parameters(chatParameters);
+            chatRequestBuilder.parameters(parameters);
         }
         ChatRequest chatRequest = chatRequestBuilder.build();
 
@@ -222,11 +222,11 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         String modelName = customModelName();
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .modelName(modelName)
                 .maxOutputTokens(1) // to save tokens
                 .build();
-        M model = createModelWith(chatParameters);
+        M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"))
@@ -241,7 +241,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
     }
 
-    protected M createModelWith(ChatParameters chatParameters) {
+    protected M createModelWith(ChatRequestParameters parameters) {
         throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
     }
 
@@ -252,13 +252,13 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         String modelName = "dummy";
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .modelName(modelName)
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"))
-                .parameters(chatParameters)
+                .parameters(parameters)
                 .build();
 
         // when-then
@@ -267,8 +267,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .hasMessageContaining("modelName")
                 .hasMessageContaining("not support");
 
-        if (supportsDefaultChatParameters()) {
-            assertThatThrownBy(() -> createModelWith(chatParameters))
+        if (supportsDefaultRequestParameters()) {
+            assertThatThrownBy(() -> createModelWith(parameters))
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("modelName")
                     .hasMessageContaining("not support");
@@ -282,12 +282,12 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         int maxOutputTokens = 5;
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a long story"))
-                .parameters(chatParameters)
+                .parameters(parameters)
                 .build();
 
         // when
@@ -324,10 +324,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         int maxOutputTokens = 5;
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
-        M model = createModelWith(chatParameters);
+        M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a long story"))
@@ -368,13 +368,13 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         int maxOutputTokens = 5;
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a long story"))
-                .parameters(chatParameters)
+                .parameters(parameters)
                 .build();
 
         // when-then
@@ -383,8 +383,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .hasMessageContaining("maxOutputTokens")
                 .hasMessageContaining("not support");
 
-        if (supportsDefaultChatParameters()) {
-            assertThatThrownBy(() -> createModelWith(chatParameters))
+        if (supportsDefaultRequestParameters()) {
+            assertThatThrownBy(() -> createModelWith(parameters))
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("maxOutputTokens")
                     .hasMessageContaining("not support");
@@ -398,13 +398,13 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         List<String> stopSequences = List.of("World", " World");
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .stopSequences(stopSequences)
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Hello World'"))
-                .parameters(chatParameters)
+                .parameters(parameters)
                 .build();
 
         // when
@@ -431,14 +431,14 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         List<String> stopSequences = List.of("World", " World");
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .stopSequences(stopSequences)
                 .build();
-        M model = createModelWith(chatParameters);
+        M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Hello World'"))
-                .parameters(chatParameters)
+                .parameters(parameters)
                 .build();
 
         // when
@@ -466,13 +466,13 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         List<String> stopSequences = List.of("World");
-        ChatParameters chatParameters = ChatParameters.builder()
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .stopSequences(stopSequences)
                 .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Hello World'"))
-                .parameters(chatParameters)
+                .parameters(parameters)
                 .build();
 
         // when-then
@@ -481,8 +481,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 .hasMessageContaining("stopSequences")
                 .hasMessageContaining("not support");
 
-        if (supportsDefaultChatParameters()) {
-            assertThatThrownBy(() -> createModelWith(chatParameters))
+        if (supportsDefaultRequestParameters()) {
+            assertThatThrownBy(() -> createModelWith(parameters))
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("stopSequences")
                     .hasMessageContaining("not support");
@@ -497,11 +497,11 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         // TODO test more/all common params?
         int maxOutputTokens = 5;
-        ChatParameters chatParameters = createIntegrationSpecificChatParameters(maxOutputTokens);
-        assertThat(chatParameters).doesNotHaveSameClassAs(DefaultChatParameters.class);
+        ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
+        assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class);
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(chatParameters)
+                .parameters(parameters)
                 .messages(UserMessage.from("Tell me a long story"))
                 .build();
 
@@ -527,13 +527,13 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         // TODO test more/all common params?
         int maxOutputTokens = 5;
-        ChatParameters chatParameters = createIntegrationSpecificChatParameters(maxOutputTokens);
-        assertThat(chatParameters).doesNotHaveSameClassAs(DefaultChatParameters.class);
+        ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
+        assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class);
 
-        M model = createModelWith(chatParameters);
+        M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .parameters(chatParameters)
+                .parameters(parameters)
                 .messages(UserMessage.from("Tell me a long story"))
                 .build();
 
@@ -552,7 +552,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    protected ChatParameters createIntegrationSpecificChatParameters(int maxOutputTokens) {
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
         throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
     }
 
@@ -570,7 +570,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
                         .build())
                 .build();
@@ -616,7 +616,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                         aiMessage,
                         ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
                 )
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
                         .build())
                 .build();
@@ -657,7 +657,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("What is the weather in Munich?"))
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
                         .build())
                 .build();
@@ -689,7 +689,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("I live in Munich"))
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL, calculatorTool)
                         .toolChoice(REQUIRED) // this will FORCE the LLM to execute one or multiple tool(s)
                         .build())
@@ -723,7 +723,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("I live in Munich"))
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
                         .toolChoice(REQUIRED) // this will FORCE the LLM to execute weatherTool
                         .build())
@@ -764,7 +764,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("What is the capital of Germany? " +
                         "Answer with a JSON object containing a single 'city' field"))
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .responseFormat(responseFormat)
                         .build())
                 .build();
@@ -797,7 +797,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("What is the capital of Germany? " +
                         "Answer with a JSON object containing a single 'city' field"))
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .responseFormat(responseFormat)
                         .build())
                 .build();
@@ -821,7 +821,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("What is the capital of Germany?"))
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .responseFormat(RESPONSE_FORMAT)
                         .build())
                 .build();
@@ -851,7 +851,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("What is the capital of Germany?"))
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .responseFormat(RESPONSE_FORMAT)
                         .build())
                 .build();
@@ -889,7 +889,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(userMessage)
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
                         .responseFormat(responseFormat)
                         .build())
@@ -935,7 +935,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                         aiMessage,
                         ToolExecutionResultMessage.from(toolExecutionRequest, "sunny")
                 )
-                .parameters(ChatParameters.builder()
+                .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
                         .responseFormat(responseFormat)
                         .build())
@@ -1156,7 +1156,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    protected boolean supportsDefaultChatParameters() {
+    protected boolean supportsDefaultRequestParameters() {
         return true;
     }
 
