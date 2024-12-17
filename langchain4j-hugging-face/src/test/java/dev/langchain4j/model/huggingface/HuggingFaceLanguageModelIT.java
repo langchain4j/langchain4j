@@ -57,4 +57,16 @@ class HuggingFaceLanguageModelIT {
                 .hasMessage(
                         "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
     }
+
+    @Test
+    void should_fail_when_baseUrl_is_not_valid() {
+        assertThatThrownBy(() -> {
+                    HuggingFaceLanguageModel.builder()
+                            .baseUrl("//notValid/")
+                            .accessToken(System.getenv("HF_API_KEY"))
+                            .build();
+                })
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid url");
+    }
 }

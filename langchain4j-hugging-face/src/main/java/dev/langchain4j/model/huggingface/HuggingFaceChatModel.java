@@ -11,9 +11,11 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.huggingface.client.*;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceChatModelBuilderFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
+import dev.langchain4j.model.huggingface.util.UrlUtil;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class HuggingFaceChatModel implements ChatLanguageModel {
@@ -63,6 +65,10 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     }
 
     public HuggingFaceChatModel(Builder builder) {
+        if (!Objects.isNull(builder.baseUrl) && UrlUtil.isNotValidUrl(builder.baseUrl)) {
+            throw new IllegalArgumentException("Invalid url: " + builder.baseUrl);
+        }
+
         this.client = FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
             @Override
             public Optional<String> baseUrl() {

@@ -66,4 +66,21 @@ class HuggingFaceChatModelIT {
                 .hasMessage(
                         "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
     }
+
+    @Test
+    void should_fail_when_baseUrl_is_not_valid() {
+        assertThatThrownBy(() -> {
+                    HuggingFaceChatModel.builder()
+                            .baseUrl("//not-valid-base-url/")
+                            .accessToken(System.getenv("HF_API_KEY"))
+                            .modelId(TII_UAE_FALCON_7B_INSTRUCT)
+                            .timeout(ofSeconds(15))
+                            .temperature(0.7)
+                            .maxNewTokens(20)
+                            .waitForModel(true)
+                            .build();
+                })
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid url");
+    }
 }

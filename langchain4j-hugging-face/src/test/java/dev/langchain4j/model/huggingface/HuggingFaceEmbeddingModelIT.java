@@ -3,6 +3,7 @@ package dev.langchain4j.model.huggingface;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.embedding.Embedding;
 import java.util.List;
@@ -58,5 +59,17 @@ class HuggingFaceEmbeddingModelIT {
         assertThat(embeddings).hasSize(2);
         assertThat(embeddings.get(0).vector()).hasSize(384);
         assertThat(embeddings.get(1).vector()).hasSize(384);
+    }
+
+    @Test
+    void should_fail_when_baseUrl_is_not_valid() {
+        assertThatThrownBy(() -> {
+                    HuggingFaceEmbeddingModel.builder()
+                            .baseUrl("//not-valid/")
+                            .accessToken(System.getenv("HF_API_KEY"))
+                            .build();
+                })
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid url");
     }
 }

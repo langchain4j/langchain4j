@@ -11,9 +11,11 @@ import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceEmbeddingModelBuilderFactory;
+import dev.langchain4j.model.huggingface.util.UrlUtil;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.Builder;
 
@@ -49,6 +51,10 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     private HuggingFaceClient createClient(String accessToken, String modelId, Duration timeout) {
+        if (!Objects.isNull(baseUrl) && UrlUtil.isNotValidUrl(baseUrl)) {
+            throw new IllegalArgumentException("Invalid url: " + baseUrl);
+        }
+
         return FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
             @Override
             public Optional<String> baseUrl() {

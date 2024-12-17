@@ -76,7 +76,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
     @Override
     public List<float[]> embed(EmbeddingRequest request) {
         try {
-            retrofit2.Response<List<float[]>> retrofitResponse =
+            Response<List<float[]>> retrofitResponse =
                     huggingFaceApi.embed(request, modelId).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();

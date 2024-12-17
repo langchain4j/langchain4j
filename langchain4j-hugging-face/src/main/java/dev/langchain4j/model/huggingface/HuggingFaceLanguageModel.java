@@ -6,9 +6,11 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import dev.langchain4j.model.huggingface.client.*;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceLanguageModelBuilderFactory;
+import dev.langchain4j.model.huggingface.util.UrlUtil;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
 
 public class HuggingFaceLanguageModel implements LanguageModel {
@@ -58,6 +60,10 @@ public class HuggingFaceLanguageModel implements LanguageModel {
     }
 
     public HuggingFaceLanguageModel(Builder builder) {
+        if (!Objects.isNull(builder.baseUrl) && UrlUtil.isNotValidUrl(builder.baseUrl)) {
+            throw new IllegalArgumentException("Invalid url: " + builder.baseUrl);
+        }
+
         this.client = FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
             @Override
             public Optional<String> baseUrl() {
