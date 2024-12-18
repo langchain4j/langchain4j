@@ -20,11 +20,11 @@ import java.util.function.UnaryOperator;
  * same SQL is repeatedly executed, only with different parameter values. A JDBC driver may cache the statement for
  * reuse, and the database may avoid parsing of the same SQL statement.
  * </p><p>
- * Instances of SQLFilter can be created with {@link SQLFilters#create(Filter, UnaryOperator)}. The create method
- * accepts a key mapping function which translates a {@link dev.langchain4j.data.document.Metadata} key into a SQL
- * expression which identifies the key in the database. This translation could be as simple as appending a table name
- * to a column name. It can also be a more complex translation, such as using the builtin JSON_VALUE function to extract
- * the key from a JSON column.
+ * Instances of SQLFilter can be created with {@link SQLFilters#create(Filter, java.util.function.BiFunction)}. The
+ * create method accepts a key mapping function which translates a {@link dev.langchain4j.data.document.Metadata} key
+ * into a SQL expression which identifies the key in the database. This translation could be as simple as appending a
+ * table name to a column name. It can also be a more complex translation, such as using the builtin JSON_VALUE function
+ * to extract the key from a JSON column.
  * </p><p>
  * The code example below illustrates the concepts described by the paragraphs above:
  * <pre>{@code
