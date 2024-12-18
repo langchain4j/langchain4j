@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @SuperBuilder
 public abstract class AbstractBedrockChatModel<T extends BedrockChatModelResponse> extends AbstractSharedBedrockChatModel implements ChatLanguageModel {
 
-    private BedrockRuntimeClient client;
+    private volatile BedrockRuntimeClient client;
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
@@ -131,7 +131,11 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
 
     public BedrockRuntimeClient getClient() {
         if (client == null) {
-            client = initClient();
+            synchronized (this) {
+                if (client == null) {
+                    client = initClient();
+                }
+            }
         }
         return client;
     }
