@@ -47,7 +47,18 @@ public class ApacheTikaDocumentParser implements DocumentParser {
      * Note: By default, no metadata is added to the parsed document.
      */
     public ApacheTikaDocumentParser() {
-        this((Supplier<Parser>) null, null, null, null, false);
+        this(false);
+    }
+
+    /**
+     * Creates an instance of an {@code ApacheTikaDocumentParser} with the default Tika components.
+     * It uses {@link AutoDetectParser}, {@link BodyContentHandler} without write limit,
+     * empty {@link Metadata} and empty {@link ParseContext}.
+     *
+     * @param includeMetadata        Whether to include metadata in the parsed document
+     */
+    public ApacheTikaDocumentParser(boolean includeMetadata) {
+        this(null, null, null, null, includeMetadata);
     }
 
     /**
@@ -69,6 +80,26 @@ public class ApacheTikaDocumentParser implements DocumentParser {
                 () -> getOrDefault(metadata, DEFAULT_METADATA_SUPPLIER),
                 () -> getOrDefault(parseContext, DEFAULT_PARSE_CONTEXT_SUPPLIER),
                 false);
+    }
+
+    /**
+     * Creates an instance of an {@code ApacheTikaDocumentParser} with the provided suppliers for Tika components.
+     * If some of the suppliers are not provided ({@code null}), the defaults will be used.
+     *
+     * @param parserSupplier         Supplier for Tika parser to use. Default: {@link AutoDetectParser}
+     * @param contentHandlerSupplier Supplier for Tika content handler. Default: {@link BodyContentHandler} without write limit
+     * @param metadataSupplier       Supplier for Tika metadata. Default: empty {@link Metadata}
+     * @param parseContextSupplier   Supplier for Tika parse context. Default: empty {@link ParseContext}
+     * @deprecated Use the constructor with suppliers for Tika components if you intend to use this parser for multiple files
+     * and specify whether to include metadata or not.
+     */
+    @Deprecated(forRemoval = true)
+    public ApacheTikaDocumentParser(
+            Supplier<Parser> parserSupplier,
+            Supplier<ContentHandler> contentHandlerSupplier,
+            Supplier<Metadata> metadataSupplier,
+            Supplier<ParseContext> parseContextSupplier) {
+        this(parserSupplier, contentHandlerSupplier, metadataSupplier, parseContextSupplier, false);
     }
 
     /**
