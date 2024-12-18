@@ -1,16 +1,5 @@
 package dev.langchain4j.model.chat.request.json;
 
-import dev.langchain4j.model.output.structured.Description;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
-
 import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
 import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
 import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
@@ -19,43 +8,47 @@ import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
 
+import dev.langchain4j.model.output.structured.Description;
+import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 public class JsonSchemaElementHelper {
 
     public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz) {
         return jsonSchemaElementFrom(clazz, clazz, null, new LinkedHashMap<>());
     }
 
-    public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz,
-                                                          Type type,
-                                                          String fieldDescription,
-                                                          Map<Class<?>, VisitedClassMetadata> visited) {
+    public static JsonSchemaElement jsonSchemaElementFrom(
+            Class<?> clazz, Type type, String fieldDescription, Map<Class<?>, VisitedClassMetadata> visited) {
         if (isJsonString(clazz)) {
-            return JsonStringSchema.builder()
-                    .description(fieldDescription)
-                    .build();
+            return JsonStringSchema.builder().description(fieldDescription).build();
         }
 
         if (isJsonInteger(clazz)) {
-            return JsonIntegerSchema.builder()
-                    .description(fieldDescription)
-                    .build();
+            return JsonIntegerSchema.builder().description(fieldDescription).build();
         }
 
         if (isJsonNumber(clazz)) {
-            return JsonNumberSchema.builder()
-                    .description(fieldDescription)
-                    .build();
+            return JsonNumberSchema.builder().description(fieldDescription).build();
         }
 
         if (isJsonBoolean(clazz)) {
-            return JsonBooleanSchema.builder()
-                    .description(fieldDescription)
-                    .build();
+            return JsonBooleanSchema.builder().description(fieldDescription).build();
         }
 
         if (clazz.isEnum()) {
             return JsonEnumSchema.builder()
-                    .enumValues(stream(clazz.getEnumConstants()).map(Object::toString).toList())
+                    .enumValues(stream(clazz.getEnumConstants())
+                            .map(Object::toString)
+                            .toList())
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
                     .build();
         }
@@ -77,10 +70,8 @@ public class JsonSchemaElementHelper {
         return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, visited, false);
     }
 
-    public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(Class<?> type,
-                                                                    String description,
-                                                                    Map<Class<?>, VisitedClassMetadata> visited,
-                                                                    boolean setDefinitions) {
+    public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(
+            Class<?> type, String description, Map<Class<?>, VisitedClassMetadata> visited, boolean setDefinitions) {
         if (visited.containsKey(type) && isCustomClass(type)) {
             VisitedClassMetadata visitedClassMetadata = visited.get(type);
             JsonSchemaElement jsonSchemaElement = visitedClassMetadata.jsonSchemaElement;
@@ -91,24 +82,19 @@ public class JsonSchemaElementHelper {
         }
 
         String reference = generateUUIDFrom(type.getName());
-        JsonReferenceSchema jsonReferenceSchema = JsonReferenceSchema.builder()
-                .reference(reference)
-                .build();
+        JsonReferenceSchema jsonReferenceSchema =
+                JsonReferenceSchema.builder().reference(reference).build();
         visited.put(type, new VisitedClassMetadata(jsonReferenceSchema, reference, false));
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
-        for (Field field : type.getDeclaredFields()) {
+        for (Field field : getAllFields(type)) {
             String fieldName = field.getName();
             if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
                 continue;
             }
             String fieldDescription = descriptionFrom(field);
-            JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(
-                    field.getType(),
-                    field.getGenericType(),
-                    fieldDescription,
-                    visited
-            );
+            JsonSchemaElement jsonSchemaElement =
+                    jsonSchemaElementFrom(field.getType(), field.getGenericType(), fieldDescription, visited);
             properties.put(fieldName, jsonSchemaElement);
         }
 
@@ -157,6 +143,15 @@ public class JsonSchemaElementHelper {
             }
         }
         return null;
+    }
+
+    private static Collection<Field> getAllFields(Class<?> clazz) {
+        List<Field> fields = new ArrayList<>();
+        while (clazz != null) {
+            fields.addAll(Arrays.asList(clazz.getDeclaredFields()));
+            clazz = clazz.getSuperclass();
+        }
+        return fields;
     }
 
     static boolean isCustomClass(Class<?> clazz) {
