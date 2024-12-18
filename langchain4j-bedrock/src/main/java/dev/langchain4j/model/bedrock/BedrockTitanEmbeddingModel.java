@@ -30,7 +30,7 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
     private final String model = Types.TitanEmbedTextV1.getValue();
 
     @Override
-    protected String getModelId() {
+    protected String getModel() {
         return model;
     }
 
