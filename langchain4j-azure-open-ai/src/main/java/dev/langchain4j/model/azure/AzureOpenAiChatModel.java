@@ -320,11 +320,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         } else {
             chatCompletionsResponseFormat = toAzureOpenAiResponseFormat(responseFormat, this.strictJsonSchema);
         }
-        if (chatCompletionsResponseFormat instanceof ChatCompletionsJsonSchemaResponseFormat) {
-            if (!supportedCapabilities.contains(Capability.RESPONSE_FORMAT_JSON_SCHEMA)) {
-                throw new IllegalArgumentException("JSON schema response format is not supported by this model");
-            }
-        }
         ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(messages))
                 .setModel(deploymentName)
                 .setMaxTokens(maxTokens)
