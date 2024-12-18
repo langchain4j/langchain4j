@@ -50,17 +50,15 @@ class OllamaStreamingResponseBuilder {
     }
 
     Response<AiMessage> build() {
-        if (toolExecutionRequests != null && !toolExecutionRequests.isEmpty()) {
-            return Response.from(
-                    AiMessage.aiMessage(toolExecutionRequests), tokenUsage);
+        if (!isNullOrEmpty(toolExecutionRequests)) {
+            return Response.from(AiMessage.from(toolExecutionRequests), tokenUsage);
+        }
 
-        }
-        if (contentBuilder.toString().isEmpty()) {
+        String text = contentBuilder.toString();
+        if (text.isEmpty()) {
             return null;
+        } else {
+            return Response.from(AiMessage.from(text), tokenUsage);
         }
-        return Response.from(
-                AiMessage.from(contentBuilder.toString()),
-                tokenUsage
-        );
     }
 }
