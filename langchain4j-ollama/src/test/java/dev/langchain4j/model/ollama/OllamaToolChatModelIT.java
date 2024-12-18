@@ -150,11 +150,11 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         streamingChatModel.generate(singletonList(userMessage), toolSpecifications, handler);
 
         Response<AiMessage> aiMessageResponse = handler.get();
-        final AiMessage aiMessage = aiMessageResponse.content();
+        AiMessage aiMessage = aiMessageResponse.content();
 
         // then
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
-        assertThat(aiMessage.toolExecutionRequests().size()).isEqualTo(1);
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("get_current_weather");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"format\": \"celsius\", \"location\": \"Paris\"}");
@@ -165,7 +165,7 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
 
         CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
 
-        final AtomicInteger onNextCounter = new AtomicInteger(0);
+        AtomicInteger onNextCounter = new AtomicInteger(0);
         streamingChatModel.generate(messages, new StreamingResponseHandler<>() {
 
             @Override
@@ -184,8 +184,6 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
             }
         });
 
-
-
         Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
         AiMessage secondAiMessage = secondResponse.content();
 
@@ -193,7 +191,6 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         assertThat(secondAiMessage.text()).contains("32");
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
         assertThat(onNextCounter.get()).isPositive();
-
     }
 
     @Test

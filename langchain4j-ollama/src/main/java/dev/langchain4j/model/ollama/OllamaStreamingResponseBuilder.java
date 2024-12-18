@@ -8,6 +8,8 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+
 /**
  * This class needs to be thread safe because it is called when a streaming result comes back
  * and there is no guarantee that this thread will be the same as the one that initiated the request,
@@ -31,11 +33,17 @@ class OllamaStreamingResponseBuilder {
             );
         }
 
-        if (partialResponse.getMessage().getToolCalls() != null && !partialResponse.getMessage().getToolCalls().isEmpty()) {
-            this.toolExecutionRequests.addAll(OllamaMessagesUtils.toToolExecutionRequest(partialResponse.getMessage().getToolCalls()));
+        Message message = partialResponse.getMessage();
+        if (message == null) {
+            return;
         }
 
-        String content = partialResponse.getMessage().getContent();
+        List<ToolCall> toolCalls = message.getToolCalls();
+        if (!isNullOrEmpty(toolCalls)) {
+            this.toolExecutionRequests.addAll(OllamaMessagesUtils.toToolExecutionRequests(toolCalls));
+        }
+
+        String content = message.getContent();
         if (content != null) {
             contentBuilder.append(content);
         }
