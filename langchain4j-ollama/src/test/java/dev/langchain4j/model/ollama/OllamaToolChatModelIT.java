@@ -52,12 +52,8 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
             .logResponses(true)
             .build();
 
-
-
-    OllamaStreamingChatModel streamingChatModel = OllamaStreamingChatModel.builder()
+    OllamaStreamingChatModel ollamaStreamingChatModel = OllamaStreamingChatModel.builder()
             .baseUrl(ollamaBaseUrl())
-            .logResponses(true)
-            .logRequests(true)
             .modelName(TOOL_MODEL)
             .temperature(0.0)
             .logRequests(true)
@@ -147,7 +143,7 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
 
         // when
-        streamingChatModel.generate(singletonList(userMessage), toolSpecifications, handler);
+        ollamaStreamingChatModel.generate(singletonList(userMessage), toolSpecifications, handler);
 
         Response<AiMessage> aiMessageResponse = handler.get();
         AiMessage aiMessage = aiMessageResponse.content();
@@ -166,7 +162,7 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
         CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
 
         AtomicInteger onNextCounter = new AtomicInteger(0);
-        streamingChatModel.generate(messages, new StreamingResponseHandler<>() {
+        ollamaStreamingChatModel.generate(messages, new StreamingResponseHandler<>() {
 
             @Override
             public void onNext(String token) {
