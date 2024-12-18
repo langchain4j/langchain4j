@@ -92,6 +92,7 @@
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-onnx-scoring</module>
+        <module>langchain4j-mcp</module>
 
     </modules>
 
@@ -148,7 +149,7 @@
             <extension>
                 <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
                 <artifactId>gitflow-incremental-builder</artifactId>
-                <version>3.15.0</version>
+                <version>3.16.0</version>
             </extension>
         </extensions>
     </build>
