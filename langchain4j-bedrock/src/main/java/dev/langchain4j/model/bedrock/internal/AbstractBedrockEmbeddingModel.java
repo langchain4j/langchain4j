@@ -31,7 +31,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 @Getter
 public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> implements EmbeddingModel {
 
-    private BedrockRuntimeClient client;
+    private volatile BedrockRuntimeClient client;
 
     @Builder.Default
     private final Region region = Region.US_EAST_1;
@@ -72,7 +72,11 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
 
     public BedrockRuntimeClient getClient() {
         if (client == null) {
-            client = initClient();
+            synchronized (this) {
+                if (client == null) {
+                    client = initClient();
+                }
+            }
         }
         return client;
     }
