@@ -1,20 +1,22 @@
 package dev.langchain4j.model.huggingface;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.stream.Collectors.joining;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.huggingface.client.*;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceChatModelBuilderFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
+import dev.langchain4j.model.huggingface.util.UrlUtil;
 import dev.langchain4j.model.output.Response;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.stream.Collectors.joining;
+import java.util.Objects;
+import java.util.Optional;
 
 public class HuggingFaceChatModel implements ChatLanguageModel {
 
@@ -24,13 +26,14 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     private final Boolean returnFullText;
     private final Boolean waitForModel;
 
-    public HuggingFaceChatModel(String accessToken,
-                                String modelId,
-                                Duration timeout,
-                                Double temperature,
-                                Integer maxNewTokens,
-                                Boolean returnFullText,
-                                Boolean waitForModel) {
+    public HuggingFaceChatModel(
+            String accessToken,
+            String modelId,
+            Duration timeout,
+            Double temperature,
+            Integer maxNewTokens,
+            Boolean returnFullText,
+            Boolean waitForModel) {
         this(HuggingFaceChatModel.builder()
                 .accessToken(accessToken)
                 .modelId(modelId)
@@ -41,8 +44,37 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
                 .waitForModel(waitForModel));
     }
 
+    public HuggingFaceChatModel(
+            String baseUrl,
+            String accessToken,
+            String modelId,
+            Duration timeout,
+            Double temperature,
+            Integer maxNewTokens,
+            Boolean returnFullText,
+            Boolean waitForModel) {
+        this(HuggingFaceChatModel.builder()
+                .baseUrl(baseUrl)
+                .accessToken(accessToken)
+                .modelId(modelId)
+                .timeout(timeout)
+                .temperature(temperature)
+                .maxNewTokens(maxNewTokens)
+                .returnFullText(returnFullText)
+                .waitForModel(waitForModel));
+    }
+
     public HuggingFaceChatModel(Builder builder) {
+        if (!Objects.isNull(builder.baseUrl) && UrlUtil.isNotValidUrl(builder.baseUrl)) {
+            throw new IllegalArgumentException("Invalid url: " + builder.baseUrl);
+        }
+
         this.client = FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
+            @Override
+            public Optional<String> baseUrl() {
+                return Optional.ofNullable(builder.baseUrl);
+            }
+
             @Override
             public String apiKey() {
                 return builder.accessToken;
@@ -68,17 +100,13 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     public Response<AiMessage> generate(List<ChatMessage> messages) {
 
         TextGenerationRequest request = TextGenerationRequest.builder()
-                .inputs(messages.stream()
-                        .map(ChatMessage::text)
-                        .collect(joining("\n")))
+                .inputs(messages.stream().map(ChatMessage::text).collect(joining("\n")))
                 .parameters(Parameters.builder()
                         .temperature(temperature)
                         .maxNewTokens(maxNewTokens)
                         .returnFullText(returnFullText)
                         .build())
-                .options(Options.builder()
-                        .waitForModel(waitForModel)
-                        .build())
+                .options(Options.builder().waitForModel(waitForModel).build())
                 .build();
 
         TextGenerationResponse textGenerationResponse = client.chat(request);
@@ -95,6 +123,7 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
 
     public static final class Builder {
 
+        private String baseUrl;
         private String accessToken;
         private String modelId = TII_UAE_FALCON_7B_INSTRUCT;
         private Duration timeout = Duration.ofSeconds(15);
@@ -102,6 +131,11 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         private Integer maxNewTokens;
         private Boolean returnFullText = false;
         private Boolean waitForModel = true;
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
 
         public Builder accessToken(String accessToken) {
             this.accessToken = accessToken;
@@ -148,7 +182,8 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
 
         public HuggingFaceChatModel build() {
             if (isNullOrBlank(accessToken)) {
-                throw new IllegalArgumentException("HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
+                throw new IllegalArgumentException(
+                        "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
             }
             return new HuggingFaceChatModel(this);
         }
