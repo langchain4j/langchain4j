@@ -78,15 +78,6 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected List<StreamingChatLanguageModel> modelsSupportingTools() {
-        return List.of(
-                // OLLAMA_CHAT_MODEL_WITH_TOOLS, // TODO uncomment after https://github.com/langchain4j/langchain4j/pull/2210 is merged
-                OPEN_AI_CHAT_MODEL_WITH_TOOLS
-                // TODO add more model configs, see OpenAiChatModelIT
-        );
-    }
-
-    @Override
     protected List<StreamingChatLanguageModel> modelsSupportingImageInputs() {
         return List.of(
                 OLLAMA_CHAT_MODEL_WITH_VISION,
@@ -181,7 +172,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // Ollama does not support structured outputs
+        return false; // TODO implement
     }
 
     @Override

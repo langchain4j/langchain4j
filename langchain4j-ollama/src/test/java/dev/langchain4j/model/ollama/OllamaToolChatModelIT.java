@@ -54,8 +54,8 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
             .build();
 
     OllamaStreamingChatModel ollamaStreamingChatModel = OllamaStreamingChatModel.builder()
-            .baseUrl(ollamaBaseUrl())
-            .modelName(TOOL_MODEL)
+            .baseUrl(ollamaBaseUrl(ollama))
+            .modelName(LLAMA_3_1)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
