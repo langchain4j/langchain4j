@@ -13,7 +13,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -810,27 +809,22 @@ class BedrockChatModelIT {
     @Test
     void testInjectClientToModelBuilder() {
 
-        BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel
-                .builder()
-                .temperature(0.50f)
-                .maxTokens(300)
+        String serviceName = "custom-service-name";
+
+        BedrockMistralAiChatModel model = BedrockMistralAiChatModel.builder()
                 .client(new BedrockRuntimeClient() {
                     @Override
                     public String serviceName() {
-                        return "";
+                        return serviceName;
                     }
 
                     @Override
                     public void close() {
-
                     }
                 })
-                .region(Region.US_EAST_1)
-                .model(MistralMixtral8x7bInstructV0_1.getValue())
-                .maxRetries(1)
                 .build();
 
-        assertEquals("", bedrockChatModel.getClient().serviceName());
+        assertThat(model.getClient().serviceName()).isEqualTo(serviceName);
     }
 
     @AfterEach
