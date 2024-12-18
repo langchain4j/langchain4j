@@ -105,7 +105,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
             final var routes = parse(response);
             if (routes.isEmpty()) {
-                log.warn("No routes found for query: '{}'", query.text());
+                log.warn("No content retrievers found for query: '{}'", query.text());
                 return fallback(query, null);
             } else {
                 return routes;
