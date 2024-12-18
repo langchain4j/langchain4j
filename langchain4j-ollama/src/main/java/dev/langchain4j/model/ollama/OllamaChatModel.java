@@ -32,7 +32,7 @@ import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListen
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaTools;
-import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toToolExecutionRequest;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toToolExecutionRequests;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
@@ -166,7 +166,7 @@ public class OllamaChatModel implements ChatLanguageModel {
             ChatResponse chatResponse = withRetry(() -> client.chat(request), maxRetries);
             Response<AiMessage> response = Response.from(
                     chatResponse.getMessage().getToolCalls() != null ?
-                            AiMessage.from(toToolExecutionRequest(chatResponse.getMessage().getToolCalls())) :
+                            AiMessage.from(toToolExecutionRequests(chatResponse.getMessage().getToolCalls())) :
                             AiMessage.from(chatResponse.getMessage().getContent()),
                     new TokenUsage(chatResponse.getPromptEvalCount(), chatResponse.getEvalCount())
             );
