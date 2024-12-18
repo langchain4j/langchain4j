@@ -1,5 +1,9 @@
 package dev.langchain4j.model.jina;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
@@ -9,15 +13,9 @@ import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
 import dev.langchain4j.model.jina.internal.client.JinaClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Builder;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
+import lombok.Builder;
 
 /**
  * An implementation of an {@link EmbeddingModel} that uses
@@ -31,24 +29,29 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final JinaClient client;
     private final String modelName;
     private final Integer maxRetries;
+    private final Boolean lateChunking;
 
     @Builder
-    public JinaEmbeddingModel(String baseUrl,
-                              String apiKey,
-                              String modelName,
-                              Duration timeout,
-                              Integer maxRetries,
-                              Boolean logRequests,
-                              Boolean logResponses) {
+    public JinaEmbeddingModel(
+            String baseUrl,
+            String apiKey,
+            String modelName,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean lateChunking,
+            Boolean logRequests,
+            Boolean logResponses) {
         this.client = JinaClient.builder()
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .lateChunking(getOrDefault(logRequests, false))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
         this.modelName = getOrDefault(modelName, DEFAULT_MODEL);
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.lateChunking = getOrDefault(lateChunking, false);
     }
 
     /**
@@ -66,20 +69,17 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         JinaEmbeddingRequest request = JinaEmbeddingRequest.builder()
                 .model(modelName)
-                .input(textSegments.stream().map(TextSegment::text).collect(toList()))
+                .lateChunking(lateChunking)
+                .input(textSegments.stream().map(TextSegment::text).toList())
                 .build();
 
         JinaEmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
 
         List<Embedding> embeddings = response.data.stream()
                 .map(jinaEmbedding -> Embedding.from(jinaEmbedding.embedding))
-                .collect(toList());
+                .toList();
 
-        TokenUsage tokenUsage = new TokenUsage(
-                response.usage.promptTokens,
-                0,
-                response.usage.totalTokens
-        );
+        TokenUsage tokenUsage = new TokenUsage(response.usage.promptTokens, 0, response.usage.totalTokens);
         return Response.from(embeddings, tokenUsage);
     }
 }
