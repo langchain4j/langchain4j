@@ -261,6 +261,9 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         this.seed = seed;
         this.chatCompletionsResponseFormat = chatCompletionsResponseFormat;
         this.responseFormat = responseFormat;
+        if (this.chatCompletionsResponseFormat != null && this.responseFormat != null) {
+            throw new IllegalArgumentException("You can't set both chatCompletionsResponseFormat and responseFormat");
+        }
         this.strictJsonSchema = strictJsonSchema;
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copyIfNotNull(capabilities);
