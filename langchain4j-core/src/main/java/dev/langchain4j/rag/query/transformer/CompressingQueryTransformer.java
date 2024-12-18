@@ -42,12 +42,12 @@ public class CompressingQueryTransformer implements QueryTransformer {
                     Then, analyze the new query from the User. \
                     Identify all relevant details, terms, and context from both the conversation and the new query. \
                     Reformulate this query into a clear, concise, and self-contained format suitable for information retrieval.
-                    
+
                     Conversation:
                     {{chatMemory}}
-                    
+
                     User query: {{query}}
-                    
+
                     It is very important that you provide only reformulated query and nothing else! \
                     Do not prepend a query with anything!"""
     );
@@ -72,7 +72,7 @@ public class CompressingQueryTransformer implements QueryTransformer {
     public Collection<Query> transform(Query query) {
 
         List<ChatMessage> chatMemory = query.metadata().chatMemory();
-        if (chatMemory.isEmpty()) {
+        if (chatMemory == null || chatMemory.isEmpty()) {
             // no need to compress if there are no previous messages
             return singletonList(query);
         }
