@@ -207,7 +207,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
         CompletionsOptions options = new CompletionsOptions(Collections.singletonList(prompt))
-                .setStream(true)
                 .setModel(deploymentName)
                 .setMaxTokens(maxTokens)
                 .setTemperature(temperature)

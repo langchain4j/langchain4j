@@ -278,7 +278,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                           StreamingResponseHandler<AiMessage> handler
     ) {
         ChatCompletionsOptions options = new ChatCompletionsOptions(InternalAzureOpenAiHelper.toOpenAiMessages(messages))
-                .setStream(true)
                 .setModel(deploymentName)
                 .setMaxTokens(maxTokens)
                 .setTemperature(temperature)
