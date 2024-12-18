@@ -66,39 +66,21 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Constructor for MariaDbEmbeddingStore Class
      *
      * @param datasource            The datasource to use
-     * @param table                 The database table
-     * @param dimension             The vector dimension
-     * @param createTable           Should create table automatically
-     * @param dropTableFirst        Should drop table first, usually for testing
-     * @param distanceType          Distance type (COSINE/EUCLIDEAN)
-     * @param contentFieldName      Content field name
-     * @param embeddingFieldName    Embedding vector field name
-     * @param idFieldName           Identifier field name
-     * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
+     * @param builder               Common part of builder
      */
-    protected MariaDbEmbeddingStore(
-            DataSource datasource,
-            Boolean createTable,
-            Boolean dropTableFirst,
-            Integer dimension,
-            String table,
-            MariaDBDistanceType distanceType,
-            String contentFieldName,
-            String embeddingFieldName,
-            String idFieldName,
-            MetadataStorageConfig metadataStorageConfig) {
+    private MariaDbEmbeddingStore(DataSource datasource, CommonBuilder builder) {
         this.datasource = ensureNotNull(datasource, "datasource");
-        this.table = validateAndEnquoteIdentifier(table, DEFAULT_TABLE_NAME);
-        this.contentFieldName = validateAndEnquoteIdentifier(contentFieldName, DEFAULT_COLUMN_CONTENT);
-        this.embeddingFieldName = validateAndEnquoteIdentifier(embeddingFieldName, DEFAULT_COLUMN_EMBEDDING);
-        this.idFieldName = validateAndEnquoteIdentifier(idFieldName, DEFAULT_COLUMN_ID);
+        this.table = validateAndEnquoteIdentifier(builder.table, DEFAULT_TABLE_NAME);
+        this.contentFieldName = validateAndEnquoteIdentifier(builder.contentFieldName, DEFAULT_COLUMN_CONTENT);
+        this.embeddingFieldName = validateAndEnquoteIdentifier(builder.embeddingFieldName, DEFAULT_COLUMN_EMBEDDING);
+        this.idFieldName = validateAndEnquoteIdentifier(builder.idFieldName, DEFAULT_COLUMN_ID);
 
         MetadataStorageConfig config =
-                getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
+                getOrDefault(builder.metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
         this.metadataHandler = MetadataHandlerFactory.get(config, this.datasource);
-        this.distanceType = distanceType == null ? MariaDBDistanceType.COSINE : distanceType;
+        this.distanceType = builder.distanceType == null ? MariaDBDistanceType.COSINE : builder.distanceType;
 
-        initTable(getOrDefault(dropTableFirst, false), getOrDefault(createTable, true), dimension);
+        initTable(builder.dropTableFirst, builder.createTable, builder.dimension);
     }
 
     private String validateAndEnquoteIdentifier(String value, String defaultValue) {
@@ -193,7 +175,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(Collectors.toList());
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).toList();
         addAllInternal(ids, embeddings, null);
         return ids;
     }
@@ -207,7 +189,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(Collectors.toList());
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).toList();
         addAllInternal(ids, embeddings, embedded);
         return ids;
     }
@@ -284,7 +266,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                 filterClause = "and " + metadataFilterClause + " ";
             }
 
-            String distanceType = this.distanceType.name().toLowerCase(Locale.ROOT);
+            String distanceTypeName = this.distanceType.name().toLowerCase(Locale.ROOT);
 
             final String sql = String.format(
                     "SELECT * FROM (select %s, %s, %s, (2 - vec_distance_%s(%s, ?)) / 2 as"
@@ -293,7 +275,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                     idFieldName,
                     embeddingFieldName,
                     contentFieldName,
-                    distanceType,
+                    distanceTypeName,
                     embeddingFieldName,
                     String.join(",", metadataHandler.escapedColumnsName()),
                     table,
@@ -420,46 +402,55 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         @NonNull
+        @Override
         public Builder table(@NonNull String table) {
             return (Builder) super.table(table);
         }
 
         @NonNull
+        @Override
         public Builder distanceType(@NonNull MariaDBDistanceType distanceType) {
             return (Builder) super.distanceType(distanceType);
         }
 
         @NonNull
+        @Override
         public Builder idFieldName(@NonNull String idFieldName) {
             return (Builder) super.idFieldName(idFieldName);
         }
 
         @NonNull
+        @Override
         public Builder embeddingFieldName(@NonNull String embeddingFieldName) {
             return (Builder) super.embeddingFieldName(embeddingFieldName);
         }
 
         @NonNull
+        @Override
         public Builder contentFieldName(@NonNull String contentFieldName) {
             return (Builder) super.contentFieldName(contentFieldName);
         }
 
         @NonNull
+        @Override
         public Builder metadataStorageConfig(@NonNull MetadataStorageConfig metadataStorageConfig) {
             return (Builder) super.metadataStorageConfig(metadataStorageConfig);
         }
 
         @NonNull
+        @Override
         public Builder dropTableFirst(boolean dropTableFirst) {
             return (Builder) super.dropTableFirst(dropTableFirst);
         }
 
         @NonNull
+        @Override
         public Builder createTable(boolean createTable) {
             return (Builder) super.createTable(createTable);
         }
 
         @NonNull
+        @Override
         public Builder dimension(int dimension) {
             return (Builder) super.dimension(dimension);
         }
@@ -476,19 +467,9 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                 datasource.setUser(this.user);
                 datasource.setPassword(this.password);
             } catch (SQLException e) {
-                throw new IllegalArgumentException("Wrong url configuring builder: '%'".formatted(url), e);
+                throw new IllegalArgumentException("Wrong url configuring builder: '%s'".formatted(url), e);
             }
-            return new MariaDbEmbeddingStore(
-                    datasource,
-                    this.createTable,
-                    this.dropTableFirst,
-                    this.dimension,
-                    this.table,
-                    this.distanceType,
-                    this.contentFieldName,
-                    this.embeddingFieldName,
-                    this.idFieldName,
-                    this.metadataStorageConfig);
+            return new MariaDbEmbeddingStore(datasource, this);
         }
     }
 
@@ -506,63 +487,62 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         @NonNull
+        @Override
         public DataSourceBuilder table(@NonNull String table) {
             return (DataSourceBuilder) super.table(table);
         }
 
         @NonNull
+        @Override
         public DataSourceBuilder distanceType(@NonNull MariaDBDistanceType distanceType) {
             return (DataSourceBuilder) super.distanceType(distanceType);
         }
 
         @NonNull
+        @Override
         public DataSourceBuilder idFieldName(@NonNull String idFieldName) {
             return (DataSourceBuilder) super.idFieldName(idFieldName);
         }
 
         @NonNull
+        @Override
         public DataSourceBuilder embeddingFieldName(@NonNull String embeddingFieldName) {
             return (DataSourceBuilder) super.embeddingFieldName(embeddingFieldName);
         }
 
         @NonNull
+        @Override
         public DataSourceBuilder contentFieldName(@NonNull String contentFieldName) {
             return (DataSourceBuilder) super.contentFieldName(contentFieldName);
         }
 
         @NonNull
+        @Override
         public DataSourceBuilder metadataStorageConfig(@NonNull MetadataStorageConfig metadataStorageConfig) {
             return (DataSourceBuilder) super.metadataStorageConfig(metadataStorageConfig);
         }
 
         @NonNull
+        @Override
         public DataSourceBuilder dropTableFirst(boolean dropTableFirst) {
             return (DataSourceBuilder) super.dropTableFirst(dropTableFirst);
         }
 
         @NonNull
+        @Override
         public DataSourceBuilder createTable(boolean createTable) {
             return (DataSourceBuilder) super.createTable(createTable);
         }
 
         @NonNull
+        @Override
         public DataSourceBuilder dimension(int dimension) {
             return (DataSourceBuilder) super.dimension(dimension);
         }
 
         @NonNull
         public MariaDbEmbeddingStore build() {
-            return new MariaDbEmbeddingStore(
-                    this.datasource,
-                    this.createTable,
-                    this.dropTableFirst,
-                    this.dimension,
-                    this.table,
-                    this.distanceType,
-                    this.contentFieldName,
-                    this.embeddingFieldName,
-                    this.idFieldName,
-                    this.metadataStorageConfig);
+            return new MariaDbEmbeddingStore(this.datasource, this);
         }
     }
 

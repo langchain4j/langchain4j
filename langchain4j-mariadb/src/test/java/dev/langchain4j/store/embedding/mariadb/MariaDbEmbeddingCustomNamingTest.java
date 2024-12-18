@@ -131,10 +131,7 @@ class MariaDbEmbeddingCustomNamingTest {
                 prep.setString(1, mariadbContainer.getDatabaseName());
                 prep.setString(2, removeQuotes(tableName));
                 ResultSet rs = prep.executeQuery();
-                if (rs.next()) {
-                    return rs.getBoolean(1);
-                }
-                return false;
+                return rs.next() && rs.getBoolean(1);
             }
         }
     }
@@ -168,10 +165,7 @@ class MariaDbEmbeddingCustomNamingTest {
                 prep.setString(1, mariadbContainer.getDatabaseName());
                 prep.setString(2, removeQuotes(tableName));
                 ResultSet rs = prep.executeQuery();
-                if (rs.next()) {
-                    return rs.getBoolean(1);
-                }
-                return false;
+                return rs.next() && rs.getBoolean(1);
             }
         }
     }
@@ -189,10 +183,7 @@ class MariaDbEmbeddingCustomNamingTest {
                     prep.setString(2, removeQuotes(tableName));
                     prep.setString(3, removeQuotes(field));
                     ResultSet rs = prep.executeQuery();
-                    if (rs.next()) {
-                        if (rs.getBoolean(1)) continue;
-                    }
-                    return false;
+                    if (!rs.next() || !rs.getBoolean(1)) return false;
                 }
             }
         }
