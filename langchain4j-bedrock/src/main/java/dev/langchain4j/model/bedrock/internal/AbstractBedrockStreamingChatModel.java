@@ -32,7 +32,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelWithRespo
 @SuperBuilder
 public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBedrockChatModel implements StreamingChatLanguageModel {
 
-    private BedrockRuntimeAsyncClient asyncClient;
+    private volatile BedrockRuntimeAsyncClient asyncClient;
 
     static class StreamingResponse {
         public String completion;
@@ -114,7 +114,11 @@ public abstract class AbstractBedrockStreamingChatModel extends AbstractSharedBe
 
     public BedrockRuntimeAsyncClient getAsyncClient() {
         if (asyncClient == null) {
-            asyncClient = initAsyncClient();
+            synchronized (this) {
+                if (asyncClient == null) {
+                    asyncClient = initAsyncClient();
+                }
+            }
         }
         return asyncClient;
     }
