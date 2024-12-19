@@ -1,21 +1,28 @@
 package dev.langchain4j.store.embedding.redis;
 
-import com.redis.testcontainers.RedisContainer;
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
+import static dev.langchain4j.internal.Utils.randomUUID;
+
+import com.redis.testcontainers.RedisStackContainer;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-
-import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
-import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
-import static dev.langchain4j.internal.Utils.randomUUID;
+import redis.clients.jedis.search.schemafields.NumericField;
+import redis.clients.jedis.search.schemafields.SchemaField;
+import redis.clients.jedis.search.schemafields.TextField;
 
 class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
 
-    static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
+    static RedisStackContainer redis = new RedisStackContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
 
     EmbeddingStore<TextSegment> embeddingStore;
 
@@ -33,14 +40,27 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
+        Map<String, SchemaField> metadataConfig = new HashMap<>();
+        Map<String, Object> metadataMap = createMetadata().toMap();
+
+        List<Class<? extends Number>> numericPrefix =
+                Arrays.asList(Integer.class, Long.class, Float.class, Double.class);
+        metadataMap.forEach((key, value) -> {
+            if (numericPrefix.stream().anyMatch(type -> type.isAssignableFrom(value.getClass()))) {
+                metadataConfig.put(key, NumericField.of("$." + key).as(key));
+            } else {
+                metadataConfig.put(key, TextField.of("$." + key).as(key).weight(1.0));
+            }
+        });
+
         embeddingStore = RedisEmbeddingStore.builder()
-            .host(redis.getHost())
-            .port(redis.getFirstMappedPort())
-            .indexName(randomUUID())
-            .prefix(randomUUID() + ":")
-            .dimension(384)
-            .metadataKeys(createMetadata().toMap().keySet())
-            .build();
+                .host(redis.getHost())
+                .port(redis.getFirstMappedPort())
+                .indexName(randomUUID())
+                .prefix(randomUUID() + ":")
+                .dimension(384)
+                .metadataConfig(metadataConfig)
+                .build();
     }
 
     @Override
