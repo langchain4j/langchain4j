@@ -8,6 +8,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -257,16 +258,15 @@ public class JsonSchemaElementHelper {
                 properties.put("$ref", "#/$defs/" + reference);
             }
             return properties;
-        } else if (jsonSchemaElement instanceof JsonAnyOfSchema) {
-            JsonAnyOfSchema jsonAnyOfSchema = (JsonAnyOfSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonAnyOfSchema jsonAnyOfSchema) {
             Map<String, Object> properties = new LinkedHashMap<>();
             if (jsonAnyOfSchema.description() != null) {
                 properties.put("description", jsonAnyOfSchema.description());
             }
-            jsonAnyOfSchema.anyOf().stream()
+            List<Map<String, Object>> anyOf = jsonAnyOfSchema.anyOf().stream()
                     .map(element -> toMap(element, strict))
-                    .forEach(map -> map.forEach(properties::put));
-
+                    .toList();
+            properties.put("anyOf", anyOf);
             return properties;
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
