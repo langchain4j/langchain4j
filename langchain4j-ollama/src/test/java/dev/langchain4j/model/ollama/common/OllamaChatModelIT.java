@@ -89,11 +89,11 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_stopSequences_parameter_is_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_modelName_is_not_supported(ChatLanguageModel model) {
         if (model instanceof OpenAiChatModel) {
             return;
         }
-        super.should_fail_if_stopSequences_parameter_is_not_supported(model);
+        super.should_fail_if_modelName_is_not_supported(model);
     }
 
     @Override
@@ -105,11 +105,19 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_modelName_is_not_supported(ChatLanguageModel model) {
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(ChatLanguageModel model) {
         if (model instanceof OpenAiChatModel) {
             return;
         }
-        super.should_fail_if_modelName_is_not_supported(model);
+        super.should_fail_if_stopSequences_parameter_is_not_supported(model);
+    }
+
+    @Override
+    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(ChatLanguageModel model) {
+        if (model instanceof OpenAiChatModel) {
+            return;
+        }
+        super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);
     }
 
     @Override
@@ -158,12 +166,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false; // TODO check if Ollama supports this
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithSingleTool() {
+    protected boolean supportsToolChoiceRequired() {
         return false; // TODO check if Ollama supports this
     }
 

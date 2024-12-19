@@ -49,6 +49,11 @@ class VertexAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsToolChoiceRequired() {
+        return false; // TODO check if supported
+    }
+
+    @Override
     protected boolean supportsJsonResponseFormat() {
         return false; // TODO check if supported
     }

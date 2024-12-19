@@ -4,6 +4,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import org.junit.jupiter.api.Disabled;
 
@@ -87,11 +88,11 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_stopSequences_parameter_is_not_supported(StreamingChatLanguageModel model) {
+    protected void should_fail_if_modelName_is_not_supported(StreamingChatLanguageModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
             return;
         }
-        super.should_fail_if_stopSequences_parameter_is_not_supported(model);
+        super.should_fail_if_modelName_is_not_supported(model);
     }
 
     @Override
@@ -103,11 +104,19 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected void should_fail_if_modelName_is_not_supported(StreamingChatLanguageModel model) {
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(StreamingChatLanguageModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
             return;
         }
-        super.should_fail_if_modelName_is_not_supported(model);
+        super.should_fail_if_stopSequences_parameter_is_not_supported(model);
+    }
+
+    @Override
+    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(StreamingChatLanguageModel model) {
+        if (model instanceof OpenAiChatModel) {
+            return;
+        }
+        super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);
     }
 
     @Override
@@ -156,12 +165,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return false; // TODO check if Ollama supports this
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithSingleTool() {
+    protected boolean supportsToolChoiceRequired() {
         return false; // TODO check if Ollama supports this
     }
 

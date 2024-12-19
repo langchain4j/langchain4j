@@ -53,7 +53,7 @@ class BedrockChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+    protected boolean supportsToolChoiceRequired() {
         return false; // TODO implement
     }
 

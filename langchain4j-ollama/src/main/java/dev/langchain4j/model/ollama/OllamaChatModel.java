@@ -127,6 +127,7 @@ public class OllamaChatModel implements ChatLanguageModel {
     public dev.langchain4j.model.chat.response.ChatResponse chat(dev.langchain4j.model.chat.request.ChatRequest request) {
 
         ChatLanguageModel.validate(request.parameters());
+        ChatLanguageModel.validate(request.parameters().toolChoice());
 
         Response<AiMessage> response = doGenerate(
                 request.messages(),

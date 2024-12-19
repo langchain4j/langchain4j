@@ -46,6 +46,7 @@ public interface ChatLanguageModel {
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
+        validate(parameters.toolChoice());
         validate(parameters.responseFormat());
 
         Response<AiMessage> response;
@@ -100,6 +101,13 @@ public interface ChatLanguageModel {
         }
         if (parameters.stopSequences() != null) {
             throw new UnsupportedFeatureException(errorTemplate.formatted("'stopSequences' parameter"));
+        }
+    }
+
+    static void validate(ToolChoice toolChoice) {
+        if (toolChoice == REQUIRED) {
+            throw new UnsupportedFeatureException("%s.%s is not supported yet by this model provider".formatted(
+                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
         }
     }
 

@@ -113,6 +113,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
+        ChatLanguageModel.validate(parameters.toolChoice());
 
         GeminiGenerateContentRequest request = createGenerateContentRequest(
                 chatRequest.messages(),

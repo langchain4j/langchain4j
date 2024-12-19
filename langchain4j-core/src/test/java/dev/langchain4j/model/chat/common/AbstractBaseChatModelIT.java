@@ -16,6 +16,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -761,6 +762,32 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
+    @ParameterizedTest
+    @MethodSource("modelsSupportingTools")
+    @DisabledIf("supportsToolChoiceRequired")
+    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(M model) {
+
+        // given
+        ToolChoice toolChoice = REQUIRED;
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("I live in Munich"))
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(WEATHER_TOOL)
+                        .toolChoice(toolChoice)
+                        .build())
+                .build();
+
+        // when-then
+        AbstractThrowableAssert<?, ?> throwableAssert = assertThatThrownBy(() -> chat(model, chatRequest));
+        if (assertExceptionType()) {
+            throwableAssert
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("ToolChoice.REQUIRED")
+                    .hasMessageContaining("not support");
+
+        }
+    }
+
     // RESPONSE FORMAT
 
     // TODO test default response format
@@ -1190,12 +1217,16 @@ public abstract class AbstractBaseChatModelIT<M> {
         return true;
     }
 
+    protected boolean supportsToolChoiceRequired() {
+        return true;
+    }
+
     protected boolean supportsToolChoiceRequiredWithSingleTool() {
-        return supportsTools();
+        return supportsToolChoiceRequired();
     }
 
     protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return supportsTools();
+        return supportsToolChoiceRequired();
     }
 
     protected boolean supportsJsonResponseFormat() {
