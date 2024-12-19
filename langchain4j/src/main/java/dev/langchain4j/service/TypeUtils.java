@@ -5,6 +5,7 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,6 +34,16 @@ public class TypeUtils {
         }
 
         return rawClass.equals(getRawClass(type));
+    }
+
+    public static boolean isResultRawString(Type returnType) {
+        if (!(returnType instanceof ParameterizedType paramType)) {
+            return false;
+        }
+        return Arrays.stream(paramType.getActualTypeArguments())
+                .findFirst()
+                .map(String.class::equals)
+                .orElse(false);
     }
 
     public static Class<?> resolveFirstGenericParameterClass(Type returnType) {

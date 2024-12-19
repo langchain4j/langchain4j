@@ -56,6 +56,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.service.TypeUtils.isResultRawString;
+
 class DefaultAiServices<T> extends AiServices<T> {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
@@ -148,6 +151,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
                         boolean isReturnTypeRaw = typeHasRawClass(returnType, Result.class);
+                        boolean isResultRawString = isReturnTypeRaw && isResultRawString(returnType);
+                        boolean directReturnFromTool = isResultRawString;
 
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
@@ -249,37 +254,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    private boolean isToolReturnDirectly(String toolName, Map<String, ToolExecutor> toolExecutors) {
-                        ToolExecutor executor = toolExecutors.get(toolName);
-                        try {
-                            Method method = executor.getClass().getMethod("isReturnDirectly");
-                            return (boolean) method.invoke(executor);
-                        } catch (Exception e) {
-                            return false;
-                        }
-                    }
-
                     private boolean allToolsReturnDirectly(List<ToolExecutionRequest> requests, Map<String, ToolExecutor> toolExecutors) {
-                        if (requests == null || requests.isEmpty()) {
-                            return false;
-                        }
-
-                        for (ToolExecutionRequest request : requests) {
-                            if (!isToolReturnDirectly(request.name(), toolExecutors)) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    }
-
-                    private boolean isResultRawString(Type returnType) {
-                        if (!(returnType instanceof ParameterizedType paramType)) {
-                            return false;
-                        }
-                        return Arrays.stream(paramType.getActualTypeArguments())
-                                .findFirst()
-                                .map(String.class::equals)
-                                .orElse(false);
+                        return requests.stream().map(r -> toolExecutors.get(r.name())).allMatch(tExec -> tExec != null && tExec.isDirectReturn());
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

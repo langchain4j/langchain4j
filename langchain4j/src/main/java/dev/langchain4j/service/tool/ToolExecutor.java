@@ -16,4 +16,14 @@ public interface ToolExecutor {
      * @return The result of the tool execution.
      */
     String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId);
+
+    /**
+     * Returns true if the result of the tool invocation can be returned directly as it is,
+     * without any further processing from the LLM.
+     *
+     * @return True if the tool invocation result can be directly returned as it is.
+     */
+    default boolean isDirectReturn() {
+        return false;
+    }
 }
