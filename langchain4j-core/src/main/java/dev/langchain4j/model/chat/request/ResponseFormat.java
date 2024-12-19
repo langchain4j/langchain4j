@@ -10,6 +10,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 @Experimental
 public class ResponseFormat {
 
+    // TODO name: ChatResponseFormat?
+
     public static final ResponseFormat TEXT = ResponseFormat.builder().type(ResponseFormatType.TEXT).build();
     public static final ResponseFormat JSON = ResponseFormat.builder().type(ResponseFormatType.JSON).build();
 

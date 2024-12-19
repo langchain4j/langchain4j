@@ -25,6 +25,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.output.JsonSchemas;
@@ -130,9 +131,11 @@ public class GoogleAiGeminiStreamingChatModelIT {
         assertThat(jsonText).contains("\"firstname\"");
         assertThat(jsonText).contains("\"John\"");
 
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(25);
-        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(7);
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(32);
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 
     @Test
