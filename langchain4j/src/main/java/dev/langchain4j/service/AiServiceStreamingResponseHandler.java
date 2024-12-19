@@ -138,6 +138,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                 .finishReason(completeResponse.metadata().finishReason())
                                 .build())
                         .build();
+                // TODO should completeResponseHandler accept all ChatResponses that happened?
                 completeResponseHandler.accept(finalChatResponse);
             } else if (completionHandler != null) {
                 Response<AiMessage> finalResponse = Response.from(
