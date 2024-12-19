@@ -55,7 +55,7 @@
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
-        <openai4j.version>0.24.0</openai4j.version>
+        <openai4j.version>0.25.0</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.13</azure-ai-openai.version>
         <azure-ai-search.version>11.7.3</azure-ai-search.version>
         <azure.storage-blob.version>12.29.0</azure.storage-blob.version>
@@ -421,6 +421,11 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <repositories>
@@ -606,7 +611,7 @@
                 <configuration combine.children="append">
                     <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                     <systemPropertyVariables>
-                        <tinylog.level>info</tinylog.level>
+                        <tinylog.level>debug</tinylog.level>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -617,7 +622,7 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration combine.children="append">
                     <systemPropertyVariables>
-                        <tinylog.level>info</tinylog.level>
+                        <tinylog.level>debug</tinylog.level>
                     </systemPropertyVariables>
                 </configuration>
                 <executions>

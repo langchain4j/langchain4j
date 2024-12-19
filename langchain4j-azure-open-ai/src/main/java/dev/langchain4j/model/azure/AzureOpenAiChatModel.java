@@ -21,8 +21,10 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
@@ -264,7 +266,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         if (this.chatCompletionsResponseFormat != null && this.responseFormat != null) {
             throw new IllegalArgumentException("You can't set both chatCompletionsResponseFormat and responseFormat");
         }
-        this.strictJsonSchema = strictJsonSchema;
+        this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copyIfNotNull(capabilities);
     }
@@ -291,6 +293,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     @Override
     public ChatResponse chat(ChatRequest request) {
+
+        ChatRequestParameters parameters = request.parameters();
+        ChatLanguageModel.validate(parameters);
+        ChatLanguageModel.validate(parameters.toolChoice());
+
         // If the response format is not specified in the request, use the one specified in the model
         ResponseFormat responseFormat = request.responseFormat();
         if (responseFormat == null) {
@@ -304,8 +311,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         );
         return ChatResponse.builder()
                 .aiMessage(response.content())
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
                 .build();
     }
 

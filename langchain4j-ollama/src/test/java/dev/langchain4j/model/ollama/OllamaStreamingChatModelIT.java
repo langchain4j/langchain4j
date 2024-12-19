@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
-            .baseUrl(ollamaBaseUrl())
+            .baseUrl(ollamaBaseUrl(ollama))
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .logRequests(true)
@@ -64,7 +64,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         int numPredict = 1; // max output tokens
 
         StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
@@ -130,7 +130,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
         // given
         StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)
@@ -156,7 +156,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         String wrongModelName = "banana";
 
         StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(wrongModelName)
                 .build();
 
@@ -188,7 +188,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
     @Test
     void should_return_set_capabilities() {
         OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                 .build();

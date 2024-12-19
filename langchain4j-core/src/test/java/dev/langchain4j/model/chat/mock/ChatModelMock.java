@@ -4,6 +4,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 
 import java.util.ArrayList;
@@ -33,6 +36,20 @@ public class ChatModelMock implements ChatLanguageModel {
     public ChatModelMock(RuntimeException exception) {
         this.staticResponse = null;
         this.exception = ensureNotNull(exception, "exception");
+    }
+
+    @Override
+    public ChatResponse chat(ChatRequest chatRequest) {
+        requests.add(new ArrayList<>(chatRequest.messages()));
+
+        if (exception != null) {
+            throw exception;
+        }
+
+        return ChatResponse.builder()
+                .aiMessage(AiMessage.from(staticResponse))
+                .metadata(ChatResponseMetadata.builder().build())
+                .build();
     }
 
     @Override

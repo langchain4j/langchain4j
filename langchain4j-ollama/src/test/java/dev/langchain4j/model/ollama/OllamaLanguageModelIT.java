@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     LanguageModel model = OllamaLanguageModel.builder()
-            .baseUrl(ollamaBaseUrl())
+            .baseUrl(ollamaBaseUrl(ollama))
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .build();
@@ -37,7 +37,7 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
         int numPredict = 1; // max output tokens
 
         LanguageModel model = OllamaLanguageModel.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
@@ -58,7 +58,7 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // given
         LanguageModel model = OllamaLanguageModel.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)
