@@ -13,6 +13,7 @@ class AzureOpenAiAiServiceIT extends AbstractAiServiceIT {
     protected List<ChatLanguageModel> models() {
         return List.of(
                 AZURE_OPEN_AI_CHAT_MODEL
+                // TODO add more model configs
         );
     }
 }

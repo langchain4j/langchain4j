@@ -13,7 +13,7 @@ public interface StreamingChatResponseHandler {
 
     /**
      * Invoked each time the model generates a partial response (usually a single token) in a textual response.
-     * If the model decide to execute a tool instead, this method will not be invoked;
+     * If the model decides to execute a tool instead, this method will not be invoked;
      * {@link #onCompleteResponse} will be invoked instead.
      *
      * @param partialResponse The partial response (usually a single token), which is a part of the complete response.

@@ -33,7 +33,7 @@ class ChatRequestTest {
     }
 
     @Test
-    void should_set_messages_and_chat_parameters() {
+    void should_set_messages_and_request_parameters() {
 
         // given
         UserMessage userMessage = UserMessage.from("hi");
@@ -55,12 +55,13 @@ class ChatRequestTest {
         // then
         assertThat(chatRequest.messages()).containsExactly(userMessage);
         assertThat(chatRequest.parameters()).isEqualTo(parameters);
+
         assertThat(chatRequest.toolSpecifications()).containsExactly(toolSpecification);
         assertThat(chatRequest.responseFormat()).isEqualTo(responseFormat);
     }
 
     @Test
-    void should_fail_when_both_chat_parameters_and_response_format_are_set() {
+    void should_fail_when_both_request_parameters_and_response_format_are_set() {
 
         assertThatThrownBy(() -> ChatRequest.builder()
                 .messages(UserMessage.from("hi"))
@@ -72,7 +73,7 @@ class ChatRequestTest {
     }
 
     @Test
-    void should_fail_when_both_chat_parameters_and_toolSpecifications_are_set() {
+    void should_fail_when_both_request_parameters_and_toolSpecifications_are_set() {
 
         assertThatThrownBy(() -> ChatRequest.builder()
                 .messages(UserMessage.from("hi"))

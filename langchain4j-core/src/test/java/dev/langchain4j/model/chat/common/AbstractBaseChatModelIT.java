@@ -84,7 +84,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         return models();
     }
 
-    protected List<M> modelsSupportingStructuredOutputs() { // TODO distinguish between JSON mode and JSON schema
+    protected List<M> modelsSupportingStructuredOutputs() { // TODO distinguish between JSON mode and JSON schema?
         return models();
     }
 
@@ -164,9 +164,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     // CHAT PARAMETERS
 
-    // TODO test model specific default params
+    // TODO test integration-specific default params
     // TODO test override of default params
-    // TODO test override specific params
+    // TODO test override of default integration-specific params
+    // TODO all kinds of combinations
 
     @ParameterizedTest
     @MethodSource("models")
@@ -201,7 +202,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     private void ensureModelNameIsDifferentFromDefault(String modelName, M model) {
-        // TODO check model.parameters().modelName() instead?
+        // TODO slight optimization: check model.parameters().modelName() instead?
         ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"));
         if (supportsMaxOutputTokensParameter()) {

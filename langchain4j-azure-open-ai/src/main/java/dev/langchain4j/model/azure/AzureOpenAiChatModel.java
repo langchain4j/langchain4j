@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -292,8 +293,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     @Override
     public ChatResponse chat(ChatRequest request) {
-        ChatLanguageModel.validate(request.parameters());
-        ChatLanguageModel.validate(request.parameters().toolChoice());
+
+        ChatRequestParameters parameters = request.parameters();
+        ChatLanguageModel.validate(parameters);
+        ChatLanguageModel.validate(parameters.toolChoice());
+
         // If the response format is not specified in the request, use the one specified in the model
         ResponseFormat responseFormat = request.responseFormat();
         if (responseFormat == null) {

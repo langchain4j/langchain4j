@@ -78,7 +78,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return false; // TODO implement
+        return false; // Azure OpenAI does not support base64-encoded images
     }
 
     @Override

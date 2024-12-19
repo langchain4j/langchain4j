@@ -24,17 +24,14 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return (OpenAiTokenUsage) super.tokenUsage();
     }
 
-    @Experimental
     public Long created() {
         return created;
     }
 
-    @Experimental
     public String serviceTier() {
         return serviceTier;
     }
 
-    @Experimental
     public String systemFingerprint() {
         return systemFingerprint;
     }
@@ -83,19 +80,16 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         private String serviceTier;
         private String systemFingerprint;
 
-        @Experimental
         public Builder created(Long created) {
             this.created = created;
             return this;
         }
 
-        @Experimental
         public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
             return this;
         }
 
-        @Experimental
         public Builder systemFingerprint(String systemFingerprint) {
             this.systemFingerprint = systemFingerprint;
             return this;

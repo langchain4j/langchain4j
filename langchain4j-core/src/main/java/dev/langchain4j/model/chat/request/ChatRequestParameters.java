@@ -5,6 +5,12 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 
 import java.util.List;
 
+/**
+ * Represents common chat request parameters supported by most LLM providers.
+ * Specific LLM provider integrations can extend this interface to add provider-specific parameters.
+ *
+ * @see DefaultChatRequestParameters
+ */
 @Experimental
 public interface ChatRequestParameters {
 

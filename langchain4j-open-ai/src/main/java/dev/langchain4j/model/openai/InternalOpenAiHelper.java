@@ -203,7 +203,7 @@ public class InternalOpenAiHelper {
     }
 
     public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
-        if (isNullOrEmpty(toolSpecifications)) {
+        if (toolSpecifications == null) {
             return null;
         }
 

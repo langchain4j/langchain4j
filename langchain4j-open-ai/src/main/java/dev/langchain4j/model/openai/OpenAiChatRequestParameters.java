@@ -39,7 +39,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
             this.seed = openAiParameters.seed;
             this.user = openAiParameters.user;
             this.store = openAiParameters.store;
-            this.metadata = openAiParameters.metadata;
+            this.metadata = copyIfNotNull(openAiParameters.metadata);
             this.serviceTier = openAiParameters.serviceTier;
         } else {
             this.logitBias = null;
@@ -52,37 +52,30 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         }
     }
 
-    @Experimental
     public Map<String, Integer> logitBias() {
         return logitBias;
     }
 
-    @Experimental
     public Boolean parallelToolCalls() {
         return parallelToolCalls;
     }
 
-    @Experimental
     public Integer seed() {
         return seed;
     }
 
-    @Experimental
     public String user() {
         return user;
     }
 
-    @Experimental
     public Boolean store() {
         return store;
     }
 
-    @Experimental
     public Map<String, String> metadata() {
         return metadata;
     }
 
-    @Experimental
     public String serviceTier() {
         return serviceTier;
     }
@@ -154,48 +147,40 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         private Map<String, String> metadata;
         private String serviceTier;
 
-        @Experimental
         public Builder modelName(OpenAiChatModelName modelName) {
             return super.modelName(modelName.toString());
         }
 
-        @Experimental
         public Builder logitBias(Map<String, Integer> logitBias) {
             this.logitBias = logitBias;
             return this;
         }
 
-        @Experimental
         public Builder parallelToolCalls(Boolean parallelToolCalls) {
             this.parallelToolCalls = parallelToolCalls;
             return this;
         }
 
-        @Experimental
         public Builder seed(Integer seed) {
             this.seed = seed;
             return this;
         }
 
-        @Experimental
         public Builder user(String user) {
             this.user = user;
             return this;
         }
 
-        @Experimental
         public Builder store(Boolean store) {
             this.store = store;
             return this;
         }
 
-        @Experimental
         public Builder metadata(Map<String, String> metadata) {
             this.metadata = metadata;
             return this;
         }
 
-        @Experimental
         public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
             return this;

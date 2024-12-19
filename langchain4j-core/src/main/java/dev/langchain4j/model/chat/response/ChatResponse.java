@@ -18,7 +18,30 @@ public class ChatResponse {
 
     protected ChatResponse(@NonNull Builder builder) {
         this.aiMessage = ensureNotNull(builder.aiMessage, "aiMessage");
-        this.metadata = ensureNotNull(builder.metadata, "metadata");
+
+        ChatResponseMetadata.Builder<?> metadataBuilder = ChatResponseMetadata.builder();
+
+        if (builder.tokenUsage != null) {
+            if (builder.metadata != null) {
+                throw new IllegalArgumentException(
+                        "Cannot set both 'metadata' and 'tokenUsage' on ChatResponse");
+            }
+            metadataBuilder.tokenUsage(builder.tokenUsage);
+        }
+
+        if (builder.finishReason != null) {
+            if (builder.metadata != null) {
+                throw new IllegalArgumentException(
+                        "Cannot set both 'metadata' and 'finishReason' on ChatResponse");
+            }
+            metadataBuilder.finishReason(builder.finishReason);
+        }
+
+        if (builder.metadata != null) {
+            this.metadata = builder.metadata;
+        } else {
+            this.metadata = metadataBuilder.build();
+        }
     }
 
     public AiMessage aiMessage() {
@@ -70,6 +93,8 @@ public class ChatResponse {
 
         private AiMessage aiMessage;
         private ChatResponseMetadata metadata;
+        private TokenUsage tokenUsage;
+        private FinishReason finishReason;
 
         public Builder aiMessage(AiMessage aiMessage) {
             this.aiMessage = aiMessage;
@@ -78,6 +103,18 @@ public class ChatResponse {
 
         public Builder metadata(ChatResponseMetadata metadata) {
             this.metadata = metadata;
+            return this;
+        }
+
+        // TODO deprecate
+        public Builder tokenUsage(TokenUsage tokenUsage) {
+            this.tokenUsage = tokenUsage;
+            return this;
+        }
+
+        // TODO deprecate
+        public Builder finishReason(FinishReason finishReason) {
+            this.finishReason = finishReason;
             return this;
         }
 
