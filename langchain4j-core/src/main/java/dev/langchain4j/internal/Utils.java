@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -20,6 +21,7 @@ import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
+import static java.util.Collections.unmodifiableSet;
 
 /**
  * Utility methods.
@@ -291,6 +293,22 @@ public class Utils {
       throw new RuntimeException(e);
     }
   }
+
+    /**
+     * Returns an (unmodifiable) copy of the provided set.
+     * Returns <code>null</code> if the provided set is <code>null</code>.
+     *
+     * @param set The set to copy.
+     * @param <T>  Generic type of the set.
+     * @return The copy of the provided set.
+     */
+    public static <T> Set<T> copyIfNotNull(Set<T> set) {
+        if (set == null) {
+            return null;
+        }
+
+        return unmodifiableSet(set);
+    }
 
   /**
    * Returns an (unmodifiable) copy of the provided list.
