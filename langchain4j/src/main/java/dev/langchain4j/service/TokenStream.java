@@ -22,6 +22,8 @@ public interface TokenStream {
     /**
      * The provided consumer will be invoked every time a new partial response (usually a single token)
      * from a language model is available.
+     * <br>
+     * This method will replace the {@link #onNext(Consumer)} in the future versions.
      *
      * @param partialResponseHandler lambda that will be invoked when language model generates new partial response
      * @return token stream instance used to configure or start stream processing
@@ -31,6 +33,8 @@ public interface TokenStream {
 
     /**
      * The provided consumer will be invoked every time a new token from a language model is available.
+     * <br>
+     * This method will be replaced by the {@link #onPartialResponse(Consumer)} in the future versions.
      *
      * @param tokenHandler lambda that consumes tokens of the response
      * @return token stream instance used to configure or start stream processing
@@ -59,6 +63,8 @@ public interface TokenStream {
 
     /**
      * The provided handler will be invoked when a language model finishes streaming a response.
+     * <br>
+     * This method will replace the {@link #onComplete(Consumer)} in the future versions.
      *
      * @param completeResponseHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
@@ -68,6 +74,8 @@ public interface TokenStream {
 
     /**
      * The provided consumer will be invoked when a language model finishes streaming a response.
+     * <br>
+     * This method will be replaced by the {@link #onCompleteResponse(Consumer)} in the future versions.
      *
      * @param completionHandler lambda that will be invoked when language model finishes streaming
      * @return token stream instance used to configure or start stream processing
