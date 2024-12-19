@@ -15,6 +15,7 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-4o-mini")
+            .logRequestsAndResponses(true)
             .build();
 
     @Override

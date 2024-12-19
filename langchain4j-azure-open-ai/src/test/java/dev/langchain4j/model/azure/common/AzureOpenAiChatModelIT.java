@@ -17,6 +17,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-4o-mini")
+            .logRequestsAndResponses(true)
             .build();
 
     @Override
