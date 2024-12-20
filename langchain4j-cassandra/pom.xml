@@ -15,7 +15,7 @@
     </parent>
 
     <properties>
-        <astra-db-client.version>1.2.4</astra-db-client.version>
+        <astra-db-client.version>1.2.7</astra-db-client.version>
         <jackson.version>2.16.1</jackson.version>
         <maven.compiler.release>11</maven.compiler.release>
         <!-- TODO: remove enforcer.skipRules -->
