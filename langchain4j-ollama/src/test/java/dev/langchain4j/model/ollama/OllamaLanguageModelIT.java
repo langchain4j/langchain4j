@@ -1,16 +1,18 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
-import static org.assertj.core.api.Assertions.assertThat;
-
 class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     LanguageModel model = OllamaLanguageModel.builder()
-            .baseUrl(ollamaBaseUrl())
+            .baseUrl(ollamaBaseUrl(ollama))
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .build();
@@ -35,7 +37,7 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
         int numPredict = 1; // max output tokens
 
         LanguageModel model = OllamaLanguageModel.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
@@ -56,7 +58,7 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // given
         LanguageModel model = OllamaLanguageModel.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)
@@ -69,5 +71,14 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // then
         assertThat(response.content()).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
+    }
+
+    @Test
+    void should_throw_exception_when_format_and_response_format_are_used() {
+        assertThatThrownBy(() -> OllamaLanguageModel.builder()
+                        .format("json")
+                        .responseFormat(ResponseFormat.JSON)
+                        .build())
+                .isInstanceOf(IllegalStateException.class);
     }
 }
