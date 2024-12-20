@@ -747,7 +747,7 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithPrimitiveParametersReturnDirectly {
 
-        @Tool(returnDirectly = true)
+        @Tool(directReturn = true)
         int add(int a, int b) {
             return a + b;
         }
@@ -940,7 +940,7 @@ public abstract class AiServicesWithNewToolsIT {
 
 
     static class FirstToolReturnDirectFalse {
-        @Tool(returnDirectly = false)
+        @Tool(directReturn = false)
         int add(int a, int b) {
             return a + b;
         }
@@ -953,7 +953,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     static class FirstToolReturnDirectTrue {
-        @Tool(returnDirectly = true)
+        @Tool(directReturn = true)
         int add(int a, int b) {
             return a + b;
         }
@@ -966,7 +966,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     static class SecondToolReturnDirectTrue {
-        @Tool(returnDirectly = true)
+        @Tool(directReturn = true)
         int multiply(int a, int b) {
             return a * b;
         }

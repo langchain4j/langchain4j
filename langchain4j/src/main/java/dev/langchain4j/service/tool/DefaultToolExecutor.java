@@ -37,9 +37,10 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.method = findMethod(object, toolExecutionRequest);
     }
 
-    public boolean isReturnDirectly() {
+    @Override
+    public boolean isDirectReturn() {
         Tool toolAnnotation = method.getAnnotation(Tool.class);
-        return toolAnnotation != null && toolAnnotation.returnDirectly();
+        return toolAnnotation != null && toolAnnotation.directReturn();
     }
 
     Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {

@@ -59,6 +59,7 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.service.TypeUtils.isResultRawString;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -145,6 +146,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         // TODO give user ability to provide custom OutputParser
                         Type returnType = method.getGenericReturnType();
                         boolean isReturnTypeRaw = typeHasRawClass(returnType, Result.class);
+                        boolean isResultRawString = isReturnTypeRaw && isResultRawString(returnType);
+                        boolean directReturnFromTool = isResultRawString;
 
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
@@ -241,7 +244,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         int executionsLeft = MAX_SEQUENTIAL_TOOL_EXECUTIONS;
                         List<ToolExecution> toolExecutions = new ArrayList<>();
-                        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+
                         while (true) {
 
                             if (executionsLeft-- == 0) {
@@ -262,11 +265,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 break;
                             }
 
-                            // only return directly if the returntype is Result<String>
+                            // only return directly if the return type is Result<String>
                             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                                 ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
                                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                                toolExecutionRequests.add(toolExecutionRequest);
                                 toolExecutions.add(ToolExecution.builder()
                                         .request(toolExecutionRequest)
                                         .result(toolExecutionResult)
@@ -287,8 +289,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages = context.chatMemory(memoryId).messages();
                             }
                             // it's possible that an ai message only has 1 tool request, but then the subsequent ai message within the while loop has a different tool request, so only if all toolrequests are return direct do we return directly
-                            boolean shouldReturnDirectly = isReturnTypeRaw && isResultRawString(returnType) && allToolsReturnDirectly(toolExecutionRequests, toolExecutors);
-                            if (shouldReturnDirectly) {
+                            directReturnFromTool = directReturnFromTool && allToolsReturnDirectly(aiMessage.toolExecutionRequests(), toolExecutors);
+                            if (directReturnFromTool) {
                                 return new Result<T>(tokenUsageAccumulator, Collections.emptyList(), response.finishReason(), toolExecutions);
                             }
 
@@ -312,37 +314,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    private boolean isToolReturnDirectly(String toolName, Map<String, ToolExecutor> toolExecutors) {
-                        ToolExecutor executor = toolExecutors.get(toolName);
-                        try {
-                            Method method = executor.getClass().getMethod("isReturnDirectly");
-                            return (boolean) method.invoke(executor);
-                        } catch (Exception e) {
-                            return false;
-                        }
-                    }
-
                     private boolean allToolsReturnDirectly(List<ToolExecutionRequest> requests, Map<String, ToolExecutor> toolExecutors) {
-                        if (requests == null || requests.isEmpty()) {
-                            return false;
-                        }
-
-                        for (ToolExecutionRequest request : requests) {
-                            if (!isToolReturnDirectly(request.name(), toolExecutors)) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    }
-
-                    private boolean isResultRawString(Type returnType) {
-                        if (!(returnType instanceof ParameterizedType paramType)) {
-                            return false;
-                        }
-                        return Arrays.stream(paramType.getActualTypeArguments())
-                                .findFirst()
-                                .map(String.class::equals)
-                                .orElse(false);
+                        return requests.stream().map(r -> toolExecutors.get(r.name())).allMatch(tExec -> tExec != null && tExec.isDirectReturn());
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

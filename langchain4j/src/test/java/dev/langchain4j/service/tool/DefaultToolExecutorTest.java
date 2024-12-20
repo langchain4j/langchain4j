@@ -275,7 +275,7 @@ class DefaultToolExecutorTest implements WithAssertions {
 
     private static class TestToolReturnDirectly {
 
-        @Tool(returnDirectly = true)
+        @Tool(directReturn = true)
         public int addOne(int num) {
             return num + 1;
         }
@@ -322,7 +322,7 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestToolReturnDirectly(), request);
 
-        assertThat(toolExecutor.isReturnDirectly()).isTrue();
+        assertThat(toolExecutor.isDirectReturn()).isTrue();
     }
 
     @Test
@@ -335,7 +335,7 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestTool(), request);
 
-        assertThat(toolExecutor.isReturnDirectly()).isFalse();
+        assertThat(toolExecutor.isDirectReturn()).isFalse();
     }
 
     @Test
