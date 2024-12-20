@@ -70,6 +70,6 @@ class HuggingFaceEmbeddingModelIT {
                             .build();
                 })
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid url");
+                .hasMessageContaining("Expected URL scheme 'http' or 'https'");
     }
 }

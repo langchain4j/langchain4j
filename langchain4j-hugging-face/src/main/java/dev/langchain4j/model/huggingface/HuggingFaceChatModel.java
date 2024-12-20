@@ -8,14 +8,16 @@ import static java.util.stream.Collectors.joining;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.huggingface.client.*;
+import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
+import dev.langchain4j.model.huggingface.client.Options;
+import dev.langchain4j.model.huggingface.client.Parameters;
+import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
+import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceChatModelBuilderFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
-import dev.langchain4j.model.huggingface.util.UrlUtil;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
-import java.util.Objects;
 
 public class HuggingFaceChatModel implements ChatLanguageModel {
 
@@ -64,10 +66,6 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     }
 
     public HuggingFaceChatModel(Builder builder) {
-        if (!Objects.isNull(builder.baseUrl) && UrlUtil.isNotValidUrl(builder.baseUrl)) {
-            throw new IllegalArgumentException("Invalid url: " + builder.baseUrl);
-        }
-
         this.client = FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
             @Override
             public String baseUrl() {

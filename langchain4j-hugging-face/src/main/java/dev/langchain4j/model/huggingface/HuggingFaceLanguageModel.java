@@ -3,14 +3,16 @@ package dev.langchain4j.model.huggingface;
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-import dev.langchain4j.model.huggingface.client.*;
+import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
+import dev.langchain4j.model.huggingface.client.Options;
+import dev.langchain4j.model.huggingface.client.Parameters;
+import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
+import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceLanguageModelBuilderFactory;
-import dev.langchain4j.model.huggingface.util.UrlUtil;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
-import java.util.Objects;
 
 public class HuggingFaceLanguageModel implements LanguageModel {
 
@@ -59,10 +61,6 @@ public class HuggingFaceLanguageModel implements LanguageModel {
     }
 
     public HuggingFaceLanguageModel(Builder builder) {
-        if (!Objects.isNull(builder.baseUrl) && UrlUtil.isNotValidUrl(builder.baseUrl)) {
-            throw new IllegalArgumentException("Invalid url: " + builder.baseUrl);
-        }
-
         this.client = FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
             @Override
             public String baseUrl() {
