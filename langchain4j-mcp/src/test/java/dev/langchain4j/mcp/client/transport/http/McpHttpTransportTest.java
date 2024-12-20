@@ -46,7 +46,6 @@ public class McpHttpTransportTest {
 
     @BeforeAll
     public static void setup() {
-        System.out.println("GO");
         container.start();
         port = container.getMappedPort(3001);
         McpTransport transport = new HttpMcpTransport.Builder()
