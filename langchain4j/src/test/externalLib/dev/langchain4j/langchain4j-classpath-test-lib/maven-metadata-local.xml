@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>dev.langchain4j</groupId>
+  <artifactId>langchain4j-classpath-test-lib</artifactId>
+  <versioning>
+    <versions>
+      <version>999-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20241114005116</lastUpdated>
+  </versioning>
+</metadata>
