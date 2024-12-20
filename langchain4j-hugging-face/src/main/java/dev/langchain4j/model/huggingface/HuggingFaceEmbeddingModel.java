@@ -16,7 +16,6 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import lombok.Builder;
 
 public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
@@ -57,8 +56,8 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         return FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
             @Override
-            public Optional<String> baseUrl() {
-                return Optional.ofNullable(baseUrl);
+            public String baseUrl() {
+                return baseUrl;
             }
 
             @Override

@@ -16,7 +16,6 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 public class HuggingFaceChatModel implements ChatLanguageModel {
 
@@ -71,8 +70,8 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
 
         this.client = FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
             @Override
-            public Optional<String> baseUrl() {
-                return Optional.ofNullable(builder.baseUrl);
+            public String baseUrl() {
+                return builder.baseUrl;
             }
 
             @Override

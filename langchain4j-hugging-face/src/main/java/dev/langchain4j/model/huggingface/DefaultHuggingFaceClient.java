@@ -9,7 +9,7 @@ import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 import okhttp3.OkHttpClient;
 import retrofit2.Response;
 import retrofit2.Retrofit;
@@ -22,7 +22,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
     private final HuggingFaceApi huggingFaceApi;
     private final String modelId;
 
-    DefaultHuggingFaceClient(Optional<String> baseUrl, String apiKey, String modelId, Duration timeout) {
+    DefaultHuggingFaceClient(String baseUrl, String apiKey, String modelId, Duration timeout) {
 
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .addInterceptor(new ApiKeyInsertingInterceptor(apiKey))
@@ -33,7 +33,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl.orElse(BASE_URL))
+                .baseUrl(Objects.isNull(baseUrl) ? BASE_URL : baseUrl)
                 .client(okHttpClient)
                 .addConverterFactory(JacksonConverterFactory.create())
                 .build();
