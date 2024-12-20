@@ -199,7 +199,8 @@ making it particularly suitable for scenarios that require specific actions base
 Here is an example:
 ```java
 @Component
-class AiServiceRegistrar implements ApplicationListener<AiServiceRegisteredEvent> {
+class AiServiceRegisteredEventListener implements ApplicationListener<AiServiceRegisteredEvent> {
+
 
     @Override
     public void onApplicationEvent(AiServiceRegisteredEvent event) {
