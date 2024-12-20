@@ -6,9 +6,6 @@ import dev.langchain4j.model.bedrock.internal.AbstractBedrockEmbeddingModel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
 
 import java.util.ArrayList;
 import java.util.HashMap;
