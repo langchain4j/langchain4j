@@ -10,6 +10,7 @@ import static dev.langchain4j.internal.Utils.quoted;
 @Experimental
 public class Audio {
     private final URI url;
+    private final byte[] audioData;
     private final String base64Data;
     private final String mimeType;
 
@@ -19,6 +20,7 @@ public class Audio {
      */
     private Audio(Builder builder) {
         this.url = builder.url;
+        this.audioData = builder.audioData;
         this.base64Data = builder.base64Data;
         this.mimeType = builder.mimeType;
     }
@@ -40,6 +42,14 @@ public class Audio {
     }
 
     /**
+     * Get the data as byte array of the audio.
+     * @return the data as byte array of the audio, or null if not set.
+     */
+    public byte[] audioData() {
+        return audioData;
+    }
+
+        /**
      * Get the base64 data of the audio.
      * @return the base64 data of the audio, or null if not set.
      */
@@ -61,19 +71,21 @@ public class Audio {
         if (o == null || getClass() != o.getClass()) return false;
         Audio that = (Audio) o;
         return Objects.equals(this.url, that.url)
+            && Objects.equals(this.audioData, that.audioData)
             && Objects.equals(this.base64Data, that.base64Data)
             && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(url, base64Data, mimeType);
+        return Objects.hash(url, audioData, base64Data, mimeType);
     }
 
     @Override
     public String toString() {
         return "Audio {" +
             " url = " + quoted(url) +
+            ", audioData = " + quoted(audioData) +
             ", base64Data = " + quoted(base64Data) +
             ", mimeType = " + quoted(mimeType) +
             " }";
@@ -84,7 +96,8 @@ public class Audio {
      */
     public static class Builder {
 
-        private URI url;
+        URI url;
+        private byte[] audioData;
         private String base64Data;
         private String mimeType;
 
@@ -110,6 +123,16 @@ public class Audio {
          */
         public Builder url(String url) {
             return url(URI.create(url));
+        }
+
+        /**
+         * Set the data in byte Array of the audio.
+         * @param audioData the data in byte Array of the audio.
+         * @return {@code this}
+         */
+        public Builder audioData(byte[] audioData) {
+            this.audioData = audioData;
+            return this;
         }
 
         /**
@@ -139,5 +162,21 @@ public class Audio {
         public Audio build() {
             return new Audio(this);
         }
+    }
+
+    /**
+     * Get the filename of the audio using a regex to retrieve the last segment after the last slash,
+     * or the full path if no slashes are found.
+     * @return the filename of the audio, or null if not set.
+     */
+    public String getFilename() {
+        if (url != null) {
+            String path = url.getPath();
+            if (path != null) {
+                String[] segments = path.split("/");
+                return segments.length > 0 ? segments[segments.length - 1] : path;
+            }
+        }
+        return null;
     }
 }
