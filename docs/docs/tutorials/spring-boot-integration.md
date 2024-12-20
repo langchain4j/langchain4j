@@ -189,7 +189,8 @@ More details can be found [here](https://github.com/langchain4j/langchain4j-spri
 
 ### Listening for AI Service Registration Events
 
-After you have completed the development of the AI Service in a declarative manner, you can also listen for the
+After you have completed the development of the AI Service in a declarative manner, you can listen for the
+
 `AiServiceRegisteredEvent` by implementing the `ApplicationListener<AiServiceRegisteredEvent>` interface.
 
 This event is triggered when AI services are registered in the Spring context, 
