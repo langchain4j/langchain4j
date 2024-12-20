@@ -196,7 +196,6 @@ After you have completed the development of the AI Service in a declarative mann
 This event is triggered when AI Service is registered in the Spring context, 
 
 allowing you to obtain information about all registered AI services and their tools at runtime. 
-making it particularly suitable for scenarios that require specific actions based on service registration status.
 Here is an example:
 ```java
 @Component
