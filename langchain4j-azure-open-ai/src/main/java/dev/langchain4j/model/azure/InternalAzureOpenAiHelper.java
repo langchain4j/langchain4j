@@ -6,7 +6,13 @@ import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.OpenAIServiceVersion;
 import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
 import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinition;
+import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinitionFunction;
+import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsJsonSchemaResponseFormatJsonSchema;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsTextResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsToolCall;
 import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
 import com.azure.ai.openai.models.ChatCompletionsToolSelection;
@@ -22,7 +28,6 @@ import com.azure.ai.openai.models.ChatResponseMessage;
 import com.azure.ai.openai.models.CompletionsFinishReason;
 import com.azure.ai.openai.models.CompletionsUsage;
 import com.azure.ai.openai.models.FunctionCall;
-import com.azure.ai.openai.models.FunctionDefinition;
 import com.azure.ai.openai.models.ImageGenerationData;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.KeyCredential;
@@ -49,9 +54,13 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -196,7 +205,8 @@ class InternalAzureOpenAiHelper {
                             } else if (content instanceof ImageContent) {
                                 ImageContent imageContent = (ImageContent) content;
                                 if (imageContent.image().url() == null) {
-                                    throw new IllegalArgumentException("Image URL is not present. Base64 encoded images are not supported at the moment.");
+                                    throw new UnsupportedFeatureException("Image URL is not present. " +
+                                            "Base64 encoded images are not supported at the moment.");
                                 }
                                 ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageContent.image().url().toString());
                                 return new ChatMessageImageContentItem(imageUrl);
@@ -245,7 +255,7 @@ class InternalAzureOpenAiHelper {
     }
 
     private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
-        FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
+        ChatCompletionsFunctionToolDefinitionFunction functionDefinition = new ChatCompletionsFunctionToolDefinitionFunction(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
         functionDefinition.setParameters(getParameters(toolSpecification));
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
@@ -446,5 +456,27 @@ class InternalAzureOpenAiHelper {
                 .finishReason(response.finishReason())
                 .aiMessage(response.content())
                 .build();
+    }
+
+    static ChatCompletionsResponseFormat toAzureOpenAiResponseFormat(ResponseFormat responseFormat, boolean strict) {
+        if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
+            return new ChatCompletionsTextResponseFormat();
+        } else if (responseFormat.type() != ResponseFormatType.JSON) {
+            throw new IllegalArgumentException("Unsupported response format: " + responseFormat);
+        }
+
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
+        if (jsonSchema == null) {
+            return new ChatCompletionsJsonResponseFormat();
+        } else {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+                throw new IllegalArgumentException("For Azure OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: " + jsonSchema.rootElement().getClass());
+            }
+            ChatCompletionsJsonSchemaResponseFormatJsonSchema schema = new ChatCompletionsJsonSchemaResponseFormatJsonSchema(jsonSchema.name());
+            schema.setStrict(strict);
+            Map<String, Object> schemaMap = toMap(jsonSchema.rootElement(), strict);
+            schema.setSchema(BinaryData.fromObject(schemaMap));
+            return new ChatCompletionsJsonSchemaResponseFormat(schema);
+        }
     }
 }
