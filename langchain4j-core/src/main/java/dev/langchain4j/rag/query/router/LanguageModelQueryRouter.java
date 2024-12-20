@@ -1,27 +1,27 @@
 package dev.langchain4j.rag.query.router;
 
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.input.Prompt;
-import dev.langchain4j.model.input.PromptTemplate;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.query.Query;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.DO_NOT_ROUTE;
 import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.toList;
+
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.input.Prompt;
+import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link QueryRouter} that utilizes a {@link ChatLanguageModel} to make a routing decision.
@@ -52,8 +52,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
                     {{options}}
                     It is very important that your answer consists of either a single number \
                     or multiple numbers separated by commas and nothing else!
-                    User query: {{query}}"""
-    );
+                    User query: {{query}}""");
 
     protected final ChatLanguageModel chatLanguageModel;
     protected final PromptTemplate promptTemplate;
@@ -61,15 +60,16 @@ public class LanguageModelQueryRouter implements QueryRouter {
     protected final Map<Integer, ContentRetriever> idToRetriever;
     protected final FallbackStrategy fallbackStrategy;
 
-    public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
-                                    Map<ContentRetriever, String> retrieverToDescription) {
+    public LanguageModelQueryRouter(
+            ChatLanguageModel chatLanguageModel, Map<ContentRetriever, String> retrieverToDescription) {
         this(chatLanguageModel, retrieverToDescription, DEFAULT_PROMPT_TEMPLATE, DO_NOT_ROUTE);
     }
 
-    public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
-                                    Map<ContentRetriever, String> retrieverToDescription,
-                                    PromptTemplate promptTemplate,
-                                    FallbackStrategy fallbackStrategy) {
+    public LanguageModelQueryRouter(
+            ChatLanguageModel chatLanguageModel,
+            Map<ContentRetriever, String> retrieverToDescription,
+            PromptTemplate promptTemplate,
+            FallbackStrategy fallbackStrategy) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         ensureNotEmpty(retrieverToDescription, "retrieverToDescription");
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
@@ -100,10 +100,16 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     @Override
     public Collection<ContentRetriever> route(Query query) {
-        Prompt prompt = createPrompt(query);
+        final var prompt = createPrompt(query);
         try {
-            String response = chatLanguageModel.generate(prompt.text());
-            return parse(response);
+            final var response = chatLanguageModel.generate(prompt.text());
+            final var routes = parse(response);
+            if (routes.isEmpty()) {
+                log.warn("No content retrievers found for query: '{}'", query.text());
+                return fallback(query, null);
+            } else {
+                return routes;
+            }
         } catch (Exception e) {
             log.warn("Failed to route query '{}'", query.text(), e);
             return fallback(query, e);
@@ -111,16 +117,17 @@ public class LanguageModelQueryRouter implements QueryRouter {
     }
 
     protected Collection<ContentRetriever> fallback(Query query, Exception e) {
+        final var queryText = query.text();
         return switch (fallbackStrategy) {
             case DO_NOT_ROUTE -> {
-                log.debug("Fallback: query '{}' will not be routed", query.text());
+                log.debug("Fallback: query '{}' will not be routed", queryText);
                 yield emptyList();
             }
             case ROUTE_TO_ALL -> {
-                log.debug("Fallback: query '{}' will be routed to all available content retrievers", query.text());
+                log.debug("Fallback: query '{}' will be routed to all available content retrievers", queryText);
                 yield new ArrayList<>(idToRetriever.values());
             }
-            default -> throw new RuntimeException(e);
+            default -> throw new RuntimeException("Failed to route query: " + quoted(queryText), e);
         };
     }
 
@@ -134,9 +141,19 @@ public class LanguageModelQueryRouter implements QueryRouter {
     protected Collection<ContentRetriever> parse(String choices) {
         return stream(choices.split(","))
                 .map(String::trim)
-                .map(Integer::parseInt)
+                .map(it -> {
+                    try {
+                        return Integer.parseInt(it.trim());
+                    } catch (NumberFormatException e) {
+                        // ignore it
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .distinct()
                 .map(idToRetriever::get)
-                .collect(toList());
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     /**
@@ -168,15 +185,15 @@ public class LanguageModelQueryRouter implements QueryRouter {
         private PromptTemplate promptTemplate;
         private FallbackStrategy fallbackStrategy;
 
-        LanguageModelQueryRouterBuilder() {
-        }
+        LanguageModelQueryRouterBuilder() {}
 
         public LanguageModelQueryRouterBuilder chatLanguageModel(ChatLanguageModel chatLanguageModel) {
             this.chatLanguageModel = chatLanguageModel;
             return this;
         }
 
-        public LanguageModelQueryRouterBuilder retrieverToDescription(Map<ContentRetriever, String> retrieverToDescription) {
+        public LanguageModelQueryRouterBuilder retrieverToDescription(
+                Map<ContentRetriever, String> retrieverToDescription) {
             this.retrieverToDescription = retrieverToDescription;
             return this;
         }
@@ -192,11 +209,14 @@ public class LanguageModelQueryRouter implements QueryRouter {
         }
 
         public LanguageModelQueryRouter build() {
-            return new LanguageModelQueryRouter(this.chatLanguageModel, this.retrieverToDescription, this.promptTemplate, this.fallbackStrategy);
+            return new LanguageModelQueryRouter(
+                    this.chatLanguageModel, this.retrieverToDescription, this.promptTemplate, this.fallbackStrategy);
         }
 
         public String toString() {
-            return "LanguageModelQueryRouter.LanguageModelQueryRouterBuilder(chatLanguageModel=" + this.chatLanguageModel + ", retrieverToDescription=" + this.retrieverToDescription + ", promptTemplate=" + this.promptTemplate + ", fallbackStrategy=" + this.fallbackStrategy + ")";
+            return "LanguageModelQueryRouter.LanguageModelQueryRouterBuilder(chatLanguageModel="
+                    + this.chatLanguageModel + ", retrieverToDescription=" + this.retrieverToDescription
+                    + ", promptTemplate=" + this.promptTemplate + ", fallbackStrategy=" + this.fallbackStrategy + ")";
         }
     }
 }
