@@ -3,11 +3,13 @@ package dev.langchain4j.service;
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -311,6 +313,44 @@ class AiServicesWithRagIT {
 
         verify(contentRetriever).retrieve(Query.from(query, Metadata.from(UserMessage.from(query), "default", null)));
         verifyNoMoreInteractions(contentRetriever);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_fail_when_query_is_ambiguous(ChatLanguageModel model) {
+
+        // given
+        String query = "Hey what's up?";
+        FallbackStrategy fallbackStrategy = FAIL;
+
+        ContentRetriever contentRetriever = spy(EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(1)
+                .build());
+
+        Map<ContentRetriever, String> retrieverToDescription = new HashMap<>();
+        retrieverToDescription.put(contentRetriever, "car rental company terms of use");
+
+        QueryRouter queryRouter = LanguageModelQueryRouter.builder()
+                .chatLanguageModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(fallbackStrategy)
+                .build();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(model)
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryRouter(queryRouter)
+                        .build())
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> assistant.answer(query))
+                .hasRootCauseExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("Failed to route query: \"Hey what's up?\"");
+
+        verifyNoInteractions(contentRetriever);
     }
 
     @ParameterizedTest
