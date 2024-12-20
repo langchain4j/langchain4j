@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static dev.langchain4j.model.openai.OpenAiEmbeddingModelName.TEXT_EMBEDDING_3_SMALL;
 import static java.util.Arrays.asList;
@@ -67,6 +68,44 @@ class OpenAiEmbeddingModelIT {
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);
         assertThat(tokenUsage.outputTokenCount()).isNull();
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(2);
+
+        assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void should_embed_multiple_batch_segments() {
+        // given
+        int maxSegmentsPerBatch = 10;
+        int totalSegmentsToEmbed = 50;
+
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(TEXT_EMBEDDING_3_SMALL)
+                .maxSegmentsPerBatch(maxSegmentsPerBatch)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        List<TextSegment> segments = Stream.generate(() -> TextSegment.from("hello"))
+                .limit(totalSegmentsToEmbed)
+                .toList();
+
+        // when
+        Response<List<Embedding>> response = model.embedAll(segments);
+
+        // then
+        assertThat(response.content()).hasSize(totalSegmentsToEmbed);
+        assertThat(response.content().get(0).dimension()).isEqualTo(1536);
+        assertThat(response.content().get(10).dimension()).isEqualTo(1536);
+        assertThat(response.content().get(20).dimension()).isEqualTo(1536);
+        assertThat(response.content().get(30).dimension()).isEqualTo(1536);
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(totalSegmentsToEmbed);
+        assertThat(tokenUsage.outputTokenCount()).isNull();
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(totalSegmentsToEmbed);
 
         assertThat(response.finishReason()).isNull();
     }

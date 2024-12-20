@@ -3,7 +3,7 @@ package dev.langchain4j.mcp.client.transport.http;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.Map;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.util.concurrent.CompletableFuture;
 import okhttp3.Response;
 import okhttp3.sse.EventSource;
@@ -13,18 +13,16 @@ import org.slf4j.LoggerFactory;
 
 public class SseEventListener extends EventSourceListener {
 
-    private final Map<Long, CompletableFuture<JsonNode>> pendingOperations;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(SseEventListener.class);
     private final boolean logEvents;
     // this will contain the POST url for sending commands to the server
     private final CompletableFuture<String> initializationFinished;
+    private final McpOperationHandler messageHandler;
 
     public SseEventListener(
-            Map<Long, CompletableFuture<JsonNode>> pendingOperations,
-            boolean logEvents,
-            CompletableFuture initializationFinished) {
-        this.pendingOperations = pendingOperations;
+            McpOperationHandler messageHandler, boolean logEvents, CompletableFuture initializationFinished) {
+        this.messageHandler = messageHandler;
         this.logEvents = logEvents;
         this.initializationFinished = initializationFinished;
     }
@@ -41,16 +39,10 @@ public class SseEventListener extends EventSourceListener {
                 log.debug("< {}", data);
             }
             try {
-                JsonNode message = OBJECT_MAPPER.readValue(data, JsonNode.class);
-                long messageId = message.get("id").asLong();
-                CompletableFuture<JsonNode> op = pendingOperations.remove(messageId);
-                if (op != null) {
-                    op.complete(message);
-                } else {
-                    log.warn("Received response for unknown message id: {}", messageId);
-                }
+                JsonNode jsonNode = OBJECT_MAPPER.readTree(data);
+                messageHandler.handle(jsonNode);
             } catch (JsonProcessingException e) {
-                log.warn("Failed to parse response data", e);
+                log.warn("Failed to parse JSON message: {}", data, e);
             }
         } else if (type.equals("endpoint")) {
             if (initializationFinished.isDone()) {
