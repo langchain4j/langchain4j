@@ -1,24 +1,23 @@
 package dev.langchain4j.rag.query.router;
 
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
-import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class LanguageModelQueryRouterTest {
@@ -50,15 +49,16 @@ class LanguageModelQueryRouterTest {
         // then
         assertThat(retrievers).containsExactly(dogArticlesRetriever);
 
-        assertThat(model.userMessageText()).isEqualTo(
-                """
-                Based on the user query, determine the most suitable data source(s) \
-                to retrieve relevant information from the following options:
-                1: articles about cats
-                2: articles about dogs
-                It is very important that your answer consists of either a single number \
-                or multiple numbers separated by commas and nothing else!
-                User query: Do Labradors shed?""");
+        assertThat(model.userMessageText())
+                .isEqualTo(
+                        """
+                        Based on the user query, determine the most suitable data source(s) \
+                        to retrieve relevant information from the following options:
+                        1: articles about cats
+                        2: articles about dogs
+                        It is very important that your answer consists of either a single number \
+                        or multiple numbers separated by commas and nothing else!
+                        User query: Do Labradors shed?""");
     }
 
     @Test
@@ -85,15 +85,16 @@ class LanguageModelQueryRouterTest {
         // then
         assertThat(retrievers).containsExactly(dogArticlesRetriever);
 
-        assertThat(model.userMessageText()).isEqualTo(
-                """
-                Based on the user query, determine the most suitable data source(s) \
-                to retrieve relevant information from the following options:
-                1: articles about cats
-                2: articles about dogs
-                It is very important that your answer consists of either a single number \
-                or multiple numbers separated by commas and nothing else!
-                User query: Do Labradors shed?""");
+        assertThat(model.userMessageText())
+                .isEqualTo(
+                        """
+                        Based on the user query, determine the most suitable data source(s) \
+                        to retrieve relevant information from the following options:
+                        1: articles about cats
+                        2: articles about dogs
+                        It is very important that your answer consists of either a single number \
+                        or multiple numbers separated by commas and nothing else!
+                        User query: Do Labradors shed?""");
     }
 
     @Test
@@ -122,9 +123,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         PromptTemplate promptTemplate = PromptTemplate.from(
-                "Which source should I use to get answer for '{{query}}'? " +
-                        "Options: {{options}}'"
-        );
+                "Which source should I use to get answer for '{{query}}'? " + "Options: {{options}}'");
 
         Query query = Query.from("Which animal is the fluffiest?");
 
@@ -143,7 +142,9 @@ class LanguageModelQueryRouterTest {
         // then
         assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
 
-        assertThat(model.userMessageText()).isEqualTo("""
+        assertThat(model.userMessageText())
+                .isEqualTo(
+                        """
                 Which source should I use to get answer for \
                 'Which animal is the fluffiest?'? \
                 Options: \
@@ -160,9 +161,8 @@ class LanguageModelQueryRouterTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
 
         final var retrieverToDescription = Map.of(
-            catArticlesRetriever, "articles about cats",
-            dogArticlesRetriever, "articles about dogs"
-        );
+                catArticlesRetriever, "articles about cats",
+                dogArticlesRetriever, "articles about dogs");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -231,7 +231,6 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-
         QueryRouter router = LanguageModelQueryRouter.builder()
                 .chatLanguageModel(model)
                 .retrieverToDescription(retrieverToDescription)
@@ -265,7 +264,8 @@ class LanguageModelQueryRouterTest {
 
         // when-then
         assertThatThrownBy(() -> router.route(query))
-                .hasRootCauseExactlyInstanceOf(NumberFormatException.class);
+                .hasMessageStartingWith("Failed to route query")
+                .hasRootCauseExactlyInstanceOf(RuntimeException.class);
     }
 
     @Test
@@ -289,6 +289,7 @@ class LanguageModelQueryRouterTest {
         // when-then
         assertThatThrownBy(() -> router.route(query))
                 .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Something went wrong");
+                .hasMessageStartingWith("Failed to route query")
+                .hasRootCauseMessage("Something went wrong");
     }
 }
