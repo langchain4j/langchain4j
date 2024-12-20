@@ -24,9 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.contentFilterManagement;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -209,7 +207,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
         CompletionsOptions options = new CompletionsOptions(Collections.singletonList(prompt))
-                .setStream(true)
                 .setModel(deploymentName)
                 .setMaxTokens(maxTokens)
                 .setTemperature(temperature)
