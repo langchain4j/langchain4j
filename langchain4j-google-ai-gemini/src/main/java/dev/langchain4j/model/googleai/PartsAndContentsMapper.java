@@ -182,7 +182,7 @@ class PartsAndContentsMapper {
 
             String text = part.getText();
             if (text != null && !text.isEmpty()) {
-                fullText.append(text);
+                fullText.append("\n\n").append(text);
             }
 
             if (part.getFunctionCall() != null) {
