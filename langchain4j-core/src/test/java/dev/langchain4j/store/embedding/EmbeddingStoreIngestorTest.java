@@ -5,12 +5,16 @@ import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.embedding.EmbeddingTransformer;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.data.segment.TextSegmentStorageTransformer;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+
+import java.util.Base64;
 
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
@@ -211,6 +215,95 @@ class EmbeddingStoreIngestorTest {
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
                 .embeddingModel(embeddingModel)
                 .embeddingStore(embeddingStore)
+                .build();
+
+        // when
+        IngestionResult ingestionResult = ingestor.ingest(document);
+
+        // then
+        verify(embeddingStore).addAll(singletonList(Embedding.from(new float[]{1})), singletonList(expectedTextSegment));
+        verifyNoMoreInteractions(embeddingStore);
+
+        assertThat(ingestionResult.tokenUsage()).isEqualTo(tokenUsage);
+    }
+
+    @Test
+    void should_change_vector_when_embedding_transformer_is_specified() {
+
+        // given
+        String text = "Some text";
+        Document document = Document.from(text);
+
+        TextSegment expectedTextSegment = TextSegment.from(text, Metadata.from("index", "0"));
+        TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        when(embeddingModel.embedAll(singletonList(expectedTextSegment)))
+                .thenReturn(Response.from(singletonList(Embedding.from(new float[]{1, 2, 3})), tokenUsage));
+
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .embeddingTransformer(embedding -> {
+                    final float[] vector = embedding.vector();
+
+                    // Distance preserve encryption algorithm which is reverse the vector
+                    int n = vector.length;
+                    float[] temp = new float[n];
+
+                    for(int i = n - 1; i > -1; i--) {
+                        temp[n - i - 1] = vector[i];
+                    }
+
+
+                    return Embedding.from(temp);
+                })
+                .build();
+
+        // when
+        IngestionResult ingestionResult = ingestor.ingest(document);
+
+        // then
+        verify(embeddingStore).addAll(singletonList(Embedding.from(new float[]{3, 2, 1})), singletonList(expectedTextSegment));
+        verifyNoMoreInteractions(embeddingStore);
+
+        assertThat(ingestionResult.tokenUsage()).isEqualTo(tokenUsage);
+    }
+
+    @Test
+    void should_change_stored_text_when_text_segment_storage_transformer_is_specified() {
+
+        // given
+        String text = "Some super sensitive data to protect in the DB";
+        Document document = Document.from(text);
+
+        TextSegment initialTextSegment = TextSegment.from(text, Metadata.from("index", "0"));
+
+        // Doing a Base64 for simplicity
+        String encryptedText = Base64.getEncoder().encodeToString(text.getBytes());
+        TextSegment expectedTextSegment = TextSegment.from(encryptedText, initialTextSegment.metadata());
+
+        TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        when(embeddingModel.embedAll(singletonList(initialTextSegment)))
+                .thenReturn(Response.from(singletonList(Embedding.from(new float[]{1})), tokenUsage));
+
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .textSegmentStorageTransformer(segment -> {
+                    // Encrypts segments before storing to DB
+                    // Doing a Base64 for simplicity
+                    String text1 = segment.text();
+                    String encrypted = Base64.getEncoder().encodeToString(text1.getBytes());
+
+                    return TextSegment.from(encrypted, segment.metadata());
+                })
                 .build();
 
         // when
