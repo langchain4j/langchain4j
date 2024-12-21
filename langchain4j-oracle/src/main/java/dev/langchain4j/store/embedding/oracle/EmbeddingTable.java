@@ -1,14 +1,19 @@
 package dev.langchain4j.store.embedding.oracle;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.filter.Filter;
+import oracle.jdbc.OracleType;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.SQLType;
 import java.sql.Statement;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.BiFunction;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -97,14 +102,14 @@ public final class EmbeddingTable {
 
     /**
      * Creates a table configured by the {@link Builder} of this EmbeddingTable. No table is created if the Builder was
-     * configured with {@link CreateOption#CREATE_NONE}.
+     * configured with {@link CreateOption#DO_NOT_CREATE}.
      *
      * @param dataSource Data source that connects to an Oracle Database where the table is (possibly) created.
      *
      * @throws SQLException If an error prevents the table from being created.
      */
     void create(DataSource dataSource) throws SQLException {
-        if (createOption == CreateOption.CREATE_NONE)
+        if (createOption == CreateOption.DO_NOT_CREATE)
             return;
 
         try (Connection connection = dataSource.getConnection();
@@ -122,6 +127,34 @@ public final class EmbeddingTable {
 
             statement.executeBatch();
         }
+    }
+
+    /**
+     * <p>
+     * The mapping function for use with {@link SQLFilters#create(Filter, BiFunction)}. The function maps a
+     * {@link Metadata} key to a field of the JSON "metadata" column. The builtin JSON_VALUE function is used to
+     * evaluate a JSON path expression, which looks something like this: '$.key'
+     * </p><p>
+     * A RETURNING clause is used to return the JSON value as a particular SQL data type.
+     * </p><p>
+     * A NULL ON ERROR clause is used, explicitly, to return NULL in the case where the JSON object does not contain the
+     * key.
+     * </p>
+     *
+     * @param key Name of a metadata key. Not null.
+     * @param type SQL type to return the key as. Not null.
+     * @return A JSON_VALUE function call which returns the key as a SQL data type, or returns NULL if the key does not
+     * exist. The String returned by this method is not null.
+     */
+    String mapMetadataKey(String key, OracleType type) {
+        // Oracle JDBC does not implement getName() correctly for BINARY_FLOAT and BINARY_DOUBLE; It puts a space where
+        // the underscore should be.
+        String typeName =
+            type == OracleType.BINARY_FLOAT ? "BINARY_FLOAT"
+                : type == OracleType.BINARY_DOUBLE ? "BINARY_DOUBLE"
+                : type.getName();
+
+        return "JSON_VALUE(" + metadataColumn + ", '$." + key + "' RETURNING " + typeName + " NULL ON ERROR)";
     }
 
     /**
@@ -184,7 +217,7 @@ public final class EmbeddingTable {
     public static class Builder {
 
         // These fields are specified by method level JavaDocs
-        private CreateOption createOption = CreateOption.CREATE_NONE;
+        private CreateOption createOption = CreateOption.DO_NOT_CREATE;
         private String name;
         private String idColumn = "id";
         private String embeddingColumn = "embedding";
@@ -194,7 +227,7 @@ public final class EmbeddingTable {
         private Builder() {}
 
         /**
-         * Configures the option to create (or not create) a table. The default is {@link CreateOption#CREATE_NONE},
+         * Configures the option to create (or not create) a table. The default is {@link CreateOption#DO_NOT_CREATE},
          * which means that no attempt is made to create a table.
          *
          * @param createOption Option for creating the index. Not null.
