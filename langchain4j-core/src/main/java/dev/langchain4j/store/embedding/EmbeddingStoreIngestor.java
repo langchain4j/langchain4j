@@ -4,7 +4,9 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.embedding.EmbeddingTransformer;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.data.segment.TextSegmentStorageTransformer;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
@@ -56,28 +58,36 @@ public class EmbeddingStoreIngestor {
     private final DocumentTransformer documentTransformer;
     private final DocumentSplitter documentSplitter;
     private final TextSegmentTransformer textSegmentTransformer;
+    private final EmbeddingTransformer embeddingTransformer;
+    private final TextSegmentStorageTransformer textSegmentStorageTransformer;
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
 
     /**
      * Creates an instance of an {@code EmbeddingStoreIngestor}.
      *
-     * @param documentTransformer    The {@link DocumentTransformer} to use. Optional.
-     * @param documentSplitter       The {@link DocumentSplitter} to use. Optional.
-     *                               If none is specified, it tries to load one through SPI (see {@link DocumentSplitterFactory}).
-     * @param textSegmentTransformer The {@link TextSegmentTransformer} to use. Optional.
-     * @param embeddingModel         The {@link EmbeddingModel} to use. Mandatory.
-     *                               If none is specified, it tries to load one through SPI (see {@link EmbeddingModelFactory}).
-     * @param embeddingStore         The {@link EmbeddingStore} to use. Mandatory.
+     * @param documentTransformer            The {@link DocumentTransformer} to use. Optional.
+     * @param documentSplitter               The {@link DocumentSplitter} to use. Optional.
+     *                                       If none is specified, it tries to load one through SPI (see {@link DocumentSplitterFactory}).
+     * @param textSegmentTransformer         The {@link TextSegmentTransformer} to use. Optional.
+     * @param textSegmentStorageTransformer  The {@link TextSegmentStorageTransformer} to use. Optional.
+     * @param embeddingTransformer           The {@link EmbeddingTransformer} to use. Optional.
+     * @param embeddingModel                 The {@link EmbeddingModel} to use. Mandatory.
+     *                                       If none is specified, it tries to load one through SPI (see {@link EmbeddingModelFactory}).
+     * @param embeddingStore                 The {@link EmbeddingStore} to use. Mandatory.
      */
     public EmbeddingStoreIngestor(DocumentTransformer documentTransformer,
                                   DocumentSplitter documentSplitter,
                                   TextSegmentTransformer textSegmentTransformer,
+                                  TextSegmentStorageTransformer textSegmentStorageTransformer,
+                                  EmbeddingTransformer embeddingTransformer,
                                   EmbeddingModel embeddingModel,
                                   EmbeddingStore<TextSegment> embeddingStore) {
         this.documentTransformer = documentTransformer;
         this.documentSplitter = getOrDefault(documentSplitter, EmbeddingStoreIngestor::loadDocumentSplitter);
         this.textSegmentTransformer = textSegmentTransformer;
+        this.textSegmentStorageTransformer = textSegmentStorageTransformer;
+        this.embeddingTransformer = embeddingTransformer;
         this.embeddingModel = ensureNotNull(
                 getOrDefault(embeddingModel, EmbeddingStoreIngestor::loadEmbeddingModel),
                 "embeddingModel"
@@ -203,9 +213,21 @@ public class EmbeddingStoreIngestor {
         Response<List<Embedding>> embeddingsResponse = embeddingModel.embedAll(segments);
         log.debug("Finished embedding {} text segments", segments.size());
 
+        List<Embedding> embeddings = embeddingsResponse.content();
+
+        if (embeddingTransformer != null) {
+            embeddings = embeddingTransformer.transformAll(embeddings);
+            log.debug("Embeddings were transformed into {} embeddings", embeddings.size());
+        }
+
+        if (textSegmentStorageTransformer != null) {
+            segments = this.textSegmentStorageTransformer.transformAll(segments);
+            log.debug("Segments were transformed into {} embeddings", embeddings.size());
+        }
+
         // TODO handle failures, parallelize
         log.debug("Starting to store {} text segments into the embedding store", segments.size());
-        embeddingStore.addAll(embeddingsResponse.content(), segments);
+        embeddingStore.addAll(embeddings, segments);
         log.debug("Finished storing {} text segments into the embedding store", segments.size());
 
         return new IngestionResult(embeddingsResponse.tokenUsage());
@@ -228,6 +250,8 @@ public class EmbeddingStoreIngestor {
         private DocumentTransformer documentTransformer;
         private DocumentSplitter documentSplitter;
         private TextSegmentTransformer textSegmentTransformer;
+        private TextSegmentStorageTransformer textSegmentStorageTransformer;
+        private EmbeddingTransformer embeddingTransformer;
         private EmbeddingModel embeddingModel;
         private EmbeddingStore<TextSegment> embeddingStore;
 
@@ -274,6 +298,28 @@ public class EmbeddingStoreIngestor {
         }
 
         /**
+         * Sets the text segment storage transformer. Optional.
+         *
+         * @param textSegmentStorageTransformer the text segment storage transformer.
+         * @return {@code this}
+         */
+        public Builder textSegmentStorageTransformer(TextSegmentStorageTransformer textSegmentStorageTransformer) {
+            this.textSegmentStorageTransformer = textSegmentStorageTransformer;
+            return this;
+        }
+
+        /**
+         * Sets the embedding transformer. Optional.
+         *
+         * @param embeddingTransformer the embedding transformer.
+         * @return {@code this}
+         */
+        public Builder embeddingTransformer(EmbeddingTransformer embeddingTransformer) {
+            this.embeddingTransformer = embeddingTransformer;
+            return this;
+        }
+
+        /**
          * Sets the embedding model. Mandatory.
          * If none is specified, it tries to load one through SPI (see {@link EmbeddingModelFactory}).
          *
@@ -306,6 +352,8 @@ public class EmbeddingStoreIngestor {
                     documentTransformer,
                     documentSplitter,
                     textSegmentTransformer,
+                    textSegmentStorageTransformer,
+                    embeddingTransformer,
                     embeddingModel,
                     embeddingStore
             );
