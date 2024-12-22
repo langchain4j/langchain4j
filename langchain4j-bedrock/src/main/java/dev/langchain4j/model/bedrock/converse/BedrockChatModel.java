@@ -1,10 +1,5 @@
 package dev.langchain4j.model.bedrock.converse;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -14,6 +9,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -21,13 +19,9 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
@@ -35,6 +29,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
+import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.SpecificToolChoice;
@@ -47,6 +43,21 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolInputSchema;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultStatus;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 
 public class BedrockChatModel implements ChatLanguageModel {
 
@@ -178,7 +189,8 @@ public class BedrockChatModel implements ChatLanguageModel {
         if (message instanceof UserMessage userMessage) {
             return Message.builder()
                     .role(ConversationRole.USER)
-                    .content(ContentBlock.builder().text(userMessage.singleText()).build())
+//                    .content(ContentBlock.builder().text(userMessage.singleText()).build())
+                    .content(contentBlockFrom(userMessage.contents()))
                     .build();
         }
 
@@ -191,6 +203,34 @@ public class BedrockChatModel implements ChatLanguageModel {
 
         throw new IllegalArgumentException(
                 "Unknown message type: " + message.getClass().getName());
+    }
+
+    private Collection<ContentBlock> contentBlockFrom(List<Content> contents) {
+        if (contents == null || contents.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return contents.stream()
+                .map(content -> {
+                    if (content instanceof ImageContent imageContent) {
+                        return ContentBlock.builder()
+                                .image(ImageBlock.builder()
+                                        .format(imageContent.image().mimeType().split("/")[1])
+                                        .source(ImageSource.builder()
+                                                .bytes(SdkBytes.fromByteArray(Base64.getDecoder()
+                                                        .decode(imageContent.image().base64Data())))
+                                                .build())
+                                        .build())
+                                .build();
+                    }
+
+                    if (content instanceof TextContent textContent) {
+                        return ContentBlock.builder()
+                                .text(textContent.text())
+                                .build();
+                    }
+                    throw new IllegalArgumentException("Unknown content type: " + content.getClass().getName());
+                }).collect(Collectors.toList());
     }
 
     private ToolConfiguration extractToolConfigurationFrom(
