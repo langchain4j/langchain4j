@@ -23,7 +23,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * ContentRetriever supports
+ * ContentRetriever supports vector search, full text search and hybrid search on PostgreSQL using pgvector extension.
  **/
 public class PgVectorContentRetriever implements ContentRetriever {
 
@@ -41,6 +41,27 @@ public class PgVectorContentRetriever implements ContentRetriever {
 
     private final PgVectorEmbeddingStore pgVectorEmbeddingStore;
 
+    /**
+     * @param host                  The database host
+     * @param port                  The database port
+     * @param user                  The database user
+     * @param password              The database password
+     * @param database              The database name
+     * @param table                 The database table
+     * @param dimension             The vector dimension
+     * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param regconfig             The text search configuration <a href="https://www.postgresql.org/docs/9.4/functions-textsearch.html">Text Search Functions and Operators</a>
+     * @param indexListSize         The IVFFlat number of lists
+     * @param createTable           Should create table automatically
+     * @param dropTableFirst        Should drop table first, usually for testing
+     * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
+     * @param fullTextIndexType     full text index type, support <a href="https://www.postgresql.org/docs/current/gin-intro.html">GIN</a>...
+     * @param embeddingModel        The embedding model
+     * @param pgQueryType           The pgQueryType supports VECTOR, FULL_TEXT, and HYBRID. Currently, when FULL_TEXT is specified, the embeddingModel parameter is also required.
+     * @param filter                The metadata filter
+     * @param maxResults            The max results
+     * @param minScore              The min score
+     */
     public PgVectorContentRetriever(String host,
                                     Integer port,
                                     String user,
@@ -75,9 +96,7 @@ public class PgVectorContentRetriever implements ContentRetriever {
                 .build();
 
         ensureNotNull(pgQueryType, "pgQueryType");
-        if (!PgQueryType.FULL_TEXT.equals(pgQueryType)) {
-            ensureNotNull(embeddingModel, "embeddingModel");
-        }
+        ensureNotNull(embeddingModel, "embeddingModel");
 
         this.embeddingModel = embeddingModel;
         this.pgQueryType = pgQueryType;
@@ -203,22 +222,45 @@ public class PgVectorContentRetriever implements ContentRetriever {
             return this;
         }
 
+        /**
+         * Sets the dimension of the embedding vector
+         *
+         * @param dimension The dimension of vector
+         * @return builder
+         */
         public Builder dimension(Integer dimension) {
             this.dimension = dimension;
             return this;
         }
 
+        /**
+         * Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+         *
+         * @param useIndex Whether to use index
+         * @return builder
+         */
         public Builder useIndex(Boolean useIndex) {
             this.useIndex = useIndex;
             return this;
         }
 
-
+        /**
+         * Sets the text search configuration <a href="https://www.postgresql.org/docs/9.4/functions-textsearch.html">Text Search Functions and Operators</a>
+         *
+         * @param regconfig The text search configuration
+         * @return builder
+         */
         public Builder regconfig(String regconfig) {
             this.regconfig = regconfig;
             return this;
         }
 
+        /**
+         * Sets the IVFFlat number of lists
+         *
+         * @param indexListSize The IVFFlat number of lists
+         * @return builder
+         */
         public Builder indexListSize(Integer indexListSize) {
             this.indexListSize = indexListSize;
             return this;
@@ -234,36 +276,79 @@ public class PgVectorContentRetriever implements ContentRetriever {
             return this;
         }
 
+        /**
+         * Sets the metadata storage config.
+         *
+         * @param metadataStorageConfig The metadata storage config.
+         * @return builder
+         */
         public Builder metadataStorageConfig(MetadataStorageConfig metadataStorageConfig) {
             this.metadataStorageConfig = metadataStorageConfig;
             return this;
         }
 
+        /**
+         * Sets the full text index type.
+         *
+         * @param fullTextIndexType The full text index type.
+         * @return builder
+         */
         public Builder fullTextIndexType(FullTextIndexType fullTextIndexType) {
             this.fullTextIndexType = fullTextIndexType;
             return this;
         }
 
+        /**
+         * Sets the Embedding Model.
+         *
+         * @param embeddingModel The Embedding Model.
+         * @return builder
+         */
         public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
             return this;
         }
 
+        /**
+         * Sets the query type.
+         *
+         * @param pgQueryType The query type to retrieve contents.
+         * @return builder
+         */
         public Builder pgQueryType(PgQueryType pgQueryType) {
             this.pgQueryType = pgQueryType;
             return this;
         }
 
+        /**
+         * Sets the filter to be applied to the search query.
+         *
+         * @param filter The filter to be applied to the search query.
+         * @return builder
+         */
         public Builder filter(Filter filter) {
             this.filter = filter;
             return this;
         }
 
+        /**
+         * Sets the maximum number of {@link Content}s to retrieve.
+         *
+         * @param maxResults The maximum number of {@link Content}s to retrieve.
+         * @return builder
+         */
         public Builder maxResults(int maxResults) {
             this.maxResults = maxResults;
             return this;
         }
 
+        /**
+         * Sets the minimum relevance score for the returned {@link Content}s.
+         * {@link Content}s scoring below {@code #minScore} are excluded from the results.
+         *
+         * @param minScore The minimum relevance score for the returned {@link Content}s.
+         * @return builder
+         */
         public Builder minScore(double minScore) {
             this.minScore = minScore;
             return this;
