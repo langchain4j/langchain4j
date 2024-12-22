@@ -33,6 +33,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 public abstract class AiServicesWithJsonSchemaIT {
+    // TODO move to common, use parameterized tests
 
     protected abstract List<ChatLanguageModel> models();
 
@@ -50,7 +51,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_primitives() {
+    protected void should_extract_pojo_with_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -109,7 +110,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_nested_pojo() {
+    protected void should_extract_pojo_with_nested_pojo() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -171,7 +172,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_enum() {
+    protected void should_extract_pojo_with_enum() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -220,7 +221,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_array_of_primitives() {
+    protected void should_extract_pojo_with_array_of_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -270,7 +271,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_list_of_primitives() {
+    protected void should_extract_pojo_with_list_of_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -321,7 +322,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_set_of_primitives() {
+    protected void should_extract_pojo_with_set_of_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -377,7 +378,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_array_of_pojos() {
+    protected void should_extract_pojo_with_array_of_pojos() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -438,7 +439,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_list_of_pojos() {
+    protected void should_extract_pojo_with_list_of_pojos() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -499,7 +500,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_set_of_pojos() {
+    protected void should_extract_pojo_with_set_of_pojos() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -561,7 +562,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_array_of_enums() {
+    protected void should_extract_pojo_with_array_of_enums() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -622,7 +623,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_list_of_enums() {
+    protected void should_extract_pojo_with_list_of_enums() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -682,7 +683,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_set_of_enums() {
+    protected void should_extract_pojo_with_set_of_enums() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -739,7 +740,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_extract_pojo_with_local_date_time_fields() {
+    protected void should_extract_pojo_with_local_date_time_fields() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -830,7 +831,7 @@ public abstract class AiServicesWithJsonSchemaIT {
     }
 
     @Test
-    void should_return_result_with_pojo() {
+    protected void should_return_result_with_pojo() {
 
         for (ChatLanguageModel model : models()) {
 

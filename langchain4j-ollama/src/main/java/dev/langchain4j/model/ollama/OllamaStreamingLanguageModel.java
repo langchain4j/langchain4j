@@ -1,6 +1,7 @@
 package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingLanguageModelBuilderFactory;
 
@@ -10,6 +11,7 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
@@ -23,7 +25,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
     private final OllamaClient client;
     private final String modelName;
     private final Options options;
-    private final String format;
+    private final ResponseFormat responseFormat;
 
     public OllamaStreamingLanguageModel(String baseUrl,
                                         String modelName,
@@ -36,11 +38,15 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                                         Integer numCtx,
                                         List<String> stop,
                                         String format,
+                                        ResponseFormat responseFormat,
                                         Duration timeout,
                                         Boolean logRequests,
                                         Boolean logResponses,
                                         Map<String, String> customHeaders
     ) {
+        if (format != null && responseFormat != null) {
+            throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
+        }
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
@@ -59,7 +65,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                 .numCtx(numCtx)
                 .stop(stop)
                 .build();
-        this.format = format;
+        this.responseFormat = "json".equals(format) ? ResponseFormat.JSON : responseFormat;
     }
 
     public static OllamaStreamingLanguageModelBuilder builder() {
@@ -75,7 +81,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                 .model(modelName)
                 .prompt(prompt)
                 .options(options)
-                .format(format)
+                .format(toOllamaResponseFormat(responseFormat))
                 .stream(true)
                 .build();
 
@@ -95,6 +101,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
         private Integer numCtx;
         private List<String> stop;
         private String format;
+        private ResponseFormat responseFormat;
         private Duration timeout;
         private Map<String, String> customHeaders;
         private Boolean logRequests;
@@ -155,8 +162,21 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
             return this;
         }
 
+        /**
+         * @deprecated Please use {@link #responseFormat(ResponseFormat)} instead.
+         * For example: {@code responseFormat(ResponseFormat.JSON)}.
+         * <br>
+         * Instead of using JSON mode, consider using structured outputs with JSON schema instead,
+         * see more info <a href="https://docs.langchain4j.dev/tutorials/structured-outputs#json-schema">here</a>.
+         */
+        @Deprecated
         public OllamaStreamingLanguageModelBuilder format(String format) {
             this.format = format;
+            return this;
+        }
+
+        public OllamaStreamingLanguageModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
@@ -193,6 +213,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                     numCtx,
                     stop,
                     format,
+                    responseFormat,
                     timeout,
                     logRequests,
                     logResponses,
