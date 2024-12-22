@@ -25,6 +25,7 @@ import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.store.embedding.pgvector.FullTextIndexType.GIN;
 import static java.lang.String.join;
 import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
@@ -58,7 +59,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Should use Gin on text column for full-text search
      */
-    private final Boolean useFullTextIndex;
+    private final FullTextIndexType fullTextIndexType;
 
     /**
      * Constructor for PgVectorEmbeddingStore Class
@@ -67,7 +68,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param table                 The database table
      * @param dimension             The vector dimension
      * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param useFullTextIndex      Should use <a href="https://www.postgresql.org/docs/current/gin-intro.html">GIN</a> for supporting full-text search and hybrid search
+     * @param fullTextIndexType     full text index type, support <a href="https://www.postgresql.org/docs/current/gin-intro.html">GIN</a>...
      * @param regconfig             The text search configuration <a href="https://www.postgresql.org/docs/9.4/functions-textsearch.html">Text Search Functions and Operators</a>
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
@@ -79,7 +80,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                      String table,
                                      Integer dimension,
                                      Boolean useIndex,
-                                     Boolean useFullTextIndex,
+                                     FullTextIndexType fullTextIndexType,
                                      String regconfig,
                                      Integer indexListSize,
                                      Boolean createTable,
@@ -90,7 +91,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         MetadataStorageConfig config = getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
         this.metadataHandler = MetadataHandlerFactory.get(config);
         useIndex = getOrDefault(useIndex, false);
-        this.useFullTextIndex = getOrDefault(useFullTextIndex, false);
+        this.fullTextIndexType = getOrDefault(fullTextIndexType, FullTextIndexType.NO_INDEX);
         this.regconfig = getOrDefault(regconfig, "english");
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
@@ -110,7 +111,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param table                 The database table
      * @param dimension             The vector dimension
      * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param useFullTextIndex      Should use <a href="https://www.postgresql.org/docs/current/gin-intro.html">GIN</a> for supporting full-text search and hybrid search
+     * @param fullTextIndexType     full text index type, support <a href="https://www.postgresql.org/docs/current/gin-intro.html">GIN</a>...
      * @param regconfig             The text search configuration <a href="https://www.postgresql.org/docs/9.4/functions-textsearch.html">Text Search Functions and Operators</a>
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
@@ -128,7 +129,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             String table,
             Integer dimension,
             Boolean useIndex,
-            Boolean useFullTextIndex,
+            FullTextIndexType fullTextIndexType,
             String regconfig,
             Integer indexListSize,
             Boolean createTable,
@@ -136,7 +137,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             MetadataStorageConfig metadataStorageConfig
     ) {
         this(createDataSource(host, port, user, password, database),
-                table, dimension, useIndex, useFullTextIndex, regconfig, indexListSize, createTable, dropTableFirst, metadataStorageConfig);
+                table, dimension, useIndex, fullTextIndexType, regconfig, indexListSize, createTable, dropTableFirst, metadataStorageConfig);
     }
 
     private static DataSource createDataSource(String host, Integer port, String user, String password, String database) {
@@ -187,7 +188,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                         indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
                 statement.executeUpdate(query);
             }
-            if (useFullTextIndex) {
+            if (fullTextIndexType == GIN) {
                 query = String.format("CREATE INDEX IF NOT EXISTS %s_text_search_idx ON %s USING GIN (text_tsv)",
                         table, table);
                 statement.executeUpdate(query);
@@ -198,7 +199,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private String buildCreateTableSQL(Integer dimension) {
-        if (useFullTextIndex) { // need a tetevtor column to build index
+        if (fullTextIndexType == GIN) { // need a tetevtor column to build index
             return String.format(
                     "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, " +
                             "embedding vector(%s), text TEXT NULL, %s , " +
@@ -410,12 +411,13 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         // 32 is normalization factor to make the score between 0 and 1. The score is calculated by rank / (rank + 1).
         String scoreColumn = rankAsScore ? "row_number() over (order by ts_rank_cd(%s, %s, 32) desc)" :
                 "ts_rank_cd(%s, %s, 32)";
-        String toQuery = String.format("to_tsquery('%s', ?)", regconfig);
-        String fullTextColumn = useFullTextIndex ? "text_tsv" : String.format("plainto_tsquery('%s', text)", regconfig);
+        String toQuery = String.format("plainto_tsquery('%s', ?)", regconfig);
+        String fullTextColumn = fullTextIndexType == GIN ? "text_tsv" : String.format("to_tsvector('%s', text)", regconfig);
         return String.format(
                 "full_text_result AS (\n\tSELECT " +scoreColumn+" AS score, embedding_id, embedding, text, %s FROM %s " +
                         "\n\t\tWHERE %s @@ %s %s\n)\n",
-                fullTextColumn, toQuery, join(",", metadataHandler.columnsNames()), table,
+                fullTextColumn, toQuery,
+                join(",", metadataHandler.columnsNames()), table,
                 fullTextColumn, toQuery, filterCondition);
     }
 
