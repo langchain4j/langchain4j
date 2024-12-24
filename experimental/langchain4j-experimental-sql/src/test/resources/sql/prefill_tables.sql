@@ -1,4 +1,4 @@
-INSERT IGNORE INTO customers (customer_id, first_name, last_name, email)
+INSERT INTO customers (customer_id, first_name, last_name, email)
 VALUES (1, 'John', 'Doe', 'john.doe@example.com'),
        (2, 'Jane', 'Smith', 'jane.smith@example.com'),
        (3, 'Alice', 'Johnson', 'alice.johnson@example.com'),
@@ -6,7 +6,7 @@ VALUES (1, 'John', 'Doe', 'john.doe@example.com'),
        (5, 'Carol', 'Brown', 'carol.brown@example.com')
 ON CONFLICT (customer_id) DO NOTHING;
 
-INSERT IGNORE INTO products (product_id, product_name, price)
+INSERT INTO products (product_id, product_name, price)
 VALUES (10, 'Notebook', 12.99),
        (20, 'Pen', 1.50),
        (30, 'Desk Lamp', 23.99),
