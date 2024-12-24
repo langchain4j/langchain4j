@@ -12,21 +12,27 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.Select;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import javax.sql.DataSource;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 /**
  * <b>
@@ -40,16 +46,18 @@ import static java.util.Collections.singletonList;
  * Using the {@link DataSource} and the {@link ChatLanguageModel}, this {@link ContentRetriever}
  * attempts to generate and execute SQL queries for given natural language queries.
  * <br>
- * Optionally, {@link #sqlDialect}, {@link #databaseStructure}, {@link #promptTemplate}, and {@link #maxRetries} can be specified
+ * Optionally, {@link #sqlDialect}, {@link #databaseStructure}, {@link #promptTemplate}, {@link #maxRetries} and {@link #maxTableRows}  can be specified
  * to customize the behavior. See the javadoc of the constructor for more details.
  * Most methods can be overridden to customize the behavior further.
  * <br>
  * The default prompt template is not highly optimized,
  * so it is advised to experiment with it and see what works best for your use case.
  */
+@Slf4j
 @Experimental
 public class SqlDatabaseContentRetriever implements ContentRetriever {
-
+    private static final String ERROR_RESULT_PREFIX = "Error of executing";
+    private static final String RESULT_PREFIX = "Result of executing";
     private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             "You are an expert in writing SQL queries.\n" +
                     "You have access to a {{sqlDialect}} database with the following structure:\n" +
@@ -66,7 +74,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
     private final ChatLanguageModel chatLanguageModel;
 
     private final int maxRetries;
-
+    private final int maxTableRows;
     /**
      * Creates an instance of a {@code SqlDatabaseContentRetriever}.
      *
@@ -98,13 +106,15 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                                        String databaseStructure,
                                        PromptTemplate promptTemplate,
                                        ChatLanguageModel chatLanguageModel,
-                                       Integer maxRetries) {
+                                       Integer maxRetries,
+                                       Integer maxTableRows) {
         this.dataSource = ensureNotNull(dataSource, "dataSource");
         this.sqlDialect = getOrDefault(sqlDialect, () -> getSqlDialect(dataSource));
         this.databaseStructure = getOrDefault(databaseStructure, () -> generateDDL(dataSource));
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         this.maxRetries = getOrDefault(maxRetries, 1);
+        this.maxTableRows = getOrDefault(maxTableRows, 50);
     }
 
     // TODO (for v2)
@@ -241,6 +251,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         String errorMessage = null;
 
         int attemptsLeft = maxRetries + 1;
+        List<Content> contents = new ArrayList<>();
         while (attemptsLeft > 0) {
             attemptsLeft--;
 
@@ -248,26 +259,74 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
             sqlQuery = clean(sqlQuery);
 
-            if (!isSelect(sqlQuery)) {
-                return emptyList();
+            List<String> sqlList = getSplitSql(sqlQuery);
+            contents = getContents(sqlList);
+            if (!isExistError(contents)) {
+                break;
             }
+            errorMessage = getSqlErrors(contents);
+        }
+        return contents;
+    }
 
-            try {
-                validate(sqlQuery);
-
-                try (Connection connection = dataSource.getConnection();
-                     Statement statement = connection.createStatement()) {
-
-                    String result = execute(sqlQuery, statement);
-                    Content content = format(result, sqlQuery);
-                    return singletonList(content);
-                }
-            } catch (Exception e) {
-                errorMessage = e.getMessage();
+    protected String getSqlErrors(List<Content> contents) {
+        List<String> errors = new ArrayList<>();
+        for (Content content : contents) {
+            String text = content.textSegment().text();
+            String sqlStr;
+            if (text.startsWith("Error")) {
+                sqlStr = text.replace(ERROR_RESULT_PREFIX, "").trim();
+            } else if (text.startsWith("Result")) {
+                sqlStr = text.replace(RESULT_PREFIX, "").trim();
+            } else {
+                log.error("Get sql error failed: {}", text);
+                continue;
+            }
+            String[] sqlError = sqlStr.split(":");
+            if (sqlError.length == 2) {
+                errors.add(sqlError[1].trim());
+            } else {
+                log.error("Split sql error failed: {}", sqlStr);
+                errors.add(sqlStr);
             }
         }
+        return String.join(";", errors);
+    }
 
-        return emptyList();
+    private Boolean isExistError(List<Content> contents) {
+        for (Content content : contents) {
+            String text = content.textSegment().text();
+            if (text.startsWith("Error")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<Content> getContents(List<String> sqlQueries) {
+        ArrayList<Content> contents = new ArrayList<>();
+        for (int i = 0; i < sqlQueries.size(); i++) {
+            String sqlQuery = sqlQueries.get(i);
+            if (!isSelect(sqlQuery.trim())) {
+                log.error("SQL query is not a SELECT statement: {}", sqlQuery);
+                continue;
+            }
+            Pair<String, Integer> result;
+            Content content;
+            try {
+                try (Connection connection = this.dataSource.getConnection(); Statement statement = connection.createStatement()) {
+                    result = execute(sqlQuery, statement);
+                    content = format(result, sqlQuery, false, i);
+                }
+            } catch (Exception e) {
+                log.error("Failed to execute SQL query: {}", sqlQueries, e);
+                result = Pair.of(e.getMessage(), 0);
+                content = format(result, sqlQuery, true, i);
+            }
+            contents.add(content);
+        }
+
+        return contents;
     }
 
     protected String generateSqlQuery(Query naturalLanguageQuery, String previousSqlQuery, String previousErrorMessage) {
@@ -300,8 +359,13 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         return sqlQuery;
     }
 
-    protected void validate(String sqlQuery) {
-
+    private List<String> getSplitSql(String sqlQuery) {
+        ArrayList<String> sqlList = new ArrayList<>();
+        if (StringUtils.isNotBlank(sqlQuery) && sqlQuery.contains(";")) {
+            String[] splitSqlArray = sqlQuery.split(";");
+            sqlList.addAll(Arrays.asList(splitSqlArray));
+        }
+        return sqlList;
     }
 
     protected boolean isSelect(String sqlQuery) {
@@ -313,39 +377,60 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
     }
 
-    protected String execute(String sqlQuery, Statement statement) throws SQLException {
-        List<String> resultRows = new ArrayList<>();
-
+    private Pair<String, Integer> execute(String sqlQuery, Statement statement) throws SQLException {
+        StringBuilder markdownBuilder = new StringBuilder();
+        int rowCount = 0;
         try (ResultSet resultSet = statement.executeQuery(sqlQuery)) {
             int columnCount = resultSet.getMetaData().getColumnCount();
 
-            // header
+            // Header
             List<String> columnNames = new ArrayList<>();
             for (int i = 1; i <= columnCount; i++) {
                 columnNames.add(resultSet.getMetaData().getColumnName(i));
             }
-            resultRows.add(String.join(",", columnNames));
+            markdownBuilder.append("| ")
+                    .append(String.join(" | ", columnNames))
+                    .append(" |\n");
 
-            // rows
+            // Separator (custom code for repeat behavior)
+            markdownBuilder.append("| --- ".repeat(Math.max(0, columnCount)));
+            markdownBuilder.append("|\n");
+
+            // Rows
             while (resultSet.next()) {
+                if (rowCount >= this.maxTableRows) {
+                    markdownBuilder.insert(0, "The retrieved table is too large, " +
+                            "displaying the first %s rows by default:\n".formatted(this.maxTableRows));
+                    break;
+                }
                 List<String> columnValues = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
-
-                    String columnValue = resultSet.getObject(i)==null?"":resultSet.getObject(i).toString();
-
-                    if (columnValue.contains(",")) {
-                        columnValue = "\"" + columnValue + "\"";
-                    }
-                    columnValues.add(columnValue);
+                    String columnValue = resultSet.getObject(i) == null ? "" : resultSet.getObject(i).toString();
+                    columnValues.add(columnValue.replace("|", "\\|")); // Escape pipes
                 }
-                resultRows.add(String.join(",", columnValues));
+                markdownBuilder.append("| ")
+                        .append(String.join(" | ", columnValues))
+                        .append(" |\n");
+                rowCount++;
             }
         }
 
-        return String.join("\n", resultRows);
+        return Pair.of(markdownBuilder.toString(), rowCount);
     }
 
-    private static Content format(String result, String sqlQuery) {
-        return Content.from(String.format("Result of executing '%s':\n%s", sqlQuery, result));
+    private Content format(Pair<String, Integer> result, String sqlQuery, Boolean isError, Integer order) {
+        Content content;
+        String executeResult = result.getLeft();
+        if (!isError) {
+            content = Content.from(String.format(RESULT_PREFIX + " '%s':\n%s", sqlQuery, executeResult));
+        } else {
+            content = Content.from(String.format(ERROR_RESULT_PREFIX + " %s:%s", sqlQuery, executeResult));
+        }
+        Integer rowCount = result.getRight();
+        content.textSegment().metadata().put("rowCount", rowCount);
+        content.textSegment().metadata().put("sql", sqlQuery);
+        content.textSegment().metadata().put("order", order);
+        return content;
     }
+
 }
