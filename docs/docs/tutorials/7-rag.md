@@ -262,6 +262,7 @@ and update it in the `EmbeddingStore` as well to keep it in sync.
 ### Document Loader
 You can create a `Document` from a `String`, but a simpler method is to use one of our document loaders included in the library:
 - `FileSystemDocumentLoader` from the `langchain4j` module
+- `ClassPathDocumentLoader` from the `langchain4j` module
 - `UrlDocumentLoader` from the `langchain4j` module
 - `AmazonS3DocumentLoader` from the `langchain4j-document-loader-amazon-s3` module
 - `AzureBlobStorageDocumentLoader` from the `langchain4j-document-loader-azure-storage-blob` module
