@@ -40,6 +40,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelIT {
@@ -803,6 +804,27 @@ class BedrockChatModelIT {
         assertThat(aiMessageResponse.content().text()).isNotBlank();
         assertThat(aiMessageResponse.content().text()).contains("Ronaldo");
         assertThat(aiMessageResponse.finishReason()).isIn(STOP, LENGTH);
+    }
+
+    @Test
+    void testInjectClientToModelBuilder() {
+
+        String serviceName = "custom-service-name";
+
+        BedrockMistralAiChatModel model = BedrockMistralAiChatModel.builder()
+                .client(new BedrockRuntimeClient() {
+                    @Override
+                    public String serviceName() {
+                        return serviceName;
+                    }
+
+                    @Override
+                    public void close() {
+                    }
+                })
+                .build();
+
+        assertThat(model.getClient().serviceName()).isEqualTo(serviceName);
     }
 
     @AfterEach
