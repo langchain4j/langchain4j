@@ -6,17 +6,18 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.Duration;
 import java.util.Base64;
@@ -29,8 +30,8 @@ import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.CAT_IMAGE_URL;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20240620;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.randomString;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.lang.System.getenv;
@@ -143,7 +144,7 @@ class AnthropicStreamingChatModelIT {
                 .baseUrl("https://api.anthropic.com/v1/")
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
-                .modelName(CLAUDE_3_SONNET_20240229)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(1.0)
                 .topP(1.0)
                 .topK(1)
@@ -166,6 +167,66 @@ class AnthropicStreamingChatModelIT {
     }
 
     @Test
+    void should_cache_system_message() {
+
+        // given
+        AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .beta("prompt-caching-2024-07-31")
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .cacheSystemMessages(true)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        SystemMessage systemMessage = SystemMessage.from("What types of messages are supported in LangChain?".repeat(172) + randomString(2));
+        UserMessage userMessage = new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(asList(userMessage, systemMessage), handler);
+        AnthropicTokenUsage responseAnthropicTokenUsage = (AnthropicTokenUsage) handler.get().tokenUsage();
+
+        // then
+        assertThat(responseAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+    }
+
+    @Test
+    void should_cache_tools() {
+
+        // given
+        AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .beta("prompt-caching-2024-07-31")
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .cacheTools(true)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+            .name("calculator")
+            .description("returns a sum of two numbers".repeat(214) + randomString(2))
+            .parameters(JsonObjectSchema.builder()
+                .addIntegerProperty("first")
+                .addIntegerProperty("second")
+                .build())
+            .build();
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(userMessage), List.of(toolSpecification), handler);
+        AnthropicTokenUsage responseAnthropicTokenUsage = (AnthropicTokenUsage) handler.get().tokenUsage();
+
+        // then
+        assertThat(responseAnthropicTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(responseAnthropicTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+    }
+
+    @Test
     void should_fail_to_create_without_api_key() {
 
         assertThatThrownBy(() -> AnthropicStreamingChatModel.withApiKey(null))
@@ -174,14 +235,13 @@ class AnthropicStreamingChatModelIT {
                         "It can be generated here: https://console.anthropic.com/settings/keys");
     }
 
-    @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.anthropic.AnthropicChatModelIT#models_supporting_tools")
-    void should_execute_a_tool_then_stream_answer(AnthropicChatModelName modelName) {
+    @Test
+    void should_execute_a_tool_then_stream_answer() {
 
         // given
         StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(modelName)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -232,7 +292,7 @@ class AnthropicStreamingChatModelIT {
         // given
         StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_SONNET_20240620)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -267,7 +327,7 @@ class AnthropicStreamingChatModelIT {
         // given
         StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_SONNET_20240620)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -325,7 +385,7 @@ class AnthropicStreamingChatModelIT {
         // given
         StreamingChatLanguageModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_SONNET_20240620)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)

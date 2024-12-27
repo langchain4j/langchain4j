@@ -70,8 +70,10 @@ Finally, we can use the `AiServices` class to create an instance of our AI Servi
 Assistant assistant = AiServices.create(Assistant.class, model);
 ```
 :::note
-In a Quarkus or Spring Boot application, this can be a bean that you can then inject into your code
-wherever you need AI Services.
+In [Quarkus](https://docs.quarkiverse.io/quarkus-langchain4j/dev/ai-services.html)
+and [Spring Boot](/tutorials/spring-boot-integration#spring-boot-starter-for-declarative-ai-services) applications,
+the autoconfiguration handles creating an `Assistant` bean.
+This means you do not need to call `AiServices.create(...)`, you can simply inject/autowire the `Assistant` wherever it is needed.
 :::
 
 Now we can use `Assistant`:
@@ -91,14 +93,14 @@ So, `AiService` will automatically convert it into a `UserMessage` and invoke `C
 Since the output type of the `chat` method is a `String`, after `ChatLanguageModel` returns `AiMessage`,
 it will be converted into a `String` before being returned from the `chat` method.
 
-## Using AI Services in Quarkus Application
+## AI Services in Quarkus Application
 [LangChain4j Quarkus extension](https://docs.quarkiverse.io/quarkus-langchain4j/dev/index.html)
 greatly simplifies using AI Services in Quarkus applications.
 
 More information can be found [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/ai-services.html).
 
-## Using AI Services in Spring Boot Application
-[LangChain4j Spring Boot starter](/tutorials/spring-boot-integration)
+## AI Services in Spring Boot Application
+[LangChain4j Spring Boot starter](/tutorials/spring-boot-integration/#spring-boot-starter-for-declarative-ai-services)
 greatly simplifies using AI Services in Spring Boot applications.
 
 ## @SystemMessage
@@ -244,7 +246,16 @@ String chat(@V("answerInstructions") String answerInstructions, @V("country") St
 ```
 </details>
 
+## Multimodality
+AI services currently do not support multimodality,
+please use the [low-level API](/tutorials/chat-and-language-models#multimodality) for this.
+
 ## Structured Outputs
+
+:::note
+More info on Structured Outputs can be found [here](/tutorials/structured-outputs).
+:::
+
 If you want to receive a structured output from the LLM,
 you can change the return type of your AI Service method from `String` to something else.
 Currently, AI Services support the following return types:
@@ -266,10 +277,10 @@ Before the method returns, the AI Service will parse the output of the LLM into 
 You can observe appended instructions by [enabling logging](/tutorials/logging).
 
 :::note
-Some LLMs support JSON mode (aka [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/)),
-where the LLM API has an option to specify a JSON schema for the desired output. If such a feature is supported and enabled, 
-instructions will not be appended to the end of the `UserMessage`. In this case, the JSON schema will be automatically
-created from your POJO and passed to the LLM. This will guarantee that the LLM adheres to this JSON schema.
+Some LLM providers (e.g., OpenAI and Google Gemini) allow specifying JSON schema for the desired output.
+If such a feature is supported **and enabled**, free-form text instructions will not be appended to the end of the `UserMessage`.
+In this case, the JSON schema will be automatically generated from your POJO and passed to the LLM.
+This will guarantee that the LLM adheres to this JSON schema.
 :::
 
 Now let's take a look at some examples.
@@ -483,7 +494,7 @@ MistralAiChatModel.builder()
 ```java
 OllamaChatModel.builder()
     ...
-    .format("json")
+    .responseFormat(JSON)
     .build();
 ```
 
@@ -528,7 +539,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>0.35.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 ```java
@@ -623,7 +634,7 @@ More details about tools can be found [here](/tutorials/tools#high-level-tool-ap
 
 ## RAG
 
-AI Service can be configured with a `ContentRetriever` in order to enable RAG:
+AI Service can be configured with a `ContentRetriever` in order to enable [naive RAG](/tutorials/rag#naive-rag):
 ```java
 
 EmbeddingStore embeddingStore  = ...
@@ -638,7 +649,7 @@ Assistant assistant = AiServices.builder(Assistant.class)
 ```
 
 Configuring a `RetrievalAugmentor` provides even more flexibility,
-enabling advanced RAG capabilities such as query transformation, re-ranking, etc:
+enabling [advanced RAG](/tutorials/rag#advanced-rag) capabilities such as query transformation, re-ranking, etc:
 ```java
 RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
         .queryTransformer(...)

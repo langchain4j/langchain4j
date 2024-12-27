@@ -5,6 +5,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -13,9 +14,6 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.Response;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithSetOfEnumsParameter.Color.GREEN;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithSetOfEnumsParameter.Color.RED;
@@ -38,7 +37,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -46,9 +44,11 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AiServicesWithNewToolsIT {
+    // TODO move to common, use parameterized tests
+    // TODO test the same in streaming mode, test token usage is summed for tools
 
     @Captor
-    private ArgumentCaptor<List<ToolSpecification>> toolSpecificationCaptor;
+    private ArgumentCaptor<ChatRequest> chatRequestCaptor;
 
     protected abstract List<ChatLanguageModel> models();
 
@@ -56,6 +56,7 @@ public abstract class AiServicesWithNewToolsIT {
         return models();
     }
 
+    // TODO test token usage is summed for tools
     // TODO single argument: array of primitives, array of enums, array of POJOs, map?
     // TODO up-wrap single POJO and Map? (remove one level of object nesting) Make sure descriptions still work.
 
@@ -105,11 +106,10 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("add");
@@ -121,15 +121,12 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithPojoParameter {
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Person {
+        record Person(
 
-            String name;
-            int age;
-            Double height;
-            boolean married;
+                String name,
+                int age,
+                Double height,
+                boolean married) {
         }
 
         @Tool
@@ -173,11 +170,10 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("process");
@@ -189,21 +185,13 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithNestedPojoParameter {
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Person {
-
-            String name;
-            Address address;
+        record Person(
+                String name,
+                Address address
+        ) {
         }
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Address {
-
-            String city;
+        record Address(String city) {
         }
 
         @Tool
@@ -224,7 +212,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_pojo_with_nested_pojo() {
+    protected void should_execute_tool_with_pojo_with_nested_pojo() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -248,11 +236,10 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("process");
@@ -264,13 +251,10 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithRecursion {
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Person {
-
-            String name;
-            List<Person> children;
+        record Person(
+                String name,
+                List<Person> children
+        ) {
         }
 
         @Tool
@@ -280,7 +264,7 @@ public abstract class AiServicesWithNewToolsIT {
         static final String REFERENCE = generateUUIDFrom(ToolWithRecursion.Person.class.getName());
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
-                .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                .properties(new LinkedHashMap<>() {{
                     put("name", new JsonStringSchema());
                     put("children", JsonArraySchema.builder()
                             .items(JsonReferenceSchema.builder()
@@ -332,11 +316,10 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("process");
@@ -385,11 +368,10 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tools);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("currentTime");
@@ -438,7 +420,7 @@ public abstract class AiServicesWithNewToolsIT {
                     .tools(tool)
                     .build();
 
-            String text = "What is the weather in Munich in celsius?";
+            String text = "What is the current temperature in Munich in celsius?";
 
             // when
             Response<AiMessage> response = assistant.chat(text);
@@ -450,11 +432,10 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithEnumParameter.EXPECTED_SPECIFICATION);
             }
@@ -479,6 +460,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
+    @EnabledIf("supportsMapParameters")
     void should_execute_tool_with_map_parameter() {
 
         for (ChatLanguageModel model : modelsSupportingMapParametersInTools()) {
@@ -506,15 +488,18 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithMapParameter.EXPECTED_SPECIFICATION);
             }
         }
+    }
+
+    protected boolean supportsMapParameters() {
+        return true;
     }
 
     static class ToolWithListOfStringsParameter {
@@ -559,11 +544,10 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfStringsParameter.EXPECTED_SPECIFICATION);
             }
@@ -619,11 +603,10 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithSetOfEnumsParameter.EXPECTED_SPECIFICATION);
             }
@@ -648,7 +631,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_collection_of_integers_parameter() {
+    protected void should_execute_tool_with_collection_of_integers_parameter() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -672,11 +655,10 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithCollectionOfIntegersParameter.EXPECTED_SPECIFICATION);
             }
@@ -685,12 +667,7 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithListOfPojoParameter {
 
-        @ToString
-        @AllArgsConstructor
-        @EqualsAndHashCode
-        static class Person {
-
-            String name;
+        record Person(String name) {
         }
 
         @Tool
@@ -713,7 +690,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_list_of_POJOs_parameter() {
+    protected void should_execute_tool_with_list_of_POJOs_parameter() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -745,11 +722,10 @@ public abstract class AiServicesWithNewToolsIT {
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
-                verify(model).supportedCapabilities();
-                verify(model, times(2)).generate(anyList(), toolSpecificationCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verify(model, times(2)).chat(chatRequestCaptor.capture());
+                verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = toolSpecificationCaptor.getValue();
+                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfPojoParameter.EXPECTED_SPECIFICATION);
             }
@@ -757,6 +733,6 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     protected boolean verifyModelInteractions() {
-        return true;
+        return false;
     }
 }

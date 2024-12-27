@@ -153,47 +153,7 @@ ToolSpecification toolSpecification = ToolSpecification.builder()
     .build();
 ```
 
-<details>
-<summary>More details</summary>
-
-There are several ways to add properties to a `JsonObjectSchema`:
-1. You can add all the properties at once using the `properties(Map<String, JsonSchemaElement> properties)` method:
-```java
-JsonObjectSchema.builder()
-    .properties(Map.of(
-        "city", JsonStringSchema.builder()
-                    .description("The city for which the weather forecast should be returned")
-                    .build(),
-        "temperatureUnit", JsonEnumSchema.builder()
-                    .enumValues("CELSIUS", "FAHRENHEIT")
-                    .build()
-    ))
-    .required("city")
-    .build();
-```
-2. You can add properties individually using the `addProperty(String name, JsonSchemaElement jsonSchemaElement)` method:
-```java
-JsonObjectSchema.builder()
-    .addProperty("city", JsonStringSchema.builder()
-        .description("The city for which the weather forecast should be returned")
-        .build())
-    .addProperty("temperatureUnit", JsonEnumSchema.builder()
-        .enumValues("CELSIUS", "FAHRENHEIT")
-        .build())
-    .required("city")
-    .build();
-```
-3. You can add properties individually using one of the `add{Type}Property(String name)` or `add{Type}Property(String name, String description)` methods:
-```java
-JsonObjectSchema.builder()
-    .addStringProperty("city", "The city for which the weather forecast should be returned")
-    .addEnumProperty("temperatureUnit", List.of("CELSIUS", "FAHRENHEIT"))
-    .required("city")
-    .build();
-```
-
-Please refer to the Javadoc of the `JsonObjectSchema` for more details.
-</details>
+You can find more information on `JsonObjectSchema` [here](/tutorials/structured-outputs#jsonobjectschema).
 
 2. Using helper methods:
 - `ToolSpecifications.toolSpecificationsFrom(Class)`
@@ -247,7 +207,7 @@ Response<AiMessage> response2 = model.generate(messages, toolSpecifications);
 
 ## High Level Tool API
 At a high level of abstraction, you can annotate any Java method with the `@Tool` annotation
-and specify them when creating [AI Service](/tutorials/ai-services).
+and specify them when creating [AI Service](/tutorials/ai-services#tools-function-calling).
 
 AI Service will automatically convert such methods into `ToolSpecification`s
 and include them in the request for each interaction with the LLM.
@@ -269,7 +229,7 @@ public String getWebPageContent(@P("URL of the page") String url) {
 }
 ```
 
-### Tool Method Restrictions
+### Tool Method Limitations
 Methods annotated with `@Tool`:
 - can be either static or non-static
 - can have any visibility (public, private, etc.).
@@ -279,9 +239,9 @@ Methods annotated with `@Tool` can accept any number of parameters of various ty
 - Primitive types: `int`, `double`, etc
 - Object types: `String`, `Integer`, `Double`, etc
 - Custom POJOs (can contain nested POJOs)
-- Enums
-- `List`/`Set` of above-mentioned types
-- `Map<K,V>` (you need to manually specify the types of `K` and `V` in the parameter description)
+- `enum`s
+- `List<T>`/`Set<T>` where `T` is one of the above-mentioned types
+- `Map<K,V>` (you need to manually specify the types of `K` and `V` in the parameter description with `@P`)
 
 Methods without parameters are supported as well.
 
@@ -300,6 +260,11 @@ If the method has a `void` return type, "Success" string is sent to the LLM if t
 If the method has a `String` return type, the returned value is sent to the LLM as is, without any conversions.
 
 For other return types, the returned value is converted into a JSON string before being sent to the LLM.
+
+### Exception Handling
+If a method annotated with `@Tool` throws an `Exception`,
+the message of the `Exception` (`e.getMessage()`) will be sent to the LLM as the result of tool's execution.
+This allows the LLM to correct its mistake and retry, if it considers it necessary.
 
 ### `@Tool`
 Any Java method annotated with `@Tool`
@@ -392,6 +357,23 @@ Result<String> result = assistant.chat("Cancel my booking 123-456");
 
 String answer = result.content();
 List<ToolExecution> toolExecutions = result.toolExecutions();
+```
+
+In streaming mode, you can do so by specifying `onToolExecuted` callback:
+```java
+interface Assistant {
+
+    TokenStream chat(String message);
+}
+
+TokenStream tokenStream = assistant.chat("Cancel my booking");
+
+tokenStream
+    .onNext(...)
+    .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
+    .onComplete(...)
+    .onError(...)
+    .start();
 ```
 
 ### Specifying Tools Programmatically

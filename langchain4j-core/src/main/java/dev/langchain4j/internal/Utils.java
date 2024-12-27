@@ -10,8 +10,10 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -19,6 +21,7 @@ import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
+import static java.util.Collections.unmodifiableSet;
 
 /**
  * Utility methods.
@@ -36,6 +39,29 @@ public class Utils {
   public static <T> T getOrDefault(T value, T defaultValue) {
     return value != null ? value : defaultValue;
   }
+
+    /**
+     * Returns the given list if it is not {@code null} and not empty, otherwise returns the given default list.
+     *
+     * @param list        The list to return if it is not {@code null} and not empty.
+     * @param defaultList The list to return if the list is {@code null} or empty.
+     * @param <T>         The type of the value.
+     * @return the given list if it is not {@code null} and not empty, otherwise returns the given default list.
+     */
+    public static <T> List<T> getOrDefault(List<T> list, List<T> defaultList) {
+        return isNullOrEmpty(list) ? defaultList : list;
+    }
+
+    /**
+     * Returns the given map if it is not {@code null} and not empty, otherwise returns the given default map.
+     *
+     * @param map        The map to return if it is not {@code null} and not empty.
+     * @param defaultMap The map to return if the map is {@code null} or empty.
+     * @return the given map if it is not {@code null} and not empty, otherwise returns the given default map.
+     */
+    public static <K, V> Map<K, V> getOrDefault(Map<K, V> map, Map<K, V> defaultMap) {
+        return isNullOrEmpty(map) ? defaultMap : map;
+    }
 
   /**
    * Returns the given value if it is not {@code null}, otherwise returns the value returned by the given supplier.
@@ -122,12 +148,21 @@ public class Utils {
   }
 
   /**
+   * Is the map object {@code null} or empty?
+   * @param map The iterable object to check.
+   * @return {@code true} if the map object is {@code null} or empty map, otherwise {@code false}.
+   * */
+  public static boolean isNullOrEmpty(Map<?, ?> map) {
+      return map == null || map.isEmpty();
+  }
+
+  /**
    * @deprecated Use {@link #isNullOrEmpty(Collection)} instead.
    * @param collection The collection to check.
    * @return {@code true} if the collection is {@code null} or empty, {@code false} otherwise.
    */
   @SuppressWarnings("DeprecatedIsStillUsed")
-  @Deprecated
+  @Deprecated(forRemoval = true)
   public static boolean isCollectionEmpty(Collection<?> collection) {
     return isNullOrEmpty(collection);
   }
@@ -175,9 +210,8 @@ public class Utils {
    */
   public static String generateUUIDFrom(String input) {
       byte[] hashBytes = getSha256Instance().digest(input.getBytes(UTF_8));
-      StringBuilder sb = new StringBuilder();
-      for (byte b : hashBytes) sb.append("%02x".formatted(b));
-      return UUID.nameUUIDFromBytes(sb.toString().getBytes(UTF_8)).toString();
+      String hexFormat = HexFormat.of().formatHex(hashBytes);
+      return UUID.nameUUIDFromBytes(hexFormat.getBytes(UTF_8)).toString();
   }
 
   /**
@@ -259,6 +293,22 @@ public class Utils {
       throw new RuntimeException(e);
     }
   }
+
+    /**
+     * Returns an (unmodifiable) copy of the provided set.
+     * Returns <code>null</code> if the provided set is <code>null</code>.
+     *
+     * @param set The set to copy.
+     * @param <T>  Generic type of the set.
+     * @return The copy of the provided set.
+     */
+    public static <T> Set<T> copyIfNotNull(Set<T> set) {
+        if (set == null) {
+            return null;
+        }
+
+        return unmodifiableSet(set);
+    }
 
   /**
    * Returns an (unmodifiable) copy of the provided list.

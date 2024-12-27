@@ -36,40 +36,72 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>0.35.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 
 <dependency>
     <groupId>org.testcontainers</groupId>
-    <artifactId>testcontainers</artifactId>
+    <artifactId>ollama</artifactId>
     <version>1.19.1</version>
 </dependency>
 ```
 
-Try out a simple chat example code:
+Try out a simple chat example code when Ollama runs in testcontainers:
 
 ```java
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.model.Image;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.DockerClientFactory;
+import org.testcontainers.containers.Container;
 import org.testcontainers.ollama.OllamaContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.io.IOException;
+import java.util.List;
+
 public class OllamaChatExample {
 
-  public static void main(String[] args) {
-    // The model name to use (e.g., "orca-mini", "mistral", "llama2", "codellama", "phi", or
-    // "tinyllama")
-    String modelName = "orca-mini";
+  private static final Logger log = LoggerFactory.getLogger(OllamaChatExample.class);
 
+  static final String OLLAMA_IMAGE = "ollama/ollama:latest";
+  static final String TINY_DOLPHIN_MODEL = "tinydolphin";
+  static final String DOCKER_IMAGE_NAME = "tc-ollama/ollama:latest-tinydolphin";
+
+  public static void main(String[] args) {
     // Create and start the Ollama container
-    OllamaContainer ollama =
-        new OllamaContainer(DockerImageName.parse("langchain4j/ollama-" + modelName + ":latest")
-            .asCompatibleSubstituteFor("ollama/ollama"));
+    DockerImageName dockerImageName = DockerImageName.parse(OLLAMA_IMAGE);
+    DockerClient dockerClient = DockerClientFactory.instance().client();
+    List<Image> images = dockerClient.listImagesCmd().withReferenceFilter(DOCKER_IMAGE_NAME).exec();
+    OllamaContainer ollama;
+    if (images.isEmpty()) {
+        ollama = new OllamaContainer(dockerImageName);
+    } else {
+        ollama = new OllamaContainer(DockerImageName.parse(DOCKER_IMAGE_NAME).asCompatibleSubstituteFor(OLLAMA_IMAGE));
+    }
     ollama.start();
 
+    // Pull the model and create an image based on the selected model.
+    try {
+        log.info("Start pulling the '{}' model ... would take several minutes ...", TINY_DOLPHIN_MODEL);
+        Container.ExecResult r = ollama.execInContainer("ollama", "pull", TINY_DOLPHIN_MODEL);
+        log.info("Model pulling competed! {}", r);
+    } catch (IOException | InterruptedException e) {
+        throw new RuntimeException("Error pulling model", e);
+    }
+    ollama.commitToImage(DOCKER_IMAGE_NAME);
+
     // Build the ChatLanguageModel
-    ChatLanguageModel model =
-        OllamaChatModel.builder().baseUrl(baseUrl(ollama)).modelName(modelName).build();
+    ChatLanguageModel model = OllamaChatModel.builder()
+            .baseUrl(ollama.getEndpoint())
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .modelName(TINY_DOLPHIN_MODEL)
+            .build();
 
     // Example usage
     String answer = model.generate("Provide 3 short bullet points explaining why Java is awesome");
@@ -78,66 +110,155 @@ public class OllamaChatExample {
     // Stop the Ollama container
     ollama.stop();
   }
-
-  private static String baseUrl(GenericContainer<?> ollama) {
-    return String.format("http://%s:%d", ollama.getHost(), ollama.getFirstMappedPort());
-  }
 }
 
 ```
 
-Try out a simple streaming chat example code:
+If your Ollama runs locally, you can also try below chat example code:
 
 ```java
+class OllamaChatLocalModelTest {
+  static String MODEL_NAME = "llama3.2"; // try other local ollama model names
+  static String BASE_URL = "http://localhost:11434"; // local ollama base url
+
+  public static void main(String[] args) {
+      ChatLanguageModel model = OllamaChatModel.builder()
+              .baseUrl(BASE_URL)
+              .modelName(MODEL_NAME)
+              .build();
+      String answer = model.generate("List top 10 cites in China");
+      System.out.println(answer);
+
+      model = OllamaChatModel.builder()
+              .baseUrl(BASE_URL)
+              .modelName(MODEL_NAME)
+              .responseFormat(JSON)
+              .build();
+
+      String json = model.generate("List top 10 cites in US");
+      System.out.println(json);
+    }
+}
+```
+
+Try out a simple streaming chat example code when Ollama runs in testcontainers:
+
+```java
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.model.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.DockerClientFactory;
+import org.testcontainers.containers.Container;
 import org.testcontainers.ollama.OllamaContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class OllamaStreamingChatExample {
 
-  static String MODEL_NAME = "orca-mini"; // try "mistral", "llama2", "codellama" or "phi"
-  static String DOCKER_IMAGE_NAME = "langchain4j/ollama-" + MODEL_NAME + ":latest";
+  private static final Logger log = LoggerFactory.getLogger(OllamaStreamingChatExample.class);
 
-  static OllamaContainer ollama = new OllamaContainer(
-          DockerImageName.parse(DOCKER_IMAGE_NAME).asCompatibleSubstituteFor("ollama/ollama"));
+  static final String OLLAMA_IMAGE = "ollama/ollama:latest";
+  static final String TINY_DOLPHIN_MODEL = "tinydolphin";
+  static final String DOCKER_IMAGE_NAME = "tc-ollama/ollama:latest-tinydolphin";
 
   public static void main(String[] args) {
+    DockerImageName dockerImageName = DockerImageName.parse(OLLAMA_IMAGE);
+    DockerClient dockerClient = DockerClientFactory.instance().client();
+    List<Image> images = dockerClient.listImagesCmd().withReferenceFilter(DOCKER_IMAGE_NAME).exec();
+    OllamaContainer ollama;
+    if (images.isEmpty()) {
+        ollama = new OllamaContainer(dockerImageName);
+    } else {
+        ollama = new OllamaContainer(DockerImageName.parse(DOCKER_IMAGE_NAME).asCompatibleSubstituteFor(OLLAMA_IMAGE));
+    }
     ollama.start();
+    try {
+        log.info("Start pulling the '{}' model ... would take several minutes ...", TINY_DOLPHIN_MODEL);
+        Container.ExecResult r = ollama.execInContainer("ollama", "pull", TINY_DOLPHIN_MODEL);
+        log.info("Model pulling competed! {}", r);
+    } catch (IOException | InterruptedException e) {
+        throw new RuntimeException("Error pulling model", e);
+    }
+    ollama.commitToImage(DOCKER_IMAGE_NAME);
+
     StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
-        .baseUrl(String.format("http://%s:%d", ollama.getHost(), ollama.getMappedPort(PORT)))
-        .modelName(MODEL_NAME)
-        .temperature(0.0)
-        .build();
+            .baseUrl(ollama.getEndpoint())
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .modelName(TINY_DOLPHIN_MODEL)
+            .build();
 
     String userMessage = "Write a 100-word poem about Java and AI";
 
     CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
     model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
 
-      @Override
-      public void onNext(String token) {
-        System.out.print(token);
-      }
+        @Override
+        public void onNext(String token) {
+            System.out.print(token);
+        }
 
-      @Override
-      public void onComplete(Response<AiMessage> response) {
-        futureResponse.complete(response);
-      }
+        @Override
+        public void onComplete(Response<AiMessage> response) {
+            futureResponse.complete(response);
+        }
 
-      @Override
-      public void onError(Throwable error) {
-        futureResponse.completeExceptionally(error);
-      }
+        @Override
+        public void onError(Throwable error) {
+            futureResponse.completeExceptionally(error);
+        }
     });
 
     futureResponse.join();
     ollama.stop();
+  }
+}
+```
+
+If your Ollama runs locally, you can also try below streaming chat example code:
+```java
+class OllamaStreamingChatLocalModelTest {
+  static String MODEL_NAME = "llama3.2"; // try other local ollama model names
+  static String BASE_URL = "http://localhost:11434"; // local ollama base url
+
+  public static void main(String[] args) {
+      StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+              .baseUrl(BASE_URL)
+              .modelName(MODEL_NAME)
+              .temperature(0.0)
+              .build();
+      String userMessage = "Write a 100-word poem about Java and AI";
+
+      CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+      model.generate(userMessage, new StreamingResponseHandler<>() {
+
+          @Override
+          public void onNext(String token) {
+              System.out.print(token);
+          }
+
+          @Override
+          public void onComplete(Response<AiMessage> response) {
+              futureResponse.complete(response);
+          }
+
+          @Override
+          public void onError(Throwable error) {
+              futureResponse.completeExceptionally(error);
+          }
+      });
+
+      futureResponse.join();
   }
 }
 ```
@@ -147,20 +268,22 @@ public class OllamaStreamingChatExample {
 `OllamaChatModel` and `OllamaStreamingChatModel` classes can be instantiated with the following
 params with the builder pattern:
 
-| Parameter       | Description                                                                                                                                                                       | Type           | Example                |
-|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|------------------------|
-| `baseUrl`       | The base URL of Ollama server.                                                                                                                                                    | `String`       | http://localhost:11434 |
-| `modelName`     | The name of the model to use from Ollama server.                                                                                                                                  | `String`       |                        |
-| `temperature`   | Controls the randomness of the generated responses. Higher values (e.g., 1.0) result in more diverse output, while lower values (e.g., 0.2) produce more deterministic responses. | `Double`       |                        |
-| `topK`          | Specifies the number of highest probability tokens to consider for each step during generation.                                                                                   | `Integer`      |                        |
-| `topP`          | Controls the diversity of the generated responses by setting a threshold for the cumulative probability of top tokens.                                                            | `Double`       |                        |
-| `repeatPenalty` | Penalizes the model for repeating similar tokens in the generated output.                                                                                                         | `Double`       |                        |
-| `seed`          | Sets the random seed for reproducibility of generated responses.                                                                                                                  | `Integer`      |                        |
-| `numPredict`    | The number of predictions to generate for each input prompt.                                                                                                                      | `Integer`      |                        |
-| `stop`          | A list of strings that, if generated, will mark the end of the response.                                                                                                          | `List<String>` |                        |
-| `format`        | The desired format for the generated output.                                                                                                                                      | `String`       |                        |
-| `timeout`       | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`     | PT60S                  |
-| `maxRetries`    | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`      |                        |
+| Parameter        | Description                                                                                                                                                                       | Type             | Example                |
+|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|------------------------|
+| `baseUrl`        | The base URL of Ollama server.                                                                                                                                                    | `String`         | http://localhost:11434 |
+| `modelName`      | The name of the model to use from Ollama server.                                                                                                                                  | `String`         |                        |
+| `temperature`    | Controls the randomness of the generated responses. Higher values (e.g., 1.0) result in more diverse output, while lower values (e.g., 0.2) produce more deterministic responses. | `Double`         |                        |
+| `topK`           | Specifies the number of highest probability tokens to consider for each step during generation.                                                                                   | `Integer`        |                        |
+| `topP`           | Controls the diversity of the generated responses by setting a threshold for the cumulative probability of top tokens.                                                            | `Double`         |                        |
+| `repeatPenalty`  | Penalizes the model for repeating similar tokens in the generated output.                                                                                                         | `Double`         |                        |
+| `seed`           | Sets the random seed for reproducibility of generated responses.                                                                                                                  | `Integer`        |                        |
+| `numPredict`     | The number of predictions to generate for each input prompt.                                                                                                                      | `Integer`        |                        |
+| `stop`           | A list of strings that, if generated, will mark the end of the response.                                                                                                          | `List<String>`   |                        |
+| `format`         | The desired format for the generated output. (**Depracated** see **responseFormat**)                                                                                              | `String`         |                        |
+| `responseFormat` | The desired format for the generated output. TEXT or JSON with optional JSON Schema definition                                                                                    | `ResponseFormat` |                        |
+| `supportedCapabilities` | Set of model capabilities used by `AiServices` API (only `OllamaChatModel` supported)                                                                                             | `Capability` | RESPONSE_FORMAT_JSON_SCHEMA |
+| `timeout`        | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`       | PT60S                  |
+| `maxRetries`     | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`        |                        |
 
 #### Usage Example
 ```java
@@ -179,3 +302,112 @@ langchain4j.ollama.chat-model.model-name=llama3.1
 langchain4j.ollama.chat-model.temperature=0.8
 langchain4j.ollama.chat-model.timeout=PT60S
 ```
+
+### JSON mode
+
+#### JSON mode using builder
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
+    .responseFormat(ResponseFormat.JSON)    
+    .temperature(0.8)
+    .timeout(Duration.ofSeconds(60))
+    .build();
+```
+
+#### JSON mode using builder *deprecated*
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
+    .format("json")    
+    .temperature(0.8)
+    .timeout(Duration.ofSeconds(60))
+    .build();
+```
+
+### Structured outputs
+
+#### JSON schema definition using builder
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
+    .responseFormat(ResponseFormat.builder()
+            .type(ResponseFormatType.JSON)
+            .jsonSchema(JsonSchema.builder().rootElement(JsonObjectSchema.builder()
+                            .addProperty("name", JsonStringSchema.builder().build())
+                            .addProperty("capital", JsonStringSchema.builder().build())
+                            .addProperty(
+                                    "languages",
+                                    JsonArraySchema.builder()
+                                            .items(JsonStringSchema.builder().build())
+                                            .build())
+                            .required("name", "capital", "languages")
+                            .build())
+                    .build())
+            .build())
+    .temperature(0.8)
+    .timeout(Duration.ofSeconds(60))
+    .build();
+```
+
+#### JSON Schema using ChatRequest API
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
+    .build();
+
+ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder()
+        .messages(userMessage("Tell me about Canada."))
+        .responseFormat(ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder().rootElement(JsonObjectSchema.builder()
+                                .addProperty("name", JsonStringSchema.builder().build())
+                                .addProperty("capital", JsonStringSchema.builder().build())
+                                .addProperty(
+                                        "languages",
+                                        JsonArraySchema.builder()
+                                                .items(JsonStringSchema.builder().build())
+                                                .build())
+                                .required("name", "capital", "languages")
+                                .build())
+                        .build())
+                .build())
+        .build());
+
+String jsonFormattedResponse = chatResponse.aiMessage().text();
+
+/* jsonFormattedResponse value:
+
+  {
+    "capital" : "Ottawa",
+    "languages" : [ "English", "French" ],
+    "name" : "Canada"
+  }
+
+ */
+
+
+```
+
+
+### Json Schema with AiServices
+
+When `OllamaChatModel` is created with supported capability `RESPONSE_FORMAT_JSON_SCHEMA`, `AIService` will automatically generate schema from interface return value. More about it in [Structured Outputs](/tutorials/structured-outputs.md#using-json-schema-with-ai-services)
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("...")
+    .modelName("...")
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)    
+    .build();
+```
+
+

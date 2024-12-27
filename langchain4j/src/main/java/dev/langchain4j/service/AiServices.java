@@ -398,17 +398,16 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Deprecated. Use {@link #contentRetriever(ContentRetriever)}
+     * @param retriever The retriever to be used by the AI Service.
+     * @return builder
+     * @deprecated Use {@link #contentRetriever(ContentRetriever)}
      * (e.g. {@link EmbeddingStoreContentRetriever}) instead.
      * <br>
      * Configures a retriever that will be invoked on every method call to fetch relevant information
      * related to the current user message from an underlying source (e.g., embedding store).
      * This relevant information is automatically injected into the message sent to the LLM.
-     *
-     * @param retriever The retriever to be used by the AI Service.
-     * @return builder
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
         if (contentRetrieverSet || retrievalAugmentorSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");

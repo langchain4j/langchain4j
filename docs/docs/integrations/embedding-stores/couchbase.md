@@ -1,5 +1,5 @@
 ---
-sidebar_position: 7
+sidebar_position: 10
 ---
 
 # Couchbase
@@ -13,7 +13,7 @@ https://www.couchbase.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-couchbase</artifactId>
-    <version>0.35.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 

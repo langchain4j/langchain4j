@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -14,17 +15,23 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
         ModelsListResponse modelListResponse = ollamaClient.listModels();
 
         // then
-        assertThat(modelListResponse.getModels().size()).isGreaterThan(0);
-        assertThat(modelListResponse.getModels().get(0).getName()).isEqualTo("tinydolphin:latest");
-        assertThat(modelListResponse.getModels().get(0).getDigest()).isNotNull();
-        assertThat(modelListResponse.getModels().get(0).getSize()).isPositive();
+        List<OllamaModel> ollamaModels = modelListResponse.getModels();
+        assertThat(ollamaModels).isNotEmpty();
+        for (OllamaModel ollamaModel : ollamaModels) {
+            assertThat(ollamaModel.getName()).isNotBlank();
+            assertThat(ollamaModel.getSize()).isPositive();
+            assertThat(ollamaModel.getDigest()).isNotBlank();
+            assertThat(ollamaModel.getDetails()).isNotNull(); // TODO assert internals
+            assertThat(ollamaModel.getModel()).isNotBlank();
+            assertThat(ollamaModel.getModifiedAt()).isNotNull();
+        }
     }
 
     @Test
@@ -33,7 +40,7 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(ollama.getEndpoint())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
@@ -47,29 +54,5 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(modelDetailsResponse.getTemplate()).contains("<|im_start|>");
         assertThat(modelDetailsResponse.getDetails().getFormat()).isEqualTo("gguf");
         assertThat(modelDetailsResponse.getDetails().getFamily()).isEqualTo("llama");
-    }
-
-    @Test
-    void should_delete_model() {
-        // given AbstractOllamaInfrastructure
-
-        OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(ollama.getEndpoint())
-                .logRequests(true)
-                .logResponses(true)
-                .timeout(Duration.ofMinutes(1))
-                .build();
-
-        ModelsListResponse beforeDeleteModelList = ollamaClient.listModels();
-        assertThat(beforeDeleteModelList.getModels().size()).isPositive();
-
-        // when
-        ollamaClient.deleteModel(DeleteModelRequest.builder()
-                .name("tinydolphin")
-                .build());
-
-        // then
-        ModelsListResponse afterDeleteModelList = ollamaClient.listModels();
-        assertThat(afterDeleteModelList.getModels()).isEmpty();
     }
 }

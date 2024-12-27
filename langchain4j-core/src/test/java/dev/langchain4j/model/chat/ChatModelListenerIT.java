@@ -25,13 +25,13 @@ import static org.assertj.core.api.Assertions.fail;
  *
  * <dependency>
  *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j</artifactId>
+ *     <artifactId>langchain4j-core</artifactId>
  *     <scope>test</scope>
  * </dependency>
  *
  * <dependency>
  *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j</artifactId>
+ *     <artifactId>langchain4j-core</artifactId>
  *     <classifier>tests</classifier>
  *     <type>test-jar</type>
  *     <scope>test</scope>
@@ -97,7 +97,7 @@ public abstract class ChatModelListenerIT {
 
             @Override
             public void onError(ChatModelErrorContext errorContext) {
-                fail("onError() must not be called");
+                fail("onError() must not be called. Exception: " + errorContext.error().getMessage());
             }
         };
 

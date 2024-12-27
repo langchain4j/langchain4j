@@ -4,6 +4,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollama;
 import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Collections.singletonList;
 
@@ -12,8 +13,8 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
     @Override
     protected StreamingChatLanguageModel createModel(ChatModelListener listener) {
         return OllamaStreamingChatModel.builder()
-                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollama.getEndpoint())
-                .modelName(TINY_DOLPHIN_MODEL)
+                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
+                .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
                 .numPredict(maxTokens())
@@ -31,7 +32,7 @@ public class OllamaStreamingChatModelListenerIT extends StreamingChatModelListen
     @Override
     protected StreamingChatLanguageModel createFailingModel(ChatModelListener listener) {
         return OllamaStreamingChatModel.builder()
-                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollama.getEndpoint())
+                .baseUrl(AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl(ollama))
                 .modelName("banana")
                 .logRequests(true)
                 .logResponses(true)

@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.36.0-SNAPSHOT</version>
+    <version>1.0.0-alpha2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
-
-    <properties>
-        <gib.disable>true</gib.disable>
-    </properties>
 
     <modules>
 
@@ -28,9 +22,7 @@
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
-        <module>langchain4j-chatglm</module>
         <module>langchain4j-cohere</module>
-        <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-jina</module>
         <module>langchain4j-local-ai</module>
@@ -39,13 +31,11 @@
         <module>langchain4j-ollama</module>
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
-        <module>langchain4j-qianfan</module>
         <module>langchain4j-github-models</module>
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
-        <module>langchain4j-zhipu-ai</module>
         <module>langchain4j-voyage-ai</module>
 
         <!-- embedding stores -->
@@ -54,6 +44,7 @@
         <module>langchain4j-azure-cosmos-nosql</module>
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
+        <module>langchain4j-coherence</module>
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-infinispan</module>
@@ -67,7 +58,6 @@
         <module>langchain4j-qdrant</module>
         <module>langchain4j-redis</module>
         <module>langchain4j-tablestore</module>
-        <module>langchain4j-vearch</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
 
@@ -102,17 +92,15 @@
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-onnx-scoring</module>
+        <module>langchain4j-mcp</module>
 
     </modules>
 
+    <properties>
+        <gib.disable>true</gib.disable>
+    </properties>
+
     <build>
-        <extensions>
-            <extension>
-                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
-                <artifactId>gitflow-incremental-builder</artifactId>
-                <version>3.15.0</version>
-            </extension>
-        </extensions>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -143,7 +131,27 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>2.43.0</version>
+                <configuration>
+                    <ratchetFrom>origin/main</ratchetFrom>
+                    <pom>
+                        <sortPom>
+                            <nrOfIndentSpace>4</nrOfIndentSpace>
+                        </sortPom>
+                    </pom>
+                </configuration>
+            </plugin>
         </plugins>
+        <extensions>
+            <extension>
+                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
+                <artifactId>gitflow-incremental-builder</artifactId>
+                <version>3.16.0</version>
+            </extension>
+        </extensions>
     </build>
 
     <reporting>
@@ -155,10 +163,10 @@
                 <reportSets>
                     <reportSet>
                         <id>aggregate</id>
-                        <inherited>false</inherited>
                         <reports>
                             <report>aggregate</report>
                         </reports>
+                        <inherited>false</inherited>
                     </reportSet>
                     <reportSet>
                         <id>default</id>

@@ -16,6 +16,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,14 +32,15 @@ import java.util.Set;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaWithDescriptionsIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
-public class AiServicesWithJsonSchemaWithDescriptionsIT {
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+class AiServicesWithJsonSchemaWithDescriptionsIT {
 
     @Spy
     ChatLanguageModel model = OpenAiChatModel.builder()
@@ -55,7 +57,7 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
 
     @AfterEach
     void afterEach() {
-        verifyNoMoreInteractions(model);
+        verifyNoMoreInteractionsFor(model);
     }
 
 
@@ -124,7 +126,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -192,7 +193,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -254,7 +254,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -310,7 +309,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -366,7 +364,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -422,7 +419,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -495,7 +491,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -568,7 +563,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -642,7 +636,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -707,7 +700,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -772,7 +764,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -837,7 +828,6 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 
 
@@ -940,6 +930,5 @@ public class AiServicesWithJsonSchemaWithDescriptionsIT {
                                 .build())
                         .build())
                 .build());
-        verify(model).supportedCapabilities();
     }
 }

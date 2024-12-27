@@ -13,7 +13,7 @@ sidebar_position: 19
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-zhipu-ai</artifactId>
-    <version>0.35.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 

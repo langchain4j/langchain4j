@@ -41,6 +41,7 @@ import java.util.Optional;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -73,7 +74,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * @param dimension     Embedding vector dimension (mandatory when index does not exist yet).
      * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
                                        String serverUrl,
                                        String apiKey,
@@ -97,7 +98,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      *                      Index will be created automatically if not exists.
      * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, RestClient, String)}
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public ElasticsearchEmbeddingStore(ElasticsearchConfiguration configuration,
                                        String serverUrl,
                                        String apiKey,
@@ -164,7 +165,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          * @return builder
          * @deprecated call {@link #restClient(RestClient)} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder serverUrl(String serverUrl) {
             this.serverUrl = serverUrl;
             return this;
@@ -175,7 +176,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          * @return builder
          * @deprecated call {@link #restClient(RestClient)} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
@@ -186,7 +187,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          * @return builder
          * @deprecated call {@link #restClient(RestClient)} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder userName(String userName) {
             this.userName = userName;
             return this;
@@ -197,7 +198,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          * @return builder
          * @deprecated call {@link #restClient(RestClient)} instead
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder password(String password) {
             this.password = password;
             return this;
@@ -227,7 +228,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          * @return builder
          * @deprecated dimension is not used anymore.
          */
-        @Deprecated
+        @Deprecated(forRemoval = true)
         public Builder dimension(Integer dimension) {
             log.warn("Setting the dimension is deprecated. This value is ignored.");
             return this;
@@ -276,16 +277,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         List<String> ids = embeddings.stream()
                 .map(ignored -> randomUUID())
                 .collect(toList());
-        addAllInternal(ids, embeddings, null);
-        return ids;
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-        addAllInternal(ids, embeddings, embedded);
+        addAll(ids, embeddings, null);
         return ids;
     }
 
@@ -338,10 +330,11 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("[do not add empty embeddings to elasticsearch]");
             return;

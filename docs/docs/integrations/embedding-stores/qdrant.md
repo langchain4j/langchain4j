@@ -1,5 +1,5 @@
 ---
-sidebar_position: 16
+sidebar_position: 21
 ---
 
 # Qdrant
@@ -13,7 +13,7 @@ https://qdrant.tech/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-qdrant</artifactId>
-    <version>0.35.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 

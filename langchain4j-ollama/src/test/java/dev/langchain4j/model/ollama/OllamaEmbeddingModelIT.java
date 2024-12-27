@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.ALL_MINILM_MODEL;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaEmbeddingModelIT extends AbstractOllamaEmbeddingModelInfrastructure {
 
     EmbeddingModel model = OllamaEmbeddingModel.builder()
-            .baseUrl(ollama.getEndpoint())
+            .baseUrl(ollamaBaseUrl(ollama))
             .modelName(ALL_MINILM_MODEL)
             .build();
 
