@@ -405,6 +405,7 @@ class InternalAzureOpenAiHelper {
     /**
      * Support for Responsible AI (content filtered by Azure OpenAI for violence, self harm, or hate).
      */
+    // TODO remove this?
     public static FinishReason contentFilterManagement(HttpResponseException httpResponseException, String contentFilterCode) {
         FinishReason exceptionFinishReason = FinishReason.OTHER;
         if (httpResponseException.getValue() instanceof Map) {
