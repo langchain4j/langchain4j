@@ -1,5 +1,7 @@
 package dev.langchain4j.micrometer.conventions;
 
+import java.util.Arrays;
+
 public enum AiProvider {
     // Keep alphabetical sorted.
     /**
@@ -33,6 +35,11 @@ public enum AiProvider {
     IBMWATSONXAI("ibm-watsonx-ai"),
 
     /**
+     * AI system provided by Langchain. Default if no other provider is detected.
+     */
+    LANGCHAIN4J("langchain4j"),
+
+    /**
      * AI system provided by Mistral.
      */
     MISTRALAI("mistral_ai"),
@@ -64,5 +71,24 @@ public enum AiProvider {
      */
     public String value() {
         return this.value;
+    }
+
+    public static AiProvider fromClass(Class<?> clazz) {
+        if (clazz == null) {
+            return LANGCHAIN4J;
+        }
+
+        String className = clazz.getSimpleName();
+        // Remove common suffixes if present
+        String baseClassName = className
+                .replace("ChatRequest", "")
+                .replace("ChatResponse", "")
+                .toLowerCase();
+
+        return Arrays.stream(values())
+                .filter(provider -> !provider.equals(LANGCHAIN4J) &&
+                        baseClassName.contains(provider.value()))
+                .findFirst()
+                .orElse(LANGCHAIN4J);
     }
 }
