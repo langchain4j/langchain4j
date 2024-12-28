@@ -1,6 +1,6 @@
 package dev.langchain4j.micrometer.conventions;
 
-//Copied from AiObservationMetricNames.java in spring-ai-core
+// Copied from AiObservationMetricNames.java in spring-ai-core
 public enum AiObservationMetricNames {
     /**
      * The duration of the AI operation.
