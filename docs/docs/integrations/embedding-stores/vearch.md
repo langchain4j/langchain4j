@@ -10,7 +10,7 @@ https://github.com/vearch/vearch
 ## Maven Dependency
 
 :::note
-Since `0.37.0`, `langchain4j-vearch` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-vearch`.
+Since `1.0.0-alpha1`, `langchain4j-vearch` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-vearch`.
 :::
 
 `0.36.2` and previous:
@@ -19,17 +19,17 @@ Since `0.37.0`, `langchain4j-vearch` has migrated to `langchain4j-community` and
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-vearch</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
-`0.37.0` and later:
+`1.0.0-alpha1` and later:
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-vearch</artifactId>
-    <version>0.37.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ Or, you can use BOM to manage dependencies consistently:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>0.37.0</version>
+        <version>1.0.0-alpha1</version>
         <typ>pom</typ>
         <scope>import</scope>
     </dependency>
@@ -49,11 +49,11 @@ Or, you can use BOM to manage dependencies consistently:
 
 ## APIs
 
-### `0.36.2` and previous
+### `1.0.0-alpha1` and previous
 
 :::note
-* `0.36.2` and previous `langchain4j-vearch` uses `Vearch` [old api](https://vearch.readthedocs.io/zh-cn/v3.3.x/overview.html), which is deprecated in vearch 3.4.x version. 
-* `0.37.0` and later `langchain4j-community-vearch` uses `Vearch` [latest api](https://vearch.readthedocs.io/zh-cn/latest/overview.html), which supports 3.5.x and 3.4.x version.
+* `1.0.0-alpha1` and previous `langchain4j-vearch` uses `Vearch` [old api](https://vearch.readthedocs.io/zh-cn/v3.3.x/overview.html), which is deprecated in vearch 3.4.x version. 
+* `1.0.0-alpha1` and later `langchain4j-community-vearch` uses `Vearch` [latest api](https://vearch.readthedocs.io/zh-cn/latest/overview.html), which supports 3.5.x and 3.4.x version.
 
 We recommend to use `langchain4j-community-vearch` which supports the latest version of `Vearch`.
 :::
@@ -106,7 +106,7 @@ VearchEmbeddingStore embeddingStore = VearchEmbeddingStore.builder()
 ```
 
 
-### `0.37.0` and later
+### `1.0.0-alpha1` and later
 
 To use `VearchEmbeddingStore`, you need to instantiate a `VearchConfig`:
 
