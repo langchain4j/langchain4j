@@ -81,6 +81,13 @@ public enum AiObservationAttributes {
      */
     RESPONSE_MODEL("gen_ai.response.model"),
 
+    // Error
+
+    /**
+     * The type of error that occurred.
+     */
+    ERROR_TYPE("error.type"),
+
     // GenAI Usage
 
     /**
@@ -108,7 +115,6 @@ public enum AiObservationAttributes {
     COMPLETION("gen_ai.completion");
 
     private final String value;
-
 
     AiObservationAttributes(final String value) {
         this.value = value;

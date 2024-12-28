@@ -1,6 +1,6 @@
 package dev.langchain4j.micrometer.conventions;
 
-//Copied from AiObservationMetricAttributes.java in spring-ai-core
+// Copied from AiObservationMetricAttributes.java in spring-ai-core
 public enum AiObservationMetricAttributes {
     /**
      * The type of token being counted (input, output, total).

@@ -80,14 +80,11 @@ public enum AiProvider {
 
         String className = clazz.getSimpleName();
         // Remove common suffixes if present
-        String baseClassName = className
-                .replace("ChatRequest", "")
-                .replace("ChatResponse", "")
-                .toLowerCase();
+        String baseClassName =
+                className.replace("ChatRequest", "").replace("ChatResponse", "").toLowerCase();
 
         return Arrays.stream(values())
-                .filter(provider -> !provider.equals(LANGCHAIN4J) &&
-                        baseClassName.contains(provider.value()))
+                .filter(provider -> !provider.equals(LANGCHAIN4J) && baseClassName.contains(provider.value()))
                 .findFirst()
                 .orElse(LANGCHAIN4J);
     }

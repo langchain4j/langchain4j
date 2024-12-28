@@ -27,5 +27,4 @@ public enum AiTokenType {
     public String value() {
         return this.value;
     }
-
 }
