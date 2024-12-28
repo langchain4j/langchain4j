@@ -12,10 +12,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 /**
  * Sanitizes the messages to conform to the format expected by the Anthropic API.
+ * This class is equal to the BedrockAnthropicMessageSanitizer class in the dev.langchain4j.model.bedrock.internal.sanitizer package.
+ * When it is changed in one place, it should be changed in the other place as well.
  */
 @Slf4j
 public class MessageSanitizer {
-
 
     public static List<ChatMessage> sanitizeMessages(List<ChatMessage> messages) {
         ensureNotEmpty(messages, "messages");

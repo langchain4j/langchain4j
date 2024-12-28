@@ -18,6 +18,8 @@ import io.pinecone.unsigned_indices_model.ScoredVectorWithUnsignedIndices;
 import io.pinecone.unsigned_indices_model.VectorWithUnsignedIndices;
 import org.openapitools.client.model.IndexList;
 import org.openapitools.client.model.IndexModel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -49,6 +51,8 @@ import static java.util.stream.Collectors.toList;
  * Please note that in this case metadata filtering might not work properly!</b>
  */
 public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
+
+    private static final Logger log = LoggerFactory.getLogger(PineconeEmbeddingStore.class);
 
     private static final String DEFAULT_NAMESPACE = "default"; // do not change, will break backward compatibility!
     private static final String DEFAULT_METADATA_TEXT_KEY = "text_segment"; // do not change, will break backward compatibility!
@@ -116,19 +120,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .map(ignored -> randomUUID())
                 .collect(toList());
 
-        addAllInternal(ids, embeddings, null);
-
-        return ids;
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
-
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
-
-        addAllInternal(ids, embeddings, textSegments);
+        addAll(ids, embeddings, null);
 
         return ids;
     }
@@ -171,11 +163,15 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
-        addAllInternal(singletonList(id), singletonList(embedding), textSegment == null ? null : singletonList(textSegment));
+        addAll(singletonList(id), singletonList(embedding), textSegment == null ? null : singletonList(textSegment));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+            log.info("Empty embeddings - no ops");
+            return;
+        }
         List<VectorWithUnsignedIndices> vectors = new ArrayList<>(embeddings.size());
 
         for (int i = 0; i < embeddings.size(); i++) {

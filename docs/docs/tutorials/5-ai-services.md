@@ -494,7 +494,7 @@ MistralAiChatModel.builder()
 ```java
 OllamaChatModel.builder()
     ...
-    .format("json")
+    .responseFormat(JSON)
     .build();
 ```
 
@@ -539,7 +539,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 ```java

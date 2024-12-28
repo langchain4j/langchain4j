@@ -149,29 +149,21 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream().map(embedding -> randomUUID()).collect(toList());
 
-        addAllInternal(ids, embeddings, null);
-
-        return ids;
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
-        List<String> ids = embeddings.stream().map(embedding -> randomUUID()).collect(toList());
-
-        addAllInternal(ids, embeddings, textSegments);
+        addAll(ids, embeddings, null);
 
         return ids;
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
-        addAllInternal(
+        addAll(
             singletonList(id),
             singletonList(embedding),
             textSegment == null ? null : singletonList(textSegment)
         );
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
         AddEmbeddingsRequest addEmbeddingsRequest = AddEmbeddingsRequest
             .builder()
             .embeddings(embeddings.stream().map(Embedding::vector).collect(toList()))

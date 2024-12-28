@@ -10,7 +10,7 @@ sidebar_position: 16
 ## Maven Dependency
 
 :::note
-Since `0.37.0`, `langchain4j-qianfan` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-qianfan`.
+Since `1.0.0-alpha1`, `langchain4j-qianfan` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-qianfan`.
 :::
 
 `0.36.2` and previous:
@@ -19,17 +19,17 @@ Since `0.37.0`, `langchain4j-qianfan` has migrated to `langchain4j-community` an
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-qianfan</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
-`0.37.0` and later:
+`1.0.0-alpha1` and later:
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-qianfan</artifactId>
-    <version>0.37.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ Or, you can use BOM to manage dependencies consistently:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>0.37.0</version>
+        <version>1.0.0-alpha1</version>
         <typ>pom</typ>
         <scope>import</scope>
     </dependency>
@@ -271,7 +271,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 - Use

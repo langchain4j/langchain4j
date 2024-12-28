@@ -113,16 +113,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<String> ids = embeddings.stream()
             .map(ignored -> randomUUID())
             .collect(toList());
-        addAllInternal(ids, embeddings, null);
-        return ids;
-    }
-
-    @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        List<String> ids = embeddings.stream()
-            .map(ignored -> randomUUID())
-            .collect(toList());
-        addAllInternal(ids, embeddings, embedded);
+        addAll(ids, embeddings, null);
         return ids;
     }
 
@@ -162,10 +153,11 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+        addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("do not add empty embeddings to redis");
             return;
