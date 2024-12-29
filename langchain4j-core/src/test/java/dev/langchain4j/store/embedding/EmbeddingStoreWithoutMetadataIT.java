@@ -259,12 +259,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(relevant).hasSize(2);
         assertThat(relevant.get(0)).isNotNull();
         assertThat(relevant.get(1)).isNotNull();
-        assertThat(relevant.get(0).embeddingId()).isEqualTo(id1);
-        assertThat(relevant.get(1).embeddingId()).isEqualTo(id2);
+        assertThat(relevant.get(0).embeddingId()).isEqualTo(documentURI(id1));
+        assertThat(relevant.get(1).embeddingId()).isEqualTo(documentURI(id2));
 
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
-        assertThat(firstMatch.embeddingId()).isEqualTo(id1);
+        assertThat(firstMatch.embeddingId()).isEqualTo(documentURI(id1));
         if (assertEmbedding()) {
             assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
         }
@@ -275,7 +275,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .isCloseTo(
                         RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
                         percentage());
-        assertThat(secondMatch.embeddingId()).isEqualTo(id2);
+        assertThat(secondMatch.embeddingId()).isEqualTo(documentURI(id2));
         if (assertEmbedding()) {
             assertThat(CosineSimilarity.between(secondMatch.embedding(), secondEmbedding))
                     .isCloseTo(1, withPercentage(0.01)); // TODO return strict check back once Qdrant fixes it
