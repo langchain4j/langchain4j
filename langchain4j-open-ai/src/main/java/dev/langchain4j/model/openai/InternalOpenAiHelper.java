@@ -12,7 +12,10 @@ import dev.ai4j.openai4j.chat.ImageUrl;
 import dev.ai4j.openai4j.chat.Message;
 import dev.ai4j.openai4j.chat.Tool;
 import dev.ai4j.openai4j.chat.ToolCall;
+import dev.ai4j.openai4j.chat.ToolChoiceMode;
 import dev.ai4j.openai4j.chat.ToolMessage;
+import dev.ai4j.openai4j.shared.CompletionTokensDetails;
+import dev.ai4j.openai4j.shared.PromptTokensDetails;
 import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
@@ -26,9 +29,14 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -39,9 +47,13 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
+import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -85,8 +97,7 @@ public class InternalOpenAiHelper {
             return dev.ai4j.openai4j.chat.SystemMessage.from(((SystemMessage) message).text());
         }
 
-        if (message instanceof UserMessage) {
-            UserMessage userMessage = (UserMessage) message;
+        if (message instanceof UserMessage userMessage) {
 
             if (userMessage.hasSingleText()) {
                 return dev.ai4j.openai4j.chat.UserMessage.builder()
@@ -103,8 +114,7 @@ public class InternalOpenAiHelper {
             }
         }
 
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
+        if (message instanceof AiMessage aiMessage) {
 
             if (!aiMessage.hasToolExecutionRequests()) {
                 return AssistantMessage.from(aiMessage.text());
@@ -139,8 +149,7 @@ public class InternalOpenAiHelper {
                     .build();
         }
 
-        if (message instanceof ToolExecutionResultMessage) {
-            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+        if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
 
             if (toolExecutionResultMessage.id() == null) {
                 return FunctionMessage.from(toolExecutionResultMessage.toolName(), toolExecutionResultMessage.text());
@@ -194,6 +203,10 @@ public class InternalOpenAiHelper {
     }
 
     public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
+        if (toolSpecifications == null) {
+            return null;
+        }
+
         return toolSpecifications.stream()
                 .map((ToolSpecification toolSpecification) -> toTool(toolSpecification, strict))
                 .collect(toList());
@@ -299,8 +312,7 @@ public class InternalOpenAiHelper {
             JsonSchemaElement jsonSchemaElement,
             boolean strict) {
 
-        if (jsonSchemaElement instanceof JsonObjectSchema) {
-            JsonObjectSchema jsonObjectSchema = (JsonObjectSchema) jsonSchemaElement;
+        if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
             dev.ai4j.openai4j.chat.JsonObjectSchema.Builder builder = dev.ai4j.openai4j.chat.JsonObjectSchema.builder()
                     .description(jsonObjectSchema.description())
                     .properties(toOpenAiProperties(jsonObjectSchema.properties(), strict))
@@ -319,42 +331,44 @@ public class InternalOpenAiHelper {
                         .additionalProperties(false);
             }
             return builder.build();
-        } else if (jsonSchemaElement instanceof JsonArraySchema) {
-            JsonArraySchema jsonArraySchema = (JsonArraySchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonArraySchema jsonArraySchema) {
             return dev.ai4j.openai4j.chat.JsonArraySchema.builder()
                     .description(jsonArraySchema.description())
                     .items(toOpenAiJsonSchemaElement(jsonArraySchema.items(), strict))
                     .build();
-        } else if (jsonSchemaElement instanceof JsonEnumSchema) {
-            JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
             return dev.ai4j.openai4j.chat.JsonEnumSchema.builder()
                     .description(jsonEnumSchema.description())
                     .enumValues(jsonEnumSchema.enumValues())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonStringSchema) {
-            JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonStringSchema jsonStringSchema) {
             return dev.ai4j.openai4j.chat.JsonStringSchema.builder()
                     .description(jsonStringSchema.description())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonIntegerSchema) {
-            JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
             return dev.ai4j.openai4j.chat.JsonIntegerSchema.builder()
                     .description(jsonIntegerSchema.description())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonNumberSchema) {
-            JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonNumberSchema jsonNumberSchema) {
             return dev.ai4j.openai4j.chat.JsonNumberSchema.builder()
                     .description(jsonNumberSchema.description())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
-            JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonBooleanSchema jsonBooleanSchema) {
             return dev.ai4j.openai4j.chat.JsonBooleanSchema.builder()
                     .description(jsonBooleanSchema.description())
                     .build();
-        } else if (jsonSchemaElement instanceof JsonReferenceSchema) {
-            JsonReferenceSchema jsonReferenceSchema = (JsonReferenceSchema) jsonSchemaElement;
+        } else if (jsonSchemaElement instanceof JsonReferenceSchema jsonReferenceSchema) {
             return dev.ai4j.openai4j.chat.JsonReferenceSchema.builder()
                     .reference("#/$defs/" + jsonReferenceSchema.reference())
+                    .build();
+        } else if (jsonSchemaElement instanceof JsonAnyOfSchema) {
+            JsonAnyOfSchema jsonAnyOfSchema = (JsonAnyOfSchema) jsonSchemaElement;
+            return dev.ai4j.openai4j.chat.JsonAnyOfSchema.builder()
+                    .description(jsonAnyOfSchema.description())
+                    .anyOf(jsonAnyOfSchema.anyOf()
+                            .stream()
+                            .map(it -> toOpenAiJsonSchemaElement(it, strict))
+                            .collect(toList()))
                     .build();
         } else {
             throw new IllegalArgumentException("Unknown type: " + jsonSchemaElement.getClass());
@@ -458,15 +472,30 @@ public class InternalOpenAiHelper {
                 .build();
     }
 
-    public static TokenUsage tokenUsageFrom(Usage openAiUsage) {
+    public static OpenAiTokenUsage tokenUsageFrom(Usage openAiUsage) {
         if (openAiUsage == null) {
             return null;
         }
-        return new TokenUsage(
-                openAiUsage.promptTokens(),
-                openAiUsage.completionTokens(),
-                openAiUsage.totalTokens()
-        );
+
+        PromptTokensDetails promptTokensDetails = openAiUsage.promptTokensDetails();
+        InputTokensDetails inputTokensDetails = null;
+        if (promptTokensDetails != null) {
+            inputTokensDetails = new InputTokensDetails(promptTokensDetails.cachedTokens());
+        }
+
+        CompletionTokensDetails completionTokensDetails = openAiUsage.completionTokensDetails();
+        OutputTokensDetails outputTokensDetails = null;
+        if (completionTokensDetails != null) {
+            outputTokensDetails = new OutputTokensDetails(completionTokensDetails.reasoningTokens());
+        }
+
+        return OpenAiTokenUsage.builder()
+                .inputTokenCount(openAiUsage.promptTokens())
+                .inputTokensDetails(inputTokensDetails)
+                .outputTokenCount(openAiUsage.completionTokens())
+                .outputTokensDetails(outputTokensDetails)
+                .totalTokenCount(openAiUsage.totalTokens())
+                .build();
     }
 
     public static FinishReason finishReasonFrom(String openAiFinishReason) {
@@ -501,19 +530,18 @@ public class InternalOpenAiHelper {
                 .build();
     }
 
-    static ChatModelResponse createModelListenerResponse(String responseId,
-                                                         String responseModel,
-                                                         Response<AiMessage> response) {
-        if (response == null) {
+    static ChatModelResponse createModelListenerResponse(ChatResponse chatResponse) {
+        if (chatResponse == null) {
             return null;
         }
 
+        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
         return ChatModelResponse.builder()
-                .id(responseId)
-                .model(responseModel)
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
-                .aiMessage(response.content())
+                .id(chatResponseMetadata.id())
+                .model(chatResponseMetadata.modelName())
+                .tokenUsage(chatResponseMetadata.tokenUsage())
+                .finishReason(chatResponseMetadata.finishReason())
+                .aiMessage(chatResponse.aiMessage())
                 .build();
     }
 
@@ -540,6 +568,51 @@ public class InternalOpenAiHelper {
                     .type(JSON_SCHEMA)
                     .jsonSchema(openAiJsonSchema)
                     .build();
+        }
+    }
+
+    public static ToolChoiceMode toOpenAiToolChoice(ToolChoice toolChoice) {
+        if (toolChoice == null) {
+            return null;
+        }
+
+        return switch (toolChoice) {
+            case AUTO -> ToolChoiceMode.AUTO;
+            case REQUIRED -> ToolChoiceMode.REQUIRED;
+        };
+    }
+
+    public static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
+        return Response.from(
+                chatResponse.aiMessage(),
+                chatResponse.metadata().tokenUsage(),
+                chatResponse.metadata().finishReason()
+        );
+    }
+
+    static StreamingChatResponseHandler convertHandler(StreamingResponseHandler<AiMessage> handler) {
+        return new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                handler.onNext(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                handler.onComplete(convertResponse(completeResponse));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+    }
+
+    static void validate(ChatRequestParameters parameters) {
+        if (parameters.topK() != null) {
+            throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
         }
     }
 }

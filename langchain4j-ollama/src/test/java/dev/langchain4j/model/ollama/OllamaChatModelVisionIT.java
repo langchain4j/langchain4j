@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.BAKLLAVA_MODEL;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,7 +23,7 @@ class OllamaChatModelVisionIT extends AbstractOllamaVisionModelInfrastructure {
 
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .timeout(Duration.ofMinutes(3))
                 .modelName(BAKLLAVA_MODEL)
                 .temperature(0.0)

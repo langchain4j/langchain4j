@@ -167,18 +167,18 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+  public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (embedded != null && embeddings.size() != embedded.size()) {
             throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
         }
 
-        List<String> ids = new ArrayList<>();
+
 
         try (JsonFeeder jsonFeeder = feeder()) {
             List<Record> records = new ArrayList<>();
 
             for (int i = 0; i < embeddings.size(); i++) {
-                records.add(buildRecord(embeddings.get(i), embedded != null ? embedded.get(i) : null));
+        records.add(buildRecord(ids.get(i), embeddings.get(i), embedded != null ? embedded.get(i) : null));
             }
 
             jsonFeeder.feedMany(
@@ -188,11 +188,8 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
                     public void onNextResult(Result result, FeedException error) {
                         if (error != null) {
                             throw new RuntimeException(error.getMessage());
-                        } else if (Result.Type.success.equals(result.type())) {
-                            ids.add(result.documentId().toString());
                         }
                     }
-
                     @Override
                     public void onError(FeedException error) {
                         throw new RuntimeException(error.getMessage());
@@ -203,7 +200,6 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
             throw new RuntimeException(e);
         }
 
-        return ids;
     }
 
     /**
