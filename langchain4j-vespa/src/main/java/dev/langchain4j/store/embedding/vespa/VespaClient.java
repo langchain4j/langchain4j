@@ -44,30 +44,23 @@ class VespaClient {
     static final BouncyCastleProvider bcProvider = new BouncyCastleProvider();
 
     public static VespaApi createInstance(
-        String baseUrl,
-        Path certificate,
-        Path privateKey,
-        boolean logRequests,
-        boolean logResponses
-    ) {
+            String baseUrl, Path certificate, Path privateKey, boolean logRequests, boolean logResponses) {
         try {
-            OkHttpClient.Builder builder = new OkHttpClient.Builder()
-                .addInterceptor(chain -> {
-                    // trick to format the query URL exactly how Vespa expects it (search/?query),
-                    // see https://docs.vespa.ai/en/reference/query-language-reference.html
-                    Request request = chain.request();
-                    if (request.url().url().getPath().startsWith("/search/")) {
-                        HttpUrl url = request
-                            .url()
+            OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(chain -> {
+                // trick to format the query URL exactly how Vespa expects it (search/?query),
+                // see https://docs.vespa.ai/en/reference/query-language-reference.html
+                Request request = chain.request();
+                if (request.url().url().getPath().startsWith("/search/")) {
+                    HttpUrl url = request.url()
                             .newBuilder()
                             .removePathSegment(1)
                             .addPathSegment("")
                             .encodedQuery(request.url().encodedPathSegments().get(1))
                             .build();
-                        request = request.newBuilder().url(url).build();
-                    }
-                    return chain.proceed(request);
-                });
+                    request = request.newBuilder().url(url).build();
+                }
+                return chain.proceed(request);
+            });
 
             addSsl(certificate, privateKey, builder);
 
@@ -81,10 +74,10 @@ class VespaClient {
             OkHttpClient client = builder.build();
 
             Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
-                .client(client)
-                .addConverterFactory(JacksonConverterFactory.create())
-                .build();
+                    .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
+                    .client(client)
+                    .addConverterFactory(JacksonConverterFactory.create())
+                    .build();
 
             return retrofit.create(VespaApi.class);
         } catch (Exception e) {
@@ -93,24 +86,21 @@ class VespaClient {
     }
 
     private static void addSsl(Path certificate, Path privateKey, OkHttpClient.Builder builder)
-        throws IOException, GeneralSecurityException {
+            throws IOException, GeneralSecurityException {
         if (certificate != null && privateKey != null) {
             KeyStore keystore = KeyStore.getInstance("PKCS12");
             keystore.load(null);
             keystore.setKeyEntry("cert", privateKey(privateKey), new char[0], certificates(certificate));
             // Protocol version must be equal to TlsContext.SSL_CONTEXT_VERSION or higher
             SSLContext sslContext = SSLContext.getInstance("TLSv1.3");
-            sslContext.init(createKeyManagers(keystore), null, /*Default secure random algorithm*/null);
+            sslContext.init(createKeyManagers(keystore), null, /*Default secure random algorithm*/ null);
 
-            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(
-                TrustManagerFactory.getDefaultAlgorithm()
-            );
+            TrustManagerFactory trustManagerFactory =
+                    TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             trustManagerFactory.init(keystore);
 
-            builder.sslSocketFactory(
-                sslContext.getSocketFactory(),
-                (X509TrustManager) trustManagerFactory.getTrustManagers()[0]
-            );
+            builder.sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager)
+                    trustManagerFactory.getTrustManagers()[0]);
         }
     }
 
@@ -153,9 +143,8 @@ class VespaClient {
     private static X509Certificate toX509Certificate(Object pemObject) throws IOException, GeneralSecurityException {
         if (pemObject instanceof X509Certificate) return (X509Certificate) pemObject;
         if (pemObject instanceof X509CertificateHolder) {
-            return new JcaX509CertificateConverter()
-                .setProvider(bcProvider)
-                .getCertificate((X509CertificateHolder) pemObject);
+            return new JcaX509CertificateConverter().setProvider(bcProvider).getCertificate((X509CertificateHolder)
+                    pemObject);
         }
         throw new IOException("Invalid type of PEM object: " + pemObject);
     }

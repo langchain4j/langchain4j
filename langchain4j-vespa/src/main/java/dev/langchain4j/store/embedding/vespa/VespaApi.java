@@ -12,8 +12,5 @@ interface VespaApi {
 
     @DELETE("document/v1/{ns}/{docType}/docid?selection=true")
     Call<DeleteResponse> deleteAll(
-        @Path("ns") String namespace,
-        @Path("docType") String documentType,
-        @Query("cluster") String clusterName
-    );
+            @Path("ns") String namespace, @Path("docType") String documentType, @Query("cluster") String clusterName);
 }

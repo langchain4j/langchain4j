@@ -97,19 +97,18 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param logResponses If true, responses from the Vespa service are logged.
      */
     public VespaEmbeddingStore(
-        String url,
-        String keyPath,
-        String certPath,
-        Duration timeout,
-        String namespace,
-        String documentType,
-        String clusterName,
-        String rankProfile,
-        Integer targetHits,
-        Boolean avoidDups,
-        Boolean logRequests,
-        Boolean logResponses
-    ) {
+            String url,
+            String keyPath,
+            String certPath,
+            Duration timeout,
+            String namespace,
+            String documentType,
+            String clusterName,
+            String rankProfile,
+            Integer targetHits,
+            Boolean avoidDups,
+            Boolean logRequests,
+            Boolean logResponses) {
         ensureNotNull(url, "url");
 
         this.url = url;
@@ -128,11 +127,10 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Record in) {
         return new EmbeddingMatch<>(
-            in.relevance(),
-            in.fields().documentid(),
-            Embedding.from(in.fields().vector().values()),
-            in.fields().textSegment() != null ? TextSegment.from(in.fields().textSegment()) : null
-        );
+                in.relevance(),
+                in.fields().documentid(),
+                Embedding.from(in.fields().vector().values()),
+                in.fields().textSegment() != null ? TextSegment.from(in.fields().textSegment()) : null);
     }
 
     public static Builder builder() {
@@ -167,39 +165,37 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-  public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (embedded != null && embeddings.size() != embedded.size()) {
             throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
         }
-
-
 
         try (JsonFeeder jsonFeeder = feeder()) {
             List<Record> records = new ArrayList<>();
 
             for (int i = 0; i < embeddings.size(); i++) {
-        records.add(buildRecord(ids.get(i), embeddings.get(i), embedded != null ? embedded.get(i) : null));
+                records.add(buildRecord(ids.get(i), embeddings.get(i), embedded != null ? embedded.get(i) : null));
             }
 
             jsonFeeder.feedMany(
-                new ByteArrayInputStream(OBJECT_MAPPER.writeValueAsString(records).getBytes()),
-                new JsonFeeder.ResultCallback() {
-                    @Override
-                    public void onNextResult(Result result, FeedException error) {
-                        if (error != null) {
+                    new ByteArrayInputStream(
+                            OBJECT_MAPPER.writeValueAsString(records).getBytes()),
+                    new JsonFeeder.ResultCallback() {
+                        @Override
+                        public void onNextResult(Result result, FeedException error) {
+                            if (error != null) {
+                                throw new RuntimeException(error.getMessage());
+                            }
+                        }
+
+                        @Override
+                        public void onError(FeedException error) {
                             throw new RuntimeException(error.getMessage());
                         }
-                    }
-                    @Override
-                    public void onError(FeedException error) {
-                        throw new RuntimeException(error.getMessage());
-                    }
-                }
-            );
+                    });
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
     }
 
     /**
@@ -209,26 +205,29 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         try {
-            String searchQuery = Q
-                .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
-                .from(documentType)
-                .where(buildNearestNeighbor())
-                .fix()
-                .hits(request.maxResults())
-                .ranking(rankProfile)
-                .param("input.query(q)", OBJECT_MAPPER.writeValueAsString(request.queryEmbedding().vectorAsList()))
-                .param("input.query(threshold)", String.valueOf(request.minScore()))
-                .build();
+            String searchQuery = Q.select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
+                    .from(documentType)
+                    .where(buildNearestNeighbor())
+                    .fix()
+                    .hits(request.maxResults())
+                    .ranking(rankProfile)
+                    .param(
+                            "input.query(q)",
+                            OBJECT_MAPPER.writeValueAsString(
+                                    request.queryEmbedding().vectorAsList()))
+                    .param("input.query(threshold)", String.valueOf(request.minScore()))
+                    .build();
 
             Response<QueryResponse> response = api().search(searchQuery).execute();
             if (response.isSuccessful()) {
                 QueryResponse parsedResponse = response.body();
                 List<Record> children = parsedResponse.root().children();
                 return new EmbeddingSearchResult<>(
-                    children == null || children.isEmpty()
-                        ? new ArrayList<>()
-                        : children.stream().map(VespaEmbeddingStore::toEmbeddingMatch).toList()
-                );
+                        children == null || children.isEmpty()
+                                ? new ArrayList<>()
+                                : children.stream()
+                                        .map(VespaEmbeddingStore::toEmbeddingMatch)
+                                        .toList());
             } else {
                 throw new RuntimeException("Request failed");
             }
@@ -240,7 +239,8 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll() {
         try {
-            Response<DeleteResponse> response = api().deleteAll(namespace, documentType, clusterName).execute();
+            Response<DeleteResponse> response =
+                    api().deleteAll(namespace, documentType, clusterName).execute();
             if (!response.isSuccessful()) {
                 throw new RuntimeException("Delete failed");
             }
@@ -254,16 +254,14 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         try (JsonFeeder jsonFeeder = feeder()) {
             jsonFeeder
-                .feedSingle(OBJECT_MAPPER.writeValueAsString(buildRecord(id, embedding, textSegment)))
-                .whenComplete(
-                    ((result, throwable) -> {
-                            if (throwable != null) {
-                                throw new RuntimeException(throwable);
-                            } else if (Result.Type.success.equals(result.type())) {
-                                resId.set(result.documentId().toString());
-                            }
-                        })
-                );
+                    .feedSingle(OBJECT_MAPPER.writeValueAsString(buildRecord(id, embedding, textSegment)))
+                    .whenComplete(((result, throwable) -> {
+                        if (throwable != null) {
+                            throw new RuntimeException(throwable);
+                        } else if (Result.Type.success.equals(result.type())) {
+                            resId.set(result.documentId().toString());
+                        }
+                    }));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -289,8 +287,8 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private Record buildRecord(String id, Embedding embedding, TextSegment textSegment) {
         String recordId = id != null
-            ? id
-            : avoidDups && textSegment != null ? generateUUIDFrom(textSegment.text()) : randomUUID();
+                ? id
+                : avoidDups && textSegment != null ? generateUUIDFrom(textSegment.text()) : randomUUID();
         DocumentId documentId = DocumentId.of(namespace, documentType, recordId);
         String text = textSegment != null ? textSegment.text() : null;
         return new Record(documentId.toString(), null, new Fields(null, text, new Vector(embedding.vectorAsList())));
@@ -418,19 +416,18 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         public VespaEmbeddingStore build() {
             return new VespaEmbeddingStore(
-                url,
-                keyPath,
-                certPath,
-                timeout,
-                namespace,
-                documentType,
-                rankProfile,
-                clusterName,
-                targetHits,
-                avoidDups,
-                logRequests,
-                logResponses
-            );
+                    url,
+                    keyPath,
+                    certPath,
+                    timeout,
+                    namespace,
+                    documentType,
+                    rankProfile,
+                    clusterName,
+                    targetHits,
+                    avoidDups,
+                    logRequests,
+                    logResponses);
         }
     }
 }

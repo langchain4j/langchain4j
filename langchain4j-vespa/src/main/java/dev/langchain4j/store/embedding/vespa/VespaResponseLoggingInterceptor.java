@@ -25,11 +25,10 @@ class VespaResponseLoggingInterceptor implements Interceptor {
     private void log(Response response) {
         try {
             log.debug(
-                "Response:\n- status code: {}\n- headers: {}\n- body: {}",
-                response.code(),
-                getHeaders(response.headers()),
-                getBody(response)
-            );
+                    "Response:\n- status code: {}\n- headers: {}\n- body: {}",
+                    response.code(),
+                    getHeaders(response.headers()),
+                    getBody(response));
         } catch (Exception e) {
             log.warn("Error while logging response: {}", e.getMessage());
         }
@@ -40,13 +39,12 @@ class VespaResponseLoggingInterceptor implements Interceptor {
     }
 
     static String getHeaders(Headers headers) {
-        return StreamSupport
-            .stream(headers.spliterator(), false)
-            .map(header -> {
-                String headerKey = header.component1();
-                String headerValue = header.component2();
-                return String.format("[%s: %s]", headerKey, headerValue);
-            })
-            .collect(Collectors.joining(", "));
+        return StreamSupport.stream(headers.spliterator(), false)
+                .map(header -> {
+                    String headerKey = header.component1();
+                    String headerValue = header.component2();
+                    return String.format("[%s: %s]", headerKey, headerValue);
+                })
+                .collect(Collectors.joining(", "));
     }
 }

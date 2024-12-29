@@ -9,9 +9,9 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariables;
 
 @EnabledIfEnvironmentVariables({
-        @EnabledIfEnvironmentVariable(named = "VESPA_URL", matches = ".+"),
-        @EnabledIfEnvironmentVariable(named = "VESPA_KEY_PATH", matches = ".+"),
-        @EnabledIfEnvironmentVariable(named = "VESPA_CERT_PATH", matches = ".+")
+    @EnabledIfEnvironmentVariable(named = "VESPA_URL", matches = ".+"),
+    @EnabledIfEnvironmentVariable(named = "VESPA_KEY_PATH", matches = ".+"),
+    @EnabledIfEnvironmentVariable(named = "VESPA_CERT_PATH", matches = ".+")
 })
 public class VespaEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 

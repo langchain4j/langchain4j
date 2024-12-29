@@ -36,15 +36,14 @@ class VespaEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
     @Container
     static GenericContainer<?> vespa = new GenericContainer<>(DockerImageName.parse("vespaengine/vespa:8.432.4"))
-        .waitingFor(Wait.forListeningPorts(19071))
-        .withExposedPorts(8080, 19071);
+            .waitingFor(Wait.forListeningPorts(19071))
+            .withExposedPorts(8080, 19071);
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    private final VespaEmbeddingStore embeddingStore = VespaEmbeddingStore
-        .builder()
-        .url(String.format("http://%s:%d", vespa.getHost(), vespa.getMappedPort(8080)))
-        .build();
+    private final VespaEmbeddingStore embeddingStore = VespaEmbeddingStore.builder()
+            .url(String.format("http://%s:%d", vespa.getHost(), vespa.getMappedPort(8080)))
+            .build();
 
     @Test
     void should_find_relevant_matches() {
@@ -55,28 +54,34 @@ class VespaEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         TextSegment segment2 = TextSegment.from("I've never been to New York.");
         Embedding embedding2 = embeddingModel.embed(segment2).content();
 
-        TextSegment segment3 = TextSegment.from(
-            "But actually we tried our new swimming pool yesterday and it was awesome!"
-        );
+        TextSegment segment3 =
+                TextSegment.from("But actually we tried our new swimming pool yesterday and it was awesome!");
         Embedding embedding3 = embeddingModel.embed(segment3).content();
 
         TextSegment segment4 = TextSegment.from("John Lennon was a very cool person.");
         Embedding embedding4 = embeddingModel.embed(segment4).content();
 
         embeddingStore.addAll(
-            asList(embedding1, embedding2, embedding3, embedding4),
-            asList(segment1, segment2, segment3, segment4)
-        );
+                asList(embedding1, embedding2, embedding3, embedding4), asList(segment1, segment2, segment3, segment4));
 
         // when
-        Embedding sportEmbedding = embeddingModel.embed("What is your favorite sport?").content();
+        Embedding sportEmbedding =
+                embeddingModel.embed("What is your favorite sport?").content();
         List<EmbeddingMatch<TextSegment>> sportMatches = embeddingStore
-            .search(EmbeddingSearchRequest.builder().queryEmbedding(sportEmbedding).maxResults(2).build())
-            .matches();
-        Embedding musicEmbedding = embeddingModel.embed("And what about musicians?").content();
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(sportEmbedding)
+                        .maxResults(2)
+                        .build())
+                .matches();
+        Embedding musicEmbedding =
+                embeddingModel.embed("And what about musicians?").content();
         List<EmbeddingMatch<TextSegment>> musicMatches = embeddingStore
-            .search(EmbeddingSearchRequest.builder().queryEmbedding(musicEmbedding).maxResults(5).minScore(0.3).build())
-            .matches();
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(musicEmbedding)
+                        .maxResults(5)
+                        .minScore(0.3)
+                        .build())
+                .matches();
 
         // then
         assertThat(sportMatches).hasSize(2);
@@ -132,36 +137,31 @@ class VespaEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
     @Override
     protected List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         // we have to add records one by one, since Vespa's Json feeder in addAll method returns the ids in random order
-        return embeddings
-            .stream()
-            .map(embedding -> embeddingStore().add(embedding, embedded.get(embeddings.indexOf(embedding))))
-            .toList();
+        return embeddings.stream()
+                .map(embedding -> embeddingStore().add(embedding, embedded.get(embeddings.indexOf(embedding))))
+                .toList();
     }
 
     @Override
     protected List<String> addAll(List<Embedding> embeddings) {
         // we have to add records one by one, since Vespa's Json feeder in addAll method returns the ids in random order
-        return embeddings.stream().map(embedding -> embeddingStore().add(embedding)).toList();
+        return embeddings.stream()
+                .map(embedding -> embeddingStore().add(embedding))
+                .toList();
     }
 
     private void deployVespaApp() {
         try {
-            URI uri = new URI(
-                String.format(
+            URI uri = new URI(String.format(
                     "http://%s:%d/application/v2/tenant/default/prepareandactivate",
-                    vespa.getHost(),
-                    vespa.getMappedPort(19071)
-                )
-            );
+                    vespa.getHost(), vespa.getMappedPort(19071)));
             HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/zip");
 
-            try (
-                InputStream in = VespaEmbeddingStoreIT.class.getResourceAsStream("/vespa_app.zip");
-                DataOutputStream out = new DataOutputStream(conn.getOutputStream())
-            ) {
+            try (InputStream in = VespaEmbeddingStoreIT.class.getResourceAsStream("/vespa_app.zip");
+                    DataOutputStream out = new DataOutputStream(conn.getOutputStream())) {
                 byte[] buffer = new byte[8192];
                 int read;
                 while ((read = in.read(buffer)) != -1) {
