@@ -24,7 +24,7 @@ import lombok.Builder;
 public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final String DEFAULT_BASE_URL = "https://api.jina.ai/";
-    private static final String DEFAULT_MODEL = "jina-embeddings-v2-base-en";
+    private static final String DEFAULT_MODEL = "jina-embeddings-v3";
 
     private final JinaClient client;
     private final String modelName;
