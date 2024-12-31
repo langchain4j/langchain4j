@@ -128,7 +128,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Record in) {
         return new EmbeddingMatch<>(
                 in.relevance(),
-                in.fields().documentid(),
+                DocumentId.of(in.fields().documentid()).userSpecific(),
                 Embedding.from(in.fields().vector().values()),
                 in.fields().textSegment() != null ? TextSegment.from(in.fields().textSegment()) : null);
     }
@@ -259,7 +259,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
                         if (throwable != null) {
                             throw new RuntimeException(throwable);
                         } else if (Result.Type.success.equals(result.type())) {
-                            resId.set(result.documentId().toString());
+                            resId.set(result.documentId().userSpecific());
                         }
                     }));
         } catch (Exception e) {

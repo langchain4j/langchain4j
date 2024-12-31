@@ -33,7 +33,7 @@ import org.testcontainers.utility.DockerImageName;
 class VespaEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
     @Container
-    static GenericContainer<?> vespa = new GenericContainer<>(DockerImageName.parse("vespaengine/vespa:8.432.4"))
+    static GenericContainer<?> vespa = new GenericContainer<>(DockerImageName.parse("vespaengine/vespa:8.458.13"))
             .waitingFor(Wait.forListeningPorts(19071))
             .withExposedPorts(8080, 19071);
 
@@ -120,27 +120,6 @@ class VespaEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         } catch (Exception e) {
             deployVespaApp();
         }
-    }
-
-    @Override
-    protected String documentURI(String id) {
-        return String.format("id:%s:%s::%s", DEFAULT_NAMESPACE, DEFAULT_DOCUMENT_TYPE, id);
-    }
-
-    @Override
-    protected List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        // we have to add records one by one, since Vespa's Json feeder in addAll method returns the ids in random order
-        return embeddings.stream()
-                .map(embedding -> embeddingStore().add(embedding, embedded.get(embeddings.indexOf(embedding))))
-                .toList();
-    }
-
-    @Override
-    protected List<String> addAll(List<Embedding> embeddings) {
-        // we have to add records one by one, since Vespa's Json feeder in addAll method returns the ids in random order
-        return embeddings.stream()
-                .map(embedding -> embeddingStore().add(embedding))
-                .toList();
     }
 
     private void deployVespaApp() {

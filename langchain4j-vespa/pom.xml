@@ -28,7 +28,7 @@
     </licenses>
 
     <properties>
-        <vespa.version>8.432.4</vespa.version>
+        <vespa.version>8.458.13</vespa.version>
     </properties>
 
     <dependencies>

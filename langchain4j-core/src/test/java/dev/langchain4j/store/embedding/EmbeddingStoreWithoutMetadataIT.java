@@ -83,7 +83,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(relevant).hasSize(1);
         EmbeddingMatch<TextSegment> match = relevant.get(0);
         assertThat(match.score()).isCloseTo(1, percentage());
-        assertThat(match.embeddingId()).isEqualTo(documentURI(id));
+        assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
             assertThat(match.embedding()).isEqualTo(embedding);
         }
@@ -137,7 +137,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         // given
         Embedding firstEmbedding = embeddingModel().embed("hello").content();
         Embedding secondEmbedding = embeddingModel().embed("hi").content();
-        List<String> ids = addAll(asList(firstEmbedding, secondEmbedding));
+        List<String> ids = embeddingStore().addAll(asList(firstEmbedding, secondEmbedding));
 
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
@@ -190,7 +190,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         TextSegment secondSegment = TextSegment.from("hi");
         Embedding secondEmbedding = embeddingModel().embed(secondSegment.text()).content();
 
-        List<String> ids = addAll(asList(firstEmbedding, secondEmbedding), asList(firstSegment, secondSegment));
+        List<String> ids = embeddingStore().addAll(asList(firstEmbedding, secondEmbedding), asList(firstSegment, secondSegment));
 
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
@@ -259,12 +259,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(relevant).hasSize(2);
         assertThat(relevant.get(0)).isNotNull();
         assertThat(relevant.get(1)).isNotNull();
-        assertThat(relevant.get(0).embeddingId()).isEqualTo(documentURI(id1));
-        assertThat(relevant.get(1).embeddingId()).isEqualTo(documentURI(id2));
+        assertThat(relevant.get(0).embeddingId()).isEqualTo(id1);
+        assertThat(relevant.get(1).embeddingId()).isEqualTo(id2);
 
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
-        assertThat(firstMatch.embeddingId()).isEqualTo(documentURI(id1));
+        assertThat(firstMatch.embeddingId()).isEqualTo(id1);
         if (assertEmbedding()) {
             assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
         }
@@ -275,7 +275,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .isCloseTo(
                         RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
                         percentage());
-        assertThat(secondMatch.embeddingId()).isEqualTo(documentURI(id2));
+        assertThat(secondMatch.embeddingId()).isEqualTo(id2);
         if (assertEmbedding()) {
             assertThat(CosineSimilarity.between(secondMatch.embedding(), secondEmbedding))
                     .isCloseTo(1, withPercentage(0.01)); // TODO return strict check back once Qdrant fixes it
@@ -312,13 +312,13 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(relevant).hasSize(2);
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
         assertThat(firstMatch.score()).isCloseTo(1, percentage());
-        assertThat(firstMatch.embeddingId()).isEqualTo(documentURI(firstId));
+        assertThat(firstMatch.embeddingId()).isEqualTo(firstId);
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score())
                 .isCloseTo(
                         RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
                         percentage());
-        assertThat(secondMatch.embeddingId()).isEqualTo(documentURI(secondId));
+        assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
 
         // new API
         assertThat(embeddingStore()
@@ -335,8 +335,8 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         // then
         assertThat(relevant2).hasSize(2);
-        assertThat(relevant2.get(0).embeddingId()).isEqualTo(documentURI(firstId));
-        assertThat(relevant2.get(1).embeddingId()).isEqualTo(documentURI(secondId));
+        assertThat(relevant2.get(0).embeddingId()).isEqualTo(firstId);
+        assertThat(relevant2.get(1).embeddingId()).isEqualTo(secondId);
 
         // new API
         assertThat(embeddingStore()
@@ -354,8 +354,8 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         // then
         assertThat(relevant3).hasSize(2);
-        assertThat(relevant3.get(0).embeddingId()).isEqualTo(documentURI(firstId));
-        assertThat(relevant3.get(1).embeddingId()).isEqualTo(documentURI(secondId));
+        assertThat(relevant3.get(0).embeddingId()).isEqualTo(firstId);
+        assertThat(relevant3.get(1).embeddingId()).isEqualTo(secondId);
 
         // new API
         assertThat(embeddingStore()
@@ -373,7 +373,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         // then
         assertThat(relevant4).hasSize(1);
-        assertThat(relevant4.get(0).embeddingId()).isEqualTo(documentURI(firstId));
+        assertThat(relevant4.get(0).embeddingId()).isEqualTo(firstId);
 
         // new API
         assertThat(embeddingStore()
@@ -430,23 +430,11 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         return searchResult.matches();
     }
 
-    protected List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        return embeddingStore().addAll(embeddings, embedded);
-    }
-
-    protected List<String> addAll(List<Embedding> embeddings) {
-        return embeddingStore().addAll(embeddings);
-    }
-
     protected boolean assertEmbedding() {
         return true;
     }
 
     protected Percentage percentage() {
         return withPercentage(1);
-    }
-
-    protected String documentURI(String id) {
-        return id;
     }
 }
