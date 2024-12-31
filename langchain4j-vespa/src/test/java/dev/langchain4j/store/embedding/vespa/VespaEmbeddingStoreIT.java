@@ -79,19 +79,19 @@ class VespaEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
                 .search(EmbeddingSearchRequest.builder()
                         .queryEmbedding(musicEmbedding)
                         .maxResults(5)
-                        .minScore(0.3)
+                        .minScore(0.6)
                         .build())
                 .matches();
 
         // then
         assertThat(sportMatches).hasSize(2);
-        assertThat(sportMatches.get(0).score()).isCloseTo(0.639, percentage());
+        assertThat(sportMatches.get(0).score()).isCloseTo(0.808, percentage());
         assertThat(sportMatches.get(0).embedded().text()).contains("football");
-        assertThat(sportMatches.get(1).score()).isCloseTo(0.232, percentage());
+        assertThat(sportMatches.get(1).score()).isCloseTo(0.606, percentage());
         assertThat(sportMatches.get(1).embedded().text()).contains("swimming pool");
 
         assertThat(musicMatches).hasSize(1);
-        assertThat(musicMatches.get(0).score()).isCloseTo(0.359, percentage());
+        assertThat(musicMatches.get(0).score()).isCloseTo(0.671, percentage());
         assertThat(musicMatches.get(0).embedded().text()).contains("John Lennon");
     }
 
@@ -127,11 +127,6 @@ class VespaEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
     @Override
     protected String documentURI(String id) {
         return String.format("id:%s:%s::%s", DEFAULT_NAMESPACE, DEFAULT_DOCUMENT_TYPE, id);
-    }
-
-    @Override
-    protected Percentage percentage() {
-        return withPercentage(12);
     }
 
     @Override

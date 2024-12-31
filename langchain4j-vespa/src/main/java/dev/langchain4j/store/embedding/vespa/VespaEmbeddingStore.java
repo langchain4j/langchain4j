@@ -52,7 +52,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final String FIELD_NAME_TEXT_SEGMENT = "text_segment";
     private static final String FIELD_NAME_VECTOR = "vector";
     private static final String FIELD_NAME_DOCUMENT_ID = "documentid";
-    private static final String DEFAULT_RANK_PROFILE = "cosine_similarity";
+    private static final String DEFAULT_RANK_PROFILE = "langchain4j_relevance_score";
     private static final int DEFAULT_TARGET_HITS = 10;
 
     private final String url;
