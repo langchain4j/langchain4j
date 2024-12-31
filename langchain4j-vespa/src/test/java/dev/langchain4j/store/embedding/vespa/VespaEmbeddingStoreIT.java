@@ -4,7 +4,6 @@ import static dev.langchain4j.store.embedding.vespa.VespaEmbeddingStore.DEFAULT_
 import static dev.langchain4j.store.embedding.vespa.VespaEmbeddingStore.DEFAULT_NAMESPACE;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.data.Percentage.withPercentage;
 import static org.awaitility.Awaitility.await;
 
 import dev.langchain4j.data.embedding.Embedding;
@@ -23,7 +22,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.List;
-import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
