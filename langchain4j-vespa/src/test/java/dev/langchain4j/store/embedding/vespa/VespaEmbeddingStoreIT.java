@@ -1,7 +1,5 @@
 package dev.langchain4j.store.embedding.vespa;
 
-import static dev.langchain4j.store.embedding.vespa.VespaEmbeddingStore.DEFAULT_DOCUMENT_TYPE;
-import static dev.langchain4j.store.embedding.vespa.VespaEmbeddingStore.DEFAULT_NAMESPACE;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
