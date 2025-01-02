@@ -4,18 +4,16 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.mcp.client.protocol.CancellationNotification;
+import dev.langchain4j.mcp.client.protocol.InitializationNotification;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,10 +23,10 @@ public class StdioMcpTransport implements McpTransport {
     private final Map<String, String> environment;
     private Process process;
     private ProcessIOHandler processIOHandler;
-    private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
     private final boolean logEvents;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(StdioMcpTransport.class);
+    private volatile McpOperationHandler messageHandler;
 
     public StdioMcpTransport(Builder builder) {
         this.command = builder.command;
@@ -37,7 +35,8 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
-    public void start() {
+    public void start(McpOperationHandler messageHandler) {
+        this.messageHandler = messageHandler;
         log.debug("Starting process: {}", command);
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.environment().putAll(environment);
@@ -50,37 +49,55 @@ public class StdioMcpTransport implements McpTransport {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        processIOHandler = new ProcessIOHandler(process, pendingOperations, logEvents);
+        processIOHandler = new ProcessIOHandler(process, messageHandler, logEvents);
         // FIXME: where should we obtain the thread?
         new Thread(processIOHandler).start();
         new Thread(new ProcessStderrHandler(process)).start();
     }
 
     @Override
-    public JsonNode initialize(McpInitializeRequest request) {
+    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(request);
-            return executeAndWait(requestString, request.getId());
+            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
+            String initializationNotification = OBJECT_MAPPER.writeValueAsString(new InitializationNotification());
+            return execute(requestString, operation.getId())
+                    .thenCompose(originalResponse -> execute(initializationNotification, null)
+                            .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
+        } catch (JsonProcessingException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<JsonNode> listTools(McpListToolsRequest operation) {
+        try {
+            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
+            return execute(requestString, operation.getId());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public JsonNode listTools(McpListToolsRequest operation) {
+    public CompletableFuture<JsonNode> executeTool(McpCallToolRequest operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return executeAndWait(requestString, operation.getId());
+            return execute(requestString, operation.getId());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public JsonNode executeTool(McpCallToolRequest operation, Duration timeout) throws TimeoutException {
+    public void cancelOperation(long operationId) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return executeAndWait(requestString, operation.getId(), timeout);
+            String requestString =
+                    OBJECT_MAPPER.writeValueAsString(new CancellationNotification(operationId, "Timeout"));
+            // Note: we're passing a null operationId here because this
+            // argument refers to the 'cancellation' notification, not the
+            // operation being cancelled. The cancellation is a notification
+            // so it does not have any ID and does not expect any response.
+            execute(requestString, null);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -91,39 +108,21 @@ public class StdioMcpTransport implements McpTransport {
         process.destroy();
     }
 
-    private JsonNode executeAndWait(String request, Long id) {
-        try {
-            CompletableFuture<JsonNode> future = new CompletableFuture<>();
-            pendingOperations.put(id, future);
-            processIOHandler.submit(request);
-            return future.get();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(id);
+    private CompletableFuture<JsonNode> execute(String request, Long id) {
+        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+        if (id != null) {
+            messageHandler.startOperation(id, future);
         }
-    }
-
-    private JsonNode executeAndWait(String request, Long id, Duration timeout) throws TimeoutException {
         try {
-            CompletableFuture<JsonNode> future = new CompletableFuture<>();
-            pendingOperations.put(id, future);
             processIOHandler.submit(request);
-            long timeoutMillis = timeout.toMillis() == 0 ? Long.MAX_VALUE : timeout.toMillis();
-            return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException timeoutException) {
-            CancellationNotification cancellationNotification = new CancellationNotification(id, "Timeout");
-            try {
-                processIOHandler.submit(OBJECT_MAPPER.writeValueAsString(cancellationNotification));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            // For messages with null ID, we don't wait for a corresponding response
+            if (id == null) {
+                future.complete(null);
             }
-            throw timeoutException;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(id);
+        } catch (IOException e) {
+            future.completeExceptionally(e);
         }
+        return future;
     }
 
     public static class Builder {
