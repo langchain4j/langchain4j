@@ -12,7 +12,6 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import lombok.Builder;
-import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.Select;
@@ -53,7 +52,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * The default prompt template is not highly optimized,
  * so it is advised to experiment with it and see what works best for your use case.
  */
-@Slf4j
 @Experimental
 public class SqlDatabaseContentRetriever implements ContentRetriever {
     private static final String ERROR_RESULT_PREFIX = "Error of executing";
@@ -252,11 +250,11 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
         int attemptsLeft = maxRetries + 1;
         List<Content> contents = new ArrayList<>();
+
         while (attemptsLeft > 0) {
             attemptsLeft--;
 
             sqlQuery = generateSqlQuery(naturalLanguageQuery, sqlQuery, errorMessage);
-
             sqlQuery = clean(sqlQuery);
 
             List<String> sqlList = getSplitSql(sqlQuery);
@@ -265,6 +263,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 break;
             }
             errorMessage = getSqlErrors(contents);
+
         }
         return contents;
     }
@@ -279,14 +278,12 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
             } else if (text.startsWith("Result")) {
                 sqlStr = text.replace(RESULT_PREFIX, "").trim();
             } else {
-                log.error("Get sql error failed: {}", text);
                 continue;
             }
             String[] sqlError = sqlStr.split(":");
             if (sqlError.length == 2) {
                 errors.add(sqlError[1].trim());
             } else {
-                log.error("Split sql error failed: {}", sqlStr);
                 errors.add(sqlStr);
             }
         }
@@ -308,7 +305,6 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         for (int i = 0; i < sqlQueries.size(); i++) {
             String sqlQuery = sqlQueries.get(i);
             if (!isSelect(sqlQuery.trim())) {
-                log.error("SQL query is not a SELECT statement: {}", sqlQuery);
                 continue;
             }
             Pair<String, Integer> result;
@@ -319,7 +315,6 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                     content = format(result, sqlQuery, false, i);
                 }
             } catch (Exception e) {
-                log.error("Failed to execute SQL query: {}", sqlQueries, e);
                 result = Pair.of(e.getMessage(), 0);
                 content = format(result, sqlQuery, true, i);
             }
@@ -432,5 +427,4 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         content.textSegment().metadata().put("order", order);
         return content;
     }
-
 }
