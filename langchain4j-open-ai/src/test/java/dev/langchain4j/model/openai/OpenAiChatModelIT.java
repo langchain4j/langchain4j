@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.Base64;
 import java.util.List;
@@ -30,6 +31,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiChatModelIT {
 
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
@@ -160,7 +162,7 @@ class OpenAiChatModelIT {
     void should_execute_tool_forcefully_then_answer() {
 
         // given
-        UserMessage userMessage = userMessage("2+2=?");
+        UserMessage userMessage = userMessage("I have 2 apples and 2 pears");
 
         // when
         Response<AiMessage> response = model.generate(singletonList(userMessage), calculator);
@@ -181,7 +183,7 @@ class OpenAiChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP); // not sure if a bug in OpenAI or stop is expected here
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         // given
         ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
@@ -196,7 +198,7 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(37);
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());

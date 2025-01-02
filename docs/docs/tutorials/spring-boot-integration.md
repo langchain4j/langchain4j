@@ -26,7 +26,7 @@ For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `l
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.36.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
@@ -77,7 +77,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>0.36.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
@@ -186,6 +186,29 @@ In this case, you must explicitly specify **all** components.
 :::
 
 More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
+
+### Listening for AI Service Registration Events
+
+After you have completed the development of the AI Service in a declarative manner, you can listen for the
+`AiServiceRegisteredEvent` by implementing the `ApplicationListener<AiServiceRegisteredEvent>` interface.
+This event is triggered when AI Service is registered in the Spring context, 
+allowing you to obtain information about all registered AI services and their tools at runtime. 
+Here is an example:
+```java
+@Component
+class AiServiceRegisteredEventListener implements ApplicationListener<AiServiceRegisteredEvent> {
+
+
+    @Override
+    public void onApplicationEvent(AiServiceRegisteredEvent event) {
+        Class<?> aiServiceClass = event.aiServiceClass();
+        List<ToolSpecification> toolSpecifications = event.toolSpecifications();
+        for (int i = 0; i < toolSpecifications.size(); i++) {
+            System.out.printf("[%s]: [Tool-%s]: %s%n", aiServiceClass.getSimpleName(), i + 1, toolSpecifications.get(i));
+        }
+    }
+}
+```
 
 ## Flux
 

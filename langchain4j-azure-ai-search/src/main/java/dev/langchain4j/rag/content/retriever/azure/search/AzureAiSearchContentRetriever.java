@@ -10,6 +10,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -24,13 +25,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Represents Azure AI Search Service as a {@link ContentRetriever}.
@@ -176,9 +177,14 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
             List<EmbeddingMatch<TextSegment>> searchResult = super.search(request).matches();
             return searchResult.stream()
-                    .map(EmbeddingMatch::embedded)
-                    .map(Content::from)
-                    .collect(toList());
+                    .map(embeddingMatch -> Content.from(
+                            embeddingMatch.embedded(),
+                            Map.of(
+                                    ContentMetadata.SCORE, embeddingMatch.score(),
+                                    ContentMetadata.EMBEDDING_ID, embeddingMatch.embeddingId()
+                            )
+                    ))
+                    .toList();
         } else if (azureAiSearchQueryType == AzureAiSearchQueryType.FULL_TEXT) {
             String content = query.text();
             return findRelevantWithFullText(content, maxResults, minScore);
@@ -247,7 +253,13 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
     private List<Content> mapResultsToContentList(SearchPagedIterable searchResults, AzureAiSearchQueryType azureAiSearchQueryType, double minScore) {
         List<Content> result = new ArrayList<>();
         getEmbeddingMatches(searchResults, minScore, azureAiSearchQueryType).forEach(embeddingMatch -> {
-            Content content = Content.from(embeddingMatch.embedded());
+            Content content = Content.from(
+                    embeddingMatch.embedded(),
+                    Map.of(
+                            ContentMetadata.SCORE, embeddingMatch.score(),
+                            ContentMetadata.EMBEDDING_ID, embeddingMatch.embeddingId()
+                    )
+            );
             result.add(content);
         });
         return result;

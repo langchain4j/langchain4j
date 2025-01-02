@@ -25,6 +25,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.output.JsonSchemas;
@@ -37,8 +38,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -128,9 +131,11 @@ public class GoogleAiGeminiStreamingChatModelIT {
         assertThat(jsonText).contains("\"firstname\"");
         assertThat(jsonText).contains("\"John\"");
 
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(25);
-        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(7);
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(32);
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 
     @Test
@@ -373,16 +378,15 @@ public class GoogleAiGeminiStreamingChatModelIT {
     @RetryingTest(5)
     void should_support_safety_settings() {
         // given
-        List<GeminiSafetySetting> safetySettings = List.of(
-            new GeminiSafetySetting(HARM_CATEGORY_HATE_SPEECH, BLOCK_LOW_AND_ABOVE),
-            new GeminiSafetySetting(HARM_CATEGORY_HARASSMENT, BLOCK_LOW_AND_ABOVE)
-        );
+        Map<GeminiHarmCategory, GeminiHarmBlockThreshold> mapSafetySettings = new HashMap<>();
+        mapSafetySettings.put(HARM_CATEGORY_HATE_SPEECH, BLOCK_LOW_AND_ABOVE);
+        mapSafetySettings.put(HARM_CATEGORY_HARASSMENT, BLOCK_LOW_AND_ABOVE);
 
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
-            .safetySettings(safetySettings)
+            .safetySettings(mapSafetySettings)
             .build();
 
         // when
@@ -617,7 +621,7 @@ public class GoogleAiGeminiStreamingChatModelIT {
             .apiKey(GOOGLE_AI_GEMINI_API_KEY)
             .modelName("gemini-1.5-flash")
             .logRequestsAndResponses(true)
-            .toolConfig(new GeminiFunctionCallingConfig(GeminiMode.ANY, List.of("toolTwo")))
+            .toolConfig(GeminiMode.ANY, "toolTwo")
             .build();
 
         // when

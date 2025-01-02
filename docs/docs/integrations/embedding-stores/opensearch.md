@@ -1,5 +1,5 @@
 ---
-sidebar_position: 16
+sidebar_position: 17
 ---
 
 # OpenSearch
@@ -13,7 +13,7 @@ https://opensearch.org/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-opensearch</artifactId>
-    <version>0.36.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
