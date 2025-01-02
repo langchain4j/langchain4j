@@ -273,9 +273,9 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         for (Content content : contents) {
             String text = content.textSegment().text();
             String sqlStr;
-            if (text.startsWith("Error")) {
+            if (getMessageType(text) == MessageType.ERROR) {
                 sqlStr = text.replace(ERROR_RESULT_PREFIX, "").trim();
-            } else if (text.startsWith("Result")) {
+            } else if (getMessageType(text) == MessageType.RESULT) {
                 sqlStr = text.replace(RESULT_PREFIX, "").trim();
             } else {
                 continue;
@@ -290,17 +290,17 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         return String.join(";", errors);
     }
 
-    private Boolean isExistError(List<Content> contents) {
+    protected Boolean isExistError(List<Content> contents) {
         for (Content content : contents) {
             String text = content.textSegment().text();
-            if (text.startsWith("Error")) {
+            if (getMessageType(text) == MessageType.ERROR) {
                 return true;
             }
         }
         return false;
     }
 
-    private List<Content> getContents(List<String> sqlQueries) {
+    protected List<Content> getContents(List<String> sqlQueries) {
         ArrayList<Content> contents = new ArrayList<>();
         for (int i = 0; i < sqlQueries.size(); i++) {
             String sqlQuery = sqlQueries.get(i);
@@ -354,7 +354,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         return sqlQuery;
     }
 
-    private List<String> getSplitSql(String sqlQuery) {
+    protected List<String> getSplitSql(String sqlQuery) {
         ArrayList<String> sqlList = new ArrayList<>();
         if (StringUtils.isNotBlank(sqlQuery) && sqlQuery.contains(";")) {
             String[] splitSqlArray = sqlQuery.split(";");
@@ -372,7 +372,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
     }
 
-    private Pair<String, Integer> execute(String sqlQuery, Statement statement) throws SQLException {
+    protected Pair<String, Integer> execute(String sqlQuery, Statement statement) throws SQLException {
         StringBuilder markdownBuilder = new StringBuilder();
         int rowCount = 0;
         try (ResultSet resultSet = statement.executeQuery(sqlQuery)) {
@@ -426,5 +426,21 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         content.textSegment().metadata().put("sql", sqlQuery);
         content.textSegment().metadata().put("order", order);
         return content;
+    }
+
+    private MessageType getMessageType(String text) {
+        if (text.startsWith("Error")) {
+            return MessageType.ERROR;
+        } else if (text.startsWith("Result")) {
+            return MessageType.RESULT;
+        } else {
+            return MessageType.UNKNOWN;
+        }
+    }
+
+    public enum MessageType {
+        ERROR,
+        RESULT,
+        UNKNOWN
     }
 }
