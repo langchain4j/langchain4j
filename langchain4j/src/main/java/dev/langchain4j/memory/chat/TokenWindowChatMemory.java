@@ -100,6 +100,11 @@ public class TokenWindowChatMemory implements ChatMemory {
                 messageToEvictIndex = 1;
             }
 
+            if (messageToEvictIndex >= messages.size()) {
+                log.warn("Chat memory is empty, but the capacity requirement is not met.");
+                return;
+            }
+
             ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
             int tokenCountOfEvictedMessage = tokenizer.estimateTokenCountInMessage(evictedMessage);
             log.trace("Evicting the following message ({} tokens) to comply with the capacity requirement: {}",
