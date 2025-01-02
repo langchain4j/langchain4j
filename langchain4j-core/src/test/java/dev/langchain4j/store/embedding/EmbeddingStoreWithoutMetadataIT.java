@@ -190,7 +190,8 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         TextSegment secondSegment = TextSegment.from("hi");
         Embedding secondEmbedding = embeddingModel().embed(secondSegment.text()).content();
 
-        List<String> ids = embeddingStore().addAll(asList(firstEmbedding, secondEmbedding), asList(firstSegment, secondSegment));
+        List<String> ids =
+                embeddingStore().addAll(asList(firstEmbedding, secondEmbedding), asList(firstSegment, secondSegment));
 
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
