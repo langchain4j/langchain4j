@@ -15,8 +15,6 @@ import lombok.Builder;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.Select;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -307,7 +305,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
             if (!isSelect(sqlQuery.trim())) {
                 continue;
             }
-            Pair<String, Integer> result;
+            SqlResult result;
             Content content;
             try {
                 try (Connection connection = this.dataSource.getConnection(); Statement statement = connection.createStatement()) {
@@ -315,7 +313,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                     content = format(result, sqlQuery, false, i);
                 }
             } catch (Exception e) {
-                result = Pair.of(e.getMessage(), 0);
+                result = new SqlResult(e.getMessage(), 0);
                 content = format(result, sqlQuery, true, i);
             }
             contents.add(content);
@@ -356,7 +354,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
     protected List<String> getSplitSql(String sqlQuery) {
         ArrayList<String> sqlList = new ArrayList<>();
-        if (StringUtils.isNotBlank(sqlQuery) && sqlQuery.contains(";")) {
+        if (sqlQuery != null && sqlQuery.contains(";")) {
             String[] splitSqlArray = sqlQuery.split(";");
             sqlList.addAll(Arrays.asList(splitSqlArray));
         }
@@ -372,7 +370,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
     }
 
-    protected Pair<String, Integer> execute(String sqlQuery, Statement statement) throws SQLException {
+    protected SqlResult execute(String sqlQuery, Statement statement) throws SQLException {
         StringBuilder markdownBuilder = new StringBuilder();
         int rowCount = 0;
         try (ResultSet resultSet = statement.executeQuery(sqlQuery)) {
@@ -409,19 +407,18 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 rowCount++;
             }
         }
-
-        return Pair.of(markdownBuilder.toString(), rowCount);
+        return new SqlResult(markdownBuilder.toString(), rowCount);
     }
 
-    private Content format(Pair<String, Integer> result, String sqlQuery, Boolean isError, Integer order) {
+    protected Content format(SqlResult result, String sqlQuery, Boolean isError, Integer order) {
         Content content;
-        String executeResult = result.getLeft();
+        String executeResult = result.getResult();
         if (!isError) {
             content = Content.from(String.format(RESULT_PREFIX + " '%s':\n%s", sqlQuery, executeResult));
         } else {
             content = Content.from(String.format(ERROR_RESULT_PREFIX + " %s:%s", sqlQuery, executeResult));
         }
-        Integer rowCount = result.getRight();
+        int rowCount = result.getRowCount();
         content.textSegment().metadata().put("rowCount", rowCount);
         content.textSegment().metadata().put("sql", sqlQuery);
         content.textSegment().metadata().put("order", order);
@@ -438,7 +435,25 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
     }
 
-    public enum MessageType {
+    protected static class SqlResult {
+        private final String result;
+        private final int rowCount;
+
+        public SqlResult(String result, int rowCount) {
+            this.result = result;
+            this.rowCount = rowCount;
+        }
+
+        public String getResult() {
+            return result;
+        }
+
+        public int getRowCount() {
+            return rowCount;
+        }
+    }
+    
+    protected enum MessageType {
         ERROR,
         RESULT,
         UNKNOWN
