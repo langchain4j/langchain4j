@@ -32,6 +32,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import okhttp3.ResponseBody;
 import retrofit2.Response;
 
 /**
@@ -77,8 +78,10 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
      *                     application, e.g. https://alexey-heezer.langchain4j.mytenant346.aws-us-east-1c.dev.z.vespa-app.cloud/
      * @param keyPath      local path to the SSL private key file in PEM format. Read
      *                     <a href="https://cloud.vespa.ai/en/getting-started-java">docs</a> for details.
+     *                     Null if there is no SSL private key file e.g. for local Vespa server.
      * @param certPath     local path to the SSL certificate file in PEM format. Read
      *                     <a href="https://cloud.vespa.ai/en/getting-started-java">docs</a> for details.
+     *                     Null if there is no SSL certificate file e.g. for local Vespa server.
      * @param timeout      for Vespa Java client in <code>java.time.Duration</code> format.
      * @param namespace    required for document ID generation, find more details
      *                     <a href="https://docs.vespa.ai/en/documents.html#namespace">here</a>.
@@ -229,7 +232,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
                                         .map(VespaEmbeddingStore::toEmbeddingMatch)
                                         .toList());
             } else {
-                throw new RuntimeException("Request failed");
+                throw toException(response);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -242,7 +245,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
             Response<DeleteResponse> response =
                     api().deleteAll(namespace, documentType, clusterName).execute();
             if (!response.isSuccessful()) {
-                throw new RuntimeException("Delete failed");
+                throw toException(response);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -292,10 +295,6 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
         DocumentId documentId = DocumentId.of(namespace, documentType, recordId);
         String text = textSegment != null ? textSegment.text() : null;
         return new Record(documentId.toString(), null, new Fields(null, text, new Vector(embedding.vectorAsList())));
-    }
-
-    private Record buildRecord(Embedding embedding, TextSegment textSegment) {
-        return buildRecord(null, embedding, textSegment);
     }
 
     private NearestNeighbor buildNearestNeighbor() {
@@ -428,6 +427,19 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
                     avoidDups,
                     logRequests,
                     logResponses);
+        }
+    }
+
+    private static RuntimeException toException(Response<?> response) throws IOException {
+        try (ResponseBody responseBody = response.errorBody()) {
+            int code = response.code();
+            if (responseBody != null) {
+                String body = responseBody.string();
+                String errorMessage = String.format("status code: %s; body: %s", code, body);
+                return new RuntimeException(errorMessage);
+            } else {
+                return new RuntimeException(String.format("status code: %s;", code));
+            }
         }
     }
 }
