@@ -42,6 +42,7 @@ public class AiServiceChatMemoryConfigTest {
                 .hasMessage("The ChatMemoryProvider configuration with @MemoryId in method 'chat' must not be null");
     }
 
+
     @Test
     void test_memoryId_requires_chatMemoryProvider_configuration_2() {
         // given
