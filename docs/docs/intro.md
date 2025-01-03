@@ -20,7 +20,7 @@ Here's how:
    Since early 2023, the community has been building numerous LLM-powered applications,
    identifying common abstractions, patterns, and techniques. LangChain4j has refined these into a ready to use package.
    Our toolbox includes tools ranging from low-level prompt templating, chat memory management, and function calling
-   to high-level patterns like AI Services and RAG.
+   to high-level patterns like Agents and RAG.
    For each abstraction, we provide an interface along with multiple ready-to-use implementations based on common techniques.
    Whether you're building a chatbot or developing a RAG with a complete pipeline from data ingestion to retrieval,
    LangChain4j offers a wide variety of options.
