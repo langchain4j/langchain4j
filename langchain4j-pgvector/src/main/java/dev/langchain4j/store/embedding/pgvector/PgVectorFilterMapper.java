@@ -30,7 +30,11 @@ abstract class PgVectorFilterMapper {
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     public String map(Filter filter) {
-        if (filter instanceof IsEqualTo) {
+        if (filter instanceof Contains contains) {
+            return mapContains(contains);
+        } else if (filter instanceof NotContains notContains) {
+            return mapNotContains(notContains);
+        } else if (filter instanceof IsEqualTo) {
             return mapEqual((IsEqualTo) filter);
         } else if (filter instanceof IsNotEqualTo) {
             return mapNotEqual((IsNotEqualTo) filter);
@@ -55,6 +59,16 @@ abstract class PgVectorFilterMapper {
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
+    }
+
+    private String mapContains(Contains contains) {
+        String key = formatKey(contains.key(), contains.comparisonValue().getClass());
+        return format("%s is not null and %s ~ %s", key, key, formatValue(contains.comparisonValue()));
+    }
+
+    private String mapNotContains(NotContains notContains) {
+        String key = formatKey(notContains.key(), notContains.comparisonValue().getClass());
+        return format("%s is not null and %s !~ %s", key, key, formatValue(notContains.comparisonValue()));
     }
 
     private String mapEqual(IsEqualTo isEqualTo) {
