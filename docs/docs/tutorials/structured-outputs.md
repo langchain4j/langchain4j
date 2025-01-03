@@ -422,7 +422,7 @@ to give more instructions and examples of correct outputs to the LLM, for exampl
 @Description("a person")
 record Person(@Description("person's first and last name, for example: John Doe") String name,
               @Description("person's age, for example: 42") int age,
-              @Description("person's height in meters, hor example: 1.78") double height,
+              @Description("person's height in meters, for example: 1.78") double height,
               @Description("is person married or not, for example: false") boolean married) {
 }
 ```
