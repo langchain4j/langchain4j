@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
 import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
@@ -56,7 +57,7 @@ public class JsonSchemaElementHelper {
 
         if (clazz.isEnum()) {
             return JsonEnumSchema.builder()
-                    .enumValues(stream(clazz.getEnumConstants()).map(Object::toString).toList())
+                    .enumValues(stream(clazz.getEnumConstants()).map(Object::toString).collect(Collectors.toList()))
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
                     .build();
         }
@@ -265,7 +266,7 @@ public class JsonSchemaElementHelper {
             }
             List<Map<String, Object>> anyOf = jsonAnyOfSchema.anyOf().stream()
                     .map(element -> toMap(element, strict))
-                    .toList();
+                    .collect(Collectors.toList());
             properties.put("anyOf", anyOf);
             return properties;
         } else {

@@ -27,6 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -209,13 +210,13 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                                                                          Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
             .map(retriever -> supplyAsync(() -> retrieve(retriever, query), executor))
-            .toList();
+            .collect(Collectors.toList());
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))
             .thenApply(ignored ->
                 futureContents.stream()
                     .map(CompletableFuture::join)
-                    .toList());
+                    .collect(Collectors.toList()));
     }
 
     private static List<Content> retrieve(ContentRetriever retriever, Query query) {
