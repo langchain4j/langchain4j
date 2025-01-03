@@ -4,12 +4,10 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.*;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.azure.spi.AzureOpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.image.ImageModel;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -162,19 +160,9 @@ public class AzureOpenAiImageModel implements ImageModel {
                 .setStyle(style)
                 .setResponseFormat(responseFormat);
 
-        try {
-            ImageGenerations imageGenerations = client.getImageGenerations(deploymentName, options);
-            Image image = imageFrom(imageGenerations.getData().get(0));
-            return Response.from(image);
-        } catch (HttpResponseException httpResponseException) {
-            logger.info("Error generating image, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_policy_violation");
-            return Response.from(
-                    Image.builder().build(),
-                    null,
-                    exceptionFinishReason
-            );
-        }
+        ImageGenerations imageGenerations = client.getImageGenerations(deploymentName, options);
+        Image image = imageFrom(imageGenerations.getData().get(0));
+        return Response.from(image);
     }
 
     public static Builder builder() {
