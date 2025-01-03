@@ -60,6 +60,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -79,7 +80,7 @@ class InternalGitHubModelHelper {
 
     public static final String DEFAULT_GITHUB_MODELS_ENDPOINT = "https://models.inference.ai.azure.com";
 
-    public static final String DEFAULT_USER_AGENT = "langchain4j-github-models";
+    public static final String DEFAULT_APP_ID = "langchain4j-github-models";
 
     public static ChatCompletionsClientBuilder setupChatCompletionsBuilder(String endpoint, ModelServiceVersion serviceVersion, String gitHubToken, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix, Map<String, String> customHeaders) {
         HttpClientOptions clientOptions = getClientOptions(timeout, proxyOptions, userAgentSuffix, customHeaders);
@@ -130,16 +131,21 @@ class InternalGitHubModelHelper {
         clientOptions.setWriteTimeout(timeout);
         clientOptions.setProxyOptions(proxyOptions);
 
-        String userAgent = DEFAULT_USER_AGENT;
+        // The application id is prefixed to the user agent string created by Azure SDK client.
+        // This user agent string is in the following format:
+        // [<application_id> ]{azsdk-<sdk_language>-<package_name>/<package_version> }+<platform_info>
+        String applicationId = DEFAULT_APP_ID;
         if (userAgentSuffix != null && !userAgentSuffix.isEmpty()) {
-            userAgent = DEFAULT_USER_AGENT + "-" + userAgentSuffix;
+            applicationId = DEFAULT_APP_ID + "-" + userAgentSuffix;
         }
-        List<Header> headers = new ArrayList<>();
-        headers.add(new Header("User-Agent", userAgent));
+        clientOptions.setApplicationId(applicationId);
+
         if (customHeaders != null) {
-            customHeaders.forEach((name, value) -> headers.add(new Header(name, value)));
+            List<Header> headers = customHeaders.entrySet().stream()
+                .map(entry -> new Header(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toUnmodifiableList());
+            clientOptions.setHeaders(headers);
         }
-        clientOptions.setHeaders(headers);
         return clientOptions;
     }
 
