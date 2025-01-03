@@ -16,7 +16,7 @@ import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
 class MilvusEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    static MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.3.16");
+    static MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.4.20");
 
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
             .uri(milvus.getEndpoint())
