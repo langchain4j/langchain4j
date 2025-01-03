@@ -61,6 +61,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -175,11 +176,11 @@ class InternalAzureOpenAiHelper {
     public static List<ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
 
         return messages.stream()
-                .map(InternalAzureOpenAiHelper::toOpenAiMessage)
+                .map(InternalAzureOpenAiHelper::toAzureOpenAiMessage)
                 .collect(toList());
     }
 
-    public static ChatRequestMessage toOpenAiMessage(ChatMessage message) {
+    public static ChatRequestMessage toAzureOpenAiMessage(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
             ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
@@ -248,31 +249,59 @@ class InternalAzureOpenAiHelper {
         return null;
     }
 
-    public static List<ChatCompletionsToolDefinition> toToolDefinitions(Collection<ToolSpecification> toolSpecifications) {
+    public static List<ChatCompletionsToolDefinition> toToolDefinitions(Collection<ToolSpecification> toolSpecifications, boolean strictTools) {
         return toolSpecifications.stream()
-                .map(InternalAzureOpenAiHelper::toToolDefinition)
+                .map(toolSpecification -> InternalAzureOpenAiHelper.toToolDefinition(toolSpecification, strictTools))
                 .collect(toList());
     }
 
-    private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
+    private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification, boolean strictTools) {
         ChatCompletionsFunctionToolDefinitionFunction functionDefinition = new ChatCompletionsFunctionToolDefinitionFunction(toolSpecification.name());
+        functionDefinition.setStrict(strictTools);
         functionDefinition.setDescription(toolSpecification.description());
-        functionDefinition.setParameters(getParameters(toolSpecification));
+        functionDefinition.setParameters(getParameters(toolSpecification, strictTools));
         return new ChatCompletionsFunctionToolDefinition(functionDefinition);
     }
 
-    public static ChatCompletionsToolSelection toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), getParameters(toolThatMustBeExecuted).toString());
+    public static ChatCompletionsToolSelection toToolChoice(ToolSpecification toolThatMustBeExecuted, boolean strictTools) {
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), getParameters(toolThatMustBeExecuted, strictTools).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
         return ChatCompletionsToolSelection.fromBinaryData(BinaryData.fromObject(toolToCall));
     }
 
-    private static BinaryData getParameters(ToolSpecification toolSpecification) {
-        if (toolSpecification.parameters() != null) {
-            return toOpenAiParameters(toolSpecification.parameters());
+    private static BinaryData getParameters(ToolSpecification toolSpecification, boolean strictTools) {
+        if (toolSpecification.parameters() != null || strictTools) {
+            return toAzureOpenAiParameters(toolSpecification.parameters(), strictTools);
         } else {
-            return toOpenAiParametersOld(toolSpecification.toolParameters());
+            return toAzureOpenAiParametersOld(toolSpecification.toolParameters());
         }
+    }
+
+    private static BinaryData toAzureOpenAiParameters(JsonObjectSchema toolParameters, boolean strictTools) {
+        Parameters parameters = new Parameters();
+        if (toolParameters == null) {
+            if (strictTools) {
+                return BinaryData.fromObject(NO_PARAMETER_DATA_STRICT_TOOLS);
+            } else {
+                return BinaryData.fromObject(NO_PARAMETER_DATA);
+                }
+        }
+        if (strictTools) {
+            parameters.setAdditionalProperties(false);
+        }
+        parameters.setProperties(toMap(toolParameters.properties(), strictTools));
+        parameters.setRequired(toolParameters.required());
+        return BinaryData.fromObject(parameters);
+    }
+
+    private static BinaryData toAzureOpenAiParametersOld(ToolParameters toolParameters) {
+        ParametersOld parameters = new ParametersOld();
+        if (toolParameters == null) {
+            return BinaryData.fromObject(NO_PARAMETER_DATA);
+        }
+        parameters.setProperties(toolParameters.properties());
+        parameters.setRequired(toolParameters.required());
+        return BinaryData.fromObject(parameters);
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
@@ -282,27 +311,54 @@ class InternalAzureOpenAiHelper {
         NO_PARAMETER_DATA.put("properties", new HashMap<>());
     }
 
-    private static BinaryData toOpenAiParameters(JsonObjectSchema toolParameters) {
-        Parameters parameters = new Parameters();
-        if (toolParameters == null) {
-            return BinaryData.fromObject(NO_PARAMETER_DATA);
-        }
-        parameters.setProperties(toMap(toolParameters.properties()));
-        parameters.setRequired(toolParameters.required());
-        return BinaryData.fromObject(parameters);
-    }
+    private static final Map<String, Object> NO_PARAMETER_DATA_STRICT_TOOLS = new HashMap<>();
 
-    private static BinaryData toOpenAiParametersOld(ToolParameters toolParameters) {
-        Parameters parameters = new Parameters();
-        if (toolParameters == null) {
-            return BinaryData.fromObject(NO_PARAMETER_DATA);
-        }
-        parameters.setProperties(toolParameters.properties());
-        parameters.setRequired(toolParameters.required());
-        return BinaryData.fromObject(parameters);
+    static {
+        NO_PARAMETER_DATA_STRICT_TOOLS.put("type", "object");
+        NO_PARAMETER_DATA_STRICT_TOOLS.put("properties", new HashMap<>());
+        NO_PARAMETER_DATA_STRICT_TOOLS.put("additionalProperties", false);
     }
 
     private static class Parameters {
+
+        private final String type = "object";
+
+        private Map<String, Map<String, Object>> properties = new HashMap<>();
+
+        private List<String> required = new ArrayList<>();
+
+        private boolean additionalProperties;
+
+        public String getType() {
+            return this.type;
+        }
+
+        public Map<String, Map<String, Object>> getProperties() {
+            return properties;
+        }
+
+        public void setProperties(Map<String, Map<String, Object>> properties) {
+            this.properties = properties;
+        }
+
+        public List<String> getRequired() {
+            return required;
+        }
+
+        public void setRequired(List<String> required) {
+            this.required = required;
+        }
+
+        public boolean isAdditionalProperties() {
+            return additionalProperties;
+        }
+
+        public void setAdditionalProperties(final boolean additionalProperties) {
+            this.additionalProperties = additionalProperties;
+        }
+    }
+
+    private static class ParametersOld {
 
         private final String type = "object";
 

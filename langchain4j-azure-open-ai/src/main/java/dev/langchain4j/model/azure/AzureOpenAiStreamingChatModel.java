@@ -308,12 +308,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
 
         if (toolThatMustBeExecuted != null) {
-            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
-            options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
+            // TODO implement strictTools
+            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted), false));
+            options.setToolChoice(toToolChoice(toolThatMustBeExecuted, false));
             inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
         }
         if (!isNullOrEmpty(toolSpecifications)) {
-            options.setTools(toToolDefinitions(toolSpecifications));
+            // TODO implement strictTools
+            options.setTools(toToolDefinitions(toolSpecifications, false));
             inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
         }
 
