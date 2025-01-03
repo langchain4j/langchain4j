@@ -13,22 +13,30 @@ triage:
         - '*-azure-*/**'
     - id: gemini
       labels: [Gemini]
-      title: "gemini|vertex"
+      title: "gemini|vertex|google"
       notify: [glaforge]
       notifyInPullRequest: true
       files:
         - '*-vertex-*/**'
+        - '*-google-*/**'
     - id: elasticsearch
       labels: [Elasticsearch]
       title: "elasticsearch"
       notify: [dadoonet]
       notifyInPullRequest: true
       files:
-        - '*-elasticsearch-*/**'
+        - 'langchain4j-elasticsearch/**'
     - id: mistral
       labels: [Mistral]
       title: "mistral"
       notify: [czelabueno]
       notifyInPullRequest: true
       files:
-        - '*-mistral-*/**'
+        - 'langchain4j-mistral-ai/**'
+    - id: mcp
+      labels: [MCP]
+      title: "mcp"
+      notify: [jmartisk]
+      notifyInPullRequest: true
+      files:
+        - 'langchain4j-mcp/**'

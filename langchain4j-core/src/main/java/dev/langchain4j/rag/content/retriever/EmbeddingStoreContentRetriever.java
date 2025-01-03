@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
@@ -247,7 +248,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                                 ContentMetadata.EMBEDDING_ID, embeddingMatch.embeddingId()
                         )
                 ))
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Override

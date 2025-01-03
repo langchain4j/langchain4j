@@ -57,7 +57,7 @@ public interface ChatLanguageModel {
             if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
                     throw new UnsupportedFeatureException(
-                            "%s.%s is currently supported only when there is a single tool".formatted(
+                            String.format("%s.%s is currently supported only when there is a single tool",
                                     ToolChoice.class.getSimpleName(), REQUIRED.name()));
                 }
                 response = generate(chatRequest.messages(), toolSpecifications.get(0));
@@ -79,34 +79,34 @@ public interface ChatLanguageModel {
         String errorTemplate = "%s is not supported yet by this model provider";
 
         if (parameters.modelName() != null) {
-            throw new UnsupportedFeatureException(errorTemplate.formatted("'modelName' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'modelName' parameter"));
         }
         if (parameters.temperature() != null) {
-            throw new UnsupportedFeatureException(errorTemplate.formatted("'temperature' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate,"'temperature' parameter"));
         }
         if (parameters.topP() != null) {
-            throw new UnsupportedFeatureException(errorTemplate.formatted("'topP' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate,"'topP' parameter"));
         }
         if (parameters.topK() != null) {
-            throw new UnsupportedFeatureException(errorTemplate.formatted("'topK' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate,"'topK' parameter"));
         }
         if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException(errorTemplate.formatted("'frequencyPenalty' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate,"'frequencyPenalty' parameter"));
         }
         if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException(errorTemplate.formatted("'presencePenalty' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate,"'presencePenalty' parameter"));
         }
         if (parameters.maxOutputTokens() != null) {
-            throw new UnsupportedFeatureException(errorTemplate.formatted("'maxOutputTokens' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate,"'maxOutputTokens' parameter"));
         }
         if (parameters.stopSequences() != null) {
-            throw new UnsupportedFeatureException(errorTemplate.formatted("'stopSequences' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate,"'stopSequences' parameter"));
         }
     }
 
     static void validate(ToolChoice toolChoice) {
         if (toolChoice == REQUIRED) {
-            throw new UnsupportedFeatureException("%s.%s is not supported yet by this model provider".formatted(
+            throw new UnsupportedFeatureException(String.format("%s.%s is not supported yet by this model provider",
                     ToolChoice.class.getSimpleName(), REQUIRED.name()));
         }
     }
@@ -115,7 +115,7 @@ public interface ChatLanguageModel {
         String errorTemplate = "%s is not supported yet by this model provider";
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
             // TODO check supportedCapabilities() instead?
-            throw new UnsupportedFeatureException(errorTemplate.formatted("JSON response format"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate,"JSON response format"));
         }
     }
 
