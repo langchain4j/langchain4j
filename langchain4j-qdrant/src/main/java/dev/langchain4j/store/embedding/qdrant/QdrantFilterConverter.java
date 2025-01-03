@@ -50,22 +50,22 @@ class QdrantFilterConverter {
             return buildContainsCondition(contains);
         } else if (comparision instanceof NotContains notContains) {
             return buildNotContainsCondition(notContains);
-        } else if (comparision instanceof IsEqualTo) {
-            return buildEqCondition((IsEqualTo) comparision);
-        } else if (comparision instanceof IsNotEqualTo) {
-            return buildNeCondition((IsNotEqualTo) comparision);
-        } else if (comparision instanceof IsGreaterThan) {
-            return buildGtCondition((IsGreaterThan) comparision);
-        } else if (comparision instanceof IsGreaterThanOrEqualTo) {
-            return buildGteCondition((IsGreaterThanOrEqualTo) comparision);
-        } else if (comparision instanceof IsLessThan) {
-            return buildLtCondition((IsLessThan) comparision);
-        } else if (comparision instanceof IsLessThanOrEqualTo) {
-            return buildLteCondition((IsLessThanOrEqualTo) comparision);
-        } else if (comparision instanceof IsIn) {
-            return buildInCondition((IsIn) comparision);
-        } else if (comparision instanceof IsNotIn) {
-            return buildNInCondition((IsNotIn) comparision);
+        } else if (comparision instanceof IsEqualTo isEqualTo) {
+            return buildEqCondition(isEqualTo);
+        } else if (comparision instanceof IsNotEqualTo isNotEqualTo) {
+            return buildNeCondition(isNotEqualTo);
+        } else if (comparision instanceof IsGreaterThan isGreaterThan) {
+            return buildGtCondition(isGreaterThan);
+        } else if (comparision instanceof IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
+            return buildGteCondition(isGreaterThanOrEqualTo);
+        } else if (comparision instanceof IsLessThan isLessThan) {
+            return buildLtCondition(isLessThan);
+        } else if (comparision instanceof IsLessThanOrEqualTo isLessThanOrEqualTo) {
+            return buildLteCondition(isLessThanOrEqualTo);
+        } else if (comparision instanceof IsIn isIn) {
+            return buildInCondition(isIn);
+        } else if (comparision instanceof IsNotIn isNotIn) {
+            return buildNInCondition(isNotIn);
         } else {
             throw new UnsupportedOperationException("Unsupported comparision type: " + comparision);
         }
