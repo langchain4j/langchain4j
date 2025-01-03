@@ -34,28 +34,28 @@ abstract class PgVectorFilterMapper {
             return mapContains(contains);
         } else if (filter instanceof NotContains notContains) {
             return mapNotContains(notContains);
-        } else if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
-        } else if (filter instanceof IsNotEqualTo) {
-            return mapNotEqual((IsNotEqualTo) filter);
-        } else if (filter instanceof IsGreaterThan) {
-            return mapGreaterThan((IsGreaterThan) filter);
-        } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
-        } else if (filter instanceof IsLessThan) {
-            return mapLessThan((IsLessThan) filter);
-        } else if (filter instanceof IsLessThanOrEqualTo) {
-            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
-        } else if (filter instanceof IsIn) {
-            return mapIn((IsIn) filter);
-        } else if (filter instanceof IsNotIn) {
-            return mapNotIn((IsNotIn) filter);
-        } else if (filter instanceof And) {
-            return mapAnd((And) filter);
-        } else if (filter instanceof Not) {
-            return mapNot((Not) filter);
-        } else if (filter instanceof Or) {
-            return mapOr((Or) filter);
+        } else if (filter instanceof IsEqualTo isEqualTo) {
+            return mapEqual(isEqualTo);
+        } else if (filter instanceof IsNotEqualTo isNotEqualTo) {
+            return mapNotEqual(isNotEqualTo);
+        } else if (filter instanceof IsGreaterThan isGreaterThan) {
+            return mapGreaterThan(isGreaterThan);
+        } else if (filter instanceof IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
+            return mapGreaterThanOrEqual(isGreaterThanOrEqualTo);
+        } else if (filter instanceof IsLessThan isLessThan) {
+            return mapLessThan(isLessThan);
+        } else if (filter instanceof IsLessThanOrEqualTo isLessThanOrEqualTo) {
+            return mapLessThanOrEqual(isLessThanOrEqualTo);
+        } else if (filter instanceof IsIn isIn) {
+            return mapIn(isIn);
+        } else if (filter instanceof IsNotIn isNotIn) {
+            return mapNotIn(isNotIn);
+        } else if (filter instanceof And and) {
+            return mapAnd(and);
+        } else if (filter instanceof Not not) {
+            return mapNot(not);
+        } else if (filter instanceof Or or) {
+            return mapOr(or);
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
