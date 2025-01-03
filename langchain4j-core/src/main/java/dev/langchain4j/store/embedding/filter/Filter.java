@@ -12,6 +12,8 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
+import dev.langchain4j.store.embedding.filter.regex.Find;
+import dev.langchain4j.store.embedding.filter.regex.Matches;
 
 /**
  * This class represents a filter that can be applied during search in an {@link EmbeddingStore}.
@@ -33,6 +35,8 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
  * @see IsLessThanOrEqualTo
  * @see IsIn
  * @see IsNotIn
+ * @see Find
+ * @see Matches
  * @see And
  * @see Not
  * @see Or
