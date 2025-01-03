@@ -39,18 +39,6 @@ public class MistralAiEmbeddingRequest {
         return this.encodingFormat;
     }
 
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public void setInput(List<String> input) {
-        this.input = input;
-    }
-
-    public void setEncodingFormat(String encodingFormat) {
-        this.encodingFormat = encodingFormat;
-    }
-
     @Override
     public int hashCode() {
         int hash = 7;

@@ -40,26 +40,6 @@ public class MistralAiChatCompletionChoice {
         return this.usage;
     }
 
-    public void setIndex(Integer index) {
-        this.index = index;
-    }
-
-    public void setMessage(MistralAiChatMessage message) {
-        this.message = message;
-    }
-
-    public void setDelta(MistralAiDeltaMessage delta) {
-        this.delta = delta;
-    }
-
-    public void setFinishReason(String finishReason) {
-        this.finishReason = finishReason;
-    }
-
-    public void setUsage(MistralAiUsage usage) {
-        this.usage = usage;
-    }
-
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;

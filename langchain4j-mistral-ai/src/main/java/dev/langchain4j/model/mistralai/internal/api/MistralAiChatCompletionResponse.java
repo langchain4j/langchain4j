@@ -47,30 +47,6 @@ public class MistralAiChatCompletionResponse {
         return this.usage;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public void setObject(String object) {
-        this.object = object;
-    }
-
-    public void setCreated(Integer created) {
-        this.created = created;
-    }
-
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public void setChoices(List<MistralAiChatCompletionChoice> choices) {
-        this.choices = choices;
-    }
-
-    public void setUsage(MistralAiUsage usage) {
-        this.usage = usage;
-    }
-
     @Override
     public int hashCode() {
         int hash = 7;

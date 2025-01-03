@@ -86,50 +86,6 @@ public class MistralAiChatCompletionRequest {
         return this.responseFormat;
     }
 
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public void setMessages(List<MistralAiChatMessage> messages) {
-        this.messages = messages;
-    }
-
-    public void setTemperature(Double temperature) {
-        this.temperature = temperature;
-    }
-
-    public void setTopP(Double topP) {
-        this.topP = topP;
-    }
-
-    public void setMaxTokens(Integer maxTokens) {
-        this.maxTokens = maxTokens;
-    }
-
-    public void setStream(Boolean stream) {
-        this.stream = stream;
-    }
-
-    public void setSafePrompt(Boolean safePrompt) {
-        this.safePrompt = safePrompt;
-    }
-
-    public void setRandomSeed(Integer randomSeed) {
-        this.randomSeed = randomSeed;
-    }
-
-    public void setTools(List<MistralAiTool> tools) {
-        this.tools = tools;
-    }
-
-    public void setToolChoice(MistralAiToolChoiceName toolChoice) {
-        this.toolChoice = toolChoice;
-    }
-
-    public void setResponseFormat(MistralAiResponseFormat responseFormat) {
-        this.responseFormat = responseFormat;
-    }
-
     @Override
     public int hashCode() {
         int hash = 7;

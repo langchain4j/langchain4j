@@ -41,14 +41,6 @@ public class MistralAiFunction {
         this.name = name;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public void setParameters(MistralAiParameters parameters) {
-        this.parameters = parameters;
-    }
-
     @Override
     public int hashCode() {
         int hash = 3;

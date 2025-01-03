@@ -45,18 +45,6 @@ public class MistralAiParameters {
         return this.required;
     }
 
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public void setProperties(Map<String, Map<String, Object>> properties) {
-        this.properties = properties;
-    }
-
-    public void setRequired(List<String> required) {
-        this.required = required;
-    }
-
     @Override
     public int hashCode() {
         int hash = 7;

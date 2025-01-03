@@ -235,54 +235,6 @@ public class MistralAiModelPermission {
         return this.isBlocking;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public void setObject(String object) {
-        this.object = object;
-    }
-
-    public void setCreated(Integer created) {
-        this.created = created;
-    }
-
-    public void setAllowCreateEngine(Boolean allowCreateEngine) {
-        this.allowCreateEngine = allowCreateEngine;
-    }
-
-    public void setAllowSampling(Boolean allowSampling) {
-        this.allowSampling = allowSampling;
-    }
-
-    public void setAllowLogprobs(Boolean allowLogprobs) {
-        this.allowLogprobs = allowLogprobs;
-    }
-
-    public void setAllowSearchIndices(Boolean allowSearchIndices) {
-        this.allowSearchIndices = allowSearchIndices;
-    }
-
-    public void setAllowView(Boolean allowView) {
-        this.allowView = allowView;
-    }
-
-    public void setAllowFineTuning(Boolean allowFineTuning) {
-        this.allowFineTuning = allowFineTuning;
-    }
-
-    public void setOrganization(String organization) {
-        this.organization = organization;
-    }
-
-    public void setGroup(String group) {
-        this.group = group;
-    }
-
-    public void setIsBlocking(Boolean isBlocking) {
-        this.isBlocking = isBlocking;
-    }
-
     @Override
     public int hashCode() {
         int hash = 7;

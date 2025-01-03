@@ -62,34 +62,6 @@ public class MistralAiModelCard {
         return this.permission;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public void setObject(String object) {
-        this.object = object;
-    }
-
-    public void setCreated(Integer created) {
-        this.created = created;
-    }
-
-    public void setOwnerBy(String ownerBy) {
-        this.ownerBy = ownerBy;
-    }
-
-    public void setRoot(String root) {
-        this.root = root;
-    }
-
-    public void setParent(String parent) {
-        this.parent = parent;
-    }
-
-    public void setPermission(List<MistralAiModelPermission> permission) {
-        this.permission = permission;
-    }
-
     @Override
     public int hashCode() {
         int hash = 3;

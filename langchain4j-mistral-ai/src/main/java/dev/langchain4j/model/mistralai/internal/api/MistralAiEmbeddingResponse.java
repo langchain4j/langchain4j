@@ -50,26 +50,6 @@ public class MistralAiEmbeddingResponse {
         return this.usage;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public void setObject(String object) {
-        this.object = object;
-    }
-
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public void setData(List<MistralAiEmbedding> data) {
-        this.data = data;
-    }
-
-    public void setUsage(MistralAiUsage usage) {
-        this.usage = usage;
-    }
-
     @Override
     public int hashCode() {
         int hash = 7;

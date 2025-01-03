@@ -25,10 +25,6 @@ public class MistralAiResponseFormat {
         return this.type;
     }
 
-    public void setType(Object type) {
-        this.type = type;
-    }
-
     @Override
     public int hashCode() {
         int hash = 7;

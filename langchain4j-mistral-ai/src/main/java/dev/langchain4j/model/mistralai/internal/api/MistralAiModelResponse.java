@@ -32,14 +32,6 @@ public class MistralAiModelResponse {
         return this.data;
     }
 
-    public void setObject(String object) {
-        this.object = object;
-    }
-
-    public void setData(List<MistralAiModelCard> data) {
-        this.data = data;
-    }
-
     @Override
     public int hashCode() {
         int hash = 7;

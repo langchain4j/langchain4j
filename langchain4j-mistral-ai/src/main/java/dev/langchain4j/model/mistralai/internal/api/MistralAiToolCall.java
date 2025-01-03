@@ -43,18 +43,6 @@ public class MistralAiToolCall {
         return this.function;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public void setType(MistralAiToolType type) {
-        this.type = type;
-    }
-
-    public void setFunction(MistralAiFunctionCall function) {
-        this.function = function;
-    }
-
     @Override
     public int hashCode() {
         int hash = 7;

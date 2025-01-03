@@ -31,14 +31,6 @@ public class MistralAiFunctionCall {
         return this.arguments;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public void setArguments(String arguments) {
-        this.arguments = arguments;
-    }
-
     @Override
     public int hashCode() {
         int hash = 3;

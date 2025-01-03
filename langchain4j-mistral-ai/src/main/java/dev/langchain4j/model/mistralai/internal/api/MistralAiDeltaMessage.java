@@ -39,18 +39,6 @@ public class MistralAiDeltaMessage {
         return this.toolCalls;
     }
 
-    public void setRole(MistralAiRole role) {
-        this.role = role;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public void setToolCalls(List<MistralAiToolCall> toolCalls) {
-        this.toolCalls = toolCalls;
-    }
-
     @Override
     public int hashCode() {
         int hash = 5;

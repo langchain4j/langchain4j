@@ -39,18 +39,6 @@ public class MistralAiEmbedding {
         return this.index;
     }
 
-    public void setObject(String object) {
-        this.object = object;
-    }
-
-    public void setEmbedding(List<Float> embedding) {
-        this.embedding = embedding;
-    }
-
-    public void setIndex(Integer index) {
-        this.index = index;
-    }
-
     @Override
     public int hashCode() {
         int hash = 5;

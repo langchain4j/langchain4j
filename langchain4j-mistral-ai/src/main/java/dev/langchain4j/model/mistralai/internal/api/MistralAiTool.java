@@ -31,14 +31,6 @@ public class MistralAiTool {
         return this.function;
     }
 
-    public void setType(MistralAiToolType type) {
-        this.type = type;
-    }
-
-    public void setFunction(MistralAiFunction function) {
-        this.function = function;
-    }
-
     @Override
     public int hashCode() {
         int hash = 3;
