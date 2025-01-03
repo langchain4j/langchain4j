@@ -270,24 +270,21 @@ class InternalAzureOpenAiHelper {
     }
 
     private static BinaryData getParameters(ToolSpecification toolSpecification, boolean strictTools) {
-        if (toolSpecification.parameters() != null) {
+        if (toolSpecification.parameters() != null || strictTools) {
             return toAzureOpenAiParameters(toolSpecification.parameters(), strictTools);
         } else {
             return toAzureOpenAiParametersOld(toolSpecification.toolParameters());
         }
     }
 
-    private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
-
-    static {
-        NO_PARAMETER_DATA.put("type", "object");
-        NO_PARAMETER_DATA.put("properties", new HashMap<>());
-    }
-
     private static BinaryData toAzureOpenAiParameters(JsonObjectSchema toolParameters, boolean strictTools) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
-            return BinaryData.fromObject(NO_PARAMETER_DATA);
+            if (strictTools) {
+                return BinaryData.fromObject(NO_PARAMETER_DATA_STRICT_TOOLS);
+            } else {
+                return BinaryData.fromObject(NO_PARAMETER_DATA);
+                }
         }
         if (strictTools) {
             parameters.setAdditionalProperties(false);
@@ -305,6 +302,21 @@ class InternalAzureOpenAiHelper {
         parameters.setProperties(toolParameters.properties());
         parameters.setRequired(toolParameters.required());
         return BinaryData.fromObject(parameters);
+    }
+
+    private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
+
+    static {
+        NO_PARAMETER_DATA.put("type", "object");
+        NO_PARAMETER_DATA.put("properties", new HashMap<>());
+    }
+
+    private static final Map<String, Object> NO_PARAMETER_DATA_STRICT_TOOLS = new HashMap<>();
+
+    static {
+        NO_PARAMETER_DATA_STRICT_TOOLS.put("type", "object");
+        NO_PARAMETER_DATA_STRICT_TOOLS.put("properties", new HashMap<>());
+        NO_PARAMETER_DATA_STRICT_TOOLS.put("additionalProperties", false);
     }
 
     private static class Parameters {
