@@ -87,7 +87,7 @@
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <milvus-sdk-java.version>2.4.2</milvus-sdk-java.version>
-        <netty.version>4.1.111.Final</netty.version>
+        <netty.version>4.1.115.Final</netty.version>
         <awaitility.version>4.2.2</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <jspecify.version>1.0.0</jspecify.version>
@@ -169,6 +169,14 @@
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-bom</artifactId>
                 <version>${kotlin.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -366,13 +374,6 @@
                 <version>${aws.java.sdk.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-                <exclusions>
-                    <!-- Exclusion due to CWE-295 vulnerability -->
-                    <exclusion>
-                        <groupId>io.netty</groupId>
-                        <artifactId>netty-handler</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
 
             <dependency>
