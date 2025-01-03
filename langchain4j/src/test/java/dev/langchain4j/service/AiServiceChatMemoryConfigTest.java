@@ -39,7 +39,7 @@ public class AiServiceChatMemoryConfigTest {
         // when-then
         assertThatThrownBy(() -> aiService.chat("1", "Hello"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("When the @MemoryId annotation is used, the chatMemoryProvider needs to be configured.");
+                .hasMessage("The ChatMemoryProvider configuration with @MemoryId in method 'chat' must not be null");
     }
 
     @Test

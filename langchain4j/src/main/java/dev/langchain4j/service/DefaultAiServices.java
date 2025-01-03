@@ -129,7 +129,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .map(mid -> {
                                     if (null == context.chatMemoryProvider) {
                                         throw IllegalConfigurationException.illegalConfiguration(
-                                                "When the @MemoryId annotation is used, the chatMemoryProvider needs to be configured.");
+                                                "The ChatMemoryProvider configuration with @MemoryId in method '%s' must not be null",
+                                                method.getName());
                                     } else {
                                         return mid;
                                     }
