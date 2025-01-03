@@ -307,7 +307,7 @@ class AzureOpenAiChatModelIT {
     }
 
     /**
-     * @deprecated Shjould be removed when `AzureOpenAiChatModel.responseFormat(ChatCompletionsResponseFormat chatCompletionsResponseFormat)` is removed.
+     * @deprecated Should be removed when `AzureOpenAiChatModel.responseFormat(ChatCompletionsResponseFormat chatCompletionsResponseFormat)` is removed.
      */
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
