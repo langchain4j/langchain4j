@@ -1,4 +1,4 @@
-CREATE TABLE customers
+CREATE TABLE IF NOT EXISTS customers
 (
     customer_id INT PRIMARY KEY,
     first_name  VARCHAR(50),
@@ -6,14 +6,14 @@ CREATE TABLE customers
     email       VARCHAR(100)
 );
 
-CREATE TABLE products
+CREATE TABLE IF NOT EXISTS products
 (
     product_id   INT PRIMARY KEY,
     product_name VARCHAR(100),
     price        DECIMAL(10, 2)
 );
 
-CREATE TABLE orders
+CREATE TABLE IF NOT EXISTS orders
 (
     order_id    INT PRIMARY KEY,
     customer_id INT,

@@ -3,14 +3,16 @@ VALUES (1, 'John', 'Doe', 'john.doe@example.com'),
        (2, 'Jane', 'Smith', 'jane.smith@example.com'),
        (3, 'Alice', 'Johnson', 'alice.johnson@example.com'),
        (4, 'Bob', 'Williams', 'bob.williams@example.com'),
-       (5, 'Carol', 'Brown', 'carol.brown@example.com');
+       (5, 'Carol', 'Brown', 'carol.brown@example.com')
+ON CONFLICT (customer_id) DO NOTHING;
 
 INSERT INTO products (product_id, product_name, price)
 VALUES (10, 'Notebook', 12.99),
        (20, 'Pen', 1.50),
        (30, 'Desk Lamp', 23.99),
        (40, 'Backpack', 49.99),
-       (50, 'Stapler', 7.99);
+       (50, 'Stapler', 7.99)
+ON CONFLICT (product_id) DO NOTHING;
 
 INSERT INTO orders (order_id, customer_id, product_id, quantity, order_date)
 VALUES (100, 1, 10, 2, '2024-04-20'),
@@ -22,4 +24,7 @@ VALUES (100, 1, 10, 2, '2024-04-20'),
        (700, 2, 10, 2, '2024-04-26'),
        (800, 3, 40, 1, '2024-04-27'),
        (900, 4, 20, 10, '2024-04-28'),
-       (10000, 5, 30, 2, '2024-04-29');
+       (10000, 5, 30, 2, '2024-04-29')
+ON CONFLICT (order_id) DO NOTHING;
+
+
