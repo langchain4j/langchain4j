@@ -9,11 +9,7 @@ import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Query;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -70,6 +66,10 @@ public class CompressingQueryTransformer implements QueryTransformer {
 
     @Override
     public Collection<Query> transform(Query query) {
+        if (query.metadata() == null || query.metadata().chatMemory() == null) {
+            throw new IllegalStateException("ChatMemory is not configured. " +
+                    "If you wish to use CompressingQueryTransformer, please configure ChatMemory or ChatMemoryProvider.");
+        }
 
         List<ChatMessage> chatMemory = query.metadata().chatMemory();
         if (chatMemory.isEmpty()) {
@@ -79,9 +79,7 @@ public class CompressingQueryTransformer implements QueryTransformer {
 
         Prompt prompt = createPrompt(query, format(chatMemory));
         String compressedQueryText = chatLanguageModel.generate(prompt.text());
-        Query compressedQuery = query.metadata() == null
-                ? Query.from(compressedQueryText)
-                : Query.from(compressedQueryText, query.metadata());
+        Query compressedQuery = Query.from(compressedQueryText, query.metadata());
         return singletonList(compressedQuery);
     }
 
