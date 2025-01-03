@@ -1,6 +1,12 @@
 package dev.langchain4j.store.embedding.filter;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Arrays.asList;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.store.embedding.filter.comparison.Contains;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
@@ -9,16 +15,11 @@ import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
-
+import dev.langchain4j.store.embedding.filter.comparison.NotContains;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Arrays.asList;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
 
 /**
  * A helper class for building a {@link Filter} for {@link Metadata} key.
@@ -35,6 +36,17 @@ public class MetadataFilterBuilder {
         return new MetadataFilterBuilder(key);
     }
 
+    // contains
+
+    public Filter contains(String value) {
+        return new Contains(key, value);
+    }
+
+    // notContains
+
+    public Filter notContains(String value) {
+        return new NotContains(key, value);
+    }
 
     // isEqualTo
 
@@ -62,7 +74,6 @@ public class MetadataFilterBuilder {
         return new IsEqualTo(key, value);
     }
 
-
     // isNotEqualTo
 
     public Filter isNotEqualTo(String value) {
@@ -89,7 +100,6 @@ public class MetadataFilterBuilder {
         return new IsNotEqualTo(key, value);
     }
 
-
     // isGreaterThan
 
     public Filter isGreaterThan(String value) {
@@ -111,7 +121,6 @@ public class MetadataFilterBuilder {
     public Filter isGreaterThan(double value) {
         return new IsGreaterThan(key, value);
     }
-
 
     // isGreaterThanOrEqualTo
 
@@ -135,7 +144,6 @@ public class MetadataFilterBuilder {
         return new IsGreaterThanOrEqualTo(key, value);
     }
 
-
     // isLessThan
 
     public Filter isLessThan(String value) {
@@ -157,7 +165,6 @@ public class MetadataFilterBuilder {
     public Filter isLessThan(double value) {
         return new IsLessThan(key, value);
     }
-
 
     // isLessThanOrEqualTo
 
@@ -181,7 +188,6 @@ public class MetadataFilterBuilder {
         return new IsLessThanOrEqualTo(key, value);
     }
 
-
     // isBetween
 
     public Filter isBetween(String fromValue, String toValue) {
@@ -203,7 +209,6 @@ public class MetadataFilterBuilder {
     public Filter isBetween(double fromValue, double toValue) {
         return isGreaterThanOrEqualTo(fromValue).and(isLessThanOrEqualTo(toValue));
     }
-
 
     // isIn
 
@@ -238,7 +243,6 @@ public class MetadataFilterBuilder {
     public Filter isIn(Collection<?> values) {
         return new IsIn(key, values);
     }
-
 
     // isNotIn
 
