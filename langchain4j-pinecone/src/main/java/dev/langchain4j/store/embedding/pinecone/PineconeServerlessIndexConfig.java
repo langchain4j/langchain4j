@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.pinecone;
 
 import io.pinecone.clients.Pinecone;
+import org.openapitools.db_control.client.model.DeletionProtection;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -10,10 +11,12 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
     private final Integer dimension;
     private final String cloud;
     private final String region;
+    private final boolean deletionProtectionEnabled;
 
     PineconeServerlessIndexConfig(Integer dimension,
                                   String cloud,
-                                  String region) {
+                                  String region,
+                                  boolean deletionProtectionEnabled) {
         cloud = ensureNotNull(cloud, "cloud");
         region = ensureNotNull(region, "region");
         ensureNotNull(dimension, "dimension");
@@ -21,13 +24,15 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
         this.dimension = dimension;
         this.cloud = cloud;
         this.region = region;
+        this.deletionProtectionEnabled = deletionProtectionEnabled;
     }
 
     @Override
     public void createIndex(Pinecone pinecone, String index) {
         ensureNotNull(pinecone, "pinecone");
         ensureNotNull(index, "index");
-        pinecone.createServerlessIndex(index, "cosine", dimension, cloud, region);
+        pinecone.createServerlessIndex(index, "cosine", dimension, cloud, region,
+                deletionProtectionEnabled ? DeletionProtection.ENABLED : DeletionProtection.DISABLED);
     }
 
     public static Builder builder() {
@@ -39,6 +44,7 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
         private Integer dimension;
         private String cloud;
         private String region;
+        private boolean deletionProtectionEnabled;
 
         public Builder dimension(Integer dimension) {
             this.dimension = dimension;
@@ -55,8 +61,13 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
             return this;
         }
 
+        public Builder deletionProtectionEnabled(boolean deletionProtectionEnabled) {
+            this.deletionProtectionEnabled = deletionProtectionEnabled;
+            return this;
+        }
+
         public PineconeServerlessIndexConfig build() {
-            return new PineconeServerlessIndexConfig(dimension, cloud, region);
+            return new PineconeServerlessIndexConfig(dimension, cloud, region, deletionProtectionEnabled);
         }
     }
 }
