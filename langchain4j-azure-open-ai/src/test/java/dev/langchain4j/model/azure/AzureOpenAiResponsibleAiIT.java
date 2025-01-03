@@ -5,6 +5,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -116,5 +117,13 @@ class AzureOpenAiResponsibleAiIT {
         assertThat(error).isExactlyInstanceOf(com.azure.core.exception.HttpResponseException.class)
                 .hasMessageContaining("ResponsibleAIPolicyViolation")
                 .hasMessageContaining("\"self_harm\":{\"filtered\":true");
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_OPENAI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

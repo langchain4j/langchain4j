@@ -54,7 +54,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         });
 
         try {
-            ChatResponse chatResponse = futureChatResponse.get(60, SECONDS);
+            ChatResponse chatResponse = futureChatResponse.get(120, SECONDS);
             String concatenatedPartialResponses = concatenatedPartialResponsesBuilder.toString();
             StreamingMetadata metadata = new StreamingMetadata(
                     concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
