@@ -148,6 +148,6 @@ abstract class PgVectorFilterMapper {
     }
 
     String formatValuesAsString(Collection<?> values) {
-        return "(" + values.stream().map(v -> String.format("'%s'", v)).collect(Collectors.joining(",")) + ")";
+        return "(" + values.stream().map(v -> format("'%s'", v)).collect(Collectors.joining(",")) + ")";
     }
 }
