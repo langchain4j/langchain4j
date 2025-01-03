@@ -10,12 +10,16 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
@@ -195,4 +199,31 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
         assertThat(model.supportedCapabilities()).contains(RESPONSE_FORMAT_JSON_SCHEMA);
     }
+
+
+    @Test
+    void test_stream_on_misconfiguration() {
+
+        // given
+        String userMessage = "What is the capital of Germany?";
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+
+        StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName("not-existing-model")
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        model.generate(userMessage, handler);
+
+        RuntimeException e = assertThrows(RuntimeException.class, handler::get);
+
+        assertNotNull(e.getCause().getCause());
+        assertThat(e.getCause().getCause()).isExactlyInstanceOf(IllegalConfigurationException.class);
+    }
+
 }
