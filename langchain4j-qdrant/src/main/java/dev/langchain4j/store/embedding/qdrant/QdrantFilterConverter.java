@@ -48,8 +48,6 @@ class QdrantFilterConverter {
     private static Condition parseComparison(Filter comparision) {
         if (comparision instanceof Contains contains) {
             return buildContainsCondition(contains);
-        } else if (comparision instanceof NotContains notContains) {
-            return buildNotContainsCondition(notContains);
         } else if (comparision instanceof IsEqualTo isEqualTo) {
             return buildEqCondition(isEqualTo);
         } else if (comparision instanceof IsNotEqualTo isNotEqualTo) {
@@ -73,12 +71,6 @@ class QdrantFilterConverter {
 
     private static Condition buildContainsCondition(Contains contains) {
         return ConditionFactory.matchText(contains.key(), contains.comparisonValue());
-    }
-
-    private static Condition buildNotContainsCondition(NotContains notContains) {
-        Condition condition = ConditionFactory.matchText(notContains.key(), notContains.comparisonValue());
-        return ConditionFactory.filter(
-                Points.Filter.newBuilder().addMustNot(condition).build());
     }
 
     private static Condition buildEqCondition(IsEqualTo equalTo) {

@@ -21,29 +21,6 @@ class QdrantFilterConverterTest {
     }
 
     @Test
-    void testNotContainsFilter() {
-        Filter filter = new NotContains("string-value", "notContains");
-        Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
-        assertThat(convertedFilter).isNotNull();
-        assertThat(convertedFilter.getMustCount()).isEqualTo(1);
-        assertThat(convertedFilter
-                        .getMust(0)
-                        .getFilter()
-                        .getMustNot(0)
-                        .getField()
-                        .getKey())
-                .isEqualTo("string-value");
-        assertThat(convertedFilter
-                        .getMust(0)
-                        .getFilter()
-                        .getMustNot(0)
-                        .getField()
-                        .getMatch()
-                        .getText())
-                .isEqualTo("notContains");
-    }
-
-    @Test
     void testIsEqualToFilter() {
         Filter filter = new IsEqualTo("num-value", 5);
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);

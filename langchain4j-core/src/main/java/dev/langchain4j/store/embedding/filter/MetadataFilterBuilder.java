@@ -15,7 +15,6 @@ import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
-import dev.langchain4j.store.embedding.filter.comparison.NotContains;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -40,12 +39,6 @@ public class MetadataFilterBuilder {
 
     public Filter contains(String value) {
         return new Contains(key, value);
-    }
-
-    // notContains
-
-    public Filter notContains(String value) {
-        return new NotContains(key, value);
     }
 
     // isEqualTo
