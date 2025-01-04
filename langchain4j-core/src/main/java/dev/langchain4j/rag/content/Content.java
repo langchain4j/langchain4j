@@ -50,12 +50,12 @@ public class Content {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Content that = (Content) o;
-        return Objects.equals(this.textSegment, that.textSegment);
+        return Objects.equals(this.textSegment, that.textSegment) && Objects.equals(this.metadata, that.metadata);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(textSegment);
+        return Objects.hash(textSegment, metadata);
     }
 
     @Override
