@@ -20,12 +20,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 @Experimental
-public class ObservationMicrometerChatModelListener implements ChatModelListener {
+public class ChatModelObservationListener implements ChatModelListener {
 
     private final ObservationRegistry observationRegistry;
     private final AtomicReference<Observation.Scope> scope;
 
-    public ObservationMicrometerChatModelListener(
+    public ChatModelObservationListener(
             final MeterRegistry meterRegistry, ObservationRegistry observationRegistry) {
         this.observationRegistry = observationRegistry;
         this.scope = new AtomicReference<>();
