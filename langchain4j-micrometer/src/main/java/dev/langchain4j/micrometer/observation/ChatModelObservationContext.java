@@ -1,4 +1,4 @@
-package dev.langchain4j.micrometer.observations;
+package dev.langchain4j.micrometer.observation;
 
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;

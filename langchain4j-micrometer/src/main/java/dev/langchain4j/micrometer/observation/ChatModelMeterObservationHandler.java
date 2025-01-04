@@ -1,4 +1,4 @@
-package dev.langchain4j.micrometer.observations;
+package dev.langchain4j.micrometer.observation;
 
 import dev.langchain4j.micrometer.conventions.OTelGenAiMetricAttributes;
 import dev.langchain4j.micrometer.conventions.OTelGenAiMetricNames;
