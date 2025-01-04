@@ -46,6 +46,7 @@ public class ChatModelObservationContext extends Observation.Context {
         return new Builder();
     }
 
+
     public static final class Builder {
         private ChatModelRequestContext requestContext;
         private ChatModelResponseContext responseContext;
