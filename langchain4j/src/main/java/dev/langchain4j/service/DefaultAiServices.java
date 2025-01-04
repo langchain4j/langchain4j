@@ -7,7 +7,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -106,6 +105,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                     method.getReturnType() == Set.class) {
                 TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
             }
+            for (Parameter parameter : method.getParameters()) {
+                if (parameter.isAnnotationPresent(MemoryId.class) && context.chatMemoryProvider == null) {
+                    throw illegalConfiguration(
+                            "In order to use @MemoryId, please configure the ChatMemoryProvider on the '%s'.",
+                            context.aiServiceClass.getName());
+                }
+            }
         }
 
         Object proxyInstance = Proxy.newProxyInstance(
@@ -125,17 +131,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         validateParameters(method);
 
-                        Object memoryId = findMemoryId(method, args)
-                                .map(mid -> {
-                                    if (null == context.chatMemoryProvider) {
-                                        throw illegalConfiguration(
-                                                "The ChatMemoryProvider configuration with @MemoryId in method '%s' must not be null",
-                                                method.getName());
-                                    } else {
-                                        return mid;
-                                    }
-                                })
-                                .orElse(DEFAULT);
+                        Object memoryId = findMemoryId(method, args).orElse(DEFAULT);
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);

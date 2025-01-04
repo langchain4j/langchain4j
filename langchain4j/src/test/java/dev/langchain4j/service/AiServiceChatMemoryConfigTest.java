@@ -32,16 +32,13 @@ public class AiServiceChatMemoryConfigTest {
 
     @Test
     void test_memoryId_requires_chatMemoryProvider_configuration_1() {
-        // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatLanguageModel(chatLanguageModel)
-                .build();
-        // when-then
-        assertThatThrownBy(() -> aiService.chat("1", "Hello"))
+        assertThatThrownBy(() -> AiServices.builder(AiService.class)
+                        .chatLanguageModel(chatLanguageModel)
+                        .build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The ChatMemoryProvider configuration with @MemoryId in method 'chat' must not be null");
+                .hasMessage(
+                        "In order to use @MemoryId, please configure the ChatMemoryProvider on the 'dev.langchain4j.service.AiServiceChatMemoryConfigTest$AiService'.");
     }
-
 
     @Test
     void test_memoryId_requires_chatMemoryProvider_configuration_2() {
