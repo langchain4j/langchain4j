@@ -1456,4 +1456,33 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                 new Metadata().put("age", 18.0d).put("name", "Klaus"))))
                 .build();
     }
+
+    @EnabledIf("supportsContains")
+    @Test
+    protected void should_filter_by_metadata_contains() {
+        should_filter_by_metadata(
+                metadataKey("key").contains("contains"),
+                List.of(
+                        new Metadata().put("key", "|contains|"),
+                        new Metadata().put("key", "contains").put("key2", "not")),
+                List.of(new Metadata().put("key", "Contains"), new Metadata().put("key2", "contains"), new Metadata()));
+    }
+
+    @EnabledIf("supportsContains")
+    @Test
+    protected void should_filter_by_not_metadata_contains() {
+        should_filter_by_metadata_not(
+                not(metadataKey("key").contains("contains")),
+                List.of(
+                        new Metadata().put("key", "not"),
+                        new Metadata().put("key", "not").put("key2", "contains"),
+                        new Metadata()),
+                List.of(
+                        new Metadata().put("key", "|contains|"),
+                        new Metadata().put("key", "contains").put("key2", "not")));
+    }
+
+    protected boolean supportsContains() {
+        return false;
+    }
 }
