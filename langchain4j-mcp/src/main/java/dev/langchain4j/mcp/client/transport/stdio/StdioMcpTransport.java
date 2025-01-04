@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.mcp.client.protocol.CancellationNotification;
+import dev.langchain4j.mcp.client.protocol.InitializationNotification;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
@@ -58,9 +59,12 @@ public class StdioMcpTransport implements McpTransport {
     public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return execute(requestString, operation.getId());
+            String initializationNotification = OBJECT_MAPPER.writeValueAsString(new InitializationNotification());
+            return execute(requestString, operation.getId())
+                    .thenCompose(originalResponse -> execute(initializationNotification, null)
+                            .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return CompletableFuture.failedFuture(e);
         }
     }
 
@@ -111,6 +115,10 @@ public class StdioMcpTransport implements McpTransport {
         }
         try {
             processIOHandler.submit(request);
+            // For messages with null ID, we don't wait for a corresponding response
+            if (id == null) {
+                future.complete(null);
+            }
         } catch (IOException e) {
             future.completeExceptionally(e);
         }

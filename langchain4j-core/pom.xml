@@ -1,8 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-parent</artifactId>
+        <version>1.0.0-alpha2-SNAPSHOT</version>
+        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>langchain4j-core</artifactId>
+    <name>LangChain4j :: Core</name>
+    <description>Core classes and interfaces of LangChain4j</description>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
     <properties>
         <!-- Tell the compiler to stop warning us about Java8 -->
@@ -10,17 +27,6 @@
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
     </properties>
-
-    <parent>
-        <groupId>dev.langchain4j</groupId>
-        <artifactId>langchain4j-parent</artifactId>
-        <version>0.37.0-SNAPSHOT</version>
-        <relativePath>../langchain4j-parent/pom.xml</relativePath>
-    </parent>
-
-    <artifactId>langchain4j-core</artifactId>
-    <name>LangChain4j :: Core</name>
-    <description>Core classes and interfaces of LangChain4j</description>
 
     <dependencies>
 
@@ -44,7 +50,7 @@
             <artifactId>kotlin-stdlib</artifactId>
             <optional>true</optional>
         </dependency>
-      
+
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-coroutines-core-jvm</artifactId>
@@ -128,6 +134,21 @@
             </plugin>
 
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                            <!-- For getting test source -->
+                            <goal>test-jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
                 <extensions>true</extensions>
@@ -197,10 +218,10 @@
                     </execution>
                     <execution>
                         <id>report</id>
-                        <phase>prepare-package</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <phase>prepare-package</phase>
                     </execution>
                     <execution>
                         <id>jacoco-check</id>
@@ -287,14 +308,6 @@
 
         </plugins>
     </build>
-
-    <licenses>
-        <license>
-            <name>Apache License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
 
     <reporting>
         <plugins>
