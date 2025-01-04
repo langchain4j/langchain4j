@@ -179,4 +179,9 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
             }
         });
     }
+
+    @Override
+    protected boolean supportsContains() {
+        return true;
+    }
 }
