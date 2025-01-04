@@ -1,5 +1,11 @@
 package dev.langchain4j.model.bedrock.converse;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+import static java.util.Objects.isNull;
+import static java.util.stream.Collectors.toList;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -8,17 +14,29 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
@@ -44,34 +62,19 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolResultBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultStatus;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
-
 public class BedrockChatModel implements ChatLanguageModel {
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
-    private Region region;
-    private AwsCredentialsProvider credentialsProvider;
-    private String modelId;
-    private InferenceConfiguration inferenceConfiguration;
-    private Integer maxRetries;
-    private Duration timeout;
-    private BedrockRuntimeClient client;
+    private final Region region;
+    private final AwsCredentialsProvider credentialsProvider;
+    private final String modelId;
+    private final InferenceConfiguration inferenceConfiguration;
+    private final Integer maxRetries;
+    private final Duration timeout;
+    private final BedrockRuntimeClient client;
 
     public BedrockChatModel(String modelId) {
         this(
@@ -81,25 +84,15 @@ public class BedrockChatModel implements ChatLanguageModel {
                 InferenceConfiguration.builder().build(),
                 5,
                 Duration.ofMinutes(1L),
-                null
-        );
+                null);
     }
 
     public BedrockChatModel(
             String modelId,
             InferenceConfiguration inferenceConfiguration,
             Integer maxRetries,
-            BedrockRuntimeClient client)
-    {
-        this(
-                null,
-                null,
-                modelId,
-                inferenceConfiguration,
-                maxRetries,
-                null,
-                client
-        );
+            BedrockRuntimeClient client) {
+        this(null, null, modelId, inferenceConfiguration, maxRetries, null, client);
     }
 
     public BedrockChatModel(
@@ -109,15 +102,14 @@ public class BedrockChatModel implements ChatLanguageModel {
             InferenceConfiguration inferenceConfiguration,
             Integer maxRetries,
             Duration timeout,
-            BedrockRuntimeClient client)
-    {
+            BedrockRuntimeClient client) {
         this.region = region;
         this.credentialsProvider = credentialsProvider;
         this.modelId = modelId;
         this.inferenceConfiguration = inferenceConfiguration;
         this.maxRetries = maxRetries;
         this.timeout = timeout;
-        this.client = Objects.isNull(client) ? createClient() : client;
+        this.client = isNull(client) ? createClient() : client;
     }
 
     @Override
@@ -135,6 +127,32 @@ public class BedrockChatModel implements ChatLanguageModel {
         return generate(messages, null, toolSpecifications);
     }
 
+    @Override
+    public ChatResponse chat(ChatRequest request) {
+        List<SystemContentBlock> systemMessages = extractSystemMessagesFrom(request.messages());
+        List<Message> otherMessages = extractOtherMessagesFrom(request.messages());
+        ToolConfiguration toolConfig =
+                extractToolConfigurationFrom(null, request.parameters().toolSpecifications());
+
+        final String modelName = isNull(request.parameters().modelName())
+                ? this.modelId
+                : request.parameters().modelName();
+
+        ConverseResponse converseResponse = withRetry(
+                () -> sendConverse(
+                        systemMessages, otherMessages, toolConfig, this.inferenceConfigurationFrom(request), modelName),
+                this.maxRetries);
+
+        return ChatResponse.builder()
+                .aiMessage(aiMessageFrom(converseResponse))
+                .metadata(ChatResponseMetadata.builder()
+                        .finishReason(finishReasonFrom(converseResponse.stopReason()))
+                        .tokenUsage(tokenUsageFrom(converseResponse.usage()))
+                        .modelName(modelName)
+                        .build())
+                .build();
+    }
+
     private Response<AiMessage> generate(
             List<ChatMessage> messages,
             ToolSpecification toolChoiceSpecification,
@@ -145,8 +163,10 @@ public class BedrockChatModel implements ChatLanguageModel {
 
         ToolConfiguration toolConfig = extractToolConfigurationFrom(toolChoiceSpecification, toolSpecifications);
 
-        ConverseResponse converseResponse =
-                withRetry(() -> sendConverse(systemMessages, otherMessages, toolConfig), this.maxRetries);
+        ConverseResponse converseResponse = withRetry(
+                () -> sendConverse(
+                        systemMessages, otherMessages, toolConfig, this.inferenceConfiguration, this.modelId),
+                this.maxRetries);
 
         return Response.from(
                 aiMessageFrom(converseResponse),
@@ -157,17 +177,18 @@ public class BedrockChatModel implements ChatLanguageModel {
     private List<SystemContentBlock> extractSystemMessagesFrom(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(message -> message.type() == ChatMessageType.SYSTEM)
-                .map(message ->
-                        SystemContentBlock.builder().text(((SystemMessage)message).text()).build())
-                .collect(toList());
+                .map(message -> SystemContentBlock.builder()
+                        .text(((SystemMessage) message).text())
+                        .build())
+                .toList();
     }
 
     private List<Message> extractOtherMessagesFrom(List<ChatMessage> messages) {
         List<ChatMessage> otherMessages = messages.stream()
                 .filter(message -> message.type() != ChatMessageType.SYSTEM)
-                .collect(toList());
+                .toList();
 
-        return otherMessages.stream().map(this::messageFrom).collect(toList());
+        return otherMessages.stream().map(this::messageFrom).toList();
     }
 
     private Message messageFrom(ChatMessage message) {
@@ -189,7 +210,7 @@ public class BedrockChatModel implements ChatLanguageModel {
         if (message instanceof UserMessage userMessage) {
             return Message.builder()
                     .role(ConversationRole.USER)
-//                    .content(ContentBlock.builder().text(userMessage.singleText()).build())
+                    //                    .content(ContentBlock.builder().text(userMessage.singleText()).build())
                     .content(contentBlockFrom(userMessage.contents()))
                     .build();
         }
@@ -218,19 +239,21 @@ public class BedrockChatModel implements ChatLanguageModel {
                                         .format(imageContent.image().mimeType().split("/")[1])
                                         .source(ImageSource.builder()
                                                 .bytes(SdkBytes.fromByteArray(Base64.getDecoder()
-                                                        .decode(imageContent.image().base64Data())))
+                                                        .decode(imageContent
+                                                                .image()
+                                                                .base64Data())))
                                                 .build())
                                         .build())
                                 .build();
                     }
 
                     if (content instanceof TextContent textContent) {
-                        return ContentBlock.builder()
-                                .text(textContent.text())
-                                .build();
+                        return ContentBlock.builder().text(textContent.text()).build();
                     }
-                    throw new IllegalArgumentException("Unknown content type: " + content.getClass().getName());
-                }).collect(Collectors.toList());
+                    throw new IllegalArgumentException(
+                            "Unknown content type: " + content.getClass().getName());
+                })
+                .collect(Collectors.toList());
     }
 
     private ToolConfiguration extractToolConfigurationFrom(
@@ -293,9 +316,13 @@ public class BedrockChatModel implements ChatLanguageModel {
     }
 
     private ConverseResponse sendConverse(
-            List<SystemContentBlock> systemMessages, List<Message> otherMessages, ToolConfiguration toolConfig) {
+            List<SystemContentBlock> systemMessages,
+            List<Message> otherMessages,
+            ToolConfiguration toolConfig,
+            InferenceConfiguration inferenceConfiguration,
+            String modelId) {
         final ConverseRequest.Builder requestBuilder =
-                ConverseRequest.builder().modelId(this.modelId).inferenceConfig(this.inferenceConfiguration);
+                ConverseRequest.builder().modelId(modelId).inferenceConfig(inferenceConfiguration);
 
         if (Objects.nonNull(systemMessages) && !systemMessages.isEmpty()) {
             requestBuilder.system(systemMessages);
@@ -398,14 +425,34 @@ public class BedrockChatModel implements ChatLanguageModel {
 
         public BedrockChatModel build() {
             return new BedrockChatModel(
-                    region,
-                    credentialsProvider,
-                    modelId,
-                    inferenceConfiguration,
-                    maxRetries,
-                    timeout,
-                    client
-            );
+                    region, credentialsProvider, modelId, inferenceConfiguration, maxRetries, timeout, client);
         }
+    }
+
+    private InferenceConfiguration inferenceConfigurationFrom(ChatRequest chatRequest) {
+        if (Objects.nonNull(chatRequest) && Objects.nonNull(chatRequest.parameters())) {
+            return InferenceConfiguration.builder()
+                    .maxTokens(firstNonNull(
+                            chatRequest.parameters().maxOutputTokens(), this.inferenceConfiguration.maxTokens()))
+                    .temperature(firstNonNull(
+                            dblToFloat(chatRequest.parameters().temperature()),
+                            this.inferenceConfiguration.temperature()))
+                    .topP(firstNonNull(dblToFloat(chatRequest.parameters().topP()), this.inferenceConfiguration.topP()))
+                    .stopSequences(firstNonNull(
+                            chatRequest.parameters().stopSequences(), this.inferenceConfiguration.stopSequences()))
+                    .build();
+        } else {
+            return this.inferenceConfiguration;
+        }
+    }
+
+    private static <T> T firstNonNull(T first, T second) {
+        return isNull(first) ? second : first;
+    }
+
+    private static Float dblToFloat(Double d) {
+        if (Objects.isNull(d)) {
+            return null;
+        } else return d.floatValue();
     }
 }
