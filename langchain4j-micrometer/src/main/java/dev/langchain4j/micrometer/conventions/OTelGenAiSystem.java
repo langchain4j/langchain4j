@@ -2,8 +2,11 @@ package dev.langchain4j.micrometer.conventions;
 
 import java.util.Arrays;
 
-public enum AiProvider {
-    // Keep alphabetical sorted.
+/**
+ * Metric attribute for system to describe the family of GenAI models that is used for the operation.
+ * The values are in line with the OpenTelemetry Semantic Conventions for Generative AI Metrics.
+ */
+public enum OTelGenAiSystem {
     /**
      * AI system provided by Anthropic.
      */
@@ -12,12 +15,12 @@ public enum AiProvider {
     /**
      * AI inference system provided by Azure.
      */
-    AZURE_AI_INFERENCE("azure_ai_inference"),
+    AZURE_AI_INFERENCE("az.ai.inference"),
 
     /**
      * AI system provided by Azure.
      */
-    AZUREOPENAI("azure-openai"),
+    AZUREOPENAI("azure_openai"),
 
     /**
      * AI system provided by AWS Bedrock.
@@ -32,7 +35,7 @@ public enum AiProvider {
     /**
      * AI system provided by IBM Watsonx AI.
      */
-    IBMWATSONXAI("ibm-watsonx-ai"),
+    IBMWATSONXAI("ibm.watsonx.ai"),
 
     /**
      * AI system provided by Langchain. Default if no other provider is detected.
@@ -61,25 +64,29 @@ public enum AiProvider {
 
     private final String value;
 
-    AiProvider(String value) {
+    OTelGenAiSystem(String value) {
         this.value = value;
     }
 
-    /**
-     * Return the value of the provider.
-     * @return the value of the provider
-     */
     public String value() {
         return this.value;
     }
 
-    public static AiProvider fromClass(Class<?> clazz) {
+    /**
+     * Returns the OTelGenAiSystem enum value based on the class name of the implemented ChatRequest or ChatResponse classes.
+     * These classes are expected to be named in the format: [SystemName]ChatRequest or [SystemName]ChatResponse.
+     *
+     * @param clazz The class to determine the system for.
+     *
+     * @return OTelGenAiSystem The system name based on the class name, or langchain4j if no other system is detected.
+     */
+    public static OTelGenAiSystem fromClass(Class<?> clazz) {
         if (clazz == null) {
             return LANGCHAIN4J;
         }
 
         String className = clazz.getSimpleName();
-        // Remove common suffixes if present
+        // Remove suffixes of interfaces if present to derive the implemented system name
         String baseClassName =
                 className.replace("ChatRequest", "").replace("ChatResponse", "").toLowerCase();
 

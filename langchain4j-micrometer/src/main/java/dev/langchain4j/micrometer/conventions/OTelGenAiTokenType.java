@@ -1,6 +1,10 @@
 package dev.langchain4j.micrometer.conventions;
 
-public enum AiTokenType {
+/**
+ * Metric attribute for token type of AI operations that is counted.
+ * The values are in line with the OpenTelemetry Semantic Conventions for Generative AI Metrics.
+ */
+public enum OTelGenAiTokenType {
     /**
      * Input token.
      */
@@ -16,14 +20,10 @@ public enum AiTokenType {
 
     private final String value;
 
-    AiTokenType(String value) {
+    OTelGenAiTokenType(String value) {
         this.value = value;
     }
 
-    /**
-     * Return the value of the token type.
-     * @return the value of the token type
-     */
     public String value() {
         return this.value;
     }

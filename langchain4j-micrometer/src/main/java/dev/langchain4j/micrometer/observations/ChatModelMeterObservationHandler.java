@@ -1,9 +1,10 @@
 package dev.langchain4j.micrometer.observations;
 
-import dev.langchain4j.micrometer.conventions.AiObservationMetricAttributes;
-import dev.langchain4j.micrometer.conventions.AiObservationMetricNames;
-import dev.langchain4j.micrometer.conventions.AiProvider;
-import dev.langchain4j.micrometer.conventions.AiTokenType;
+import dev.langchain4j.micrometer.conventions.OTelGenAiMetricAttributes;
+import dev.langchain4j.micrometer.conventions.OTelGenAiMetricNames;
+import dev.langchain4j.micrometer.conventions.OTelGenAiOperationType;
+import dev.langchain4j.micrometer.conventions.OTelGenAiSystem;
+import dev.langchain4j.micrometer.conventions.OTelGenAiTokenType;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
@@ -18,6 +19,8 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
     private final MeterRegistry meterRegistry;
 
     private static final String DESCRIPTION = "Measures number of input and output tokens used";
+    private static final String LC_REQUEST_COUNTER = "langchain4j.chat.model.request";
+    private static final String LC_ERROR_COUNTER = "langchain4j.chat.model.error";
 
     public ChatModelMeterObservationHandler(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
@@ -45,14 +48,10 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
 
     private void addRequestMetrics(ChatModelRequestContext requestContext) {
         if (requestContext.request() != null) {
-            Counter.builder("langchain4j.chat.model.request")
-                    .tag("gen_ai.operation.name", "chat")
-                    .tag(
-                            "gen_ai.system",
-                            requestContext.attributes().get("gen_ai.provider") != null
-                                    ? String.valueOf(requestContext.attributes().get("gen_ai.provider"))
-                                    : "langchain4j")
-                    .tag("gen_ai.request.model", requestContext.request().model())
+            Counter.builder(LC_REQUEST_COUNTER)
+                    .tag(OTelGenAiMetricAttributes.OPERATION_NAME.value(), OTelGenAiOperationType.CHAT.value())
+                    .tag(OTelGenAiMetricAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
+                    .tag(OTelGenAiMetricAttributes.REQUEST_MODEL.value(), requestContext.request().model())
                     .description("The number of requests that were made to the chat model")
                     .register(meterRegistry)
                     .increment();
@@ -61,10 +60,10 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
 
     private void addErrorMetric(ChatModelErrorContext errorContext) {
         if (errorContext.request() != null) {
-            Counter.builder("langchain4j.chat.model.error")
-                    .tag("gen_ai.operation.name", "chat")
-                    .tag("gen_ai.system", getSystemValue(errorContext.attributes()))
-                    .tag("gen_ai.request.model", errorContext.request().model())
+            Counter.builder(LC_ERROR_COUNTER)
+                    .tag(OTelGenAiMetricAttributes.OPERATION_NAME.value(), OTelGenAiOperationType.CHAT.value())
+                    .tag(OTelGenAiMetricAttributes.SYSTEM.value(), getSystemValue(errorContext.attributes()))
+                    .tag(OTelGenAiMetricAttributes.REQUEST_MODEL.value(), errorContext.request().model())
                     .description("The number of errors that occurred in the chat model")
                     .register(meterRegistry)
                     .increment();
@@ -80,33 +79,34 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
     private void addTokenUsageMetrics(ChatModelResponseContext responseContext) {
         addTokenMetric(
                 responseContext,
-                AiTokenType.INPUT,
+                OTelGenAiTokenType.INPUT,
                 responseContext.response().tokenUsage().inputTokenCount());
         addTokenMetric(
                 responseContext,
-                AiTokenType.OUTPUT,
+                OTelGenAiTokenType.OUTPUT,
                 responseContext.response().tokenUsage().outputTokenCount());
         addTokenMetric(
                 responseContext,
-                AiTokenType.TOTAL,
+                OTelGenAiTokenType.TOTAL,
                 responseContext.response().tokenUsage().totalTokenCount());
     }
 
-    private void addTokenMetric(ChatModelResponseContext responseContext, AiTokenType tokenType, int tokenCount) {
-        Counter.builder(AiObservationMetricNames.TOKEN_USAGE.value())
-                .tag("gen_ai.operation.name", "chat")
-                .tag("gen_ai.system", getSystemValue(responseContext.attributes()))
-                .tag("gen_ai.request.model", responseContext.request().model())
-                .tag("gen_ai.response.model", responseContext.response().model())
-                .tag(AiObservationMetricAttributes.TOKEN_TYPE.value(), tokenType.value())
+    private void addTokenMetric(
+            ChatModelResponseContext responseContext, OTelGenAiTokenType tokenType, int tokenCount) {
+        Counter.builder(OTelGenAiMetricNames.TOKEN_USAGE.value())
+                .tag(OTelGenAiMetricAttributes.OPERATION_NAME.value(), OTelGenAiOperationType.CHAT.value())
+                .tag(OTelGenAiMetricAttributes.SYSTEM.value(), getSystemValue(responseContext.attributes()))
+                .tag(OTelGenAiMetricAttributes.REQUEST_MODEL.value(), responseContext.request().model())
+                .tag(OTelGenAiMetricAttributes.RESPONSE_MODEL.value(), responseContext.response().model())
+                .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), tokenType.value())
                 .description(DESCRIPTION)
                 .register(meterRegistry)
                 .increment(tokenCount);
     }
 
     private String getSystemValue(Map<Object, Object> attributes) {
-        return attributes.get("gen_ai.provider") != null
-                ? String.valueOf(attributes.get("gen_ai.provider"))
-                : AiProvider.LANGCHAIN4J.value();
+        return attributes.get(OTelGenAiMetricAttributes.SYSTEM.value()) != null
+                ? String.valueOf(attributes.get(OTelGenAiMetricAttributes.SYSTEM.value()))
+                : OTelGenAiSystem.LANGCHAIN4J.value();
     }
 }

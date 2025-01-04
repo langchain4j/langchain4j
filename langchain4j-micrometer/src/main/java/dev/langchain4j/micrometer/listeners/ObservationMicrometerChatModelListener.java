@@ -1,10 +1,11 @@
 package dev.langchain4j.micrometer.listeners;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.micrometer.conventions.AiObservationAttributes;
-import dev.langchain4j.micrometer.conventions.AiObservationMetricNames;
-import dev.langchain4j.micrometer.conventions.AiOperationType;
-import dev.langchain4j.micrometer.conventions.AiProvider;
+import dev.langchain4j.micrometer.conventions.OTelGenAiMetricAttributes;
+import dev.langchain4j.micrometer.conventions.OTelGenAiMetricNames;
+import dev.langchain4j.micrometer.conventions.OTelGenAiObservationAttributes;
+import dev.langchain4j.micrometer.conventions.OTelGenAiOperationType;
+import dev.langchain4j.micrometer.conventions.OTelGenAiSystem;
 import dev.langchain4j.micrometer.observations.ChatModelMeterObservationHandler;
 import dev.langchain4j.micrometer.observations.ChatModelObservationContext;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -23,7 +24,6 @@ public class ObservationMicrometerChatModelListener implements ChatModelListener
 
     private final ObservationRegistry observationRegistry;
     private final AtomicReference<Observation.Scope> scope;
-    private static final String GEN_AI_PROVIDER = "gen_ai.provider";
 
     public ObservationMicrometerChatModelListener(
             final MeterRegistry meterRegistry, ObservationRegistry observationRegistry) {
@@ -51,9 +51,9 @@ public class ObservationMicrometerChatModelListener implements ChatModelListener
     }
 
     private void setAiProvider(ChatModelRequestContext requestContext) {
-        final AiProvider aiProvider =
-                AiProvider.fromClass(requestContext.request().getClass());
-        requestContext.attributes().put(GEN_AI_PROVIDER, aiProvider.value());
+        final OTelGenAiSystem aiSystem =
+                OTelGenAiSystem.fromClass(requestContext.request().getClass());
+        requestContext.attributes().put(OTelGenAiMetricAttributes.SYSTEM, aiSystem.value());
     }
 
     private static Supplier<Observation.Context> createContextSupplier(ChatModelRequestContext requestContext) {
@@ -62,14 +62,15 @@ public class ObservationMicrometerChatModelListener implements ChatModelListener
 
     private Observation createObservation(ChatModelRequestContext requestContext) {
         return Observation.createNotStarted(
-                        AiObservationMetricNames.OPERATION_DURATION.value(),
+                        OTelGenAiMetricNames.OPERATION_DURATION.value(),
                         createContextSupplier(requestContext),
                         observationRegistry)
-                .lowCardinalityKeyValue(AiObservationAttributes.AI_OPERATION_TYPE.value(), AiOperationType.CHAT.value())
                 .lowCardinalityKeyValue(
-                        AiObservationAttributes.AI_PROVIDER.value(), getSystemValue(requestContext.attributes()))
+                        OTelGenAiObservationAttributes.AI_OPERATION_TYPE.value(), OTelGenAiOperationType.CHAT.value())
                 .lowCardinalityKeyValue(
-                        AiObservationAttributes.REQUEST_MODEL.value(),
+                        OTelGenAiObservationAttributes.AI_SYSTEM.value(), getSystemValue(requestContext.attributes()))
+                .lowCardinalityKeyValue(
+                        OTelGenAiObservationAttributes.REQUEST_MODEL.value(),
                         requestContext.request().model())
                 .contextualName("GenAI operation duration")
                 .start();
@@ -89,14 +90,14 @@ public class ObservationMicrometerChatModelListener implements ChatModelListener
 
     private void updateObservationWithResponse(Observation observation, ChatModelResponseContext responseContext) {
         observation.lowCardinalityKeyValue(
-                AiObservationAttributes.RESPONSE_MODEL.value(),
+                OTelGenAiObservationAttributes.RESPONSE_MODEL.value(),
                 responseContext.response().model());
     }
 
     private String getSystemValue(Map<Object, Object> attributes) {
-        return attributes.get(GEN_AI_PROVIDER) != null
-                ? String.valueOf(attributes.get(GEN_AI_PROVIDER))
-                : AiProvider.LANGCHAIN4J.value();
+        return attributes.get(OTelGenAiMetricAttributes.SYSTEM.value()) != null
+                ? String.valueOf(attributes.get(OTelGenAiMetricAttributes.SYSTEM.value()))
+                : OTelGenAiSystem.LANGCHAIN4J.value();
     }
 
     private void handleErrorObservationScope(ChatModelErrorContext errorContext) {
@@ -115,10 +116,10 @@ public class ObservationMicrometerChatModelListener implements ChatModelListener
     private void updateObservationWithError(Observation observation, ChatModelErrorContext errorContext) {
         observation
                 .lowCardinalityKeyValue(
-                        AiObservationAttributes.REQUEST_MODEL.value(),
+                        OTelGenAiObservationAttributes.REQUEST_MODEL.value(),
                         errorContext.request().model())
                 .lowCardinalityKeyValue(
-                        AiObservationAttributes.ERROR_TYPE.value(),
+                        OTelGenAiObservationAttributes.ERROR_TYPE.value(),
                         errorContext.error().getClass().getSimpleName());
     }
 }

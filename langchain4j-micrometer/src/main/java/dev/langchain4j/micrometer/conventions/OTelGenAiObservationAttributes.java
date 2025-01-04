@@ -1,7 +1,6 @@
 package dev.langchain4j.micrometer.conventions;
 
-// Copied from AiObservationAttributes.java in spring-ai-core
-public enum AiObservationAttributes {
+public enum OTelGenAiObservationAttributes {
     // GenAI General
 
     /**
@@ -11,7 +10,7 @@ public enum AiObservationAttributes {
     /**
      * The model provider as identified by the client instrumentation.
      */
-    AI_PROVIDER("gen_ai.system"),
+    AI_SYSTEM("gen_ai.system"),
 
     // GenAI Request
 
@@ -116,7 +115,7 @@ public enum AiObservationAttributes {
 
     private final String value;
 
-    AiObservationAttributes(final String value) {
+    OTelGenAiObservationAttributes(final String value) {
         this.value = value;
     }
 
