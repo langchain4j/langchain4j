@@ -51,7 +51,9 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
             Counter.builder(LC_REQUEST_COUNTER)
                     .tag(OTelGenAiMetricAttributes.OPERATION_NAME.value(), OTelGenAiOperationType.CHAT.value())
                     .tag(OTelGenAiMetricAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
-                    .tag(OTelGenAiMetricAttributes.REQUEST_MODEL.value(), requestContext.request().model())
+                    .tag(
+                            OTelGenAiMetricAttributes.REQUEST_MODEL.value(),
+                            requestContext.request().model())
                     .description("The number of requests that were made to the chat model")
                     .register(meterRegistry)
                     .increment();
@@ -63,7 +65,9 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
             Counter.builder(LC_ERROR_COUNTER)
                     .tag(OTelGenAiMetricAttributes.OPERATION_NAME.value(), OTelGenAiOperationType.CHAT.value())
                     .tag(OTelGenAiMetricAttributes.SYSTEM.value(), getSystemValue(errorContext.attributes()))
-                    .tag(OTelGenAiMetricAttributes.REQUEST_MODEL.value(), errorContext.request().model())
+                    .tag(
+                            OTelGenAiMetricAttributes.REQUEST_MODEL.value(),
+                            errorContext.request().model())
                     .description("The number of errors that occurred in the chat model")
                     .register(meterRegistry)
                     .increment();
@@ -96,8 +100,12 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
         Counter.builder(OTelGenAiMetricNames.TOKEN_USAGE.value())
                 .tag(OTelGenAiMetricAttributes.OPERATION_NAME.value(), OTelGenAiOperationType.CHAT.value())
                 .tag(OTelGenAiMetricAttributes.SYSTEM.value(), getSystemValue(responseContext.attributes()))
-                .tag(OTelGenAiMetricAttributes.REQUEST_MODEL.value(), responseContext.request().model())
-                .tag(OTelGenAiMetricAttributes.RESPONSE_MODEL.value(), responseContext.response().model())
+                .tag(
+                        OTelGenAiMetricAttributes.REQUEST_MODEL.value(),
+                        responseContext.request().model())
+                .tag(
+                        OTelGenAiMetricAttributes.RESPONSE_MODEL.value(),
+                        responseContext.response().model())
                 .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), tokenType.value())
                 .description(DESCRIPTION)
                 .register(meterRegistry)
