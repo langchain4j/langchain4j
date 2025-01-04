@@ -7,7 +7,7 @@ import dev.langchain4j.data.document.Metadata;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-public class ContainsTest {
+class ContainsTest {
 
     @Test
     void testShouldReturnFalseWhenNotMetadata() {
@@ -43,6 +43,6 @@ public class ContainsTest {
         assertThatThrownBy(() -> contains.test(metadata))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(
-                        "Type mismatch: actual value of metadata key \"key\" (42) has type java.lang.Integer, while it is expected to be a string or a UUID");
+                        "Type mismatch: actual value of metadata key \"key\" (42) has type java.lang.Integer, while it is expected to be a string");
     }
 }

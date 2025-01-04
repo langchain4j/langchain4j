@@ -7,11 +7,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * A filter that checks if the value of a metadata key contains a specific string.
- * The value of the metadata key must be a string or a UUID.
+ * The value of the metadata key must be a string.
  */
 public class Contains implements Filter {
 
@@ -43,17 +42,13 @@ public class Contains implements Filter {
 
         Object actualValue = metadata.toMap().get(key);
 
-        if (actualValue instanceof UUID uuid) {
-            return uuid.toString().contains(comparisonValue);
-        }
-
         if (actualValue instanceof String str) {
             return str.contains(comparisonValue);
         }
 
         throw illegalArgument(
                 "Type mismatch: actual value of metadata key \"%s\" (%s) has type %s, "
-                        + "while it is expected to be a string or a UUID",
+                        + "while it is expected to be a string",
                 key, actualValue, actualValue.getClass().getName());
     }
 
