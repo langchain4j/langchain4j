@@ -31,7 +31,7 @@ public class AiServiceChatMemoryConfigTest {
     }
 
     @Test
-    void test_memoryId_requires_chatMemoryProvider_configuration_1() {
+    void should_throw_exception_when_chat_memory_provider_is_not_configured() {
         assertThatThrownBy(() -> AiServices.builder(AiService.class)
                         .chatLanguageModel(chatLanguageModel)
                         .build())
