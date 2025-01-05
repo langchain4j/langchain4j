@@ -379,57 +379,6 @@ public class BedrockChatModel implements ChatLanguageModel {
                 .build();
     }
 
-    public static class BedrockChatModelBuilder {
-
-        private Region region;
-        private AwsCredentialsProvider credentialsProvider;
-        private String modelId;
-        private InferenceConfiguration inferenceConfiguration;
-        private Integer maxRetries;
-        private Duration timeout;
-        private BedrockRuntimeClient client;
-
-        public BedrockChatModelBuilder region(Region region) {
-            this.region = region;
-            return this;
-        }
-
-        public BedrockChatModelBuilder credentialsProvider(AwsCredentialsProvider credentialsProvider) {
-            this.credentialsProvider = credentialsProvider;
-            return this;
-        }
-
-        public BedrockChatModelBuilder modelId(String modelId) {
-            this.modelId = modelId;
-            return this;
-        }
-
-        public BedrockChatModelBuilder inferenceConfiguration(InferenceConfiguration inferenceConfiguration) {
-            this.inferenceConfiguration = inferenceConfiguration;
-            return this;
-        }
-
-        public BedrockChatModelBuilder maxRetries(Integer maxRetries) {
-            this.maxRetries = maxRetries;
-            return this;
-        }
-
-        public BedrockChatModelBuilder timeout(Duration timeout) {
-            this.timeout = timeout;
-            return this;
-        }
-
-        public BedrockChatModelBuilder client(BedrockRuntimeClient client) {
-            this.client = client;
-            return this;
-        }
-
-        public BedrockChatModel build() {
-            return new BedrockChatModel(
-                    region, credentialsProvider, modelId, inferenceConfiguration, maxRetries, timeout, client);
-        }
-    }
-
     private InferenceConfiguration inferenceConfigurationFrom(ChatRequest chatRequest) {
         if (Objects.nonNull(chatRequest) && Objects.nonNull(chatRequest.parameters())) {
             return InferenceConfiguration.builder()
@@ -451,5 +400,75 @@ public class BedrockChatModel implements ChatLanguageModel {
         if (Objects.isNull(d)) {
             return null;
         } else return d.floatValue();
+    }
+
+    public static class BedrockChatModelBuilder {
+
+        private Region region;
+        private AwsCredentialsProvider credentialsProvider;
+        private String modelId;
+        private Integer maxTokens;
+        private Float temperature;
+        private Float topP;
+        private List<String> stopSequences;
+        private Integer maxRetries;
+        private Duration timeout;
+        private BedrockRuntimeClient client;
+
+        public BedrockChatModelBuilder region(Region region) {
+            this.region = region;
+            return this;
+        }
+
+        public BedrockChatModelBuilder credentialsProvider(AwsCredentialsProvider credentialsProvider) {
+            this.credentialsProvider = credentialsProvider;
+            return this;
+        }
+
+        public BedrockChatModelBuilder modelId(String modelId) {
+            this.modelId = modelId;
+            return this;
+        }
+
+        public BedrockChatModelBuilder maxTokens(Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public BedrockChatModelBuilder temperature(Float temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public BedrockChatModelBuilder topP(Float topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public BedrockChatModelBuilder stopSequences(List<String> stopSequences) {
+            this.stopSequences = new ArrayList<>(stopSequences);
+            return this;
+        }
+
+        public BedrockChatModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public BedrockChatModelBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public BedrockChatModelBuilder client(BedrockRuntimeClient client) {
+            this.client = client;
+            return this;
+        }
+
+        public BedrockChatModel build() {
+            final InferenceConfiguration inferenceConfiguration = InferenceConfiguration.builder().maxTokens(maxTokens).temperature(temperature).topP(topP).stopSequences(stopSequences).build();
+            return new BedrockChatModel(
+                    region, credentialsProvider, modelId, inferenceConfiguration, maxRetries, timeout, client);
+        }
     }
 }
