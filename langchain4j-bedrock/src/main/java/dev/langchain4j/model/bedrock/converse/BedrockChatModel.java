@@ -1,6 +1,7 @@
 package dev.langchain4j.model.bedrock.converse;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.isNull;
@@ -432,22 +433,18 @@ public class BedrockChatModel implements ChatLanguageModel {
     private InferenceConfiguration inferenceConfigurationFrom(ChatRequest chatRequest) {
         if (Objects.nonNull(chatRequest) && Objects.nonNull(chatRequest.parameters())) {
             return InferenceConfiguration.builder()
-                    .maxTokens(firstNonNull(
+                    .maxTokens(getOrDefault(
                             chatRequest.parameters().maxOutputTokens(), this.inferenceConfiguration.maxTokens()))
-                    .temperature(firstNonNull(
+                    .temperature(getOrDefault(
                             dblToFloat(chatRequest.parameters().temperature()),
                             this.inferenceConfiguration.temperature()))
-                    .topP(firstNonNull(dblToFloat(chatRequest.parameters().topP()), this.inferenceConfiguration.topP()))
-                    .stopSequences(firstNonNull(
+                    .topP(getOrDefault(dblToFloat(chatRequest.parameters().topP()), this.inferenceConfiguration.topP()))
+                    .stopSequences(getOrDefault(
                             chatRequest.parameters().stopSequences(), this.inferenceConfiguration.stopSequences()))
                     .build();
         } else {
             return this.inferenceConfiguration;
         }
-    }
-
-    private static <T> T firstNonNull(T first, T second) {
-        return isNull(first) ? second : first;
     }
 
     private static Float dblToFloat(Double d) {
