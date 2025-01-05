@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
-    private static final ChromaDBContainer chroma = new ChromaDBContainer("chromadb/chroma:0.5.4");
+    private static final ChromaDBContainer chroma = new ChromaDBContainer("chromadb/chroma:latest");
 
     EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
             .baseUrl(chroma.getEndpoint())
