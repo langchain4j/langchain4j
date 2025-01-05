@@ -41,7 +41,7 @@ public class AiServiceChatMemoryConfigTest {
     }
 
     @Test
-    void test_memoryId_requires_chatMemoryProvider_configuration_2() {
+    void should_return_response_when_chat_memory_provider_is_configured() {
         // given
         AiService aiService = AiServices.builder(AiService.class)
                 .chatLanguageModel(chatLanguageModel)
