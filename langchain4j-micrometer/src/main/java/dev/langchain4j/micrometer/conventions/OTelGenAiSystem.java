@@ -1,7 +1,5 @@
 package dev.langchain4j.micrometer.conventions;
 
-import java.util.Arrays;
-
 /**
  * Metric attribute for system to describe the family of GenAI models that is used for the operation.
  * The values are in line with the OpenTelemetry Semantic Conventions for Generative AI Metrics.
@@ -70,29 +68,5 @@ public enum OTelGenAiSystem {
 
     public String value() {
         return this.value;
-    }
-
-    /**
-     * Returns the OTelGenAiSystem enum value based on the class name of the implemented ChatRequest or ChatResponse classes.
-     * These classes are expected to be named in the format: [SystemName]ChatRequest or [SystemName]ChatResponse.
-     *
-     * @param clazz The class to determine the system for.
-     *
-     * @return OTelGenAiSystem The system name based on the class name, or langchain4j if no other system is detected.
-     */
-    public static OTelGenAiSystem fromClass(Class<?> clazz) {
-        if (clazz == null) {
-            return LANGCHAIN4J;
-        }
-
-        String className = clazz.getSimpleName();
-        // Remove suffixes of interfaces if present to derive the implemented system name
-        String baseClassName =
-                className.replace("ChatRequest", "").replace("ChatResponse", "").toLowerCase();
-
-        return Arrays.stream(values())
-                .filter(provider -> !provider.equals(LANGCHAIN4J) && baseClassName.contains(provider.value()))
-                .findFirst()
-                .orElse(LANGCHAIN4J);
     }
 }

@@ -5,7 +5,6 @@ import dev.langchain4j.micrometer.conventions.OTelGenAiMetricAttributes;
 import dev.langchain4j.micrometer.conventions.OTelGenAiMetricNames;
 import dev.langchain4j.micrometer.conventions.OTelGenAiObservationAttributes;
 import dev.langchain4j.micrometer.conventions.OTelGenAiOperationType;
-import dev.langchain4j.micrometer.conventions.OTelGenAiSystem;
 import dev.langchain4j.micrometer.observation.ChatModelMeterObservationHandler;
 import dev.langchain4j.micrometer.observation.ChatModelObservationContext;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -25,11 +24,33 @@ public class ChatModelObservationListener implements ChatModelListener {
     private final ObservationRegistry observationRegistry;
     private final AtomicReference<Observation.Scope> scope;
 
-    public ChatModelObservationListener(final MeterRegistry meterRegistry, ObservationRegistry observationRegistry) {
+    private final String aiSystemName;
+
+    /**
+     * Default constructor.
+     * @param meterRegistry         Provided MeterRegistry by Micrometer Actuator
+     * @param observationRegistry   Provided ObservationRegistry by Micrometer Observation API
+     * @param aiSystemName          AI system name should be in line with OpenTelemetry Semantic Convention for Generative AI Metrics.
+     */
+    public ChatModelObservationListener(
+            final MeterRegistry meterRegistry, ObservationRegistry observationRegistry, String aiSystemName) {
         this.observationRegistry = observationRegistry;
         this.scope = new AtomicReference<>();
+        this.aiSystemName = aiSystemName;
 
         observationRegistry.observationConfig().observationHandler(new ChatModelMeterObservationHandler(meterRegistry));
+    }
+
+    /**
+     *
+     * @param meterRegistry         Provided MeterRegistry by Micrometer Actuator
+     * @param observationRegistry   Provided ObservationRegistry by Micrometer Observation API
+     *
+     * When the AI system name is omitted, the Langchain4J default is added, because
+     * a system name is required conform OpenTelemetry Semantic Convention for Generative AI Metrics.
+     */
+    public ChatModelObservationListener(final MeterRegistry meterRegistry, ObservationRegistry observationRegistry) {
+        this(meterRegistry, observationRegistry, "langchain4j");
     }
 
     @Override
@@ -50,9 +71,7 @@ public class ChatModelObservationListener implements ChatModelListener {
     }
 
     private void setAiProvider(ChatModelRequestContext requestContext) {
-        final OTelGenAiSystem aiSystem =
-                OTelGenAiSystem.fromClass(requestContext.request().getClass());
-        requestContext.attributes().put(OTelGenAiMetricAttributes.SYSTEM, aiSystem.value());
+        requestContext.attributes().put(OTelGenAiMetricAttributes.SYSTEM, aiSystemName);
     }
 
     private static Supplier<Observation.Context> createContextSupplier(ChatModelRequestContext requestContext) {
@@ -94,9 +113,7 @@ public class ChatModelObservationListener implements ChatModelListener {
     }
 
     private String getSystemValue(Map<Object, Object> attributes) {
-        return attributes.get(OTelGenAiMetricAttributes.SYSTEM.value()) != null
-                ? String.valueOf(attributes.get(OTelGenAiMetricAttributes.SYSTEM.value()))
-                : OTelGenAiSystem.LANGCHAIN4J.value();
+        return (String) attributes.get(OTelGenAiMetricAttributes.SYSTEM);
     }
 
     private void handleErrorObservationScope(ChatModelErrorContext errorContext) {

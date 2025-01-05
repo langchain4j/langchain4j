@@ -3,7 +3,6 @@ package dev.langchain4j.micrometer.observation;
 import dev.langchain4j.micrometer.conventions.OTelGenAiMetricAttributes;
 import dev.langchain4j.micrometer.conventions.OTelGenAiMetricNames;
 import dev.langchain4j.micrometer.conventions.OTelGenAiOperationType;
-import dev.langchain4j.micrometer.conventions.OTelGenAiSystem;
 import dev.langchain4j.micrometer.conventions.OTelGenAiTokenType;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -113,8 +112,6 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
     }
 
     private String getSystemValue(Map<Object, Object> attributes) {
-        return attributes.get(OTelGenAiMetricAttributes.SYSTEM.value()) != null
-                ? String.valueOf(attributes.get(OTelGenAiMetricAttributes.SYSTEM.value()))
-                : OTelGenAiSystem.LANGCHAIN4J.value();
+        return (String) attributes.get(OTelGenAiMetricAttributes.SYSTEM);
     }
 }
