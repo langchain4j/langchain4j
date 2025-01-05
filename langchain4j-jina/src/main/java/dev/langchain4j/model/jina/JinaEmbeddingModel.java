@@ -24,12 +24,24 @@ import lombok.Builder;
 public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final String DEFAULT_BASE_URL = "https://api.jina.ai/";
-    private static final String DEFAULT_MODEL = "jina-embeddings-v3";
+    private static final String DEFAULT_MODEL = "jina-embeddings-v2-base-en";
 
     private final JinaClient client;
     private final String modelName;
     private final Integer maxRetries;
     private final Boolean lateChunking;
+
+    @Builder
+    public JinaEmbeddingModel(
+            String baseUrl,
+            String apiKey,
+            String modelName,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean logRequests,
+            Boolean logResponses) {
+        this(baseUrl, apiKey, modelName, timeout, maxRetries, false, logRequests, logResponses);
+    }
 
     @Builder
     public JinaEmbeddingModel(
