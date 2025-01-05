@@ -466,7 +466,12 @@ public class BedrockChatModel implements ChatLanguageModel {
         }
 
         public BedrockChatModel build() {
-            final InferenceConfiguration inferenceConfiguration = InferenceConfiguration.builder().maxTokens(maxTokens).temperature(temperature).topP(topP).stopSequences(stopSequences).build();
+            final InferenceConfiguration inferenceConfiguration = InferenceConfiguration.builder()
+                    .maxTokens(maxTokens)
+                    .temperature(temperature)
+                    .topP(topP)
+                    .stopSequences(stopSequences)
+                    .build();
             return new BedrockChatModel(
                     region, credentialsProvider, modelId, inferenceConfiguration, maxRetries, timeout, client);
         }
