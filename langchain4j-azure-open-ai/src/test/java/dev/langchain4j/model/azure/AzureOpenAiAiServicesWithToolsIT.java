@@ -32,6 +32,23 @@ class AzureOpenAiAiServicesWithToolsIT extends AiServicesWithNewToolsIT {
         );
     }
 
+    @Override
+    protected List<ChatLanguageModel> modelsSupportingMapParametersInTools() {
+        // second model (with strictTools(true)) goes into an endless loop
+        // See OpenAiAiServiceWithToolsIT as it's the same issue here
+        return singletonList(models().get(0));
+    }
+
+    @Override
+    protected boolean supportsRecursion() {
+        return false;
+    }
+
+    @Override
+    protected boolean verifyModelInteractions() {
+        return true;
+    }
+
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_AZURE_OPENAI");
