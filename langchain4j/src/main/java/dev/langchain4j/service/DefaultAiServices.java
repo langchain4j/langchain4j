@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -24,7 +23,6 @@ import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.output.ServiceOutputParser;
-import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderRequest;
@@ -36,11 +34,9 @@ import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -147,7 +143,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Type returnType = method.getGenericReturnType();
                         boolean isReturnTypeRaw = typeHasRawClass(returnType, Result.class);
                         boolean isResultRawString = isReturnTypeRaw && isResultRawString(returnType);
-                        boolean directReturnFromTool = isResultRawString;
+                        boolean rawReturnFromTool = isResultRawString;
 
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
@@ -289,8 +285,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages = context.chatMemory(memoryId).messages();
                             }
                             // it's possible that an ai message only has 1 tool request, but then the subsequent ai message within the while loop has a different tool request, so only if all toolrequests are return direct do we return directly
-                            directReturnFromTool = directReturnFromTool && allToolsReturnDirectly(aiMessage.toolExecutionRequests(), toolExecutors);
-                            if (directReturnFromTool) {
+                            rawReturnFromTool = rawReturnFromTool && allToolsReturnRaw(aiMessage.toolExecutionRequests(), toolExecutors);
+                            if (rawReturnFromTool) {
                                 return new Result<T>(tokenUsageAccumulator, Collections.emptyList(), response.finishReason(), toolExecutions);
                             }
 
@@ -314,8 +310,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    private boolean allToolsReturnDirectly(List<ToolExecutionRequest> requests, Map<String, ToolExecutor> toolExecutors) {
-                        return requests.stream().map(r -> toolExecutors.get(r.name())).allMatch(tExec -> tExec != null && tExec.isDirectReturn());
+                    private boolean allToolsReturnRaw(List<ToolExecutionRequest> requests, Map<String, ToolExecutor> toolExecutors) {
+                        return requests.stream().map(r -> toolExecutors.get(r.name())).allMatch(tExec -> tExec != null && tExec.isRawReturn());
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

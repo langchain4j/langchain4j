@@ -23,7 +23,7 @@ public interface ToolExecutor {
      *
      * @return True if the tool invocation result can be directly returned as it is.
      */
-    default boolean isDirectReturn() {
+    default boolean isRawReturn() {
         return false;
     }
 }

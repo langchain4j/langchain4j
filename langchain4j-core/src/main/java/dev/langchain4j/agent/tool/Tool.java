@@ -46,5 +46,5 @@ public @interface Tool {
      *
      * @return whether to return the result directly
      */
-    boolean directReturn() default false;
+    boolean rawReturn() default false;
 }
