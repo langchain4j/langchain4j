@@ -30,7 +30,6 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.Response;
 import java.time.LocalTime;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -783,10 +782,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(1)).generate(anyList(), toolSpecificationCaptor.capture());  // only 1 time, to call the tool
+                verify(model, times(1)).chat(chatRequestCaptor.capture());  // only 1 time, to call the tool
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 var toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("add");
@@ -833,10 +832,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(3)).generate(anyList(), toolSpecificationCaptor.capture());  // 3 times = 2 tool requests + summary
+                verify(model, times(3)).chat(chatRequestCaptor.capture());  // 3 times = 2 tool requests + summary
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(2);
             }
         }
@@ -875,10 +874,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(1)).generate(anyList(), toolSpecificationCaptor.capture());  // 1 times = 1 tool requests return raw
+                verify(model, times(1)).chat(chatRequestCaptor.capture());  // 1 times = 1 tool requests return raw
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(2);
             }
         }
@@ -921,10 +920,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(1)).generate(anyList(), toolSpecificationCaptor.capture());  // 1 times = 1 tool requests return raw
+                verify(model, times(1)).chat(chatRequestCaptor.capture());  // 1 times = 1 tool requests return raw
                 verifyNoMoreInteractions(model);
 
-                var toolSpecifications = toolSpecificationCaptor.getValue();
+                var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(2);
             }
         }
