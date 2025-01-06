@@ -6,7 +6,7 @@ package dev.langchain4j.store.embedding.oracle;
 public enum CreateOption {
 
     /** No attempt is made to create the schema object. */
-    DO_NOT_CREATE,
+    CREATE_NONE,
 
     /** An existing schema object is reused, otherwise it is created. */
     CREATE_IF_NOT_EXISTS,
