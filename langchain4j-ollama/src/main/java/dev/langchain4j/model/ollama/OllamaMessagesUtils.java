@@ -78,13 +78,13 @@ class OllamaMessagesUtils {
         }
     }
 
-    static List<ToolExecutionRequest> toToolExecutionRequest(List<ToolCall> toolCalls) {
+    static List<ToolExecutionRequest> toToolExecutionRequests(List<ToolCall> toolCalls) {
         return toolCalls.stream().map(toolCall ->
                         ToolExecutionRequest.builder()
                                 .name(toolCall.getFunction().getName())
                                 .arguments(toJson(toolCall.getFunction().getArguments()))
                                 .build())
-                .collect(Collectors.toList());
+                .toList();
     }
 
     static String toOllamaResponseFormat(ResponseFormat responseFormat) {

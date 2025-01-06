@@ -195,7 +195,7 @@ public final class RetryUtils {
                         throw new RuntimeException(e);
                     }
 
-                    log.warn("Exception was thrown on attempt %s of %s".formatted(attempt, maxAttempts), e);
+                    log.warn(String.format("Exception was thrown on attempt %s of %s", attempt, maxAttempts), e);
 
                     sleep(attempt);
                 }

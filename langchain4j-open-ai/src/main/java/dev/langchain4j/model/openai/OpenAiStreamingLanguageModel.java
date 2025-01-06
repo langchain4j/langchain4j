@@ -4,9 +4,9 @@ import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionChoice;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.ai4j.openai4j.shared.StreamOptions;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
@@ -101,11 +101,11 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    ChatResponse chatResponse = responseBuilder.build();
                     handler.onComplete(Response.from(
-                            response.content().text(),
-                            response.tokenUsage(),
-                            response.finishReason()
+                            chatResponse.aiMessage().text(),
+                            chatResponse.metadata().tokenUsage(),
+                            chatResponse.metadata().finishReason()
                     ));
                 })
                 .onError(handler::onError)

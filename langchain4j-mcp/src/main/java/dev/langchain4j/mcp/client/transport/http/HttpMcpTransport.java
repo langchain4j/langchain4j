@@ -7,18 +7,20 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.mcp.client.protocol.CancellationNotification;
+import dev.langchain4j.mcp.client.protocol.InitializationNotification;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.client.protocol.McpClientMessage;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -37,10 +39,10 @@ public class HttpMcpTransport implements McpTransport {
     private final boolean logRequests;
     private EventSource mcpSseEventListener;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
 
     // this is obtained from the server after initializing the SSE channel
     private volatile String postUrl;
+    private volatile McpOperationHandler messageHandler;
 
     public HttpMcpTransport(Builder builder) {
         OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder();
@@ -59,115 +61,91 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public void start() {
+    public void start(McpOperationHandler messageHandler) {
+        this.messageHandler = messageHandler;
         mcpSseEventListener = startSseChannel(logResponses);
     }
 
     @Override
-    public JsonNode initialize(final McpInitializeRequest request) {
+    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
         Request httpRequest = null;
+        Request initializationNotification = null;
         try {
-            httpRequest = new Request.Builder()
-                    .url(postUrl)
-                    .header("Content-Type", "application/json")
-                    .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(request)))
-                    .build();
+            httpRequest = createRequest(operation);
+            initializationNotification = createRequest(new InitializationNotification());
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return CompletableFuture.failedFuture(e);
         }
-        return executeAndWait(httpRequest, request.getId());
+        final Request finalInitializationNotification = initializationNotification;
+        return execute(httpRequest, operation.getId())
+                .thenCompose(originalResponse -> execute(finalInitializationNotification, null)
+                        .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
     }
 
     @Override
-    public JsonNode listTools(McpListToolsRequest operation) {
+    public CompletableFuture<JsonNode> listTools(McpListToolsRequest operation) {
         try {
-            Request httpRequest = new Request.Builder()
-                    .url(postUrl)
-                    .header("Content-Type", "application/json")
-                    .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(operation)))
-                    .build();
-            return executeAndWait(httpRequest, operation.getId());
+            Request httpRequest = createRequest(operation);
+            return execute(httpRequest, operation.getId());
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return CompletableFuture.failedFuture(e);
         }
     }
 
     @Override
-    public JsonNode executeTool(McpCallToolRequest operation, Duration timeout) throws TimeoutException {
+    public CompletableFuture<JsonNode> executeTool(McpCallToolRequest operation) {
         try {
-            Request httpRequest = new Request.Builder()
-                    .url(postUrl)
-                    .header("Content-Type", "application/json")
-                    .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(operation)))
-                    .build();
-            return executeAndWait(httpRequest, operation.getId(), timeout);
+            Request httpRequest = createRequest(operation);
+            return execute(httpRequest, operation.getId());
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return CompletableFuture.failedFuture(e);
         }
     }
 
-    private JsonNode executeAndWait(Request request, Long id) {
+    @Override
+    public void cancelOperation(long operationId) {
         try {
-            CompletableFuture<JsonNode> future = new CompletableFuture<>();
-            pendingOperations.put(id, future);
-            try (final Response response = client.newCall(request).execute()) {
+            Request httpRequest = createRequest(new CancellationNotification(operationId, "Timeout"));
+            execute(httpRequest, null);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to create a cancellation request", e);
+        }
+    }
+
+    private CompletableFuture<JsonNode> execute(Request request, Long id) {
+        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+        if (id != null) {
+            messageHandler.startOperation(id, future);
+        }
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                future.completeExceptionally(e);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
                 int statusCode = response.code();
                 if (!isExpectedStatusCode(statusCode)) {
-                    throw new RuntimeException("Unexpected status code: " + statusCode);
+                    future.completeExceptionally(new RuntimeException("Unexpected status code: " + statusCode));
+                }
+                // For messages with null ID, we don't wait for a response in the SSE channel
+                if (id == null) {
+                    future.complete(null);
                 }
             }
-            return future.get();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(id);
-        }
+        });
+        return future;
     }
 
     private boolean isExpectedStatusCode(int statusCode) {
         return statusCode >= 200 && statusCode < 300;
     }
 
-    private JsonNode executeAndWait(Request request, Long id, Duration timeout) throws TimeoutException {
-        try {
-            CompletableFuture<JsonNode> future = new CompletableFuture<>();
-            pendingOperations.put(id, future);
-            try (final Response response = client.newCall(request).execute()) {
-                int statusCode = response.code();
-                if (!isExpectedStatusCode(statusCode)) {
-                    throw new RuntimeException("Unexpected status code: {}" + statusCode);
-                }
-            }
-            long timeoutMillis = timeout.toMillis() == 0 ? Long.MAX_VALUE : timeout.toMillis();
-            return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException timeoutException) {
-            CancellationNotification cancellationNotification = new CancellationNotification(id, "Timeout");
-            try {
-                Request cancellationRequest = new Request.Builder()
-                        .url(postUrl)
-                        .header("Content-Type", "application/json")
-                        .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(cancellationNotification)))
-                        .build();
-                try (Response response = client.newCall(cancellationRequest).execute()) {
-                    if (!isExpectedStatusCode(response.code())) {
-                        log.warn("Failed to send cancellation notification, the server returned: {}", response.code());
-                    }
-                }
-            } catch (IOException e) {
-                log.warn("Failed to send cancellation notification", e);
-            }
-            throw timeoutException;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(id);
-        }
-    }
-
     private EventSource startSseChannel(boolean logResponses) {
         Request request = new Request.Builder().url(sseUrl).build();
         CompletableFuture<String> initializationFinished = new CompletableFuture<>();
-        SseEventListener listener = new SseEventListener(pendingOperations, logResponses, initializationFinished);
+        SseEventListener listener = new SseEventListener(messageHandler, logResponses, initializationFinished);
         EventSource eventSource = EventSources.createFactory(client).newEventSource(request, listener);
         // wait for the SSE channel to be created, receive the POST url from the server, throw an exception if that
         // failed
@@ -188,6 +166,14 @@ public class HttpMcpTransport implements McpTransport {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private Request createRequest(McpClientMessage message) throws JsonProcessingException {
+        return new Request.Builder()
+                .url(postUrl)
+                .header("Content-Type", "application/json")
+                .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(message)))
+                .build();
     }
 
     @Override

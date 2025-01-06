@@ -7,6 +7,7 @@ import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static java.util.Collections.singletonList;
@@ -34,5 +35,26 @@ class BedrockStreamingChatModelIT {
 
         //then
         assertThat(response.content().text()).contains("Warsaw");
+    }
+
+    @Test
+    void testInjectClientToModelBuilder() {
+
+        String serviceName = "custom-service-name";
+
+        BedrockAnthropicStreamingChatModel model = BedrockAnthropicStreamingChatModel.builder()
+                .asyncClient(new BedrockRuntimeAsyncClient() {
+                    @Override
+                    public String serviceName() {
+                        return serviceName;
+                    }
+
+                    @Override
+                    public void close() {
+                    }
+                })
+                .build();
+
+        assertThat(model.getAsyncClient().serviceName()).isEqualTo(serviceName);
     }
 }
