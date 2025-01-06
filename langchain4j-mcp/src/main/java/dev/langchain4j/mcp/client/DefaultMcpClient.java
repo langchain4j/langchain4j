@@ -15,9 +15,15 @@ import dev.langchain4j.mcp.client.protocol.InitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
@@ -38,6 +44,8 @@ public class DefaultMcpClient implements McpClient {
     private final Duration toolExecutionTimeout;
     private final JsonNode RESULT_TIMEOUT;
     private final String toolExecutionTimeoutErrorMessage;
+    private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
+    private final McpOperationHandler messageHandler = new McpOperationHandler(pendingOperations);
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -54,14 +62,23 @@ public class DefaultMcpClient implements McpClient {
                 .addObject()
                 .put("type", "text")
                 .put("text", toolExecutionTimeoutErrorMessage);
+        initialize();
+    }
 
-        // Initialize the client...
-        transport.start();
-        McpInitializeRequest request = new McpInitializeRequest(idGenerator.getAndIncrement());
+    private void initialize() {
+        transport.start(messageHandler);
+        long operationId = idGenerator.getAndIncrement();
+        McpInitializeRequest request = new McpInitializeRequest(operationId);
         InitializeParams params = createInitializeParams();
         request.setParams(params);
-        JsonNode capabilities = transport.initialize(request);
-        log.debug("MCP server capabilities: {}", capabilities.get("result"));
+        try {
+            JsonNode capabilities = transport.initialize(request).get();
+            log.debug("MCP server capabilities: {}", capabilities.get("result"));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
     }
 
     private InitializeParams createInitializeParams() {
@@ -85,9 +102,18 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<ToolSpecification> listTools() {
         McpListToolsRequest operation = new McpListToolsRequest(idGenerator.getAndIncrement());
-        JsonNode jsonNode = transport.listTools(operation);
+        CompletableFuture<JsonNode> resultFuture = transport.listTools(operation);
+        JsonNode result = null;
+        try {
+            result = resultFuture.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operation.getId());
+        }
+
         return ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
-                (ArrayNode) jsonNode.get("result").get("tools"));
+                (ArrayNode) result.get("result").get("tools"));
     }
 
     @Override
@@ -98,16 +124,25 @@ public class DefaultMcpClient implements McpClient {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        McpCallToolRequest operation =
-                new McpCallToolRequest(idGenerator.getAndIncrement(), executionRequest.name(), arguments);
-        JsonNode executionResult = null;
+        long operationId = idGenerator.getAndIncrement();
+        McpCallToolRequest operation = new McpCallToolRequest(operationId, executionRequest.name(), arguments);
+        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
+        CompletableFuture<JsonNode> resultFuture = null;
+        JsonNode result = null;
         try {
-            executionResult = transport.executeTool(operation, toolExecutionTimeout);
+            resultFuture = transport.executeTool(operation);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeout) {
-            executionResult = RESULT_TIMEOUT;
+            transport.cancelOperation(operationId);
+            return ToolExecutionHelper.extractResult(
+                    (ArrayNode) RESULT_TIMEOUT.get("result").get("content"));
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
         }
         return ToolExecutionHelper.extractResult(
-                (ArrayNode) executionResult.get("result").get("content"));
+                (ArrayNode) result.get("result").get("content"));
     }
 
     @Override

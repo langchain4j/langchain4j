@@ -539,7 +539,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 ```java
@@ -778,6 +778,11 @@ Now, I can mock both `GreetingExpert` and `ChatBot` and test `MilesOfSmiles` in 
 Also, I can integration test `GreetingExpert` and `ChatBot` separately.
 I can evaluate both of them separately and find the most optimal parameters for each subtask,
 or, in the long run, even fine-tune a small specialized model for each specific subtask.
+
+
+## Testing
+
+- [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
 
 
 ## Related Tutorials

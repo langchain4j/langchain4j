@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -14,17 +15,23 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
         ModelsListResponse modelListResponse = ollamaClient.listModels();
 
         // then
-        assertThat(modelListResponse.getModels().size()).isGreaterThan(0);
-        assertThat(modelListResponse.getModels().get(0).getName()).isEqualTo("tinydolphin:latest");
-        assertThat(modelListResponse.getModels().get(0).getDigest()).isNotNull();
-        assertThat(modelListResponse.getModels().get(0).getSize()).isPositive();
+        List<OllamaModel> ollamaModels = modelListResponse.getModels();
+        assertThat(ollamaModels).isNotEmpty();
+        for (OllamaModel ollamaModel : ollamaModels) {
+            assertThat(ollamaModel.getName()).isNotBlank();
+            assertThat(ollamaModel.getSize()).isPositive();
+            assertThat(ollamaModel.getDigest()).isNotBlank();
+            assertThat(ollamaModel.getDetails()).isNotNull(); // TODO assert internals
+            assertThat(ollamaModel.getModel()).isNotBlank();
+            assertThat(ollamaModel.getModifiedAt()).isNotNull();
+        }
     }
 
     @Test
@@ -33,7 +40,7 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(ollamaBaseUrl())
+                .baseUrl(ollamaBaseUrl(ollama))
                 .timeout(Duration.ofMinutes(1))
                 .build();
 

@@ -17,7 +17,7 @@ sidebar_position: 15
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ovh-ai</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 

@@ -16,13 +16,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jlama</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 
 <dependency>

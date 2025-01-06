@@ -7,7 +7,9 @@ import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -31,7 +33,7 @@ import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListen
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaTools;
-import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toToolExecutionRequest;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toToolExecutionRequests;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
@@ -123,8 +125,13 @@ public class OllamaChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public dev.langchain4j.model.chat.response.ChatResponse chat(final dev.langchain4j.model.chat.request.ChatRequest request) {
-        final Response<AiMessage> response = doGenerate(
+    public dev.langchain4j.model.chat.response.ChatResponse chat(dev.langchain4j.model.chat.request.ChatRequest request) {
+
+        ChatRequestParameters parameters = request.parameters();
+        ChatLanguageModel.validate(parameters);
+        ChatLanguageModel.validate(parameters.toolChoice());
+
+        Response<AiMessage> response = doGenerate(
                 request.messages(),
                 request.toolSpecifications(),
                 getOrDefault(request.responseFormat(), this.responseFormat)
@@ -132,8 +139,10 @@ public class OllamaChatModel implements ChatLanguageModel {
 
         return dev.langchain4j.model.chat.response.ChatResponse.builder()
                 .aiMessage(response.content())
-                .finishReason(response.finishReason())
-                .tokenUsage(response.tokenUsage())
+                .metadata(ChatResponseMetadata.builder()
+                        .tokenUsage(response.tokenUsage())
+                        .finishReason(response.finishReason())
+                        .build())
                 .build();
     }
 
@@ -160,7 +169,7 @@ public class OllamaChatModel implements ChatLanguageModel {
             ChatResponse chatResponse = withRetry(() -> client.chat(request), maxRetries);
             Response<AiMessage> response = Response.from(
                     chatResponse.getMessage().getToolCalls() != null ?
-                            AiMessage.from(toToolExecutionRequest(chatResponse.getMessage().getToolCalls())) :
+                            AiMessage.from(toToolExecutionRequests(chatResponse.getMessage().getToolCalls())) :
                             AiMessage.from(chatResponse.getMessage().getContent()),
                     new TokenUsage(chatResponse.getPromptEvalCount(), chatResponse.getEvalCount())
             );

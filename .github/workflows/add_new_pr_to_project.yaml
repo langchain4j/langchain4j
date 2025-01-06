@@ -14,4 +14,4 @@ jobs:
       - uses: actions/add-to-project@v0.6.1
         with:
           project-url: https://github.com/users/langchain4j/projects/2
-          github-token: ${{ secrets.GH_TOKEN_ADD_NEW_PRS_TO_PROJECT }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
