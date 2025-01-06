@@ -37,6 +37,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -730,6 +731,246 @@ public abstract class AiServicesWithNewToolsIT {
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfPojoParameter.EXPECTED_SPECIFICATION);
             }
         }
+    }
+
+    interface AssistantResultString {
+
+        Result<String> chat(String userMessage);
+
+    }
+
+
+    static class ToolWithPrimitiveParametersReturnRaw {
+
+        @Tool(rawReturn = true)
+        int add(int a, int b) {
+            return a + b;
+        }
+
+        static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
+                .addIntegerProperty("arg0")
+                .addIntegerProperty("arg1")
+                .required("arg0", "arg1")
+                .build();
+    }
+
+    @Test
+    protected void should_execute_tool_with_primitive_parameters_return_raw() {
+
+        for (var model : models()) {
+
+            // given
+            model = spy(model);
+
+            var tool = spy(new ToolWithPrimitiveParametersReturnRaw());
+
+            var assistant = AiServices.builder(AssistantResultString.class)
+                    .chatLanguageModel(model)
+                    .tools(tool)
+                    .build();
+
+            var text = "How much is 37 plus 87?";
+
+            // when
+            var response = assistant.chat(text);
+
+            // then
+            assertThat(response.content()).isNull();  // should only contain tool executions
+            assertThat(response.toolExecutions().size()).isEqualTo(1);
+            assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
+
+            verify(tool).add(37, 87);
+            verifyNoMoreInteractions(tool);
+
+            if (verifyModelInteractions()) {
+                verify(model).supportedCapabilities();
+                verify(model, times(1)).chat(chatRequestCaptor.capture());  // only 1 time, to call the tool
+                verifyNoMoreInteractions(model);
+
+                var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+                assertThat(toolSpecifications).hasSize(1);
+                var toolSpecification = toolSpecifications.get(0);
+                assertThat(toolSpecification.name()).isEqualTo("add");
+                assertThat(toolSpecification.description()).isNull();
+                assertThat(toolSpecification.parameters()).isEqualTo(ToolWithPrimitiveParametersReturnRaw.EXPECTED_SCHEMA);
+            }
+        }
+    }
+
+    @Test
+    protected void should_execute_tools_some_return_raw_false() {
+
+        for (var model : models()) {
+            // given
+            model = spy(model);
+
+            var firstTool = spy(new FirstToolReturnRawFalse());
+            var secondTool = spy(new SecondToolReturnRawTrue());
+
+            var assistant = AiServices.builder(AssistantResultString.class)
+                    .chatLanguageModel(model)
+                    .tools(firstTool, secondTool)
+                    .build();
+
+            var text = "First add 2 and 3, then multiply the result by 4";
+
+            // when
+            var response = assistant.chat(text);
+
+            // then
+            assertThat(response.content()).contains("20");  // since multiple tools are called without return raw set, content is returned
+            assertThat(response.toolExecutions()).hasSize(2);
+
+            assertThat(response.toolExecutions().get(0).result()).isEqualTo("5");
+            assertThat(response.toolExecutions().get(1).result()).isEqualTo("20");
+
+            assertThat(response.toolExecutions().get(0).request().name()).isEqualTo("add");
+            assertThat(response.toolExecutions().get(1).request().name()).isEqualTo("multiply");
+
+            // verify tool executions
+            verify(firstTool).add(2, 3);
+            verify(secondTool).multiply(5, 4);
+            verifyNoMoreInteractions(firstTool, secondTool);
+
+            if (verifyModelInteractions()) {
+                verify(model).supportedCapabilities();
+                verify(model, times(3)).chat(chatRequestCaptor.capture());  // 3 times = 2 tool requests + summary
+                verifyNoMoreInteractions(model);
+
+                var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+                assertThat(toolSpecifications).hasSize(2);
+            }
+        }
+    }
+
+    @Test
+    protected void should_execute_tools_all_return_raw_true_single_called_at_a_time() {
+
+        for (var model : models()) {
+            // given
+            model = spy(model);
+
+            var firstTool = spy(new FirstToolReturnRawTrue());
+            var secondTool = spy(new SecondToolReturnRawTrue());
+
+            var assistant = AiServices.builder(AssistantResultString.class)
+                    .chatLanguageModel(model)
+                    .tools(firstTool, secondTool)
+                    .build();
+
+            var text = "First add 2 and 3, then multiply the result by 4";
+
+            // when
+            var response = assistant.chat(text);
+
+            // then
+            assertThat(response.content()).isNull();  // all tools have return raw set
+            assertThat(response.toolExecutions()).hasSize(1);  // second tool couldn't be called, first returned raw
+
+            assertThat(response.toolExecutions().get(0).result()).isEqualTo("5");
+            assertThat(response.toolExecutions().get(0).request().name()).isEqualTo("add");
+
+            // verify tool executions
+            verify(firstTool).add(2, 3);
+            verifyNoMoreInteractions(firstTool);
+
+            if (verifyModelInteractions()) {
+                verify(model).supportedCapabilities();
+                verify(model, times(1)).chat(chatRequestCaptor.capture());  // 1 times = 1 tool requests return raw
+                verifyNoMoreInteractions(model);
+
+                var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+                assertThat(toolSpecifications).hasSize(2);
+            }
+        }
+    }
+
+    @Test
+    protected void should_execute_tools_all_return_raw_true_multiple_called_at_a_time() {
+
+        for (var model : models()) {
+            // given
+            model = spy(model);
+
+            var firstTool = spy(new FirstToolReturnRawTrue());
+            var secondTool = spy(new SecondToolReturnRawTrue());
+
+            var assistant = AiServices.builder(AssistantResultString.class)
+                    .chatLanguageModel(model)
+                    .tools(firstTool, secondTool)
+                    .build();
+
+            var text = "first add 2 and 3, then multiple 6 by 7.";
+
+            // when
+            var response = assistant.chat(text);
+
+            // then
+            assertThat(response.content()).isNull();  // all tools have return raw set
+            assertThat(response.toolExecutions()).hasSize(2);  // both tools called simultaneously
+
+            assertThat(response.toolExecutions().get(0).result()).isEqualTo("5");
+            assertThat(response.toolExecutions().get(0).request().name()).isEqualTo("add");
+
+            assertThat(response.toolExecutions().get(1).result()).isEqualTo("42");
+            assertThat(response.toolExecutions().get(1).request().name()).isEqualTo("multiply");
+
+            // verify tool executions
+            verify(firstTool).add(2, 3);
+            verify(secondTool).multiply(6, 7);
+            verifyNoMoreInteractions(firstTool, secondTool);
+
+            if (verifyModelInteractions()) {
+                verify(model).supportedCapabilities();
+                verify(model, times(1)).chat(chatRequestCaptor.capture());  // 1 times = 1 tool requests return raw
+                verifyNoMoreInteractions(model);
+
+                var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
+                assertThat(toolSpecifications).hasSize(2);
+            }
+        }
+    }
+
+
+
+
+    static class FirstToolReturnRawFalse {
+        @Tool(rawReturn = false)
+        int add(int a, int b) {
+            return a + b;
+        }
+
+        static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
+                .addIntegerProperty("arg0")
+                .addIntegerProperty("arg1")
+                .required("arg0", "arg1")
+                .build();
+    }
+
+    static class FirstToolReturnRawTrue {
+        @Tool(rawReturn = true)
+        int add(int a, int b) {
+            return a + b;
+        }
+
+        static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
+                .addIntegerProperty("arg0")
+                .addIntegerProperty("arg1")
+                .required("arg0", "arg1")
+                .build();
+    }
+
+    static class SecondToolReturnRawTrue {
+        @Tool(rawReturn = true)
+        int multiply(int a, int b) {
+            return a * b;
+        }
+
+        static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
+                .addIntegerProperty("arg0")
+                .addIntegerProperty("arg1")
+                .required("arg0", "arg1")
+                .build();
     }
 
     protected boolean verifyModelInteractions() {
