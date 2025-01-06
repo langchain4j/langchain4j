@@ -40,11 +40,9 @@ import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -56,7 +54,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.service.TypeUtils.isResultRawString;
 
 class DefaultAiServices<T> extends AiServices<T> {
@@ -152,7 +149,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Type returnType = method.getGenericReturnType();
                         boolean isReturnTypeRaw = typeHasRawClass(returnType, Result.class);
                         boolean isResultRawString = isReturnTypeRaw && isResultRawString(returnType);
-                        boolean directReturnFromTool = isResultRawString;
+                        boolean rawReturnFromTool = isResultRawString;
 
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
@@ -254,8 +251,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    private boolean allToolsReturnDirectly(List<ToolExecutionRequest> requests, Map<String, ToolExecutor> toolExecutors) {
-                        return requests.stream().map(r -> toolExecutors.get(r.name())).allMatch(tExec -> tExec != null && tExec.isDirectReturn());
+                    private boolean allToolsReturnRaw(List<ToolExecutionRequest> requests, Map<String, ToolExecutor> toolExecutors) {
+                        return requests.stream().map(r -> toolExecutors.get(r.name())).allMatch(tExec -> tExec != null && tExec.isRawReturn());
                     }
 
                     private boolean canAdaptTokenStreamTo(Type returnType) {

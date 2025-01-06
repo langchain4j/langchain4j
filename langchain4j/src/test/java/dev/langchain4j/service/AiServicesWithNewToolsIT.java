@@ -739,9 +739,9 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
 
-    static class ToolWithPrimitiveParametersReturnDirectly {
+    static class ToolWithPrimitiveParametersReturnRaw {
 
-        @Tool(directReturn = true)
+        @Tool(rawReturn = true)
         int add(int a, int b) {
             return a + b;
         }
@@ -754,14 +754,14 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    protected void should_execute_tool_with_primitive_parameters_return_directly() {
+    protected void should_execute_tool_with_primitive_parameters_return_raw() {
 
         for (var model : models()) {
 
             // given
             model = spy(model);
 
-            var tool = spy(new ToolWithPrimitiveParametersReturnDirectly());
+            var tool = spy(new ToolWithPrimitiveParametersReturnRaw());
 
             var assistant = AiServices.builder(AssistantResultString.class)
                     .chatLanguageModel(model)
@@ -791,20 +791,20 @@ public abstract class AiServicesWithNewToolsIT {
                 var toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("add");
                 assertThat(toolSpecification.description()).isNull();
-                assertThat(toolSpecification.parameters()).isEqualTo(ToolWithPrimitiveParametersReturnDirectly.EXPECTED_SCHEMA);
+                assertThat(toolSpecification.parameters()).isEqualTo(ToolWithPrimitiveParametersReturnRaw.EXPECTED_SCHEMA);
             }
         }
     }
 
     @Test
-    protected void should_execute_tools_some_return_direct_false() {
+    protected void should_execute_tools_some_return_raw_false() {
 
         for (var model : models()) {
             // given
             model = spy(model);
 
-            var firstTool = spy(new FirstToolReturnDirectFalse());
-            var secondTool = spy(new SecondToolReturnDirectTrue());
+            var firstTool = spy(new FirstToolReturnRawFalse());
+            var secondTool = spy(new SecondToolReturnRawTrue());
 
             var assistant = AiServices.builder(AssistantResultString.class)
                     .chatLanguageModel(model)
@@ -817,7 +817,7 @@ public abstract class AiServicesWithNewToolsIT {
             var response = assistant.chat(text);
 
             // then
-            assertThat(response.content()).contains("20");  // since multiple tools are called without return directly set, content is returned
+            assertThat(response.content()).contains("20");  // since multiple tools are called without return raw set, content is returned
             assertThat(response.toolExecutions()).hasSize(2);
 
             assertThat(response.toolExecutions().get(0).result()).isEqualTo("5");
@@ -843,14 +843,14 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    protected void should_execute_tools_all_return_direct_true_single_called_at_a_time() {
+    protected void should_execute_tools_all_return_raw_true_single_called_at_a_time() {
 
         for (var model : models()) {
             // given
             model = spy(model);
 
-            var firstTool = spy(new FirstToolReturnDirectTrue());
-            var secondTool = spy(new SecondToolReturnDirectTrue());
+            var firstTool = spy(new FirstToolReturnRawTrue());
+            var secondTool = spy(new SecondToolReturnRawTrue());
 
             var assistant = AiServices.builder(AssistantResultString.class)
                     .chatLanguageModel(model)
@@ -863,8 +863,8 @@ public abstract class AiServicesWithNewToolsIT {
             var response = assistant.chat(text);
 
             // then
-            assertThat(response.content()).isNull();  // all tools have return direct set
-            assertThat(response.toolExecutions()).hasSize(1);  // second tool couldn't be called, first returned direct
+            assertThat(response.content()).isNull();  // all tools have return raw set
+            assertThat(response.toolExecutions()).hasSize(1);  // second tool couldn't be called, first returned raw
 
             assertThat(response.toolExecutions().get(0).result()).isEqualTo("5");
             assertThat(response.toolExecutions().get(0).request().name()).isEqualTo("add");
@@ -875,7 +875,7 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(1)).generate(anyList(), toolSpecificationCaptor.capture());  // 1 times = 1 tool requests return direct
+                verify(model, times(1)).generate(anyList(), toolSpecificationCaptor.capture());  // 1 times = 1 tool requests return raw
                 verifyNoMoreInteractions(model);
 
                 var toolSpecifications = toolSpecificationCaptor.getValue();
@@ -885,14 +885,14 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    protected void should_execute_tools_all_return_direct_true_multiple_called_at_a_time() {
+    protected void should_execute_tools_all_return_raw_true_multiple_called_at_a_time() {
 
         for (var model : models()) {
             // given
             model = spy(model);
 
-            var firstTool = spy(new FirstToolReturnDirectTrue());
-            var secondTool = spy(new SecondToolReturnDirectTrue());
+            var firstTool = spy(new FirstToolReturnRawTrue());
+            var secondTool = spy(new SecondToolReturnRawTrue());
 
             var assistant = AiServices.builder(AssistantResultString.class)
                     .chatLanguageModel(model)
@@ -905,7 +905,7 @@ public abstract class AiServicesWithNewToolsIT {
             var response = assistant.chat(text);
 
             // then
-            assertThat(response.content()).isNull();  // all tools have return direct set
+            assertThat(response.content()).isNull();  // all tools have return raw set
             assertThat(response.toolExecutions()).hasSize(2);  // both tools called simultaneously
 
             assertThat(response.toolExecutions().get(0).result()).isEqualTo("5");
@@ -921,7 +921,7 @@ public abstract class AiServicesWithNewToolsIT {
 
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
-                verify(model, times(1)).generate(anyList(), toolSpecificationCaptor.capture());  // 1 times = 1 tool requests return direct
+                verify(model, times(1)).generate(anyList(), toolSpecificationCaptor.capture());  // 1 times = 1 tool requests return raw
                 verifyNoMoreInteractions(model);
 
                 var toolSpecifications = toolSpecificationCaptor.getValue();
@@ -933,8 +933,8 @@ public abstract class AiServicesWithNewToolsIT {
 
 
 
-    static class FirstToolReturnDirectFalse {
-        @Tool(directReturn = false)
+    static class FirstToolReturnRawFalse {
+        @Tool(rawReturn = false)
         int add(int a, int b) {
             return a + b;
         }
@@ -946,8 +946,8 @@ public abstract class AiServicesWithNewToolsIT {
                 .build();
     }
 
-    static class FirstToolReturnDirectTrue {
-        @Tool(directReturn = true)
+    static class FirstToolReturnRawTrue {
+        @Tool(rawReturn = true)
         int add(int a, int b) {
             return a + b;
         }
@@ -959,8 +959,8 @@ public abstract class AiServicesWithNewToolsIT {
                 .build();
     }
 
-    static class SecondToolReturnDirectTrue {
-        @Tool(directReturn = true)
+    static class SecondToolReturnRawTrue {
+        @Tool(rawReturn = true)
         int multiply(int a, int b) {
             return a * b;
         }
