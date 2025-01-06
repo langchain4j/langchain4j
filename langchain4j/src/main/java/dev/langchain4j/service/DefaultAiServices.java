@@ -284,7 +284,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             // it's possible that an ai message only has 1 tool request, but then the subsequent ai message within the while loop has a different tool request, so only if all toolrequests are return direct do we return directly
                             rawReturnFromTool = rawReturnFromTool && allToolsReturnRaw(aiMessage.toolExecutionRequests(), toolExecutors);
                             if (rawReturnFromTool) {
-                                return new Result<T>(tokenUsageAccumulator, Collections.emptyList(), response.finishReason(), toolExecutions);
+                                return new Result<T>(tokenUsageAccumulator, Collections.emptyList(), chatResponse.finishReason(), toolExecutions);
                             }
 
                             chatRequest = ChatRequest.builder()
