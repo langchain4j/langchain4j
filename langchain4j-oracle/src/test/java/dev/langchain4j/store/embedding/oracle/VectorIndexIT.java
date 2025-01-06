@@ -2,6 +2,8 @@ package dev.langchain4j.store.embedding.oracle;
 
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 import java.sql.*;
 import java.util.stream.Stream;
@@ -11,12 +13,18 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Tests which verify all possible configurations of {@link OracleEmbeddingStore.Builder#vectorIndex(CreateOption)}
  */
 public class VectorIndexIT {
 
+    /**
+     * Verifies that the index is being create or not depending on the {@link CreateOption}
+     * @param createOption the CreateOption
+     * @throws SQLException throws an exception if an unexpected error occurs.
+     */
     @ParameterizedTest
     @EnumSource(CreateOption.class)
     public void testCreateOption(CreateOption createOption) throws SQLException {
@@ -33,6 +41,15 @@ public class VectorIndexIT {
         }
     }
 
+    /**
+     * Verifies that all IVF index arguments are being correcty set on the index.
+     * @param targetAccuracy the target accuracy
+     * @param degreeOfParallelism the drgree of parallelism
+     * @param neighborPartitions the number of neighbor partitions
+     * @param samplePerPartition the number of samples per partition
+     * @param minVectorsPerPartition the nminimus number of vectors per partition
+     * @throws Exception throws an exception if an unexpected error occurs.
+     */
     @ParameterizedTest
     @MethodSource("createIndexArguments")
     public void testCreateIndexOnStoreCreation(
@@ -92,6 +109,11 @@ public class VectorIndexIT {
         }
     }
 
+    /**
+     * Verifies that it is possible to create a store with both a JSON index and
+     * a IVF index. That the vectors are created and the search works.
+     * @throws SQLException throws an exception if an unexpected error occurs.
+     */
     @Test
     public void testMetadataKeyAndVectorIndex() throws SQLException {
         try {
@@ -128,6 +150,11 @@ public class VectorIndexIT {
         }
     }
 
+    /**
+     * Verifies that it is possible to create a store with a JSON index and that
+     * the search works.
+     * @throws SQLException throws an exception if an unexpected error occurs.
+     */
     @Test
     public void testMetadataKeysIndex() throws SQLException {
         try {
@@ -150,6 +177,59 @@ public class VectorIndexIT {
             verifyIndexExists(CreateOption.CREATE_OR_REPLACE, TABLE_NAME, "JSON_INDEX", "FUNCTION-BASED NORMAL");
 
             verifySearch(oracleEmbeddingStore);
+        } finally {
+            dropTable(TABLE_NAME);
+        }
+    }
+
+    /**
+     * This tests verifies that creating the EmbeddingStore will fail if the
+     * index name is invalid (reserved word, unquoted and starting not starting
+     * by an alphabetic character, too long).
+     * @param indexName the name of the index
+     * @throws Exception if an exception other than the expected exception occurs.
+     */
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "CREATE",
+                "012sdf",
+                "azertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiopazertyuiop"
+            })
+    public void InvalidIndexNameTest(String indexName) throws Exception {
+        try {
+            OracleEmbeddingStore.builder()
+                    .dataSource(CommonTestOperations.getDataSource())
+                    .embeddingTable(EmbeddingTable.builder()
+                            .createOption(CreateOption.CREATE_OR_REPLACE)
+                            .name(TABLE_NAME)
+                            .build())
+                    .index(Index.ivfIndexBuilder()
+                            .name(indexName)
+                            .createOption(CreateOption.CREATE_OR_REPLACE)
+                            .build())
+                    .build();
+            fail("Previous statement should throw a runtime exception");
+        } catch (RuntimeException runtimeException) {
+            assertThat(runtimeException.getCause().getClass()).isSameAs(SQLSyntaxErrorException.class);
+        } finally {
+            dropTable(TABLE_NAME);
+        }
+        try {
+            OracleEmbeddingStore.builder()
+                    .dataSource(CommonTestOperations.getDataSource())
+                    .embeddingTable(EmbeddingTable.builder()
+                            .createOption(CreateOption.CREATE_OR_REPLACE)
+                            .name(TABLE_NAME)
+                            .build())
+                    .index(Index.jsonIndexBuilder()
+                            .name(indexName)
+                            .createOption(CreateOption.CREATE_OR_REPLACE)
+                            .build())
+                    .build();
+            fail("Previous statement should throw a runtime exception");
+        } catch (RuntimeException runtimeException) {
+            assertThat(runtimeException.getCause().getClass()).isSameAs(SQLSyntaxErrorException.class);
         } finally {
             dropTable(TABLE_NAME);
         }
