@@ -106,11 +106,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                     || method.getReturnType() == Set.class) {
                 TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
             }
-            for (Parameter parameter : method.getParameters()) {
-                if (parameter.isAnnotationPresent(MemoryId.class) && context.chatMemoryProvider == null) {
-                    throw illegalConfiguration(
-                            "In order to use @MemoryId, please configure the ChatMemoryProvider on the '%s'.",
-                            context.aiServiceClass.getName());
+
+            if (context.chatMemoryProvider == null) {
+                for (Parameter parameter : method.getParameters()) {
+                    if (parameter.isAnnotationPresent(MemoryId.class)) {
+                        throw illegalConfiguration(
+                                "In order to use @MemoryId, please configure the ChatMemoryProvider on the '%s'.",
+                                context.aiServiceClass.getName());
+                    }
                 }
             }
         }
