@@ -1,5 +1,15 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
+import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -8,8 +18,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -30,7 +40,6 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
-
 import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
@@ -49,16 +58,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Exceptions.runtime;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
-import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
@@ -79,14 +78,15 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         for (Parameter parameter : parameters) {
             V v = parameter.getAnnotation(V.class);
-            dev.langchain4j.service.UserMessage userMessage = parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
+            dev.langchain4j.service.UserMessage userMessage =
+                    parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
             if (v == null && userMessage == null && memoryId == null && userName == null) {
                 throw illegalConfiguration(
-                        "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage " +
-                                "or @UserName or @MemoryId", parameter.getName(), method.getName()
-                );
+                        "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage "
+                                + "or @UserName or @MemoryId",
+                        parameter.getName(), method.getName());
             }
         }
     }
@@ -97,19 +97,27 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         for (Method method : context.aiServiceClass.getMethods()) {
             if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
-                throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. " +
-                        "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
+                throw illegalConfiguration(
+                        "The @Moderate annotation is present, but the moderationModel is not set up. "
+                                + "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
             }
-            if (method.getReturnType() == Result.class ||
-                    method.getReturnType() == List.class ||
-                    method.getReturnType() == Set.class) {
+            if (method.getReturnType() == Result.class
+                    || method.getReturnType() == List.class
+                    || method.getReturnType() == Set.class) {
                 TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
+            }
+            for (Parameter parameter : method.getParameters()) {
+                if (parameter.isAnnotationPresent(MemoryId.class) && context.chatMemoryProvider == null) {
+                    throw illegalConfiguration(
+                            "In order to use @MemoryId, please configure the ChatMemoryProvider on the '%s'.",
+                            context.aiServiceClass.getName());
+                }
             }
         }
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
-                new Class<?>[]{context.aiServiceClass},
+                new Class<?>[] {context.aiServiceClass},
                 new InvocationHandler() {
 
                     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -144,7 +152,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
 
-                        boolean supportsJsonSchema = supportsJsonSchema(); // TODO should it be called for returnType==String?
+                        boolean supportsJsonSchema =
+                                supportsJsonSchema(); // TODO should it be called for returnType==String?
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         if (supportsJsonSchema && !streaming) {
                             jsonSchema = jsonSchemaFrom(returnType);
@@ -179,7 +188,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             toolSpecifications = new ArrayList<>();
                             toolExecutors = new HashMap<>();
                             ToolProviderRequest toolProviderRequest = new ToolProviderRequest(memoryId, userMessage);
-                            ToolProviderResult toolProviderResult = context.toolProvider.provideTools(toolProviderRequest);
+                            ToolProviderResult toolProviderResult =
+                                    context.toolProvider.provideTools(toolProviderRequest);
                             if (toolProviderResult != null) {
                                 Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
                                 for (ToolSpecification toolSpecification : tools.keySet()) {
@@ -196,8 +206,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     toolExecutors,
                                     augmentationResult != null ? augmentationResult.contents() : null,
                                     context,
-                                    memoryId
-                            );
+                                    memoryId);
                             // TODO moderation
                             if (returnType == TokenStream.class) {
                                 return tokenStream;
@@ -226,7 +235,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse chatResponse = context.chatModel.chat(chatRequest);
 
-                        TokenUsage tokenUsageAccumulator = chatResponse.metadata().tokenUsage();
+                        TokenUsage tokenUsageAccumulator =
+                                chatResponse.metadata().tokenUsage();
 
                         verifyModerationIfNeeded(moderationFuture);
 
@@ -235,7 +245,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         while (true) {
 
                             if (executionsLeft-- == 0) {
-                                throw runtime("Something is wrong, exceeded %s sequential tool executions",
+                                throw runtime(
+                                        "Something is wrong, exceeded %s sequential tool executions",
                                         MAX_SEQUENTIAL_TOOL_EXECUTIONS);
                             }
 
@@ -259,10 +270,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         .request(toolExecutionRequest)
                                         .result(toolExecutionResult)
                                         .build());
-                                ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
-                                        toolExecutionRequest,
-                                        toolExecutionResult
-                                );
+                                ToolExecutionResultMessage toolExecutionResultMessage =
+                                        ToolExecutionResultMessage.from(toolExecutionRequest, toolExecutionResult);
                                 if (context.hasChatMemory()) {
                                     context.chatMemory(memoryId).add(toolExecutionResultMessage);
                                 } else {
@@ -281,11 +290,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                             chatResponse = context.chatModel.chat(chatRequest);
 
-                            tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, chatResponse.metadata().tokenUsage());
+                            tokenUsageAccumulator = TokenUsage.sum(
+                                    tokenUsageAccumulator,
+                                    chatResponse.metadata().tokenUsage());
                         }
 
                         FinishReason finishReason = chatResponse.metadata().finishReason();
-                        Response<AiMessage> response = Response.from(chatResponse.aiMessage(), tokenUsageAccumulator, finishReason);
+                        Response<AiMessage> response =
+                                Response.from(chatResponse.aiMessage(), tokenUsageAccumulator, finishReason);
 
                         Object parsedResponse = serviceOutputParser.parse(response, returnType);
                         if (typeHasRawClass(returnType, Result.class)) {
@@ -339,7 +351,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (method.isAnnotationPresent(Moderate.class)) {
                             return executor.submit(() -> {
                                 List<ChatMessage> messagesToModerate = removeToolMessages(messages);
-                                return context.moderationModel.moderate(messagesToModerate).content();
+                                return context.moderationModel
+                                        .moderate(messagesToModerate)
+                                        .content();
                             });
                         }
                         return null;
@@ -357,9 +371,11 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
-        dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
+        dev.langchain4j.service.SystemMessage annotation =
+                method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
-            return Optional.of(getTemplate(method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
+            return Optional.of(getTemplate(
+                    method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
         }
 
         return context.systemMessageProvider.apply(memoryId);
@@ -425,20 +441,21 @@ class DefaultAiServices<T> extends AiServices<T> {
         Prompt prompt = PromptTemplate.from(template).apply(variables);
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
-        return maybeUserName.map(userName -> UserMessage.from(userName, prompt.text()))
+        return maybeUserName
+                .map(userName -> UserMessage.from(userName, prompt.text()))
                 .orElseGet(prompt::toUserMessage);
     }
 
     private static String getUserMessageTemplate(Method method, Object[] args) {
 
         Optional<String> templateFromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
-        Optional<String> templateFromParameterAnnotation = findUserMessageTemplateFromAnnotatedParameter(method.getParameters(), args);
+        Optional<String> templateFromParameterAnnotation =
+                findUserMessageTemplateFromAnnotatedParameter(method.getParameters(), args);
 
         if (templateFromMethodAnnotation.isPresent() && templateFromParameterAnnotation.isPresent()) {
             throw illegalConfiguration(
                     "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
-                    method.getName()
-            );
+                    method.getName());
         }
 
         if (templateFromMethodAnnotation.isPresent()) {
@@ -448,7 +465,8 @@ class DefaultAiServices<T> extends AiServices<T> {
             return templateFromParameterAnnotation.get();
         }
 
-        Optional<String> templateFromTheOnlyArgument = findUserMessageTemplateFromTheOnlyArgument(method.getParameters(), args);
+        Optional<String> templateFromTheOnlyArgument =
+                findUserMessageTemplateFromTheOnlyArgument(method.getParameters(), args);
         if (templateFromTheOnlyArgument.isPresent()) {
             return templateFromTheOnlyArgument.get();
         }
@@ -461,7 +479,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                 .map(a -> getTemplate(method, "User", a.fromResource(), a.value(), a.delimiter()));
     }
 
-    private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(Parameter[] parameters, Object[] args) {
+    private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(
+            Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
                 return Optional.of(toString(args[i]));
@@ -515,7 +534,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             return null;
         }
         try (Scanner scanner = new Scanner(inputStream);
-             Scanner s = scanner.useDelimiter("\\A")) {
+                Scanner s = scanner.useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         }
     }
@@ -528,8 +547,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                 if (memoryId == null) {
                     throw illegalArgument(
                             "The value of parameter '%s' annotated with @MemoryId in method '%s' must not be null",
-                            parameters[i].getName(), method.getName()
-                    );
+                            parameters[i].getName(), method.getName());
                 }
                 return Optional.of(memoryId);
             }
