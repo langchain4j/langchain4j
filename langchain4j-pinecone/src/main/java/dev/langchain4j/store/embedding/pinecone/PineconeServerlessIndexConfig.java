@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.pinecone;
 
 import io.pinecone.clients.Pinecone;
+import org.openapitools.db_control.client.model.DeletionProtection;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -27,7 +28,7 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
     public void createIndex(Pinecone pinecone, String index) {
         ensureNotNull(pinecone, "pinecone");
         ensureNotNull(index, "index");
-        pinecone.createServerlessIndex(index, "cosine", dimension, cloud, region);
+        pinecone.createServerlessIndex(index, "cosine", dimension, cloud, region, DeletionProtection.ENABLED);
     }
 
     public static Builder builder() {

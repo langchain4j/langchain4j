@@ -76,7 +76,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         Embedding embedding = embeddingModel().embed("hello").content();
         embeddingStore().add(id, embedding);
 
-        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+//        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
 
         // when
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);

@@ -16,8 +16,9 @@ import io.pinecone.clients.Pinecone;
 import io.pinecone.unsigned_indices_model.QueryResponseWithUnsignedIndices;
 import io.pinecone.unsigned_indices_model.ScoredVectorWithUnsignedIndices;
 import io.pinecone.unsigned_indices_model.VectorWithUnsignedIndices;
-import org.openapitools.client.model.IndexList;
-import org.openapitools.client.model.IndexModel;
+
+import org.openapitools.db_control.client.model.IndexList;
+import org.openapitools.db_control.client.model.IndexModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,10 +62,32 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final String nameSpace;
     private final String metadataTextKey;
 
+
+    public PineconeEmbeddingStore(String apiKey,
+                                  String index,
+                                  String nameSpace,
+                                  String metadataTextKey,
+                                  PineconeIndexConfig createIndex,
+                                  String environment,
+                                  String projectId) {
+        this(
+                apiKey,
+                null,
+                index,
+                nameSpace,
+                metadataTextKey,
+                createIndex,
+                environment,
+                projectId
+        );
+    }
+
+
     /**
      * Creates an instance of PineconeEmbeddingStore.
      *
      * @param apiKey          The Pinecone API key.
+     * @param host            (Optional) The Pinecone host.
      * @param index           The name of the index (e.g., "test").
      * @param nameSpace       (Optional) Namespace. If not provided, "default" will be used.
      * @param metadataTextKey (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
@@ -73,13 +96,19 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param projectId       (Deprecated) Please use @{@link Builder#createIndex(PineconeIndexConfig)}.
      */
     public PineconeEmbeddingStore(String apiKey,
+                                  String host,
                                   String index,
                                   String nameSpace,
                                   String metadataTextKey,
                                   PineconeIndexConfig createIndex,
                                   String environment,
                                   String projectId) {
-        Pinecone client = new Pinecone.Builder(apiKey).build();
+        Pinecone client;
+        Pinecone.Builder clientBuilder = new Pinecone.Builder(apiKey);
+        if (!isNullOrEmpty(host)){
+            clientBuilder.withHost(host);
+        }
+        client = clientBuilder.build();
         this.nameSpace = nameSpace == null ? DEFAULT_NAMESPACE : nameSpace;
         this.metadataTextKey = metadataTextKey == null ? DEFAULT_METADATA_TEXT_KEY : metadataTextKey;
 
@@ -218,6 +247,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     public static class Builder {
 
         private String apiKey;
+        private String host;
         private String index;
         private String nameSpace;
         private String metadataTextKey;
@@ -232,6 +262,14 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
          */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * @param host The Pinecone host.
+         */
+        public Builder host(String host) {
+            this.host = host;
             return this;
         }
 
@@ -289,7 +327,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public PineconeEmbeddingStore build() {
-            return new PineconeEmbeddingStore(apiKey, index, nameSpace, metadataTextKey, createIndex, environment, projectId);
+            return new PineconeEmbeddingStore(apiKey, host, index, nameSpace, metadataTextKey, createIndex, environment, projectId);
         }
     }
 }
