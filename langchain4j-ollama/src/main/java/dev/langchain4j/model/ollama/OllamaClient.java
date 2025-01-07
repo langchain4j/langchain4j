@@ -2,7 +2,6 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -113,7 +112,7 @@ class OllamaClient {
             @Override
             public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
                 if (retrofitResponse.body() == null){
-                    handler.onError(new IllegalConfigurationException(String.format("Response body is null. Status code: %d, Message: %s",
+                    handler.onError(new RuntimeException(String.format("Response body is null. Status code: %d, Message: %s",
                             retrofitResponse.code(), retrofitResponse.message())));
                     return;
                 }
@@ -168,7 +167,7 @@ class OllamaClient {
             @Override
             public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
                 if (retrofitResponse.body() == null){
-                    handler.onError(new IllegalConfigurationException(String.format("Response body is null. Status code: %d, Message: %s",
+                    handler.onError(new RuntimeException(String.format("Response body is null. Status code: %d, Message: %s",
                             retrofitResponse.code(), retrofitResponse.message())));
                     return;
                 }

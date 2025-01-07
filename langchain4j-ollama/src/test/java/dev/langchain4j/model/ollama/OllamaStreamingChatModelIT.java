@@ -223,7 +223,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         RuntimeException e = assertThrows(RuntimeException.class, handler::get);
 
         assertNotNull(e.getCause().getCause());
-        assertThat(e.getCause().getCause()).isExactlyInstanceOf(IllegalConfigurationException.class);
+        assertThat(e.getCause().getCause()).isExactlyInstanceOf(RuntimeException.class);
     }
 
 }
