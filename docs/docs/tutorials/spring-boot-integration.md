@@ -224,6 +224,10 @@ interface Assistant {
 For this, please import `langchain4j-reactor` module.
 See more details [here](/tutorials/ai-services#flux).
 
+## Testing
+
+- [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
+
 ## Supported versions
 
 LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.2.

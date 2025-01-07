@@ -780,5 +780,10 @@ I can evaluate both of them separately and find the most optimal parameters for 
 or, in the long run, even fine-tune a small specialized model for each specific subtask.
 
 
+## Testing
+
+- [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
+
+
 ## Related Tutorials
 - [LangChain4j AiServices Tutorial](https://www.sivalabs.in/langchain4j-ai-services-tutorial/) by [Siva](https://www.sivalabs.in/)
