@@ -116,7 +116,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     private final ResponseFormat responseFormat;
     private final Boolean strictJsonSchema;
     private final List<ChatModelListener> listeners;
-    private Set<Capability> supportedCapabilities;
 
     public AzureOpenAiStreamingChatModel(OpenAIClient client,
                                          OpenAIAsyncClient asyncClient,
@@ -310,12 +309,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         }
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false);
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        this.supportedCapabilities = copyIfNotNull(capabilities);
-    }
-
-    @Override
-    public Set<Capability> supportedCapabilities() {
-        return supportedCapabilities;
     }
 
     @Override
