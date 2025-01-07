@@ -19,11 +19,19 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .logRequestsAndResponses(true)
             .build();
 
+    static final AzureOpenAiStreamingChatModel AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA = AzureOpenAiStreamingChatModel.builder()
+            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+            .deploymentName("gpt-4o-mini")
+            .logRequestsAndResponses(true)
+            .strictJsonSchema(true)
+            .build();
+
     @Override
     protected List<StreamingChatLanguageModel> models() {
         return List.of(
-                AZURE_OPEN_AI_STREAMING_CHAT_MODEL
-                // TODO add more model configs, see OpenAiChatModelIT
+                AZURE_OPEN_AI_STREAMING_CHAT_MODEL,
+                AZURE_OPEN_AI_STREAMING_CHAT_MODEL_STRICT_SCHEMA
         );
     }
 
@@ -32,14 +40,6 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
     protected void should_accept_single_image_as_public_URL(StreamingChatLanguageModel model) {
-        // TODO fix
-    }
-
-    @Override
-    @Disabled
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_multiple_images_as_public_URLs(StreamingChatLanguageModel model) {
         // TODO fix
     }
 
@@ -61,21 +61,6 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsStopSequencesParameter() {
         return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false; // TODO implement
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormat() {
-        return true; // Azure OpenAI supports JSON response format
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return true; // Azure OpenAI supports JSON response with Schema
     }
 
     @Override
