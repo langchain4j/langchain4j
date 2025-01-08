@@ -40,6 +40,9 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
@@ -66,6 +69,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolResultContentBlo
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 public class BedrockChatModel implements ChatLanguageModel {
+
+    private Logger logger = LoggerFactory.getLogger(BedrockChatModel.class);
 
     private final Region region;
     private final AwsCredentialsProvider credentialsProvider;
@@ -117,8 +122,9 @@ public class BedrockChatModel implements ChatLanguageModel {
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         ConverseRequest request = buildConverseRequest(messages, toolSpecifications, null);
+        logger.debug("REQUEST : {0}", request);
         ConverseResponse response = withRetry(() -> client.converse(request), this.maxRetries);
-
+        logger.debug("RESPONSE : {0}", response);
         return Response.from(
                 aiMessageFrom(response), tokenUsageFrom(response.usage()), finishReasonFrom(response.stopReason()));
     }
@@ -127,7 +133,9 @@ public class BedrockChatModel implements ChatLanguageModel {
     public ChatResponse chat(ChatRequest request) {
         ConverseRequest convRequest = buildConverseRequest(
                 request.messages(), request.parameters().toolSpecifications(), request.parameters());
+        logger.debug("REQUEST : {0}", convRequest);
         ConverseResponse response = withRetry(() -> client.converse(convRequest), this.maxRetries);
+        logger.debug("RESPONSE : {0}", response);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(response))
@@ -446,7 +454,6 @@ public class BedrockChatModel implements ChatLanguageModel {
     }
 
     public static class BedrockChatModelBuilder {
-
         private Region region;
         private AwsCredentialsProvider credentialsProvider;
         private String modelId;

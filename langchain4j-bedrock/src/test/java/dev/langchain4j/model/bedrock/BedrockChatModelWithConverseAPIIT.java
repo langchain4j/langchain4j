@@ -8,8 +8,11 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
@@ -28,11 +31,14 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
+
+import dev.langchain4j.service.AiServices;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -206,6 +212,40 @@ class BedrockChatModelWithConverseAPIIT {
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
 
         assertThat(response2.finishReason()).isEqualTo(STOP);
+    }
+
+    static class WeatherTools {
+        enum TemperatureUnit {CELSIUS, FAHRENHEIT, KELVIN}
+
+        @Tool("Returns the weather forecast for a given city")
+        String getWeather(
+                @P("The city for which the weather forecast should be returned") String city,
+                TemperatureUnit temperatureUnit
+        ) {
+            return "12°C";
+        }
+    }
+
+    interface Assistant  {
+        String chat(@dev.langchain4j.service.UserMessage String message);
+    }
+
+    @Test
+    void should_AiServices_chat_with_tool_enum_parameter() {
+        //Given
+        ChatLanguageModel model =
+                BedrockChatModel.builder().modelId("us.amazon.nova-micro-v1:0").temperature(0.1f).build();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(model)
+                .tools(new WeatherTools())
+                .build();
+
+        //When
+        String answer = assistant.chat("What will the weather be like in London tomorrow? Give the temperature in degrees Celsius.");
+
+        //Then
+        assertThat(answer).containsAnyOf("12°C", "12 degrees Celsius");
     }
 
     @Test
