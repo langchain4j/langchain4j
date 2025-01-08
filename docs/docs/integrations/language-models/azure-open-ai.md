@@ -91,7 +91,7 @@ langchain4j.azure-open-ai.chat-model.custom-headers=...
 See the description of some of the parameters above [here](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#completions).
 
 This configuration will create an `AzureOpenAiChatModel` bean (with default model parameters),
-which can be either used by an [AI Service](https://docs.langchain4j.dev/tutorials/spring-boot-integration/#langchain4j-spring-boot-starter)
+which can be either used by an [AI Service](/tutorials/spring-boot-integration/#langchain4j-spring-boot-starter)
 or autowired where needed, for example:
 
 ```java
@@ -141,16 +141,16 @@ Notice that you need to deploy your model using Managed Identities. Check the [A
 
 ## Tools
 
-Tools, also known as "Function Calling", is supported an allows the model to call methods within your Java code, including parellel tools calling.
+Tools, also known as "Function Calling", is supported an allows the model to call methods within your Java code, including parallel tools calling.
+"Function Calling" is described in the OpenAI documentation [here](https://platform.openai.com/docs/guides/function-calling).
 
 :::note
-"Function Calling" is described in the OpenAI documentation [here](https://platform.openai.com/docs/guides/function-calling).
+There is a complete tutorial on how to use "Function Calling" in LangChain4j [here](/tutorials/tools/).
 :::
 
 Functions can be specified using the `ToolSpecification` class, or more easily using the `@Tool` annotation, like in the following example:
 
 ```java
-@Service
 class StockPriceService {
 
     private Logger log = Logger.getLogger(StockPriceService.class.getName());
@@ -170,21 +170,18 @@ class StockPriceService {
 Then, you can use the `StockPriceService` in an AI `Assistant` like this:
 
 ```java
-@Controller
-public class DemoController {
 
-    private final StockPriceService stockPriceService;
+interface Assistant {
+    String chat(String userMessage);
+}
 
-    public DemoController(StockPriceService stockPriceService) {
-        this.stockPriceService = stockPriceService;
-    }
-
-    @GetMapping("/")
+public class Demo {
     String functionCalling(Model model) {
         String question = "Is the current Microsoft stock higher than $450?";
+        StockPriceService stockPriceService = new StockPriceService();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
+                .chatLanguageModel(model)
                 .tools(stockPriceService)
                 .build();
 
