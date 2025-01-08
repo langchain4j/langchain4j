@@ -25,14 +25,14 @@ Since `1.0.0-alpha1`, `langchain4j-dashscope` has migrated to `langchain4j-commu
 `langchain4j-community-dashscope`.
 :::
 
-`0.36.2` and previous:
+Before `1.0.0-alpha1`:
 
 ```xml
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-dashscope</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>${previous version here}</version>
 </dependency>
 ```
 
@@ -43,7 +43,7 @@ Since `1.0.0-alpha1`, `langchain4j-dashscope` has migrated to `langchain4j-commu
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-dashscope</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
@@ -55,7 +55,7 @@ Or, you can use BOM to manage dependencies consistently:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>1.0.0-alpha1</version>
+        <version>${latest version here}</version>
         <typ>pom</typ>
         <scope>import</scope>
     </dependency>

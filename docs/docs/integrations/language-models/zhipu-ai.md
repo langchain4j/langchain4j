@@ -20,7 +20,7 @@ Since `1.0.0-alpha1`, `langchain4j-zhipu-ai` has migrated to `langchain4j-commun
 `langchain4j-community-zhipu-ai`
 :::
 
-`1.0.0-alpha1` and previous:
+Before `1.0.0-alpha1`:
 
 ```xml
 
