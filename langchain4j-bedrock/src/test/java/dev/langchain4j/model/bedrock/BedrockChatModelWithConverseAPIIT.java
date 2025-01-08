@@ -1,20 +1,37 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.bedrock.converse.BedrockChatModel;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -25,10 +42,14 @@ class BedrockChatModelWithConverseAPIIT {
     private static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
-    @Test
-    void testBedrockChatModelWithDefaultConfig() {
-        BedrockChatModel bedrockChatModel = new BedrockChatModel("anthropic.claude-3-5-sonnet-20240620-v1:0");
+    //    @BeforeEach
+    //    void pauseBeforeTest() throws InterruptedException {
+    //        Thread.sleep(60000); // AWS bedrock has a default 1 request per minute quota for claude 3.5 sonnet
+    //    }
 
+    @Test
+    void should_generate_with_default_config() {
+        BedrockChatModel bedrockChatModel = new BedrockChatModel("anthropic.claude-3-5-sonnet-20240620-v1:0");
         assertThat(bedrockChatModel).isNotNull();
 
         Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
@@ -40,7 +61,7 @@ class BedrockChatModelWithConverseAPIIT {
     }
 
     @Test
-    void testBedrockChatModelChatWithDefaultConfig() {
+    void should_chat_with_default_config() {
         BedrockChatModel bedrockChatModel = new BedrockChatModel("anthropic.claude-3-5-sonnet-20240620-v1:0");
 
         assertThat(bedrockChatModel).isNotNull();
@@ -57,7 +78,7 @@ class BedrockChatModelWithConverseAPIIT {
     }
 
     @Test
-    void testBedrockChatModelChat_RequestParameterOverridesModelAndTemperature() {
+    void should_chat_with_request_parameters_override() {
         BedrockChatModel bedrockChatModel = new BedrockChatModel("anthropic.claude-3-5-sonnet-20240620-v1:0");
 
         assertThat(bedrockChatModel).isNotNull();
@@ -78,7 +99,7 @@ class BedrockChatModelWithConverseAPIIT {
     }
 
     @Test
-    void testBedrockChatModelWithDefaultConfigAndSystemMessage() {
+    void should_generate_with_default_config_and_system_message() {
         BedrockChatModel bedrockChatModel = new BedrockChatModel("anthropic.claude-3-5-sonnet-20240620-v1:0");
 
         assertThat(bedrockChatModel).isNotNull();
@@ -95,7 +116,7 @@ class BedrockChatModelWithConverseAPIIT {
     }
 
     @Test
-    void testBedrockChatModelWithDefaultConfigAndImageContent() {
+    void should_generate_with_default_config_and_image_content() {
         BedrockChatModel bedrockChatModel = new BedrockChatModel("anthropic.claude-3-5-sonnet-20240620-v1:0");
 
         assertThat(bedrockChatModel).isNotNull();
@@ -110,5 +131,124 @@ class BedrockChatModelWithConverseAPIIT {
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+
+    @Test
+    void should_call_function() {
+        ChatLanguageModel model = BedrockChatModel.builder()
+                .modelId("anthropic.claude-3-5-sonnet-20240620-v1:0")
+                .build();
+
+        UserMessage userMessage = userMessage(
+                "Give three numbers, ordered by size: the sum of two plus two, the square of four, and finally the cube of eight.");
+
+        List<ToolSpecification> toolSpecifications = asList(
+                ToolSpecification.builder()
+                        .name("sum")
+                        .description("returns a sum of two numbers")
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("first")
+                                .addIntegerProperty("second")
+                                .build())
+                        .build(),
+                ToolSpecification.builder()
+                        .name("square")
+                        .description("returns the square of one number")
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .build())
+                        .build(),
+                ToolSpecification.builder()
+                        .name("cube")
+                        .description("returns the cube of one number")
+                        .parameters(JsonObjectSchema.builder()
+                                .addIntegerProperty("number")
+                                .build())
+                        .build());
+
+        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecifications);
+
+        AiMessage aiMessage = response.content();
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(userMessage);
+        messages.add(aiMessage);
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(3);
+        for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+            assertThat(toolExecutionRequest.name()).isNotEmpty();
+            ToolExecutionResultMessage toolExecutionResultMessage;
+            if (toolExecutionRequest.name().equals("sum")) {
+                assertThat(toolExecutionRequest.arguments())
+                        .isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+                toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "4");
+            } else if (toolExecutionRequest.name().equals("square")) {
+                assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"number\": 4}");
+                toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "16");
+            } else if (toolExecutionRequest.name().equals("cube")) {
+                assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"number\": 8}");
+                toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "512");
+            } else {
+                throw new AssertionError("Unexpected tool name: " + toolExecutionRequest.name());
+            }
+            messages.add(toolExecutionResultMessage);
+        }
+
+        Response<AiMessage> response2 = model.generate(messages, toolSpecifications);
+        AiMessage aiMessage2 = response2.content();
+
+        // then
+        assertThat(aiMessage2.text()).contains("4", "16", "512");
+        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage2 = response2.tokenUsage();
+        assertThat(tokenUsage2.inputTokenCount()).isPositive();
+        assertThat(tokenUsage2.outputTokenCount()).isPositive();
+        assertThat(tokenUsage2.totalTokenCount())
+                .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
+
+        assertThat(response2.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_call_function_with_no_argument() {
+        ChatLanguageModel model = BedrockChatModel.builder()
+                .modelId("anthropic.claude-3-5-sonnet-20240620-v1:0")
+                .build();
+
+        UserMessage userMessage = userMessage("What time is it?");
+
+        // This test will use the function called "getCurrentDateAndTime" which takes no arguments
+        String toolName = "getCurrentDateAndTime";
+
+        ToolSpecification noArgToolSpec = ToolSpecification.builder()
+                .name(toolName)
+                .description("Get the current date and time")
+                .build();
+
+        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), noArgToolSpec);
+
+        AiMessage aiMessage = response.content();
+
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{}");
+    }
+
+    @Test
+    void should_accept_PDF_documents() {
+        // given
+        ChatLanguageModel model =
+                BedrockChatModel.builder().modelId("us.amazon.nova-lite-v1:0").build();
+        UserMessage msg = UserMessage.from(
+                PdfFileContent.from(
+                        Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+                TextContent.from("Provide a summary of the document"));
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(msg));
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("Gemini");
     }
 }

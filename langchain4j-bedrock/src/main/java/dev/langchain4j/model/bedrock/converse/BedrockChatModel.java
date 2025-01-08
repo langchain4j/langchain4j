@@ -2,72 +2,70 @@ package dev.langchain4j.model.bedrock.converse;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.bedrock.converse.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
+import static dev.langchain4j.model.bedrock.converse.AwsDocumentConverter.documentFromJson;
+import static dev.langchain4j.model.bedrock.converse.AwsDocumentConverter.documentToJson;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 import static java.util.Objects.isNull;
-import static java.util.stream.Collectors.toList;
+import static java.util.Objects.nonNull;
+import static software.amazon.awssdk.core.SdkBytes.fromByteArray;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.net.URI;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
+import software.amazon.awssdk.services.bedrockruntime.model.DocumentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.DocumentFormat;
+import software.amazon.awssdk.services.bedrockruntime.model.DocumentSource;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
-import software.amazon.awssdk.services.bedrockruntime.model.SpecificToolChoice;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.Tool;
-import software.amazon.awssdk.services.bedrockruntime.model.ToolChoice;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolInputSchema;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultContentBlock;
-import software.amazon.awssdk.services.bedrockruntime.model.ToolResultStatus;
+import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 public class BedrockChatModel implements ChatLanguageModel {
-
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
     private final Region region;
     private final AwsCredentialsProvider credentialsProvider;
@@ -80,20 +78,12 @@ public class BedrockChatModel implements ChatLanguageModel {
     public BedrockChatModel(String modelId) {
         this(
                 Region.US_EAST_1,
-                DefaultCredentialsProvider.builder().build(),
+                DefaultCredentialsProvider.create(),
                 modelId,
                 InferenceConfiguration.builder().build(),
                 5,
-                Duration.ofMinutes(1L),
+                Duration.ofMinutes(1),
                 null);
-    }
-
-    public BedrockChatModel(
-            String modelId,
-            InferenceConfiguration inferenceConfiguration,
-            Integer maxRetries,
-            BedrockRuntimeClient client) {
-        this(null, null, modelId, inferenceConfiguration, maxRetries, null, client);
     }
 
     public BedrockChatModel(
@@ -104,12 +94,13 @@ public class BedrockChatModel implements ChatLanguageModel {
             Integer maxRetries,
             Duration timeout,
             BedrockRuntimeClient client) {
-        this.region = region;
-        this.credentialsProvider = credentialsProvider;
-        this.modelId = modelId;
-        this.inferenceConfiguration = inferenceConfiguration;
-        this.maxRetries = maxRetries;
-        this.timeout = timeout;
+        this.region = getOrDefault(region, Region.US_EAST_1);
+        this.credentialsProvider = getOrDefault(credentialsProvider, DefaultCredentialsProvider.create());
+        this.modelId = getOrDefault(modelId, "us.amazon.nova-micro-v1:0");
+        this.inferenceConfiguration = getOrDefault(
+                inferenceConfiguration, InferenceConfiguration.builder().build());
+        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.timeout = getOrDefault(timeout, Duration.ofMinutes(1));
         this.client = isNull(client) ? createClient() : client;
     }
 
@@ -120,62 +111,49 @@ public class BedrockChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, toolSpecification, singletonList(toolSpecification));
+        return generate(messages, List.of(toolSpecification));
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generate(messages, null, toolSpecifications);
+        ConverseRequest request = buildConverseRequest(messages, toolSpecifications, null);
+        ConverseResponse response = withRetry(() -> client.converse(request), this.maxRetries);
+
+        return Response.from(
+                aiMessageFrom(response), tokenUsageFrom(response.usage()), finishReasonFrom(response.stopReason()));
     }
 
     @Override
     public ChatResponse chat(ChatRequest request) {
-        List<SystemContentBlock> systemMessages = extractSystemMessagesFrom(request.messages());
-        List<Message> otherMessages = extractOtherMessagesFrom(request.messages());
-        ToolConfiguration toolConfig =
-                extractToolConfigurationFrom(null, request.parameters().toolSpecifications());
-
-        final String modelName = isNull(request.parameters().modelName())
-                ? this.modelId
-                : request.parameters().modelName();
-
-        ConverseResponse converseResponse = withRetry(
-                () -> sendConverse(
-                        systemMessages, otherMessages, toolConfig, this.inferenceConfigurationFrom(request), modelName),
-                this.maxRetries);
+        ConverseRequest convRequest = buildConverseRequest(
+                request.messages(), request.parameters().toolSpecifications(), request.parameters());
+        ConverseResponse response = withRetry(() -> client.converse(convRequest), this.maxRetries);
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(converseResponse))
+                .aiMessage(aiMessageFrom(response))
                 .metadata(ChatResponseMetadata.builder()
-                        .finishReason(finishReasonFrom(converseResponse.stopReason()))
-                        .tokenUsage(tokenUsageFrom(converseResponse.usage()))
-                        .modelName(modelName)
+                        .finishReason(finishReasonFrom(response.stopReason()))
+                        .tokenUsage(tokenUsageFrom(response.usage()))
+                        .modelName(convRequest.modelId())
                         .build())
                 .build();
     }
 
-    private Response<AiMessage> generate(
-            List<ChatMessage> messages,
-            ToolSpecification toolChoiceSpecification,
-            List<ToolSpecification> toolSpecifications) {
-        List<SystemContentBlock> systemMessages = extractSystemMessagesFrom(messages);
+    private ConverseRequest buildConverseRequest(
+            List<ChatMessage> messages, List<ToolSpecification> toolSpecs, ChatRequestParameters parameters) {
+        final String modelName =
+                isNull(parameters) || isNull(parameters.modelName()) ? this.modelId : parameters.modelName();
 
-        List<Message> otherMessages = extractOtherMessagesFrom(messages);
-
-        ToolConfiguration toolConfig = extractToolConfigurationFrom(toolChoiceSpecification, toolSpecifications);
-
-        ConverseResponse converseResponse = withRetry(
-                () -> sendConverse(
-                        systemMessages, otherMessages, toolConfig, this.inferenceConfiguration, this.modelId),
-                this.maxRetries);
-
-        return Response.from(
-                aiMessageFrom(converseResponse),
-                tokenUsageFrom(converseResponse.usage()),
-                finishReasonFrom(converseResponse.stopReason()));
+        return ConverseRequest.builder()
+                .modelId(modelName)
+                .inferenceConfig(inferenceConfigurationFrom(parameters))
+                .system(extractSystemMessages(messages))
+                .messages(extractRegularMessages(messages))
+                .toolConfig(extractToolConfigurationFrom(toolSpecs))
+                .build();
     }
 
-    private List<SystemContentBlock> extractSystemMessagesFrom(List<ChatMessage> messages) {
+    private List<SystemContentBlock> extractSystemMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(message -> message.type() == ChatMessageType.SYSTEM)
                 .map(message -> SystemContentBlock.builder()
@@ -184,165 +162,231 @@ public class BedrockChatModel implements ChatLanguageModel {
                 .toList();
     }
 
-    private List<Message> extractOtherMessagesFrom(List<ChatMessage> messages) {
-        List<ChatMessage> otherMessages = messages.stream()
-                .filter(message -> message.type() != ChatMessageType.SYSTEM)
-                .toList();
+    private List<Message> extractRegularMessages(List<ChatMessage> messages) {
+        List<Message> bedrockMessages = new ArrayList<>();
+        List<ContentBlock> currentBlocks = new ArrayList<>();
 
-        return otherMessages.stream().map(this::messageFrom).toList();
+        for (int i = 0; i < messages.size(); i++) {
+            ChatMessage msg = messages.get(i);
+            if (msg instanceof ToolExecutionResultMessage toolResult) {
+                handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages);
+            } else if (!(msg instanceof SystemMessage)) {
+                bedrockMessages.add(convertToBedRockMessage(msg));
+            }
+        }
+
+        return bedrockMessages;
     }
 
-    private Message messageFrom(ChatMessage message) {
-        if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-            return Message.builder()
+    private void handleToolResult(
+            ToolExecutionResultMessage toolResult,
+            List<ContentBlock> blocks,
+            List<Message> bedrockMessages,
+            int currentIndex,
+            List<ChatMessage> allMessages) {
+        blocks.add(createToolResultBlock(toolResult));
+
+        boolean isLastOrNextIsNotToolResult = currentIndex + 1 >= allMessages.size()
+                || !(allMessages.get(currentIndex + 1) instanceof ToolExecutionResultMessage);
+
+        if (isLastOrNextIsNotToolResult) {
+            bedrockMessages.add(Message.builder()
                     .role(ConversationRole.USER)
-                    .content(ContentBlock.builder()
-                            .toolResult(ToolResultBlock.builder()
-                                    .toolUseId(toolExecutionResultMessage.id())
-                                    .status(ToolResultStatus.SUCCESS)
-                                    .content(ToolResultContentBlock.builder()
-                                            .text(toolExecutionResultMessage.text())
-                                            .build())
-                                    .build())
+                    .content(blocks)
+                    .build());
+            blocks.clear();
+        }
+    }
+
+    private ContentBlock createToolResultBlock(ToolExecutionResultMessage toolResult) {
+        return ContentBlock.builder()
+                .toolResult(ToolResultBlock.builder()
+                        .toolUseId(toolResult.id())
+                        .content(ToolResultContentBlock.builder()
+                                .text(toolResult.text())
+                                .build())
+                        .build())
+                .build();
+    }
+
+    private Message convertToBedRockMessage(ChatMessage message) {
+        if (message instanceof UserMessage userMsg) {
+            return createUserMessage(userMsg);
+        } else if (message instanceof AiMessage aiMsg) {
+            return createAiMessage(aiMsg);
+        }
+        throw new IllegalArgumentException("Unsupported message type: " + message.getClass());
+    }
+
+    private Message createUserMessage(UserMessage message) {
+        return Message.builder()
+                .role(ConversationRole.USER)
+                .content(convertContents(message.contents()))
+                .build();
+    }
+
+    private Message createAiMessage(AiMessage message) {
+        List<ContentBlock> blocks = new ArrayList<>();
+
+        if (message.text() != null) {
+            blocks.add(ContentBlock.builder().text(message.text()).build());
+        }
+
+        if (message.hasToolExecutionRequests()) {
+            blocks.addAll(convertToolRequests(message.toolExecutionRequests()));
+        }
+
+        return Message.builder()
+                .role(ConversationRole.ASSISTANT)
+                .content(blocks)
+                .build();
+    }
+
+    private List<ContentBlock> convertToolRequests(List<ToolExecutionRequest> requests) {
+        return requests.stream()
+                .map(req -> ContentBlock.builder()
+                        .toolUse(ToolUseBlock.builder()
+                                .name(req.name())
+                                .toolUseId(req.id())
+                                .input(documentFromJson(req.arguments()))
+                                .build())
+                        .build())
+                .toList();
+    }
+
+    private List<ContentBlock> convertContents(List<Content> contents) {
+        if (contents == null || contents.isEmpty()) {
+            return emptyList();
+        }
+
+        return contents.stream().map(this::convertContent).toList();
+    }
+
+    private ContentBlock convertContent(Content content) {
+        if (content instanceof TextContent text) {
+            return ContentBlock.builder().text(text.text()).build();
+        } else if (content instanceof TextFileContent textFileContent) {
+            final SdkBytes bytes = fromByteArray(
+                    nonNull(textFileContent.textFile().base64Data())
+                            ? Base64.getDecoder()
+                                    .decode(textFileContent.textFile().base64Data())
+                            : readBytes(
+                                    String.valueOf(textFileContent.textFile().url())));
+            return ContentBlock.builder()
+                    .document(DocumentBlock.builder()
+                            .format(DocumentFormat.TXT)
+                            .source(DocumentSource.builder().bytes(bytes).build())
+                            .name(extractFilenameWithoutExtensionFromUri(
+                                    textFileContent.textFile().url()))
                             .build())
                     .build();
-        }
-
-        if (message instanceof UserMessage userMessage) {
-            return Message.builder()
-                    .role(ConversationRole.USER)
-                    //                    .content(ContentBlock.builder().text(userMessage.singleText()).build())
-                    .content(contentBlockFrom(userMessage.contents()))
+        } else if (content instanceof PdfFileContent pdfFileContent) {
+            final SdkBytes bytes = fromByteArray(
+                    nonNull(pdfFileContent.pdfFile().base64Data())
+                            ? Base64.getDecoder()
+                                    .decode(pdfFileContent.pdfFile().base64Data())
+                            : readBytes(String.valueOf(pdfFileContent.pdfFile().url())));
+            return ContentBlock.builder()
+                    .document(DocumentBlock.builder()
+                            .format(DocumentFormat.PDF)
+                            .source(DocumentSource.builder().bytes(bytes).build())
+                            .name(extractFilenameWithoutExtensionFromUri(
+                                    pdfFileContent.pdfFile().url()))
+                            .build())
                     .build();
+        } else if (content instanceof ImageContent image) {
+            return createImageBlock(image);
         }
-
-        if (message instanceof AiMessage aiMessage) {
-            return Message.builder()
-                    .role(ConversationRole.ASSISTANT)
-                    .content(ContentBlock.builder().text(aiMessage.text()).build())
-                    .build();
-        }
-
-        throw new IllegalArgumentException(
-                "Unknown message type: " + message.getClass().getName());
+        throw new IllegalArgumentException("Unsupported content type: " + content.getClass());
     }
 
-    private Collection<ContentBlock> contentBlockFrom(List<Content> contents) {
-        if (contents == null || contents.isEmpty()) {
-            return Collections.emptyList();
+    private static String extractFilenameWithoutExtensionFromUri(URI uri) {
+        // The name can only contain the following characters:
+        // Alphanumeric characters, Whitespace characters (no more than one in a row), Hyphens, Parentheses, Square,
+        // brackets
+        try {
+            final String filename = Paths.get(uri).getFileName().toString();
+            int dotIndex = filename.lastIndexOf('.');
+            String filenameWithoutExtension = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+            return filenameWithoutExtension.replace(".", "-");
+        } catch (Exception e) {
+            return "document";
         }
-
-        return contents.stream()
-                .map(content -> {
-                    if (content instanceof ImageContent imageContent) {
-                        return ContentBlock.builder()
-                                .image(ImageBlock.builder()
-                                        .format(imageContent.image().mimeType().split("/")[1])
-                                        .source(ImageSource.builder()
-                                                .bytes(SdkBytes.fromByteArray(Base64.getDecoder()
-                                                        .decode(imageContent
-                                                                .image()
-                                                                .base64Data())))
-                                                .build())
-                                        .build())
-                                .build();
-                    }
-
-                    if (content instanceof TextContent textContent) {
-                        return ContentBlock.builder().text(textContent.text()).build();
-                    }
-                    throw new IllegalArgumentException(
-                            "Unknown content type: " + content.getClass().getName());
-                })
-                .collect(Collectors.toList());
     }
 
-    private ToolConfiguration extractToolConfigurationFrom(
-            ToolSpecification toolChoiceSpecification, List<ToolSpecification> toolSpecifications) {
+    private ContentBlock createImageBlock(ImageContent imageContent) {
+        return ContentBlock.builder()
+                .image(ImageBlock.builder()
+                        .format(extractImageFormat(imageContent.image().mimeType()))
+                        .source(ImageSource.builder()
+                                .bytes(fromByteArray(Base64.getDecoder()
+                                        .decode(imageContent.image().base64Data())))
+                                .build())
+                        .build())
+                .build();
+    }
+
+    private String extractImageFormat(String mimeType) {
+        if (mimeType == null || mimeType.isEmpty()) {
+            return "jpeg"; // default format
+        }
+        String[] parts = mimeType.split("/");
+        return parts.length > 1 ? parts[1] : "jpeg";
+    }
+
+    private ToolConfiguration extractToolConfigurationFrom(List<ToolSpecification> toolSpecifications) {
         final List<Tool> allTools = new ArrayList<>();
         final ToolConfiguration.Builder toolConfigurationBuilder = ToolConfiguration.builder();
-        toolConfigurationBuilder.tools(allTools);
-
-        if (Objects.nonNull(toolChoiceSpecification)) {
-            final software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification toolChoice =
-                    software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification.builder()
-                            .name(toolChoiceSpecification.name())
-                            .description(toolChoiceSpecification.description())
-                            .inputSchema(ToolInputSchema.builder()
-                                    .json(this.mapToDocument(toolChoiceSpecification.parameters()))
-                                    .build())
-                            .build();
-
-            allTools.add(Tool.builder().toolSpec(toolChoice).build());
-
-            final ToolChoice specifiToolChoice = ToolChoice.builder()
-                    .tool(SpecificToolChoice.builder()
-                            .name(toolChoiceSpecification.name())
-                            .build())
-                    .build();
-
-            toolConfigurationBuilder.toolChoice(specifiToolChoice);
-        }
 
         if (Objects.nonNull(toolSpecifications) && !toolSpecifications.isEmpty()) {
             final List<Tool> tools = toolSpecifications.stream()
-                    .map(toolSpecification ->
-                            software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification.builder()
-                                    .name(toolSpecification.name())
-                                    .description(toolSpecification.description())
-                                    .inputSchema(ToolInputSchema.builder()
-                                            .json(this.mapToDocument(toolSpecification.parameters()))
-                                            .build())
-                                    .build())
+                    .map(toolSpecification -> {
+                        ToolInputSchema toolInputSchema = ToolInputSchema.builder()
+                                .json(convertJsonObjectSchemaToDocument(toolSpecification))
+                                .build();
+                        return software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification.builder()
+                                .name(toolSpecification.name())
+                                .description(toolSpecification.description())
+                                .inputSchema(toolInputSchema)
+                                .build();
+                    })
                     .map(toolSpecification ->
                             Tool.builder().toolSpec(toolSpecification).build())
-                    .collect(toList());
+                    .toList();
 
             allTools.addAll(tools);
         }
 
         if (allTools.isEmpty()) {
             return null;
-        }
+        } else toolConfigurationBuilder.tools(allTools);
 
         return toolConfigurationBuilder.build();
     }
 
-    private Document mapToDocument(JsonObjectSchema parameters) {
-        try {
-            return Document.fromString(objectMapper.writeValueAsString(parameters));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private ConverseResponse sendConverse(
-            List<SystemContentBlock> systemMessages,
-            List<Message> otherMessages,
-            ToolConfiguration toolConfig,
-            InferenceConfiguration inferenceConfiguration,
-            String modelId) {
-        final ConverseRequest.Builder requestBuilder =
-                ConverseRequest.builder().modelId(modelId).inferenceConfig(inferenceConfiguration);
-
-        if (Objects.nonNull(systemMessages) && !systemMessages.isEmpty()) {
-            requestBuilder.system(systemMessages);
-        }
-
-        if (Objects.nonNull(otherMessages) && !otherMessages.isEmpty()) {
-            requestBuilder.messages(otherMessages);
-        }
-
-        if (Objects.nonNull(toolConfig)) {
-            requestBuilder.toolConfig(toolConfig);
-        }
-
-        return this.client.converse(requestBuilder.build());
-    }
-
     private AiMessage aiMessageFrom(ConverseResponse converseResponse) {
-        return AiMessage.from(
-                converseResponse.output().message().content().get(0).text());
+        ArrayList<ToolExecutionRequest> toolExecRequests = new ArrayList<>();
+        String textAnswer = "";
+        for (ContentBlock cBlock : converseResponse.output().message().content()) {
+            if (cBlock.type() == ContentBlock.Type.TOOL_USE) {
+                toolExecRequests.add(ToolExecutionRequest.builder()
+                        .name(cBlock.toolUse().name())
+                        .id(cBlock.toolUse().toolUseId())
+                        .arguments(documentToJson(cBlock.toolUse().input())
+                                .replace("\r", "")
+                                .replace("\n", ""))
+                        .build());
+            } else if (cBlock.type() == ContentBlock.Type.TEXT) {
+                textAnswer = cBlock.text();
+            } else {
+                throw new IllegalArgumentException(
+                        "Unsupported content in LLM response. Content type: " + cBlock.type());
+            }
+        }
+
+        return !toolExecRequests.isEmpty()
+                ? AiMessage.aiMessage(textAnswer, toolExecRequests)
+                : AiMessage.aiMessage(textAnswer);
     }
 
     private TokenUsage tokenUsageFrom(software.amazon.awssdk.services.bedrockruntime.model.TokenUsage tokenUsage) {
@@ -379,17 +423,16 @@ public class BedrockChatModel implements ChatLanguageModel {
                 .build();
     }
 
-    private InferenceConfiguration inferenceConfigurationFrom(ChatRequest chatRequest) {
-        if (Objects.nonNull(chatRequest) && Objects.nonNull(chatRequest.parameters())) {
+    private InferenceConfiguration inferenceConfigurationFrom(ChatRequestParameters chatRequestParameters) {
+        if (Objects.nonNull(chatRequestParameters)) {
             return InferenceConfiguration.builder()
                     .maxTokens(getOrDefault(
-                            chatRequest.parameters().maxOutputTokens(), this.inferenceConfiguration.maxTokens()))
+                            chatRequestParameters.maxOutputTokens(), this.inferenceConfiguration.maxTokens()))
                     .temperature(getOrDefault(
-                            dblToFloat(chatRequest.parameters().temperature()),
-                            this.inferenceConfiguration.temperature()))
-                    .topP(getOrDefault(dblToFloat(chatRequest.parameters().topP()), this.inferenceConfiguration.topP()))
+                            dblToFloat(chatRequestParameters.temperature()), this.inferenceConfiguration.temperature()))
+                    .topP(getOrDefault(dblToFloat(chatRequestParameters.topP()), this.inferenceConfiguration.topP()))
                     .stopSequences(getOrDefault(
-                            chatRequest.parameters().stopSequences(), this.inferenceConfiguration.stopSequences()))
+                            chatRequestParameters.stopSequences(), this.inferenceConfiguration.stopSequences()))
                     .build();
         } else {
             return this.inferenceConfiguration;
