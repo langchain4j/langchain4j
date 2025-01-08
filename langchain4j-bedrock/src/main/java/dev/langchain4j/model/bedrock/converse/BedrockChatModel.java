@@ -121,9 +121,9 @@ public class BedrockChatModel implements ChatLanguageModel {
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         ConverseRequest request = buildConverseRequest(messages, toolSpecifications, null);
-        logger.debug("REQUEST : {0}", request);
+        logger.debug("REQUEST : {}", request);
         ConverseResponse response = withRetry(() -> client.converse(request), this.maxRetries);
-        logger.debug("RESPONSE : {0}", response);
+        logger.debug("RESPONSE : {}", response);
         return Response.from(
                 aiMessageFrom(response), tokenUsageFrom(response.usage()), finishReasonFrom(response.stopReason()));
     }
@@ -132,9 +132,9 @@ public class BedrockChatModel implements ChatLanguageModel {
     public ChatResponse chat(ChatRequest request) {
         ConverseRequest convRequest = buildConverseRequest(
                 request.messages(), request.parameters().toolSpecifications(), request.parameters());
-        logger.debug("REQUEST : {0}", convRequest);
+        logger.debug("REQUEST : {}", convRequest);
         ConverseResponse response = withRetry(() -> client.converse(convRequest), this.maxRetries);
-        logger.debug("RESPONSE : {0}", response);
+        logger.debug("RESPONSE : {}", response);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(response))
