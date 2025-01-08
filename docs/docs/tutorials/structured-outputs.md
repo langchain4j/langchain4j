@@ -356,7 +356,7 @@ ChatLanguageModel chatModel = OpenAiChatModel.builder() // see [1] below
 ChatLanguageModel chatModel = AzureOpenAiChatModel.builder() // see [1] below
         .endpoint(System.getenv("AZURE_OPENAI_URL"))
         .apiKey(System.getenv("AZURE_OPENAI_API_KEY"))
-        .modelName("gpt-4o-mini")
+        .deploymentName("gpt-4o-mini")
         .strictJsonSchema(true) // see [3] below
         .logRequestsAndResponses(true)
         .build();
