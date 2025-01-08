@@ -504,6 +504,7 @@ class AiServicesWithRagIT {
         PersonalizedAssistant personalizedAssistant = AiServices.builder(PersonalizedAssistant.class)
                 .chatLanguageModel(model)
                 .contentRetriever(contentRetriever)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .build();
 
         // when
