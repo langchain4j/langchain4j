@@ -128,10 +128,10 @@ public class AwsDocumentConverter {
                     .putString(DESCRIPTION, getOrDefault(getDescriptionFromElement(element), propertyName));
             if (element instanceof JsonEnumSchema enumSchema)
                 mapBuilder.putList(
-                                "enum",
-                                enumSchema.enumValues().stream()
-                                        .map(Document::fromString)
-                                        .toList());
+                        "enum",
+                        enumSchema.enumValues().stream()
+                                .map(Document::fromString)
+                                .toList());
             Document propertyDoc = mapBuilder.build();
 
             propertiesBuilder.putDocument(propertyName, propertyDoc);
