@@ -287,42 +287,6 @@ langchain4j.azure-open-ai.streaming-chat-model.user-agent-suffix=...
 langchain4j.azure-open-ai.streaming-chat-model.customHeaders=...
 ```
 
-## Creating `AzureOpenAiEmbeddingModel` to manage embeddings
-
-For managing Embeddings, an `AzureOpenAiEmbeddingModel` is created in a similar way as an `AzureOpenAiChatModel`.
-
-### Plain Java
-```java
-EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
-        .endpoint(System.getenv("AZURE_OPENAI_URL"))
-        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .deploymentName("text-embedding-ada")
-        .logRequestsAndResponses(true)
-        .build();
-```
-
-## Creating `AzureOpenAiImageModel` to generate images
-
-For managing Images, an `AzureOpenAiImageModel` is created in a similar way as an `AzureOpenAiChatModel`.
-
-### Plain Java
-```java
-ImageModel model = AzureOpenAiImageModel.builder()
-        .endpoint(System.getenv("AZURE_OPENAI_URL"))
-        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .deploymentName("dall-e-3")
-        .logRequestsAndResponses(true)
-        .build();
-```
-
-## APIs
-
-- `AzureOpenAiChatModel`
-- `AzureOpenAiStreamingChatModel`
-- `DefaultAzureCredentialBuilder`
-- `AzureOpenAiTokenizer`
-
-
 ## Examples
 
 - [Azure OpenAI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/azure-open-ai-examples/src/main/java)
