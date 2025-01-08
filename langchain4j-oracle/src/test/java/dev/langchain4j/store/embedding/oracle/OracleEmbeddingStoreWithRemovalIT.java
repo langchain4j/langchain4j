@@ -4,10 +4,9 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
+import java.sql.SQLException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
-
-import java.sql.SQLException;
 
 public class OracleEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
 
@@ -17,7 +16,7 @@ public class OracleEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemoval
     public void clearTable() {
         //  A removeAll call happens before each test because EmbeddingStoreWithRemovalIT is designed for each test to
         //  begin with an empty store.
-        EMBEDDING_STORE.removeAll();
+        embeddingStore().removeAll();
     }
 
     @Override
