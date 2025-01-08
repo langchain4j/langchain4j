@@ -64,4 +64,4 @@ Or, you can use BOM to manage dependencies consistently:
 
 ## Examples
 
-- [ZhipuAiImageModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-zhipu-ai/src/test/java/dev/langchain4j/model/zhipu/ZhipuAiImageModelIT.java)
+- [ZhipuAiImageModelIT](https://github.com/langchain4j/langchain4j-community/blob/main/models/langchain4j-community-zhipu-ai/src/test/java/dev/langchain4j/community/model/zhipu/ZhipuAiImageModelIT.java)

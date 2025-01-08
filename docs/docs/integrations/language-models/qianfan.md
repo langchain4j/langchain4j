@@ -337,4 +337,4 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 
 ## Examples
 
-- [Qianfan Examples](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-qianfan/src/test/java/dev/langchain4j/model/qianfan)
+- [Qianfan Examples](https://github.com/langchain4j/langchain4j-community/tree/main/models/langchain4j-community-qianfan/src/test/java/dev/langchain4j/community/model/qianfan)

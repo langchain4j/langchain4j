@@ -88,4 +88,4 @@ Or, you can use BOM to manage dependencies consistently:
 
 ## Examples
 
-- [QianfanEmbeddingModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-qianfan/src/test/java/dev/langchain4j/model/qianfan/QianfanEmbeddingModelIT.java)
+- [QianfanEmbeddingModelIT](https://github.com/langchain4j/langchain4j-community/blob/main/models/langchain4j-community-qianfan/src/test/java/dev/langchain4j/community/model/qianfan/QianfanEmbeddingModelIT.java)

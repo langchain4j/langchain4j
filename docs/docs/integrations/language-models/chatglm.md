@@ -71,4 +71,4 @@ Now you can use it like a normal `ChatLanguageModel`.
 
 ## Examples
 
-- [ChatGlmChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-chatglm/src/test/java/dev/langchain4j/model/chatglm/ChatGlmChatModelIT.java)
+- [ChatGlmChatModelIT](https://github.com/langchain4j/langchain4j-community/blob/main/models/langchain4j-community-chatglm/src/test/java/dev/langchain4j/community/model/chatglm/ChatGlmChatModelIT.java)
