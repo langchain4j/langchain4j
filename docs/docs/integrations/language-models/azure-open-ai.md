@@ -260,7 +260,6 @@ StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
         .endpoint(System.getenv("AZURE_OPENAI_URL"))
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .deploymentName("gpt-4o")
-        .endpoint("https://langchain4j.openai.azure.com/")
         ...
         .build();
 ```
