@@ -331,7 +331,7 @@ JsonSchemaElement stringSchema = JsonStringSchema.builder()
 When using JSON Schema with `ChatLanguageModel`, there are some limitations:
 - It works only with supported OpenAI, Azure OpenAI, Google AI Gemini, and Ollama models.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming) for OpenAI yet.
-- For Google AI Gemini and Ollama, JSON Schema can be specified via `responseSchema(...)` when creating/building the model.
+For Google AI Gemini and Ollama, JSON Schema can be specified via `responseSchema(...)` when creating/building the model.
 - `JsonReferenceSchema` and `JsonAnyOfSchema` are currently supported only by OpenAI and Azure OpenAI.
 
 
