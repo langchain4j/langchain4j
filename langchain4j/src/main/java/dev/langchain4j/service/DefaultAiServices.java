@@ -65,6 +65,12 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
+    private final ToolExecutor hallucinatedToolExecutor =
+            (ToolExecutionRequest toolExecutionRequest, Object memoryId) -> {
+                throw runtime(
+                        "Something is wrong, the tool %s was called but it is not a part of the available tools",
+                        toolExecutionRequest.name());
+            };
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -267,7 +273,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
 
                             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                                ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+                                ToolExecutor toolExecutor = toolExecutors.getOrDefault(
+                                        toolExecutionRequest.name(), hallucinatedToolExecutor);
                                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                                 toolExecutions.add(ToolExecution.builder()
                                         .request(toolExecutionRequest)

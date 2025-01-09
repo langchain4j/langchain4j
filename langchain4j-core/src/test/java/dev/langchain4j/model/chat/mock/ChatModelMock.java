@@ -1,5 +1,11 @@
 package dev.langchain4j.model.chat.mock;
 
+import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.synchronizedList;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -8,14 +14,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.Exceptions.runtime;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.synchronizedList;
 
 /**
  * An implementation of a {@link ChatLanguageModel} useful for unit testing.
@@ -26,16 +26,25 @@ public class ChatModelMock implements ChatLanguageModel {
 
     private final String staticResponse;
     private final RuntimeException exception;
+    private final ToolExecutionRequest toolRequest;
     private final List<List<ChatMessage>> requests = synchronizedList(new ArrayList<>());
 
     public ChatModelMock(String staticResponse) {
         this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
         this.exception = null;
+        this.toolRequest = null;
     }
 
     public ChatModelMock(RuntimeException exception) {
         this.staticResponse = null;
         this.exception = ensureNotNull(exception, "exception");
+        this.toolRequest = null;
+    }
+
+    public ChatModelMock(ToolExecutionRequest toolRequest) {
+        this.staticResponse = null;
+        this.exception = null;
+        this.toolRequest = ensureNotNull(toolRequest, "toolRequest");
     }
 
     @Override
@@ -45,9 +54,15 @@ public class ChatModelMock implements ChatLanguageModel {
         if (exception != null) {
             throw exception;
         }
+        AiMessage aiMessage;
+        if (this.toolRequest != null) {
+            aiMessage = AiMessage.from(toolRequest);
+        } else {
+            aiMessage = AiMessage.from(staticResponse);
+        }
 
         return ChatResponse.builder()
-                .aiMessage(AiMessage.from(staticResponse))
+                .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder().build())
                 .build();
     }
