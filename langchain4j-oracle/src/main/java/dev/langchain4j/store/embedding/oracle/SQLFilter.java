@@ -1,11 +1,9 @@
 package dev.langchain4j.store.embedding.oracle;
 
 import dev.langchain4j.store.embedding.filter.Filter;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.function.UnaryOperator;
 
 /**
  * <p>
@@ -84,5 +82,4 @@ interface SQLFilter {
      * @throws SQLException If one is thrown from the PreparedStatement.
      */
     int setParameters(PreparedStatement preparedStatement, int parameterIndex) throws SQLException;
-
 }

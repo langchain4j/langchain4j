@@ -1,23 +1,21 @@
 package dev.langchain4j.store.embedding.oracle;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.MetadataFilterBuilder;
 import dev.langchain4j.store.embedding.filter.comparison.*;
-import oracle.jdbc.OracleType;
-import org.junit.jupiter.api.Test;
-
 import java.sql.*;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import oracle.jdbc.OracleType;
+import org.junit.jupiter.api.Test;
 
 /**
  * Verifies that {@link SQLFilter} behaves as specified in its JavaDoc. The
@@ -44,8 +42,7 @@ public class SQLFilterIT {
 
         // Comparison values of different object types. Note that it contains value matching the "x" value of
         // textSegment0's metadata.
-        Collection<?> comparisonValues =
-                Stream.of(
+        Collection<?> comparisonValues = Stream.of(
                         Integer.MIN_VALUE,
                         textSegment0.metadata().getLong("x"),
                         Float.MIN_VALUE,
@@ -58,31 +55,30 @@ public class SQLFilterIT {
         OracleEmbeddingStore oracleEmbeddingStore = CommonTestOperations.newEmbeddingStore();
 
         List<String> ids = oracleEmbeddingStore.addAll(
-                Arrays.asList(embedding0, embedding1),
-                Arrays.asList(textSegment0, textSegment1));
+                Arrays.asList(embedding0, embedding1), Arrays.asList(textSegment0, textSegment1));
 
-        List<EmbeddingMatch<TextSegment>> matches0 =
-                oracleEmbeddingStore.search(EmbeddingSearchRequest.builder()
-                    .queryEmbedding(embedding0)
-                    .minScore(0d)
-                    .maxResults(2)
-                    .filter(isIn) // <-- IS IN filter matches textSegment0
-                    .build())
-                    .matches();
+        List<EmbeddingMatch<TextSegment>> matches0 = oracleEmbeddingStore
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(embedding0)
+                        .minScore(0d)
+                        .maxResults(2)
+                        .filter(isIn) // <-- IS IN filter matches textSegment0
+                        .build())
+                .matches();
 
         assertThat(matches0.size()).as(matches0.toString()).isEqualTo(1);
         assertThat(matches0.get(0).embeddingId()).isEqualTo(ids.get(0));
         assertThat(matches0.get(0).embedding()).isEqualTo(embedding0);
         assertThat(matches0.get(0).embedded()).isEqualTo(textSegment0);
 
-        List<EmbeddingMatch<TextSegment>> matches1 =
-                oracleEmbeddingStore.search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(embedding0)
-                                .minScore(0d)
-                                .maxResults(2)
-                                .filter(isNotIn) // <-- IS NOT IN filter matches textSegment1
-                                .build())
-                        .matches();
+        List<EmbeddingMatch<TextSegment>> matches1 = oracleEmbeddingStore
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(embedding0)
+                        .minScore(0d)
+                        .maxResults(2)
+                        .filter(isNotIn) // <-- IS NOT IN filter matches textSegment1
+                        .build())
+                .matches();
 
         assertThat(matches1.size()).as(matches1.toString()).isEqualTo(1);
         assertThat(matches1.get(0).embeddingId()).isEqualTo(ids.get(1));
@@ -98,36 +94,48 @@ public class SQLFilterIT {
     public void testSQLType() throws SQLException {
 
         assertThat(SQLFilters.create(new IsEqualTo("x", Integer.MIN_VALUE), (key, type) -> {
-            assertThat(key).isEqualTo("x");
-            assertThat(type).isEqualTo(OracleType.NUMBER);
-            return key;
-        }).toSQL()).isEqualTo("NVL(x = ?, false)");
+                            assertThat(key).isEqualTo("x");
+                            assertThat(type).isEqualTo(OracleType.NUMBER);
+                            return key;
+                        })
+                        .toSQL())
+                .isEqualTo("NVL(x = ?, false)");
         assertThat(SQLFilters.create(new IsNotEqualTo("x", Long.MAX_VALUE), (key, type) -> {
-            assertThat(key).isEqualTo("x");
-            assertThat(type).isEqualTo(OracleType.NUMBER);
-            return key;
-        }).toSQL()).isEqualTo("NVL(x <> ?, true)");
+                            assertThat(key).isEqualTo("x");
+                            assertThat(type).isEqualTo(OracleType.NUMBER);
+                            return key;
+                        })
+                        .toSQL())
+                .isEqualTo("NVL(x <> ?, true)");
         assertThat(SQLFilters.create(new IsGreaterThan("x", Float.MAX_VALUE), (key, type) -> {
-            assertThat(key).isEqualTo("x");
-            assertThat(type).isEqualTo(OracleType.BINARY_FLOAT); // REAL is 32-bit floating point
-            return key;
-        }).toSQL()).isEqualTo("NVL(x > ?, false)");
+                            assertThat(key).isEqualTo("x");
+                            assertThat(type).isEqualTo(OracleType.BINARY_FLOAT); // REAL is 32-bit floating point
+                            return key;
+                        })
+                        .toSQL())
+                .isEqualTo("NVL(x > ?, false)");
         assertThat(SQLFilters.create(new IsLessThan("x", Double.MIN_VALUE), (key, type) -> {
-            assertThat(key).isEqualTo("x");
-            assertThat(type).isEqualTo(OracleType.BINARY_DOUBLE); // REAL is 64-bit floating point
-            return key;
-        }).toSQL()).isEqualTo("NVL(x < ?, false)");
+                            assertThat(key).isEqualTo("x");
+                            assertThat(type).isEqualTo(OracleType.BINARY_DOUBLE); // REAL is 64-bit floating point
+                            return key;
+                        })
+                        .toSQL())
+                .isEqualTo("NVL(x < ?, false)");
         assertThat(SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isIn("a", "b"), (key, type) -> {
-            assertThat(key).isEqualTo("x");
-            assertThat(type).isEqualTo(OracleType.CLOB);
-            return key;
-        }).toSQL()).isEqualTo("(NVL(DBMS_LOB.COMPARE(x, ?) = 0, false) OR NVL(DBMS_LOB.COMPARE(x, ?) = 0, false))");
+                            assertThat(key).isEqualTo("x");
+                            assertThat(type).isEqualTo(OracleType.CLOB);
+                            return key;
+                        })
+                        .toSQL())
+                .isEqualTo("(NVL(DBMS_LOB.COMPARE(x, ?) = 0, false) OR NVL(DBMS_LOB.COMPARE(x, ?) = 0, false))");
         // CLOB is lossless for all Java Strings (assuming the database character set is UTF-8)
         assertThat(SQLFilters.create(MetadataFilterBuilder.metadataKey("x").isNotIn("c", "d"), (key, type) -> {
-            assertThat(key).isEqualTo("x");
-            assertThat(type).isEqualTo(OracleType.CLOB);
-            return key;
-        }).toSQL()).isEqualTo("NOT((NVL(DBMS_LOB.COMPARE(x, ?) = 0, false) OR NVL(DBMS_LOB.COMPARE(x, ?) = 0, false)))");
+                            assertThat(key).isEqualTo("x");
+                            assertThat(type).isEqualTo(OracleType.CLOB);
+                            return key;
+                        })
+                        .toSQL())
+                .isEqualTo("NOT((NVL(DBMS_LOB.COMPARE(x, ?) = 0, false) OR NVL(DBMS_LOB.COMPARE(x, ?) = 0, false)))");
         // CLOB is lossless for all Java Strings (assuming the database character set is UTF-8)
 
     }
@@ -143,7 +151,7 @@ public class SQLFilterIT {
      */
     private void verifyLosslessConversion(SQLType sqlType, Object javaObject) throws SQLException {
         try (Connection connection = CommonTestOperations.getDataSource().getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement("SELECT ? FROM sys.dual")) {
+                PreparedStatement preparedStatement = connection.prepareStatement("SELECT ? FROM sys.dual")) {
 
             preparedStatement.setObject(1, javaObject, sqlType);
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -152,5 +160,4 @@ public class SQLFilterIT {
             }
         }
     }
-
 }
