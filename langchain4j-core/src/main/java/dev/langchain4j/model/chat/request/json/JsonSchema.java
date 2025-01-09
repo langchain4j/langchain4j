@@ -12,7 +12,7 @@ public class JsonSchema {
     private final String name;
     private final JsonSchemaElement rootElement;
 
-    public JsonSchema(Builder builder) {
+    private JsonSchema(Builder builder) {
         this.name = builder.name;
         this.rootElement = builder.rootElement;
     }

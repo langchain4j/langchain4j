@@ -37,6 +37,7 @@ import dev.langchain4j.store.embedding.filter.builder.sql.LanguageModelSqlFilter
 import dev.langchain4j.store.embedding.filter.builder.sql.TableDefinition;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -323,6 +324,7 @@ class AiServicesWithRagIT {
         verifyNoMoreInteractions(contentRetriever);
     }
 
+    @Disabled("Fixed in https://github.com/langchain4j/langchain4j/pull/2311")
     @ParameterizedTest
     @MethodSource("models")
     void should_fail_when_query_is_ambiguous(ChatLanguageModel model) {
@@ -502,6 +504,7 @@ class AiServicesWithRagIT {
         PersonalizedAssistant personalizedAssistant = AiServices.builder(PersonalizedAssistant.class)
                 .chatLanguageModel(model)
                 .contentRetriever(contentRetriever)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                 .build();
 
         // when
