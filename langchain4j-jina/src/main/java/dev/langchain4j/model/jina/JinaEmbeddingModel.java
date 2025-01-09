@@ -3,6 +3,7 @@ package dev.langchain4j.model.jina;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -31,7 +32,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxRetries;
     private final Boolean lateChunking;
 
-    @Builder
+    @Deprecated
     public JinaEmbeddingModel(
             String baseUrl,
             String apiKey,
@@ -57,7 +58,6 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
-                .lateChunking(getOrDefault(logRequests, false))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
@@ -82,14 +82,14 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         JinaEmbeddingRequest request = JinaEmbeddingRequest.builder()
                 .model(modelName)
                 .lateChunking(lateChunking)
-                .input(textSegments.stream().map(TextSegment::text).toList())
+                .input(textSegments.stream().map(TextSegment::text).collect(toList()))
                 .build();
 
         JinaEmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
 
         List<Embedding> embeddings = response.data.stream()
                 .map(jinaEmbedding -> Embedding.from(jinaEmbedding.embedding))
-                .toList();
+                .collect(toList());
 
         TokenUsage tokenUsage = new TokenUsage(response.usage.promptTokens, 0, response.usage.totalTokens);
         return Response.from(embeddings, tokenUsage);

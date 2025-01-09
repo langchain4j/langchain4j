@@ -157,7 +157,7 @@ class JinaEmbeddingModelIT {
         assertThat(embedding3.dimension()).isEqualTo(1024);
 
         assertThat(CosineSimilarity.between(embedding1, embedding2)).isGreaterThan(0.85);
-        assertThat(CosineSimilarity.between(embedding1, embedding3)).isGreaterThan(0.5);
+        assertThat(CosineSimilarity.between(embedding1, embedding3)).isGreaterThan(0.6);
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(10);
         assertThat(response.tokenUsage().outputTokenCount()).isZero();
@@ -248,12 +248,12 @@ class JinaEmbeddingModelIT {
         Embedding embedding3 = response.content().get(2);
         assertThat(embedding3.dimension()).isEqualTo(1024);
 
-        assertThat(CosineSimilarity.between(embedding1, embedding2)).isGreaterThan(0.85);
-        assertThat(CosineSimilarity.between(embedding1, embedding3)).isGreaterThan(0.5);
+        assertThat(CosineSimilarity.between(embedding1, embedding2)).isGreaterThan(0.95);
+        assertThat(CosineSimilarity.between(embedding1, embedding3)).isGreaterThan(0.95);
 
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(10);
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(6);
         assertThat(response.tokenUsage().outputTokenCount()).isZero();
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(10);
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(6);
 
         assertThat(response.finishReason()).isNull();
     }

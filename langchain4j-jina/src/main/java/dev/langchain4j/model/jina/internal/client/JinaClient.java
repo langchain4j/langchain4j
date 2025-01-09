@@ -21,13 +21,7 @@ public class JinaClient {
     private final String authorizationHeader;
 
     @Builder
-    JinaClient(
-            String baseUrl,
-            String apiKey,
-            Duration timeout,
-            boolean lateChunking,
-            boolean logRequests,
-            boolean logResponses) {
+    JinaClient(String baseUrl, String apiKey, Duration timeout, boolean logRequests, boolean logResponses) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
