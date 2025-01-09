@@ -50,6 +50,7 @@
         <java.version>17</java.version>
         <kotlin.code.style>official</kotlin.code.style>
         <kotlin.compiler.jvmTarget>${java.version}</kotlin.compiler.jvmTarget>
+        <kotlin.language.version>1.9</kotlin.language.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
@@ -540,23 +541,24 @@
                     <artifactId>kotlin-maven-plugin</artifactId>
                     <version>${kotlin.version}</version>
                     <configuration>
-                        <languageVersion>1.9</languageVersion>
-                        <jvmTarget>${java.version}</jvmTarget>
-                        <javaParameters>true</javaParameters>
                         <args>
                             <arg>-Xjsr305=strict</arg>
                             <arg>-Xjspecify-annotations=strict</arg>
                             <arg>-Xtype-enhancement-improvements-strict-mode</arg>
                         </args>
+                        <apiVersion>${kotlin.language.version}</apiVersion>
+                        <languageVersion>${kotlin.language.version}</languageVersion>
+                        <javaParameters>true</javaParameters>
+                        <jvmTarget>${java.version}</jvmTarget>
                     </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.jetbrains.dokka</groupId>
                     <artifactId>dokka-maven-plugin</artifactId>
-                    <version>1.9.20</version>
+                    <version>2.0.0</version>
                     <configuration>
                         <jdkVersion>${java.version}</jdkVersion>
-                        <languageVersion>2.0</languageVersion>
+                        <languageVersion>${kotlin.language.version}</languageVersion>
                     </configuration>
                 </plugin>
                 <plugin>

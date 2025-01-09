@@ -94,6 +94,9 @@
         <module>langchain4j-onnx-scoring</module>
         <module>langchain4j-mcp</module>
 
+        <!-- testing -->
+        <module>compatibility-tests</module>
+
     </modules>
 
     <properties>
