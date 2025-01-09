@@ -6,8 +6,6 @@ import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-import oracle.jdbc.OracleType;
-
 import java.io.StringReader;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -15,6 +13,7 @@ import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import oracle.jdbc.OracleType;
 
 /**
  * A factory for {@link SQLFilter} implementations. The {@link #create(Filter, BiFunction)} creates a SQLFilter that
@@ -40,45 +39,38 @@ final class SQLFilters {
      * Map of {@link Filter} classes to functions which construct the equivalent {@link SQLFilter}.
      */
     private static final Map<Class<? extends Filter>, FilterConstructor> CONSTRUCTORS;
+
     static {
         Map<Class<? extends Filter>, FilterConstructor> map = new HashMap<>();
 
-        map.put(IsEqualTo.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsEqualTo) filter, keyMapper));
+        map.put(IsEqualTo.class, (filter, keyMapper) -> new SQLComparisonFilter((IsEqualTo) filter, keyMapper));
 
-        map.put(IsNotEqualTo.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsNotEqualTo) filter, keyMapper));
+        map.put(IsNotEqualTo.class, (filter, keyMapper) -> new SQLComparisonFilter((IsNotEqualTo) filter, keyMapper));
 
-        map.put(IsGreaterThan.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsGreaterThan) filter, keyMapper));
+        map.put(IsGreaterThan.class, (filter, keyMapper) -> new SQLComparisonFilter((IsGreaterThan) filter, keyMapper));
 
-        map.put(IsGreaterThanOrEqualTo.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsGreaterThanOrEqualTo) filter, keyMapper));
+        map.put(
+                IsGreaterThanOrEqualTo.class,
+                (filter, keyMapper) -> new SQLComparisonFilter((IsGreaterThanOrEqualTo) filter, keyMapper));
 
-        map.put(IsLessThan.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsLessThan) filter, keyMapper));
+        map.put(IsLessThan.class, (filter, keyMapper) -> new SQLComparisonFilter((IsLessThan) filter, keyMapper));
 
-        map.put(IsLessThanOrEqualTo.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsLessThanOrEqualTo) filter, keyMapper));
+        map.put(
+                IsLessThanOrEqualTo.class,
+                (filter, keyMapper) -> new SQLComparisonFilter((IsLessThanOrEqualTo) filter, keyMapper));
 
-        map.put(IsIn.class, (filter, keyMapper) ->
-            SQLInFilter.create((IsIn) filter, keyMapper));
+        map.put(IsIn.class, (filter, keyMapper) -> SQLInFilter.create((IsIn) filter, keyMapper));
 
-        map.put(IsNotIn.class, (filter, keyMapper) ->
-            SQLInFilter.create((IsNotIn) filter, keyMapper));
+        map.put(IsNotIn.class, (filter, keyMapper) -> SQLInFilter.create((IsNotIn) filter, keyMapper));
 
-        map.put(And.class, (filter, keyMapper) ->
-            new SQLLogicalFilter((And) filter, keyMapper));
+        map.put(And.class, (filter, keyMapper) -> new SQLLogicalFilter((And) filter, keyMapper));
 
-        map.put(Or.class, (filter, keyMapper) ->
-            new SQLLogicalFilter((Or) filter, keyMapper));
+        map.put(Or.class, (filter, keyMapper) -> new SQLLogicalFilter((Or) filter, keyMapper));
 
-        map.put(Not.class, (filter, keyMapper) ->
-            new SQLNot((Not)filter, keyMapper));
+        map.put(Not.class, (filter, keyMapper) -> new SQLNot((Not) filter, keyMapper));
 
         CONSTRUCTORS = Collections.unmodifiableMap(map);
     }
-
 
     /**
      * <p>
@@ -101,14 +93,12 @@ final class SQLFilters {
      * @throws IllegalArgumentException If the class of the Filter is not recognized.
      */
     static SQLFilter create(Filter filter, BiFunction<String, OracleType, String> keyMapper) {
-        if (filter == null)
-            return EMPTY;
+        if (filter == null) return EMPTY;
 
         Class<? extends Filter> filterClass = filter.getClass();
         FilterConstructor constructor = CONSTRUCTORS.get(filterClass);
 
-        if (constructor == null)
-            throw new IllegalArgumentException("Unrecognized Filter class: " + filterClass);
+        if (constructor == null) throw new IllegalArgumentException("Unrecognized Filter class: " + filterClass);
 
         return constructor.construct(filter, keyMapper);
     }
@@ -176,7 +166,8 @@ final class SQLFilters {
             this(isGreaterThan.key(), keyMapper, ">", isGreaterThan.comparisonValue(), false);
         }
 
-        SQLComparisonFilter(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo, BiFunction<String, OracleType, String> keyMapper) {
+        SQLComparisonFilter(
+                IsGreaterThanOrEqualTo isGreaterThanOrEqualTo, BiFunction<String, OracleType, String> keyMapper) {
             this(isGreaterThanOrEqualTo.key(), keyMapper, ">=", isGreaterThanOrEqualTo.comparisonValue(), false);
         }
 
@@ -221,7 +212,10 @@ final class SQLFilters {
          * @param isNullTrue Result of the filter when the metadata does not contain the key.
          */
         private <T> SQLComparisonFilter(
-                String key, BiFunction<String, OracleType, String> keyMapper, String operator, T comparisonValue,
+                String key,
+                BiFunction<String, OracleType, String> keyMapper,
+                String operator,
+                T comparisonValue,
                 boolean isNullTrue) {
 
             this.sqlType = toOracleType(comparisonValue);
@@ -230,11 +224,10 @@ final class SQLFilters {
                 // DBMS_LOB.COMPARE must be used for a comparison of CLOB values. Comparison operators like "=" or "<"
                 // cannot have a CLOB operand. The COMPARE function is similar to String.compareTo(String), returning
                 // -1, 0, or 1 for less-than, equal-to, and greater-than, respectively.
-                sql = "NVL(" +
-                        "DBMS_LOB.COMPARE(" + keyMapper.apply(key, sqlType) + ", ?) " + operator + " 0, "
+                sql = "NVL(" + "DBMS_LOB.COMPARE("
+                        + keyMapper.apply(key, sqlType) + ", ?) " + operator + " 0, "
                         + isNullTrue + ")";
-            }
-            else {
+            } else {
                 sql = "NVL(" + keyMapper.apply(key, sqlType) + " " + operator + " ?, " + isNullTrue + ")";
             }
 
@@ -291,7 +284,8 @@ final class SQLFilters {
             this(or.left(), "OR", or.right(), keyMapper);
         }
 
-        private SQLLogicalFilter(Filter left, String operator, Filter right, BiFunction<String, OracleType, String> keyMapper) {
+        private SQLLogicalFilter(
+                Filter left, String operator, Filter right, BiFunction<String, OracleType, String> keyMapper) {
             this(create(left, keyMapper), operator, create(right, keyMapper));
         }
 
@@ -407,13 +401,13 @@ final class SQLFilters {
         }
 
         static SQLFilter create(
-                String key, BiFunction<String, OracleType, String> keyMapper, boolean isIn,
+                String key,
+                BiFunction<String, OracleType, String> keyMapper,
+                boolean isIn,
                 Collection<?> comparisonValues) {
 
             Set<OracleType> sqlTypes =
-                    comparisonValues.stream()
-                            .map(SQLFilters::toOracleType)
-                            .collect(Collectors.toSet());
+                    comparisonValues.stream().map(SQLFilters::toOracleType).collect(Collectors.toSet());
             Iterator<OracleType> sqlTypeIterator = sqlTypes.iterator();
             OracleType sqlType = sqlTypes.iterator().next();
 
@@ -424,11 +418,10 @@ final class SQLFilters {
             }
 
             // Replicate IN and NOT IN conditions as a sequence of OR conditions: "key = value0 OR key = value1 OR ..."
-            SQLFilter orFilter =
-                comparisonValues.stream()
-                        .<SQLFilter>map(object -> new SQLComparisonFilter(key, keyMapper, "=", object, false))
-                        .reduce((left, right) -> new SQLLogicalFilter(left, "OR", right))
-                        .orElse(EMPTY);
+            SQLFilter orFilter = comparisonValues.stream()
+                    .<SQLFilter>map(object -> new SQLComparisonFilter(key, keyMapper, "=", object, false))
+                    .reduce((left, right) -> new SQLLogicalFilter(left, "OR", right))
+                    .orElse(EMPTY);
 
             return isIn ? orFilter : new SQLNot(orFilter);
         }
@@ -455,13 +448,14 @@ final class SQLFilters {
          * @param comparisonValues Set of values to search within. Not null. Not empty.
          */
         private SQLInFilter(
-                String key, BiFunction<String, OracleType, String> keyMapper, boolean isIn,
-                Collection<?> comparisonValues, OracleType sqlType) {
+                String key,
+                BiFunction<String, OracleType, String> keyMapper,
+                boolean isIn,
+                Collection<?> comparisonValues,
+                OracleType sqlType) {
             this.sqlType = sqlType;
             this.sql = "NVL(" + keyMapper.apply(key, sqlType) + (isIn ? " IN " : " NOT IN ") + "("
-                    + Stream.generate(() -> "?")
-                    .limit(comparisonValues.size())
-                    .collect(Collectors.joining(", "))
+                    + Stream.generate(() -> "?").limit(comparisonValues.size()).collect(Collectors.joining(", "))
                     + "), "
                     + !isIn + ")"; // <-- 2nd argument to NVL
             this.comparisonValues = comparisonValues;
@@ -527,7 +521,7 @@ final class SQLFilters {
         Object jdbcObject = toJdbcObject(object);
 
         if (jdbcObject instanceof String && sqlType == OracleType.CLOB) {
-            String string = (String)jdbcObject;
+            String string = (String) jdbcObject;
             int length = string.length();
 
             // Convert the String into a VARCHAR if the length is small enough. Oracle Database supports an implicit
@@ -536,13 +530,11 @@ final class SQLFilters {
             // implementation of setCharacterStream).
             if (length < MAX_VARCHAR_LENGTH) {
                 preparedStatement.setString(parameterIndex, (String) jdbcObject);
-            }
-            else {
+            } else {
                 // Oracle JDBC converts a Reader into CLOB if setCharacterStream is called without a length argument.
                 preparedStatement.setCharacterStream(parameterIndex, new StringReader(string));
             }
-        }
-        else {
+        } else {
             preparedStatement.setObject(parameterIndex, jdbcObject, sqlType);
         }
     }
@@ -560,8 +552,7 @@ final class SQLFilters {
     private static Object toJdbcObject(Object object) {
         if (object instanceof UUID) {
             return object.toString();
-        }
-        else {
+        } else {
             return object;
         }
     }
@@ -586,27 +577,22 @@ final class SQLFilters {
         if (object instanceof Number) {
             if (object instanceof Float) {
                 return OracleType.BINARY_FLOAT;
-            }
-            else if (object instanceof Double) {
+            } else if (object instanceof Double) {
                 return OracleType.BINARY_DOUBLE;
-            }
-            else if (object instanceof Integer || object instanceof Long) {
+            } else if (object instanceof Integer || object instanceof Long) {
                 // NUMBER is an integer with up to 38 decimal digits. It can represent any value of an Integer or Long.
                 return OracleType.NUMBER;
-            }
-            else {
+            } else {
                 // May need to add more branches above, if Metadata supports new object classes.
                 throw new IllegalArgumentException("Unexpected object class: " + object.getClass());
             }
-        }
-        else if (object instanceof String) {
+        } else if (object instanceof String) {
             // This String will be compared to another character value, and the length of that other character value is
             // not known. It cannot be assumed that the other character value's length is small enough to be a VARCHAR.
             // For this reason, the two character values should be compared as CLOBs.
             return OracleType.CLOB;
 
-        }
-        else {
+        } else {
             // Compare null, UUID, and any other object that Metadata supports in the future as VARCHAR objects.
             // It is assumed that the getOsonFromMetadata object method in OracleEmbeddingStore will convert these
             // objects to String. If the String length is 4k or less, then a VARCHAR can store the information of
@@ -614,5 +600,4 @@ final class SQLFilters {
             return OracleType.VARCHAR2;
         }
     }
-
 }
