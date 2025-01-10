@@ -60,9 +60,7 @@ final class CommonTestOperations {
     static {
         Logger.getLogger(CommonTestOperations.class.getName())
                 .info("dev.langchain4j.store.embedding.oracle.SEED=" + SEED);
-    }
 
-    static {
         try {
             DATA_SOURCE.setConnectionFactoryClassName("oracle.jdbc.datasource.impl.OracleDataSource");
             String urlFromEnv = System.getenv("ORACLE_JDBC_URL");
