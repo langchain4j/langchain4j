@@ -42,6 +42,8 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelIT {
 
+    // TODO test maxTokens and maxCompletionTokens separately
+
     OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))

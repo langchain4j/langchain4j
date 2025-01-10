@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openai;
 
 import dev.ai4j.openai4j.chat.AssistantMessage;
-import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.ai4j.openai4j.chat.ContentType;
 import dev.ai4j.openai4j.chat.Function;
@@ -31,8 +30,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -48,7 +45,6 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
@@ -65,9 +61,9 @@ import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_OBJECT;
 import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -517,34 +513,6 @@ public class InternalOpenAiHelper {
         }
     }
 
-    static ChatModelRequest createModelListenerRequest(ChatCompletionRequest request,
-                                                       List<ChatMessage> messages,
-                                                       List<ToolSpecification> toolSpecifications) {
-        return ChatModelRequest.builder()
-                .model(request.model())
-                .temperature(request.temperature())
-                .topP(request.topP())
-                .maxTokens(getOrDefault(request.maxCompletionTokens(), request.maxTokens()))
-                .messages(messages)
-                .toolSpecifications(toolSpecifications)
-                .build();
-    }
-
-    static ChatModelResponse createModelListenerResponse(ChatResponse chatResponse) {
-        if (chatResponse == null) {
-            return null;
-        }
-
-        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
-        return ChatModelResponse.builder()
-                .id(chatResponseMetadata.id())
-                .model(chatResponseMetadata.modelName())
-                .tokenUsage(chatResponseMetadata.tokenUsage())
-                .finishReason(chatResponseMetadata.finishReason())
-                .aiMessage(chatResponse.aiMessage())
-                .build();
-    }
-
     static dev.ai4j.openai4j.chat.ResponseFormat toOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
         if (responseFormat == null || responseFormat.type() == TEXT) {
             return null;
@@ -613,6 +581,14 @@ public class InternalOpenAiHelper {
     static void validate(ChatRequestParameters parameters) {
         if (parameters.topK() != null) {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
+        }
+    }
+
+    static dev.langchain4j.model.chat.request.ResponseFormat fromOpenAiResponseFormat(String responseFormat) {
+        if ("json_object".equals(responseFormat)) {
+            return JSON;
+        } else {
+            return null;
         }
     }
 }

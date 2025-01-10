@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 
 @Experimental
 public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
@@ -29,27 +30,6 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         this.store = builder.store;
         this.metadata = copyIfNotNull(builder.metadata);
         this.serviceTier = builder.serviceTier;
-    }
-
-    OpenAiChatRequestParameters(ChatRequestParameters parameters) {
-        super(parameters);
-        if (parameters instanceof OpenAiChatRequestParameters openAiParameters) {
-            this.logitBias = copyIfNotNull(openAiParameters.logitBias);
-            this.parallelToolCalls = openAiParameters.parallelToolCalls;
-            this.seed = openAiParameters.seed;
-            this.user = openAiParameters.user;
-            this.store = openAiParameters.store;
-            this.metadata = copyIfNotNull(openAiParameters.metadata);
-            this.serviceTier = openAiParameters.serviceTier;
-        } else {
-            this.logitBias = null;
-            this.parallelToolCalls = null;
-            this.seed = null;
-            this.user = null;
-            this.store = null;
-            this.metadata = null;
-            this.serviceTier = null;
-        }
     }
 
     public Map<String, Integer> logitBias() {
@@ -78,6 +58,17 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
     public String serviceTier() {
         return serviceTier;
+    }
+
+    @Override
+    public ChatRequestParameters overrideWith(ChatRequestParameters that) {
+        // TODO test
+        // TODO validate that "that" is of compatible type? What about custom user types?
+
+        return OpenAiChatRequestParameters.builder()
+                .copyFrom(this)
+                .copyFrom(that)
+                .build();
     }
 
     @Override
@@ -146,6 +137,22 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+
+        @Override
+        public Builder copyFrom(ChatRequestParameters parameters) {
+            super.copyFrom(parameters);
+            if (parameters instanceof OpenAiChatRequestParameters openAiParameters) {
+                // TODO copy collections?
+                logitBias(getOrDefault(openAiParameters.logitBias(), logitBias));
+                parallelToolCalls(getOrDefault(openAiParameters.parallelToolCalls(), parallelToolCalls));
+                seed(getOrDefault(openAiParameters.seed(), seed));
+                user(getOrDefault(openAiParameters.user(), user));
+                store(getOrDefault(openAiParameters.store(), store));
+                metadata(getOrDefault(openAiParameters.metadata(), metadata));
+                serviceTier(getOrDefault(openAiParameters.serviceTier(), serviceTier));
+            }
+            return this;
+        }
 
         public Builder modelName(OpenAiChatModelName modelName) {
             return super.modelName(modelName.toString());

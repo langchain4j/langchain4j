@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
 
@@ -38,20 +39,6 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         this.toolSpecifications = copyIfNotNull(builder.toolSpecifications);
         this.toolChoice = builder.toolChoice;
         this.responseFormat = builder.responseFormat;
-    }
-
-    protected DefaultChatRequestParameters(ChatRequestParameters parameters) {
-        this.modelName = parameters.modelName();
-        this.temperature = parameters.temperature();
-        this.topP = parameters.topP();
-        this.topK = parameters.topK();
-        this.frequencyPenalty = parameters.frequencyPenalty();
-        this.presencePenalty = parameters.presencePenalty();
-        this.maxOutputTokens = parameters.maxOutputTokens();
-        this.stopSequences = copyIfNotNull(parameters.stopSequences());
-        this.toolSpecifications = copyIfNotNull(parameters.toolSpecifications());
-        this.toolChoice = parameters.toolChoice();
-        this.responseFormat = parameters.responseFormat();
     }
 
     @Override
@@ -107,6 +94,17 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     @Override
     public ResponseFormat responseFormat() {
         return responseFormat;
+    }
+
+    @Override
+    public ChatRequestParameters overrideWith(ChatRequestParameters that) {
+        // TODO test
+        // TODO validate that "that" is of compatible type? What about custom user types?
+
+        return DefaultChatRequestParameters.builder()
+                .copyFrom(this)
+                .copyFrom(that)
+                .build();
     }
 
     @Override
@@ -178,6 +176,22 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
+
+        public T copyFrom(ChatRequestParameters parameters) {
+            // TODO copy collections?
+            modelName(getOrDefault(parameters.modelName(), modelName));
+            temperature(getOrDefault(parameters.temperature(), temperature));
+            topP(getOrDefault(parameters.topP(), topP));
+            topK(getOrDefault(parameters.topK(), topK));
+            frequencyPenalty(getOrDefault(parameters.frequencyPenalty(), frequencyPenalty));
+            presencePenalty(getOrDefault(parameters.presencePenalty(), presencePenalty));
+            maxOutputTokens(getOrDefault(parameters.maxOutputTokens(), maxOutputTokens));
+            stopSequences(getOrDefault(parameters.stopSequences(), stopSequences));
+            toolSpecifications(getOrDefault(parameters.toolSpecifications(), toolSpecifications));
+            toolChoice(getOrDefault(parameters.toolChoice(), toolChoice));
+            responseFormat(getOrDefault(parameters.responseFormat(), responseFormat));
+            return (T) this;
+        }
 
         public T modelName(String modelName) {
             this.modelName = modelName;

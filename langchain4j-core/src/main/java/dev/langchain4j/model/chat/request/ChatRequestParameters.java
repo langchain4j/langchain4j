@@ -39,4 +39,11 @@ public interface ChatRequestParameters {
     static DefaultChatRequestParameters.Builder<?> builder() { // TODO
         return new DefaultChatRequestParameters.Builder<>();
     }
+
+    /**
+     * TODO
+     * @param that
+     * @return
+     */
+    ChatRequestParameters overrideWith(ChatRequestParameters that);
 }

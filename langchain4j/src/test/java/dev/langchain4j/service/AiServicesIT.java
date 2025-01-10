@@ -4,6 +4,7 @@ import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ObservableChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -87,6 +88,13 @@ class AiServicesIT {
             verify(model).supportedCapabilities();
         } catch (Throwable ignored) {
             // don't care if it was called or not
+        }
+        if (model instanceof ObservableChatModel observableChatModel) {
+            try {
+                verify(observableChatModel).listeners();
+            } catch (Throwable ignored) {
+                // don't care if it was called or not
+            }
         }
         verifyNoMoreInteractions(model);
     }

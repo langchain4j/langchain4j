@@ -2,6 +2,8 @@ package dev.langchain4j.model.chat.listener;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * A {@link ChatLanguageModel} listener that listens for requests, responses and errors.
@@ -9,10 +11,12 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 @Experimental
 public interface ChatModelListener {
 
+    // TODO release all these breaking changes only when micrometer and/or OTel integration is in place and tested
+
     /**
      * This method is called before the request is sent to the model.
      *
-     * @param requestContext The request context. It contains the {@link ChatModelRequest} and attributes.
+     * @param requestContext The request context. It contains the {@link ChatRequest} and attributes.
      *                       The attributes can be used to pass data between methods of this listener
      *                       or between multiple listeners.
      */
@@ -25,7 +29,7 @@ public interface ChatModelListener {
      * This method is called after the response is received from the model.
      *
      * @param responseContext The response context.
-     *                        It contains {@link ChatModelResponse}, corresponding {@link ChatModelRequest} and attributes.
+     *                        It contains {@link ChatResponse}, corresponding {@link ChatRequest} and attributes.
      *                        The attributes can be used to pass data between methods of this listener
      *                        or between multiple listeners.
      */
@@ -38,8 +42,8 @@ public interface ChatModelListener {
      * This method is called when an error occurs during interaction with the model.
      *
      * @param errorContext The error context.
-     *                     It contains the error, corresponding {@link ChatModelRequest},
-     *                     partial {@link ChatModelResponse} (if available) and attributes.
+     *                     It contains the error, corresponding {@link ChatRequest},
+     *                     partial {@link ChatResponse} (if available) and attributes.
      *                     The attributes can be used to pass data between methods of this listener
      *                     or between multiple listeners.
      */

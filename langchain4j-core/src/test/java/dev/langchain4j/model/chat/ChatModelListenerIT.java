@@ -9,6 +9,10 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 
@@ -77,21 +81,30 @@ public abstract class ChatModelListenerIT {
     void should_listen_request_and_response() {
 
         // given
-        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
-        AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
+        AtomicReference<ChatRequest> requestReference = new AtomicReference<>();
+        AtomicReference<ChatResponse> responseReference = new AtomicReference<>();
+
+        AtomicReference<ChatModelRequest> oldRequestReference = new AtomicReference<>();
+        AtomicReference<ChatModelResponse> oldResponseReference = new AtomicReference<>();
 
         ChatModelListener listener = new ChatModelListener() {
 
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
-                requestReference.set(requestContext.request());
+                requestReference.set(requestContext.chatRequest());
+                oldRequestReference.set(requestContext.request());
+
                 requestContext.attributes().put("id", "12345");
             }
 
             @Override
             public void onResponse(ChatModelResponseContext responseContext) {
-                responseReference.set(responseContext.response());
-                assertThat(responseContext.request()).isSameAs(requestReference.get());
+                responseReference.set(responseContext.chatResponse());
+                oldResponseReference.set(responseContext.response());
+
+                assertThat(responseContext.chatRequest()).isEqualTo(requestReference.get());
+                assertThat(responseContext.request()).isEqualTo(oldRequestReference.get());
+
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
@@ -123,7 +136,20 @@ public abstract class ChatModelListenerIT {
         }
 
         // then
-        ChatModelRequest request = requestReference.get();
+        ChatRequest chatRequest = requestReference.get();
+        assertThat(chatRequest.messages()).containsExactly(userMessage);
+
+        ChatRequestParameters parameters = chatRequest.parameters();
+        assertThat(parameters.modelName()).isEqualTo(modelName());
+        assertThat(parameters.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
+        assertThat(parameters.topP()).isEqualTo(topP());
+        assertThat(parameters.maxOutputTokens()).isEqualTo(maxTokens());
+        if (supportToolCalls()) {
+            assertThat(parameters.toolSpecifications()).containsExactly(toolSpecification);
+        }
+
+        // old API
+        ChatModelRequest request = oldRequestReference.get();
         assertThat(request.model()).isEqualTo(modelName());
         assertThat(request.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
         assertThat(request.topP()).isEqualTo(topP());
@@ -133,7 +159,23 @@ public abstract class ChatModelListenerIT {
             assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
         }
 
-        ChatModelResponse response = responseReference.get();
+        ChatResponse chatResponse = responseReference.get();
+        assertThat(chatResponse.aiMessage()).isEqualTo(aiMessage);
+
+        ChatResponseMetadata metadata = chatResponse.metadata();
+        if (assertResponseId()) {
+            assertThat(metadata.id()).isNotBlank();
+        }
+        assertThat(metadata.modelName()).isNotBlank();
+        assertThat(metadata.tokenUsage().inputTokenCount()).isGreaterThan(0);
+        assertThat(metadata.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(metadata.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        if (assertFinishReason()) {
+            assertThat(metadata.finishReason()).isNotNull();
+        }
+
+        // old API
+        ChatModelResponse response = oldResponseReference.get();
         if (assertResponseId()) {
             assertThat(response.id()).isNotBlank();
         }
@@ -163,14 +205,17 @@ public abstract class ChatModelListenerIT {
     void should_listen_error() {
 
         // given
-        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<ChatRequest> requestReference = new AtomicReference<>();
+        AtomicReference<ChatModelRequest> oldRequestReference = new AtomicReference<>();
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
 
         ChatModelListener listener = new ChatModelListener() {
 
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
-                requestReference.set(requestContext.request());
+                requestReference.set(requestContext.chatRequest());
+                oldRequestReference.set(requestContext.request());
+
                 requestContext.attributes().put("id", "12345");
             }
 
@@ -182,8 +227,12 @@ public abstract class ChatModelListenerIT {
             @Override
             public void onError(ChatModelErrorContext errorContext) {
                 errorReference.set(errorContext.error());
-                assertThat(errorContext.request()).isSameAs(requestReference.get());
+
+                assertThat(errorContext.chatRequest()).isEqualTo(requestReference.get());
+                assertThat(errorContext.request()).isEqualTo(oldRequestReference.get());
+
                 assertThat(errorContext.partialResponse()).isNull();
+
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };
