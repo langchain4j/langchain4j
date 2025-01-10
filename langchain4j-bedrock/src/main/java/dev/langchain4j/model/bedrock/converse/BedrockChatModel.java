@@ -80,9 +80,10 @@ public class BedrockChatModel implements ChatLanguageModel {
 
     // based on input modalities from https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
     private static final Pattern IMAGE_SUPPORTED_PATTERN =
-            Pattern.compile("(amazon\\.nova-lite|amazon\\.nova-pro|" + "anthropic\\.claude-3-haiku|"
+            Pattern.compile("(amazon\\.nova-lite|amazon\\.nova-pro|"
+                    + "anthropic\\.claude-(3|3-5)-haiku|"
                     + "anthropic\\.claude-3-opus|"
-                    + "anthropic\\.claude-3-sonnet|"
+                    + "anthropic\\.claude-(3|3-5)-sonnet|"
                     + "meta\\.llama3-2-11b-instruct|"
                     + "meta\\.llama3-2-90b-instruct)");
     // based on "document chat", "tool use" and "system prompts" from

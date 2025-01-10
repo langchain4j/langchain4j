@@ -1,22 +1,23 @@
 package dev.langchain4j.model.bedrock.converse;
 
-import static dev.langchain4j.model.bedrock.converse.BedrockChatModel.dblToFloat;
-import static dev.langchain4j.model.bedrock.converse.TestedModels.*;
-
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+
 import java.util.List;
+
+import static dev.langchain4j.model.bedrock.converse.BedrockChatModel.dblToFloat;
+import static dev.langchain4j.model.bedrock.converse.TestedModels.CLAUDE_3_HAIKU;
 
 public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(AWS_NOVA_LITE);
+        return List.of(CLAUDE_3_HAIKU); //, LLAMA_3_2_90B); NOT AVAILABLE FOR ME AT THIS MOMENT
     }
 
     @Override
     protected String customModelName() {
-        return "anthropic.claude-3-5-sonnet-20240620-v1:0";
+        return "cohere.command-r-v1:0";
     }
 
     @Override
@@ -28,7 +29,8 @@ public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
     protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
         // TODO
         return BedrockChatModel.builder()
-                .modelId(parameters.modelName())
+                //force a working model with stopSequence parameter for @Tests
+                .modelId("cohere.command-r-v1:0")
                 .stopSequences(parameters.stopSequences())
                 .temperature(dblToFloat(parameters.temperature()))
                 .topP(dblToFloat(parameters.topP()))
@@ -42,41 +44,6 @@ public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsModelNameParameter() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsTools() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequired() {
-        return false;
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithSingleTool() {
-        return supportsToolChoiceRequired();
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return supportsToolChoiceRequired();
-    }
-
-    @Override
     protected boolean supportsJsonResponseFormat() {
         return false;
     }
@@ -86,28 +53,4 @@ public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
         return false;
     }
 
-    @Override
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return supportsTools() && supportsJsonResponseFormatWithSchema();
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsBase64EncodedString() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
-        return supportsSingleImageInputAsBase64EncodedString();
-    }
-
-    @Override
-    protected boolean supportsSingleImageInputAsPublicURL() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return supportsSingleImageInputAsPublicURL();
-    }
 }

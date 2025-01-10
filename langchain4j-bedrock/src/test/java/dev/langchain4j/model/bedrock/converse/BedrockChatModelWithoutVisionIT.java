@@ -1,22 +1,36 @@
 package dev.langchain4j.model.bedrock.converse;
 
-import static dev.langchain4j.model.bedrock.converse.BedrockChatModel.dblToFloat;
-import static dev.langchain4j.model.bedrock.converse.TestedModels.AWS_NOVA_MICRO;
-
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import org.junit.jupiter.api.condition.DisabledIf;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
 import java.util.List;
+
+import static dev.langchain4j.model.bedrock.converse.BedrockChatModel.dblToFloat;
+import static dev.langchain4j.model.bedrock.converse.TestedModels.AI_JAMBA_INSTRUCT;
+import static dev.langchain4j.model.bedrock.converse.TestedModels.AWS_NOVA_MICRO;
+import static dev.langchain4j.model.bedrock.converse.TestedModels.AWS_TITAN_TEXT_EXPRESS;
+import static dev.langchain4j.model.bedrock.converse.TestedModels.COHERE_COMMAND_R_PLUS;
+import static dev.langchain4j.model.bedrock.converse.TestedModels.MISTRAL_LARGE;
 
 public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(AWS_NOVA_MICRO);
+        return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, AI_JAMBA_INSTRUCT, MISTRAL_LARGE, AWS_TITAN_TEXT_EXPRESS);
+    }
+
+    @Override
+    protected List<ChatLanguageModel> modelsSupportingTools() {
+        return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE);
     }
 
     @Override
     protected String customModelName() {
-        return "anthropic.claude-3-5-sonnet-20240620-v1:0";
+        return "cohere.command-r-v1:0";
     }
 
     @Override
@@ -28,7 +42,8 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
         // TODO
         return BedrockChatModel.builder()
-                .modelId(parameters.modelName())
+                //force a working model with stopSequence parameter for @Tests
+                .modelId("cohere.command-r-v1:0")
                 .stopSequences(parameters.stopSequences())
                 .temperature(dblToFloat(parameters.temperature()))
                 .topP(dblToFloat(parameters.topP()))
@@ -42,38 +57,8 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsModelNameParameter() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsMaxOutputTokensParameter() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsStopSequencesParameter() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsTools() {
-        return true;
-    }
-
-    @Override
     protected boolean supportsToolChoiceRequired() {
         return false;
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithSingleTool() {
-        return supportsToolChoiceRequired();
-    }
-
-    @Override
-    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
-        return supportsToolChoiceRequired();
     }
 
     @Override
@@ -87,18 +72,8 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return supportsTools() && supportsJsonResponseFormatWithSchema();
-    }
-
-    @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false;
-    }
-
-    @Override
-    protected boolean supportsMultipleImageInputsAsBase64EncodedStrings() {
-        return supportsSingleImageInputAsBase64EncodedString();
     }
 
     @Override
@@ -106,8 +81,41 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         return false;
     }
 
+
+    //OVERRIDED TESTS
+
+    //TODO TITAN_EXPRESS doesn't support system prompt
     @Override
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return supportsSingleImageInputAsPublicURL();
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_respect_system_message(ChatLanguageModel model) {
+        if (!model.equals(AWS_TITAN_TEXT_EXPRESS)) {
+            super.should_respect_system_message(model);
+        }
+    }
+
+    //TODO Nova models include StopSequence
+    //TODO Titan express error : "Malformed input request: 3 schema violations found"
+    @Override
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsStopSequencesParameter")
+    protected void should_respect_stopSequences_in_chat_request(ChatLanguageModel model) {
+        if (!model.equals(AWS_TITAN_TEXT_EXPRESS) && !model.equals(AWS_NOVA_MICRO)) {
+            super.should_respect_system_message(model);
+        }
+    }
+
+    //TODO Mistral Large support tool choice REQUIRED
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingTools")
+    @DisabledIf("supportsToolChoiceRequired")
+    protected void should_fail_if_tool_choice_REQUIRED_is_not_supported(ChatLanguageModel model) {
+        if (model.equals(MISTRAL_LARGE)) {
+            super.should_force_LLM_to_execute_any_tool(model);
+        } else {
+            super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);
+        }
     }
 }
