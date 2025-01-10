@@ -24,9 +24,12 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
@@ -41,6 +44,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -71,6 +76,46 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 public class BedrockChatModel implements ChatLanguageModel {
 
     private Logger logger = LoggerFactory.getLogger(BedrockChatModel.class);
+
+    //based on input modalities from https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
+    private static final Pattern IMAGE_SUPPORTED_PATTERN = Pattern.compile(
+            "(amazon\\.nova-lite|amazon\\.nova-pro|" +
+                    "anthropic\\.claude-3-haiku|" +
+                    "anthropic\\.claude-3-opus|" +
+                    "anthropic\\.claude-3-sonnet|" +
+                    "meta\\.llama3-2-11b-instruct|" +
+                    "meta\\.llama3-2-90b-instruct)"
+    );
+    //based on "document chat", "tool use" and "system prompts" from https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html
+    private static final Pattern DOCUMENT_CHAT_SUPPORTED_PATTERN = Pattern.compile(
+            "(ai21\\.jamba-1-5-(large|mini)|" +                  // Jamba 1.5 Large et Mini
+                    "amazon\\.nova-(lite|pro)|" +                         // Amazon Nova Pro et Lite
+                    "amazon\\.titan-text-(express|lite)|" +               // Amazon Titan sauf Premier
+                    "anthropic\\.claude-(3|3-5)-.*|" +                        // Claude 3 et 3.5 (tous)
+                    "anthropic\\.claude-v2:1|" +                              // Claude 2.1
+                    "cohere\\.command-(text-v14|r-plus|r)|" +       // Cohere Command, R et R+
+                    "meta\\.llama3-.*|" +                                     // Meta Llama 3 (tous)
+                    "mistral\\.mistral-(large-.*|mixtral-8x7b-instruct))"// Mistral Large et Mixtral
+    );
+    private static final Pattern TOOL_USE_SUPPORTED_PATTERN = Pattern.compile(
+            "(ai21\\.jamba-1-5-(large|mini)|" +                         // Jamba 1.5 Large et Mini
+                    "amazon\\.nova-(lite|pro|micro)|" +                         // Amazon Nova Lite, Pro, Micro
+                    "anthropic\\.claude-3.*|" +                                      // Claude 3 et 3.5
+                    "cohere\\.command-(r-plus|r)|" +                       // Cohere Command R et R+
+                    "meta\\.llama3-1-.*|" +                                          // Meta Llama 3.1 (supporte Tool use)
+                    "meta\\.llama3-2-(11b|90b)-instruct|" +                     // Meta Llama 3.2 11b et 90b uniquement
+                    "mistral\\.mistral-(large.*|small.*|mixtral-8x7b-instruct))"// Mistral Large, Small et Mixtral
+    );
+    private static final Pattern SYSTEM_PROMPTS_SUPPORTED_PATTERN = Pattern.compile(
+            "(ai21\\.jamba-1-5-(large|mini)|" +                    // AI21 Jamba 1.5 Large et Mini
+                    "ai21\\.jamba-instruct|" +                             // AI21 Jamba-Instruct
+                    "amazon\\.nova-(lite|pro|micro)|" +                    // Amazon Nova Lite, Pro, Micro
+                    "anthropic\\.claude-2.*|" +                                 // Anthropic Claude 2.x et versions antérieures
+                    "anthropic\\.claude-3.*|" +                                 // Anthropic Claude 3 et 3.5
+                    "cohere\\.command-(r-plus|r)|" +                  // Cohere Command R et R+
+                    "meta\\.llama3.*|" +                                        // Meta Llama 3.x
+                    "mistral\\.mistral-(large.*|small.*|mixtral-8x7b-instruct))" // Mistral Large, Small, Mixtral
+    );
 
     private final Region region;
     private final AwsCredentialsProvider credentialsProvider;
@@ -153,16 +198,62 @@ public class BedrockChatModel implements ChatLanguageModel {
 
     private ConverseRequest buildConverseRequest(
             List<ChatMessage> messages, List<ToolSpecification> toolSpecs, ChatRequestParameters parameters) {
-        final String modelName =
+        final String modelId =
                 isNull(parameters) || isNull(parameters.modelName()) ? this.modelId : parameters.modelName();
 
+        //https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html
+        validate(messages, modelId);
+        validateToolUse(toolSpecs, modelId);
+        if (nonNull(parameters)) validate(parameters);
+
         return ConverseRequest.builder()
-                .modelId(modelName)
+                .modelId(modelId)
                 .inferenceConfig(inferenceConfigurationFrom(parameters))
                 .system(extractSystemMessages(messages))
                 .messages(extractRegularMessages(messages))
                 .toolConfig(extractToolConfigurationFrom(toolSpecs))
                 .build();
+    }
+
+    static void validate(ChatRequestParameters parameters) {
+        String errorTemplate = "%s is not supported yet by this model provider";
+
+        if (parameters.topK() != null) {
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'topK' parameter"));
+        }
+        if (parameters.frequencyPenalty() != null) {
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'frequencyPenalty' parameter"));
+        }
+        if (parameters.presencePenalty() != null) {
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'presencePenalty' parameter"));
+        }
+        if (nonNull(parameters.responseFormat()) && parameters.responseFormat().type().equals(ResponseFormatType.JSON)) {
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
+        }
+    }
+
+    static void validate(List<ChatMessage> messages, String modelId) {
+        String errorTemplate = "%s is not supported yet by model %s";
+
+        for (ChatMessage message : messages) {
+            if (message instanceof UserMessage userMessage) {
+                for (Content content : userMessage.contents()) {
+                    if (content instanceof ImageContent && !IMAGE_SUPPORTED_PATTERN.matcher(modelId).find()) {
+                        throw new UnsupportedFeatureException(String.format(errorTemplate, "image content", modelId));
+                    } else if (content instanceof PdfFileContent && !DOCUMENT_CHAT_SUPPORTED_PATTERN.matcher(modelId).find()) {
+                        throw new UnsupportedFeatureException(String.format(errorTemplate, "PDF file content", modelId));
+                    }
+                }
+            } else if (message instanceof SystemMessage && !SYSTEM_PROMPTS_SUPPORTED_PATTERN.matcher(modelId).find()) {
+                throw new UnsupportedFeatureException(String.format(errorTemplate, "System message", modelId));
+            }
+        }
+    }
+
+    static void validateToolUse(List<ToolSpecification> toolSpecifications, String modelId) {
+        if (nonNull(toolSpecifications) && (!toolSpecifications.isEmpty()) && !TOOL_USE_SUPPORTED_PATTERN.matcher(modelId).find()) {
+            throw new UnsupportedFeatureException(String.format("Tool use is not supported yet by model %s", modelId));
+        }
     }
 
     private List<SystemContentBlock> extractSystemMessages(List<ChatMessage> messages) {
