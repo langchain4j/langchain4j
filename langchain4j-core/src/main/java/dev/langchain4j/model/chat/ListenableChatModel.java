@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * TODO
  */
-public interface ObservableChatModel extends ChatLanguageModel {
+public interface ListenableChatModel extends ChatLanguageModel {
 
     // TODO unit test: multiple listeners, errors, propagation of attributes from one listener to another, to another method, etc
 

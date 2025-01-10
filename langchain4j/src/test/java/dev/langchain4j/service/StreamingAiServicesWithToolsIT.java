@@ -11,7 +11,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ObservableStreamingChatModel;
+import dev.langchain4j.model.chat.ListenableStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -373,9 +373,9 @@ class StreamingAiServicesWithToolsIT {
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }
-        if (model instanceof ObservableStreamingChatModel observableStreamingChatModel) {
+        if (model instanceof ListenableStreamingChatModel listenableStreamingChatModel) {
             try {
-                verify(observableStreamingChatModel).listeners();
+                verify(listenableStreamingChatModel).listeners();
             } catch (Throwable ignored) {
                 // don't care if it was called or not
             }

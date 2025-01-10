@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OpenAiObservableChatModelIT { // TODO
+class OpenAiListenableChatModelIT { // TODO
 
     static class TestChatModelListener implements ChatModelListener {
 

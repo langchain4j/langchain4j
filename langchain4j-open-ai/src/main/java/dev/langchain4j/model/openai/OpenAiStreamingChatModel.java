@@ -11,7 +11,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.chat.ObservableStreamingChatModel;
+import dev.langchain4j.model.chat.ListenableStreamingChatModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -50,7 +50,7 @@ import static java.util.Collections.emptyList;
  * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class OpenAiStreamingChatModel implements ObservableStreamingChatModel, TokenCountEstimator {
+public class OpenAiStreamingChatModel implements ListenableStreamingChatModel, TokenCountEstimator {
 
     private final OpenAiClient client;
 

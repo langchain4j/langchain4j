@@ -4,7 +4,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.ObservableChatModel;
+import dev.langchain4j.model.chat.ListenableChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -21,11 +21,11 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
-public abstract class ObservableChatModelIT { // TODO?
+public abstract class ListenableChatModelIT { // TODO?
 
     // TODO test streaming as well
 
-    protected abstract ObservableChatModel createModel(ChatModelListener listener);
+    protected abstract ListenableChatModel createModel(ChatModelListener listener);
 
     protected abstract String modelName();
 
@@ -41,7 +41,7 @@ public abstract class ObservableChatModelIT { // TODO?
         return 7;
     }
 
-    protected abstract ObservableChatModel createFailingModel(ChatModelListener listener);
+    protected abstract ListenableChatModel createFailingModel(ChatModelListener listener);
 
     protected abstract Class<? extends Exception> expectedExceptionClass();
 

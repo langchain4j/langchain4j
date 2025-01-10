@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * TODO
  */
-public interface ObservableStreamingChatModel extends StreamingChatLanguageModel {
+public interface ListenableStreamingChatModel extends StreamingChatLanguageModel {
 
     @Override
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
@@ -25,7 +25,7 @@ public interface ObservableStreamingChatModel extends StreamingChatLanguageModel
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-        ObservableChatModel.onRequest(finalChatRequest, attributes, listeners);
+        ListenableChatModel.onRequest(finalChatRequest, attributes, listeners);
 
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 
@@ -36,13 +36,13 @@ public interface ObservableStreamingChatModel extends StreamingChatLanguageModel
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                ObservableChatModel.onResponse(completeResponse, finalChatRequest, attributes, listeners);
+                ListenableChatModel.onResponse(completeResponse, finalChatRequest, attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ObservableChatModel.onError(error, finalChatRequest, attributes, listeners);
+                ListenableChatModel.onError(error, finalChatRequest, attributes, listeners);
                 handler.onError(error);
             }
         };
