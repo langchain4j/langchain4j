@@ -6,12 +6,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.InitializationNotification;
-import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpClientMessage;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
-import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
@@ -83,7 +80,7 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> listTools(McpListToolsRequest operation) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
         try {
             Request httpRequest = createRequest(operation);
             return execute(httpRequest, operation.getId());
@@ -93,22 +90,12 @@ public class HttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeTool(McpCallToolRequest operation) {
+    public void executeOperationWithoutResponse(McpClientMessage operation) {
         try {
             Request httpRequest = createRequest(operation);
-            return execute(httpRequest, operation.getId());
-        } catch (JsonProcessingException e) {
-            return CompletableFuture.failedFuture(e);
-        }
-    }
-
-    @Override
-    public void cancelOperation(long operationId) {
-        try {
-            Request httpRequest = createRequest(new CancellationNotification(operationId, "Timeout"));
             execute(httpRequest, null);
         } catch (JsonProcessingException e) {
-            log.warn("Failed to create a cancellation request", e);
+            throw new RuntimeException(e);
         }
     }
 
