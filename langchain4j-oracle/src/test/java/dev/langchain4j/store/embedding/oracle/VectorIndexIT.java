@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.oracle;
 
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.sql.*;
@@ -79,7 +78,7 @@ public class VectorIndexIT {
             }
 
             OracleEmbeddingStore oracleEmbeddingStore = OracleEmbeddingStore.builder()
-                    .dataSource(CommonTestOperations.getDataSource())
+                    .dataSource(getDataSource())
                     .embeddingTable(EmbeddingTable.builder()
                             .createOption(CreateOption.CREATE_IF_NOT_EXISTS)
                             .name(TABLE_NAME)
@@ -87,21 +86,25 @@ public class VectorIndexIT {
                     .index(ivfIndexBuilder.build())
                     .build();
 
-            try (Connection connection =
-                            CommonTestOperations.getSysDBADataSource().getConnection();
+            try (Connection connection = getSysDBADataSource().getConnection();
                     PreparedStatement stmt = connection.prepareStatement(
                             "select IDX_PARAMS from vecsys.vector$index where IDX_NAME = ?")) {
                 stmt.setString(1, TABLE_NAME + "_VECTOR_INDEX");
                 ResultSet rs = stmt.executeQuery();
-                assertThat(rs.next()).as("A index should be returned").isTrue();
-                OracleJsonObject params = rs.getObject("IDX_PARAMS", OracleJsonObject.class);
-                assertIndexType("IVF_FLAT", params);
-                assertTargetAccuracy(targetAccuracy, params);
-                assertDegreeOfParallelism(degreeOfParallelism, params);
-                assertNeighborPartitions(neighborPartitions, params);
-                assertSamplePerPartition(samplePerPartition, params);
-                assertMinVectorsPerPartition(minVectorsPerPartition, params);
-                assertThat(rs.next()).as("Only one index should be returned").isFalse();
+                if (rs.next()) {
+                    OracleJsonObject params = rs.getObject("IDX_PARAMS", OracleJsonObject.class);
+                    assertIndexType("IVF_FLAT", params);
+                    assertTargetAccuracy(targetAccuracy, params);
+                    assertDegreeOfParallelism(degreeOfParallelism, params);
+                    assertNeighborPartitions(neighborPartitions, params);
+                    assertSamplePerPartition(samplePerPartition, params);
+                    assertMinVectorsPerPartition(minVectorsPerPartition, params);
+                    assertThat(rs.next())
+                            .as("Only one index should be returned")
+                            .isFalse();
+                } else {
+                    fail("The result set should have returned a line");
+                }
             }
             verifySearch(oracleEmbeddingStore);
         } finally {
@@ -132,7 +135,7 @@ public class VectorIndexIT {
                     .build();
 
             OracleEmbeddingStore oracleEmbeddingStore = OracleEmbeddingStore.builder()
-                    .dataSource(CommonTestOperations.getDataSource())
+                    .dataSource(getDataSource())
                     .embeddingTable(EmbeddingTable.builder()
                             .createOption(CreateOption.CREATE_IF_NOT_EXISTS)
                             .name(TABLE_NAME)
@@ -166,7 +169,7 @@ public class VectorIndexIT {
                     .build();
 
             OracleEmbeddingStore oracleEmbeddingStore = OracleEmbeddingStore.builder()
-                    .dataSource(CommonTestOperations.getDataSource())
+                    .dataSource(getDataSource())
                     .embeddingTable(EmbeddingTable.builder()
                             .createOption(CreateOption.CREATE_IF_NOT_EXISTS)
                             .name(TABLE_NAME)
@@ -199,7 +202,7 @@ public class VectorIndexIT {
     public void InvalidIndexNameTest(String indexName) throws Exception {
         try {
             OracleEmbeddingStore.builder()
-                    .dataSource(CommonTestOperations.getDataSource())
+                    .dataSource(getDataSource())
                     .embeddingTable(EmbeddingTable.builder()
                             .createOption(CreateOption.CREATE_OR_REPLACE)
                             .name(TABLE_NAME)
@@ -217,7 +220,7 @@ public class VectorIndexIT {
         }
         try {
             OracleEmbeddingStore.builder()
-                    .dataSource(CommonTestOperations.getDataSource())
+                    .dataSource(getDataSource())
                     .embeddingTable(EmbeddingTable.builder()
                             .createOption(CreateOption.CREATE_OR_REPLACE)
                             .name(TABLE_NAME)
@@ -257,17 +260,17 @@ public class VectorIndexIT {
      */
     private void verifyIndexExists(CreateOption createOption, String tableName, String indexName, String indexType)
             throws SQLException {
-        try (Connection connection = CommonTestOperations.getDataSource().getConnection();
-                Statement statement = connection.createStatement();
-                ResultSet resultSet = statement.executeQuery("SELECT 'OK'" + " FROM user_indexes"
-                        + " WHERE table_name='"
-                        + tableName + "'" + " AND index_name='"
-                        + indexName + "'" + " AND index_type='"
-                        + indexType + "'")) {
-
-            if (createOption == CreateOption.CREATE_NONE)
-                assertThat(resultSet.next()).isFalse();
-            else assertThat(resultSet.next()).isTrue();
+        try (Connection connection = getDataSource().getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(
+                        "SELECT 'OK' FROM user_indexes" + "WHERE table_name=? AND index_name=? AND index_type?")) {
+            preparedStatement.setString(1, tableName);
+            preparedStatement.setString(2, indexName);
+            preparedStatement.setString(3, indexType);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (createOption == CreateOption.CREATE_NONE)
+                    assertThat(resultSet.next()).isFalse();
+                else assertThat(resultSet.next()).isTrue();
+            }
         }
     }
 

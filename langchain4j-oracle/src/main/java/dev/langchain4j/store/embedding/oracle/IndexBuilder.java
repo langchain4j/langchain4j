@@ -80,11 +80,12 @@ abstract class IndexBuilder<T extends IndexBuilder> {
      * @return The index name truncated to the max length allowed by the database.
      */
     private String truncateIndexName(String indexName, boolean isQuoted) {
+        String truncatedIndexName = indexName;
         int maxLength = isQuoted ? INDEX_NAME_MAX_LENGTH - 2 : INDEX_NAME_MAX_LENGTH;
-        if (indexName.length() > maxLength) {
-            indexName = indexName.substring(0, maxLength);
+        if (truncatedIndexName.length() > maxLength) {
+            truncatedIndexName = truncatedIndexName.substring(0, maxLength);
         }
-        return indexName;
+        return truncatedIndexName;
     }
 
     /**
@@ -93,7 +94,8 @@ abstract class IndexBuilder<T extends IndexBuilder> {
      * @return The unquoted table name.
      */
     private String unquoteTableName(String tableName) {
-        return tableName.substring(1, tableName.length() - 1);
+        String unquotedTableName = tableName;
+        return unquotedTableName.substring(1, unquotedTableName.length() - 1);
     }
 
     /**
