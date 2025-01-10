@@ -2,7 +2,7 @@ package dev.langchain4j.model.bedrock.converse;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -98,22 +98,19 @@ public class AwsDocumentConverter {
     }
 
     public static Document convertJsonObjectSchemaToDocument(ToolSpecification toolSpecification) {
-        if (isNull(toolSpecification.parameters()))
-            return Document.mapBuilder()
-                    .putString(TYPE, OBJECT)
-                    .putString(DESCRIPTION, toolSpecification.description())
-                    .build();
-        else
-            return Document.mapBuilder()
-                    .putString(TYPE, OBJECT)
-                    .putString(DESCRIPTION, toolSpecification.description())
+        final Document.MapBuilder mapBuilder = Document.mapBuilder().putString(TYPE, OBJECT);
+        if (nonNull(toolSpecification.description()))
+            mapBuilder.putString(DESCRIPTION, toolSpecification.description());
+
+        if (nonNull(toolSpecification.parameters()))
+            mapBuilder
                     .putDocument("properties", createPropertiesDocument(toolSpecification.parameters()))
                     .putList("required", builder -> toolSpecification
                             .parameters()
                             .properties()
                             .keySet()
-                            .forEach(builder::addString))
-                    .build();
+                            .forEach(builder::addString));
+        return mapBuilder.build();
     }
 
     private static Document createPropertiesDocument(JsonObjectSchema schema) {

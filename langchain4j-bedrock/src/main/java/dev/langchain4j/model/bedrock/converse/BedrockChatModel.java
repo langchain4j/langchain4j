@@ -38,6 +38,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -125,7 +126,10 @@ public class BedrockChatModel implements ChatLanguageModel {
         ConverseResponse response = withRetry(() -> client.converse(request), this.maxRetries);
         logger.debug("RESPONSE : {}", response);
         return Response.from(
-                aiMessageFrom(response), tokenUsageFrom(response.usage()), finishReasonFrom(response.stopReason()));
+                aiMessageFrom(response),
+                tokenUsageFrom(response.usage()),
+                finishReasonFrom(response.stopReason()),
+                Map.of("id", response.responseMetadata().requestId()));
     }
 
     @Override
@@ -139,6 +143,7 @@ public class BedrockChatModel implements ChatLanguageModel {
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(response))
                 .metadata(ChatResponseMetadata.builder()
+                        .id(response.responseMetadata().requestId())
                         .finishReason(finishReasonFrom(response.stopReason()))
                         .tokenUsage(tokenUsageFrom(response.usage()))
                         .modelName(convRequest.modelId())
@@ -322,15 +327,31 @@ public class BedrockChatModel implements ChatLanguageModel {
     }
 
     private ContentBlock createImageBlock(ImageContent imageContent) {
+        final SdkBytes bytes = fromByteArray(
+                nonNull(imageContent.image().base64Data())
+                        ? Base64.getDecoder().decode(imageContent.image().base64Data())
+                        : readBytes(String.valueOf(imageContent.image().url())));
+        final String imgFormat = nonNull(imageContent.image().mimeType())
+                ? extractImageFormat(imageContent.image().mimeType())
+                : extractURIFileExtension(imageContent.image().url());
         return ContentBlock.builder()
                 .image(ImageBlock.builder()
-                        .format(extractImageFormat(imageContent.image().mimeType()))
-                        .source(ImageSource.builder()
-                                .bytes(fromByteArray(Base64.getDecoder()
-                                        .decode(imageContent.image().base64Data())))
-                                .build())
+                        .format(imgFormat)
+                        .source(ImageSource.builder().bytes(bytes).build())
                         .build())
                 .build();
+    }
+
+    private String extractURIFileExtension(URI url) {
+        String path = url.getPath();
+
+        // Extract the file extension
+        String extension = "";
+        int lastDotIndex = path.lastIndexOf('.');
+        if (lastDotIndex != -1 && lastDotIndex < path.length() - 1) {
+            extension = path.substring(lastDotIndex + 1);
+        }
+        return extension;
     }
 
     private String extractImageFormat(String mimeType) {
@@ -446,7 +467,7 @@ public class BedrockChatModel implements ChatLanguageModel {
         }
     }
 
-    private static Float dblToFloat(Double d) {
+    public static Float dblToFloat(Double d) {
         if (Objects.isNull(d)) {
             return null;
         } else return d.floatValue();
@@ -495,7 +516,8 @@ public class BedrockChatModel implements ChatLanguageModel {
         }
 
         public BedrockChatModelBuilder stopSequences(List<String> stopSequences) {
-            this.stopSequences = new ArrayList<>(stopSequences);
+            if (nonNull(stopSequences)) this.stopSequences = new ArrayList<>(stopSequences);
+            else this.stopSequences = new ArrayList<>();
             return this;
         }
 
