@@ -234,7 +234,7 @@ class BedrockChatModelWithConverseAPIIT {
         // Given
         ChatLanguageModel model = BedrockChatModel.builder()
                 .modelId("us.amazon.nova-micro-v1:0")
-                .temperature(0.1f)
+                .temperature(0.1)
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)

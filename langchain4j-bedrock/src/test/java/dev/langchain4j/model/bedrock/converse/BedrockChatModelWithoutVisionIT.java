@@ -1,21 +1,19 @@
 package dev.langchain4j.model.bedrock.converse;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.common.AbstractChatModelIT;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import org.junit.jupiter.api.condition.DisabledIf;
-import org.junit.jupiter.api.condition.EnabledIf;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.List;
-
-import static dev.langchain4j.model.bedrock.converse.BedrockChatModel.dblToFloat;
 import static dev.langchain4j.model.bedrock.converse.TestedModels.AI_JAMBA_INSTRUCT;
 import static dev.langchain4j.model.bedrock.converse.TestedModels.AWS_NOVA_MICRO;
 import static dev.langchain4j.model.bedrock.converse.TestedModels.AWS_TITAN_TEXT_EXPRESS;
 import static dev.langchain4j.model.bedrock.converse.TestedModels.COHERE_COMMAND_R_PLUS;
 import static dev.langchain4j.model.bedrock.converse.TestedModels.MISTRAL_LARGE;
+
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import java.util.List;
+import org.junit.jupiter.api.condition.DisabledIf;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     @Override
@@ -40,14 +38,10 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
-        // TODO
         return BedrockChatModel.builder()
-                //force a working model with stopSequence parameter for @Tests
+                .defaultRequestParameters(parameters)
+                // force a working model with stopSequence parameter for @Tests
                 .modelId("cohere.command-r-v1:0")
-                .stopSequences(parameters.stopSequences())
-                .temperature(dblToFloat(parameters.temperature()))
-                .topP(dblToFloat(parameters.topP()))
-                .maxTokens(parameters.maxOutputTokens())
                 .build();
     }
 
@@ -81,10 +75,9 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         return false;
     }
 
+    // OVERRIDED TESTS
 
-    //OVERRIDED TESTS
-
-    //TODO TITAN_EXPRESS doesn't support system prompt
+    // TODO TITAN_EXPRESS doesn't support system prompt
     @Override
     @ParameterizedTest
     @MethodSource("models")
@@ -94,8 +87,8 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         }
     }
 
-    //TODO Nova models include StopSequence
-    //TODO Titan express error : "Malformed input request: 3 schema violations found"
+    // TODO Nova models include StopSequence
+    // TODO Titan express error : "Malformed input request: 3 schema violations found"
     @Override
     @ParameterizedTest
     @MethodSource("models")
@@ -106,7 +99,7 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         }
     }
 
-    //TODO Mistral Large support tool choice REQUIRED
+    // TODO Mistral Large support tool choice REQUIRED
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")

@@ -1,5 +1,9 @@
 package dev.langchain4j.model.bedrock.converse;
 
+import static dev.langchain4j.model.bedrock.converse.TestedModels.*;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -7,16 +11,10 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.List;
-
-import static dev.langchain4j.model.bedrock.converse.BedrockChatModel.dblToFloat;
-import static dev.langchain4j.model.bedrock.converse.TestedModels.*;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
     @Override
@@ -36,14 +34,10 @@ public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
-        // TODO
         return BedrockChatModel.builder()
-                //force a working model with stopSequence parameter for @Tests
+                .defaultRequestParameters(parameters)
+                // force a working model with stopSequence parameter for @Tests
                 .modelId("cohere.command-r-v1:0")
-                .stopSequences(parameters.stopSequences())
-                .temperature(dblToFloat(parameters.temperature()))
-                .topP(dblToFloat(parameters.topP()))
-                .maxTokens(parameters.maxOutputTokens())
                 .build();
     }
 
@@ -67,7 +61,7 @@ public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
         return false;
     }
 
-    //OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
+    // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
     @Override
     @ParameterizedTest
     @MethodSource("models")
@@ -76,9 +70,8 @@ public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
         // given
         List<String> stopSequences = List.of("World", " World");
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
-                .stopSequences(stopSequences)
-                .build();
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().stopSequences(stopSequences).build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Hello World'"))
@@ -98,5 +91,4 @@ public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
     }
-
 }

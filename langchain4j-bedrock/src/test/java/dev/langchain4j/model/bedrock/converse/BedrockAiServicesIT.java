@@ -14,6 +14,7 @@ import java.util.List;
 public class BedrockAiServicesIT extends AbstractAiServiceIT {
     @Override
     protected List<ChatLanguageModel> models() {
-        return List.of(AWS_NOVA_MICRO, AWS_NOVA_LITE, AWS_NOVA_PRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE, CLAUDE_3_HAIKU);
+        return List.of(
+                AWS_NOVA_MICRO, AWS_NOVA_LITE, AWS_NOVA_PRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE, CLAUDE_3_HAIKU);
     }
 }

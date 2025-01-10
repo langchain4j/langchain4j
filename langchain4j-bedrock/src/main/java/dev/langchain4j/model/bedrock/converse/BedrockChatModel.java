@@ -76,16 +76,15 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
 public class BedrockChatModel implements ChatLanguageModel {
 
-    private Logger logger = LoggerFactory.getLogger(BedrockChatModel.class);
+    private final Logger logger = LoggerFactory.getLogger(BedrockChatModel.class);
 
     // based on input modalities from https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
-    private static final Pattern IMAGE_SUPPORTED_PATTERN =
-            Pattern.compile("(amazon\\.nova-lite|amazon\\.nova-pro|"
-                    + "anthropic\\.claude-(3|3-5)-haiku|"
-                    + "anthropic\\.claude-3-opus|"
-                    + "anthropic\\.claude-(3|3-5)-sonnet|"
-                    + "meta\\.llama3-2-11b-instruct|"
-                    + "meta\\.llama3-2-90b-instruct)");
+    private static final Pattern IMAGE_SUPPORTED_PATTERN = Pattern.compile("(amazon\\.nova-lite|amazon\\.nova-pro|"
+            + "anthropic\\.claude-(3|3-5)-haiku|"
+            + "anthropic\\.claude-3-opus|"
+            + "anthropic\\.claude-(3|3-5)-sonnet|"
+            + "meta\\.llama3-2-11b-instruct|"
+            + "meta\\.llama3-2-90b-instruct)");
     // based on "document chat", "tool use" and "system prompts" from
     // https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html
     private static final Pattern DOCUMENT_CHAT_SUPPORTED_PATTERN = Pattern.compile(
@@ -142,38 +141,59 @@ public class BedrockChatModel implements ChatLanguageModel {
     private final Region region;
     private final AwsCredentialsProvider credentialsProvider;
     private final String modelId;
-    private final InferenceConfiguration inferenceConfiguration;
     private final Integer maxRetries;
     private final Duration timeout;
     private final BedrockRuntimeClient client;
+    private final ChatRequestParameters defaultRequestParameters;
 
     public BedrockChatModel(String modelId) {
         this(
                 Region.US_EAST_1,
                 DefaultCredentialsProvider.create(),
                 modelId,
-                InferenceConfiguration.builder().build(),
+                null,
+                0.7d,
+                null,
+                null,
                 5,
                 Duration.ofMinutes(1),
-                null);
+                null,
+                ChatRequestParameters.builder().build());
     }
 
     public BedrockChatModel(
             Region region,
             AwsCredentialsProvider credentialsProvider,
             String modelId,
-            InferenceConfiguration inferenceConfiguration,
+            Integer maxTokens,
+            Double temperature,
+            Double topP,
+            List<String> stopSequences,
             Integer maxRetries,
             Duration timeout,
-            BedrockRuntimeClient client) {
+            BedrockRuntimeClient client,
+            ChatRequestParameters defaultRequestParameters) {
         this.region = getOrDefault(region, Region.US_EAST_1);
         this.credentialsProvider = getOrDefault(credentialsProvider, DefaultCredentialsProvider.create());
         this.modelId = getOrDefault(modelId, "us.amazon.nova-micro-v1:0");
-        this.inferenceConfiguration = getOrDefault(
-                inferenceConfiguration, InferenceConfiguration.builder().build());
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.timeout = getOrDefault(timeout, Duration.ofMinutes(1));
         this.client = isNull(client) ? createClient() : client;
+        this.defaultRequestParameters = ChatRequestParameters.builder()
+                .modelName(getOrDefault(
+                        modelId, nonNull(defaultRequestParameters) ? defaultRequestParameters.modelName() : null))
+                .temperature(getOrDefault(
+                        temperature, nonNull(defaultRequestParameters) ? defaultRequestParameters.temperature() : null))
+                .maxOutputTokens(getOrDefault(
+                        maxTokens,
+                        nonNull(defaultRequestParameters) ? defaultRequestParameters.maxOutputTokens() : null))
+                .topP(getOrDefault(topP, nonNull(defaultRequestParameters) ? defaultRequestParameters.topP() : null))
+                .stopSequences(getOrDefault(
+                        stopSequences,
+                        nonNull(defaultRequestParameters) ? defaultRequestParameters.stopSequences() : null))
+                .build();
+
+        validate(this.defaultRequestParameters, modelId);
     }
 
     @Override
@@ -220,16 +240,16 @@ public class BedrockChatModel implements ChatLanguageModel {
 
     private ConverseRequest buildConverseRequest(
             List<ChatMessage> messages, List<ToolSpecification> toolSpecs, ChatRequestParameters parameters) {
-        final String modelId =
+        final String model =
                 isNull(parameters) || isNull(parameters.modelName()) ? this.modelId : parameters.modelName();
 
         // https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html
-        validate(messages, modelId);
-        validateToolUse(toolSpecs, modelId);
-        if (nonNull(parameters)) validate(parameters, modelId);
+        validate(messages, model);
+        validateToolUse(toolSpecs, model);
+        if (nonNull(parameters)) validate(parameters, model);
 
         return ConverseRequest.builder()
-                .modelId(modelId)
+                .modelId(model)
                 .inferenceConfig(inferenceConfigurationFrom(parameters))
                 .system(extractSystemMessages(messages))
                 .messages(extractRegularMessages(messages))
@@ -587,15 +607,20 @@ public class BedrockChatModel implements ChatLanguageModel {
         if (nonNull(chatRequestParameters)) {
             return InferenceConfiguration.builder()
                     .maxTokens(getOrDefault(
-                            chatRequestParameters.maxOutputTokens(), this.inferenceConfiguration.maxTokens()))
-                    .temperature(getOrDefault(
-                            dblToFloat(chatRequestParameters.temperature()), this.inferenceConfiguration.temperature()))
-                    .topP(getOrDefault(dblToFloat(chatRequestParameters.topP()), this.inferenceConfiguration.topP()))
+                            chatRequestParameters.maxOutputTokens(), this.defaultRequestParameters.maxOutputTokens()))
+                    .temperature(dblToFloat(getOrDefault(
+                            chatRequestParameters.temperature(), this.defaultRequestParameters.temperature())))
+                    .topP(dblToFloat(getOrDefault(chatRequestParameters.topP(), this.defaultRequestParameters.topP())))
                     .stopSequences(getOrDefault(
-                            chatRequestParameters.stopSequences(), this.inferenceConfiguration.stopSequences()))
+                            chatRequestParameters.stopSequences(), this.defaultRequestParameters.stopSequences()))
                     .build();
         } else {
-            return this.inferenceConfiguration;
+            return InferenceConfiguration.builder()
+                    .maxTokens(this.defaultRequestParameters.maxOutputTokens())
+                    .temperature(dblToFloat(this.defaultRequestParameters.temperature()))
+                    .topP(dblToFloat(this.defaultRequestParameters.topP()))
+                    .stopSequences(this.defaultRequestParameters.stopSequences())
+                    .build();
         }
     }
 
@@ -610,12 +635,13 @@ public class BedrockChatModel implements ChatLanguageModel {
         private AwsCredentialsProvider credentialsProvider;
         private String modelId;
         private Integer maxTokens;
-        private Float temperature;
-        private Float topP;
+        private Double temperature;
+        private Double topP;
         private List<String> stopSequences;
         private Integer maxRetries;
         private Duration timeout;
         private BedrockRuntimeClient client;
+        private ChatRequestParameters defaultRequestParameters;
 
         public BedrockChatModelBuilder region(Region region) {
             this.region = region;
@@ -637,12 +663,12 @@ public class BedrockChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public BedrockChatModelBuilder temperature(Float temperature) {
+        public BedrockChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        public BedrockChatModelBuilder topP(Float topP) {
+        public BedrockChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
@@ -668,15 +694,24 @@ public class BedrockChatModel implements ChatLanguageModel {
             return this;
         }
 
+        public BedrockChatModelBuilder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
         public BedrockChatModel build() {
-            final InferenceConfiguration inferenceConfiguration = InferenceConfiguration.builder()
-                    .maxTokens(maxTokens)
-                    .temperature(temperature)
-                    .topP(topP)
-                    .stopSequences(stopSequences)
-                    .build();
             return new BedrockChatModel(
-                    region, credentialsProvider, modelId, inferenceConfiguration, maxRetries, timeout, client);
+                    region,
+                    credentialsProvider,
+                    modelId,
+                    maxTokens,
+                    temperature,
+                    topP,
+                    stopSequences,
+                    maxRetries,
+                    timeout,
+                    client,
+                    defaultRequestParameters);
         }
     }
 }
