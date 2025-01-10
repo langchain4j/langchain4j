@@ -40,6 +40,11 @@ final class CommonTestOperations {
     /** Name of a database table used by tests */
     public static final String TABLE_NAME = "LANGCHAIN4J_EMBEDDING_STORE";
 
+    private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
+    private static final PoolDataSource SYSDBA_DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
+
+    private static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.6-slim-faststart";
+
     /**
      * Seed for random numbers. When a test fails, "-Ddev.langchain4j.store.embedding.oracle.SEED=..." can be used to
      * re-execute it with the same random numbers.
@@ -47,24 +52,15 @@ final class CommonTestOperations {
     private static final long SEED =
             Long.getLong("dev.langchain4j.store.embedding.oracle.SEED", System.currentTimeMillis());
 
-    static {
-        Logger.getLogger(CommonTestOperations.class.getName())
-                .info("dev.langchain4j.store.embedding.oracle.SEED=" + SEED);
-    }
-
     /**
      * Used to generate random numbers, such as those for an embedding vector.
      */
     private static final Random RANDOM = new Random(SEED);
 
-    private CommonTestOperations() {}
-
-    private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
-    private static final PoolDataSource SYSDBA_DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
-
-    public static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.6-slim-faststart";
-
     static {
+        Logger.getLogger(CommonTestOperations.class.getName())
+                .info("dev.langchain4j.store.embedding.oracle.SEED=" + SEED);
+
         try {
             DATA_SOURCE.setConnectionFactoryClassName("oracle.jdbc.datasource.impl.OracleDataSource");
             String urlFromEnv = System.getenv("ORACLE_JDBC_URL");
@@ -103,6 +99,8 @@ final class CommonTestOperations {
             throw new AssertionError(sqlException);
         }
     }
+
+    private CommonTestOperations() {}
 
     static void initDataSource(PoolDataSource dataSource, String url, String username, String password) {
         try {

@@ -31,6 +31,15 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilteringIT {
 
+    /**
+     * A String of more than 32767 characters. Appending this to any other String will require a conversion to CLOB.
+     * The value of 32767 is the maximum size of a VARCHAR for Oracle Database if the "MAX_STRING_SIZE" initialization
+     * parameter is set to "EXTENDED". Otherwise, the maximum size is 4000. Either way, this length will force a CLOB
+     * conversion.
+     */
+    private static final String STRING_32K =
+            Stream.generate(() -> "A").limit(32768).collect(Collectors.joining());
+
     private final OracleEmbeddingStore embeddingStore = CommonTestOperations.newEmbeddingStore();
 
     @Override
@@ -161,15 +170,6 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
     }
 
     /**
-     * A String of more than 32767 characters. Appending this to any other String will require a conversion to CLOB.
-     * The value of 32767 is the maximum size of a VARCHAR for Oracle Database if the "MAX_STRING_SIZE" initialization
-     * parameter is set to "EXTENDED". Otherwise, the maximum size is 4000. Either way, this length will force a CLOB
-     * conversion.
-     */
-    private static final String STRING_32K =
-            Stream.generate(() -> "A").limit(32768).collect(Collectors.joining());
-
-    /**
      * Converts a Filter into one which uses a long String value.
      *
      * @param filter Filter to convert. Not null.
@@ -212,7 +212,7 @@ public class OracleEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilte
             Not not = (Not) filter;
             return new Not(toClobFilter(not.expression()));
         } else {
-            throw new RuntimeException("Need to add a case for: " + filter.getClass());
+            throw new UnsupportedOperationException("Need to add a case for: " + filter.getClass());
         }
     }
 

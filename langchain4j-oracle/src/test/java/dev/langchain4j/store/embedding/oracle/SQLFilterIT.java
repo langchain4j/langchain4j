@@ -139,25 +139,4 @@ public class SQLFilterIT {
         // CLOB is lossless for all Java Strings (assuming the database character set is UTF-8)
 
     }
-
-    /**
-     * Verifies that a Java to SQL conversion is lossless. A PreparedStatement converts Java objects into SQL data
-     * types, and a ResultSet converts SQL data types into Java objects. A conversion is lossless if, after converting a
-     * Java object into SQL data, that SQL data can be converted back into a Java object which is equal to the original,
-     * according to {@link Object#equals(Object)}.
-     *
-     * @param sqlType A SQL data type. Not null.
-     * @param javaObject Java object to convert into the SQL data type. Not null.
-     */
-    private void verifyLosslessConversion(SQLType sqlType, Object javaObject) throws SQLException {
-        try (Connection connection = CommonTestOperations.getDataSource().getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement("SELECT ? FROM sys.dual")) {
-
-            preparedStatement.setObject(1, javaObject, sqlType);
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                assertThat(resultSet.next()).isTrue();
-                assertThat(resultSet.getObject(1, javaObject.getClass())).isEqualTo(javaObject);
-            }
-        }
-    }
 }

@@ -468,8 +468,9 @@ final class SQLFilters {
 
         @Override
         public int setParameters(PreparedStatement preparedStatement, int parameterIndex) throws SQLException {
+            int currentParameterIndex = parameterIndex;
             for (Object object : comparisonValues) {
-                setObject(preparedStatement, parameterIndex++, object, sqlType);
+                setObject(preparedStatement, currentParameterIndex++, object, sqlType);
             }
 
             return comparisonValues.size();
