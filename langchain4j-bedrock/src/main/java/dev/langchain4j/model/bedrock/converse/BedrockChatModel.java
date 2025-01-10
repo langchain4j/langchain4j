@@ -30,6 +30,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
@@ -53,6 +54,7 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
+import software.amazon.awssdk.services.bedrockruntime.model.AnyToolChoice;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
@@ -116,6 +118,10 @@ public class BedrockChatModel implements ChatLanguageModel {
                     "meta\\.llama3.*|" +                                        // Meta Llama 3.x
                     "mistral\\.mistral-(large.*|small.*|mixtral-8x7b-instruct))" // Mistral Large, Small, Mixtral
     );
+    //ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
+    private static final Pattern TOOLCHOICE_SUPPORTED_PATTERN = Pattern.compile(
+            "(anthropic\\.claude-3|" +
+                    "mistral\\.mistral-large.*)");
 
     private final Region region;
     private final AwsCredentialsProvider credentialsProvider;
@@ -204,18 +210,18 @@ public class BedrockChatModel implements ChatLanguageModel {
         //https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html
         validate(messages, modelId);
         validateToolUse(toolSpecs, modelId);
-        if (nonNull(parameters)) validate(parameters);
+        if (nonNull(parameters)) validate(parameters, modelId);
 
         return ConverseRequest.builder()
                 .modelId(modelId)
                 .inferenceConfig(inferenceConfigurationFrom(parameters))
                 .system(extractSystemMessages(messages))
                 .messages(extractRegularMessages(messages))
-                .toolConfig(extractToolConfigurationFrom(toolSpecs))
+                .toolConfig(extractToolConfigurationFrom(toolSpecs, parameters))
                 .build();
     }
 
-    static void validate(ChatRequestParameters parameters) {
+    static void validate(ChatRequestParameters parameters, String modelId) {
         String errorTemplate = "%s is not supported yet by this model provider";
 
         if (parameters.topK() != null) {
@@ -229,6 +235,9 @@ public class BedrockChatModel implements ChatLanguageModel {
         }
         if (nonNull(parameters.responseFormat()) && parameters.responseFormat().type().equals(ResponseFormatType.JSON)) {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
+        }
+        if (nonNull(parameters.toolChoice()) && parameters.toolChoice().equals(ToolChoice.REQUIRED) && !TOOLCHOICE_SUPPORTED_PATTERN.matcher(modelId).find()) {
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "ToolChoice.REQUIRED"));
         }
     }
 
@@ -453,11 +462,11 @@ public class BedrockChatModel implements ChatLanguageModel {
         return parts.length > 1 ? parts[1] : "jpeg";
     }
 
-    private ToolConfiguration extractToolConfigurationFrom(List<ToolSpecification> toolSpecifications) {
+    private ToolConfiguration extractToolConfigurationFrom(List<ToolSpecification> toolSpecifications, ChatRequestParameters parameters) {
         final List<Tool> allTools = new ArrayList<>();
         final ToolConfiguration.Builder toolConfigurationBuilder = ToolConfiguration.builder();
 
-        if (Objects.nonNull(toolSpecifications) && !toolSpecifications.isEmpty()) {
+        if (nonNull(toolSpecifications) && !toolSpecifications.isEmpty()) {
             final List<Tool> tools = toolSpecifications.stream()
                     .map(toolSpecification -> {
                         ToolInputSchema toolInputSchema = ToolInputSchema.builder()
@@ -479,6 +488,10 @@ public class BedrockChatModel implements ChatLanguageModel {
         if (allTools.isEmpty()) {
             return null;
         } else toolConfigurationBuilder.tools(allTools);
+
+        if (nonNull(parameters) && ToolChoice.REQUIRED.equals(parameters.toolChoice())) {
+            toolConfigurationBuilder.toolChoice(software.amazon.awssdk.services.bedrockruntime.model.ToolChoice.fromAny(AnyToolChoice.builder().build()));
+        }
 
         return toolConfigurationBuilder.build();
     }
@@ -543,7 +556,7 @@ public class BedrockChatModel implements ChatLanguageModel {
     }
 
     private InferenceConfiguration inferenceConfigurationFrom(ChatRequestParameters chatRequestParameters) {
-        if (Objects.nonNull(chatRequestParameters)) {
+        if (nonNull(chatRequestParameters)) {
             return InferenceConfiguration.builder()
                     .maxTokens(getOrDefault(
                             chatRequestParameters.maxOutputTokens(), this.inferenceConfiguration.maxTokens()))

@@ -63,7 +63,7 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsToolChoiceRequired() {
-        return true;
+        return false;
     }
 
     @Override
