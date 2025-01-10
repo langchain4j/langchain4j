@@ -60,12 +60,13 @@ abstract class IndexBuilder<T extends IndexBuilder> {
      * @return The index name.
      */
     String buildIndexName(String tableName, String suffix) {
-        boolean isQuoted = tableName.startsWith("\"") && tableName.endsWith("\"");
+        String unquotedTableName = tableName;
+        boolean isQuoted = unquotedTableName.startsWith("\"") && unquotedTableName.endsWith("\"");
         // If the table name is a quoted identifier, then the index name must also be quoted.
         if (isQuoted) {
-            tableName = unquoteTableName(tableName);
+            unquotedTableName = unquoteTableName(unquotedTableName);
         }
-        indexName = truncateIndexName(tableName + suffix, isQuoted);
+        indexName = truncateIndexName(unquotedTableName + suffix, isQuoted);
         if (isQuoted) {
             indexName = "\"" + indexName + "\"";
         }
