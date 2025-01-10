@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.InitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
@@ -45,7 +46,7 @@ public class DefaultMcpClient implements McpClient {
     private final JsonNode RESULT_TIMEOUT;
     private final String toolExecutionTimeoutErrorMessage;
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
-    private final McpOperationHandler messageHandler = new McpOperationHandler(pendingOperations);
+    private final McpOperationHandler messageHandler;
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -56,6 +57,7 @@ public class DefaultMcpClient implements McpClient {
         toolExecutionTimeoutErrorMessage =
                 getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
         RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
+        messageHandler = new McpOperationHandler(pendingOperations, transport);
         ((ObjectNode) RESULT_TIMEOUT)
                 .putObject("result")
                 .putArray("content")
@@ -102,7 +104,7 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<ToolSpecification> listTools() {
         McpListToolsRequest operation = new McpListToolsRequest(idGenerator.getAndIncrement());
-        CompletableFuture<JsonNode> resultFuture = transport.listTools(operation);
+        CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(operation);
         JsonNode result = null;
         try {
             result = resultFuture.get();
@@ -130,10 +132,10 @@ public class DefaultMcpClient implements McpClient {
         CompletableFuture<JsonNode> resultFuture = null;
         JsonNode result = null;
         try {
-            resultFuture = transport.executeTool(operation);
+            resultFuture = transport.executeOperationWithResponse(operation);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeout) {
-            transport.cancelOperation(operationId);
+            transport.executeOperationWithoutResponse(new CancellationNotification(operationId, "Timeout"));
             return ToolExecutionHelper.extractResult(
                     (ArrayNode) RESULT_TIMEOUT.get("result").get("content"));
         } catch (ExecutionException | InterruptedException e) {
