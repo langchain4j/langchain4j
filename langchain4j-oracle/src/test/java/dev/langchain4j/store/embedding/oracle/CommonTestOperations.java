@@ -62,7 +62,7 @@ final class CommonTestOperations {
     private static final PoolDataSource DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
     private static final PoolDataSource SYSDBA_DATA_SOURCE = PoolDataSourceFactory.getPoolDataSource();
 
-    public static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.5-slim-faststart";
+    public static final String ORACLE_IMAGE_NAME = "gvenzl/oracle-free:23.6-slim-faststart";
 
     static {
         try {
