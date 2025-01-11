@@ -1,11 +1,11 @@
 # Observability with Micrometer
 The `langchain4j-micrometer` module provides a Micrometer-based metrics implementation for the `langchain4j` library. For now, it only provides metrics for a chat model interaction.
-It uses the Micrometer Observation API in a `ChatModelListener` to collect metrics about the usage of a chat model. The naming of the metrics is based on the **OpenTelemetry Semantic Conventions for Generative AI Metrics**. 
+It uses the Micrometer Observation API in a `ChatModelListener` to collect metrics about the usage of a chat model. The naming of the metrics is based on the [OpenTelemetry Semantic Conventions for Generative AI Metrics](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/). 
 
 The following metrics are collected:
 
 - `langchain4j.chat.model.request` - The number of requests made to the chat model. Not part of the OpenTelemetry Semantic Conventions.
-- `langchain4j.chat.model.error` - The number of errors that occurred during the chat model interaction. Not part of the OpenTelemetry Semantic Conventions.
+- `langchain4j.chat.model.error` - The number of errors that soccurred during the chat model interaction. Not part of the OpenTelemetry Semantic Conventions.
 - `gen_ai.client.operation.duration` - The duration of the GenAI operation.
 - `gen_ai.client.token.usage` - The number of tokens used by the model for input, output, or both.
 

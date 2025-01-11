@@ -22,7 +22,6 @@
     </licenses>
 
     <properties>
-        <java.version>17</java.version>
         <micrometer.version>1.13.8</micrometer.version>
     </properties>
 
@@ -64,23 +63,6 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>test-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>
