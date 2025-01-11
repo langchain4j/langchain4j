@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 class ListenableChatModelTest {
 
@@ -120,12 +121,13 @@ class ListenableChatModelTest {
         // when - then
         assertThatNoException().isThrownBy(() -> model.chat("hi"));
 
-        InOrder inOrder = inOrder(failingListener, successfulListener);
-        inOrder.verify(failingListener).onRequest(any());
-        inOrder.verify(successfulListener).onRequest(any());
-        inOrder.verify(failingListener).onResponse(any());
-        inOrder.verify(successfulListener).onResponse(any());
-        inOrder.verifyNoMoreInteractions();
+        verify(failingListener).onRequest(any());
+        verify(failingListener).onResponse(any());
+        verifyNoMoreInteractions(failingListener);
+
+        verify(successfulListener).onRequest(any());
+        verify(successfulListener).onResponse(any());
+        verifyNoMoreInteractions(successfulListener);
     }
 
     @Test
