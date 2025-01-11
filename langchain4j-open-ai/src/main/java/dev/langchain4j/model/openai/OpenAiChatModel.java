@@ -61,7 +61,6 @@ public class OpenAiChatModel implements ListenableChatModel, TokenCountEstimator
     private final Integer maxRetries;
 
     private final OpenAiChatRequestParameters defaultRequestParameters;
-    private final Integer maxCompletionTokens;
     private final String responseFormat;
     private final Boolean strictJsonSchema;
     private final Boolean strictTools;
@@ -151,6 +150,7 @@ public class OpenAiChatModel implements ListenableChatModel, TokenCountEstimator
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
+                .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
                 .seed(getOrDefault(seed, openAiParameters.seed()))
@@ -159,7 +159,6 @@ public class OpenAiChatModel implements ListenableChatModel, TokenCountEstimator
                 .metadata(getOrDefault(metadata, () -> copyIfNotNull(openAiParameters.metadata())))
                 .serviceTier(getOrDefault(serviceTier, openAiParameters.serviceTier()))
                 .build();
-        this.maxCompletionTokens = maxCompletionTokens; // TODO move into OpenAI-specific params?
         this.responseFormat = responseFormat;
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(strictTools, false); // TODO move into OpenAI-specific params?
@@ -234,8 +233,8 @@ public class OpenAiChatModel implements ListenableChatModel, TokenCountEstimator
                 .topP(parameters.topP())
                 .frequencyPenalty(parameters.frequencyPenalty())
                 .presencePenalty(parameters.presencePenalty())
-                .maxTokens(parameters.maxOutputTokens()) // TODO maxCompletionTokens
-                .maxCompletionTokens(this.maxCompletionTokens)
+                .maxTokens(parameters.maxOutputTokens())
+                .maxCompletionTokens(parameters.maxCompletionTokens())
                 .stop(parameters.stopSequences())
                 .tools(toTools(parameters.toolSpecifications(), this.strictTools))
                 .toolChoice(toOpenAiToolChoice(parameters.toolChoice()))
