@@ -6,6 +6,8 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -16,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public interface ListenableChatModel extends ChatLanguageModel {
 
-    // TODO unit test: multiple listeners, errors, propagation of attributes from one listener to another, to another method, etc
+    Logger log = LoggerFactory.getLogger(ListenableChatModel.class);
 
     @Override
     default ChatResponse chat(ChatRequest chatRequest) {
@@ -54,7 +56,7 @@ public interface ListenableChatModel extends ChatLanguageModel {
             try {
                 listener.onRequest(requestContext);
             } catch (Exception e) {
-//                log.warn("Exception while calling model listener", e); TODO
+                log.warn("An exception occurred during the invocation of the chat model listener", e);
             }
         });
     }
@@ -74,7 +76,7 @@ public interface ListenableChatModel extends ChatLanguageModel {
             try {
                 listener.onResponse(responseContext);
             } catch (Exception e) {
-//                log.warn("Exception while calling model listener", e); TODO
+                log.warn("An exception occurred during the invocation of the chat model listener", e);
             }
         });
     }
@@ -94,8 +96,8 @@ public interface ListenableChatModel extends ChatLanguageModel {
         listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);
-            } catch (Exception e2) {
-//                    log.warn("Exception while calling model listener", e2); TODO
+            } catch (Exception e) {
+                log.warn("An exception occurred during the invocation of the chat model listener", e);
             }
         });
     }
