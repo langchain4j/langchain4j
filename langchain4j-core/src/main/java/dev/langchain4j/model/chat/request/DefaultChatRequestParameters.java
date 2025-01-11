@@ -102,8 +102,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         // TODO validate that "that" is of compatible type? What about custom user types?
 
         return DefaultChatRequestParameters.builder()
-                .copyFrom(this)
-                .copyFrom(that)
+                .overrideWith(this)
+                .overrideWith(that)
                 .build();
     }
 
@@ -177,7 +177,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
 
-        public T copyFrom(ChatRequestParameters parameters) {
+        public T overrideWith(ChatRequestParameters parameters) {
             modelName(getOrDefault(parameters.modelName(), modelName));
             temperature(getOrDefault(parameters.temperature(), temperature));
             topP(getOrDefault(parameters.topP(), topP));

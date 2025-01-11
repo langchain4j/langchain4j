@@ -66,8 +66,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         // TODO validate that "that" is of compatible type? What about custom user types?
 
         return OpenAiChatRequestParameters.builder()
-                .copyFrom(this)
-                .copyFrom(that)
+                .overrideWith(this)
+                .overrideWith(that)
                 .build();
     }
 
@@ -139,8 +139,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         private String serviceTier;
 
         @Override
-        public Builder copyFrom(ChatRequestParameters parameters) {
-            super.copyFrom(parameters);
+        public Builder overrideWith(ChatRequestParameters parameters) {
+            super.overrideWith(parameters);
             if (parameters instanceof OpenAiChatRequestParameters openAiParameters) {
                 logitBias(copyIfNotNull(getOrDefault(openAiParameters.logitBias(), logitBias)));
                 parallelToolCalls(getOrDefault(openAiParameters.parallelToolCalls(), parallelToolCalls));

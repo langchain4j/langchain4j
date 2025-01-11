@@ -1,5 +1,6 @@
 package dev.langchain4j.service.common.openai;
 
+import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -20,7 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OpenAiListenableChatModelIT { // TODO
+class OpenAiListenableChatModelIT { // TODO move to AbstractBaseChatModelIT?
 
     static class TestChatModelListener implements ChatModelListener {
 
@@ -104,23 +105,35 @@ class OpenAiListenableChatModelIT { // TODO
         assertThat(listener.responseContextReference.get().chatResponse()).isEqualTo(chatResponse);
     }
 
-//
-//    @Override
-//    protected String modelName() {
-//        return GPT_4_O_MINI.toString();
-//    }
-//
-//    @Override
-//    protected ObservableChatModel createFailingModel(ChatModelListener listener) {
-//        return OpenAiChatModel.builder()
-//                .apiKey("banana")
-//                .maxRetries(1)
-//                .listeners(singletonList(listener))
-//                .build();
-//    }
-//
-//    @Override
-//    protected Class<? extends Exception> expectedExceptionClass() {
-//        return OpenAiHttpException.class;
-//    }
+    @Test
+    void should_listen_error() {
+
+        // given
+        String incorrectApiKey = "banana";
+
+        TestChatModelListener listener = new TestChatModelListener();
+
+        ChatLanguageModel model = OpenAiChatModel.builder()
+                .apiKey(incorrectApiKey)
+                .maxRetries(1)
+                .listeners(List.of(listener))
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("does not matter"))
+                .build();
+
+        // when
+        Throwable thrownException = null;
+        try {
+            model.chat(chatRequest);
+        } catch (Exception e) {
+            thrownException = e;
+        }
+
+        // then
+        Throwable exceptionReportedToListener = listener.errorContextReference.get().error();
+        assertThat(exceptionReportedToListener).isExactlyInstanceOf(OpenAiHttpException.class);
+        assertThat(thrownException).isSameAs(exceptionReportedToListener);
+    }
 }

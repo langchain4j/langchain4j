@@ -182,7 +182,7 @@ public class OpenAiChatModel implements ListenableChatModel, TokenCountEstimator
     @Override
     public Set<Capability> supportedCapabilities() {
         Set<Capability> capabilities = new HashSet<>();
-        if ("json_schema".equals(responseFormat)) { // TODO
+        if ("json_schema".equals(responseFormat)) {
             capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
         }
         return capabilities;
@@ -277,7 +277,7 @@ public class OpenAiChatModel implements ListenableChatModel, TokenCountEstimator
     }
 
     @Override
-    public List<ChatModelListener> listeners() { // TODO make it protected?
+    public List<ChatModelListener> listeners() {
         return listeners;
     }
 
@@ -393,7 +393,7 @@ public class OpenAiChatModel implements ListenableChatModel, TokenCountEstimator
             return this;
         }
 
-        public OpenAiChatModelBuilder maxTokens(Integer maxTokens) { // TODO deprecate?
+        public OpenAiChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
