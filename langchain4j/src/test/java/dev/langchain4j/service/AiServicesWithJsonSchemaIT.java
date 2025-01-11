@@ -4,6 +4,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -225,13 +226,13 @@ public abstract class AiServicesWithJsonSchemaIT {
             // given
             model = spy(model);
 
-            SetOfStringsExtractor listOfStringsExtractor = AiServices.create(SetOfStringsExtractor.class, model);
+            SetOfStringsExtractor setOfStringsExtractor = AiServices.create(SetOfStringsExtractor.class, model);
 
             String text = "Klaus is 37 years old, 1.78m height and single. " +
                     "Franny is 35 years old, 1.65m height and married.";
 
             // when
-            Set<String> names = listOfStringsExtractor.extractOnlySetOfPeopleNames(text);
+            Set<String> names = setOfStringsExtractor.extractOnlySetOfPeopleNames(text);
 
             names.forEach(System.out::println);
 
@@ -252,6 +253,45 @@ public abstract class AiServicesWithJsonSchemaIT {
                                                             .build())
                                                     .build())
                                             .required("items")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+    interface BooleanExtractor {
+        @UserMessage("Extract if the person from the following text is a man: {{it}}")
+        Boolean isPersonAMan(String text);
+    }
+
+    @Test
+    protected void should_extract_boolean() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            BooleanExtractor booleanExtractor = AiServices.create(BooleanExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. ";
+
+            // when
+            boolean isAMan = booleanExtractor.isPersonAMan(text);
+
+            // then
+            assertThat(isAMan).isTrue();
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage("Extract if the person from the following text is a man: " + text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Boolean")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("boolean", JsonBooleanSchema.builder().build())
                                             .build())
                                     .build())
                             .build())

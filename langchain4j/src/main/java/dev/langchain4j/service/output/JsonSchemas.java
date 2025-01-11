@@ -3,6 +3,7 @@ package dev.langchain4j.service.output;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -40,6 +41,10 @@ public class JsonSchemas {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
 
+        if (returnType == Boolean.class) {
+            return getBooleanJsonSchema();
+        }
+
         if (!isPojo(returnType) && !isEnum(returnType) && !isListOfStrings(returnType) && !isSetOfStrings(returnType)) {
             return Optional.empty();
         }
@@ -71,6 +76,16 @@ public class JsonSchemas {
                 return Optional.of(jsonSchema);
             }
         }
+    }
+
+    private static Optional<JsonSchema> getBooleanJsonSchema() {
+        final JsonSchema jsonSchema = JsonSchema.builder()
+                .name("Boolean")
+                .rootElement(JsonObjectSchema.builder()
+                        .addProperty("boolean",JsonBooleanSchema.builder().build())
+                        .build())
+                .build();
+        return Optional.of(jsonSchema);
     }
 
     private static boolean isListOfStrings(Type returnType) {
