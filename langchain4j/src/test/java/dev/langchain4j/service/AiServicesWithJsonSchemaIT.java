@@ -34,6 +34,7 @@ import static org.mockito.Mockito.verify;
 
 public abstract class AiServicesWithJsonSchemaIT {
     // TODO move to common, use parameterized tests
+    // TODO test the same for streaming models
 
     protected abstract List<ChatLanguageModel> models();
 

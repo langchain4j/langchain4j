@@ -6,10 +6,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.CancellationNotification;
-import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.client.protocol.InitializationNotification;
+import dev.langchain4j.mcp.client.protocol.McpClientMessage;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
-import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
@@ -66,60 +65,38 @@ public class HttpMcpTransport implements McpTransport {
 
     @Override
     public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
-        try {
-            Request httpRequest = new Request.Builder()
-                    .url(postUrl)
-                    .header("Content-Type", "application/json")
-                    .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(operation)))
-                    .build();
-            return execute(httpRequest, operation.getId());
-        } catch (JsonProcessingException e) {
-            return CompletableFuture.failedFuture(e);
-        }
-    }
-
-    @Override
-    public CompletableFuture<JsonNode> listTools(McpListToolsRequest operation) {
-        try {
-            Request httpRequest = new Request.Builder()
-                    .url(postUrl)
-                    .header("Content-Type", "application/json")
-                    .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(operation)))
-                    .build();
-            return execute(httpRequest, operation.getId());
-        } catch (JsonProcessingException e) {
-            return CompletableFuture.failedFuture(e);
-        }
-    }
-
-    @Override
-    public CompletableFuture<JsonNode> executeTool(McpCallToolRequest operation) {
-        try {
-            Request httpRequest = new Request.Builder()
-                    .url(postUrl)
-                    .header("Content-Type", "application/json")
-                    .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(operation)))
-                    .build();
-            return execute(httpRequest, operation.getId());
-        } catch (JsonProcessingException e) {
-            return CompletableFuture.failedFuture(e);
-        }
-    }
-
-    @Override
-    public void cancelOperation(final long operationId) {
         Request httpRequest = null;
+        Request initializationNotification = null;
         try {
-            httpRequest = new Request.Builder()
-                    .url(postUrl)
-                    .header("Content-Type", "application/json")
-                    .post(RequestBody.create(
-                            OBJECT_MAPPER.writeValueAsBytes(new CancellationNotification(operationId, "Timeout"))))
-                    .build();
+            httpRequest = createRequest(operation);
+            initializationNotification = createRequest(new InitializationNotification());
         } catch (JsonProcessingException e) {
-            log.warn("Failed to create a cancellation request", e);
+            return CompletableFuture.failedFuture(e);
         }
-        execute(httpRequest, null);
+        final Request finalInitializationNotification = initializationNotification;
+        return execute(httpRequest, operation.getId())
+                .thenCompose(originalResponse -> execute(finalInitializationNotification, null)
+                        .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
+    }
+
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
+        try {
+            Request httpRequest = createRequest(operation);
+            return execute(httpRequest, operation.getId());
+        } catch (JsonProcessingException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    @Override
+    public void executeOperationWithoutResponse(McpClientMessage operation) {
+        try {
+            Request httpRequest = createRequest(operation);
+            execute(httpRequest, null);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private CompletableFuture<JsonNode> execute(Request request, Long id) {
@@ -138,6 +115,10 @@ public class HttpMcpTransport implements McpTransport {
                 int statusCode = response.code();
                 if (!isExpectedStatusCode(statusCode)) {
                     future.completeExceptionally(new RuntimeException("Unexpected status code: " + statusCode));
+                }
+                // For messages with null ID, we don't wait for a response in the SSE channel
+                if (id == null) {
+                    future.complete(null);
                 }
             }
         });
@@ -172,6 +153,14 @@ public class HttpMcpTransport implements McpTransport {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private Request createRequest(McpClientMessage message) throws JsonProcessingException {
+        return new Request.Builder()
+                .url(postUrl)
+                .header("Content-Type", "application/json")
+                .post(RequestBody.create(OBJECT_MAPPER.writeValueAsBytes(message)))
+                .build();
     }
 
     @Override
