@@ -101,7 +101,7 @@ const config = {
                     },
                     {
                         href: 'https://chat.langchain4j.dev/',
-                        label: 'Documentation chatbot (experimental)',
+                        label: 'Docu chatbot',
                         position: 'left',
                     },
                     {
