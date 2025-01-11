@@ -164,6 +164,54 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
     }
 
+    interface ListOfStringsExtractor {
+        @UserMessage("Extract names of people from the following text: {{it}}")
+        List<String> extractOnlyListOfPeopleNames(String text);
+    }
+
+    @Test
+    protected void should_extract_list_of_strings() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            ListOfStringsExtractor listOfStringsExtractor = AiServices.create(ListOfStringsExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                    "Franny is 35 years old, 1.65m height and married.";
+
+            // when
+            List<String> names = listOfStringsExtractor.extractOnlyListOfPeopleNames(text);
+
+            names.forEach(System.out::println);
+
+            // then
+            assertThat(names.size()).isEqualTo(2);
+            assertThat(names.get(0)).contains("Klaus");
+            assertThat(names.get(1)).contains("Franny");
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage("Extract names of people from the following text: " + text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("List_of_String")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("items", JsonArraySchema.builder()
+                                                    .items(JsonStringSchema.builder()
+                                                            .build())
+                                                    .build())
+                                            .required("items")
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
     interface PojoSetExtractor {
 
         class Person {

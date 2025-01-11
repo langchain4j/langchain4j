@@ -7,6 +7,7 @@ import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
@@ -39,7 +40,7 @@ public class JsonSchemas {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
 
-        if (!isPojo(returnType) && !isEnum(returnType)) {
+        if (!isPojo(returnType) && !isEnum(returnType) && !isListOfStrings(returnType)) {
             return Optional.empty();
         }
 
@@ -47,6 +48,8 @@ public class JsonSchemas {
             Class<?> actualType = resolveFirstGenericParameterClass(returnType);
             if (actualType != null && actualType.isEnum()) {
                 return Optional.of(arraySchemaFrom(returnType, actualType, enumSchemaFrom(actualType)));
+            } else if (actualType != null && String.class.equals(actualType)) {
+                return Optional.of(arraySchemaFrom(returnType, actualType, stringSchemaFrom()));
             } else {
                 return Optional.of(arraySchemaFrom(returnType, actualType, objectSchemaFrom(actualType)));
             }
@@ -54,20 +57,28 @@ public class JsonSchemas {
             Class<?> returnTypeClass = (Class<?>) returnType;
             if (returnTypeClass.isEnum()) {
                 JsonSchema jsonSchema = JsonSchema.builder()
-                    .name(returnTypeClass.getSimpleName())
-                    .rootElement(JsonObjectSchema.builder()
-                        .addProperty("value", enumSchemaFrom(returnTypeClass))
-                        .build())
-                    .build();
+                        .name(returnTypeClass.getSimpleName())
+                        .rootElement(JsonObjectSchema.builder()
+                                .addProperty("value", enumSchemaFrom(returnTypeClass))
+                                .build())
+                        .build();
                 return Optional.of(jsonSchema);
             } else {
                 JsonSchema jsonSchema = JsonSchema.builder()
-                    .name(returnTypeClass.getSimpleName())
-                    .rootElement(objectSchemaFrom(returnTypeClass))
-                    .build();
+                        .name(returnTypeClass.getSimpleName())
+                        .rootElement(objectSchemaFrom(returnTypeClass))
+                        .build();
                 return Optional.of(jsonSchema);
             }
         }
+    }
+
+    private static boolean isListOfStrings(Type returnType) {
+        Class<?> rawClass = getRawClass(returnType);
+        Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
+
+        // Check if raw class is a List and the first generic type argument is String
+        return List.class.isAssignableFrom(rawClass) && String.class.equals(typeArgumentClass);
     }
 
     private static JsonSchemaElement objectSchemaFrom(Class<?> actualType) {
@@ -76,20 +87,25 @@ public class JsonSchemas {
 
     private static JsonEnumSchema enumSchemaFrom(Class<?> actualType) {
         return JsonEnumSchema.builder()
-            .enumValues(stream(actualType.getEnumConstants()).map(Object::toString).toList())
-            .build();
+                .enumValues(stream(actualType.getEnumConstants()).map(Object::toString).toList())
+                .build();
+    }
+
+    private static JsonStringSchema stringSchemaFrom() {
+        return JsonStringSchema.builder()
+                .build();
     }
 
     private static JsonSchema arraySchemaFrom(Type returnType, Class<?> actualType, JsonSchemaElement items) {
         return JsonSchema.builder()
-            .name(getRawClass(returnType).getSimpleName() + "_of_" + actualType.getSimpleName())
-            .rootElement(JsonObjectSchema.builder()
-                .addProperty("items", JsonArraySchema.builder()
-                    .items(items)
-                    .build())
-                .required("items")
-                .build())
-            .build();
+                .name(getRawClass(returnType).getSimpleName() + "_of_" + actualType.getSimpleName())
+                .rootElement(JsonObjectSchema.builder()
+                        .addProperty("items", JsonArraySchema.builder()
+                                .items(items)
+                                .build())
+                        .required("items")
+                        .build())
+                .build();
     }
 
     static boolean isEnum(Type returnType) {
@@ -104,9 +120,9 @@ public class JsonSchemas {
     private static boolean isPojo(Type returnType) {
 
         if (returnType == String.class
-            || returnType == AiMessage.class
-            || returnType == TokenStream.class
-            || returnType == Response.class) {
+                || returnType == AiMessage.class
+                || returnType == TokenStream.class
+                || returnType == Response.class) {
             return false;
         }
 
