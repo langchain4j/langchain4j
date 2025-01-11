@@ -36,10 +36,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGE
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiResponseFormat;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiToolChoice;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toTools;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
@@ -55,7 +52,6 @@ public class OpenAiStreamingChatModel implements ListenableStreamingChatModel, T
     private final OpenAiClient client;
 
     private final OpenAiChatRequestParameters defaultRequestParameters;
-    private final Integer maxCompletionTokens;
     private final Boolean strictJsonSchema;
     private final Boolean strictTools;
 
@@ -137,6 +133,7 @@ public class OpenAiStreamingChatModel implements ListenableStreamingChatModel, T
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
+                .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
                 .seed(getOrDefault(seed, openAiParameters.seed()))
@@ -145,7 +142,6 @@ public class OpenAiStreamingChatModel implements ListenableStreamingChatModel, T
                 .metadata(getOrDefault(metadata, () -> copyIfNotNull(openAiParameters.metadata())))
                 .serviceTier(getOrDefault(serviceTier, openAiParameters.serviceTier()))
                 .build();
-        this.maxCompletionTokens = maxCompletionTokens; // TODO move into OpenAI-specific params?
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(strictTools, false); // TODO move into OpenAI-specific params?
 
@@ -202,38 +198,16 @@ public class OpenAiStreamingChatModel implements ListenableStreamingChatModel, T
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
-        // TODO reuse code from OpenAiChatModel
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
         InternalOpenAiHelper.validate(parameters);
 
-        ChatCompletionRequest openAiRequest = ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(chatRequest.messages()))
-                // streaming
-                .stream(true)
-                .streamOptions(StreamOptions.builder()
-                        .includeUsage(true)
-                        .build())
-                // common parameters
-                .model(parameters.modelName())
-                .temperature(parameters.temperature())
-                .topP(parameters.topP())
-                .frequencyPenalty(parameters.frequencyPenalty())
-                .presencePenalty(parameters.presencePenalty())
-                .maxTokens(parameters.maxOutputTokens()) // TODO maxCompletionTokens
-                .maxCompletionTokens(this.maxCompletionTokens)
-                .stop(parameters.stopSequences())
-                .tools(toTools(parameters.toolSpecifications(), this.strictTools))
-                .toolChoice(toOpenAiToolChoice(parameters.toolChoice()))
-                .responseFormat(toOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
-                // OpenAI-specific parameters
-                .logitBias(parameters.logitBias())
-                .parallelToolCalls(parameters.parallelToolCalls())
-                .seed(parameters.seed())
-                .user(parameters.user())
-                .store(parameters.store())
-                .metadata(parameters.metadata())
-                .serviceTier(parameters.serviceTier())
-                .build();
+        ChatCompletionRequest openAiRequest =
+                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema)
+                        .stream(true)
+                        .streamOptions(StreamOptions.builder()
+                                .includeUsage(true)
+                                .build())
+                        .build();
 
         OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
 

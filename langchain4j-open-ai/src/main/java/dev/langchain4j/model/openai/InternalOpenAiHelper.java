@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.ai4j.openai4j.chat.AssistantMessage;
+import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.ai4j.openai4j.chat.ContentType;
 import dev.ai4j.openai4j.chat.Function;
@@ -30,6 +31,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -590,5 +592,33 @@ public class InternalOpenAiHelper {
         } else {
             return null;
         }
+    }
+
+    static ChatCompletionRequest.Builder toOpenAiChatRequest(ChatRequest chatRequest,
+                                                             OpenAiChatRequestParameters parameters,
+                                                             Boolean strictTools,
+                                                             Boolean strictJsonSchema) {
+        return ChatCompletionRequest.builder()
+                .messages(toOpenAiMessages(chatRequest.messages()))
+                // common parameters
+                .model(parameters.modelName())
+                .temperature(parameters.temperature())
+                .topP(parameters.topP())
+                .frequencyPenalty(parameters.frequencyPenalty())
+                .presencePenalty(parameters.presencePenalty())
+                .maxTokens(parameters.maxOutputTokens())
+                .stop(parameters.stopSequences())
+                .tools(toTools(parameters.toolSpecifications(), strictTools))
+                .toolChoice(toOpenAiToolChoice(parameters.toolChoice()))
+                .responseFormat(toOpenAiResponseFormat(parameters.responseFormat(), strictJsonSchema))
+                // OpenAI-specific parameters
+                .maxCompletionTokens(parameters.maxCompletionTokens())
+                .logitBias(parameters.logitBias())
+                .parallelToolCalls(parameters.parallelToolCalls())
+                .seed(parameters.seed())
+                .user(parameters.user())
+                .store(parameters.store())
+                .metadata(parameters.metadata())
+                .serviceTier(parameters.serviceTier());
     }
 }

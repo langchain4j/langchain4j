@@ -41,10 +41,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertResponse;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiResponseFormat;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiToolChoice;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toTools;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -225,32 +222,12 @@ public class OpenAiChatModel implements ListenableChatModel, TokenCountEstimator
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
         InternalOpenAiHelper.validate(parameters);
 
-        ChatCompletionRequest openAiRequest = ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(chatRequest.messages()))
-                // common parameters
-                .model(parameters.modelName())
-                .temperature(parameters.temperature())
-                .topP(parameters.topP())
-                .frequencyPenalty(parameters.frequencyPenalty())
-                .presencePenalty(parameters.presencePenalty())
-                .maxTokens(parameters.maxOutputTokens())
-                .maxCompletionTokens(parameters.maxCompletionTokens())
-                .stop(parameters.stopSequences())
-                .tools(toTools(parameters.toolSpecifications(), this.strictTools))
-                .toolChoice(toOpenAiToolChoice(parameters.toolChoice()))
-                .responseFormat(toOpenAiResponseFormat(parameters.responseFormat(), this.strictJsonSchema))
-                // OpenAI-specific parameters
-                .logitBias(parameters.logitBias())
-                .parallelToolCalls(parameters.parallelToolCalls())
-                .seed(parameters.seed())
-                .user(parameters.user())
-                .store(parameters.store())
-                .metadata(parameters.metadata())
-                .serviceTier(parameters.serviceTier())
-                .build();
+        ChatCompletionRequest openAiRequest =
+                toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema).build();
 
         try {
-            ChatCompletionResponse openAiResponse = withRetry(() -> client.chatCompletion(openAiRequest).execute(), maxRetries);
+            ChatCompletionResponse openAiResponse = withRetry(() ->
+                    client.chatCompletion(openAiRequest).execute(), maxRetries);
 
             OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                     .id(openAiResponse.id())
