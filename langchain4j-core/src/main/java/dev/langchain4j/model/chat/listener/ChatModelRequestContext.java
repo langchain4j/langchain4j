@@ -13,7 +13,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * or between multiple {@link ChatModelListener}s.
  */
 @Experimental
-public class ChatModelRequestContext { // TODO name: ChatRequestContext?
+public class ChatModelRequestContext {
+    // TODO rename into ChatRequestContext
 
     private final ChatRequest chatRequest;
     @Deprecated(forRemoval = true)

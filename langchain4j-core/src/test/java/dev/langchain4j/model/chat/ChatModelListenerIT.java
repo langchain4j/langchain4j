@@ -81,29 +81,29 @@ public abstract class ChatModelListenerIT {
     void should_listen_request_and_response() {
 
         // given
-        AtomicReference<ChatRequest> requestReference = new AtomicReference<>();
-        AtomicReference<ChatResponse> responseReference = new AtomicReference<>();
+        AtomicReference<ChatRequest> chatRequestReference = new AtomicReference<>();
+        AtomicReference<ChatResponse> chatResponseReference = new AtomicReference<>();
 
-        AtomicReference<ChatModelRequest> oldRequestReference = new AtomicReference<>();
-        AtomicReference<ChatModelResponse> oldResponseReference = new AtomicReference<>();
+        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
 
         ChatModelListener listener = new ChatModelListener() {
 
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
-                requestReference.set(requestContext.chatRequest());
-                oldRequestReference.set(requestContext.request());
+                chatRequestReference.set(requestContext.chatRequest());
+                requestReference.set(requestContext.request());
 
                 requestContext.attributes().put("id", "12345");
             }
 
             @Override
             public void onResponse(ChatModelResponseContext responseContext) {
-                responseReference.set(responseContext.chatResponse());
-                oldResponseReference.set(responseContext.response());
+                chatResponseReference.set(responseContext.chatResponse());
+                responseReference.set(responseContext.response());
 
-                assertThat(responseContext.chatRequest()).isEqualTo(requestReference.get());
-                assertThat(responseContext.request()).isEqualTo(oldRequestReference.get());
+                assertThat(responseContext.chatRequest()).isEqualTo(chatRequestReference.get());
+                assertThat(responseContext.request()).isEqualTo(requestReference.get());
 
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
@@ -136,7 +136,7 @@ public abstract class ChatModelListenerIT {
         }
 
         // then
-        ChatRequest chatRequest = requestReference.get();
+        ChatRequest chatRequest = chatRequestReference.get();
         assertThat(chatRequest.messages()).containsExactly(userMessage);
 
         ChatRequestParameters parameters = chatRequest.parameters();
@@ -149,7 +149,7 @@ public abstract class ChatModelListenerIT {
         }
 
         // old API
-        ChatModelRequest request = oldRequestReference.get();
+        ChatModelRequest request = requestReference.get();
         assertThat(request.model()).isEqualTo(modelName());
         assertThat(request.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
         assertThat(request.topP()).isEqualTo(topP());
@@ -159,7 +159,7 @@ public abstract class ChatModelListenerIT {
             assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
         }
 
-        ChatResponse chatResponse = responseReference.get();
+        ChatResponse chatResponse = chatResponseReference.get();
         assertThat(chatResponse.aiMessage()).isEqualTo(aiMessage);
 
         ChatResponseMetadata metadata = chatResponse.metadata();
@@ -175,7 +175,7 @@ public abstract class ChatModelListenerIT {
         }
 
         // old API
-        ChatModelResponse response = oldResponseReference.get();
+        ChatModelResponse response = responseReference.get();
         if (assertResponseId()) {
             assertThat(response.id()).isNotBlank();
         }
@@ -205,16 +205,16 @@ public abstract class ChatModelListenerIT {
     void should_listen_error() {
 
         // given
-        AtomicReference<ChatRequest> requestReference = new AtomicReference<>();
-        AtomicReference<ChatModelRequest> oldRequestReference = new AtomicReference<>();
+        AtomicReference<ChatRequest> chatRequestReference = new AtomicReference<>();
+        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
 
         ChatModelListener listener = new ChatModelListener() {
 
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
-                requestReference.set(requestContext.chatRequest());
-                oldRequestReference.set(requestContext.request());
+                chatRequestReference.set(requestContext.chatRequest());
+                requestReference.set(requestContext.request());
 
                 requestContext.attributes().put("id", "12345");
             }
@@ -228,8 +228,8 @@ public abstract class ChatModelListenerIT {
             public void onError(ChatModelErrorContext errorContext) {
                 errorReference.set(errorContext.error());
 
-                assertThat(errorContext.chatRequest()).isEqualTo(requestReference.get());
-                assertThat(errorContext.request()).isEqualTo(oldRequestReference.get());
+                assertThat(errorContext.chatRequest()).isEqualTo(chatRequestReference.get());
+                assertThat(errorContext.request()).isEqualTo(requestReference.get());
 
                 assertThat(errorContext.partialResponse()).isNull();
 

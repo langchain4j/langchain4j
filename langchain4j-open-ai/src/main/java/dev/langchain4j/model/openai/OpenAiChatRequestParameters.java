@@ -142,13 +142,12 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         public Builder copyFrom(ChatRequestParameters parameters) {
             super.copyFrom(parameters);
             if (parameters instanceof OpenAiChatRequestParameters openAiParameters) {
-                // TODO copy collections?
-                logitBias(getOrDefault(openAiParameters.logitBias(), logitBias));
+                logitBias(copyIfNotNull(getOrDefault(openAiParameters.logitBias(), logitBias)));
                 parallelToolCalls(getOrDefault(openAiParameters.parallelToolCalls(), parallelToolCalls));
                 seed(getOrDefault(openAiParameters.seed(), seed));
                 user(getOrDefault(openAiParameters.user(), user));
                 store(getOrDefault(openAiParameters.store(), store));
-                metadata(getOrDefault(openAiParameters.metadata(), metadata));
+                metadata(copyIfNotNull(getOrDefault(openAiParameters.metadata(), metadata)));
                 serviceTier(getOrDefault(openAiParameters.serviceTier(), serviceTier));
             }
             return this;

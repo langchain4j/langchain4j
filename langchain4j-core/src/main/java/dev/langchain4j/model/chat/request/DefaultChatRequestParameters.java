@@ -178,7 +178,6 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         private ResponseFormat responseFormat;
 
         public T copyFrom(ChatRequestParameters parameters) {
-            // TODO copy collections?
             modelName(getOrDefault(parameters.modelName(), modelName));
             temperature(getOrDefault(parameters.temperature(), temperature));
             topP(getOrDefault(parameters.topP(), topP));
@@ -186,8 +185,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
             frequencyPenalty(getOrDefault(parameters.frequencyPenalty(), frequencyPenalty));
             presencePenalty(getOrDefault(parameters.presencePenalty(), presencePenalty));
             maxOutputTokens(getOrDefault(parameters.maxOutputTokens(), maxOutputTokens));
-            stopSequences(getOrDefault(parameters.stopSequences(), stopSequences));
-            toolSpecifications(getOrDefault(parameters.toolSpecifications(), toolSpecifications));
+            stopSequences(copyIfNotNull(getOrDefault(parameters.stopSequences(), stopSequences)));
+            toolSpecifications(copyIfNotNull(getOrDefault(parameters.toolSpecifications(), toolSpecifications)));
             toolChoice(getOrDefault(parameters.toolChoice(), toolChoice));
             responseFormat(getOrDefault(parameters.responseFormat(), responseFormat));
             return (T) this;

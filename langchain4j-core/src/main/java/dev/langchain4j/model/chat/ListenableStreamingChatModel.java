@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.model.chat.ListenableChatModel.onRequest;
+
 /**
  * TODO
  */
@@ -24,8 +26,6 @@ public interface ListenableStreamingChatModel extends StreamingChatLanguageModel
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-
-        ListenableChatModel.onRequest(finalChatRequest, attributes, listeners);
 
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 
@@ -47,6 +47,7 @@ public interface ListenableStreamingChatModel extends StreamingChatLanguageModel
             }
         };
 
+        onRequest(finalChatRequest, attributes, listeners);
         doChat(finalChatRequest, observingHandler);
     }
 

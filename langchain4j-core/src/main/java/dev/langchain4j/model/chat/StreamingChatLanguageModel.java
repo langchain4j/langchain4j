@@ -94,7 +94,7 @@ public interface StreamingChatLanguageModel {
 
     @Experimental
     default ChatRequestParameters defaultRequestParameters() {
-        return null;
+        throw new UnsupportedFeatureException("Default request parameters are not supported by this model yet");
     }
 
     @Experimental

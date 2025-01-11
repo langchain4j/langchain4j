@@ -42,8 +42,8 @@ public interface ChatRequestParameters {
 
     /**
      * TODO
-     * @param that
+     * @param parameters
      * @return
      */
-    ChatRequestParameters overrideWith(ChatRequestParameters that);
+    ChatRequestParameters overrideWith(ChatRequestParameters parameters);
 }

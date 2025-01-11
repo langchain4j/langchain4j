@@ -66,11 +66,7 @@ public interface ListenableChatModel extends ChatLanguageModel {
                            Map<Object, Object> attributes,
                            List<ChatModelListener> listeners) {
 
-        ChatModelResponseContext responseContext = new ChatModelResponseContext(
-                chatResponse,
-                chatRequest,
-                attributes
-        );
+        ChatModelResponseContext responseContext = new ChatModelResponseContext(chatResponse, chatRequest, attributes);
 
         listeners.forEach(listener -> {
             try {
