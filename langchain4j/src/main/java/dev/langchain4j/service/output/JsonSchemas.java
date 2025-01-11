@@ -40,7 +40,7 @@ public class JsonSchemas {
             throw illegalConfiguration("Return type of method '%s' cannot be void");
         }
 
-        if (!isPojo(returnType) && !isEnum(returnType) && !isListOfStrings(returnType)) {
+        if (!isPojo(returnType) && !isEnum(returnType) && !isListOfStrings(returnType) && !isSetOfStrings(returnType)) {
             return Optional.empty();
         }
 
@@ -74,11 +74,17 @@ public class JsonSchemas {
     }
 
     private static boolean isListOfStrings(Type returnType) {
+        return isCollectionOfStrings(returnType, List.class);
+    }
+
+    private static boolean isSetOfStrings(Type returnType) {
+        return isCollectionOfStrings(returnType, Set.class);
+    }
+
+    private static boolean isCollectionOfStrings(Type returnType, Class<?> clazz) {
         Class<?> rawClass = getRawClass(returnType);
         Class<?> typeArgumentClass = TypeUtils.resolveFirstGenericParameterClass(returnType);
-
-        // Check if raw class is a List and the first generic type argument is String
-        return List.class.isAssignableFrom(rawClass) && String.class.equals(typeArgumentClass);
+        return clazz.isAssignableFrom(rawClass) && String.class.equals(typeArgumentClass);
     }
 
     private static JsonSchemaElement objectSchemaFrom(Class<?> actualType) {
