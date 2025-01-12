@@ -100,6 +100,11 @@ const config = {
                         position: 'left',
                     },
                     {
+                        href: 'https://chat.langchain4j.dev/',
+                        label: 'Docu chatbot',
+                        position: 'left',
+                    },
+                    {
                         href: 'https://docs.langchain4j.dev/apidocs/index.html',
                         label: 'Javadoc',
                         position: 'left'
@@ -107,7 +112,17 @@ const config = {
                     {
                         href: 'https://github.com/langchain4j/langchain4j',
                         label: 'GitHub',
-                        position: 'left',
+                        position: 'right',
+                    },
+                    {
+                        href: 'https://twitter.com/langchain4j',
+                        label: 'Twitter',
+                        position: 'right',
+                    },
+                    {
+                        href: 'https://discord.com/invite/JzTFvyjG6R',
+                        label: 'Discord',
+                        position: 'right',
                     },
                 ],
             },
@@ -140,6 +155,14 @@ const config = {
                             {
                                 label: 'Examples',
                                 href: 'https://github.com/langchain4j/langchain4j-examples',
+                            },
+                            {
+                                label: 'Documentation chatbot (experimental)',
+                                href: 'https://chat.langchain4j.dev/',
+                            },
+                            {
+                                label: 'Javadoc',
+                                href: 'https://docs.langchain4j.dev/apidocs/index.html',
                             },
                         ],
                     },
