@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * TODO
- * TODO
  */
 public interface ListenableChatModel extends ChatLanguageModel {
 
