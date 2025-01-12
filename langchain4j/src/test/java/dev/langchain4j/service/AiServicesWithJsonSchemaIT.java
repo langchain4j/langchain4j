@@ -213,6 +213,47 @@ public abstract class AiServicesWithJsonSchemaIT {
         }
     }
 
+    interface IntExtractor {
+        @UserMessage("Extract number of people from the following text: {{it}}")
+        int extractNumberOfPeople(String text);
+    }
+
+    @Test
+    protected void should_extract_number_int() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            IntExtractor intExtractor = AiServices.create(IntExtractor.class, model);
+
+            String text = "Klaus is 37 years old, 1.78m height and single. " +
+                    "Franny is 35 years old, 1.65m height and married.";
+
+            // when
+            int numberOfPeople = intExtractor.extractNumberOfPeople(text);
+
+            // then
+            assertThat(numberOfPeople).isEqualTo(2);
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage("Extract number of people from the following text: " + text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Integer")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("Integer", JsonIntegerSchema.builder()
+                                                    .build())
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
     interface SetOfStringsExtractor {
         @UserMessage("Extract names of people from the following text: {{it}}")
         Set<String> extractOnlySetOfPeopleNames(String text);

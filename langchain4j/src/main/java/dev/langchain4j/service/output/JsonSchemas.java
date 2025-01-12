@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -45,6 +46,10 @@ public class JsonSchemas {
             return getBooleanJsonSchema();
         }
 
+        if (returnType == Integer.class || returnType == int.class) {
+            return getIntegerJsonSchema();
+        }
+
         if (!isPojo(returnType) && !isEnum(returnType) && !isListOfStrings(returnType) && !isSetOfStrings(returnType)) {
             return Optional.empty();
         }
@@ -82,7 +87,17 @@ public class JsonSchemas {
         final JsonSchema jsonSchema = JsonSchema.builder()
                 .name("Boolean")
                 .rootElement(JsonObjectSchema.builder()
-                        .addProperty("boolean",JsonBooleanSchema.builder().build())
+                        .addProperty("boolean", JsonBooleanSchema.builder().build())
+                        .build())
+                .build();
+        return Optional.of(jsonSchema);
+    }
+
+    private static Optional<JsonSchema> getIntegerJsonSchema() {
+        final JsonSchema jsonSchema = JsonSchema.builder()
+                .name("Integer")
+                .rootElement(JsonObjectSchema.builder()
+                        .addProperty("Integer", JsonIntegerSchema.builder().build())
                         .build())
                 .build();
         return Optional.of(jsonSchema);
