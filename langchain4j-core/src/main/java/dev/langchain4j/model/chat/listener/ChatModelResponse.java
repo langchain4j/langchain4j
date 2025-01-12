@@ -1,17 +1,20 @@
 package dev.langchain4j.model.chat.listener;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+
+import java.util.Objects;
 
 /**
  * A response from the {@link ChatLanguageModel} or {@link StreamingChatLanguageModel},
  * intended to be used with {@link ChatModelListener}.
  */
-@Experimental
+@Deprecated(forRemoval = true) // TODO
 public class ChatModelResponse {
 
     private final String id;
@@ -30,6 +33,37 @@ public class ChatModelResponse {
         this.tokenUsage = tokenUsage;
         this.finishReason = finishReason;
         this.aiMessage = aiMessage;
+    }
+
+    static ChatModelResponse fromChatResponse(ChatResponse chatResponse) {
+        if (chatResponse == null) {
+            return null;
+        }
+
+        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
+        return ChatModelResponse.builder()
+                .id(chatResponseMetadata.id())
+                .model(chatResponseMetadata.modelName())
+                .tokenUsage(chatResponseMetadata.tokenUsage())
+                .finishReason(chatResponseMetadata.finishReason())
+                .aiMessage(chatResponse.aiMessage())
+                .build();
+    }
+
+    static ChatResponse toChatResponse(ChatModelResponse chatModelResponse) {
+        if (chatModelResponse == null) {
+            return null;
+        }
+
+        return ChatResponse.builder()
+                .aiMessage(chatModelResponse.aiMessage())
+                .metadata(ChatResponseMetadata.builder()
+                        .id(chatModelResponse.id())
+                        .modelName(chatModelResponse.model())
+                        .tokenUsage(chatModelResponse.tokenUsage())
+                        .finishReason(chatModelResponse.finishReason())
+                        .build())
+                .build();
     }
 
     public static ChatModelResponseBuilder builder() {
@@ -54,6 +88,23 @@ public class ChatModelResponse {
 
     public AiMessage aiMessage() {
         return aiMessage;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ChatModelResponse that = (ChatModelResponse) o;
+        return Objects.equals(id, that.id)
+                && Objects.equals(model, that.model)
+                && Objects.equals(tokenUsage, that.tokenUsage)
+                && finishReason == that.finishReason
+                && Objects.equals(aiMessage, that.aiMessage);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, model, tokenUsage, finishReason, aiMessage);
     }
 
     public static class ChatModelResponseBuilder {

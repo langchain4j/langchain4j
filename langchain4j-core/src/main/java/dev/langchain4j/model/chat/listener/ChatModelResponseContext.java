@@ -1,42 +1,74 @@
 package dev.langchain4j.model.chat.listener;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 import java.util.Map;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * The response context. It contains {@link ChatModelResponse}, corresponding {@link ChatModelRequest} and attributes.
+ * The response context. It contains {@link ChatResponse}, corresponding {@link ChatRequest} and attributes.
  * The attributes can be used to pass data between methods of a {@link ChatModelListener}
  * or between multiple {@link ChatModelListener}s.
  */
 @Experimental
 public class ChatModelResponseContext {
+    // TODO rename into ChatResponseContext
 
+    private final ChatResponse chatResponse;
+    @Deprecated(forRemoval = true)
     private final ChatModelResponse response;
+    private final ChatRequest chatRequest;
+    @Deprecated(forRemoval = true)
     private final ChatModelRequest request;
     private final Map<Object, Object> attributes;
 
-    public ChatModelResponseContext(ChatModelResponse response,
-                                    ChatModelRequest request,
+    public ChatModelResponseContext(ChatResponse chatResponse,
+                                    ChatRequest chatRequest,
                                     Map<Object, Object> attributes) {
-        this.response = ensureNotNull(response, "response");
-        this.request = ensureNotNull(request, "request");
+        this.chatResponse = ensureNotNull(chatResponse, "chatResponse");
+        this.response = ChatModelResponse.fromChatResponse(chatResponse);
+        this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
+        this.request = ChatModelRequest.fromChatRequest(chatRequest);
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
     /**
-     * @return The response from the {@link ChatLanguageModel}.
+     * @deprecated please use {@link #ChatModelResponseContext(ChatResponse, ChatRequest, Map)} instead
      */
+    @Deprecated(forRemoval = true)
+    public ChatModelResponseContext(ChatModelResponse response,
+                                    ChatModelRequest request,
+                                    Map<Object, Object> attributes) {
+        this.chatResponse = ChatModelResponse.toChatResponse(response);
+        this.response = ensureNotNull(response, "response");
+        this.chatRequest = ChatModelRequest.toChatRequest(request);
+        this.request = ensureNotNull(request, "request");
+        this.attributes = ensureNotNull(attributes, "attributes");
+    }
+
+    public ChatResponse chatResponse() {
+        return chatResponse;
+    }
+
+    /**
+     * @deprecated please use {@link #chatResponse()} instead
+     */
+    @Deprecated(forRemoval = true)
     public ChatModelResponse response() {
         return response;
     }
 
+    public ChatRequest chatRequest() {
+        return chatRequest;
+    }
+
     /**
-     * @return The request to the {@link ChatLanguageModel} the response corresponds to.
+     * @deprecated please use {@link #chatRequest()} instead
      */
+    @Deprecated(forRemoval = true)
     public ChatModelRequest request() {
         return request;
     }
