@@ -86,6 +86,13 @@ ChatLanguageModel chatModel = OpenAiChatModel.builder()
         .logResponses(true)
         .build();
 // OR
+ChatLanguageModel chatModel = AzureOpenAiChatModel.builder()
+        .endpoint(System.getenv("AZURE_OPENAI_URL"))
+        .apiKey(System.getenv("AZURE_OPENAI_API_KEY"))
+        .deploymentName("gpt-4o-mini")
+        .logRequestsAndResponses(true)
+        .build();
+// OR
 ChatLanguageModel chatModel = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
         .modelName("gemini-1.5-flash")
