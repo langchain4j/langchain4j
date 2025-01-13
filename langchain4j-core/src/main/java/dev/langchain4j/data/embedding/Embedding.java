@@ -54,9 +54,11 @@ public class Embedding {
             norm += f * f;
         }
         norm = Math.sqrt(norm);
-
+        if (norm == 0.0) {
+            return;
+        }
         for (int i = 0; i < vector.length; i++) {
-            vector[i] /= norm;
+            vector[i] /= (float) norm;
         }
     }
 
