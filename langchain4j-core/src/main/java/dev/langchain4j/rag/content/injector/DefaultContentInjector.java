@@ -121,7 +121,7 @@ public class DefaultContentInjector implements ContentInjector {
     @Deprecated
     protected Prompt createPrompt(UserMessage userMessage, List<Content> contents) {
         Map<String, Object> variables = new HashMap<>();
-        variables.put("userMessage", userMessage.text());
+        variables.put("userMessage", userMessage.singleText());
         variables.put("contents", format(contents));
         return promptTemplate.apply(variables);
     }
@@ -149,9 +149,9 @@ public class DefaultContentInjector implements ContentInjector {
     protected String format(Metadata metadata) {
         StringBuilder formattedMetadata = new StringBuilder();
         for (String metadataKey : metadataKeysToInclude) {
-            String metadataValue = metadata.get(metadataKey);
+            String metadataValue = metadata.getString(metadataKey);
             if (metadataValue != null) {
-                if (formattedMetadata.length() > 0) {
+                if (!formattedMetadata.isEmpty()) {
                     formattedMetadata.append("\n");
                 }
                 formattedMetadata.append(metadataKey).append(": ").append(metadataValue);
