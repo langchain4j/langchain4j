@@ -7,6 +7,7 @@ import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -245,6 +246,47 @@ public abstract class AiServicesWithJsonSchemaIT {
                                     .name("Integer")
                                     .rootElement(JsonObjectSchema.builder()
                                             .addProperty("Integer", JsonIntegerSchema.builder()
+                                                    .build())
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            verify(model).supportedCapabilities();
+        }
+    }
+
+
+    interface DoubleExtractor {
+        @UserMessage("Extract temperature in Munich from the following text: {{it}}")
+        double extractTemperatureInMunich(String text);
+    }
+
+    @Test
+    protected void should_extract_number_double() {
+
+        for (ChatLanguageModel model : models()) {
+
+            // given
+            model = spy(model);
+
+            DoubleExtractor doubleExtractor = AiServices.create(DoubleExtractor.class, model);
+
+            String text = "The average temperature of the coldest month is of -0.5 °C";
+
+            // when
+            double temperatureInMunich = doubleExtractor.extractTemperatureInMunich(text);
+
+            // then
+            assertThat(temperatureInMunich).isEqualTo(-0.5);
+
+            verify(model).chat(ChatRequest.builder()
+                    .messages(singletonList(userMessage("Extract temperature in Munich from the following text: " + text)))
+                    .responseFormat(ResponseFormat.builder()
+                            .type(JSON)
+                            .jsonSchema(JsonSchema.builder()
+                                    .name("Double")
+                                    .rootElement(JsonObjectSchema.builder()
+                                            .addProperty("Double", JsonNumberSchema.builder()
                                                     .build())
                                             .build())
                                     .build())

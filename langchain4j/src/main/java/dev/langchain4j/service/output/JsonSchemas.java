@@ -6,6 +6,7 @@ import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -48,6 +49,10 @@ public class JsonSchemas {
 
         if (returnType == Integer.class || returnType == int.class) {
             return getIntegerJsonSchema();
+        }
+
+        if (returnType == Double.class || returnType == double.class) {
+            return getDoubleJsonSchema();
         }
 
         if (!isPojo(returnType) && !isEnum(returnType) && !isListOfStrings(returnType) && !isSetOfStrings(returnType)) {
@@ -98,6 +103,16 @@ public class JsonSchemas {
                 .name("Integer")
                 .rootElement(JsonObjectSchema.builder()
                         .addProperty("Integer", JsonIntegerSchema.builder().build())
+                        .build())
+                .build();
+        return Optional.of(jsonSchema);
+    }
+
+    private static Optional<JsonSchema> getDoubleJsonSchema() {
+        final JsonSchema jsonSchema = JsonSchema.builder()
+                .name("Double")
+                .rootElement(JsonObjectSchema.builder()
+                        .addProperty("Double", JsonNumberSchema.builder().build())
                         .build())
                 .build();
         return Optional.of(jsonSchema);
