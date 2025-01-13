@@ -67,10 +67,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     }
 
     @Override
-    public ChatRequestParameters overrideWith(ChatRequestParameters that) {
-        // TODO test
-        // TODO validate that "that" is of compatible type? What about custom user types?
-
+    public OpenAiChatRequestParameters overrideWith(ChatRequestParameters that) {
         return OpenAiChatRequestParameters.builder()
                 .overrideWith(this)
                 .overrideWith(that)

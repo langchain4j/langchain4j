@@ -220,10 +220,7 @@ public class OpenAiStreamingChatModel implements ListenableStreamingChatModel, T
                     ChatResponse chatResponse = openAiResponseBuilder.build();
                     handler.onCompleteResponse(chatResponse);
                 })
-                .onError(error -> {
-                    ChatResponse chatResponse = openAiResponseBuilder.build(); // TODO
-                    handler.onError(error);
-                })
+                .onError(handler::onError)
                 .execute();
     }
 

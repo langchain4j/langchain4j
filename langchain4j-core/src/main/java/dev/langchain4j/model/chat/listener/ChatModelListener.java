@@ -11,8 +11,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 @Experimental
 public interface ChatModelListener {
 
-    // TODO release all these breaking changes only when micrometer and/or OTel integration is in place and tested
-
     /**
      * This method is called before the request is sent to the model.
      *

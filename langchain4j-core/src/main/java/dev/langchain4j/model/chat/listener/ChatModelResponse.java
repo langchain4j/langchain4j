@@ -13,8 +13,10 @@ import java.util.Objects;
 /**
  * A response from the {@link ChatLanguageModel} or {@link StreamingChatLanguageModel},
  * intended to be used with {@link ChatModelListener}.
+ *
+ * @deprecated in favour of {@link ChatResponse}
  */
-@Deprecated(forRemoval = true) // TODO
+@Deprecated(forRemoval = true)
 public class ChatModelResponse {
 
     private final String id;

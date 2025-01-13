@@ -15,8 +15,10 @@ import static dev.langchain4j.internal.Utils.copyIfNotNull;
 /**
  * A request to the {@link ChatLanguageModel} or {@link StreamingChatLanguageModel},
  * intended to be used with {@link ChatModelListener}.
+ *
+ * @deprecated in favour of {@link ChatRequest}
  */
-@Deprecated(forRemoval = true) // TODO
+@Deprecated(forRemoval = true)
 public class ChatModelRequest {
 
     private final String model;

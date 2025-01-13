@@ -103,7 +103,7 @@ class ListenableChatModelTest {
 
         // then
         InOrder inOrder = inOrder(listener1, listener2);
-        inOrder.verify(listener1).onRequest(any()); // TODO assert request?
+        inOrder.verify(listener1).onRequest(any());
         inOrder.verify(listener2).onRequest(any());
         inOrder.verify(listener1).onResponse(any());
         inOrder.verify(listener2).onResponse(any());

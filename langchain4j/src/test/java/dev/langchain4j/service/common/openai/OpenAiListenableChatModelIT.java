@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OpenAiListenableChatModelIT { // TODO move to AbstractBaseChatModelIT?
+class OpenAiListenableChatModelIT { // TODO extract to ListenableChatModelIT
 
     static class TestChatModelListener implements ChatModelListener {
 

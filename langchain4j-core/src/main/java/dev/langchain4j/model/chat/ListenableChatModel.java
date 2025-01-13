@@ -14,8 +14,26 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * TODO
- * TODO
+ * A decorator for {@link ChatLanguageModel} that provides event notifications through {@link ChatModelListener}s
+ * during the lifecycle of LLM API requests.
+ * <p>
+ * This interface enables monitoring and intercepting chat interactions by notifying
+ * registered listeners at three key points:
+ * <ul>
+ *   <li>Before sending a request to the LLM API ({@link ChatModelListener#onRequest})
+ *   <li>After receiving a successful response ({@link ChatModelListener#onResponse})
+ *   <li>When an error occurs ({@link ChatModelListener#onError})
+ * </ul>
+ * <p>
+ * Listeners can access and share data across these events using a shared attributes map that is passed to each
+ * listener callback.
+ * <p>
+ * All listener callbacks are executed in a fail-safe manner - exceptions in listeners are logged but won't
+ * disrupt the main request flow.
+ *
+ * @see ChatModelListener
+ * @see ChatRequest
+ * @see ChatResponse
  */
 public interface ListenableChatModel extends ChatLanguageModel {
 
@@ -50,9 +68,7 @@ public interface ListenableChatModel extends ChatLanguageModel {
     static void onRequest(ChatRequest chatRequest,
                           Map<Object, Object> attributes,
                           List<ChatModelListener> listeners) {
-
         ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, attributes);
-
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -66,9 +82,7 @@ public interface ListenableChatModel extends ChatLanguageModel {
                            ChatRequest chatRequest,
                            Map<Object, Object> attributes,
                            List<ChatModelListener> listeners) {
-
         ChatModelResponseContext responseContext = new ChatModelResponseContext(chatResponse, chatRequest, attributes);
-
         listeners.forEach(listener -> {
             try {
                 listener.onResponse(responseContext);
@@ -82,14 +96,7 @@ public interface ListenableChatModel extends ChatLanguageModel {
                         ChatRequest chatRequest,
                         Map<Object, Object> attributes,
                         List<ChatModelListener> listeners) {
-
-        ChatModelErrorContext errorContext = new ChatModelErrorContext(
-                error,
-                chatRequest,
-                null,
-                attributes
-        );
-
+        ChatModelErrorContext errorContext = new ChatModelErrorContext(error, chatRequest, attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);
