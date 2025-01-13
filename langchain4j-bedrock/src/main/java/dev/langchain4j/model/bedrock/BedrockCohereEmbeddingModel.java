@@ -1,11 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
-
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockEmbeddingModel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,40 +15,31 @@ import java.util.Map;
  * See more details <a href="https://docs.cohere.com/v2/docs/amazon-bedrock">here</a> and
  * <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-embed.html">here</a>.
  */
-@SuperBuilder
-@Getter
 public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockCohereEmbeddingResponse> {
 
-    @Builder.Default
-    private final String model = Types.CohereEmbedEnglishV3.getValue();
+    private String model;
+    private String inputType;
+    private String truncate;
+    private String embeddingType;
 
-    @Override
-    protected String getModelId() {
-        return model;
+    public BedrockCohereEmbeddingModel(String model, String inputType, String truncate, String embeddingType,
+                                       AbstractBedrockEmbeddingModelBuilder builder) {
+        super(builder);
+        this.model = model;
+        this.inputType = inputType;
+        this.truncate = truncate;
+        this.embeddingType = embeddingType;
     }
-
-    /**
-     * 1024 is default size of output vector for Cohere Embedding model.
-     */
-    private final Integer dimensions;
-
-    private final InputType inputType;
-
-    @Builder.Default
-    private final Truncate truncate = Truncate.NONE;
-
-    @Builder.Default
-    private final EmbeddingType embeddingType = EmbeddingType.FLOAT;
 
     @Override
     protected List<Map<String, Object>> getRequestParameters(List<TextSegment> textSegments) {
-        if (dimensions != null) {
-            throw new IllegalArgumentException("Dimensions is not supported for this model.");
+        if (model == null) {
+            throw new IllegalArgumentException("Model is required.");
         }
         if (inputType == null) {
             throw new IllegalArgumentException("Input type is required.");
         }
-        if (embeddingType != EmbeddingType.FLOAT) {
+        if (!embeddingType.equalsIgnoreCase("float")) {
             throw new IllegalArgumentException("Only float embedding type is supported.");
         }
 
@@ -60,9 +47,9 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
         for (TextSegment textSegment : textSegments) {
             Map<String, Object> parameters = new HashMap<>();
             parameters.put("texts", List.of(textSegment.text()));
-            parameters.put("input_type", inputType.getValue());
-            parameters.put("truncate", truncate.getValue());
-            parameters.put("embedding_types", List.of(embeddingType.getValue()));
+            parameters.put("input_type", inputType);
+            parameters.put("truncate", truncate);
+            parameters.put("embedding_types", List.of(embeddingType));
             result.add(parameters);
         }
         return result;
@@ -73,19 +60,73 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
         return BedrockCohereEmbeddingResponse.class;
     }
 
-    @Getter
+    @Override
+    protected String getModelId() {
+        return model;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder extends AbstractBedrockEmbeddingModelBuilder<BedrockCohereEmbeddingResponse, BedrockCohereEmbeddingModel, Builder> {
+
+        private String model;
+        private String inputType;
+        private String truncate = Truncate.NONE.getValue();
+        private String embeddingType = EmbeddingType.FLOAT.getValue();
+
+        @Override
+        protected Builder self() {
+            return this;
+        }
+
+        public Builder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+        public Builder inputType(String inputType) {
+            this.inputType = inputType;
+            return this;
+        }
+
+        public Builder truncate(String truncate) {
+            this.truncate = truncate;
+            return this;
+        }
+
+        public Builder embeddingType(String embeddingType) {
+            this.embeddingType = embeddingType;
+            return this;
+        }
+
+        public BedrockCohereEmbeddingModel build() {
+            return new BedrockCohereEmbeddingModel(
+                    this.model,
+                    this.inputType,
+                    this.truncate,
+                    this.embeddingType,
+                    self()
+            );
+        }
+    }
+
     public enum Types {
         CohereEmbedEnglishV3("cohere.embed-english-v3"),
         CohereEmbedMultilingualV3("cohere.embed-multilingual-v3");
 
         private final String value;
 
-        Types(String modelID) {
-            this.value = modelID;
+        Types(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
         }
     }
 
-    @Getter
     public enum InputType {
         SEARCH_DOCUMENT("search_document"),
         SEARCH_QUERY("search_query"),
@@ -97,9 +138,12 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
         InputType(String value) {
             this.value = value;
         }
+
+        public String getValue() {
+            return value;
+        }
     }
 
-    @Getter
     public enum Truncate {
         NONE("NONE"),
         START("START"),
@@ -110,9 +154,12 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
         Truncate(String value) {
             this.value = value;
         }
+
+        public String getValue() {
+            return value;
+        }
     }
 
-    @Getter
     public enum EmbeddingType {
         FLOAT("float"),
         INT8("int8"),
@@ -124,6 +171,10 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
 
         EmbeddingType(String value) {
             this.value = value;
+        }
+
+        public String getValue() {
+            return value;
         }
     }
 }

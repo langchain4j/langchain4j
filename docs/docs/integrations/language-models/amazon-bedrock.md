@@ -34,31 +34,6 @@ ChatLanguageModel model = BedrockAnthropicMessageChatModel.builder()
 .build();
 ```
 
-## Cohere Models
-- `BedrockCohereChatModel`
-
-## Cohere Embedding Models
-Support is provided for Bedrock Cohere embedding models, enabling the use of the following versions:
-
-- **`cohere.embed-english-v3`**
-- **`cohere.embed-multilingual-v3`**
-
-These models are ideal for generating high-quality text embeddings for English and multilingual text processing tasks.
-
-### Implementation Example
-
-Below is an example of how to configure and use a Bedrock embedding model:
-
-```
-BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel
-        .builder()
-        .region(Region.US_EAST_1)
-        .maxRetries(1)
-        .model("cohere.embed-multilingual-v3")
-        .inputType(BedrockCohereEmbeddingModel.InputType.SEARCH_QUERY)
-        .truncation(BedrockCohereEmbeddingModel.Truncate.NONE)
-        .build();
-```
 ## Meta Llama Models
 - `BedrockLlamaChatModel`
 

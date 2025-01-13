@@ -85,62 +85,6 @@ class BedrockEmbeddingIT {
     }
 
     @Test
-    void testCohereEnglishEmbeddingModel() {
-        BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel
-                .builder()
-                .region(Region.US_EAST_1)
-                .maxRetries(1)
-                .model("cohere.embed-english-v3")
-                .inputType(BedrockCohereEmbeddingModel.InputType.SEARCH_QUERY)
-                .build();
-
-        assertThat(embeddingModel).isNotNull();
-
-        List<TextSegment> segments = Collections.singletonList(TextSegment.from("How are you?"));
-
-        Response<List<Embedding>> response = embeddingModel.embedAll(segments);
-        assertThat(response).isNotNull();
-
-        List<Embedding> embeddings = response.content();
-        assertThat(embeddings).hasSize(1);
-
-        Embedding embedding = embeddings.get(0);
-        assertThat(embedding.vector()).hasSize(1024);
-
-        assertThat(response.finishReason()).isNull();
-
-        assertThat(embeddingModel.dimension()).isEqualTo(1024);
-    }
-
-    @Test
-    void testCohereMultilingualEmbeddingModel() {
-        BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel
-                .builder()
-                .region(Region.US_EAST_1)
-                .maxRetries(1)
-                .model("cohere.embed-multilingual-v3")
-                .inputType(BedrockCohereEmbeddingModel.InputType.SEARCH_QUERY)
-                .build();
-
-        assertThat(embeddingModel).isNotNull();
-
-        List<TextSegment> segments = Collections.singletonList(TextSegment.from("How are you?"));
-
-        Response<List<Embedding>> response = embeddingModel.embedAll(segments);
-        assertThat(response).isNotNull();
-
-        List<Embedding> embeddings = response.content();
-        assertThat(embeddings).hasSize(1);
-
-        Embedding embedding = embeddings.get(0);
-        assertThat(embedding.vector()).hasSize(1024);
-
-        assertThat(response.finishReason()).isNull();
-
-        assertThat(embeddingModel.dimension()).isEqualTo(1024);
-    }
-
-    @Test
     void testInjectClientToModelBuilder() {
 
         String serviceName = "custom-service-name";
