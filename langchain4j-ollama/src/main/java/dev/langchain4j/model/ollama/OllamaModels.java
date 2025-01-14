@@ -1,5 +1,7 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.http.HttpClientBuilder;
+import dev.langchain4j.http.HttpClientBuilderLoader;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
@@ -13,12 +15,14 @@ public class OllamaModels {
     private final OllamaClient client;
     private final Integer maxRetries;
 
-    public OllamaModels(String baseUrl,
+    public OllamaModels(HttpClientBuilder httpClientBuilder,
+                        String baseUrl,
                         Duration timeout,
                         Integer maxRetries,
                         Boolean logRequests,
                         Boolean logResponses) {
         this.client = OllamaClient.builder()
+                .httpClientBuilder(getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder))
                 .baseUrl(baseUrl)
                 .timeout((getOrDefault(timeout, Duration.ofSeconds(60))))
                 .logRequests(logRequests)
@@ -68,11 +72,24 @@ public class OllamaModels {
 
     public static class OllamaModelsBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
+
+        /**
+         * TODO
+         * TODO how other params like baseUrl, timeout, etc behave
+         *
+         * @param httpClientBuilder
+         * @return
+         */
+        public OllamaModelsBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public OllamaModelsBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -100,7 +117,7 @@ public class OllamaModels {
         }
 
         public OllamaModels build() {
-            return new OllamaModels(baseUrl, timeout, maxRetries, logRequests, logResponses);
+            return new OllamaModels(httpClientBuilder, baseUrl, timeout, maxRetries, logRequests, logResponses);
         }
     }
 }

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.http.HttpClientBuilderLoader;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -15,6 +16,7 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
+                .httpClientBuilder(HttpClientBuilderLoader.loadHttpClientBuilder())
                 .baseUrl(ollamaBaseUrl(ollama))
                 .timeout(Duration.ofMinutes(1))
                 .build();
@@ -40,6 +42,7 @@ class OllamaClientIT extends AbstractOllamaLanguageModelInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
+                .httpClientBuilder(HttpClientBuilderLoader.loadHttpClientBuilder())
                 .baseUrl(ollamaBaseUrl(ollama))
                 .timeout(Duration.ofMinutes(1))
                 .build();

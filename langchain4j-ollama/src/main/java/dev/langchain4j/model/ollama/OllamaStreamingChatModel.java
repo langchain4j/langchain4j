@@ -3,6 +3,8 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.http.HttpClientBuilder;
+import dev.langchain4j.http.HttpClientBuilderLoader;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -43,7 +45,8 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
 
-    public OllamaStreamingChatModel(String baseUrl,
+    public OllamaStreamingChatModel(HttpClientBuilder httpClientBuilder,
+                                    String baseUrl,
                                     String modelName,
                                     Double temperature,
                                     Integer topK,
@@ -67,6 +70,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         }
 
         this.client = OllamaClient.builder()
+                .httpClientBuilder(getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder))
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(logRequests)
@@ -133,6 +137,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
 
     public static class OllamaStreamingChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String modelName;
         private Double temperature;
@@ -155,6 +160,18 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         public OllamaStreamingChatModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        /**
+         * TODO
+         * TODO how other params like baseUrl, timeout, etc behave
+         *
+         * @param httpClientBuilder
+         * @return
+         */
+        public OllamaStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OllamaStreamingChatModelBuilder baseUrl(String baseUrl) {
@@ -261,6 +278,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
 
         public OllamaStreamingChatModel build() {
             return new OllamaStreamingChatModel(
+                    httpClientBuilder,
                     baseUrl,
                     modelName,
                     temperature,

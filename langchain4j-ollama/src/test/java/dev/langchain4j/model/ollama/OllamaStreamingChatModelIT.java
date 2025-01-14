@@ -1,23 +1,25 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.HttpException;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Test;
+
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import org.junit.jupiter.api.Test;
+
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
@@ -68,6 +70,8 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
                 .modelName(TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
@@ -182,7 +186,12 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         });
 
         // then
-        assertThat(future.get()).isExactlyInstanceOf(NullPointerException.class);
+        Throwable throwable = future.get();
+        assertThat(throwable).isExactlyInstanceOf(HttpException.class);
+
+        HttpException httpException = (HttpException) throwable;
+        assertThat(httpException.statusCode()).isEqualTo(404);
+        assertThat(httpException.getMessage()).contains("banana", "not found");
     }
 
     @Test

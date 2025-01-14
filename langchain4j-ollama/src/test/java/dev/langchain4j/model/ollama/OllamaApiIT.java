@@ -2,6 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.http.HttpClientBuilderLoader;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -60,6 +61,7 @@ public class OllamaApiIT {
     @Test
     void base_url_with_trailing_slash_without_addition_path() {
         OllamaClient ollamaClient = OllamaClient.builder()
+                .httpClientBuilder(HttpClientBuilderLoader.loadHttpClientBuilder())
                 .baseUrl("http://localhost:" + mockWebServer.getPort() + "/")
                 .logRequests(true)
                 .logResponses(true)
@@ -74,6 +76,7 @@ public class OllamaApiIT {
     @Test
     void base_url_without_trailing_slash_without_addition_path() {
         OllamaClient ollamaClient = OllamaClient.builder()
+                .httpClientBuilder(HttpClientBuilderLoader.loadHttpClientBuilder())
                 .baseUrl("http://localhost:" + mockWebServer.getPort())
                 .logRequests(true)
                 .logResponses(true)
@@ -89,6 +92,7 @@ public class OllamaApiIT {
     @Test
     void base_url_with_trailing_slash_with_addition_path() {
         OllamaClient ollamaClient = OllamaClient.builder()
+                .httpClientBuilder(HttpClientBuilderLoader.loadHttpClientBuilder())
                 .baseUrl("http://localhost:" + mockWebServer.getPort() + "/additional/")
                 .logRequests(true)
                 .logResponses(true)
@@ -103,6 +107,7 @@ public class OllamaApiIT {
     @Test
     void base_url_without_trailing_slash_with_addition_path() {
         OllamaClient ollamaClient = OllamaClient.builder()
+                .httpClientBuilder(HttpClientBuilderLoader.loadHttpClientBuilder())
                 .baseUrl("http://localhost:" + mockWebServer.getPort() + "/additional")
                 .logRequests(true)
                 .logResponses(true)

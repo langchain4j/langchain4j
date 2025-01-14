@@ -1,5 +1,7 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.http.HttpClientBuilder;
+import dev.langchain4j.http.HttpClientBuilderLoader;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.StreamingLanguageModel;
@@ -27,7 +29,8 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
     private final Options options;
     private final ResponseFormat responseFormat;
 
-    public OllamaStreamingLanguageModel(String baseUrl,
+    public OllamaStreamingLanguageModel(HttpClientBuilder httpClientBuilder,
+                                        String baseUrl,
                                         String modelName,
                                         Double temperature,
                                         Integer topK,
@@ -48,6 +51,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
             throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
         }
         this.client = OllamaClient.builder()
+                .httpClientBuilder(getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder))
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(logRequests)
@@ -90,6 +94,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
 
     public static class OllamaStreamingLanguageModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String modelName;
         private Double temperature;
@@ -110,6 +115,18 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
         public OllamaStreamingLanguageModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        /**
+         * TODO
+         * TODO how other params like baseUrl, timeout, etc behave
+         *
+         * @param httpClientBuilder
+         * @return
+         */
+        public OllamaStreamingLanguageModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OllamaStreamingLanguageModelBuilder baseUrl(String baseUrl) {
@@ -202,6 +219,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
 
         public OllamaStreamingLanguageModel build() {
             return new OllamaStreamingLanguageModel(
+                    httpClientBuilder,
                     baseUrl,
                     modelName,
                     temperature,

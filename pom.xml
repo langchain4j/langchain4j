@@ -16,6 +16,14 @@
         <module>langchain4j-core</module>
         <module>langchain4j</module>
 
+        <!-- http clients -->
+        <!-- TODO consistent naming -->
+        <module>langchain4j-http</module>
+        <module>http-clients/langchain4j-http-client-jdk11</module>
+        <module>http-clients/langchain4j-http-client-okhttp</module>
+        <!-- TODO move to langchain4j-spring repo-->
+        <module>http-clients/langchain4j-http-client-spring-restclient</module>
+
         <module>langchain4j-easy-rag</module>
 
         <!-- model providers -->

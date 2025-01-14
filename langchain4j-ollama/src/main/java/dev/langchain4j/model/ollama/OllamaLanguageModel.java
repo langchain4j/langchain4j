@@ -1,5 +1,7 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.http.HttpClientBuilder;
+import dev.langchain4j.http.HttpClientBuilderLoader;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaLanguageModelBuilderFactory;
@@ -30,7 +32,8 @@ public class OllamaLanguageModel implements LanguageModel {
     private final ResponseFormat responseFormat;
     private final Integer maxRetries;
 
-    public OllamaLanguageModel(String baseUrl,
+    public OllamaLanguageModel(HttpClientBuilder httpClientBuilder,
+                               String baseUrl,
                                String modelName,
                                Double temperature,
                                Integer topK,
@@ -53,6 +56,7 @@ public class OllamaLanguageModel implements LanguageModel {
         }
 
         this.client = OllamaClient.builder()
+                .httpClientBuilder(getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder))
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(logRequests)
@@ -102,6 +106,7 @@ public class OllamaLanguageModel implements LanguageModel {
 
     public static class OllamaLanguageModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String modelName;
         private Double temperature;
@@ -123,6 +128,18 @@ public class OllamaLanguageModel implements LanguageModel {
         public OllamaLanguageModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        /**
+         * TODO
+         * TODO how other params like baseUrl, timeout, etc behave
+         *
+         * @param httpClientBuilder
+         * @return
+         */
+        public OllamaLanguageModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OllamaLanguageModelBuilder baseUrl(String baseUrl) {
@@ -220,6 +237,7 @@ public class OllamaLanguageModel implements LanguageModel {
 
         public OllamaLanguageModel build() {
             return new OllamaLanguageModel(
+                    httpClientBuilder,
                     baseUrl,
                     modelName,
                     temperature,
