@@ -163,6 +163,28 @@ class SqlDatabaseContentRetrieverIT {
 
     @ParameterizedTest
     @MethodSource("contentRetrieverProviders")
+    void should_answer_query_5(Function<DataSource, ContentRetriever> contentRetrieverProvider) {
+
+        // given
+        ContentRetriever contentRetriever = contentRetrieverProvider.apply(dataSource);
+
+        // when
+        List<Content> retrieved = contentRetriever.retrieve(Query.from("Please give me all the information of customers and products separately"));
+
+        // then
+        assertThat(retrieved).hasSize(2);
+
+        assertThat(retrieved.get(0).textSegment().text())
+                .contains("SELECT")
+                .contains("customer_id", "first_name", "last_name", "email");
+
+        assertThat(retrieved.get(1).textSegment().text())
+                .contains("SELECT")
+                .contains("product_id", "product_name", "price");
+    }
+
+    @ParameterizedTest
+    @MethodSource("contentRetrieverProviders")
     void should_not_fail_for_unrelated_query(Function<DataSource, ContentRetriever> contentRetrieverProvider) {
 
         // given
