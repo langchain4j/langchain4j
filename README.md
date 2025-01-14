@@ -50,6 +50,8 @@ the core functionality is in place, allowing you to start building LLM-powered a
 ## Documentation
 Documentation can be found [here](https://docs.langchain4j.dev).
 
+The documentation chatbot (experimental) can be found [here](https://chat.langchain4j.dev/).
+
 
 ## Getting Started
 Getting started guide can be found [here](https://docs.langchain4j.dev/get-started).
