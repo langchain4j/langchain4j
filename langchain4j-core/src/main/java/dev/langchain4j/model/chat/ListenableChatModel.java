@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * // TODO reword
  * A decorator for {@link ChatLanguageModel} that provides event notifications through {@link ChatModelListener}s
  * during the lifecycle of LLM API requests.
  * <p>
