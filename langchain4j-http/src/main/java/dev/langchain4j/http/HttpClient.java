@@ -5,7 +5,9 @@ import dev.langchain4j.Experimental;
 // TODO name
 // TODO package/module
 @Experimental
-public interface HttpClient {
+public interface HttpClient extends AutoCloseable {
+
+    // TODO split streaming and non-streaming into separate interfaces?
 
     /**
      * TODO
@@ -18,6 +20,8 @@ public interface HttpClient {
 
     /**
      * TODO
+     * TODO errors
+     * TODO threads
      *
      * @param httpRequest
      * @param listener

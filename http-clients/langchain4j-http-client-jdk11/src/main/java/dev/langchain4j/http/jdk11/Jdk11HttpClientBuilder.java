@@ -1,6 +1,5 @@
 package dev.langchain4j.http.jdk11;
 
-import dev.langchain4j.http.HttpClient;
 import dev.langchain4j.http.HttpClientBuilder;
 
 import java.time.Duration;
@@ -17,7 +16,7 @@ public class Jdk11HttpClientBuilder implements HttpClientBuilder {
         return httpClientBuilder;
     }
 
-    public HttpClientBuilder httpClientBuilder(java.net.http.HttpClient.Builder httpClientBuilder) {
+    public Jdk11HttpClientBuilder httpClientBuilder(java.net.http.HttpClient.Builder httpClientBuilder) {
         this.httpClientBuilder = httpClientBuilder;
         return this;
     }
@@ -28,7 +27,7 @@ public class Jdk11HttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder connectTimeout(Duration connectTimeout) {
+    public Jdk11HttpClientBuilder connectTimeout(Duration connectTimeout) {
         this.connectTimeout = connectTimeout;
         return this;
     }
@@ -39,7 +38,7 @@ public class Jdk11HttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder readTimeout(Duration readTimeout) {
+    public Jdk11HttpClientBuilder readTimeout(Duration readTimeout) {
         this.readTimeout = readTimeout;
         return this;
     }
@@ -50,7 +49,7 @@ public class Jdk11HttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder logRequests(boolean logRequests) {
+    public Jdk11HttpClientBuilder logRequests(boolean logRequests) {
         this.logRequests = logRequests;
         return this;
     }
@@ -61,13 +60,13 @@ public class Jdk11HttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder logResponses(boolean logResponses) {
+    public Jdk11HttpClientBuilder logResponses(boolean logResponses) {
         this.logResponses = logResponses;
         return this;
     }
 
     @Override
-    public HttpClient build() {
+    public Jdk11HttpClient build() {
         return new Jdk11HttpClient(this);
     }
 }

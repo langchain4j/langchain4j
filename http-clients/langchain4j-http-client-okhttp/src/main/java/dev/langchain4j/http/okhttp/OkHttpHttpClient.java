@@ -31,13 +31,13 @@ public class OkHttpHttpClient extends AbstractHttpClient {
     // TODO make configurable?
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
-    private final okhttp3.OkHttpClient client;
+    private final okhttp3.OkHttpClient delegate;
     private final boolean logRequests;
     private final boolean logResponses;
 
     public OkHttpHttpClient(OkHttpHttpClientBuilder builder) {
         OkHttpClient.Builder okHttpClientBuilder = getOrDefault(builder.okHttpClientBuilder(), OkHttpClient.Builder::new);
-        this.client = okHttpClientBuilder
+        this.delegate = okHttpClientBuilder
                 .connectTimeout(builder.connectTimeout())
                 .readTimeout(builder.readTimeout())
                 .build();
@@ -54,7 +54,7 @@ public class OkHttpHttpClient extends AbstractHttpClient {
 
         Request okHttpRequest = toOkHttpRequest(httpRequest);
 
-        try (Response okHttpResponse = client.newCall(okHttpRequest).execute()) {
+        try (Response okHttpResponse = delegate.newCall(okHttpRequest).execute()) {
             if (okHttpResponse.isSuccessful()) {
                 return fromOkHttpResponse(okHttpResponse);
             } else {
@@ -75,7 +75,7 @@ public class OkHttpHttpClient extends AbstractHttpClient {
 
             // TODO extract into a separate HttpClient method? provide as a strategy?
 
-            client.newCall(okHttpRequest).enqueue(new okhttp3.Callback() {
+            delegate.newCall(okHttpRequest).enqueue(new okhttp3.Callback() {
 
                 @Override
                 public void onResponse(Call call, Response response) {
@@ -150,7 +150,7 @@ public class OkHttpHttpClient extends AbstractHttpClient {
             };
 
             // TODO reuse factory?
-            EventSources.createFactory(client).newEventSource(okHttpRequest, eventSourceListener);
+            EventSources.createFactory(delegate).newEventSource(okHttpRequest, eventSourceListener);
         }
     }
 
@@ -211,5 +211,10 @@ public class OkHttpHttpClient extends AbstractHttpClient {
     @Override
     public boolean logResponses() {
         return logResponses;
+    }
+
+    @Override
+    public void close() {
+        // TODO
     }
 }

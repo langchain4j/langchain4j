@@ -21,12 +21,12 @@ import java.util.stream.Stream;
 // TODO review
 public class Jdk11HttpClient extends AbstractHttpClient {
 
-    private final HttpClient client;
+    private final HttpClient delegate;
     private final boolean logRequests;
     private final boolean logResponses;
 
     public Jdk11HttpClient(Jdk11HttpClientBuilder builder) {
-        this.client = HttpClient.newBuilder()
+        this.delegate = HttpClient.newBuilder()
                 .connectTimeout(builder.connectTimeout())
                 // TODO readTimeout?
                 .build();
@@ -43,7 +43,7 @@ public class Jdk11HttpClient extends AbstractHttpClient {
         try {
             java.net.http.HttpRequest httpRequest = toJdkHttpRequest(request);
 
-            java.net.http.HttpResponse<String> response = client.send(httpRequest, BodyHandlers.ofString());
+            java.net.http.HttpResponse<String> response = delegate.send(httpRequest, BodyHandlers.ofString());
 
             if (!isSuccessful(response)) {
                 throw new HttpException(response.statusCode(), response.body());
@@ -80,7 +80,7 @@ public class Jdk11HttpClient extends AbstractHttpClient {
     }
 
     private void handleNdJson(java.net.http.HttpRequest request, ServerSentEventListener listener) {
-        client.sendAsync(request, BodyHandlers.ofLines())
+        delegate.sendAsync(request, BodyHandlers.ofLines())
                 .thenAccept(response -> {
 
                     if (!isSuccessful(response)) {
@@ -105,7 +105,7 @@ public class Jdk11HttpClient extends AbstractHttpClient {
     }
 
     private void handleServerSentEvents(java.net.http.HttpRequest request, ServerSentEventListener listener) {
-        client.sendAsync(request, BodyHandlers.ofLines())
+        delegate.sendAsync(request, BodyHandlers.ofLines())
                 .thenAccept(response -> {
 
                     if (!isSuccessful(response)) {
@@ -190,5 +190,10 @@ public class Jdk11HttpClient extends AbstractHttpClient {
     @Override
     public boolean logResponses() {
         return logResponses;
+    }
+
+    @Override
+    public void close() {
+//        client.close();// TODO ?
     }
 }

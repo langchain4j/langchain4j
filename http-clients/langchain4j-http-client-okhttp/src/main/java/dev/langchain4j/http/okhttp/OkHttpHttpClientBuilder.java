@@ -1,6 +1,5 @@
 package dev.langchain4j.http.okhttp;
 
-import dev.langchain4j.http.HttpClient;
 import dev.langchain4j.http.HttpClientBuilder;
 import okhttp3.OkHttpClient;
 
@@ -18,7 +17,7 @@ public class OkHttpHttpClientBuilder implements HttpClientBuilder {
         return okHttpClientBuilder;
     }
 
-    public HttpClientBuilder okHttpClientBuilder(OkHttpClient.Builder okHttpClientBuilder) {
+    public OkHttpHttpClientBuilder okHttpClientBuilder(OkHttpClient.Builder okHttpClientBuilder) {
         this.okHttpClientBuilder = okHttpClientBuilder;
         return this;
     }
@@ -29,7 +28,7 @@ public class OkHttpHttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder connectTimeout(Duration connectTimeout) {
+    public OkHttpHttpClientBuilder connectTimeout(Duration connectTimeout) {
         this.connectTimeout = connectTimeout;
         return this;
     }
@@ -40,7 +39,7 @@ public class OkHttpHttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder readTimeout(Duration readTimeout) {
+    public OkHttpHttpClientBuilder readTimeout(Duration readTimeout) {
         this.readTimeout = readTimeout;
         return this;
     }
@@ -51,7 +50,7 @@ public class OkHttpHttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder logRequests(boolean logRequests) {
+    public OkHttpHttpClientBuilder logRequests(boolean logRequests) {
         this.logRequests = logRequests;
         return this;
     }
@@ -62,13 +61,13 @@ public class OkHttpHttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder logResponses(boolean logResponses) {
+    public OkHttpHttpClientBuilder logResponses(boolean logResponses) {
         this.logResponses = logResponses;
         return this;
     }
 
     @Override
-    public HttpClient build() {
+    public OkHttpHttpClient build() {
         return new OkHttpHttpClient(this);
     }
 }

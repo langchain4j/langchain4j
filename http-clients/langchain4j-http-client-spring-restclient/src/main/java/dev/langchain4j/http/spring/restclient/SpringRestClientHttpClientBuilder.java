@@ -1,7 +1,7 @@
 package dev.langchain4j.http.spring.restclient;
 
-import dev.langchain4j.http.HttpClient;
 import dev.langchain4j.http.HttpClientBuilder;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
@@ -9,6 +9,8 @@ import java.time.Duration;
 public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
 
     private RestClient.Builder restClientBuilder;
+    private TaskExecutor taskExecutor;
+    private boolean createDefaultTaskExecutor = true; // TODO better name allowCreatingDefaultTaskExecutor?
     private Duration connectTimeout;
     private Duration readTimeout;
     private boolean logRequests;
@@ -18,8 +20,43 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
         return restClientBuilder;
     }
 
-    public HttpClientBuilder restClientBuilder(RestClient.Builder restClientBuilder) {
+    public SpringRestClientHttpClientBuilder restClientBuilder(RestClient.Builder restClientBuilder) {
         this.restClientBuilder = restClientBuilder;
+        return this;
+    }
+
+    /**
+     * TODO
+     *
+     * @return
+     */
+    public TaskExecutor taskExecutor() {
+        return taskExecutor;
+    }
+
+    /**
+     * TODO
+     *
+     * @param taskExecutor
+     * @return
+     */
+    public SpringRestClientHttpClientBuilder taskExecutor(TaskExecutor taskExecutor) {
+        this.taskExecutor = taskExecutor;
+        return this;
+    }
+
+    public boolean createDefaultTaskExecutor() {
+        return createDefaultTaskExecutor;
+    }
+
+    /**
+     * TODO
+     *
+     * @param createDefaultTaskExecutor
+     * @return
+     */
+    public SpringRestClientHttpClientBuilder createDefaultTaskExecutor(boolean createDefaultTaskExecutor) {
+        this.createDefaultTaskExecutor = createDefaultTaskExecutor;
         return this;
     }
 
@@ -29,7 +66,7 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder connectTimeout(Duration connectTimeout) {
+    public SpringRestClientHttpClientBuilder connectTimeout(Duration connectTimeout) {
         this.connectTimeout = connectTimeout;
         return this;
     }
@@ -40,7 +77,7 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder readTimeout(Duration readTimeout) {
+    public SpringRestClientHttpClientBuilder readTimeout(Duration readTimeout) {
         this.readTimeout = readTimeout;
         return this;
     }
@@ -51,7 +88,7 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder logRequests(boolean logRequests) {
+    public SpringRestClientHttpClientBuilder logRequests(boolean logRequests) {
         this.logRequests = logRequests;
         return this;
     }
@@ -62,13 +99,13 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public HttpClientBuilder logResponses(boolean logResponses) {
+    public SpringRestClientHttpClientBuilder logResponses(boolean logResponses) {
         this.logResponses = logResponses;
         return this;
     }
 
     @Override
-    public HttpClient build() {
+    public SpringRestClientHttpClient build() {
         return new SpringRestClientHttpClient(this);
     }
 }

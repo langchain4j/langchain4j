@@ -9,9 +9,11 @@ import dev.langchain4j.http.ServerSentEvent;
 import dev.langchain4j.http.ServerSentEventListener;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
 import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestClient;
 
 import java.io.BufferedReader;
@@ -25,7 +27,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 
 public class SpringRestClientHttpClient extends AbstractHttpClient {
 
-    private final RestClient restClient; // TODO use WebClient for streaming?
+    private final RestClient delegate;
+    private final TaskExecutor taskExecutor; // TODO better name? streamingTaskExecutor?
     private final boolean logRequests;
     private final boolean logResponses;
 
@@ -37,11 +40,27 @@ public class SpringRestClientHttpClient extends AbstractHttpClient {
                 .withReadTimeout(builder.readTimeout());
         ClientHttpRequestFactory clientHttpRequestFactory = ClientHttpRequestFactories.get(settings);
 
-        this.restClient = restClientBuilder
+        this.delegate = restClientBuilder
                 .requestFactory(clientHttpRequestFactory)
                 .build();
+
+        this.taskExecutor = getOrDefault(builder.taskExecutor(), () -> {
+            if (builder.createDefaultTaskExecutor()) {
+                return createDefaultTaskExecutor();
+            } else {
+                return null;
+            }
+        });
+
         this.logRequests = builder.logRequests();
         this.logResponses = builder.logResponses();
+    }
+
+    private static TaskExecutor createDefaultTaskExecutor() {
+        ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+        // TODO set meaningful defaults
+        taskExecutor.initialize();
+        return taskExecutor;
     }
 
     @Override
@@ -59,7 +78,7 @@ public class SpringRestClientHttpClient extends AbstractHttpClient {
     }
 
     private RestClient.RequestBodySpec toSpringRestClientRequest(HttpRequest httpRequest) {
-        RestClient.RequestBodySpec requestBodySpec = restClient
+        RestClient.RequestBodySpec requestBodySpec = delegate
                 .method(convert(httpRequest.method()))
                 .uri(httpRequest.url())
                 .headers(convert(httpRequest.headers()));
@@ -98,81 +117,86 @@ public class SpringRestClientHttpClient extends AbstractHttpClient {
         // TODO reuse SSE parsing logic
 
         Map<String, String> headers = httpRequest.headers();
-
         if (headers.containsKey("Content-Type") && "application/x-ndjson".equals(headers.get("Content-Type"))) {
-
             // TODO extract into a separate HttpClient method? provide as a strategy?
-
-            toSpringRestClientRequest(httpRequest)
-                    .exchange((request, response) -> {
-
-                        if (!response.getStatusCode().is2xxSuccessful()) {
-                            // response.getStatusText() TODO
-                            listener.onError(new HttpException(response.getStatusCode().value(), readBody(response)));
-                            return null; // TODO
-                        }
-
-                        listener.onStart(HttpResponse.builder()
-                                .statusCode(response.getStatusCode().value())
-                                .headers(response.getHeaders().toSingleValueMap()) // TODO test
-                                .build());
-
-                        try (InputStream inputStream = response.getBody();
-                             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                listener.onEvent(new ServerSentEvent(null, line));
-                            }
-
-                            listener.onFinish(); // TODO?
-                        } catch (IOException e) { // TODO?
-                            listener.onError(e);
-                        }
-
-                        return null; // TODO
-                    });
+            taskExecutor.execute(() -> handleNdJson(httpRequest, listener));
         } else {
-            toSpringRestClientRequest(httpRequest)
-                    .exchange((request, response) -> {
-
-                        if (!response.getStatusCode().is2xxSuccessful()) {
-                            // response.getStatusText() TODO
-                            listener.onError(new HttpException(response.getStatusCode().value(), readBody(response)));
-                            return null; // TODO
-                        }
-
-                        listener.onStart(HttpResponse.builder()
-                                .statusCode(response.getStatusCode().value())
-                                .headers(response.getHeaders().toSingleValueMap()) // TODO test
-                                .build());
-
-                        try (InputStream inputStream = response.getBody();
-                             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-
-                            String event = null;
-                            while (true) {
-                                String line = reader.readLine();
-                                if (line == null) {
-                                    break;
-                                } else if (line.startsWith("event:")) {
-                                    event = line.substring("event:".length()).trim();
-                                } else if (line.startsWith("data:")) {
-                                    String data = line.substring("data:".length()).trim();
-                                    ServerSentEvent serverSentEvent = new ServerSentEvent(event, data);
-                                    listener.onEvent(serverSentEvent);
-                                    event = null;
-                                }
-                            }
-
-                            listener.onFinish();
-                        } catch (IOException e) {
-                            listener.onError(e); // TODO
-                        }
-
-                        return null; // TODO
-                    });
+            taskExecutor.execute(() -> handleServerSentEvents(httpRequest, listener));
         }
+    }
+
+    private void handleServerSentEvents(HttpRequest httpRequest, ServerSentEventListener listener) {
+        toSpringRestClientRequest(httpRequest)
+                .exchange((request, response) -> {
+
+                    if (!response.getStatusCode().is2xxSuccessful()) {
+                        // response.getStatusText() TODO
+                        listener.onError(new HttpException(response.getStatusCode().value(), readBody(response)));
+                        return null; // TODO
+                    }
+
+                    listener.onStart(HttpResponse.builder()
+                            .statusCode(response.getStatusCode().value())
+                            .headers(response.getHeaders().toSingleValueMap()) // TODO test
+                            .build());
+
+                    try (InputStream inputStream = response.getBody();
+                         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+
+                        String event = null;
+                        while (true) {
+                            String line = reader.readLine();
+                            if (line == null) {
+                                break;
+                            } else if (line.startsWith("event:")) {
+                                event = line.substring("event:".length()).trim();
+                            } else if (line.startsWith("data:")) {
+                                String data = line.substring("data:".length()).trim();
+                                ServerSentEvent serverSentEvent = new ServerSentEvent(event, data);
+                                listener.onEvent(serverSentEvent);
+                                event = null;
+                            }
+                        }
+
+                        listener.onFinish();
+                    } catch (IOException e) {
+                        listener.onError(e); // TODO
+                    }
+
+                    return null; // TODO
+                });
+    }
+
+    private void handleNdJson(HttpRequest httpRequest, ServerSentEventListener listener) {
+        toSpringRestClientRequest(httpRequest)
+                .exchange((request, response) -> {
+
+                    if (!response.getStatusCode().is2xxSuccessful()) {
+                        // response.getStatusText() TODO
+                        listener.onError(new HttpException(response.getStatusCode().value(), readBody(response)));
+                        return null; // TODO
+                    }
+
+                    listener.onStart(HttpResponse.builder()
+                            .statusCode(response.getStatusCode().value())
+                            .headers(response.getHeaders().toSingleValueMap()) // TODO test
+                            .build());
+
+                    try (InputStream inputStream = response.getBody();
+                         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            listener.onEvent(new ServerSentEvent(null, line));
+                        }
+
+                        listener.onFinish(); // TODO?
+                    } catch (IOException e) { // TODO?
+                        listener.onError(e);
+                    }
+
+                    return null; // TODO
+                });
     }
 
     private static String readBody(RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse httpResponse) {
@@ -192,5 +216,11 @@ public class SpringRestClientHttpClient extends AbstractHttpClient {
     @Override
     public boolean logResponses() {
         return logResponses;
+    }
+
+    @Override
+    public void close() {
+        // TODO
+//        taskExecutor.close(); // TODO?
     }
 }
