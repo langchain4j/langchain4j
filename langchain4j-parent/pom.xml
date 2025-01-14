@@ -82,7 +82,7 @@
         <aws-opensearch.version>2.20.161</aws-opensearch.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <elastic.version>8.15.3</elastic.version>
-        <jackson.version>2.16.1</jackson.version>
+        <jackson.version>2.18.2</jackson.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
