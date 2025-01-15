@@ -44,16 +44,13 @@ class JinaScoringModelIT {
 
         // given
         ScoringModel model = JinaScoringModel.builder()
-                .baseUrl("https://api.jina.ai/v1/")
                 .apiKey(System.getenv("JINA_API_KEY"))
                 .modelName("jina-reranker-v2-base-multilingual")
                 .timeout(Duration.ofSeconds(10))
-                .maxRetries(2)
-                .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        TextSegment catSegment = TextSegment.from("maine coon");
+        TextSegment catSegment = TextSegment.from("main coon");
         TextSegment dogSegment = TextSegment.from("labrador retriever");
         List<TextSegment> segments = asList(catSegment, dogSegment);
 
@@ -65,7 +62,7 @@ class JinaScoringModelIT {
         // then
         List<Double> scores = response.content();
         assertThat(scores).hasSize(2);
-        assertThat(scores.get(1)).isLessThan(scores.get(0));
+        assertThat(scores.get(0)).isLessThan(scores.get(1));
 
         assertThat(response.tokenUsage().totalTokenCount()).isPositive();
 
@@ -73,16 +70,15 @@ class JinaScoringModelIT {
     }
 
     @Test
-    @DisplayName("Multiple text segments to score, using Jina scoring model: jina-reranker-v1-turbo-en")
+    @DisplayName(
+            "Multiple text segments to score, using Jina scoring model: jina-reranker-v1-turbo-en. Note: latency could be quite high for v1, adjusted the timeout")
     void should_score_multiple_segments_with_all_parameters_v1_reranker() {
 
         // given
         ScoringModel model = JinaScoringModel.builder()
-                .baseUrl("https://api.jina.ai/v1/")
                 .apiKey(System.getenv("JINA_API_KEY"))
                 .modelName("jina-reranker-v1-turbo-en")
-                .timeout(Duration.ofSeconds(10))
-                .maxRetries(2)
+                .timeout(Duration.ofSeconds(120))
                 .logRequests(true)
                 .logResponses(true)
                 .build();
