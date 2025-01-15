@@ -38,6 +38,17 @@ public interface ChatLanguageModel {
 
     // TODO improve javadoc
 
+    /**
+     * This is the main API to interact with the chat model.
+     * All the existing generate(...) methods (see below) will be deprecated and removed before 1.0.0 release.
+     * <p>
+     * A temporary default implementation of this method is necessary
+     * until all {@link ChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     *
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @return a {@link ChatResponse}, containing all the outputs from the LLM
+     */
+    @Experimental
     default ChatResponse chat(ChatRequest chatRequest) {
 
         ChatRequest finalChatRequest = ChatRequest.builder()
@@ -59,16 +70,10 @@ public interface ChatLanguageModel {
         }
     }
 
-    /**
-     * This is the main API to interact with the chat model.
-     * All the existing generate(...) methods (see below) will be deprecated and removed before 1.0.0 release.
-     * <p>
-     * A temporary default implementation of this method is necessary
-     * until all {@link ChatLanguageModel} implementations adopt it. It should be removed once that occurs.
-     *
-     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
-     * @return a {@link ChatResponse}, containing all the outputs from the LLM
-     */
+    default List<ChatModelListener> listeners() {
+        return Collections.emptyList();
+    }
+
     @Experimental
     default ChatResponse doChat(ChatRequest chatRequest) {
 
@@ -103,10 +108,6 @@ public interface ChatLanguageModel {
                 .build();
     }
 
-    default List<ChatModelListener> listeners() {
-        return Collections.emptyList();
-    }
-
     static void validate(ChatRequestParameters parameters) {
         String errorTemplate = "%s is not supported yet by this model provider";
 
@@ -114,25 +115,25 @@ public interface ChatLanguageModel {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'modelName' parameter"));
         }
         if (parameters.temperature() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'temperature' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'temperature' parameter"));
         }
         if (parameters.topP() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'topP' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'topP' parameter"));
         }
         if (parameters.topK() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'topK' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'topK' parameter"));
         }
         if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'frequencyPenalty' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'frequencyPenalty' parameter"));
         }
         if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'presencePenalty' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'presencePenalty' parameter"));
         }
         if (parameters.maxOutputTokens() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'maxOutputTokens' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'maxOutputTokens' parameter"));
         }
         if (parameters.stopSequences() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'stopSequences' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'stopSequences' parameter"));
         }
     }
 
@@ -147,7 +148,7 @@ public interface ChatLanguageModel {
         String errorTemplate = "%s is not supported yet by this model provider";
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
             // TODO check supportedCapabilities() instead?
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"JSON response format"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
         }
     }
 

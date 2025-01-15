@@ -37,6 +37,17 @@ public interface StreamingChatLanguageModel {
 
     // TODO improve javadoc
 
+    /**
+     * This is the main API to interact with the chat model.
+     * All the existing generate(...) methods (see below) will be deprecated and removed before 1.0.0 release.
+     * <p>
+     * A temporary default implementation of this method is necessary
+     * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
+     *
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
+     */
+    @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
         ChatRequest finalChatRequest = ChatRequest.builder()
@@ -71,16 +82,10 @@ public interface StreamingChatLanguageModel {
         doChat(finalChatRequest, observingHandler);
     }
 
-    /**
-     * This is the main API to interact with the chat model.
-     * All the existing generate(...) methods (see below) will be deprecated and removed before 1.0.0 release.
-     * <p>
-     * A temporary default implementation of this method is necessary
-     * until all {@link StreamingChatLanguageModel} implementations adopt it. It should be removed once that occurs.
-     *
-     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
-     * @param handler     a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
-     */
+    default List<ChatModelListener> listeners() {
+        return Collections.emptyList();
+    }
+
     @Experimental
     default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
@@ -129,10 +134,6 @@ public interface StreamingChatLanguageModel {
                 generate(chatRequest.messages(), toolSpecifications, legacyHandler);
             }
         }
-    }
-
-    default List<ChatModelListener> listeners() {
-        return Collections.emptyList();
     }
 
     @Experimental
