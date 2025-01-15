@@ -120,4 +120,28 @@ ChatLanguageModel model = OpenAiChatModel.builder()
 model.generate("Tell me a joke about Java");
 ```
 
-The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods.
+The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same
+`ChatModelListener`, as well as between multiple `ChatModelListener`s.
+
+## How listeners work
+
+- Listeners are specified as a `List<ChatModelListener>` and are called in the order of iteration.
+- Listeners are called synchronously and in the same thread.
+The second listener is not called until the first one returns.
+- The `ChatModelListener.onRequest()` method is called right before calling the LLM provider API.
+- The `ChatModelListener.onRequest()` method is called only once per request.
+If an error occurs while calling the LLM provider API and a retry happens,
+`ChatModelListener.onRequest()` will **_not_** be called for every retry.
+- The `ChatModelListener.onResponse()` method is called only once,
+immediately after receiving a successful response from the LLM provider.
+- The `ChatModelListener.onError()` method is called only once.
+If an error occurs while calling the LLM provider API and a retry happens,
+`ChatModelListener.onError()` will **_not_** be called for every retry.
+- If an exception is thrown from one of the `ChatModelListener` methods,
+it will be logged at the `WARN` level. The execution of subsequent listeners will continue as usual.
+- The `ChatRequest` provided via `ChatModelRequestContext`, `ChatModelResponseContext`, and `ChatModelErrorContext`
+is the final request, containing both the default `ChatRequestParameters`
+and the request-specific `ChatRequestParameters` merged together.
+- For `StreamingChatLanguageModel`, the `ChatModelListener.onResponse()` is called before the
+`StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
+before the `StreamingChatResponseHandler.onError()` is called.
