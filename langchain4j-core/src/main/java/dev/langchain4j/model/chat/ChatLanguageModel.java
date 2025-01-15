@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -15,10 +16,16 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.listener.ListenersUtil.onError;
+import static dev.langchain4j.model.chat.listener.ListenersUtil.onRequest;
+import static dev.langchain4j.model.chat.listener.ListenersUtil.onResponse;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Arrays.asList;
 
@@ -31,6 +38,27 @@ public interface ChatLanguageModel {
 
     // TODO improve javadoc
 
+    default ChatResponse chat(ChatRequest chatRequest) {
+
+        ChatRequest finalChatRequest = ChatRequest.builder()
+                .messages(chatRequest.messages())
+                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                .build();
+
+        List<ChatModelListener> listeners = listeners();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+        onRequest(finalChatRequest, attributes, listeners);
+        try {
+            ChatResponse chatResponse = doChat(finalChatRequest);
+            onResponse(chatResponse, finalChatRequest, attributes, listeners);
+            return chatResponse;
+        } catch (Exception error) {
+            onError(error, finalChatRequest, attributes, listeners);
+            throw error;
+        }
+    }
+
     /**
      * This is the main API to interact with the chat model.
      * All the existing generate(...) methods (see below) will be deprecated and removed before 1.0.0 release.
@@ -42,7 +70,7 @@ public interface ChatLanguageModel {
      * @return a {@link ChatResponse}, containing all the outputs from the LLM
      */
     @Experimental
-    default ChatResponse chat(ChatRequest chatRequest) {
+    default ChatResponse doChat(ChatRequest chatRequest) {
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
@@ -73,6 +101,10 @@ public interface ChatLanguageModel {
                         .finishReason(response.finishReason())
                         .build())
                 .build();
+    }
+
+    default List<ChatModelListener> listeners() {
+        return Collections.emptyList();
     }
 
     static void validate(ChatRequestParameters parameters) {

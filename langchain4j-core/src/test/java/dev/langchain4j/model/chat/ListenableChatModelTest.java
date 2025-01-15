@@ -6,7 +6,6 @@ import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.listener.ObservableChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -27,7 +26,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 class ListenableChatModelTest {
 
-    static class TestObservableChatModel implements ObservableChatModel {
+    static class TestObservableChatModel implements ChatLanguageModel {
 
         private final List<ChatModelListener> listeners;
 
