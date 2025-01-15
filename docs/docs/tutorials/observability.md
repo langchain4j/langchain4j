@@ -15,18 +15,21 @@ sidebar_position: 31
 These events include various attributes, as described in the
 [OpenTelemetry Generative AI Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/), such as:
 - Request:
+  - Messages
   - Model
   - Temperature
   - Top P
   - Max Tokens
-  - Messages
   - Tools
+  - Response Format
+  - etc
 - Response:
+  - Assistant Message
   - ID
   - Model
   - Token Usage
   - Finish Reason
-  - Assistant Message
+  - etc
 
 Here is an example of using `ChatModelListener`:
 ```java
@@ -34,26 +37,77 @@ ChatModelListener listener = new ChatModelListener() {
 
     @Override
     public void onRequest(ChatModelRequestContext requestContext) {
-        ChatModelRequest request = requestContext.request();
+        ChatRequest chatRequest = requestContext.chatRequest();
+
+        List<ChatMessage> messages = chatRequest.messages();
+        System.out.println(messages);
+
+        ChatRequestParameters parameters = chatRequest.parameters();
+        System.out.println(parameters.modelName());
+        System.out.println(parameters.temperature());
+        System.out.println(parameters.topP());
+        System.out.println(parameters.topK());
+        System.out.println(parameters.frequencyPenalty());
+        System.out.println(parameters.presencePenalty());
+        System.out.println(parameters.maxOutputTokens());
+        System.out.println(parameters.stopSequences());
+        System.out.println(parameters.toolSpecifications());
+        System.out.println(parameters.toolChoice());
+        System.out.println(parameters.responseFormat());
+
+        if (parameters instanceof OpenAiChatRequestParameters openAiParameters) {
+            System.out.println(openAiParameters.maxCompletionTokens());
+            System.out.println(openAiParameters.logitBias());
+            System.out.println(openAiParameters.parallelToolCalls());
+            System.out.println(openAiParameters.seed());
+            System.out.println(openAiParameters.user());
+            System.out.println(openAiParameters.store());
+            System.out.println(openAiParameters.metadata());
+            System.out.println(openAiParameters.serviceTier());
+        }
+
         Map<Object, Object> attributes = requestContext.attributes();
-        ...
+        attributes.put("my-attribute", "my-value");
     }
 
     @Override
     public void onResponse(ChatModelResponseContext responseContext) {
-        ChatModelResponse response = responseContext.response();
-        ChatModelRequest request = responseContext.request();
+        ChatResponse chatResponse = responseContext.chatResponse();
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        System.out.println(aiMessage);
+
+        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
+        System.out.println(chatResponseMetadata.id());
+        System.out.println(chatResponseMetadata.modelName());
+        System.out.println(chatResponseMetadata.finishReason());
+
+        TokenUsage tokenUsage = chatResponseMetadata.tokenUsage();
+        System.out.println(tokenUsage.inputTokenCount());
+        System.out.println(tokenUsage.outputTokenCount());
+        System.out.println(tokenUsage.totalTokenCount());
+        if (tokenUsage instanceof OpenAiTokenUsage openAiTokenUsage) {
+            System.out.println(openAiTokenUsage.inputTokensDetails().cachedTokens());
+            System.out.println(openAiTokenUsage.outputTokensDetails().reasoningTokens());
+        }
+
+        ChatRequest chatRequest = responseContext.chatRequest();
+        System.out.println(chatRequest);
+
         Map<Object, Object> attributes = responseContext.attributes();
-        ...
+        System.out.println(attributes.get("my-attribute"));
     }
 
     @Override
     public void onError(ChatModelErrorContext errorContext) {
         Throwable error = errorContext.error();
-        ChatModelRequest request = errorContext.request();
-        ChatModelResponse partialResponse = errorContext.partialResponse();
+        error.printStackTrace();
+
+        ChatRequest chatRequest = errorContext.chatRequest();
+        System.out.println(chatRequest);
+
         Map<Object, Object> attributes = errorContext.attributes();
-        ...
+        System.out.println(attributes.get("my-attribute"));
     }
 };
 

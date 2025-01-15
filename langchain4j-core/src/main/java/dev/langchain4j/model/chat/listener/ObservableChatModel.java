@@ -30,8 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * disrupt the main request flow.
  *
  * @see ChatModelListener
- * @see ChatRequest
- * @see ChatResponse
+ * @see ObservableStreamingChatModel
  */
 public interface ObservableChatModel extends ChatLanguageModel {
 

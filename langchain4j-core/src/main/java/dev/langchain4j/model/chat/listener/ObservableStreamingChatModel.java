@@ -31,8 +31,7 @@ import static dev.langchain4j.model.chat.listener.ObservableChatModel.onRequest;
  * disrupt the main request flow.
  *
  * @see ChatModelListener
- * @see ChatRequest
- * @see ChatResponse
+ * @see ObservableChatModel
  */
 public interface ObservableStreamingChatModel extends StreamingChatLanguageModel {
 
