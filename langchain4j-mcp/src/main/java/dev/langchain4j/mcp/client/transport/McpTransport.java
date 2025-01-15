@@ -1,9 +1,8 @@
 package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.client.protocol.McpClientMessage;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
-import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
@@ -24,20 +23,13 @@ public interface McpTransport extends Closeable {
     CompletableFuture<JsonNode> initialize(McpInitializeRequest request);
 
     /**
-     * Requests a list of available tools from the MCP server.
+     * Executes an operation that expects a response from the server.
      */
-    CompletableFuture<JsonNode> listTools(McpListToolsRequest request);
+    CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request);
 
     /**
-     * Executes a tool on the MCP server.
-     * @param request the tool execution request
+     * Sends a message that does not expect a response from the server. The 'id' field
+     * of the message should be null.
      */
-    CompletableFuture<JsonNode> executeTool(McpCallToolRequest request);
-
-    /**
-     * Cancels a running operation on the server (sends a 'notifications/cancelled' message to the server).
-     * This does not expect any response from the server.
-     * @param operationId The ID of the operation to be cancelled.
-     */
-    void cancelOperation(long operationId);
+    void executeOperationWithoutResponse(McpClientMessage request);
 }
