@@ -1,9 +1,6 @@
-package dev.langchain4j.model.chat;
+package dev.langchain4j.model.chat.listener;
 
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.slf4j.Logger;
@@ -36,9 +33,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * @see ChatRequest
  * @see ChatResponse
  */
-public interface ListenableChatModel extends ChatLanguageModel {
+public interface ObservableChatModel extends ChatLanguageModel {
 
-    Logger log = LoggerFactory.getLogger(ListenableChatModel.class);
+    Logger log = LoggerFactory.getLogger(ObservableChatModel.class);
 
     @Override
     default ChatResponse chat(ChatRequest chatRequest) {

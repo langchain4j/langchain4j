@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  */
 @Experimental
 public interface ChatModelListener {
+    // TODO rename into ChatModelObserver
 
     /**
      * This method is called before the request is sent to the model.

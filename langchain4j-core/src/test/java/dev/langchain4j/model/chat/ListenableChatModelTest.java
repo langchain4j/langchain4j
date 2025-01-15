@@ -6,6 +6,7 @@ import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.listener.ObservableChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -26,11 +27,11 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 class ListenableChatModelTest {
 
-    static class TestListenableChatModel implements ListenableChatModel {
+    static class TestObservableChatModel implements ObservableChatModel {
 
         private final List<ChatModelListener> listeners;
 
-        TestListenableChatModel(List<ChatModelListener> listeners) {
+        TestObservableChatModel(List<ChatModelListener> listeners) {
             this.listeners = listeners;
         }
 
@@ -96,7 +97,7 @@ class ListenableChatModelTest {
         // given
         ChatModelListener listener1 = spy(new SuccessfulListener());
         ChatModelListener listener2 = spy(new SuccessfulListener());
-        TestListenableChatModel model = new TestListenableChatModel(List.of(listener1, listener2));
+        TestObservableChatModel model = new TestObservableChatModel(List.of(listener1, listener2));
 
         // when
         model.chat("hi");
@@ -116,7 +117,7 @@ class ListenableChatModelTest {
         // given
         ChatModelListener failingListener = spy(new FailingListener());
         ChatModelListener successfulListener = spy(new SuccessfulListener());
-        TestListenableChatModel model = new TestListenableChatModel(List.of(failingListener, successfulListener));
+        TestObservableChatModel model = new TestObservableChatModel(List.of(failingListener, successfulListener));
 
         // when - then
         assertThatNoException().isThrownBy(() -> model.chat("hi"));
@@ -146,7 +147,7 @@ class ListenableChatModelTest {
                 assertThat(responseContext.attributes()).containsExactly(entry("my-attribute", "my-value"));
             }
         });
-        TestListenableChatModel model = new TestListenableChatModel(List.of(listener1, listener2));
+        TestObservableChatModel model = new TestObservableChatModel(List.of(listener1, listener2));
 
         // when
         model.chat("hi");

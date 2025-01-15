@@ -1,6 +1,6 @@
-package dev.langchain4j.model.chat;
+package dev.langchain4j.model.chat.listener;
 
-import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -9,9 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static dev.langchain4j.model.chat.ListenableChatModel.onRequest;
+import static dev.langchain4j.model.chat.listener.ObservableChatModel.onRequest;
 
 /**
+ * // TODO reword
  * A decorator for {@link StreamingChatLanguageModel} that provides event notifications through {@link ChatModelListener}s
  * during the lifecycle of LLM API requests.
  * <p>
@@ -33,7 +34,7 @@ import static dev.langchain4j.model.chat.ListenableChatModel.onRequest;
  * @see ChatRequest
  * @see ChatResponse
  */
-public interface ListenableStreamingChatModel extends StreamingChatLanguageModel {
+public interface ObservableStreamingChatModel extends StreamingChatLanguageModel {
 
     @Override
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
@@ -55,13 +56,13 @@ public interface ListenableStreamingChatModel extends StreamingChatLanguageModel
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                ListenableChatModel.onResponse(completeResponse, finalChatRequest, attributes, listeners);
+                ObservableChatModel.onResponse(completeResponse, finalChatRequest, attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ListenableChatModel.onError(error, finalChatRequest, attributes, listeners);
+                ObservableChatModel.onError(error, finalChatRequest, attributes, listeners);
                 handler.onError(error);
             }
         };
