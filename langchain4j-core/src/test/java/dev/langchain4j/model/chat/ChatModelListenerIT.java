@@ -56,6 +56,7 @@ import static org.assertj.core.api.Assertions.fail;
  * </pre>
  */
 public abstract class ChatModelListenerIT {
+    // TODO move to "common" package
 
     protected abstract ChatLanguageModel createModel(ChatModelListener listener);
 

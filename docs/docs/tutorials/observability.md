@@ -77,12 +77,18 @@ ChatModelListener listener = new ChatModelListener() {
         AiMessage aiMessage = chatResponse.aiMessage();
         System.out.println(aiMessage);
 
-        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
-        System.out.println(chatResponseMetadata.id());
-        System.out.println(chatResponseMetadata.modelName());
-        System.out.println(chatResponseMetadata.finishReason());
+        ChatResponseMetadata metadata = chatResponse.metadata();
+        System.out.println(metadata.id());
+        System.out.println(metadata.modelName());
+        System.out.println(metadata.finishReason());
 
-        TokenUsage tokenUsage = chatResponseMetadata.tokenUsage();
+        if (metadata instanceof OpenAiChatResponseMetadata openAiMetadata) {
+            System.out.println(openAiMetadata.created());
+            System.out.println(openAiMetadata.serviceTier());
+            System.out.println(openAiMetadata.systemFingerprint());
+        }
+
+        TokenUsage tokenUsage = metadata.tokenUsage();
         System.out.println(tokenUsage.inputTokenCount());
         System.out.println(tokenUsage.outputTokenCount());
         System.out.println(tokenUsage.totalTokenCount());
@@ -126,7 +132,7 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
 ## How listeners work
 
 - Listeners are specified as a `List<ChatModelListener>` and are called in the order of iteration.
-- Listeners are called synchronously and in the same thread.
+- Listeners are called synchronously and in the same thread. See more details about the streaming case below.
   The second listener is not called until the first one returns.
 - The `ChatModelListener.onRequest()` method is called right before calling the LLM provider API.
 - The `ChatModelListener.onRequest()` method is called only once per request.
@@ -142,9 +148,10 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
 - The `ChatRequest` provided via `ChatModelRequestContext`, `ChatModelResponseContext`, and `ChatModelErrorContext`
   is the final request, containing both the default `ChatRequestParameters`
   and the request-specific `ChatRequestParameters` merged together.
-- For `StreamingChatLanguageModel`, the `ChatModelListener.onResponse()`
-  and `ChatModelListener.onError()` are called on a different thread than the `ChatModelListener.onRequest()`.
-  before the `StreamingChatResponseHandler.onError()` is called. TODO context
+- For `StreamingChatLanguageModel`, the `ChatModelListener.onResponse()` and `ChatModelListener.onError()`
+  are called on a different thread than the `ChatModelListener.onRequest()`.
+  The thread context is currently not propagated automatically, so you might want to use the `attributes` map
+  to propagate any necessary data from `ChatModelListener.onRequest()` to `ChatModelListener.onResponse()` or `ChatModelListener.onError()`.
 - For `StreamingChatLanguageModel`, the `ChatModelListener.onResponse()` is called before the
   `StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
   before the `StreamingChatResponseHandler.onError()` is called.
