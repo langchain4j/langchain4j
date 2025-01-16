@@ -10,7 +10,7 @@ https://dashscope.aliyun.com/
 ## Maven Dependency
 
 :::note
-Since `0.37.0`, `langchain4j-dashscope` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-dashscope`.
+Since `1.0.0-alpha1`, `langchain4j-dashscope` has migrated to `langchain4j-community` and is renamed to `langchain4j-community-dashscope`.
 :::
 
 `0.36.2` and previous:
@@ -19,17 +19,17 @@ Since `0.37.0`, `langchain4j-dashscope` has migrated to `langchain4j-community` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-dashscope</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
-`0.37.0` and later:
+`1.0.0-alpha1` and later:
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-dashscope</artifactId>
-    <version>0.37.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ Or, you can use BOM to manage dependencies consistently:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>0.37.0</version>
+        <version>1.0.0-alpha1</version>
         <typ>pom</typ>
         <scope>import</scope>
     </dependency>
