@@ -136,15 +136,13 @@ public class DefaultMcpClient implements McpClient {
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeout) {
             transport.executeOperationWithoutResponse(new CancellationNotification(operationId, "Timeout"));
-            return ToolExecutionHelper.extractResult(
-                    (ArrayNode) RESULT_TIMEOUT.get("result").get("content"));
+            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT);
         } catch (ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             pendingOperations.remove(operationId);
         }
-        return ToolExecutionHelper.extractResult(
-                (ArrayNode) result.get("result").get("content"));
+        return ToolExecutionHelper.extractResult(result);
     }
 
     @Override
