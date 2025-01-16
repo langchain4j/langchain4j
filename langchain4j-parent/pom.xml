@@ -83,17 +83,17 @@
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <redis-containers.version>2.2.2</redis-containers.version>
         <elastic.version>8.15.3</elastic.version>
-        <jackson.version>2.16.1</jackson.version>
+        <jackson.version>2.18.2</jackson.version>
         <jedis.version>5.1.5</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
-        <milvus-sdk-java.version>2.4.2</milvus-sdk-java.version>
+        <milvus-sdk-java.version>2.5.3</milvus-sdk-java.version>
         <netty.version>4.1.111.Final</netty.version>
         <awaitility.version>4.2.2</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <jspecify.version>1.0.0</jspecify.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
-        <kotlin.version>2.1.0</kotlin.version>
+        <kotlin.version>1.9.25</kotlin.version>
         <kotlinx.version>1.9.0</kotlinx.version>
     </properties>
 
@@ -460,6 +460,11 @@
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-resources-plugin</artifactId>
                     <version>3.3.1</version>
                 </plugin>
@@ -657,7 +662,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.2.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>

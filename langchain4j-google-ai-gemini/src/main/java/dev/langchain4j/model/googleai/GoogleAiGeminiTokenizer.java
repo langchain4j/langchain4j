@@ -1,6 +1,5 @@
 package dev.langchain4j.model.googleai;
 
-import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -39,7 +38,7 @@ public class GoogleAiGeminiTokenizer implements Tokenizer {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.geminiService = new GeminiService(
-                logRequestsAndResponses ? log : null,
+                getOrDefault(logRequestsAndResponses, false) ? log : null,
                 timeout != null ? timeout : Duration.ofSeconds(60)
         );
     }
