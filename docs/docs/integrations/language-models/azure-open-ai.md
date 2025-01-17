@@ -216,6 +216,53 @@ ChatLanguageModel model = AzureOpenAiChatModel.builder()
 If `strictJsonSchema` is set to `false` and you provide a JSON Schema, the model will still try to generate a response that adheres to the schema, but it will not fail if the response does not adhere to the schema. One reason to do this is for better performance.
 :::
 
+You can then use this model either with the high level `Assistant` API or the low level `ChatLanguageModel` API, as detailed below.
+
+### Using the high level `Assistant` API
+
+Like for Tools in the previous section, Structured Output can be automatically used with an AI `Assistant`:
+
+```java
+
+interface PersonAssistant {
+    Person favoriteColor(String message);
+}
+
+class Person {
+    private final String name;
+    private final List<String> favouriteColors;
+
+    public Person(String name, List<String> favouriteColors) {
+        this.name = name;
+        this.favouriteColors = favouriteColors;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public List<String> getFavouriteColors() {
+        return favouriteColors;
+    }
+}
+```
+
+This `Assistant` will make sure that the response adheres to a JSON schema corresponding in the `Person` class, like in the following example:
+
+```java
+String question = "Julien likes the colors blue, white and red";
+
+PersonAssistant assistant = AiServices.builder(PersonAssistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .build();
+
+Person person = assistant.favoriteColor(question);
+```
+
+### Using the low level `ChatLanguageModel` API
+
+This is a similar process to the high level API, but this time the JSON schema needs to be configured manually, as well as mapping the JSON response to a Java object.
+
 Once the model is configured, the JSON Schema has to be specified in the `ChatRequest` object for each request.
 The model will then generate a response that adheres to the schema, like in this example:
 
