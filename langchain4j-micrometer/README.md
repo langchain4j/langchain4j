@@ -10,6 +10,8 @@ The following metrics are collected:
 - `gen_ai.client.token.usage` - The number of tokens used by the model for input, output, or both.
 
 ## Usage
+The micrometer module is added to the project from version 1.0.0-alpha2.
+
 First add the `langchain4j-micrometer` dependency to your project:
 
 For Maven:
@@ -17,12 +19,12 @@ For Maven:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-micrometer</artifactId>
-    <version>1.0.0-alpha1</version>
+    <version>${project.version}</version>
 </dependency>
 ```
 For Gradle:
 ```gradle
-implementation 'dev.langchain4j:langchain4j-micrometer:1.0.0-alpha1'
+implementation 'dev.langchain4j:langchain4j-micrometer:${project.version}'
 ```
 
 ### Micrometer (Actuator) Configuration
@@ -56,17 +58,17 @@ management:
 ```
 
 ### Add observability to your ChatModel
-The `ChatModelObservationListener` collects the metrics for the chat model. It uses a `ObservationRegistry` and `MeterRegistry` provided by Micrometer to collect the metrics in an Observation.
-Therefore, you need to create a `ChatModelObservationListener` with the available `ObservationRegistry` and `MeterRegistry`.
+The `MicrometerChatModelListener` collects the metrics for the chat model. It uses a `ObservationRegistry` and `MeterRegistry` provided by Micrometer to collect the metrics in an Observation.
+Therefore, you need to create a `MicrometerChatModelListener` with the available `ObservationRegistry` and `MeterRegistry`.
 
-Then, add the `ChatModelObservationListener` to a list of listeners for your ChatModel.
+Then, add the `MicrometerChatModelListener` to a list of listeners for your ChatModel.
 Finally, add this list of listeners to the chat model in its builder.
 
 ```java
 List<ChatModelListener> list;
 
 public ChatApp(ObservationRegistry observationRegistry, CompositeMeterRegistry meterRegistry) {
-        this.list = List.of(new ChatModelObservationListener(meterRegistry, observationRegistry));
+        this.list = List.of(new MicrometerChatModelListener(meterRegistry, observationRegistry));
     }
     
 // For example an AzureOpenAiChatModel
