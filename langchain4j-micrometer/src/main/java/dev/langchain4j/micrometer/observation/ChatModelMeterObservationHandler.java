@@ -1,7 +1,7 @@
 package dev.langchain4j.micrometer.observation;
 
-import dev.langchain4j.micrometer.conventions.OTelGenAiMetricAttributes;
-import dev.langchain4j.micrometer.conventions.OTelGenAiMetricNames;
+import dev.langchain4j.micrometer.conventions.OTelGenAiAttributes;
+import dev.langchain4j.micrometer.conventions.OTelGenAiMetricName;
 import dev.langchain4j.micrometer.conventions.OTelGenAiOperationName;
 import dev.langchain4j.micrometer.conventions.OTelGenAiTokenType;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -46,10 +46,10 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
 
     private void addRequestMetrics(ChatModelRequestContext requestContext) {
         Counter.builder(LC_REQUEST_COUNTER)
-                .tag(OTelGenAiMetricAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiMetricAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
+                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
+                .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
                 .tag(
-                        OTelGenAiMetricAttributes.REQUEST_MODEL.value(),
+                        OTelGenAiAttributes.REQUEST_MODEL.value(),
                         requestContext.request().model())
                 .description("The number of requests that were made to the chat model")
                 .register(meterRegistry)
@@ -58,10 +58,10 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
 
     private void addErrorMetric(ChatModelErrorContext errorContext) {
         Counter.builder(LC_ERROR_COUNTER)
-                .tag(OTelGenAiMetricAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiMetricAttributes.SYSTEM.value(), getSystemValue(errorContext.attributes()))
+                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
+                .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(errorContext.attributes()))
                 .tag(
-                        OTelGenAiMetricAttributes.REQUEST_MODEL.value(),
+                        OTelGenAiAttributes.REQUEST_MODEL.value(),
                         errorContext.request().model())
                 .description("The number of errors that occurred in the chat model")
                 .register(meterRegistry)
@@ -97,22 +97,22 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
             OTelGenAiTokenType tokenType,
             int tokenCount,
             String description) {
-        Counter.builder(OTelGenAiMetricNames.TOKEN_USAGE.value())
-                .tag(OTelGenAiMetricAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiMetricAttributes.SYSTEM.value(), getSystemValue(responseContext.attributes()))
+        Counter.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
+                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
+                .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(responseContext.attributes()))
                 .tag(
-                        OTelGenAiMetricAttributes.REQUEST_MODEL.value(),
+                        OTelGenAiAttributes.REQUEST_MODEL.value(),
                         responseContext.request().model())
                 .tag(
-                        OTelGenAiMetricAttributes.RESPONSE_MODEL.value(),
+                        OTelGenAiAttributes.RESPONSE_MODEL.value(),
                         responseContext.response().model())
-                .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), tokenType.value())
+                .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), tokenType.value())
                 .description(description)
                 .register(meterRegistry)
                 .increment(tokenCount);
     }
 
     private String getSystemValue(Map<Object, Object> attributes) {
-        return (String) attributes.get(OTelGenAiMetricAttributes.SYSTEM);
+        return (String) attributes.get(OTelGenAiAttributes.SYSTEM);
     }
 }

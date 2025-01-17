@@ -1,19 +1,23 @@
 package dev.langchain4j.micrometer.conventions;
 
-public enum OTelGenAiObservationAttributes {
+public enum OTelGenAiAttributes {
     // GenAI General
-
     /**
      * The name of the operation being performed.
      */
-    AI_OPERATION_TYPE("gen_ai.operation.name"),
+    OPERATION_NAME("gen_ai.operation.name"),
     /**
      * The model provider as identified by the client instrumentation.
      */
-    AI_SYSTEM("gen_ai.system"),
+    SYSTEM("gen_ai.system"),
+
+    // Token
+    /**
+     * The type of token that is counted: input, output, total.
+     */
+    TOKEN_TYPE("gen_ai.token.type"),
 
     // GenAI Request
-
     /**
      * The name of the model a request is being made to.
      */
@@ -111,11 +115,22 @@ public enum OTelGenAiObservationAttributes {
     /**
      * The full response received from the model.
      */
-    COMPLETION("gen_ai.completion");
+    COMPLETION("gen_ai.completion"),
+
+    // GenAi server information
+    /**
+     * The GenAI server port.
+     */
+    SERVER_PORT("server.port"),
+
+    /**
+     * The GenAI server address.
+     */
+    SERVER_ADDRESS("server.address");
 
     private final String value;
 
-    OTelGenAiObservationAttributes(final String value) {
+    OTelGenAiAttributes(final String value) {
         this.value = value;
     }
 

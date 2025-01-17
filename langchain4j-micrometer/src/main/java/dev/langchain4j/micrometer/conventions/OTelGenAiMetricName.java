@@ -4,7 +4,7 @@ package dev.langchain4j.micrometer.conventions;
  * Observation metric names for generative AI client metrics
  * in line with the OpenTelemetry Semantic Conventions for Generative AI Metrics.
  */
-public enum OTelGenAiMetricNames {
+public enum OTelGenAiMetricName {
     /**
      * GenAI operation duration.
      */
@@ -17,7 +17,7 @@ public enum OTelGenAiMetricNames {
 
     private final String value;
 
-    OTelGenAiMetricNames(String value) {
+    OTelGenAiMetricName(String value) {
         this.value = value;
     }
 

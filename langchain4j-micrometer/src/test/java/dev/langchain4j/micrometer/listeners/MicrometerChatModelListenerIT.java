@@ -1,9 +1,8 @@
 package dev.langchain4j.micrometer.listeners;
 
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.micrometer.conventions.OTelGenAiMetricAttributes;
-import dev.langchain4j.micrometer.conventions.OTelGenAiMetricNames;
-import dev.langchain4j.micrometer.conventions.OTelGenAiObservationAttributes;
+import dev.langchain4j.micrometer.conventions.OTelGenAiAttributes;
+import dev.langchain4j.micrometer.conventions.OTelGenAiMetricName;
 import dev.langchain4j.micrometer.conventions.OTelGenAiTokenType;
 import dev.langchain4j.model.azure.AzureOpenAiChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -43,12 +42,12 @@ class MicrometerChatModelListenerIT {
                 .hasBeenStarted()
                 .hasBeenStopped()
                 .hasLowCardinalityKeyValue(
-                        KeyValue.of(OTelGenAiObservationAttributes.AI_OPERATION_TYPE.value(), "chat"))
+                        KeyValue.of(OTelGenAiAttributes.OPERATION_NAME.value(), "chat"))
                 .hasLowCardinalityKeyValue(
-                        KeyValue.of(OTelGenAiObservationAttributes.AI_SYSTEM.value(), "azure_openai"))
-                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiObservationAttributes.REQUEST_MODEL.value(), "gpt-4o"))
+                        KeyValue.of(OTelGenAiAttributes.SYSTEM.value(), "azure_openai"))
+                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.REQUEST_MODEL.value(), "gpt-4o"))
                 .hasLowCardinalityKeyValue(
-                        KeyValue.of(OTelGenAiObservationAttributes.RESPONSE_MODEL.value(), "gpt-4o"));
+                        KeyValue.of(OTelGenAiAttributes.RESPONSE_MODEL.value(), "gpt-4o"));
     }
 
     @Test
@@ -57,41 +56,41 @@ class MicrometerChatModelListenerIT {
 
         assertThat(meterRegistry.getMeters()).hasSize(4);
         assertThat(meterRegistry.find("langchain4j.chat.model.request").meter()).isNotNull();
-        assertThat(meterRegistry.find(OTelGenAiMetricNames.TOKEN_USAGE.value()).meter())
+        assertThat(meterRegistry.find(OTelGenAiMetricName.TOKEN_USAGE.value()).meter())
                 .isNotNull();
         assertThat(meterRegistry
-                        .find(OTelGenAiMetricNames.TOKEN_USAGE.value())
-                        .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.INPUT.value())
+                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.INPUT.value())
                         .meter())
                 .isNotNull();
         assertThat(meterRegistry
-                        .find(OTelGenAiMetricNames.TOKEN_USAGE.value())
-                        .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
+                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
                         .meter())
                 .isNotNull();
         assertThat(meterRegistry
-                        .find(OTelGenAiMetricNames.TOKEN_USAGE.value())
-                        .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.TOTAL.value())
+                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.TOTAL.value())
                         .meter())
                 .isNotNull();
 
         assertThat(meterRegistry.get("langchain4j.chat.model.request").counter().count())
                 .isEqualTo(1.0);
         assertThat(meterRegistry
-                        .get(OTelGenAiMetricNames.TOKEN_USAGE.value())
-                        .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.INPUT.value())
+                        .get(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.INPUT.value())
                         .counter()
                         .count())
                 .isGreaterThan(1.0);
         assertThat(meterRegistry
-                        .get(OTelGenAiMetricNames.TOKEN_USAGE.value())
-                        .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
+                        .get(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
                         .counter()
                         .count())
                 .isGreaterThan(1.0);
         assertThat(meterRegistry
-                        .get(OTelGenAiMetricNames.TOKEN_USAGE.value())
-                        .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.TOTAL.value())
+                        .get(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.TOTAL.value())
                         .counter()
                         .count())
                 .isGreaterThan(2.0);
@@ -109,21 +108,21 @@ class MicrometerChatModelListenerIT {
         assertThat(meterRegistry.getMeters()).hasSize(2);
         assertThat(meterRegistry.find("langchain4j.chat.model.request").meter()).isNotNull();
         assertThat(meterRegistry.find("langchain4j.chat.model.error").meter()).isNotNull();
-        assertThat(meterRegistry.find(OTelGenAiMetricNames.TOKEN_USAGE.value()).meter())
+        assertThat(meterRegistry.find(OTelGenAiMetricName.TOKEN_USAGE.value()).meter())
                 .isNull();
         assertThat(meterRegistry
-                        .find(OTelGenAiMetricNames.TOKEN_USAGE.value())
-                        .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.INPUT.value())
+                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.INPUT.value())
                         .meter())
                 .isNull();
         assertThat(meterRegistry
-                        .find(OTelGenAiMetricNames.TOKEN_USAGE.value())
-                        .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
+                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
                         .meter())
                 .isNull();
         assertThat(meterRegistry
-                        .find(OTelGenAiMetricNames.TOKEN_USAGE.value())
-                        .tag(OTelGenAiMetricAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.TOTAL.value())
+                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.TOTAL.value())
                         .meter())
                 .isNull();
 
