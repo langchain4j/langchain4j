@@ -20,17 +20,17 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ChatModelObservationListenerIT {
+class MicrometerChatModelListenerIT {
 
     TestObservationRegistry observationRegistry;
-    ChatModelObservationListener listener;
+    MicrometerChatModelListener listener;
     MeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
         observationRegistry = TestObservationRegistry.create();
-        listener = new ChatModelObservationListener(meterRegistry, observationRegistry, "azure_openai");
+        listener = new MicrometerChatModelListener(meterRegistry, observationRegistry, "azure_openai");
     }
 
     @Test

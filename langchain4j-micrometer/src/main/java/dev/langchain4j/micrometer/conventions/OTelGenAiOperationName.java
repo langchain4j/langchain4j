@@ -4,7 +4,7 @@ package dev.langchain4j.micrometer.conventions;
  * Metric attribute for operation type of AI operations. The values of this enum are
  * inline with the OpenTelemetry Semantic Conventions for Generative AI Metrics.
  */
-public enum OTelGenAiOperationType {
+public enum OTelGenAiOperationName {
     /**
      * AI operation type for chat.
      */
@@ -22,7 +22,7 @@ public enum OTelGenAiOperationType {
 
     private final String value;
 
-    OTelGenAiOperationType(String value) {
+    OTelGenAiOperationName(String value) {
         this.value = value;
     }
 
