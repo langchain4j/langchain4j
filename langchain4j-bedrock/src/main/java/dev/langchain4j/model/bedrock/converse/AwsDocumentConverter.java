@@ -1,8 +1,6 @@
 package dev.langchain4j.model.bedrock.converse;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.Objects.nonNull;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -10,13 +8,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
-import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -25,16 +17,12 @@ import java.util.Map;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.core.document.internal.MapDocument;
 
-public class AwsDocumentConverter {
+class AwsDocumentConverter {
 
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .enable(INDENT_OUTPUT)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
-
-    public static final String DESCRIPTION = "description";
-    public static final String TYPE = "type";
-    public static final String OBJECT = "object";
 
     private AwsDocumentConverter() {}
 
@@ -43,13 +31,7 @@ public class AwsDocumentConverter {
             Map<String, Object> actualValues = new HashMap<>();
             for (Map.Entry<String, Document> entry : document.asMap().entrySet()) {
                 Document doc = entry.getValue();
-                if (doc.isNumber()) {
-                    actualValues.put(entry.getKey(), doc.asNumber());
-                } else if (doc.isString()) {
-                    actualValues.put(entry.getKey(), doc.asString());
-                } else if (doc.isBoolean()) {
-                    actualValues.put(entry.getKey(), doc.asBoolean());
-                }
+                actualValues.put(entry.getKey(), documentToObject(doc));
                 // Add other types as needed
             }
             return OBJECT_MAPPER.writeValueAsString(actualValues);
@@ -58,23 +40,44 @@ public class AwsDocumentConverter {
         }
     }
 
+    private static Object documentToObject(Document doc) {
+        if (doc.isNumber()) {
+            return doc.asNumber();
+        } else if (doc.isBoolean()) {
+            return doc.asBoolean();
+        } else if (doc.isList()) {
+            return doc.asList().stream()
+                    .map(AwsDocumentConverter::documentToObject)
+                    .toList();
+        } else if (doc.isMap()) {
+            Map<String, Object> innerObject = new HashMap<>();
+            doc.asMap().forEach((k, v) -> innerObject.put(k, documentToObject(v)));
+            return innerObject;
+        } else {
+            return doc.asString();
+        }
+    }
+
     public static Document documentFromJson(String json) {
         try {
             final JsonNode jsonNode = OBJECT_MAPPER.readValue(json, JsonNode.class);
-            Map<String, Document> documentMap = new HashMap<>();
             Iterator<Map.Entry<String, JsonNode>> fields = jsonNode.fields();
-
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> entry = fields.next();
-                final JsonNode value = entry.getValue();
-                Document doc = getDocument(value);
-                documentMap.put(entry.getKey(), doc);
-            }
-            return new MapDocument(documentMap);
+            return new MapDocument(fieldsToDocumentMap(fields));
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static Map<String, Document> fieldsToDocumentMap(Iterator<Map.Entry<String, JsonNode>> fields) {
+        Map<String, Document> documentMap = new HashMap<>();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            final JsonNode value = entry.getValue();
+            Document doc = getDocument(value);
+            documentMap.put(entry.getKey(), doc);
+        }
+        return documentMap;
     }
 
     private static Document getDocument(JsonNode value) {
@@ -91,6 +94,8 @@ public class AwsDocumentConverter {
                 list.add(getDocument(node));
             }
             doc = Document.fromList(list);
+        } else if (value.isObject() || value.isPojo()) {
+            doc = Document.fromMap(fieldsToDocumentMap(value.fields()));
         } else {
             doc = Document.fromString(value.asText());
         }
@@ -98,72 +103,30 @@ public class AwsDocumentConverter {
     }
 
     public static Document convertJsonObjectSchemaToDocument(ToolSpecification toolSpecification) {
-        final Document.MapBuilder mapBuilder = Document.mapBuilder().putString(TYPE, OBJECT);
-        if (nonNull(toolSpecification.description()))
-            mapBuilder.putString(DESCRIPTION, toolSpecification.description());
+        // Convert ToolSpecification to a Map using JsonSchemaElementHelper
+        Map<String, Object> schemaMap = new HashMap<>();
+        schemaMap.put("type", "object");
 
-        if (nonNull(toolSpecification.parameters()))
-            mapBuilder
-                    .putDocument("properties", createPropertiesDocument(toolSpecification.parameters()))
-                    .putList("required", builder -> toolSpecification
-                            .parameters()
-                            .properties()
-                            .keySet()
-                            .forEach(builder::addString));
-        return mapBuilder.build();
-    }
-
-    private static Document createPropertiesDocument(JsonObjectSchema schema) {
-        Document.MapBuilder propertiesBuilder = Document.mapBuilder();
-
-        for (Map.Entry<String, JsonSchemaElement> entry : schema.properties().entrySet()) {
-            String propertyName = entry.getKey();
-            JsonSchemaElement element = entry.getValue();
-
-            Document.MapBuilder mapBuilder = Document.mapBuilder()
-                    .putString(TYPE, getTypeFromElement(element))
-                    .putString(DESCRIPTION, getOrDefault(getDescriptionFromElement(element), propertyName));
-            if (element instanceof JsonEnumSchema enumSchema)
-                mapBuilder.putList(
-                        "enum",
-                        enumSchema.enumValues().stream()
-                                .map(Document::fromString)
-                                .toList());
-            Document propertyDoc = mapBuilder.build();
-
-            propertiesBuilder.putDocument(propertyName, propertyDoc);
+        if (toolSpecification.description() != null) {
+            schemaMap.put("description", toolSpecification.description());
         }
 
-        return propertiesBuilder.build();
-    }
+        if (toolSpecification.parameters() != null) {
+            Map<String, Map<String, Object>> propertiesMap =
+                    JsonSchemaElementHelper.toMap(toolSpecification.parameters().properties());
+            schemaMap.put("properties", propertiesMap);
 
-    private static String getTypeFromElement(JsonSchemaElement element) {
-        if (element instanceof JsonNumberSchema) {
-            return "number";
-        } else if (element instanceof JsonStringSchema) {
-            return "string";
-        } else if (element instanceof JsonBooleanSchema) {
-            return "boolean";
-        } else if (element instanceof JsonIntegerSchema) {
-            return "integer";
-        } else if (element instanceof JsonEnumSchema) {
-            return "string";
+            List<String> required =
+                    new ArrayList<>(toolSpecification.parameters().properties().keySet());
+            schemaMap.put("required", required);
         }
-        throw new IllegalArgumentException("Unsupported schema element type: " + element.getClass());
-    }
 
-    private static String getDescriptionFromElement(JsonSchemaElement element) {
-        if (element instanceof JsonNumberSchema jsonElement) {
-            return jsonElement.description();
-        } else if (element instanceof JsonStringSchema jsonElement) {
-            return jsonElement.description();
-        } else if (element instanceof JsonBooleanSchema jsonElement) {
-            return jsonElement.description();
-        } else if (element instanceof JsonIntegerSchema jsonElement) {
-            return jsonElement.description();
-        } else if (element instanceof JsonEnumSchema jsonElement) {
-            return jsonElement.description();
+        // Convert the schema map to AWS Document
+        try {
+            String jsonSchema = OBJECT_MAPPER.writeValueAsString(schemaMap);
+            return documentFromJson(jsonSchema);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to convert schema to Document", e);
         }
-        throw new IllegalArgumentException("Unsupported schema element type: " + element.getClass());
     }
 }
