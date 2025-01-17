@@ -13,9 +13,11 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+@EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
@@ -42,11 +44,6 @@ public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false;
-    }
-
-    @Override
     protected boolean supportsToolChoiceRequired() {
         return false;
     }
@@ -69,7 +66,7 @@ public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
     protected void should_respect_stopSequences_in_chat_request(ChatLanguageModel model) {
 
         // given
-        List<String> stopSequences = List.of("World", " World");
+        List<String> stopSequences = List.of("Hello", " Hello");
         ChatRequestParameters parameters =
                 ChatRequestParameters.builder().stopSequences(stopSequences).build();
 
@@ -84,7 +81,7 @@ public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Hello");
-        assertThat(aiMessage.text()).containsIgnoringCase("World");
+        assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         if (assertFinishReason()) {

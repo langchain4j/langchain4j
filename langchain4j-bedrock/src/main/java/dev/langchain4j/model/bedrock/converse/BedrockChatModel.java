@@ -1,6 +1,7 @@
 package dev.langchain4j.model.bedrock.converse;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -147,50 +148,40 @@ public class BedrockChatModel implements ChatLanguageModel {
     private final ChatRequestParameters defaultRequestParameters;
 
     public BedrockChatModel(String modelId) {
-        this(
-                Region.US_EAST_1,
-                DefaultCredentialsProvider.create(),
-                modelId,
-                null,
-                null,
-                null,
-                null,
-                5,
-                Duration.ofMinutes(1),
-                null,
-                ChatRequestParameters.builder().build());
+        this(builder().modelId(modelId));
     }
 
-    public BedrockChatModel(
-            Region region,
-            AwsCredentialsProvider credentialsProvider,
-            String modelId,
-            Integer maxTokens,
-            Double temperature,
-            Double topP,
-            List<String> stopSequences,
-            Integer maxRetries,
-            Duration timeout,
-            BedrockRuntimeClient client,
-            ChatRequestParameters defaultRequestParameters) {
-        this.region = getOrDefault(region, Region.US_EAST_1);
-        this.credentialsProvider = getOrDefault(credentialsProvider, DefaultCredentialsProvider.create());
-        this.modelId = modelId;
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        this.timeout = getOrDefault(timeout, Duration.ofMinutes(1));
-        this.client = isNull(client) ? createClient() : client;
+    public BedrockChatModel(Builder builder) {
+        this.region = getOrDefault(builder.region, Region.US_EAST_1);
+        this.credentialsProvider = getOrDefault(builder.credentialsProvider, DefaultCredentialsProvider.create());
+        this.modelId = builder.modelId;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
+        this.client = isNull(builder.client) ? createClient() : builder.client;
         this.defaultRequestParameters = ChatRequestParameters.builder()
                 .modelName(getOrDefault(
-                        modelId, nonNull(defaultRequestParameters) ? defaultRequestParameters.modelName() : null))
+                        modelId,
+                        nonNull(builder.defaultRequestParameters)
+                                ? builder.defaultRequestParameters.modelName()
+                                : null))
                 .temperature(getOrDefault(
-                        temperature, nonNull(defaultRequestParameters) ? defaultRequestParameters.temperature() : null))
+                        builder.temperature,
+                        nonNull(builder.defaultRequestParameters)
+                                ? builder.defaultRequestParameters.temperature()
+                                : null))
                 .maxOutputTokens(getOrDefault(
-                        maxTokens,
-                        nonNull(defaultRequestParameters) ? defaultRequestParameters.maxOutputTokens() : null))
-                .topP(getOrDefault(topP, nonNull(defaultRequestParameters) ? defaultRequestParameters.topP() : null))
-                .stopSequences(getOrDefault(
-                        stopSequences,
-                        nonNull(defaultRequestParameters) ? defaultRequestParameters.stopSequences() : null))
+                        builder.maxTokens,
+                        nonNull(builder.defaultRequestParameters)
+                                ? builder.defaultRequestParameters.maxOutputTokens()
+                                : null))
+                .topP(getOrDefault(
+                        builder.topP,
+                        nonNull(builder.defaultRequestParameters) ? builder.defaultRequestParameters.topP() : null))
+                .stopSequences(copyIfNotNull(getOrDefault(
+                        builder.stopSequences,
+                        nonNull(builder.defaultRequestParameters)
+                                ? builder.defaultRequestParameters.stopSequences()
+                                : null)))
                 .build();
 
         validate(this.defaultRequestParameters, modelId);
@@ -591,8 +582,8 @@ public class BedrockChatModel implements ChatLanguageModel {
         throw new IllegalArgumentException("Unknown stop reason: " + stopReason);
     }
 
-    public static BedrockChatModelBuilder builder() {
-        return new BedrockChatModelBuilder();
+    public static Builder builder() {
+        return new Builder();
     }
 
     private BedrockRuntimeClient createClient() {
@@ -630,7 +621,7 @@ public class BedrockChatModel implements ChatLanguageModel {
         } else return d.floatValue();
     }
 
-    public static class BedrockChatModelBuilder {
+    public static class Builder {
         private Region region;
         private AwsCredentialsProvider credentialsProvider;
         private String modelId;
@@ -643,75 +634,63 @@ public class BedrockChatModel implements ChatLanguageModel {
         private BedrockRuntimeClient client;
         private ChatRequestParameters defaultRequestParameters;
 
-        public BedrockChatModelBuilder region(Region region) {
+        public Builder region(Region region) {
             this.region = region;
             return this;
         }
 
-        public BedrockChatModelBuilder credentialsProvider(AwsCredentialsProvider credentialsProvider) {
+        public Builder credentialsProvider(AwsCredentialsProvider credentialsProvider) {
             this.credentialsProvider = credentialsProvider;
             return this;
         }
 
-        public BedrockChatModelBuilder modelId(String modelId) {
+        public Builder modelId(String modelId) {
             this.modelId = modelId;
             return this;
         }
 
-        public BedrockChatModelBuilder maxTokens(Integer maxTokens) {
+        public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
-        public BedrockChatModelBuilder temperature(Double temperature) {
+        public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        public BedrockChatModelBuilder topP(Double topP) {
+        public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
-        public BedrockChatModelBuilder stopSequences(List<String> stopSequences) {
-            if (nonNull(stopSequences)) this.stopSequences = new ArrayList<>(stopSequences);
-            else this.stopSequences = new ArrayList<>();
+        public Builder stopSequences(List<String> stopSequences) {
+            this.stopSequences = stopSequences;
             return this;
         }
 
-        public BedrockChatModelBuilder maxRetries(Integer maxRetries) {
+        public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        public BedrockChatModelBuilder timeout(Duration timeout) {
+        public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        public BedrockChatModelBuilder client(BedrockRuntimeClient client) {
+        public Builder client(BedrockRuntimeClient client) {
             this.client = client;
             return this;
         }
 
-        public BedrockChatModelBuilder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+        public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return this;
         }
 
         public BedrockChatModel build() {
-            return new BedrockChatModel(
-                    region,
-                    credentialsProvider,
-                    modelId,
-                    maxTokens,
-                    temperature,
-                    topP,
-                    stopSequences,
-                    maxRetries,
-                    timeout,
-                    client,
-                    defaultRequestParameters);
+            return new BedrockChatModel(this);
         }
     }
 }

@@ -6,7 +6,9 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.List;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
     @Override
     protected List<ChatLanguageModel> models() {
@@ -30,11 +32,6 @@ public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
                 // force a working model with stopSequence parameter for @Tests
                 .modelId("cohere.command-r-v1:0")
                 .build();
-    }
-
-    @Override
-    protected boolean supportsDefaultRequestParameters() {
-        return false;
     }
 
     @Override
