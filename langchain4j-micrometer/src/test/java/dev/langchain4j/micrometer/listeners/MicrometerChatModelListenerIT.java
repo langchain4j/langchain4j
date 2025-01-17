@@ -41,13 +41,10 @@ class MicrometerChatModelListenerIT {
                 .that()
                 .hasBeenStarted()
                 .hasBeenStopped()
-                .hasLowCardinalityKeyValue(
-                        KeyValue.of(OTelGenAiAttributes.OPERATION_NAME.value(), "chat"))
-                .hasLowCardinalityKeyValue(
-                        KeyValue.of(OTelGenAiAttributes.SYSTEM.value(), "azure_openai"))
+                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.OPERATION_NAME.value(), "chat"))
+                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.SYSTEM.value(), "azure_openai"))
                 .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.REQUEST_MODEL.value(), "gpt-4o"))
-                .hasLowCardinalityKeyValue(
-                        KeyValue.of(OTelGenAiAttributes.RESPONSE_MODEL.value(), "gpt-4o"));
+                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.RESPONSE_MODEL.value(), "gpt-4o"));
     }
 
     @Test

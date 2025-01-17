@@ -73,10 +73,8 @@ public class MicrometerChatModelListener implements ChatModelListener {
                         OTelGenAiMetricName.OPERATION_DURATION.value(),
                         createContextSupplier(requestContext),
                         observationRegistry)
-                .lowCardinalityKeyValue(
-                        OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .lowCardinalityKeyValue(
-                        OTelGenAiAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
+                .lowCardinalityKeyValue(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
+                .lowCardinalityKeyValue(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
                 .lowCardinalityKeyValue(
                         OTelGenAiAttributes.REQUEST_MODEL.value(),
                         requestContext.request().model())
