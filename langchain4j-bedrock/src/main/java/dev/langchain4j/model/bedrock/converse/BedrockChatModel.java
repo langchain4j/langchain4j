@@ -175,7 +175,7 @@ public class BedrockChatModel implements ChatLanguageModel {
             ChatRequestParameters defaultRequestParameters) {
         this.region = getOrDefault(region, Region.US_EAST_1);
         this.credentialsProvider = getOrDefault(credentialsProvider, DefaultCredentialsProvider.create());
-        this.modelId = getOrDefault(modelId, "us.amazon.nova-micro-v1:0");
+        this.modelId = modelId;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.timeout = getOrDefault(timeout, Duration.ofMinutes(1));
         this.client = isNull(client) ? createClient() : client;
