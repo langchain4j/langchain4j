@@ -9,12 +9,12 @@ import java.time.Duration;
 public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
 
     private RestClient.Builder restClientBuilder;
-    private TaskExecutor taskExecutor;
-    private boolean createDefaultTaskExecutor = true; // TODO better name allowCreatingDefaultTaskExecutor?
+    private TaskExecutor taskExecutor; // TODO better name: streamingTaskExecutor?
+    private Boolean createDefaultTaskExecutor = true; // TODO allowCreatingDefaultStreamingTaskExecutor?
     private Duration connectTimeout;
     private Duration readTimeout;
-    private boolean logRequests;
-    private boolean logResponses;
+    private Boolean logRequests;
+    private Boolean logResponses;
 
     public RestClient.Builder restClientBuilder() {
         return restClientBuilder;
@@ -45,7 +45,7 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
         return this;
     }
 
-    public boolean createDefaultTaskExecutor() {
+    public Boolean createDefaultTaskExecutor() {
         return createDefaultTaskExecutor;
     }
 
@@ -55,7 +55,7 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
      * @param createDefaultTaskExecutor
      * @return
      */
-    public SpringRestClientHttpClientBuilder createDefaultTaskExecutor(boolean createDefaultTaskExecutor) {
+    public SpringRestClientHttpClientBuilder createDefaultTaskExecutor(Boolean createDefaultTaskExecutor) {
         this.createDefaultTaskExecutor = createDefaultTaskExecutor;
         return this;
     }
@@ -83,23 +83,23 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public boolean logRequests() {
+    public Boolean logRequests() {
         return logRequests;
     }
 
     @Override
-    public SpringRestClientHttpClientBuilder logRequests(boolean logRequests) {
+    public SpringRestClientHttpClientBuilder logRequests(Boolean logRequests) {
         this.logRequests = logRequests;
         return this;
     }
 
     @Override
-    public boolean logResponses() {
+    public Boolean logResponses() {
         return logResponses;
     }
 
     @Override
-    public SpringRestClientHttpClientBuilder logResponses(boolean logResponses) {
+    public SpringRestClientHttpClientBuilder logResponses(Boolean logResponses) {
         this.logResponses = logResponses;
         return this;
     }

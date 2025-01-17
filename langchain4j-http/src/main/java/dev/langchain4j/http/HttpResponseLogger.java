@@ -2,18 +2,14 @@ package dev.langchain4j.http;
 
 import dev.langchain4j.Experimental;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static dev.langchain4j.http.HttpRequestLogger.format;
 
 @Experimental
 class HttpResponseLogger {
 
-    private static final Logger log = LoggerFactory.getLogger(HttpResponseLogger.class);
-
-    static void log(HttpResponse httpResponse) {
+    static void log(Logger log, HttpResponse httpResponse) {
         try {
-            // TODO pretty print body?
             log.debug("Response:\n- status code: {}\n- headers: {}\n- body: {}",
                     httpResponse.statusCode(), format(httpResponse.headers()), getBody(httpResponse));
         } catch (Exception e) {

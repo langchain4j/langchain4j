@@ -7,10 +7,10 @@ import java.time.Duration;
 public class Jdk11HttpClientBuilder implements HttpClientBuilder {
 
     private java.net.http.HttpClient.Builder httpClientBuilder;
-    private Duration connectTimeout; // TODO remove?
-    private Duration readTimeout; // TODO remove?
-    private boolean logRequests; // TODO remove?
-    private boolean logResponses; // TODO remove?
+    private Duration connectTimeout;
+    private Duration readTimeout;
+    private Boolean logRequests;
+    private Boolean logResponses;
 
     public java.net.http.HttpClient.Builder httpClientBuilder() {
         return httpClientBuilder;
@@ -44,23 +44,23 @@ public class Jdk11HttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public boolean logRequests() {
+    public Boolean logRequests() {
         return logRequests;
     }
 
     @Override
-    public Jdk11HttpClientBuilder logRequests(boolean logRequests) {
+    public Jdk11HttpClientBuilder logRequests(Boolean logRequests) {
         this.logRequests = logRequests;
         return this;
     }
 
     @Override
-    public boolean logResponses() {
+    public Boolean logResponses() {
         return logResponses;
     }
 
     @Override
-    public Jdk11HttpClientBuilder logResponses(boolean logResponses) {
+    public Jdk11HttpClientBuilder logResponses(Boolean logResponses) {
         this.logResponses = logResponses;
         return this;
     }

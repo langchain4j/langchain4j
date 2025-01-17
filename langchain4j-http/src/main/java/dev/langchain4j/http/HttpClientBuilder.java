@@ -5,7 +5,11 @@ import dev.langchain4j.Experimental;
 import java.time.Duration;
 
 @Experimental
-public interface HttpClientBuilder {  // TODO move inside HttpClient?
+public interface HttpClientBuilder {
+
+    // TODO baseUrl?
+    // TODO customHeaders / defaultHeaders?
+    // TODO Proxy/ProxySelector/user/pwd? - postpone till OpenAI migration
 
     Duration connectTimeout();
 
@@ -15,19 +19,13 @@ public interface HttpClientBuilder {  // TODO move inside HttpClient?
 
     HttpClientBuilder readTimeout(Duration timeout);
 
-    boolean logRequests();
+    Boolean logRequests();
 
-    HttpClientBuilder logRequests(boolean logRequests);
+    HttpClientBuilder logRequests(Boolean logRequests);
 
-    boolean logResponses();
+    Boolean logResponses();
 
-    HttpClientBuilder logResponses(boolean logResponses);
-
-    // TODO baseUrl?
-    // TODO retries?
-    // TODO customHeaders / defaultHeaders?
-    // TODO proxy?
-    // TODO what else?
+    HttpClientBuilder logResponses(Boolean logResponses);
 
     HttpClient build();
 }

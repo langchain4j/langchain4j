@@ -4,7 +4,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.HttpClientBuilder;
-import dev.langchain4j.http.HttpClientBuilderLoader;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -37,7 +36,6 @@ import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseF
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaTools;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toToolExecutionRequests;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
@@ -71,7 +69,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                            String format,
                            ResponseFormat responseFormat,
                            Duration timeout, //
-                           Integer maxRetries, //
+                           Integer maxRetries,
                            Map<String, String> customHeaders, //
                            Boolean logRequests, //
                            Boolean logResponses, //
@@ -82,14 +80,16 @@ public class OllamaChatModel implements ChatLanguageModel {
             throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
         }
 
+        // TODO check all other client instantiations
         this.client = OllamaClient.builder()
-                .httpClientBuilder(getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder))
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .timeout(timeout)
                 .customHeaders(customHeaders)
-                .logRequests(getOrDefault(logRequests, false))
+                .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
+
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.options = Options.builder()
                 .temperature(temperature)

@@ -1,10 +1,10 @@
 package dev.langchain4j.http.spring.restclient;
 
-import dev.langchain4j.http.AbstractHttpClient;
 import dev.langchain4j.http.HttpException;
 import dev.langchain4j.http.HttpMethod;
 import dev.langchain4j.http.HttpRequest;
 import dev.langchain4j.http.HttpResponse;
+import dev.langchain4j.http.LoggingHttpClient;
 import dev.langchain4j.http.ServerSentEvent;
 import dev.langchain4j.http.ServerSentEventListener;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
@@ -25,19 +25,24 @@ import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
-public class SpringRestClientHttpClient extends AbstractHttpClient {
+public class SpringRestClientHttpClient extends LoggingHttpClient {
 
     private final RestClient delegate;
     private final TaskExecutor taskExecutor; // TODO better name? streamingTaskExecutor?
-    private final boolean logRequests;
-    private final boolean logResponses;
 
     public SpringRestClientHttpClient(SpringRestClientHttpClientBuilder builder) {
+        super(builder.logRequests(), builder.logResponses());
+
         RestClient.Builder restClientBuilder = getOrDefault(builder.restClientBuilder(), RestClient::builder);
 
-        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS
-                .withConnectTimeout(builder.connectTimeout())
-                .withReadTimeout(builder.readTimeout());
+        // TODO propagate this from SB starter?
+        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS;
+        if (builder.connectTimeout() != null) {
+            settings = settings.withConnectTimeout(builder.connectTimeout());
+        }
+        if (builder.readTimeout() != null) {
+            settings = settings.withReadTimeout(builder.readTimeout());
+        }
         ClientHttpRequestFactory clientHttpRequestFactory = ClientHttpRequestFactories.get(settings);
 
         this.delegate = restClientBuilder
@@ -51,13 +56,11 @@ public class SpringRestClientHttpClient extends AbstractHttpClient {
                 return null;
             }
         });
-
-        this.logRequests = builder.logRequests();
-        this.logResponses = builder.logResponses();
     }
 
     private static TaskExecutor createDefaultTaskExecutor() {
         ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+//        taskExecutor.setTaskDecorator(new ContextPropagatingTaskDecorator()); TODO?
         // TODO set meaningful defaults
         taskExecutor.initialize();
         return taskExecutor;
@@ -93,14 +96,11 @@ public class SpringRestClientHttpClient extends AbstractHttpClient {
     }
 
     private static org.springframework.http.HttpMethod convert(HttpMethod httpMethod) {
-        switch (httpMethod) {
-            case GET:
-                return org.springframework.http.HttpMethod.GET;
-            case POST:
-                return org.springframework.http.HttpMethod.POST;
-            default:
-                throw new RuntimeException("Unsupported HTTP method: " + httpMethod);
-        }
+        return switch (httpMethod) {
+            case GET -> org.springframework.http.HttpMethod.GET;
+            case POST -> org.springframework.http.HttpMethod.POST;
+            default -> throw new RuntimeException("Unsupported HTTP method: " + httpMethod);
+        };
     }
 
     private static Consumer<HttpHeaders> convert(Map<String, String> headers) {
@@ -201,26 +201,5 @@ public class SpringRestClientHttpClient extends AbstractHttpClient {
 
     private static String readBody(RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse httpResponse) {
         return httpResponse.bodyTo(String.class);
-//        try (InputStream body = httpResponse.bodyTo(String.)) {
-//            return new String(body.readAllBytes()); // TODO charset?
-//        } catch (IOException e) {
-//            return "[cannot read error response body]: " + e.getMessage(); // TODO?
-//        }
-    }
-
-    @Override
-    protected boolean logRequests() {
-        return logRequests;
-    }
-
-    @Override
-    public boolean logResponses() {
-        return logResponses;
-    }
-
-    @Override
-    public void close() {
-        // TODO
-//        taskExecutor.close(); // TODO?
     }
 }

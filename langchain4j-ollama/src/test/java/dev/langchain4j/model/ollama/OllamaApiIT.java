@@ -61,7 +61,6 @@ public class OllamaApiIT {
     @Test
     void base_url_with_trailing_slash_without_addition_path() {
         OllamaClient ollamaClient = OllamaClient.builder()
-                .httpClientBuilder(HttpClientBuilderLoader.loadHttpClientBuilder())
                 .baseUrl("http://localhost:" + mockWebServer.getPort() + "/")
                 .logRequests(true)
                 .logResponses(true)
@@ -76,7 +75,6 @@ public class OllamaApiIT {
     @Test
     void base_url_without_trailing_slash_without_addition_path() {
         OllamaClient ollamaClient = OllamaClient.builder()
-                .httpClientBuilder(HttpClientBuilderLoader.loadHttpClientBuilder())
                 .baseUrl("http://localhost:" + mockWebServer.getPort())
                 .logRequests(true)
                 .logResponses(true)
@@ -92,7 +90,6 @@ public class OllamaApiIT {
     @Test
     void base_url_with_trailing_slash_with_addition_path() {
         OllamaClient ollamaClient = OllamaClient.builder()
-                .httpClientBuilder(HttpClientBuilderLoader.loadHttpClientBuilder())
                 .baseUrl("http://localhost:" + mockWebServer.getPort() + "/additional/")
                 .logRequests(true)
                 .logResponses(true)
@@ -107,7 +104,6 @@ public class OllamaApiIT {
     @Test
     void base_url_without_trailing_slash_with_addition_path() {
         OllamaClient ollamaClient = OllamaClient.builder()
-                .httpClientBuilder(HttpClientBuilderLoader.loadHttpClientBuilder())
                 .baseUrl("http://localhost:" + mockWebServer.getPort() + "/additional")
                 .logRequests(true)
                 .logResponses(true)

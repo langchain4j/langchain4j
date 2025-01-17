@@ -5,9 +5,7 @@ import dev.langchain4j.Experimental;
 // TODO name
 // TODO package/module
 @Experimental
-public interface HttpClient extends AutoCloseable {
-
-    // TODO split streaming and non-streaming into separate interfaces?
+public interface HttpClient {
 
     /**
      * TODO
@@ -17,6 +15,8 @@ public interface HttpClient extends AutoCloseable {
      * @throws HttpException TODO good idea?
      */
     HttpResponse execute(HttpRequest httpRequest) throws HttpException; // TODO list of exceptions
+
+    // TODO generic timeout exception? what else?
 
     /**
      * TODO

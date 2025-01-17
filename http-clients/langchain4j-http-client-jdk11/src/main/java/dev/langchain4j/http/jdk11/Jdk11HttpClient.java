@@ -1,37 +1,62 @@
 package dev.langchain4j.http.jdk11;
 
-import dev.langchain4j.http.AbstractHttpClient;
 import dev.langchain4j.http.HttpException;
 import dev.langchain4j.http.HttpRequest;
 import dev.langchain4j.http.HttpResponse;
+import dev.langchain4j.http.LoggingHttpClient;
 import dev.langchain4j.http.ServerSentEvent;
 import dev.langchain4j.http.ServerSentEventListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 // TODO review
-public class Jdk11HttpClient extends AbstractHttpClient {
+public class Jdk11HttpClient extends LoggingHttpClient {
+
+    private static final Logger log = LoggerFactory.getLogger(Jdk11HttpClient.class);
 
     private final HttpClient delegate;
-    private final boolean logRequests;
-    private final boolean logResponses;
+    private final Duration readTimeout; // TODO concern
 
     public Jdk11HttpClient(Jdk11HttpClientBuilder builder) {
-        this.delegate = HttpClient.newBuilder()
-                .connectTimeout(builder.connectTimeout())
-                // TODO readTimeout?
-                .build();
-        this.logRequests = builder.logRequests();
-        this.logResponses = builder.logResponses();
+        super(builder.logRequests(), builder.logResponses());
+        HttpClient.Builder httpClientBuilder = getOrDefault(builder.httpClientBuilder(), HttpClient::newBuilder);
+        if (builder.connectTimeout() != null) {
+            httpClientBuilder.connectTimeout(builder.connectTimeout());
+        }
+        // TODO if (builder.proxy() != null)
+//        httpClientBuilder.proxy(new ProxySelector() {
+//
+//            @Override
+//            public List<Proxy> select(URI uri) {
+//                return List.of(); // TODO
+//            }
+//
+//            @Override
+//            public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {
+//                String errorMessage = String.format("Failed to connect to '%s' through '%s' proxy", uri, sa);
+//                log.warn(errorMessage, ioe);
+//            }
+//        });
+        this.delegate = httpClientBuilder.build();
+        this.readTimeout = builder.readTimeout();
     }
 
     public static Jdk11HttpClientBuilder builder() { // TODO
@@ -147,7 +172,7 @@ public class Jdk11HttpClient extends AbstractHttpClient {
                 .collect(Collectors.joining("\n")); // TODO delimiter
     }
 
-    private static java.net.http.HttpRequest toJdkHttpRequest(HttpRequest request) {
+    private java.net.http.HttpRequest toJdkHttpRequest(HttpRequest request) {
         java.net.http.HttpRequest.Builder builder = java.net.http.HttpRequest.newBuilder()
                 .uri(URI.create(request.url()));
 
@@ -174,26 +199,15 @@ public class Jdk11HttpClient extends AbstractHttpClient {
                 throw new RuntimeException("Unsupported HTTP method: " + request.method());
         }
 
+        if (readTimeout != null) {
+            builder.timeout(readTimeout);
+        }
+
         return builder.build();
     }
 
     private static boolean isSuccessful(java.net.http.HttpResponse<?> httpResponse) {
         int statusCode = httpResponse.statusCode();
         return statusCode >= 200 && statusCode < 300;
-    }
-
-    @Override
-    protected boolean logRequests() {
-        return logRequests;
-    }
-
-    @Override
-    public boolean logResponses() {
-        return logResponses;
-    }
-
-    @Override
-    public void close() {
-//        client.close();// TODO ?
     }
 }

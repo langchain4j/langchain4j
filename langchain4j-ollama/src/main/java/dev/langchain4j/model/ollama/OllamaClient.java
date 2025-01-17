@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.HttpClient;
 import dev.langchain4j.http.HttpClientBuilder;
+import dev.langchain4j.http.HttpClientBuilderLoader;
 import dev.langchain4j.http.HttpMethod;
 import dev.langchain4j.http.HttpRequest;
 import dev.langchain4j.http.HttpResponse;
@@ -16,8 +17,6 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -35,22 +34,22 @@ import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListen
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.getObjectMapper;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
 import static java.lang.Boolean.TRUE;
+import static java.time.Duration.ofSeconds;
 
 class OllamaClient {
 
-    private static final Logger log = LoggerFactory.getLogger(OllamaClient.class);
-
     private final HttpClient httpClient;
     private final String baseUrl; // TODO
-    private final boolean logStreamingResponses;
+    // TODO custom headers
 
     OllamaClient(Builder builder) {
 
-        this.httpClient = builder.httpClientBuilder
-                .connectTimeout(builder.timeout)
-                .readTimeout(builder.timeout)
-                .logRequests(getOrDefault(builder.logRequests, false))
-                .logResponses(getOrDefault(builder.logResponses, false))
+        HttpClientBuilder httpClientBuilder = getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
+        this.httpClient = httpClientBuilder
+                .connectTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(10))) // TODO default value
+                .readTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
+                .logRequests(getOrDefault(getOrDefault(builder.logRequests, httpClientBuilder.logRequests()), false))
+                .logResponses(getOrDefault(getOrDefault(builder.logResponses, httpClientBuilder.logResponses()), false))
                 .build();
 
         this.baseUrl = Utils.ensureTrailingForwardSlash(builder.baseUrl);
@@ -62,7 +61,6 @@ class OllamaClient {
 //        if (logResponses != null && logResponses) {
 //            okHttpClientBuilder.addInterceptor(new OllamaResponseLoggingInterceptor());
 //        }
-        this.logStreamingResponses = getOrDefault(builder.logStreamingResponses, false);
 
         // TODO
         // add custom header interceptor
@@ -127,13 +125,7 @@ class OllamaClient {
                 @Override
                 public void onEvent(ServerSentEvent event) {
 
-                    String partialResponse = event.data();
-
-                    if (logStreamingResponses) {
-                        log.debug("Streaming partial response: {}", partialResponse);
-                    }
-
-                    CompletionResponse completionResponse = toObject(partialResponse, CompletionResponse.class);
+                    CompletionResponse completionResponse = toObject(event.data(), CompletionResponse.class);
                     contentBuilder.append(completionResponse.getResponse());
                     handler.onNext(completionResponse.getResponse());
 
@@ -186,13 +178,7 @@ class OllamaClient {
                 @Override
                 public void onEvent(ServerSentEvent event) {
 
-                    String partialResponse = event.data();
-
-                    if (logStreamingResponses) {
-                        log.debug("Streaming partial response: {}", partialResponse);
-                    }
-
-                    ChatResponse chatResponse = toObject(partialResponse, ChatResponse.class);
+                    ChatResponse chatResponse = toObject(event.data(), ChatResponse.class);
                     String content = chatResponse.getMessage().getContent();
                     responseBuilder.append(chatResponse);
                     handler.onNext(content);
@@ -335,8 +321,7 @@ class OllamaClient {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Boolean logStreamingResponses;
-        private Map<String, String> customHeaders;
+        private Map<String, String> customHeaders; // TODO
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -360,11 +345,6 @@ class OllamaClient {
 
         Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
-            return this;
-        }
-
-        Builder logStreamingResponses(Boolean logStreamingResponses) {
-            this.logStreamingResponses = logStreamingResponses;
             return this;
         }
 

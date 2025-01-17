@@ -1,9 +1,9 @@
 package dev.langchain4j.http.okhttp;
 
-import dev.langchain4j.http.AbstractHttpClient;
 import dev.langchain4j.http.HttpException;
 import dev.langchain4j.http.HttpRequest;
 import dev.langchain4j.http.HttpResponse;
+import dev.langchain4j.http.LoggingHttpClient;
 import dev.langchain4j.http.ServerSentEvent;
 import dev.langchain4j.http.ServerSentEventListener;
 import okhttp3.Call;
@@ -26,23 +26,24 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
-public class OkHttpHttpClient extends AbstractHttpClient {
+public class OkHttpHttpClient extends LoggingHttpClient {
 
     // TODO make configurable?
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
     private final okhttp3.OkHttpClient delegate;
-    private final boolean logRequests;
-    private final boolean logResponses;
 
     public OkHttpHttpClient(OkHttpHttpClientBuilder builder) {
+        super(builder.logRequests(), builder.logResponses());
         OkHttpClient.Builder okHttpClientBuilder = getOrDefault(builder.okHttpClientBuilder(), OkHttpClient.Builder::new);
-        this.delegate = okHttpClientBuilder
-                .connectTimeout(builder.connectTimeout())
-                .readTimeout(builder.readTimeout())
-                .build();
-        this.logRequests = builder.logRequests();
-        this.logResponses = builder.logResponses();
+        if (builder.connectTimeout() != null) {
+            okHttpClientBuilder.connectTimeout(builder.connectTimeout());
+        }
+        if (builder.readTimeout() != null) {
+            okHttpClientBuilder.readTimeout(builder.readTimeout());
+        }
+//        okHttpClientBuilder.proxy() TODO
+        this.delegate = okHttpClientBuilder.build();
     }
 
     public static OkHttpHttpClientBuilder builder() { // TODO
@@ -201,20 +202,5 @@ public class OkHttpHttpClient extends AbstractHttpClient {
         try (ResponseBody body = okHttpResponse.body()) {
             return body.string();
         }
-    }
-
-    @Override
-    protected boolean logRequests() {
-        return logRequests;
-    }
-
-    @Override
-    public boolean logResponses() {
-        return logResponses;
-    }
-
-    @Override
-    public void close() {
-        // TODO
     }
 }

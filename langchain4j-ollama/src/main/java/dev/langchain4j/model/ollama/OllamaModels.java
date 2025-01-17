@@ -1,7 +1,6 @@
 package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.http.HttpClientBuilder;
-import dev.langchain4j.http.HttpClientBuilderLoader;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
@@ -22,9 +21,9 @@ public class OllamaModels {
                         Boolean logRequests,
                         Boolean logResponses) {
         this.client = OllamaClient.builder()
-                .httpClientBuilder(getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder))
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
-                .timeout((getOrDefault(timeout, Duration.ofSeconds(60))))
+                .timeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();

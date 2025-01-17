@@ -2,7 +2,6 @@ package dev.langchain4j.http;
 
 import dev.langchain4j.Experimental;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -15,14 +14,11 @@ import static java.util.stream.Collectors.joining;
 @Experimental
 class HttpRequestLogger {
 
-    private static final Logger log = LoggerFactory.getLogger(HttpRequestLogger.class);
-
     private static final Set<String> COMMON_SECRET_HEADERS =
             new HashSet<>(asList("authorization", "x-api-key", "x-auth-token"));
 
-    static void log(HttpRequest httpRequest) {
+    static void log(Logger log, HttpRequest httpRequest) {
         try {
-            // TODO pretty print body?
             log.debug("Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}",
                     httpRequest.method(), httpRequest.url(), format(httpRequest.headers()), httpRequest.body());
         } catch (Exception e) {
@@ -51,7 +47,7 @@ class HttpRequestLogger {
         if (key.length() >= 7) {
             return key.substring(0, 5) + "..." + key.substring(key.length() - 2);
         } else {
-            return "..."; // to short to be masked
+            return "..."; // too short to be masked
         }
     }
 }

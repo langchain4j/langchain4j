@@ -1,7 +1,6 @@
 package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.http.HttpClientBuilder;
-import dev.langchain4j.http.HttpClientBuilderLoader;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaLanguageModelBuilderFactory;
@@ -17,7 +16,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -56,9 +54,9 @@ public class OllamaLanguageModel implements LanguageModel {
         }
 
         this.client = OllamaClient.builder()
-                .httpClientBuilder(getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder))
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .timeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .customHeaders(customHeaders)

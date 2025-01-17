@@ -1,7 +1,6 @@
 package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.http.HttpClientBuilder;
-import dev.langchain4j.http.HttpClientBuilderLoader;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.StreamingLanguageModel;
@@ -11,11 +10,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -51,11 +48,11 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
             throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
         }
         this.client = OllamaClient.builder()
-                .httpClientBuilder(getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder))
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .timeout(timeout)
                 .logRequests(logRequests)
-                .logStreamingResponses(logResponses)
+                .logResponses(logResponses)
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");

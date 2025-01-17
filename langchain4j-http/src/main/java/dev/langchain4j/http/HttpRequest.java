@@ -21,7 +21,7 @@ public class HttpRequest {
         this.method = ensureNotNull(method, "method");
         this.url = ensureNotBlank(url, "url");
         this.headers = headers == null ? emptyMap() : new HashMap<>(headers);
-        this.body = body; // TODO make mandatory for some methods
+        this.body = body; // TODO make mandatory for some methods?
     }
 
     public HttpMethod method() {
