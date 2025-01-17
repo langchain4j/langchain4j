@@ -152,7 +152,7 @@ public class BedrockChatModel implements ChatLanguageModel {
                 DefaultCredentialsProvider.create(),
                 modelId,
                 null,
-                0.7d,
+                null,
                 null,
                 null,
                 5,
