@@ -1,11 +1,10 @@
 package dev.langchain4j.model.chat
 
 import dev.langchain4j.Experimental
-import dev.langchain4j.data.message.AiMessage
-import dev.langchain4j.data.message.ChatMessage
 import dev.langchain4j.model.chat.request.ChatRequest
+import dev.langchain4j.model.chat.request.ChatRequestBuilder
+import dev.langchain4j.model.chat.request.chatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
-import dev.langchain4j.model.output.Response
 import kotlinx.coroutines.coroutineScope
 
 /**
@@ -62,6 +61,33 @@ suspend fun ChatLanguageModel.chatAsync(requestBuilder: ChatRequest.Builder): Ch
     chatAsync(requestBuilder.build())
 
 /**
+ * Asynchronously processes a chat request by configuring a [ChatRequest]
+ * using a provided builder block. This method facilitates the creation
+ * of well-structured chat requests using a [ChatRequestBuilder] and
+ * executes the request using the associated [ChatLanguageModel].
+ *
+ * Example usage:
+ * ```kotlin
+ * model.chatAsync {
+ *     messages += systemMessage("You are a helpful assistant")
+ *     messages += userMessage("Say 'Hello'")
+ *     parameters {
+ *         temperature = 0.1
+ *     }
+ * }
+ * ```
+ *
+ * @param block A lambda with receiver on [ChatRequestBuilder] used to
+ *    configure the messages and parameters for the chat request.
+ * @return A [ChatResponse] containing the response from the model and any
+ *    associated metadata.
+ * @throws Exception if the chat request fails or encounters an error during execution.
+ */
+@Experimental
+suspend fun ChatLanguageModel.chatAsync(block: ChatRequestBuilder.() -> Unit): ChatResponse =
+    chatAsync(chatRequest(block))
+
+/**
  * Processes a chat request using a [ChatRequest.Builder] for convenient request
  * configuration. This extension function provides a builder pattern alternative
  * to creating [ChatRequest] directly.
@@ -85,34 +111,4 @@ suspend fun ChatLanguageModel.chatAsync(requestBuilder: ChatRequest.Builder): Ch
  * @see ChatRequest.Builder
  */
 @Experimental
-fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatResponse =
-    this.chat(requestBuilder.build())
-
-/**
- * Asynchronously generates a response for a list of chat messages using
- * the language model within a coroutine scope. This extension function
- * provides a structured concurrency wrapper around the synchronous
- * [ChatLanguageModel.generate] method.
- *
- * Example usage:
- * ```kotlin
- * val response = model.generateAsync(listOf(
- *     SystemMessage("You are a helpful assistant"),
- *     UserMessage("Hello!")
- * ))
- * ```
- *
- * @param messages The list of chat messages representing the conversation
- *    history and current prompt.
- * @return [Response] containing the AI's message and any additional metadata.
- * @throws Exception if the generation fails or is interrupted.
- * @see ChatLanguageModel.generate
- * @see ChatMessage
- * @see Response
- * @see AiMessage
- */
-@Experimental
-suspend fun ChatLanguageModel.generateAsync(messages: List<ChatMessage>): Response<AiMessage> {
-    val model = this
-    return coroutineScope { model.generate(messages) }
-}
+fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatResponse = this.chat(requestBuilder.build())
