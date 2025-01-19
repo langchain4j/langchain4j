@@ -62,6 +62,8 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         return false;
     }
 
+    // These models doesn't support image as input parameters
+    // https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
     @Override
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false;
@@ -74,7 +76,8 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     // OVERRIDED TESTS
 
-    // TODO TITAN_EXPRESS doesn't support system prompt
+    // TITAN_EXPRESS doesn't support system prompt
+    // https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html
     @Override
     @ParameterizedTest
     @MethodSource("models")
@@ -96,7 +99,8 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         }
     }
 
-    // TODO Mistral Large support tool choice REQUIRED
+    // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
+    // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingTools")
