@@ -157,7 +157,7 @@ public class BedrockChatModel implements ChatLanguageModel {
         this.modelId = builder.modelId;
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
-        this.client = isNull(builder.client) ? createClient() : builder.client;
+        this.client = isNull(builder.client) ? createClient(builder.logRequests, builder.logResponses) : builder.client;
         this.defaultRequestParameters = ChatRequestParameters.builder()
                 .modelName(getOrDefault(
                         modelId,
@@ -200,9 +200,9 @@ public class BedrockChatModel implements ChatLanguageModel {
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         ConverseRequest request = buildConverseRequest(messages, toolSpecifications, null);
-        logger.debug("REQUEST : {}", request);
+
         ConverseResponse response = withRetry(() -> client.converse(request), this.maxRetries);
-        logger.debug("RESPONSE : {}", response);
+
         return Response.from(
                 aiMessageFrom(response),
                 tokenUsageFrom(response.usage()),
@@ -214,9 +214,8 @@ public class BedrockChatModel implements ChatLanguageModel {
     public ChatResponse chat(ChatRequest request) {
         ConverseRequest convRequest = buildConverseRequest(
                 request.messages(), request.parameters().toolSpecifications(), request.parameters());
-        logger.debug("REQUEST : {}", convRequest);
+
         ConverseResponse response = withRetry(() -> client.converse(convRequest), this.maxRetries);
-        logger.debug("RESPONSE : {}", response);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(response))
@@ -586,11 +585,15 @@ public class BedrockChatModel implements ChatLanguageModel {
         return new Builder();
     }
 
-    private BedrockRuntimeClient createClient() {
+    private BedrockRuntimeClient createClient(boolean logRequests, boolean logResponses) {
         return BedrockRuntimeClient.builder()
                 .region(this.region)
                 .credentialsProvider(this.credentialsProvider)
-                .overrideConfiguration(config -> config.apiCallTimeout(this.timeout))
+                .overrideConfiguration(config -> {
+                    config.apiCallTimeout(this.timeout);
+                    if (logRequests || logResponses)
+                        config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses));
+                })
                 .build();
     }
 
@@ -633,6 +636,8 @@ public class BedrockChatModel implements ChatLanguageModel {
         private Duration timeout;
         private BedrockRuntimeClient client;
         private ChatRequestParameters defaultRequestParameters;
+        private boolean logRequests;
+        private boolean logResponses;
 
         public Builder region(Region region) {
             this.region = region;
@@ -681,6 +686,16 @@ public class BedrockChatModel implements ChatLanguageModel {
 
         public Builder client(BedrockRuntimeClient client) {
             this.client = client;
+            return this;
+        }
+
+        public Builder logRequests(boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(boolean logResponses) {
+            this.logResponses = logResponses;
             return this;
         }
 
