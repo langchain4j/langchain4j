@@ -133,3 +133,9 @@ Here are some examples:
   - Summarize
   - Proofread and rewrite
   - Translate
+
+## Community Integrations
+LangChain4j maintains some integrations in [community repo](https://github.com/langchain4j/langchain4j-community). 
+They support the same functionality as integrations in the main repository. 
+The only difference between them is that community has different artifact and package name from the main repo (i.e. the `community` prefix in artifact and package name).
+The community was created to separate the maintenance of some integrations, thus making it easier to maintain the main repository.
