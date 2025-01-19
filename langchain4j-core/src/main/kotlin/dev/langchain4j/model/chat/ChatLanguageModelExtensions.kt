@@ -22,7 +22,7 @@ import kotlinx.coroutines.coroutineScope
  * @return [ChatResponse] containing the model's response and any additional
  *    metadata.
  * @throws Exception if the chat request fails or is interrupted.
- * @see ChatLanguageModel.chat
+ * @see ChatLanguageModel.chat(ChatRequest)
  * @see ChatRequest
  * @see ChatResponse
  */
@@ -39,10 +39,12 @@ suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse {
  *
  * Example usage:
  * ```kotlin
- * val response = model.chatAsync(ChatRequest.builder()
- *     .messages(listOf(UserMessage("Hello")))
- *     .temperature(0.7)
- *     .maxTokens(100))
+ * val response = model.chat(
+ *     ChatRequest.builder()
+ *         .messages(listOf(UserMessage("Hello")))
+ *         .temperature(0.7)
+ *         .maxTokens(100)
+ * )
  * ```
  *
  * @param requestBuilder The builder instance configured with desired chat
@@ -57,7 +59,7 @@ suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse {
  * @see chatAsync
  */
 @Experimental
-suspend fun ChatLanguageModel.chatAsync(requestBuilder: ChatRequest.Builder): ChatResponse =
+suspend fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatResponse =
     chatAsync(requestBuilder.build())
 
 /**
@@ -68,7 +70,7 @@ suspend fun ChatLanguageModel.chatAsync(requestBuilder: ChatRequest.Builder): Ch
  *
  * Example usage:
  * ```kotlin
- * model.chatAsync {
+ * model.chat {
  *     messages += systemMessage("You are a helpful assistant")
  *     messages += userMessage("Say 'Hello'")
  *     parameters {
@@ -84,31 +86,4 @@ suspend fun ChatLanguageModel.chatAsync(requestBuilder: ChatRequest.Builder): Ch
  * @throws Exception if the chat request fails or encounters an error during execution.
  */
 @Experimental
-suspend fun ChatLanguageModel.chatAsync(block: ChatRequestBuilder.() -> Unit): ChatResponse =
-    chatAsync(chatRequest(block))
-
-/**
- * Processes a chat request using a [ChatRequest.Builder] for convenient request
- * configuration. This extension function provides a builder pattern alternative
- * to creating [ChatRequest] directly.
- *
- * Example usage:
- * ```kotlin
- * val response = model.chat(ChatRequest.builder()
- *     .messages(listOf(UserMessage("Hello")))
- *     .temperature(0.7)
- *     .maxTokens(100))
- * ```
- *
- * @param requestBuilder The builder instance configured with desired chat
- *    request parameters.
- * @return [ChatResponse] containing the model's response and any additional
- *    metadata.
- * @throws Exception if the chat request fails or the builder produces an
- *    invalid configuration.
- * @see ChatRequest
- * @see ChatResponse
- * @see ChatRequest.Builder
- */
-@Experimental
-fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatResponse = this.chat(requestBuilder.build())
+suspend fun ChatLanguageModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse = chatAsync(chatRequest(block))

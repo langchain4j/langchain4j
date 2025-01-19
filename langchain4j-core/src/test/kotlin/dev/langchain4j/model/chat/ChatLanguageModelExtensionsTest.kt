@@ -48,21 +48,22 @@ internal class ChatLanguageModelExtensionsTest {
             whenever(chatRequestBuilder.build()).thenReturn(chatRequest)
             whenever(chatLanguageModel.chat(chatRequest)).thenReturn(chatResponse)
 
-            val response = chatLanguageModel.chatAsync(chatRequestBuilder)
+            val response = chatLanguageModel.chat(chatRequestBuilder)
 
             assertThat(response).isEqualTo(chatResponse)
         }
 
     @Test
-    fun `chatAsync with Type-safe should return ChatResponse`() =
+    fun `chat(_) with Type-safe builder should return ChatResponse`() =
         runTest {
             whenever(chatLanguageModel.chat(chatRequestCaptor.capture()))
                 .thenReturn(chatResponse)
 
             val userMessage = userMessage("Hello")
             val response =
-                chatLanguageModel.chatAsync {
+                chatLanguageModel.chat {
                     messages += userMessage
+                    parameters { }
                 }
 
             assertThat(chatRequestCaptor.value.messages()).containsExactly(userMessage)
