@@ -9,13 +9,13 @@ sidebar_position: 6
 
 ## Maven Dependency
 
-`0.37.0` and later:
+`1.0.0-alpha1` and later:
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-xinference</artifactId>
-    <version>0.37.0</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
@@ -26,7 +26,7 @@ Or, you can use BOM to manage dependencies consistently:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-community-bom</artifactId>
-        <version>0.37.0</version>
+        <version>1.0.0-alpha1</version>
         <typ>pom</typ>
         <scope>import</scope>
     </dependency>
