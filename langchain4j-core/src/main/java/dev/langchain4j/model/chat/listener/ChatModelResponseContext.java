@@ -15,7 +15,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 @Experimental
 public class ChatModelResponseContext {
-    // TODO rename into ChatResponseContext
 
     private final ChatResponse chatResponse;
     @Deprecated(forRemoval = true)
