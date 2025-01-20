@@ -1,10 +1,10 @@
 package dev.langchain4j.http.spring.restclient;
 
+import dev.langchain4j.http.HttpClient;
 import dev.langchain4j.http.HttpException;
 import dev.langchain4j.http.HttpMethod;
 import dev.langchain4j.http.HttpRequest;
 import dev.langchain4j.http.HttpResponse;
-import dev.langchain4j.http.LoggingHttpClient;
 import dev.langchain4j.http.ServerSentEvent;
 import dev.langchain4j.http.ServerSentEventListener;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
@@ -25,13 +25,12 @@ import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
-public class SpringRestClientHttpClient extends LoggingHttpClient {
+public class SpringRestClientHttpClient implements HttpClient {
 
     private final RestClient delegate;
-    private final TaskExecutor taskExecutor; // TODO better name? streamingTaskExecutor?
+    private final TaskExecutor taskExecutor; // TODO better name? streamingRequestExecutor?
 
     public SpringRestClientHttpClient(SpringRestClientHttpClientBuilder builder) {
-        super(builder.logRequests(), builder.logResponses());
 
         RestClient.Builder restClientBuilder = getOrDefault(builder.restClientBuilder(), RestClient::builder);
 
@@ -67,7 +66,7 @@ public class SpringRestClientHttpClient extends LoggingHttpClient {
     }
 
     @Override
-    protected HttpResponse doExecute(HttpRequest httpRequest) {
+    public HttpResponse execute(HttpRequest httpRequest) {
 
         ResponseEntity<String> responseEntity = toSpringRestClientRequest(httpRequest)
                 .retrieve()
@@ -112,7 +111,7 @@ public class SpringRestClientHttpClient extends LoggingHttpClient {
     }
 
     @Override
-    protected void doExecute(HttpRequest httpRequest, ServerSentEventListener listener) {
+    public void execute(HttpRequest httpRequest, ServerSentEventListener listener) {
 
         // TODO reuse SSE parsing logic
 

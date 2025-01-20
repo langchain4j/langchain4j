@@ -10,8 +10,6 @@ public class OkHttpHttpClientBuilder implements HttpClientBuilder {
     private OkHttpClient.Builder okHttpClientBuilder;
     private Duration connectTimeout;
     private Duration readTimeout;
-    private Boolean logRequests;
-    private Boolean logResponses;
 
     public OkHttpClient.Builder okHttpClientBuilder() {
         return okHttpClientBuilder;
@@ -41,28 +39,6 @@ public class OkHttpHttpClientBuilder implements HttpClientBuilder {
     @Override
     public OkHttpHttpClientBuilder readTimeout(Duration readTimeout) {
         this.readTimeout = readTimeout;
-        return this;
-    }
-
-    @Override
-    public Boolean logRequests() {
-        return logRequests;
-    }
-
-    @Override
-    public OkHttpHttpClientBuilder logRequests(Boolean logRequests) {
-        this.logRequests = logRequests;
-        return this;
-    }
-
-    @Override
-    public Boolean logResponses() {
-        return logResponses;
-    }
-
-    @Override
-    public OkHttpHttpClientBuilder logResponses(Boolean logResponses) {
-        this.logResponses = logResponses;
         return this;
     }
 

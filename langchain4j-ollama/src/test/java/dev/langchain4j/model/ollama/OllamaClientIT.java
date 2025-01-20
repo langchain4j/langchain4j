@@ -1,6 +1,5 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.http.HttpClientBuilderLoader;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

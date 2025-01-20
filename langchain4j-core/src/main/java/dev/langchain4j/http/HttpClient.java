@@ -3,7 +3,7 @@ package dev.langchain4j.http;
 import dev.langchain4j.Experimental;
 
 // TODO name
-// TODO package/module
+// TODO package/module: move to lc4j-http and keep HttpException in lc4j-core?
 @Experimental
 public interface HttpClient {
 

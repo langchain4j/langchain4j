@@ -1,9 +1,9 @@
 package dev.langchain4j.http.okhttp;
 
+import dev.langchain4j.http.HttpClient;
 import dev.langchain4j.http.HttpException;
 import dev.langchain4j.http.HttpRequest;
 import dev.langchain4j.http.HttpResponse;
-import dev.langchain4j.http.LoggingHttpClient;
 import dev.langchain4j.http.ServerSentEvent;
 import dev.langchain4j.http.ServerSentEventListener;
 import okhttp3.Call;
@@ -26,7 +26,7 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
-public class OkHttpHttpClient extends LoggingHttpClient {
+public class OkHttpHttpClient implements HttpClient {
 
     // TODO make configurable?
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
@@ -34,7 +34,6 @@ public class OkHttpHttpClient extends LoggingHttpClient {
     private final okhttp3.OkHttpClient delegate;
 
     public OkHttpHttpClient(OkHttpHttpClientBuilder builder) {
-        super(builder.logRequests(), builder.logResponses());
         OkHttpClient.Builder okHttpClientBuilder = getOrDefault(builder.okHttpClientBuilder(), OkHttpClient.Builder::new);
         if (builder.connectTimeout() != null) {
             okHttpClientBuilder.connectTimeout(builder.connectTimeout());
@@ -46,12 +45,8 @@ public class OkHttpHttpClient extends LoggingHttpClient {
         this.delegate = okHttpClientBuilder.build();
     }
 
-    public static OkHttpHttpClientBuilder builder() { // TODO
-        return new OkHttpHttpClientBuilder();
-    }
-
     @Override
-    protected HttpResponse doExecute(HttpRequest httpRequest) {
+    public HttpResponse execute(HttpRequest httpRequest) {
 
         Request okHttpRequest = toOkHttpRequest(httpRequest);
 
@@ -67,7 +62,7 @@ public class OkHttpHttpClient extends LoggingHttpClient {
     }
 
     @Override
-    protected void doExecute(HttpRequest httpRequest, ServerSentEventListener listener) {
+    public void execute(HttpRequest httpRequest, ServerSentEventListener listener) {
 
         Request okHttpRequest = toOkHttpRequest(httpRequest);
 

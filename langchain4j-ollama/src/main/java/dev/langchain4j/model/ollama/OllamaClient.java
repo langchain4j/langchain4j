@@ -11,6 +11,7 @@ import dev.langchain4j.http.HttpRequest;
 import dev.langchain4j.http.HttpResponse;
 import dev.langchain4j.http.ServerSentEvent;
 import dev.langchain4j.http.ServerSentEventListener;
+import dev.langchain4j.http.log.LoggingHttpClient;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -45,22 +46,15 @@ class OllamaClient {
     OllamaClient(Builder builder) {
 
         HttpClientBuilder httpClientBuilder = getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
-        this.httpClient = httpClientBuilder
+
+        HttpClient httpClient = httpClientBuilder
                 .connectTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(10))) // TODO default value
                 .readTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
-                .logRequests(getOrDefault(getOrDefault(builder.logRequests, httpClientBuilder.logRequests()), false))
-                .logResponses(getOrDefault(getOrDefault(builder.logResponses, httpClientBuilder.logResponses()), false))
                 .build();
 
-        this.baseUrl = Utils.ensureTrailingForwardSlash(builder.baseUrl);
+        this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
 
-        // TODO
-//        if (logRequests != null && logRequests) {
-//            okHttpClientBuilder.addInterceptor(new OllamaRequestLoggingInterceptor());
-//        }
-//        if (logResponses != null && logResponses) {
-//            okHttpClientBuilder.addInterceptor(new OllamaResponseLoggingInterceptor());
-//        }
+        this.baseUrl = Utils.ensureTrailingForwardSlash(builder.baseUrl);
 
         // TODO
         // add custom header interceptor

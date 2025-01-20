@@ -1,9 +1,10 @@
-package dev.langchain4j.http;
+package dev.langchain4j.http.log;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.http.HttpResponse;
 import org.slf4j.Logger;
 
-import static dev.langchain4j.http.HttpRequestLogger.format;
+import static dev.langchain4j.http.log.HttpRequestLogger.format;
 
 @Experimental
 class HttpResponseLogger {

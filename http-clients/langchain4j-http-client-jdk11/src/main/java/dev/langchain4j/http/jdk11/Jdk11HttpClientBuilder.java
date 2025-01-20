@@ -9,8 +9,6 @@ public class Jdk11HttpClientBuilder implements HttpClientBuilder {
     private java.net.http.HttpClient.Builder httpClientBuilder;
     private Duration connectTimeout;
     private Duration readTimeout;
-    private Boolean logRequests;
-    private Boolean logResponses;
 
     public java.net.http.HttpClient.Builder httpClientBuilder() {
         return httpClientBuilder;
@@ -40,28 +38,6 @@ public class Jdk11HttpClientBuilder implements HttpClientBuilder {
     @Override
     public Jdk11HttpClientBuilder readTimeout(Duration readTimeout) {
         this.readTimeout = readTimeout;
-        return this;
-    }
-
-    @Override
-    public Boolean logRequests() {
-        return logRequests;
-    }
-
-    @Override
-    public Jdk11HttpClientBuilder logRequests(Boolean logRequests) {
-        this.logRequests = logRequests;
-        return this;
-    }
-
-    @Override
-    public Boolean logResponses() {
-        return logResponses;
-    }
-
-    @Override
-    public Jdk11HttpClientBuilder logResponses(Boolean logResponses) {
-        this.logResponses = logResponses;
         return this;
     }
 

@@ -1,6 +1,7 @@
-package dev.langchain4j.http;
+package dev.langchain4j.http.log;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.http.HttpRequest;
 import org.slf4j.Logger;
 
 import java.util.HashSet;

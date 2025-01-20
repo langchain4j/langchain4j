@@ -1,22 +1,34 @@
-package dev.langchain4j.http;
+package dev.langchain4j.http.log;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.http.HttpClient;
+import dev.langchain4j.http.HttpRequest;
+import dev.langchain4j.http.HttpResponse;
+import dev.langchain4j.http.ServerSentEvent;
+import dev.langchain4j.http.ServerSentEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Experimental
-public abstract class LoggingHttpClient implements HttpClient {
+public class LoggingHttpClient implements HttpClient {
 
-    private final Logger log = LoggerFactory.getLogger(getClass());
-
+    private final HttpClient delegate;
     private final boolean logRequests;
     private final boolean logResponses;
+    private final Logger log;
 
-    protected LoggingHttpClient(Boolean logRequests, Boolean logResponses) {
+    public LoggingHttpClient(HttpClient delegate, Boolean logRequests, Boolean logResponses) {
+        this.delegate = ensureNotNull(delegate, "delegate");
         this.logRequests = getOrDefault(logRequests, false);
         this.logResponses = getOrDefault(logResponses, false);
+        if (logRequests || logResponses) {
+            this.log = LoggerFactory.getLogger(delegate.getClass()); // TODO or static for LoggingHttpClient.class?
+        } else {
+            this.log = null;
+        }
     }
 
     public HttpResponse execute(HttpRequest httpRequest) {
@@ -25,7 +37,7 @@ public abstract class LoggingHttpClient implements HttpClient {
             HttpRequestLogger.log(log, httpRequest);
         }
 
-        HttpResponse httpResponse = doExecute(httpRequest);
+        HttpResponse httpResponse = delegate.execute(httpRequest);
 
         if (logResponses) {
             HttpResponseLogger.log(log, httpResponse);
@@ -34,15 +46,13 @@ public abstract class LoggingHttpClient implements HttpClient {
         return httpResponse;
     }
 
-    protected abstract HttpResponse doExecute(HttpRequest httpRequest);
-
     public void execute(HttpRequest httpRequest, ServerSentEventListener listener) {
 
         if (logRequests) {
             HttpRequestLogger.log(log, httpRequest);
         }
 
-        doExecute(httpRequest, new ServerSentEventListener() {
+        delegate.execute(httpRequest, new ServerSentEventListener() {
 
             @Override
             public void onStart(HttpResponse httpResponse) {
@@ -67,6 +77,4 @@ public abstract class LoggingHttpClient implements HttpClient {
             }
         });
     }
-
-    protected abstract void doExecute(HttpRequest httpRequest, ServerSentEventListener listener);
 }

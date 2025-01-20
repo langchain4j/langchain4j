@@ -13,8 +13,6 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
     private Boolean createDefaultTaskExecutor = true; // TODO allowCreatingDefaultStreamingTaskExecutor?
     private Duration connectTimeout;
     private Duration readTimeout;
-    private Boolean logRequests;
-    private Boolean logResponses;
 
     public RestClient.Builder restClientBuilder() {
         return restClientBuilder;
@@ -79,28 +77,6 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
     @Override
     public SpringRestClientHttpClientBuilder readTimeout(Duration readTimeout) {
         this.readTimeout = readTimeout;
-        return this;
-    }
-
-    @Override
-    public Boolean logRequests() {
-        return logRequests;
-    }
-
-    @Override
-    public SpringRestClientHttpClientBuilder logRequests(Boolean logRequests) {
-        this.logRequests = logRequests;
-        return this;
-    }
-
-    @Override
-    public Boolean logResponses() {
-        return logResponses;
-    }
-
-    @Override
-    public SpringRestClientHttpClientBuilder logResponses(Boolean logResponses) {
-        this.logResponses = logResponses;
         return this;
     }
 

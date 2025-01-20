@@ -19,13 +19,5 @@ public interface HttpClientBuilder {
 
     HttpClientBuilder readTimeout(Duration timeout);
 
-    Boolean logRequests();
-
-    HttpClientBuilder logRequests(Boolean logRequests);
-
-    Boolean logResponses();
-
-    HttpClientBuilder logResponses(Boolean logResponses);
-
     HttpClient build();
 }
