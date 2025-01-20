@@ -119,12 +119,15 @@ public class Jdk11HttpClient implements HttpClient {
                         AtomicReference<String> eventReference = new AtomicReference<>();
                         response.body().forEach(line -> {
                             if (line.startsWith("event:")) {
+                                // TODO drop event after double \n
                                 eventReference.set(line.substring("event:".length()).trim());
                             } else if (line.startsWith("data:")) {
                                 String data = line.substring("data:".length()).trim();
                                 String event = eventReference.get();
                                 listener.onEvent(new ServerSentEvent(event, data));
                                 eventReference.set(null);
+                            } else {
+                                // TODO ignore?
                             }
                         });
 

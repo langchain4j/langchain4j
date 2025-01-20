@@ -24,7 +24,7 @@ public class LoggingHttpClient implements HttpClient {
         this.delegate = ensureNotNull(delegate, "delegate");
         this.logRequests = getOrDefault(logRequests, false);
         this.logResponses = getOrDefault(logResponses, false);
-        if (logRequests || logResponses) {
+        if (this.logRequests || this.logResponses) {
             this.log = LoggerFactory.getLogger(delegate.getClass()); // TODO or static for LoggingHttpClient.class?
         } else {
             this.log = null;
@@ -49,7 +49,7 @@ public class LoggingHttpClient implements HttpClient {
     public void execute(HttpRequest httpRequest, ServerSentEventListener listener) {
 
         if (logRequests) {
-            HttpRequestLogger.log(log, httpRequest);
+            HttpRequestLogger.log(log, httpRequest); // TODO log on the thread where request is actually made?
         }
 
         delegate.execute(httpRequest, new ServerSentEventListener() {
