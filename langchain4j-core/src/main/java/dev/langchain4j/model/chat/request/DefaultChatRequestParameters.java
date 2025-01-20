@@ -1,15 +1,14 @@
 package dev.langchain4j.model.chat.request;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import java.util.List;
+import java.util.Objects;
 
 @Experimental
 public class DefaultChatRequestParameters implements ChatRequestParameters {
@@ -140,25 +139,23 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 stopSequences,
                 toolSpecifications,
                 toolChoice,
-                responseFormat
-        );
+                responseFormat);
     }
 
     @Override
     public String toString() {
-        return "DefaultChatRequestParameters{" +
-                "modelName='" + modelName + '\'' +
-                ", temperature=" + temperature +
-                ", topP=" + topP +
-                ", topK=" + topK +
-                ", frequencyPenalty=" + frequencyPenalty +
-                ", presencePenalty=" + presencePenalty +
-                ", maxOutputTokens=" + maxOutputTokens +
-                ", stopSequences=" + stopSequences +
-                ", toolSpecifications=" + toolSpecifications +
-                ", toolChoice=" + toolChoice +
-                ", responseFormat=" + responseFormat +
-                '}';
+        return "DefaultChatRequestParameters{" + "modelName='"
+                + modelName + '\'' + ", temperature="
+                + temperature + ", topP="
+                + topP + ", topK="
+                + topK + ", frequencyPenalty="
+                + frequencyPenalty + ", presencePenalty="
+                + presencePenalty + ", maxOutputTokens="
+                + maxOutputTokens + ", stopSequences="
+                + stopSequences + ", toolSpecifications="
+                + toolSpecifications + ", toolChoice="
+                + toolChoice + ", responseFormat="
+                + responseFormat + '}';
     }
 
     public static Builder<?> builder() {
@@ -268,6 +265,28 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                         .build();
                 return responseFormat(responseFormat);
             }
+            return (T) this;
+        }
+
+        /**
+         * Copy all fields from the given ChatRequestParameters into this builder.
+         * This is typically used to clone or merge parameters from an existing instance.
+         */
+        public T copyOf(ChatRequestParameters from) {
+            if (from == null) {
+                return (T) this; // do nothing if null
+            }
+            this.modelName = from.modelName();
+            this.temperature = from.temperature();
+            this.topP = from.topP();
+            this.topK = from.topK();
+            this.frequencyPenalty = from.frequencyPenalty();
+            this.presencePenalty = from.presencePenalty();
+            this.maxOutputTokens = from.maxOutputTokens();
+            this.stopSequences = copyIfNotNull(from.stopSequences());
+            this.toolSpecifications = copyIfNotNull(from.toolSpecifications());
+            this.toolChoice = from.toolChoice();
+            this.responseFormat = from.responseFormat();
             return (T) this;
         }
 

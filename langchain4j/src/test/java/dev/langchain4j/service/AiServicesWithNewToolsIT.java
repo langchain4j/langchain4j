@@ -1,33 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.model.chat.request.json.JsonStringSchema;
-import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalTime;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithNewToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
@@ -41,6 +13,34 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.output.Response;
+import java.time.LocalTime;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AiServicesWithNewToolsIT {
@@ -63,6 +63,11 @@ public abstract class AiServicesWithNewToolsIT {
     interface Assistant {
 
         Response<AiMessage> chat(String userMessage);
+    }
+
+    interface AssistantWithChatRequestParams {
+
+        Response<AiMessage> chat(@UserMessage String userMessage, ChatRequestParameters params);
     }
 
     static class ToolWithPrimitiveParameters {
@@ -109,7 +114,8 @@ public abstract class AiServicesWithNewToolsIT {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("add");
@@ -121,26 +127,21 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithPojoParameter {
 
-        record Person(
-
-                String name,
-                int age,
-                Double height,
-                boolean married) {
-        }
+        record Person(String name, int age, Double height, boolean married) {}
 
         @Tool
-        void process(Person person) {
-        }
+        void process(Person person) {}
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .properties(singletonMap("arg0", JsonObjectSchema.builder()
-                        .addStringProperty("name")
-                        .addIntegerProperty("age")
-                        .addNumberProperty("height")
-                        .addBooleanProperty("married")
-                        .required("name", "age", "height", "married")
-                        .build()))
+                .properties(singletonMap(
+                        "arg0",
+                        JsonObjectSchema.builder()
+                                .addStringProperty("name")
+                                .addIntegerProperty("age")
+                                .addNumberProperty("height")
+                                .addBooleanProperty("married")
+                                .required("name", "age", "height", "married")
+                                .build()))
                 .required("arg0")
                 .build();
     }
@@ -173,7 +174,8 @@ public abstract class AiServicesWithNewToolsIT {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("process");
@@ -185,28 +187,26 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithNestedPojoParameter {
 
-        record Person(
-                String name,
-                Address address
-        ) {
-        }
+        record Person(String name, Address address) {}
 
-        record Address(String city) {
-        }
+        record Address(String city) {}
 
         @Tool
-        void process(Person person) {
-        }
+        void process(Person person) {}
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .properties(singletonMap("arg0", JsonObjectSchema.builder()
-                        .addProperty("name", new JsonStringSchema())
-                        .addProperty("address", JsonObjectSchema.builder()
-                                .addProperty("city", new JsonStringSchema())
-                                .required("city")
-                                .build())
-                        .required("name", "address")
-                        .build()))
+                .properties(singletonMap(
+                        "arg0",
+                        JsonObjectSchema.builder()
+                                .addProperty("name", new JsonStringSchema())
+                                .addProperty(
+                                        "address",
+                                        JsonObjectSchema.builder()
+                                                .addProperty("city", new JsonStringSchema())
+                                                .required("city")
+                                                .build())
+                                .required("name", "address")
+                                .build()))
                 .required("arg0")
                 .build();
     }
@@ -232,14 +232,17 @@ public abstract class AiServicesWithNewToolsIT {
             assistant.chat(text);
 
             // then
-            verify(tool).process(new ToolWithNestedPojoParameter.Person("Klaus", new ToolWithNestedPojoParameter.Address("Langley Falls")));
+            verify(tool)
+                    .process(new ToolWithNestedPojoParameter.Person(
+                            "Klaus", new ToolWithNestedPojoParameter.Address("Langley Falls")));
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("process");
@@ -251,27 +254,26 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithRecursion {
 
-        record Person(
-                String name,
-                List<Person> children
-        ) {
-        }
+        record Person(String name, List<Person> children) {}
 
         @Tool
-        void process(Person person) {
-        }
+        void process(Person person) {}
 
         static final String REFERENCE = generateUUIDFrom(ToolWithRecursion.Person.class.getName());
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
-                .properties(new LinkedHashMap<>() {{
-                    put("name", new JsonStringSchema());
-                    put("children", JsonArraySchema.builder()
-                            .items(JsonReferenceSchema.builder()
-                                    .reference(REFERENCE)
-                                    .build())
-                            .build());
-                }})
+                .properties(new LinkedHashMap<>() {
+                    {
+                        put("name", new JsonStringSchema());
+                        put(
+                                "children",
+                                JsonArraySchema.builder()
+                                        .items(JsonReferenceSchema.builder()
+                                                .reference(REFERENCE)
+                                                .build())
+                                        .build());
+                    }
+                })
                 .required("name", "children")
                 .build();
 
@@ -304,22 +306,20 @@ public abstract class AiServicesWithNewToolsIT {
             assistant.chat(text);
 
             // then
-            verify(tool).process(
-                    new ToolWithRecursion.Person(
+            verify(tool)
+                    .process(new ToolWithRecursion.Person(
                             "Francine",
                             asList(
                                     new ToolWithRecursion.Person("Steve", emptyList()),
-                                    new ToolWithRecursion.Person("Hayley", emptyList())
-                            )
-                    )
-            );
+                                    new ToolWithRecursion.Person("Hayley", emptyList()))));
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("process");
@@ -371,7 +371,8 @@ public abstract class AiServicesWithNewToolsIT {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 ToolSpecification toolSpecification = toolSpecifications.get(0);
                 assertThat(toolSpecification.name()).isEqualTo("currentTime");
@@ -384,8 +385,9 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithEnumParameter {
 
         enum TemperatureUnit {
-
-            CELSIUS, fahrenheit, Kelvin
+            CELSIUS,
+            fahrenheit,
+            Kelvin
         }
 
         @Tool
@@ -397,9 +399,11 @@ public abstract class AiServicesWithNewToolsIT {
                 .name("currentTemperature")
                 .parameters(JsonObjectSchema.builder()
                         .addProperty("arg0", new JsonStringSchema())
-                        .addProperty("arg1", JsonEnumSchema.builder()
-                                .enumValues("CELSIUS", "fahrenheit", "Kelvin")
-                                .build())
+                        .addProperty(
+                                "arg1",
+                                JsonEnumSchema.builder()
+                                        .enumValues("CELSIUS", "fahrenheit", "Kelvin")
+                                        .build())
                         .required("arg0", "arg1")
                         .build())
                 .build();
@@ -435,7 +439,8 @@ public abstract class AiServicesWithNewToolsIT {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithEnumParameter.EXPECTED_SPECIFICATION);
             }
@@ -445,15 +450,16 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithMapParameter {
 
         @Tool
-        void process(@P("map from name to age") Map<String, Integer> ages) {
-        }
+        void process(@P("map from name to age") Map<String, Integer> ages) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("arg0", JsonObjectSchema.builder()
-                                .description("map from name to age")
-                                .build())
+                        .addProperty(
+                                "arg0",
+                                JsonObjectSchema.builder()
+                                        .description("map from name to age")
+                                        .build())
                         .required("arg0")
                         .build())
                 .build();
@@ -481,17 +487,18 @@ public abstract class AiServicesWithNewToolsIT {
             assistant.chat(text);
 
             // then
-            verify(tool).process(Map.of(
-                    "Klaus", 42,
-                    "Francine", 47
-            ));
+            verify(tool)
+                    .process(Map.of(
+                            "Klaus", 42,
+                            "Francine", 47));
             verifyNoMoreInteractions(tool);
 
             if (verifyModelInteractions()) {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithMapParameter.EXPECTED_SPECIFICATION);
             }
@@ -505,15 +512,16 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithListOfStringsParameter {
 
         @Tool
-        void processNames(List<String> names) {
-        }
+        void processNames(List<String> names) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNames")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("arg0", JsonArraySchema.builder()
-                                .items(new JsonStringSchema())
-                                .build())
+                        .addProperty(
+                                "arg0",
+                                JsonArraySchema.builder()
+                                        .items(new JsonStringSchema())
+                                        .build())
                         .required("arg0")
                         .build())
                 .build();
@@ -547,7 +555,8 @@ public abstract class AiServicesWithNewToolsIT {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfStringsParameter.EXPECTED_SPECIFICATION);
             }
@@ -557,22 +566,24 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithSetOfEnumsParameter {
 
         enum Color {
-
-            RED, GREEN, BLUE
+            RED,
+            GREEN,
+            BLUE
         }
 
         @Tool
-        void process(Set<Color> colors) {
-        }
+        void process(Set<Color> colors) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("arg0", JsonArraySchema.builder()
-                                .items(JsonEnumSchema.builder()
-                                        .enumValues("RED", "GREEN", "BLUE")
+                        .addProperty(
+                                "arg0",
+                                JsonArraySchema.builder()
+                                        .items(JsonEnumSchema.builder()
+                                                .enumValues("RED", "GREEN", "BLUE")
+                                                .build())
                                         .build())
-                                .build())
                         .required("arg0")
                         .build())
                 .build();
@@ -606,7 +617,8 @@ public abstract class AiServicesWithNewToolsIT {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithSetOfEnumsParameter.EXPECTED_SPECIFICATION);
             }
@@ -616,15 +628,16 @@ public abstract class AiServicesWithNewToolsIT {
     static class ToolWithCollectionOfIntegersParameter {
 
         @Tool
-        void processNumbers(Collection<Integer> names) {
-        }
+        void processNumbers(Collection<Integer> names) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("processNumbers")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("arg0", JsonArraySchema.builder()
-                                .items(new JsonIntegerSchema())
-                                .build())
+                        .addProperty(
+                                "arg0",
+                                JsonArraySchema.builder()
+                                        .items(new JsonIntegerSchema())
+                                        .build())
                         .required("arg0")
                         .build())
                 .build();
@@ -658,32 +671,33 @@ public abstract class AiServicesWithNewToolsIT {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
-                assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithCollectionOfIntegersParameter.EXPECTED_SPECIFICATION);
+                assertThat(toolSpecifications.get(0))
+                        .isEqualTo(ToolWithCollectionOfIntegersParameter.EXPECTED_SPECIFICATION);
             }
         }
     }
 
     static class ToolWithListOfPojoParameter {
 
-        record Person(String name) {
-        }
+        record Person(String name) {}
 
         @Tool
-        void process(List<Person> people) {
-
-        }
+        void process(List<Person> people) {}
 
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("process")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("arg0", JsonArraySchema.builder()
-                                .items(JsonObjectSchema.builder()
-                                        .addStringProperty("name")
-                                        .required("name")
+                        .addProperty(
+                                "arg0",
+                                JsonArraySchema.builder()
+                                        .items(JsonObjectSchema.builder()
+                                                .addStringProperty("name")
+                                                .required("name")
+                                                .build())
                                         .build())
-                                .build())
                         .required("arg0")
                         .build())
                 .build();
@@ -711,10 +725,10 @@ public abstract class AiServicesWithNewToolsIT {
 
             // then
             try {
-                verify(tool).process(List.of(
-                        new ToolWithListOfPojoParameter.Person("Klaus"),
-                        new ToolWithListOfPojoParameter.Person("Franny")
-                ));
+                verify(tool)
+                        .process(List.of(
+                                new ToolWithListOfPojoParameter.Person("Klaus"),
+                                new ToolWithListOfPojoParameter.Person("Franny")));
             } catch (Throwable t) {
                 verify(tool).process(List.of(new ToolWithListOfPojoParameter.Person("Klaus")));
                 verify(tool).process(List.of(new ToolWithListOfPojoParameter.Person("Franny")));
@@ -725,10 +739,46 @@ public abstract class AiServicesWithNewToolsIT {
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
                 verifyNoMoreInteractionsFor(model);
 
-                List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
+                List<ToolSpecification> toolSpecifications =
+                        chatRequestCaptor.getValue().parameters().toolSpecifications();
                 assertThat(toolSpecifications).hasSize(1);
                 assertThat(toolSpecifications.get(0)).isEqualTo(ToolWithListOfPojoParameter.EXPECTED_SPECIFICATION);
             }
+        }
+    }
+
+    @Test
+    void should_use_custom_chat_request_parameters_passed_in_method() {
+
+        for (ChatLanguageModel model : models()) {
+            // given
+            model = spy(model);
+
+            // Build an AI service for AssistantWithChatRequestParams
+            AssistantWithChatRequestParams assistant = AiServices.builder(AssistantWithChatRequestParams.class)
+                    .chatLanguageModel(model)
+                    .build();
+
+            // Create some custom ChatRequestParameters
+            ChatRequestParameters customParams = ChatRequestParameters.builder()
+                    .temperature(0.76)
+                    .stopSequences("DONE")
+                    .build();
+
+            // when
+            Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", customParams);
+
+            // then
+            // First, verify the model was called
+            verify(model).chat(chatRequestCaptor.capture());
+            ChatRequest actualRequest = chatRequestCaptor.getValue();
+
+            // Check that the custom parameters are now present in the request
+            assertThat(actualRequest.parameters().temperature()).isEqualTo(0.76);
+            assertThat(actualRequest.parameters().stopSequences()).containsExactly("DONE");
+
+            // Optionally check that the AIMessage response is not null, or has some text:
+            assertThat(response.content()).isNotNull();
         }
     }
 
