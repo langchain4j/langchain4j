@@ -25,36 +25,6 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
             .logResponses(true)
             .build();
 
-    // TODO test timeouts?
-
-    public static void main(String[] args) {
-
-//        HttpClientBuilder httpClientBuilder = new Jdk11HttpClientBuilder() // java.net.http.HttpTimeoutException: request timed out / java.net.http.HttpConnectTimeoutException: HTTP connect timed out
-//        HttpClientBuilder httpClientBuilder = new OkHttpHttpClientBuilder() // java.net.SocketTimeoutException: timeout / java.net.SocketTimeoutException: Connect timed out
-//        HttpClientBuilder httpClientBuilder = new SpringRestClientHttpClientBuilder() // org.springframework.web.client.ResourceAccessException: I/O error on POST request for "http://192.168.178.55:11434/api/chat": timeout / org.springframework.web.client.ResourceAccessException: I/O error on POST request for "http://192.168.0.44:12345/api/chat": Connect timed out
-//                .httpClientBuilder(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)))
-//                .connectTimeout(Duration.ofSeconds(1))
-//                .readTimeout(Duration.ofSeconds(5))
-//                .logRequests(true)
-//                .logResponses(true);
-
-        ChatLanguageModel model = OllamaChatModel.builder()
-//                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(ollamaBaseUrl(ollama))
-//                .baseUrl("http://192.168.0.44:12345")
-                .modelName(TINY_DOLPHIN_MODEL)
-                .temperature(0.0)
-//                .timeout(Duration.ofSeconds(1))
-                .maxRetries(1)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        String answer = model.chat("tell me a long story");
-
-        System.out.println(answer);
-    }
-
     // TODO add test that HttpException is thrown
 
     @Test
