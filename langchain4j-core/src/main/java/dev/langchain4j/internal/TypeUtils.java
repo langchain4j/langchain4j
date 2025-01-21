@@ -7,16 +7,22 @@ import java.util.UUID;
 public class TypeUtils {
 
     public static boolean isJsonInteger(Class<?> type) {
-        return type == byte.class || type == Byte.class
-                || type == short.class || type == Short.class
-                || type == int.class || type == Integer.class
-                || type == long.class || type == Long.class
+        return type == byte.class
+                || type == Byte.class
+                || type == short.class
+                || type == Short.class
+                || type == int.class
+                || type == Integer.class
+                || type == long.class
+                || type == Long.class
                 || type == BigInteger.class;
     }
 
     public static boolean isJsonNumber(Class<?> type) {
-        return type == float.class || type == Float.class
-                || type == double.class || type == Double.class
+        return type == float.class
+                || type == Float.class
+                || type == double.class
+                || type == Double.class
                 || type == BigDecimal.class;
     }
 
@@ -25,8 +31,11 @@ public class TypeUtils {
     }
 
     public static boolean isJsonString(Class<?> type) {
-        return type == String.class || type == char.class || type == Character.class || isJsonUUID(type)
-            || CharSequence.class.isAssignableFrom(type);
+        return type == String.class
+                || type == char.class
+                || type == Character.class
+                || isJsonUUID(type)
+                || CharSequence.class.isAssignableFrom(type);
     }
 
     public static boolean isJsonUUID(Class<?> type) {

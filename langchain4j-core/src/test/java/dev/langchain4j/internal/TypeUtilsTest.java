@@ -1,14 +1,13 @@
 package dev.langchain4j.internal;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 public class TypeUtilsTest {
 
