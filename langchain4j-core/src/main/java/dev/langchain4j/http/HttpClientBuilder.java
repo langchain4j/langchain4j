@@ -7,10 +7,6 @@ import java.time.Duration;
 @Experimental
 public interface HttpClientBuilder {
 
-    // TODO baseUrl?
-    // TODO customHeaders / defaultHeaders?
-    // TODO Proxy/ProxySelector/user/pwd? - postpone till OpenAI migration
-
     Duration connectTimeout();
 
     HttpClientBuilder connectTimeout(Duration timeout);

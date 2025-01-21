@@ -55,6 +55,8 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         System.out.println(answer);
     }
 
+    // TODO add test that HttpException is thrown
+
     @Test
     void should_generate_response() {
 

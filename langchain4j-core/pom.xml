@@ -57,7 +57,8 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Test dependencies -->
+        <!-- test dependencies -->
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
@@ -103,6 +104,13 @@
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-coroutines-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock</artifactId>
+            <version>3.10.0</version>
             <scope>test</scope>
         </dependency>
 

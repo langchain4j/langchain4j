@@ -56,6 +56,7 @@ public class OllamaModels {
         deleteModel(ollamaModel.getName());
     }
 
+    // TODO test
     public void deleteModel(String ollamaModelName) {
         withRetry(() -> client.deleteModel(
                 DeleteModelRequest.builder()

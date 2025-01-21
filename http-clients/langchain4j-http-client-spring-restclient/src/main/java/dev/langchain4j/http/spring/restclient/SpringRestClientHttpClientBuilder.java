@@ -1,7 +1,7 @@
 package dev.langchain4j.http.spring.restclient;
 
 import dev.langchain4j.http.HttpClientBuilder;
-import org.springframework.core.task.TaskExecutor;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
@@ -9,8 +9,8 @@ import java.time.Duration;
 public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
 
     private RestClient.Builder restClientBuilder;
-    private TaskExecutor taskExecutor; // TODO better name: streamingTaskExecutor?
-    private Boolean createDefaultTaskExecutor = true; // TODO allowCreatingDefaultStreamingTaskExecutor?
+    private AsyncTaskExecutor streamingRequestExecutor;
+    private Boolean createDefaultStreamingRequestExecutor = true;
     private Duration connectTimeout;
     private Duration readTimeout;
 
@@ -28,33 +28,38 @@ public class SpringRestClientHttpClientBuilder implements HttpClientBuilder {
      *
      * @return
      */
-    public TaskExecutor taskExecutor() {
-        return taskExecutor;
+    public AsyncTaskExecutor streamingRequestExecutor() {
+        return streamingRequestExecutor;
     }
 
     /**
      * TODO
      *
-     * @param taskExecutor
+     * @param streamingRequestExecutor
      * @return
      */
-    public SpringRestClientHttpClientBuilder taskExecutor(TaskExecutor taskExecutor) {
-        this.taskExecutor = taskExecutor;
+    public SpringRestClientHttpClientBuilder streamingRequestExecutor(AsyncTaskExecutor streamingRequestExecutor) {
+        this.streamingRequestExecutor = streamingRequestExecutor;
         return this;
     }
 
-    public Boolean createDefaultTaskExecutor() {
-        return createDefaultTaskExecutor;
+    /**
+     * TODO
+     *
+     * @return
+     */
+    public Boolean createDefaultStreamingRequestExecutor() {
+        return createDefaultStreamingRequestExecutor;
     }
 
     /**
      * TODO
      *
-     * @param createDefaultTaskExecutor
+     * @param createDefaultStreamingRequestExecutor
      * @return
      */
-    public SpringRestClientHttpClientBuilder createDefaultTaskExecutor(Boolean createDefaultTaskExecutor) {
-        this.createDefaultTaskExecutor = createDefaultTaskExecutor;
+    public SpringRestClientHttpClientBuilder createDefaultStreamingRequestExecutor(Boolean createDefaultStreamingRequestExecutor) {
+        this.createDefaultStreamingRequestExecutor = createDefaultStreamingRequestExecutor;
         return this;
     }
 

@@ -3,8 +3,10 @@ package dev.langchain4j.http;
 import dev.langchain4j.Experimental;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyMap;
@@ -17,11 +19,11 @@ public class HttpRequest {
     private final Map<String, String> headers; // TODO Map<String, List<String>>
     private final String body; // TODO type
 
-    public HttpRequest(HttpMethod method, String url, Map<String, String> headers, String body) {
-        this.method = ensureNotNull(method, "method");
-        this.url = ensureNotBlank(url, "url");
-        this.headers = headers == null ? emptyMap() : new HashMap<>(headers);
-        this.body = body; // TODO make mandatory for some methods?
+    public HttpRequest(Builder builder) {
+        this.method = ensureNotNull(builder.method, "method");
+        this.url = ensureNotBlank(builder.url, "url");
+        this.headers = builder.headers == null ? emptyMap() : new LinkedHashMap<>(builder.headers);
+        this.body = builder.body;
     }
 
     public HttpMethod method() {
@@ -54,12 +56,18 @@ public class HttpRequest {
         private Builder() {
         }
 
+        public Builder method(HttpMethod method) {
+            this.method = method;
+            return this;
+        }
+
         public Builder url(String url) {
             this.url = url;
             return this;
         }
 
-        public Builder url(String baseUrl, String path) { // TODO test
+        // TODO unit test
+        public Builder url(String baseUrl, String path) {
             if (baseUrl.endsWith("/")) {
                 baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
             }
@@ -70,16 +78,24 @@ public class HttpRequest {
             return this;
         }
 
+        // TODO unit test
         public Builder addHeader(String name, String value) {
             if (this.headers == null) {
                 this.headers = new HashMap<>();
             }
-            this.headers.put(name, value);
+            this.headers.put(ensureNotBlank(name, "name"), value);
             return this;
         }
 
-        public Builder method(HttpMethod method) {
-            this.method = method;
+        // TODO unit test
+        public Builder addHeaders(Map<String, String> headers) {
+            if (isNullOrEmpty(headers)) {
+                return this;
+            }
+            if (this.headers == null) {
+                this.headers = new HashMap<>();
+            }
+            this.headers.putAll(headers);
             return this;
         }
 
@@ -94,7 +110,7 @@ public class HttpRequest {
         }
 
         public HttpRequest build() {
-            return new HttpRequest(method, url, headers, body);
+            return new HttpRequest(this);
         }
     }
 }

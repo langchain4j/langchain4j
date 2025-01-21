@@ -5,17 +5,19 @@ import dev.langchain4j.Experimental;
 import java.util.HashMap;
 import java.util.Map;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static java.util.Collections.emptyMap;
 
 @Experimental
-public class HttpResponse {
+public class SuccessfulHttpResponse {
 
     private final int statusCode;
     private final Map<String, String> headers; // TODO Map<String, List<String>>
-    private final String body;
+    private final String body; // TODO type
 
-    public HttpResponse(int statusCode, Map<String, String> headers, String body) {
-        this.statusCode = statusCode;
+    // TODO accept builder? and/or?
+    public SuccessfulHttpResponse(int statusCode, Map<String, String> headers, String body) {
+        this.statusCode = ensureBetween(statusCode, 200, 299, "statusCode");
         this.headers = headers == null ? emptyMap() : new HashMap<>(headers);
         this.body = body;
     }
@@ -60,8 +62,8 @@ public class HttpResponse {
             return this;
         }
 
-        public HttpResponse build() {
-            return new HttpResponse(statusCode, headers, body);
+        public SuccessfulHttpResponse build() {
+            return new SuccessfulHttpResponse(statusCode, headers, body);
         }
     }
 }

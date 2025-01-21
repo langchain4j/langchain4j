@@ -6,13 +6,12 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.HttpClient;
 import dev.langchain4j.http.HttpClientBuilder;
 import dev.langchain4j.http.HttpClientBuilderLoader;
-import dev.langchain4j.http.HttpMethod;
 import dev.langchain4j.http.HttpRequest;
-import dev.langchain4j.http.HttpResponse;
-import dev.langchain4j.http.ServerSentEvent;
-import dev.langchain4j.http.ServerSentEventListener;
+import dev.langchain4j.http.SuccessfulHttpResponse;
 import dev.langchain4j.http.log.LoggingHttpClient;
-import dev.langchain4j.internal.Utils;
+import dev.langchain4j.http.streaming.NdJsonStrategy;
+import dev.langchain4j.http.streaming.ServerSentEvent;
+import dev.langchain4j.http.streaming.ServerSentEventListener;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
@@ -26,8 +25,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.http.HttpMethod.DELETE;
+import static dev.langchain4j.http.HttpMethod.GET;
 import static dev.langchain4j.http.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createModelListenerRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenRequest;
@@ -40,27 +42,27 @@ import static java.time.Duration.ofSeconds;
 class OllamaClient {
 
     private final HttpClient httpClient;
-    private final String baseUrl; // TODO
-    // TODO custom headers
+    private final String baseUrl;
+    private final Map<String, String> defaultHeaders;
 
     OllamaClient(Builder builder) {
 
-        HttpClientBuilder httpClientBuilder = getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
+        HttpClientBuilder httpClientBuilder =
+                getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
         HttpClient httpClient = httpClientBuilder
                 .connectTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(10))) // TODO default value
                 .readTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
 
-        this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+        if (builder.logRequests != null || builder.logResponses != null) {
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+        } else {
+            this.httpClient = httpClient;
+        }
 
-        this.baseUrl = Utils.ensureTrailingForwardSlash(builder.baseUrl);
-
-        // TODO
-        // add custom header interceptor
-//        if (customHeaders != null && !customHeaders.isEmpty()) {
-//            okHttpClientBuilder.addInterceptor(new GenericHeadersInterceptor(customHeaders));
-//        }
+        this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
+        this.defaultHeaders = copyIfNotNull(builder.customHeaders);
     }
 
     static Builder builder() {
@@ -73,13 +75,14 @@ class OllamaClient {
             HttpRequest httpRequest = HttpRequest.builder()
                     .method(POST)
                     .url(baseUrl, "api/generate")
-                    .addHeader("Content-Type", "application/json") // TODO always set by default?
+                    .addHeader("Content-Type", "application/json")
+                    .addHeaders(defaultHeaders)
                     .body(getObjectMapper().writeValueAsString(request))
                     .build();
 
-            HttpResponse httpResponse = httpClient.execute(httpRequest);
+            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
 
-            return getObjectMapper().readValue(httpResponse.body(), CompletionResponse.class);
+            return getObjectMapper().readValue(successfulHttpResponse.body(), CompletionResponse.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -90,13 +93,14 @@ class OllamaClient {
             HttpRequest httpRequest = HttpRequest.builder()
                     .method(POST)
                     .url(baseUrl, "api/chat")
-                    .addHeader("Content-Type", "application/json") // TODO always set by default?
+                    .addHeader("Content-Type", "application/json")
+                    .addHeaders(defaultHeaders)
                     .body(getObjectMapper().writeValueAsString(request))
                     .build();
 
-            HttpResponse httpResponse = httpClient.execute(httpRequest);
+            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
 
-            return getObjectMapper().readValue(httpResponse.body(), ChatResponse.class);
+            return getObjectMapper().readValue(successfulHttpResponse.body(), ChatResponse.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -108,11 +112,12 @@ class OllamaClient {
             HttpRequest httpRequest = HttpRequest.builder()
                     .method(POST)
                     .url(baseUrl, "api/generate")
-                    .addHeader("Content-Type", "application/x-ndjson")
+                    .addHeader("Content-Type", "application/x-ndjson") // TODO x-nd?
+                    .addHeaders(defaultHeaders)
                     .body(getObjectMapper().writeValueAsString(request))
                     .build();
 
-            httpClient.execute(httpRequest, new ServerSentEventListener() {
+            httpClient.execute(httpRequest, new NdJsonStrategy(), new ServerSentEventListener() {
 
                 final StringBuilder contentBuilder = new StringBuilder();
 
@@ -136,7 +141,7 @@ class OllamaClient {
                 }
 
                 @Override
-                public void onFinish() {
+                public void onClose() {
 //                    handler.onComplete(); TODO?
                 }
 
@@ -161,11 +166,12 @@ class OllamaClient {
             HttpRequest httpRequest = HttpRequest.builder()
                     .method(POST)
                     .url(baseUrl, "api/chat")
-                    .addHeader("Content-Type", "application/x-ndjson")
+                    .addHeader("Content-Type", "application/x-ndjson") // TODO x-nd?
+                    .addHeaders(defaultHeaders)
                     .body(getObjectMapper().writeValueAsString(request))
                     .build();
 
-            httpClient.execute(httpRequest, new ServerSentEventListener() {
+            httpClient.execute(httpRequest, new NdJsonStrategy(), new ServerSentEventListener() {
 
                 final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder();
 
@@ -186,7 +192,7 @@ class OllamaClient {
                 }
 
                 @Override
-                public void onFinish() {
+                public void onClose() {
 //                    handler.onComplete(); TODO?
                 }
 
@@ -208,13 +214,14 @@ class OllamaClient {
             HttpRequest httpRequest = HttpRequest.builder()
                     .method(POST)
                     .url(baseUrl, "api/embed")
-                    .addHeader("Content-Type", "application/json") // TODO always set by default?
+                    .addHeader("Content-Type", "application/json")
+                    .addHeaders(defaultHeaders)
                     .body(getObjectMapper().writeValueAsString(request))
                     .build();
 
-            HttpResponse httpResponse = httpClient.execute(httpRequest);
+            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
 
-            return getObjectMapper().readValue(httpResponse.body(), EmbeddingResponse.class);
+            return getObjectMapper().readValue(successfulHttpResponse.body(), EmbeddingResponse.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -223,14 +230,15 @@ class OllamaClient {
     public ModelsListResponse listModels() {
         try {
             HttpRequest httpRequest = HttpRequest.builder()
-                    .method(HttpMethod.GET) // TODO
+                    .method(GET)
                     .url(baseUrl, "api/tags")
-                    .addHeader("Content-Type", "application/json") // TODO always set by default?
+                    .addHeader("Content-Type", "application/json")
+                    .addHeaders(defaultHeaders)
                     .build();
 
-            HttpResponse httpResponse = httpClient.execute(httpRequest);
+            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
 
-            return getObjectMapper().readValue(httpResponse.body(), ModelsListResponse.class);
+            return getObjectMapper().readValue(successfulHttpResponse.body(), ModelsListResponse.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -241,13 +249,14 @@ class OllamaClient {
             HttpRequest httpRequest = HttpRequest.builder()
                     .method(POST)
                     .url(baseUrl, "api/show")
-                    .addHeader("Content-Type", "application/json") // TODO always set by default?
+                    .addHeader("Content-Type", "application/json")
+                    .addHeaders(defaultHeaders)
                     .body(getObjectMapper().writeValueAsString(showInformationRequest))
                     .build();
 
-            HttpResponse httpResponse = httpClient.execute(httpRequest);
+            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
 
-            return getObjectMapper().readValue(httpResponse.body(), OllamaModelCard.class);
+            return getObjectMapper().readValue(successfulHttpResponse.body(), OllamaModelCard.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -256,57 +265,35 @@ class OllamaClient {
     public RunningModelsListResponse listRunningModels() {
         try {
             HttpRequest httpRequest = HttpRequest.builder()
-                    .method(HttpMethod.GET) // TODO
+                    .method(GET)
                     .url(baseUrl, "api/ps")
-                    .addHeader("Content-Type", "application/json") // TODO always set by default?
+                    .addHeader("Content-Type", "application/json")
+                    .addHeaders(defaultHeaders)
                     .build();
 
-            HttpResponse httpResponse = httpClient.execute(httpRequest);
+            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
 
-            return getObjectMapper().readValue(httpResponse.body(), RunningModelsListResponse.class);
+            return getObjectMapper().readValue(successfulHttpResponse.body(), RunningModelsListResponse.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
 
     public Void deleteModel(DeleteModelRequest deleteModelRequest) {
-
         try {
             HttpRequest httpRequest = HttpRequest.builder()
                     .method(DELETE)
                     .url(baseUrl, "api/delete")
-                    .addHeader("Content-Type", "application/json") // TODO always set by default?
+                    .addHeader("Content-Type", "application/json")
+                    .addHeaders(defaultHeaders)
                     .body(getObjectMapper().writeValueAsString(deleteModelRequest))
                     .build();
-
-            HttpResponse httpResponse = httpClient.execute(httpRequest);
-
-            return null; // TODO
+            httpClient.execute(httpRequest);
+            return null;
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
-
-//    static class GenericHeadersInterceptor implements Interceptor { // TODO remove?
-//
-//        private final Map<String, String> headers = new HashMap<>();
-//
-//        GenericHeadersInterceptor(Map<String, String> headers) {
-//            Optional.ofNullable(headers)
-//                    .ifPresent(this.headers::putAll);
-//        }
-//
-//        @NotNull
-//        @Override
-//        public okhttp3.Response intercept(Chain chain) throws IOException {
-//            Request.Builder builder = chain.request().newBuilder();
-//
-//            // Add headers
-//            this.headers.forEach(builder::addHeader);
-//
-//            return chain.proceed(builder.build());
-//        }
-//    }
 
     static class Builder {
 
@@ -315,7 +302,7 @@ class OllamaClient {
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Map<String, String> customHeaders; // TODO
+        private Map<String, String> customHeaders;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;

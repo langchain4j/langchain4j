@@ -2,10 +2,12 @@ package dev.langchain4j.http.log;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.HttpClient;
+import dev.langchain4j.http.HttpException;
 import dev.langchain4j.http.HttpRequest;
-import dev.langchain4j.http.HttpResponse;
-import dev.langchain4j.http.ServerSentEvent;
-import dev.langchain4j.http.ServerSentEventListener;
+import dev.langchain4j.http.SuccessfulHttpResponse;
+import dev.langchain4j.http.streaming.ServerSentEvent;
+import dev.langchain4j.http.streaming.ServerSentEventListener;
+import dev.langchain4j.http.streaming.StreamingStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,48 +26,47 @@ public class LoggingHttpClient implements HttpClient {
         this.delegate = ensureNotNull(delegate, "delegate");
         this.logRequests = getOrDefault(logRequests, false);
         this.logResponses = getOrDefault(logResponses, false);
-        if (this.logRequests || this.logResponses) {
-            this.log = LoggerFactory.getLogger(delegate.getClass()); // TODO or static for LoggingHttpClient.class?
-        } else {
-            this.log = null;
-        }
+        this.log = LoggerFactory.getLogger(delegate.getClass()); // TODO or static for LoggingHttpClient.class?
     }
 
-    public HttpResponse execute(HttpRequest httpRequest) {
+    @Override
+    public SuccessfulHttpResponse execute(HttpRequest request) throws HttpException {
 
         if (logRequests) {
-            HttpRequestLogger.log(log, httpRequest);
+            HttpRequestLogger.log(log, request);
         }
 
-        HttpResponse httpResponse = delegate.execute(httpRequest);
+        // TODO what to do on exception?
+        SuccessfulHttpResponse response = delegate.execute(request);
 
         if (logResponses) {
-            HttpResponseLogger.log(log, httpResponse);
+            HttpResponseLogger.log(log, response);
         }
 
-        return httpResponse;
+        return response;
     }
 
-    public void execute(HttpRequest httpRequest, ServerSentEventListener listener) {
+    @Override
+    public void execute(HttpRequest request, StreamingStrategy strategy, ServerSentEventListener listener) {
 
         if (logRequests) {
-            HttpRequestLogger.log(log, httpRequest); // TODO log on the thread where request is actually made?
+            HttpRequestLogger.log(log, request); // TODO log on the thread where request is actually made?
         }
 
-        delegate.execute(httpRequest, new ServerSentEventListener() {
+        delegate.execute(request, strategy, new ServerSentEventListener() {
 
             @Override
-            public void onStart(HttpResponse httpResponse) {
+            public void onOpen(SuccessfulHttpResponse response) {
                 if (logResponses) {
-                    HttpResponseLogger.log(log, httpResponse);
+                    HttpResponseLogger.log(log, response);
                 }
-                listener.onStart(httpResponse);
+                listener.onOpen(response);
             }
 
             @Override
             public void onEvent(ServerSentEvent event) {
                 if (logResponses) {
-                    log.debug("{}", event); // TODO?
+                    log.debug("{}", event); // TODO
                 }
                 listener.onEvent(event);
             }

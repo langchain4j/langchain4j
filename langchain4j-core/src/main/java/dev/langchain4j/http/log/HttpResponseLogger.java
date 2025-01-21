@@ -1,7 +1,7 @@
 package dev.langchain4j.http.log;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.http.HttpResponse;
+import dev.langchain4j.http.SuccessfulHttpResponse;
 import org.slf4j.Logger;
 
 import static dev.langchain4j.http.log.HttpRequestLogger.format;
@@ -9,28 +9,28 @@ import static dev.langchain4j.http.log.HttpRequestLogger.format;
 @Experimental
 class HttpResponseLogger {
 
-    static void log(Logger log, HttpResponse httpResponse) {
+    static void log(Logger log, SuccessfulHttpResponse response) {
         try {
             log.debug("Response:\n- status code: {}\n- headers: {}\n- body: {}",
-                    httpResponse.statusCode(), format(httpResponse.headers()), getBody(httpResponse));
+                    response.statusCode(), format(response.headers()), getBody(response));
         } catch (Exception e) {
             log.warn("Error while logging response: {}", e.getMessage());
         }
     }
 
-    private static String getBody(HttpResponse httpResponse) {
-        return isEventStream(httpResponse)
+    private static String getBody(SuccessfulHttpResponse response) {
+        return isEventStream(response)
                 ? "[skipping response body due to streaming]"
-                : httpResponse.body();
+                : response.body();
     }
 
-    private static boolean isEventStream(HttpResponse httpResponse) {
-        String contentType = httpResponse.headers().get("Content-Type");
+    private static boolean isEventStream(SuccessfulHttpResponse response) {
+        String contentType = response.headers().get("Content-Type");
         if (contentType != null) {
             return contentType.contains("event-stream");
         }
 
-        contentType = httpResponse.headers().get("content-type");
+        contentType = response.headers().get("content-type");
         if (contentType != null) {
             return contentType.contains("event-stream");
         }

@@ -1,22 +1,22 @@
 package dev.langchain4j.http;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.http.streaming.ServerSentEventListener;
+import dev.langchain4j.http.streaming.StreamingStrategy;
 
-// TODO name
-// TODO package/module: move to lc4j-http and keep HttpException in lc4j-core?
 @Experimental
 public interface HttpClient {
+// TODO package/module: move to lc4j-http and keep HttpException in lc4j-core?
 
     /**
      * TODO
      *
-     * @param httpRequest
-     * @return
-     * @throws HttpException TODO good idea?
+     * @param httpRequest TODO
+     * @return TODO
+     * @throws HttpException    TODO
+     * @throws RuntimeException TODO
      */
-    HttpResponse execute(HttpRequest httpRequest) throws HttpException; // TODO list of exceptions
-
-    // TODO generic timeout exception? what else?
+    SuccessfulHttpResponse execute(HttpRequest httpRequest) throws HttpException, RuntimeException;
 
     /**
      * TODO
@@ -26,5 +26,5 @@ public interface HttpClient {
      * @param httpRequest
      * @param listener
      */
-    void execute(HttpRequest httpRequest, ServerSentEventListener listener); // TODO name stream?
+    void execute(HttpRequest httpRequest, StreamingStrategy strategy, ServerSentEventListener listener); // TODO name: stream?
 }
