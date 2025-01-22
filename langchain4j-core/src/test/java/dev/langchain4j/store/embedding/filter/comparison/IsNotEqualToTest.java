@@ -6,8 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class IsNotEqualToTest {
 
@@ -28,12 +27,12 @@ class IsNotEqualToTest {
 
     private void assertIsNotEqualToObject(IsNotEqualTo subject) {
         // Testing when object is not an instance of Metadata
-        assertFalse(subject.test(new Object()));
+        assertThat(subject.test(new Object())).isFalse();
     }
 
     private void assertMetadataDoesNotContainKey(IsNotEqualTo subject) {
         // Testing when Metadata does not contain key
-        assertTrue(subject.test(new Metadata(new HashMap<>())));
+        assertThat(subject.test(new Metadata(new HashMap<>()))).isTrue();
     }
 
     private void assertValuesAreNumbersNotEqual(String key) {
@@ -41,7 +40,7 @@ class IsNotEqualToTest {
         Metadata metadata = new Metadata(new HashMap<>());
         metadata.put(key, 123);
         IsNotEqualTo subject = new IsNotEqualTo(key, 1234);
-        assertTrue(subject.test(metadata));
+        assertThat(subject.test(metadata)).isTrue();
     }
 
     private void assertUuidAndStringComparison(String key) {
@@ -50,7 +49,7 @@ class IsNotEqualToTest {
         IsNotEqualTo subject = new IsNotEqualTo(key, uuid);
         Metadata metadata = new Metadata(new HashMap<>());
         metadata.put(key, uuid.toString() + "extra");
-        assertTrue(subject.test(metadata));
+        assertThat(subject.test(metadata)).isTrue();
     }
 
     private void assertUnequalStringValues(String key, String unequalValue) {
@@ -58,7 +57,7 @@ class IsNotEqualToTest {
         IsNotEqualTo subject = new IsNotEqualTo(key, unequalValue);
         Metadata metadata = new Metadata(new HashMap<>());
         metadata.put(key, "testValue");
-        assertTrue(subject.test(metadata));
+        assertThat(subject.test(metadata)).isTrue();
     }
 
     private void assertEqualStringValues(String key) {
@@ -66,6 +65,6 @@ class IsNotEqualToTest {
         IsNotEqualTo subject = new IsNotEqualTo(key, "testValue");
         Metadata metadata = new Metadata(new HashMap<>());
         metadata.put(key, "testValue");
-        assertFalse(subject.test(metadata));
+        assertThat(subject.test(metadata)).isFalse();
     }
 }

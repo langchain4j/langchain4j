@@ -72,7 +72,7 @@ public class McpHttpTransportTest {
         ToolProviderResult toolProviderResult = toolProvider.provideTools(null);
 
         // verify the list of tools
-        assertThat(toolProviderResult.tools().size()).isEqualTo(5);
+        assertThat(toolProviderResult.tools()).hasSize(5);
         Set<String> toolNames = toolProviderResult.tools().keySet().stream()
                 .map(ToolSpecification::name)
                 .collect(Collectors.toSet());

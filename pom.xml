@@ -191,13 +191,13 @@
         </profile>
         <profile>
             <id>openrewrite</id>
-            <!-- `mvn -P openrewrite org.openrewrite.maven:rewrite-maven-plugin:run` -->
+            <!-- `mvn -P openrewrite rewrite:run` -->
             <build>
                 <plugins>
                     <plugin>
                         <groupId>org.openrewrite.maven</groupId>
                         <artifactId>rewrite-maven-plugin</artifactId>
-                        <version>5.42.2</version>
+                        <version>5.43.4</version>
                         <configuration>
                             <activeRecipes>
                                 <!--<recipe>org.openrewrite.java.OrderImports</recipe>-->

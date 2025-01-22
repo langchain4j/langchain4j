@@ -9,18 +9,17 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
-import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.*;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.EMBEDDING_MODEL;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.createDefaultClient;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.data.Percentage.withPercentage;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class MongoDbEmbeddingStoreMiscIT {
 
@@ -85,7 +84,7 @@ class MongoDbEmbeddingStoreMiscIT {
             fixture = fixture.initialize(builder -> builder.createIndex(false));
             fail("Expected exception");
         } catch (RuntimeException r) {
-            assertTrue(r.getMessage().contains("Search Index 'test_index' not found"));
+            assertThat(r.getMessage()).contains("Search Index 'test_index' not found");
         }
     }
 }
