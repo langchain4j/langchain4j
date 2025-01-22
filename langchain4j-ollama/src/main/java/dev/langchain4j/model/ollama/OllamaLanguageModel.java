@@ -1,6 +1,6 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.http.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaLanguageModelBuilderFactory;

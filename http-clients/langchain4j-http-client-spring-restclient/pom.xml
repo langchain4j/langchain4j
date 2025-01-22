@@ -11,30 +11,29 @@
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <!-- TODO name -->
     <!-- TODO move to langchain4j-spring repo -->
     <artifactId>langchain4j-http-client-spring-restclient</artifactId>
-    <!-- TODO name -->
     <name>LangChain4j :: HTTP Client :: Spring RestClient</name>
 
     <dependencies>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
+            <artifactId>langchain4j-http-client</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
+            <!-- TODO take version from parent/BOM -->
             <version>6.1.8</version>
         </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot</artifactId>
-            <!-- TODO take version from parent -->
+            <!-- TODO take version from parent/BOM -->
             <version>3.2.6</version>
         </dependency>
 
@@ -42,7 +41,7 @@
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
+            <artifactId>langchain4j-http-client</artifactId>
             <version>${project.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
@@ -56,21 +55,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.wiremock</groupId>
-            <artifactId>wiremock</artifactId>
-            <version>3.10.0</version>
             <scope>test</scope>
         </dependency>
 

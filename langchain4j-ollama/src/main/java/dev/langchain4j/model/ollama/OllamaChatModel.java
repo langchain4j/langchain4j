@@ -3,7 +3,7 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.http.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -56,7 +56,7 @@ public class OllamaChatModel implements ChatLanguageModel {
     private final Set<Capability> supportedCapabilities;
 
     public OllamaChatModel(HttpClientBuilder httpClientBuilder,
-                           String baseUrl, //
+                           String baseUrl,
                            String modelName,
                            Double temperature,
                            Integer topK,
@@ -68,11 +68,11 @@ public class OllamaChatModel implements ChatLanguageModel {
                            List<String> stop,
                            String format,
                            ResponseFormat responseFormat,
-                           Duration timeout, //
+                           Duration timeout,
                            Integer maxRetries,
-                           Map<String, String> customHeaders, //
-                           Boolean logRequests, //
-                           Boolean logResponses, //
+                           Map<String, String> customHeaders,
+                           Boolean logRequests,
+                           Boolean logResponses,
                            List<ChatModelListener> listeners,
                            Set<Capability> supportedCapabilities) {
 

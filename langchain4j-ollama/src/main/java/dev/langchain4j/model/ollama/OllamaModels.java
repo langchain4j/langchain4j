@@ -1,6 +1,6 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.http.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
