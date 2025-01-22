@@ -1,12 +1,11 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
-import dev.langchain4j.data.document.Metadata;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.document.Metadata;
 import java.util.HashMap;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class IsNotEqualToTest {
 
