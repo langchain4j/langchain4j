@@ -9,9 +9,8 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
-import dev.langchain4j.http.client.streaming.NdJsonStrategy;
-import dev.langchain4j.http.client.streaming.ServerSentEvent;
-import dev.langchain4j.http.client.streaming.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
@@ -117,7 +116,7 @@ class OllamaClient {
                     .body(getObjectMapper().writeValueAsString(request))
                     .build();
 
-            httpClient.execute(httpRequest, new NdJsonStrategy(), new ServerSentEventListener() {
+            httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
                 final StringBuilder contentBuilder = new StringBuilder();
 
@@ -171,7 +170,7 @@ class OllamaClient {
                     .body(getObjectMapper().writeValueAsString(request))
                     .build();
 
-            httpClient.execute(httpRequest, new NdJsonStrategy(), new ServerSentEventListener() {
+            httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
                 final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder();
 

@@ -1,4 +1,4 @@
-package dev.langchain4j.http.client.streaming;
+package dev.langchain4j.http.client.sse;
 
 import dev.langchain4j.Experimental;
 
@@ -9,19 +9,17 @@ import java.io.InputStreamReader;
 
 /**
  * TODO
- *
- * @see NdJsonStrategy
  */
 @Experimental
-public class ServerSentEventStrategy implements StreamingStrategy {
+public class DefaultServerSentEventParser implements ServerSentEventParser {
 
     // TODO do not release yet
     // TODO review, refactor, test
 
     @Override
-    public void process(InputStream inputStream, ServerSentEventListener listener) {
+    public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody))) {
 
             String event = null;
             StringBuilder data = new StringBuilder();
@@ -29,7 +27,7 @@ public class ServerSentEventStrategy implements StreamingStrategy {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
-                    if (data.length() > 0) {
+                    if (!data.isEmpty()) {
                         listener.onEvent(new ServerSentEvent(event, data.toString()));
                         event = null;
                         data.setLength(0);

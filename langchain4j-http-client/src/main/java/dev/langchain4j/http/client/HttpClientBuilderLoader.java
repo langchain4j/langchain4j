@@ -25,6 +25,6 @@ public class HttpClientBuilderLoader {
             return factory.create();
         }
 
-        return null; // TODO throw exception
+        throw new IllegalStateException("No HTTP client has been found in the classpath");
     }
 }

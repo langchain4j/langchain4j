@@ -5,12 +5,14 @@ import dev.langchain4j.http.client.HttpRequest;
 import org.slf4j.Logger;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 @Experimental
 class HttpRequestLogger {
@@ -20,24 +22,32 @@ class HttpRequestLogger {
 
     static void log(Logger log, HttpRequest httpRequest) {
         try {
-            log.debug("Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}",
+            log.debug("""
+                            HTTP request:
+                            - method: {}
+                            - url: {}
+                            - headers: {}
+                            - body: {}
+                            """,
                     httpRequest.method(), httpRequest.url(), format(httpRequest.headers()), httpRequest.body());
         } catch (Exception e) {
-            log.warn("Error while logging request: {}", e.getMessage());
+            log.warn("Exception occurred while logging HTTP request: {}", e.getMessage());
         }
     }
 
-    static String format(Map<String, String> headers) {
+    static String format(Map<String, List<String>> headers) {
         return headers.entrySet().stream()
                 .map(header -> format(header.getKey(), header.getValue()))
                 .collect(joining(", "));
     }
 
-    static String format(String headerKey, String headerValue) {
+    static String format(String headerKey, List<String> headerValues) {
         if (COMMON_SECRET_HEADERS.contains(headerKey.toLowerCase())) {
-            headerValue = maskSecretKey(headerValue);
+            headerValues = headerValues.stream()
+                    .map(HttpRequestLogger::maskSecretKey)
+                    .collect(toList());
         }
-        return String.format("[%s: %s]", headerKey, headerValue);
+        return String.format("[%s: %s]", headerKey, headerValues);
     }
 
     static String maskSecretKey(String key) {

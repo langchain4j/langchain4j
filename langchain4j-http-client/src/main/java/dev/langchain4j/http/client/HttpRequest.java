@@ -3,12 +3,13 @@ package dev.langchain4j.http.client;
 import dev.langchain4j.Experimental;
 
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
 
 @Experimental
@@ -16,13 +17,13 @@ public class HttpRequest {
 
     private final HttpMethod method;
     private final String url;
-    private final Map<String, String> headers; // TODO Map<String, List<String>>
-    private final String body; // TODO type
+    private final Map<String, List<String>> headers;
+    private final String body;
 
     public HttpRequest(Builder builder) {
         this.method = ensureNotNull(builder.method, "method");
         this.url = ensureNotBlank(builder.url, "url");
-        this.headers = builder.headers == null ? emptyMap() : new LinkedHashMap<>(builder.headers);
+        this.headers = builder.headers == null ? emptyMap() : new HashMap<>(builder.headers);
         this.body = builder.body;
     }
 
@@ -34,7 +35,7 @@ public class HttpRequest {
         return url;
     }
 
-    public Map<String, String> headers() {
+    public Map<String, List<String>> headers() {
         return headers;
     }
 
@@ -50,7 +51,7 @@ public class HttpRequest {
 
         private HttpMethod method;
         private String url;
-        private Map<String, String> headers;
+        private Map<String, List<String>> headers;
         private String body;
 
         private Builder() {
@@ -79,11 +80,11 @@ public class HttpRequest {
         }
 
         // TODO unit test
-        public Builder addHeader(String name, String value) {
+        public Builder addHeader(String name, String... values) {
             if (this.headers == null) {
                 this.headers = new HashMap<>();
             }
-            this.headers.put(ensureNotBlank(name, "name"), value);
+            this.headers.put(ensureNotBlank(name, "name"), asList(values));
             return this;
         }
 
@@ -95,11 +96,11 @@ public class HttpRequest {
             if (this.headers == null) {
                 this.headers = new HashMap<>();
             }
-            this.headers.putAll(headers);
+            headers.forEach((name, value) -> this.headers.put(name, List.of(value)));
             return this;
         }
 
-        public Builder headers(Map<String, String> headers) {
+        public Builder headers(Map<String, List<String>> headers) {
             this.headers = headers;
             return this;
         }

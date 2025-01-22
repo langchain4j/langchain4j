@@ -5,9 +5,9 @@ import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpException;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.streaming.ServerSentEvent;
-import dev.langchain4j.http.client.streaming.ServerSentEventListener;
-import dev.langchain4j.http.client.streaming.StreamingStrategy;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +36,6 @@ public class LoggingHttpClient implements HttpClient {
             HttpRequestLogger.log(log, request);
         }
 
-        // TODO what to do on exception?
         SuccessfulHttpResponse response = delegate.execute(request);
 
         if (logResponses) {
@@ -47,13 +46,13 @@ public class LoggingHttpClient implements HttpClient {
     }
 
     @Override
-    public void execute(HttpRequest request, StreamingStrategy strategy, ServerSentEventListener listener) {
+    public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
 
         if (logRequests) {
             HttpRequestLogger.log(log, request); // TODO log on the thread where request is actually made?
         }
 
-        delegate.execute(request, strategy, new ServerSentEventListener() {
+        delegate.execute(request, parser, new ServerSentEventListener() {
 
             @Override
             public void onOpen(SuccessfulHttpResponse response) {
@@ -66,14 +65,13 @@ public class LoggingHttpClient implements HttpClient {
             @Override
             public void onEvent(ServerSentEvent event) {
                 if (logResponses) {
-                    log.debug("{}", event); // TODO
+                    log.debug("{}", event);
                 }
                 listener.onEvent(event);
             }
 
             @Override
             public void onError(Throwable throwable) {
-                // TODO log?
                 listener.onError(throwable);
             }
         });

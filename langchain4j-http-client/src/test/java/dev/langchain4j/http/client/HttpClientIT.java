@@ -1,8 +1,7 @@
 package dev.langchain4j.http.client;
 
-import dev.langchain4j.http.client.streaming.ServerSentEvent;
-import dev.langchain4j.http.client.streaming.ServerSentEventListener;
-import dev.langchain4j.http.client.streaming.ServerSentEventStrategy;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -203,7 +202,7 @@ public abstract class HttpClientIT {
                 }
             };
             ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, new ServerSentEventStrategy(), spyListener);
+            client.execute(request, spyListener);
 
             // then
             StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
@@ -280,7 +279,7 @@ public abstract class HttpClientIT {
                 }
             };
             ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, new ServerSentEventStrategy(), spyListener);
+            client.execute(request, spyListener);
 
             // then
             StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);

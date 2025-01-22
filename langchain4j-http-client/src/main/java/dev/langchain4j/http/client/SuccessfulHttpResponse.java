@@ -3,6 +3,7 @@ package dev.langchain4j.http.client;
 import dev.langchain4j.Experimental;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
@@ -12,21 +13,20 @@ import static java.util.Collections.emptyMap;
 public class SuccessfulHttpResponse {
 
     private final int statusCode;
-    private final Map<String, String> headers; // TODO Map<String, List<String>>
-    private final String body; // TODO type
+    private final Map<String, List<String>> headers;
+    private final String body;
 
-    // TODO accept builder? and/or?
-    public SuccessfulHttpResponse(int statusCode, Map<String, String> headers, String body) {
-        this.statusCode = ensureBetween(statusCode, 200, 299, "statusCode");
-        this.headers = headers == null ? emptyMap() : new HashMap<>(headers);
-        this.body = body;
+    public SuccessfulHttpResponse(Builder builder) {
+        this.statusCode = ensureBetween(builder.statusCode, 200, 299, "statusCode");
+        this.headers = builder.headers == null ? emptyMap() : new HashMap<>(builder.headers);
+        this.body = builder.body;
     }
 
     public int statusCode() {
         return statusCode;
     }
 
-    public Map<String, String> headers() {
+    public Map<String, List<String>> headers() {
         return headers;
     }
 
@@ -41,7 +41,7 @@ public class SuccessfulHttpResponse {
     public static class Builder {
 
         private int statusCode;
-        private Map<String, String> headers;
+        private Map<String, List<String>> headers;
         private String body;
 
         private Builder() {
@@ -52,7 +52,7 @@ public class SuccessfulHttpResponse {
             return this;
         }
 
-        public Builder headers(Map<String, String> headers) {
+        public Builder headers(Map<String, List<String>> headers) {
             this.headers = headers;
             return this;
         }
@@ -63,7 +63,7 @@ public class SuccessfulHttpResponse {
         }
 
         public SuccessfulHttpResponse build() {
-            return new SuccessfulHttpResponse(statusCode, headers, body);
+            return new SuccessfulHttpResponse(this);
         }
     }
 }

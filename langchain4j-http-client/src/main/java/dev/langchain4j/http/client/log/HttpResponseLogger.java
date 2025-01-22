@@ -11,30 +11,15 @@ class HttpResponseLogger {
 
     static void log(Logger log, SuccessfulHttpResponse response) {
         try {
-            log.debug("Response:\n- status code: {}\n- headers: {}\n- body: {}",
-                    response.statusCode(), format(response.headers()), getBody(response));
+            log.debug("""
+                            HTTP response:
+                            - status code: {}
+                            - headers: {}
+                            - body: {}
+                            """,
+                    response.statusCode(), format(response.headers()), response.body());
         } catch (Exception e) {
-            log.warn("Error while logging response: {}", e.getMessage());
+            log.warn("Exception occurred while logging HTTP response: {}", e.getMessage());
         }
-    }
-
-    private static String getBody(SuccessfulHttpResponse response) {
-        return isEventStream(response)
-                ? "[skipping response body due to streaming]"
-                : response.body();
-    }
-
-    private static boolean isEventStream(SuccessfulHttpResponse response) {
-        String contentType = response.headers().get("Content-Type");
-        if (contentType != null) {
-            return contentType.contains("event-stream");
-        }
-
-        contentType = response.headers().get("content-type");
-        if (contentType != null) {
-            return contentType.contains("event-stream");
-        }
-
-        return false;
     }
 }

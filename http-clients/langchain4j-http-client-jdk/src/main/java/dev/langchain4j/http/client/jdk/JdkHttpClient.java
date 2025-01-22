@@ -4,8 +4,8 @@ import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpException;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.streaming.ServerSentEventListener;
-import dev.langchain4j.http.client.streaming.StreamingStrategy;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -16,8 +16,6 @@ import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -59,9 +57,9 @@ public class JdkHttpClient implements HttpClient {
         java.net.http.HttpRequest.Builder builder = java.net.http.HttpRequest.newBuilder()
                 .uri(URI.create(request.url()));
 
-        request.headers().forEach((name, value) -> {
-            if (value != null) {
-                builder.header(name, value);
+        request.headers().forEach((name, values) -> {
+            if (values != null) {
+                values.forEach(value -> builder.header(name, value));
             }
         });
 
@@ -81,38 +79,33 @@ public class JdkHttpClient implements HttpClient {
     }
 
     private static SuccessfulHttpResponse fromJdkHttpResponse(java.net.http.HttpResponse<?> response, String body) {
-        Map<String, String> headers = new LinkedHashMap<>();
-        response.headers().map().forEach((name, values) -> headers.put(name, String.join(", ", values)));
-
         return SuccessfulHttpResponse.builder()
                 .statusCode(response.statusCode())
-                .headers(headers)
+                .headers(response.headers().map())
                 .body(body)
                 .build();
     }
 
     @Override
-    public void execute(HttpRequest request, StreamingStrategy strategy, ServerSentEventListener listener) {
+    public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         java.net.http.HttpRequest httpRequest = toJdkHttpRequest(request);
 
         delegate.sendAsync(httpRequest, BodyHandlers.ofInputStream())
                 .thenAccept(response -> {
-                    try {
-                        if (!isSuccessful(response)) {
-                            listener.onError(new HttpException(response.statusCode(), readBody(response)));
-                            return;
-                        }
+                    if (!isSuccessful(response)) {
+                        listener.onError(new HttpException(response.statusCode(), readBody(response)));
+                        return;
+                    }
 
-                        // TODO how to handle exceptions thrown from listener?
-                        // TODO in all clients
-                        // TODO test
+                    // TODO how to handle exceptions thrown from listener?
+                    // TODO in all clients
+                    // TODO test
 
-                        listener.onOpen(fromJdkHttpResponse(response, null));
+                    listener.onOpen(fromJdkHttpResponse(response, null));
 
-                        try (InputStream inputStream = response.body()) {
-                            strategy.process(inputStream, listener);
-                            listener.onClose();
-                        }
+                    try (InputStream inputStream = response.body()) {
+                        parser.parse(inputStream, listener);
+                        listener.onClose();
                     } catch (Exception e) {
                         listener.onError(e);
                     }

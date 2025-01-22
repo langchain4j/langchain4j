@@ -5,12 +5,11 @@ import dev.langchain4j.http.client.HttpException;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.streaming.ServerSentEventListener;
-import dev.langchain4j.http.client.streaming.StreamingStrategy;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
 import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
 import org.springframework.core.task.AsyncTaskExecutor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -18,8 +17,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.io.InputStream;
-import java.util.Map;
-import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
@@ -32,8 +29,6 @@ public class SpringRestClient implements HttpClient {
 
         RestClient.Builder restClientBuilder = getOrDefault(builder.restClientBuilder(), RestClient::builder);
 
-        // TODO propagate this from SB starter?
-        // TODO fail here and ask to set timeouts via RestClient.Builder?
         ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS;
         if (builder.connectTimeout() != null) {
             settings = settings.withConnectTimeout(builder.connectTimeout());
@@ -72,7 +67,7 @@ public class SpringRestClient implements HttpClient {
 
             return SuccessfulHttpResponse.builder()
                     .statusCode(responseEntity.getStatusCode().value())
-                    .headers(responseEntity.getHeaders().toSingleValueMap())
+                    .headers(responseEntity.getHeaders())
                     .body(responseEntity.getBody())
                     .build();
         } catch (RestClientResponseException e) {
@@ -84,7 +79,7 @@ public class SpringRestClient implements HttpClient {
         RestClient.RequestBodySpec requestBodySpec = delegate
                 .method(convert(httpRequest.method()))
                 .uri(httpRequest.url())
-                .headers(convert(httpRequest.headers()));
+                .headers(httpHeaders -> httpHeaders.putAll(httpRequest.headers()));
 
         if (httpRequest.body() != null) {
             requestBodySpec.body(httpRequest.body());
@@ -97,16 +92,8 @@ public class SpringRestClient implements HttpClient {
         return org.springframework.http.HttpMethod.valueOf(httpMethod.name());
     }
 
-    private static Consumer<HttpHeaders> convert(Map<String, String> headers) {
-        return httpHeaders -> headers.forEach((name, value) -> {
-            if (value != null) {
-                httpHeaders.add(name, value);
-            }
-        });
-    }
-
     @Override
-    public void execute(HttpRequest httpRequest, StreamingStrategy strategy, ServerSentEventListener listener) {
+    public void execute(HttpRequest httpRequest, ServerSentEventParser parser, ServerSentEventListener listener) {
         streamingRequestExecutor.execute(() -> {
             try {
                 toSpringRestClientRequest(httpRequest)
@@ -122,11 +109,11 @@ public class SpringRestClient implements HttpClient {
 
                             listener.onOpen(SuccessfulHttpResponse.builder()
                                     .statusCode(statusCode)
-                                    .headers(response.getHeaders().toSingleValueMap())
+                                    .headers(response.getHeaders())
                                     .build());
 
                             try (InputStream inputStream = response.getBody()) {
-                                strategy.process(inputStream, listener);
+                                parser.parse(inputStream, listener);
                                 listener.onClose();
                             } catch (Exception e) {
                                 listener.onError(e);

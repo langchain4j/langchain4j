@@ -4,8 +4,8 @@ import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpException;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.streaming.ServerSentEventListener;
-import dev.langchain4j.http.client.streaming.StreamingStrategy;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.internal.Utils;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -17,8 +17,6 @@ import okhttp3.ResponseBody;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 public class OkHttpClient implements HttpClient {
 
@@ -55,7 +53,7 @@ public class OkHttpClient implements HttpClient {
     }
 
     @Override
-    public void execute(HttpRequest httpRequest, StreamingStrategy strategy, ServerSentEventListener listener) {
+    public void execute(HttpRequest httpRequest, ServerSentEventParser parser, ServerSentEventListener listener) {
 
         Request request = toOkHttpRequest(httpRequest);
 
@@ -81,7 +79,7 @@ public class OkHttpClient implements HttpClient {
 
                     if (responseBody != null) {
                         try (InputStream inputStream = responseBody.byteStream()) {
-                            strategy.process(inputStream, listener);
+                            parser.parse(inputStream, listener);
                             listener.onClose();
                         }
                     }
@@ -118,24 +116,19 @@ public class OkHttpClient implements HttpClient {
 
         requestBuilder.url(httpRequest.url());
 
-        httpRequest.headers().forEach((name, value) -> {
-            if (value != null) {
-                requestBuilder.addHeader(name, value);
+        httpRequest.headers().forEach((name, values) -> {
+            if (values != null) {
+                values.forEach(value -> requestBuilder.addHeader(name, value));
             }
         });
-
-        // TODO content type/length?
 
         return requestBuilder.build();
     }
 
-    private static SuccessfulHttpResponse fromOkHttpResponse(Response okHttpResponse, String body) throws IOException {
-        Map<String, String> headers = new LinkedHashMap<>();
-        okHttpResponse.headers().forEach((header) -> headers.put(header.component1(), header.component2()));
-
+    private static SuccessfulHttpResponse fromOkHttpResponse(Response okHttpResponse, String body) throws IOException { // TODO IOException
         return SuccessfulHttpResponse.builder()
                 .statusCode(okHttpResponse.code())
-                .headers(headers)
+                .headers(okHttpResponse.headers().toMultimap())
                 .body(body)
                 .build();
     }

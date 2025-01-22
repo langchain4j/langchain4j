@@ -3,11 +3,10 @@ package dev.langchain4j.http.client;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import dev.langchain4j.http.client.streaming.ServerSentEvent;
-import dev.langchain4j.http.client.streaming.ServerSentEventListener;
-import dev.langchain4j.http.client.streaming.ServerSentEventStrategy;
-import org.junit.jupiter.api.AfterEach;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -132,7 +131,7 @@ public abstract class HttpClientTimeoutIT {
                 }
             };
             ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, new ServerSentEventStrategy(), spyListener);
+            client.execute(request, spyListener);
 
             // then
             StreamingResult streamingResult = completableFuture.get(readTimeoutMillis * 3, MILLISECONDS);

@@ -1,4 +1,4 @@
-package dev.langchain4j.http.client.streaming;
+package dev.langchain4j.http.client.sse;
 
 import dev.langchain4j.Experimental;
 
