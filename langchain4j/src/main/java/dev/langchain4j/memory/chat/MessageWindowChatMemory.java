@@ -118,11 +118,11 @@ public class MessageWindowChatMemory implements ChatMemory {
         return new Builder();
     }
 
-    public static class Builder {
+    public static class Builder implements ChatMemoryBuilder {
 
         private Object id = "default";
         private Integer maxMessages;
-        private ChatMemoryStore store = new InMemoryChatMemoryStore();
+        private ChatMemoryStore store = null;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -149,17 +149,19 @@ public class MessageWindowChatMemory implements ChatMemory {
          *              If not provided, an {@link InMemoryChatMemoryStore} will be used.
          * @return builder
          */
+        @Override
         public Builder chatMemoryStore(ChatMemoryStore store) {
             this.store = store;
             return this;
         }
 
-        public MessageWindowChatMemory build() {
-            return new MessageWindowChatMemory(this);
+        @Override
+        public ChatMemory build() {
+            return store == null ? new StorelessChatMemory.Impl(this) : new MessageWindowChatMemory(this);
         }
     }
 
-    public static MessageWindowChatMemory withMaxMessages(int maxMessages) {
+    public static ChatMemory withMaxMessages(int maxMessages) {
         return builder().maxMessages(maxMessages).build();
     }
 }

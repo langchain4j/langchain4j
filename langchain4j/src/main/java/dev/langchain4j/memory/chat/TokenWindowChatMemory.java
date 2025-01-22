@@ -132,7 +132,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         return new Builder();
     }
 
-    public static class Builder {
+    public static class Builder implements ChatMemoryBuilder {
 
         private Object id = "default";
         private Integer maxTokens;
@@ -167,17 +167,19 @@ public class TokenWindowChatMemory implements ChatMemory {
          *              If not provided, an {@link InMemoryChatMemoryStore} will be used.
          * @return builder
          */
+        @Override
         public Builder chatMemoryStore(ChatMemoryStore store) {
             this.store = store;
             return this;
         }
 
-        public TokenWindowChatMemory build() {
-            return new TokenWindowChatMemory(this);
+        @Override
+        public ChatMemory build() {
+            return store == null ? new StorelessChatMemory.Impl(this) : new TokenWindowChatMemory(this);
         }
     }
 
-    public static TokenWindowChatMemory withMaxTokens(int maxTokens, Tokenizer tokenizer) {
+    public static ChatMemory withMaxTokens(int maxTokens, Tokenizer tokenizer) {
         return builder().maxTokens(maxTokens, tokenizer).build();
     }
 }

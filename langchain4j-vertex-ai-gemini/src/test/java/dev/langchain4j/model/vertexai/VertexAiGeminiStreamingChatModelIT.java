@@ -12,6 +12,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
@@ -426,7 +427,7 @@ class VertexAiGeminiStreamingChatModelIT {
             .topK(1)
             .build();
 
-        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         StreamingStockAssistant assistant = AiServices.builder(StreamingStockAssistant.class)
             .streamingChatLanguageModel(model)
             .chatMemory(chatMemory)

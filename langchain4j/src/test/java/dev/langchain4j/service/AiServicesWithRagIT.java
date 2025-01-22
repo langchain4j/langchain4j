@@ -7,6 +7,7 @@ import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -120,7 +121,7 @@ class AiServicesWithRagIT {
                 .maxResults(1)
                 .build());
 
-        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         UserMessage userMessage = UserMessage.from("Hello");
         chatMemory.add(userMessage);
         AiMessage aiMessage = AiMessage.from("Hi, how can I help you today?");
