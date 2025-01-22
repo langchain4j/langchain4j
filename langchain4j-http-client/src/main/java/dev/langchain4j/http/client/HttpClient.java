@@ -42,6 +42,4 @@ public interface HttpClient {
      * @param listener
      */
     void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener);
-
-    // TODO close()? AutoCloseable?
 }

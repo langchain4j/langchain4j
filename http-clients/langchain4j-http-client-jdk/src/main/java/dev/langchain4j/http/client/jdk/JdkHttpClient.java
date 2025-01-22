@@ -64,10 +64,6 @@ public class JdkHttpClient implements HttpClient {
                         return;
                     }
 
-                    // TODO how to handle exceptions thrown from listener?
-                    // TODO in all clients
-                    // TODO test
-
                     SuccessfulHttpResponse response = fromJdkResponse(jdkResponse, null);
                     listener.onOpen(response);
 
