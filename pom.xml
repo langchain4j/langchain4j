@@ -19,7 +19,6 @@
         <!-- http clients -->
         <module>langchain4j-http-client</module>
         <module>http-clients/langchain4j-http-client-jdk</module>
-        <module>http-clients/langchain4j-http-client-okhttp</module>
         <!-- TODO move to langchain4j-spring repo-->
         <module>http-clients/langchain4j-http-client-spring-restclient</module>
 
