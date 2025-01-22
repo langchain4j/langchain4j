@@ -3,11 +3,9 @@ package dev.langchain4j.mcp.client.transport.stdio;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.InitializationNotification;
-import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.client.protocol.McpClientMessage;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
-import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import java.io.IOException;
@@ -69,34 +67,19 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> listTools(McpListToolsRequest operation) {
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
             return execute(requestString, operation.getId());
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return CompletableFuture.failedFuture(e);
         }
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeTool(McpCallToolRequest operation) {
+    public void executeOperationWithoutResponse(McpClientMessage operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            return execute(requestString, operation.getId());
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public void cancelOperation(long operationId) {
-        try {
-            String requestString =
-                    OBJECT_MAPPER.writeValueAsString(new CancellationNotification(operationId, "Timeout"));
-            // Note: we're passing a null operationId here because this
-            // argument refers to the 'cancellation' notification, not the
-            // operation being cancelled. The cancellation is a notification
-            // so it does not have any ID and does not expect any response.
             execute(requestString, null);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
