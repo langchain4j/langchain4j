@@ -90,7 +90,7 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         /**
          * TODO
-         * TODO how other params like baseUrl, timeout, etc behave
+         * TODO {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}
          *
          * @param httpClientBuilder
          * @return

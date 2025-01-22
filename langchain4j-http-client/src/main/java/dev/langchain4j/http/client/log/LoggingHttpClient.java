@@ -17,16 +17,16 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 @Experimental
 public class LoggingHttpClient implements HttpClient {
 
+    private static final Logger log = LoggerFactory.getLogger(LoggingHttpClient.class);
+
     private final HttpClient delegate;
     private final boolean logRequests;
     private final boolean logResponses;
-    private final Logger log;
 
     public LoggingHttpClient(HttpClient delegate, Boolean logRequests, Boolean logResponses) {
         this.delegate = ensureNotNull(delegate, "delegate");
         this.logRequests = getOrDefault(logRequests, false);
         this.logResponses = getOrDefault(logResponses, false);
-        this.log = LoggerFactory.getLogger(delegate.getClass()); // TODO or static for LoggingHttpClient.class?
     }
 
     @Override

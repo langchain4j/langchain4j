@@ -56,7 +56,6 @@ public class OllamaModels {
         deleteModel(ollamaModel.getName());
     }
 
-    // TODO test
     public void deleteModel(String ollamaModelName) {
         withRetry(() -> client.deleteModel(
                 DeleteModelRequest.builder()
@@ -81,7 +80,7 @@ public class OllamaModels {
 
         /**
          * TODO
-         * TODO how other params like baseUrl, timeout, etc behave
+         * TODO {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}
          *
          * @param httpClientBuilder
          * @return

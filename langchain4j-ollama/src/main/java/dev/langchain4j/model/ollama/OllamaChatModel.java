@@ -80,7 +80,6 @@ public class OllamaChatModel implements ChatLanguageModel {
             throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
         }
 
-        // TODO check all other client instantiations
         this.client = OllamaClient.builder()
                 .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
@@ -214,11 +213,9 @@ public class OllamaChatModel implements ChatLanguageModel {
             // By default with Lombok it becomes package private
         }
 
-        // TODO or accept HttpClient instead/in addition? (everywhere)
-
         /**
          * TODO
-         * TODO how other params like baseUrl, timeout, etc behave
+         * TODO {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}
          *
          * @param httpClientBuilder
          * @return

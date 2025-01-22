@@ -16,11 +16,10 @@ import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
-import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.util.stream.Collectors.joining;
 
-// TODO review
 public class JdkHttpClient implements HttpClient {
 
     private final java.net.http.HttpClient delegate;
@@ -39,21 +38,53 @@ public class JdkHttpClient implements HttpClient {
     @Override
     public SuccessfulHttpResponse execute(HttpRequest request) throws HttpException {
         try {
-            java.net.http.HttpRequest httpRequest = toJdkHttpRequest(request);
+            java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
-            java.net.http.HttpResponse<String> response = delegate.send(httpRequest, BodyHandlers.ofString());
+            java.net.http.HttpResponse<String> jdkResponse = delegate.send(jdkRequest, BodyHandlers.ofString());
 
-            if (!isSuccessful(response)) {
-                throw new HttpException(response.statusCode(), response.body());
+            if (!isSuccessful(jdkResponse)) {
+                throw new HttpException(jdkResponse.statusCode(), jdkResponse.body());
             }
 
-            return fromJdkHttpResponse(response, response.body());
+            return fromJdkResponse(jdkResponse, jdkResponse.body());
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private java.net.http.HttpRequest toJdkHttpRequest(HttpRequest request) {
+    @Override
+    public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+        java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
+
+        delegate.sendAsync(jdkRequest, BodyHandlers.ofInputStream())
+                .thenAccept(jdkResponse -> {
+
+                    if (!isSuccessful(jdkResponse)) {
+                        listener.onError(new HttpException(jdkResponse.statusCode(), readBody(jdkResponse)));
+                        return;
+                    }
+
+                    // TODO how to handle exceptions thrown from listener?
+                    // TODO in all clients
+                    // TODO test
+
+                    SuccessfulHttpResponse response = fromJdkResponse(jdkResponse, null);
+                    listener.onOpen(response);
+
+                    try (InputStream inputStream = jdkResponse.body()) {
+                        parser.parse(inputStream, listener);
+                        listener.onClose();
+                    } catch (Exception e) {
+                        listener.onError(e);
+                    }
+                })
+                .exceptionally(throwable -> {
+                    listener.onError(throwable);
+                    return null;
+                });
+    }
+
+    private java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
         java.net.http.HttpRequest.Builder builder = java.net.http.HttpRequest.newBuilder()
                 .uri(URI.create(request.url()));
 
@@ -78,7 +109,7 @@ public class JdkHttpClient implements HttpClient {
         return builder.build();
     }
 
-    private static SuccessfulHttpResponse fromJdkHttpResponse(java.net.http.HttpResponse<?> response, String body) {
+    private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, String body) {
         return SuccessfulHttpResponse.builder()
                 .statusCode(response.statusCode())
                 .headers(response.headers().map())
@@ -86,47 +117,17 @@ public class JdkHttpClient implements HttpClient {
                 .build();
     }
 
-    @Override
-    public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        java.net.http.HttpRequest httpRequest = toJdkHttpRequest(request);
-
-        delegate.sendAsync(httpRequest, BodyHandlers.ofInputStream())
-                .thenAccept(response -> {
-                    if (!isSuccessful(response)) {
-                        listener.onError(new HttpException(response.statusCode(), readBody(response)));
-                        return;
-                    }
-
-                    // TODO how to handle exceptions thrown from listener?
-                    // TODO in all clients
-                    // TODO test
-
-                    listener.onOpen(fromJdkHttpResponse(response, null));
-
-                    try (InputStream inputStream = response.body()) {
-                        parser.parse(inputStream, listener);
-                        listener.onClose();
-                    } catch (Exception e) {
-                        listener.onError(e);
-                    }
-                })
-                .exceptionally(throwable -> {
-                    listener.onError(throwable);
-                    return null;
-                });
+    private static boolean isSuccessful(java.net.http.HttpResponse<?> response) {
+        int statusCode = response.statusCode();
+        return statusCode >= 200 && statusCode < 300;
     }
 
     private static String readBody(java.net.http.HttpResponse<InputStream> response) {
         try (InputStream inputStream = response.body();
              BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            return reader.lines().collect(Collectors.joining("\n"));
+            return reader.lines().collect(joining(System.lineSeparator()));
         } catch (IOException e) {
             return "Cannot read error response body: " + e.getMessage();
         }
-    }
-
-    private static boolean isSuccessful(java.net.http.HttpResponse<?> httpResponse) {
-        int statusCode = httpResponse.statusCode();
-        return statusCode >= 200 && statusCode < 300;
     }
 }

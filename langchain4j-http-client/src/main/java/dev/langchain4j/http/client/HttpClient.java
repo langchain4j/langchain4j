@@ -11,12 +11,12 @@ public interface HttpClient {
     /**
      * TODO
      *
-     * @param httpRequest
+     * @param request
      * @return
      * @throws HttpException
      * @throws RuntimeException
      */
-    SuccessfulHttpResponse execute(HttpRequest httpRequest) throws HttpException, RuntimeException;
+    SuccessfulHttpResponse execute(HttpRequest request) throws HttpException, RuntimeException;
 
     /**
      * TODO
@@ -24,11 +24,11 @@ public interface HttpClient {
      * TODO errors
      * TODO threads
      *
-     * @param httpRequest
+     * @param request
      * @param listener
      */
-    default void execute(HttpRequest httpRequest, ServerSentEventListener listener) {
-        execute(httpRequest, new DefaultServerSentEventParser(), listener);
+    default void execute(HttpRequest request, ServerSentEventListener listener) {
+        execute(request, new DefaultServerSentEventParser(), listener);
     }
 
     /**
@@ -37,11 +37,11 @@ public interface HttpClient {
      * TODO errors
      * TODO threads
      *
-     * @param httpRequest
+     * @param request
      * @param parser
      * @param listener
      */
-    void execute(HttpRequest httpRequest, ServerSentEventParser parser, ServerSentEventListener listener);
+    void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener);
 
     // TODO close()? AutoCloseable?
 }

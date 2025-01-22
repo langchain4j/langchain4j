@@ -2,11 +2,10 @@ package dev.langchain4j.http.client.spring.restclient;
 
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpException;
-import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
 import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
 import org.springframework.core.task.AsyncTaskExecutor;
@@ -59,9 +58,9 @@ public class SpringRestClient implements HttpClient {
     }
 
     @Override
-    public SuccessfulHttpResponse execute(HttpRequest httpRequest) throws HttpException {
+    public SuccessfulHttpResponse execute(HttpRequest request) throws HttpException {
         try {
-            ResponseEntity<String> responseEntity = toSpringRestClientRequest(httpRequest)
+            ResponseEntity<String> responseEntity = toSpringRestClientRequest(request)
                     .retrieve()
                     .toEntity(String.class);
 
@@ -75,44 +74,28 @@ public class SpringRestClient implements HttpClient {
         }
     }
 
-    private RestClient.RequestBodySpec toSpringRestClientRequest(HttpRequest httpRequest) {
-        RestClient.RequestBodySpec requestBodySpec = delegate
-                .method(convert(httpRequest.method()))
-                .uri(httpRequest.url())
-                .headers(httpHeaders -> httpHeaders.putAll(httpRequest.headers()));
-
-        if (httpRequest.body() != null) {
-            requestBodySpec.body(httpRequest.body());
-        }
-
-        return requestBodySpec;
-    }
-
-    private static org.springframework.http.HttpMethod convert(HttpMethod httpMethod) {
-        return org.springframework.http.HttpMethod.valueOf(httpMethod.name());
-    }
-
     @Override
-    public void execute(HttpRequest httpRequest, ServerSentEventParser parser, ServerSentEventListener listener) {
+    public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         streamingRequestExecutor.execute(() -> {
             try {
-                toSpringRestClientRequest(httpRequest)
-                        .exchange((request, response) -> {
+                toSpringRestClientRequest(request)
+                        .exchange((springRequest, springResponse) -> {
 
-                            int statusCode = response.getStatusCode().value();
+                            int statusCode = springResponse.getStatusCode().value();
 
-                            if (!response.getStatusCode().is2xxSuccessful()) {
-                                String body = response.bodyTo(String.class);
+                            if (!springResponse.getStatusCode().is2xxSuccessful()) {
+                                String body = springResponse.bodyTo(String.class);
                                 listener.onError(new HttpException(statusCode, body));
                                 return null;
                             }
 
-                            listener.onOpen(SuccessfulHttpResponse.builder()
+                            SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
                                     .statusCode(statusCode)
-                                    .headers(response.getHeaders())
-                                    .build());
+                                    .headers(springResponse.getHeaders())
+                                    .build();
+                            listener.onOpen(response);
 
-                            try (InputStream inputStream = response.getBody()) {
+                            try (InputStream inputStream = springResponse.getBody()) {
                                 parser.parse(inputStream, listener);
                                 listener.onClose();
                             } catch (Exception e) {
@@ -125,5 +108,18 @@ public class SpringRestClient implements HttpClient {
                 listener.onError(e);
             }
         });
+    }
+
+    private RestClient.RequestBodySpec toSpringRestClientRequest(HttpRequest request) {
+        RestClient.RequestBodySpec requestBodySpec = delegate
+                .method(org.springframework.http.HttpMethod.valueOf(request.method().name()))
+                .uri(request.url())
+                .headers(httpHeaders -> httpHeaders.putAll(request.headers()));
+
+        if (request.body() != null) {
+            requestBodySpec.body(request.body());
+        }
+
+        return requestBodySpec;
     }
 }

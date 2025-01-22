@@ -47,7 +47,12 @@ class HttpRequestLogger {
                     .map(HttpRequestLogger::maskSecretKey)
                     .collect(toList());
         }
-        return String.format("[%s: %s]", headerKey, headerValues);
+
+        if (headerValues.size() == 1) {
+            return String.format("[%s: %s]", headerKey, headerValues.get(0));
+        } else {
+            return String.format("[%s: %s]", headerKey, headerValues);
+        }
     }
 
     static String maskSecretKey(String key) {
