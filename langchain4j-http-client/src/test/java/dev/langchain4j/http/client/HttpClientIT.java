@@ -31,71 +31,71 @@ public abstract class HttpClientIT {
 
     private static final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
 
-    protected abstract HttpClient client();
+    protected abstract List<HttpClient> clients();
 
     @Test
     void should_return_successful_http_response_sync() {
 
-        // given
-        HttpClient client = client();
+        for (HttpClient client : clients()) {
 
-        HttpRequest request = HttpRequest.builder()
-                .method(POST)
-                .url("https://api.openai.com/v1/chat/completions")
-                .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
-                .addHeader("Content-Type", "application/json")
-                .body("""
-                        {
-                            "model": "gpt-4o-mini",
-                            "messages": [
-                                {
-                                    "role" : "user",
-                                    "content" : "What is the capital of Germany?"
-                                }
-                            ]
-                        }
-                        """)
-                .build();
+            // given
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body("""
+                            {
+                                "model": "gpt-4o-mini",
+                                "messages": [
+                                    {
+                                        "role" : "user",
+                                        "content" : "What is the capital of Germany?"
+                                    }
+                                ]
+                            }
+                            """)
+                    .build();
 
-        // when
-        SuccessfulHttpResponse response = client.execute(request);
+            // when
+            SuccessfulHttpResponse response = client.execute(request);
 
-        // then
-        assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.headers()).isNotEmpty();
-        assertThat(response.body()).contains("Berlin");
+            // then
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(response.headers()).isNotEmpty();
+            assertThat(response.body()).contains("Berlin");
+        }
     }
 
     @Test
     void should_throw_400_sync() {
 
-        // given
-        String invalidBody = """
-                {
-                    "model": "gpt-4o-mini"
-                }
-                """; // missing field "messages"
+        for (HttpClient client : clients()) {
 
-        HttpClient client = client();
+            // given
+            String invalidBody = """
+                    {
+                        "model": "gpt-4o-mini"
+                    }
+                    """; // missing field "messages"
 
-        HttpRequest request = HttpRequest.builder()
-                .method(POST)
-                .url("https://api.openai.com/v1/chat/completions")
-                .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
-                .addHeader("Content-Type", "application/json")
-                .body(invalidBody)
-                .build();
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body(invalidBody)
+                    .build();
 
-        // when
-        try {
-            client.execute(request);
-            fail("Should have thrown an exception");
-        } catch (Exception e) {
-            // then
-            assertThat(e).isExactlyInstanceOf(HttpException.class);
-            HttpException httpException = (HttpException) e;
-            assertThat(httpException.statusCode()).isEqualTo(400);
-            if (assertExceptionMessage()) {
+            // when
+            try {
+                client.execute(request);
+                fail("Should have thrown an exception");
+            } catch (Exception e) {
+                // then
+                assertThat(e).isExactlyInstanceOf(HttpException.class);
+                HttpException httpException = (HttpException) e;
+                assertThat(httpException.statusCode()).isEqualTo(400);
                 assertThat(httpException.getMessage()).contains("Missing required parameter: 'messages'");
             }
         }
@@ -104,39 +104,38 @@ public abstract class HttpClientIT {
     @Test
     void should_throw_401_sync() {
 
-        // given
-        String incorrectApiKey = "wrong";
+        for (HttpClient client : clients()) {
 
-        HttpClient client = client();
+            // given
+            String incorrectApiKey = "wrong";
 
-        HttpRequest request = HttpRequest.builder()
-                .method(POST)
-                .url("https://api.openai.com/v1/chat/completions")
-                .addHeader("Authorization", "Bearer " + incorrectApiKey)
-                .addHeader("Content-Type", "application/json")
-                .body("""
-                        {
-                            "model": "gpt-4o-mini",
-                            "messages": [
-                                {
-                                    "role" : "user",
-                                    "content" : "What is the capital of Germany?"
-                                }
-                            ]
-                        }
-                        """)
-                .build();
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + incorrectApiKey)
+                    .addHeader("Content-Type", "application/json")
+                    .body("""
+                            {
+                                "model": "gpt-4o-mini",
+                                "messages": [
+                                    {
+                                        "role" : "user",
+                                        "content" : "What is the capital of Germany?"
+                                    }
+                                ]
+                            }
+                            """)
+                    .build();
 
-        // when
-        try {
-            client.execute(request);
-            fail("Should have thrown an exception");
-        } catch (Exception e) {
-            // then
-            assertThat(e).isExactlyInstanceOf(HttpException.class);
-            HttpException httpException = (HttpException) e;
-            assertThat(httpException.statusCode()).isEqualTo(401);
-            if (assertExceptionMessage()) {
+            // when
+            try {
+                client.execute(request);
+                fail("Should have thrown an exception");
+            } catch (Exception e) {
+                // then
+                assertThat(e).isExactlyInstanceOf(HttpException.class);
+                HttpException httpException = (HttpException) e;
+                assertThat(httpException.statusCode()).isEqualTo(401);
                 assertThat(httpException.getMessage()).contains("Incorrect API key provided");
             }
         }
@@ -145,163 +144,159 @@ public abstract class HttpClientIT {
     @Test
     void should_return_successful_http_response_async() throws Exception {
 
-        // given
-        HttpClient client = client();
+        for (HttpClient client : clients()) {
 
-        HttpRequest request = HttpRequest.builder()
-                .method(POST)
-                .url("https://api.openai.com/v1/chat/completions")
-                .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
-                .addHeader("Content-Type", "application/json")
-                .body("""
-                        {
-                            "model": "gpt-4o-mini",
-                            "messages": [
-                                {
-                                    "role" : "user",
-                                    "content" : "What is the capital of Germany?"
-                                }
-                            ],
-                            "stream": true
-                        }
-                        """)
-                .build();
+            // given
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body("""
+                            {
+                                "model": "gpt-4o-mini",
+                                "messages": [
+                                    {
+                                        "role" : "user",
+                                        "content" : "What is the capital of Germany?"
+                                    }
+                                ],
+                                "stream": true
+                            }
+                            """)
+                    .build();
 
-        // when
-        record StreamingResult(SuccessfulHttpResponse response, List<ServerSentEvent> events, Set<Thread> threads) {
+            // when
+            record StreamingResult(SuccessfulHttpResponse response, List<ServerSentEvent> events, Set<Thread> threads) {
+            }
+
+            CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
+
+            ServerSentEventListener listener = new ServerSentEventListener() {
+
+                private final AtomicReference<SuccessfulHttpResponse> response = new AtomicReference<>();
+                private final List<ServerSentEvent> events = new ArrayList<>();
+                private final Set<Thread> threads = new HashSet<>();
+
+                @Override
+                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
+                    threads.add(Thread.currentThread());
+                    response.set(successfulHttpResponse);
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    threads.add(Thread.currentThread());
+                    events.add(event);
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    threads.add(Thread.currentThread());
+                    completableFuture.completeExceptionally(throwable);
+                }
+
+                @Override
+                public void onClose() {
+                    threads.add(Thread.currentThread());
+                    completableFuture.complete(new StreamingResult(response.get(), events, threads));
+                }
+            };
+            ServerSentEventListener spyListener = spy(listener);
+            client.execute(request, new ServerSentEventStrategy(), spyListener);
+
+            // then
+            StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
+
+            assertThat(streamingResult.response()).isNotNull();
+            assertThat(streamingResult.response().statusCode()).isEqualTo(200);
+            assertThat(streamingResult.response().headers()).isNotEmpty();
+            assertThat(streamingResult.response().body()).isNull();
+
+            Assertions.assertThat(streamingResult.events()).isNotEmpty();
+            assertThat(streamingResult.events().stream().map(ServerSentEvent::data).collect(joining(""))).contains("Berlin");
+
+            assertThat(streamingResult.threads()).hasSize(1);
+            assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
+
+            InOrder inOrder = inOrder(spyListener);
+            inOrder.verify(spyListener, times(1)).onOpen(any());
+            inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
+            inOrder.verify(spyListener, times(1)).onClose();
+            inOrder.verifyNoMoreInteractions();
         }
-
-        CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
-
-        ServerSentEventListener listener = new ServerSentEventListener() {
-
-            private final AtomicReference<SuccessfulHttpResponse> response = new AtomicReference<>();
-            private final List<ServerSentEvent> events = new ArrayList<>();
-            private final Set<Thread> threads = new HashSet<>();
-
-            @Override
-            public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
-                threads.add(Thread.currentThread());
-                response.set(successfulHttpResponse);
-            }
-
-            @Override
-            public void onEvent(ServerSentEvent event) {
-                threads.add(Thread.currentThread());
-                events.add(event);
-            }
-
-            @Override
-            public void onError(Throwable throwable) {
-                threads.add(Thread.currentThread());
-                completableFuture.completeExceptionally(throwable);
-            }
-
-            @Override
-            public void onClose() {
-                threads.add(Thread.currentThread());
-                completableFuture.complete(new StreamingResult(response.get(), events, threads));
-            }
-        };
-        ServerSentEventListener spyListener = spy(listener);
-        client.execute(request, new ServerSentEventStrategy(), spyListener);
-
-        // then
-        StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
-
-        assertThat(streamingResult.response()).isNotNull();
-        assertThat(streamingResult.response().statusCode()).isEqualTo(200);
-        assertThat(streamingResult.response().headers()).isNotEmpty();
-        assertThat(streamingResult.response().body()).isNull();
-
-        Assertions.assertThat(streamingResult.events()).isNotEmpty();
-        assertThat(streamingResult.events().stream().map(ServerSentEvent::data).collect(joining(""))).contains("Berlin");
-
-        assertThat(streamingResult.threads()).hasSize(1);
-        assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
-
-        InOrder inOrder = inOrder(spyListener);
-        inOrder.verify(spyListener, times(1)).onOpen(any());
-        inOrder.verify(spyListener, atLeastOnce()).onEvent(any());
-        inOrder.verify(spyListener, times(1)).onClose();
-        inOrder.verifyNoMoreInteractions();
     }
 
     @Test
     void should_throw_400_async() throws Exception {
 
-        // given
-        String invalidBody = """
-                {
-                    "model": "gpt-4o-mini",
-                    "stream": true
+        for (HttpClient client : clients()) {
+
+            // given
+            String invalidBody = """
+                    {
+                        "model": "gpt-4o-mini",
+                        "stream": true
+                    }
+                    """; // missing field "messages"
+
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body(invalidBody)
+                    .build();
+
+            // when
+            record StreamingResult(Throwable throwable, Set<Thread> threads) {
+            }
+
+            CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
+
+            ServerSentEventListener listener = new ServerSentEventListener() {
+
+                private final Set<Thread> threads = new HashSet<>();
+
+                @Override
+                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
+                    completableFuture.completeExceptionally(new IllegalStateException("onOpen() should not be called"));
                 }
-                """; // missing field "messages"
 
-        HttpClient client = client();
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    completableFuture.completeExceptionally(new IllegalStateException("onEvent() should not be called"));
+                }
 
-        HttpRequest request = HttpRequest.builder()
-                .method(POST)
-                .url("https://api.openai.com/v1/chat/completions")
-                .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
-                .addHeader("Content-Type", "application/json")
-                .body(invalidBody)
-                .build();
+                @Override
+                public void onError(Throwable throwable) {
+                    threads.add(Thread.currentThread());
+                    completableFuture.complete(new StreamingResult(throwable, threads));
+                }
 
-        // when
-        record StreamingResult(Throwable throwable, Set<Thread> threads) {
-        }
+                @Override
+                public void onClose() {
+                    completableFuture.completeExceptionally(new IllegalStateException("onClose() should not be called"));
+                }
+            };
+            ServerSentEventListener spyListener = spy(listener);
+            client.execute(request, new ServerSentEventStrategy(), spyListener);
 
-        CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
+            // then
+            StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
 
-        ServerSentEventListener listener = new ServerSentEventListener() {
-
-            private final Set<Thread> threads = new HashSet<>();
-
-            @Override
-            public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
-                completableFuture.completeExceptionally(new IllegalStateException("onOpen() should not be called"));
-            }
-
-            @Override
-            public void onEvent(ServerSentEvent event) {
-                completableFuture.completeExceptionally(new IllegalStateException("onEvent() should not be called"));
-            }
-
-            @Override
-            public void onError(Throwable throwable) {
-                threads.add(Thread.currentThread());
-                completableFuture.complete(new StreamingResult(throwable, threads));
-            }
-
-            @Override
-            public void onClose() {
-                completableFuture.completeExceptionally(new IllegalStateException("onClose() should not be called"));
-            }
-        };
-        ServerSentEventListener spyListener = spy(listener);
-        client.execute(request, new ServerSentEventStrategy(), spyListener);
-
-        // then
-        StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
-
-        assertThat(streamingResult.throwable())
-                .isExactlyInstanceOf(HttpException.class)
-                .extracting("statusCode").isEqualTo(400);
-        if (assertExceptionMessage()) {
+            assertThat(streamingResult.throwable())
+                    .isExactlyInstanceOf(HttpException.class)
+                    .extracting("statusCode").isEqualTo(400);
             assertThat(streamingResult.throwable())
                     .hasMessageContaining("Missing required parameter: 'messages'");
+
+            assertThat(streamingResult.threads()).hasSize(1);
+            assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
+
+            InOrder inOrder = inOrder(spyListener);
+            inOrder.verify(spyListener, times(1)).onError(any());
+            inOrder.verifyNoMoreInteractions();
         }
-
-        assertThat(streamingResult.threads()).hasSize(1);
-        assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
-
-        InOrder inOrder = inOrder(spyListener);
-        inOrder.verify(spyListener, times(1)).onError(any());
-        inOrder.verifyNoMoreInteractions();
-    }
-
-    protected boolean assertExceptionMessage() {
-        return true;
     }
 }

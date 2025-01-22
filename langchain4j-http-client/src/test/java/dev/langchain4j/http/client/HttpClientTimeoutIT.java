@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -29,7 +30,7 @@ public abstract class HttpClientTimeoutIT {
 
     private static final int WIREMOCK_PORT = 8083;
 
-    protected abstract HttpClient client(Duration readTimeout);
+    protected abstract List<HttpClient> clients(Duration readTimeout);
 
     protected abstract Class<? extends Exception> expectedReadTimeoutExceptionTypeSync();
 
@@ -63,22 +64,23 @@ public abstract class HttpClientTimeoutIT {
         // given
         int readTimeoutMillis = 250;
 
-        HttpClient client = client(Duration.ofMillis(readTimeoutMillis));
+        for (HttpClient client : clients(Duration.ofMillis(readTimeoutMillis))) {
 
-        wireMockServer.stubFor(WireMock.get("/endpoint")
-                .willReturn(WireMock.aResponse()
-                        .withFixedDelay(readTimeoutMillis * 2)));
+            wireMockServer.stubFor(WireMock.get("/endpoint")
+                    .willReturn(WireMock.aResponse()
+                            .withFixedDelay(readTimeoutMillis * 2)));
 
-        HttpRequest request = HttpRequest.builder()
-                .method(GET)
-                .url(String.format("http://localhost:%s/endpoint", WIREMOCK_PORT))
-                .build();
+            HttpRequest request = HttpRequest.builder()
+                    .method(GET)
+                    .url(String.format("http://localhost:%s/endpoint", WIREMOCK_PORT))
+                    .build();
 
-        // when-then
-        assertThatThrownBy(() -> client.execute(request))
-                .isExactlyInstanceOf(expectedReadTimeoutExceptionTypeSync())
-                .hasCauseExactlyInstanceOf(expectedReadTimeoutCauseExceptionTypeSync())
-                .hasMessageContainingAll("time", "out");
+            // when-then
+            assertThatThrownBy(() -> client.execute(request))
+                    .isExactlyInstanceOf(expectedReadTimeoutExceptionTypeSync())
+                    .hasCauseExactlyInstanceOf(expectedReadTimeoutCauseExceptionTypeSync())
+                    .hasMessageContainingAll("time", "out");
+        }
     }
 
     @Test
@@ -87,63 +89,64 @@ public abstract class HttpClientTimeoutIT {
         // given
         int readTimeoutMillis = 250;
 
-        HttpClient client = client(Duration.ofMillis(readTimeoutMillis));
+        for (HttpClient client : clients(Duration.ofMillis(readTimeoutMillis))) {
 
-        wireMockServer.stubFor(WireMock.get("/endpoint")
-                .willReturn(WireMock.aResponse()
-                        .withFixedDelay(readTimeoutMillis * 2)));
+            wireMockServer.stubFor(WireMock.get("/endpoint")
+                    .willReturn(WireMock.aResponse()
+                            .withFixedDelay(readTimeoutMillis * 2)));
 
-        HttpRequest request = HttpRequest.builder()
-                .method(GET)
-                .url(String.format("http://localhost:%s/endpoint", WIREMOCK_PORT))
-                .build();
+            HttpRequest request = HttpRequest.builder()
+                    .method(GET)
+                    .url(String.format("http://localhost:%s/endpoint", WIREMOCK_PORT))
+                    .build();
 
-        // when
-        record StreamingResult(Throwable throwable, Set<Thread> threads) {
+            // when
+            record StreamingResult(Throwable throwable, Set<Thread> threads) {
+            }
+
+            CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
+
+            ServerSentEventListener listener = new ServerSentEventListener() {
+
+                private final Set<Thread> threads = new HashSet<>();
+
+                @Override
+                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
+                    completableFuture.completeExceptionally(new IllegalStateException("onOpen() should not be called"));
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    completableFuture.completeExceptionally(new IllegalStateException("onEvent() should not be called"));
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    threads.add(Thread.currentThread());
+                    completableFuture.complete(new StreamingResult(throwable, threads));
+                }
+
+                @Override
+                public void onClose() {
+                    completableFuture.completeExceptionally(new IllegalStateException("onClose() should not be called"));
+                }
+            };
+            ServerSentEventListener spyListener = spy(listener);
+            client.execute(request, new ServerSentEventStrategy(), spyListener);
+
+            // then
+            StreamingResult streamingResult = completableFuture.get(readTimeoutMillis * 3, MILLISECONDS);
+
+            assertThat(streamingResult.throwable())
+                    .isExactlyInstanceOf(expectedReadTimeoutExceptionTypeAsync())
+                    .hasCauseExactlyInstanceOf(expectedReadTimeoutCauseExceptionTypeAsync())
+                    .hasMessageContainingAll("time", "out");
+
+            assertThat(streamingResult.threads()).hasSize(1);
+            assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
+
+            verify(spyListener, times(1)).onError(any());
+            verifyNoMoreInteractions(spyListener);
         }
-
-        CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
-
-        ServerSentEventListener listener = new ServerSentEventListener() {
-
-            private final Set<Thread> threads = new HashSet<>();
-
-            @Override
-            public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
-                completableFuture.completeExceptionally(new IllegalStateException("onOpen() should not be called"));
-            }
-
-            @Override
-            public void onEvent(ServerSentEvent event) {
-                completableFuture.completeExceptionally(new IllegalStateException("onEvent() should not be called"));
-            }
-
-            @Override
-            public void onError(Throwable throwable) {
-                threads.add(Thread.currentThread());
-                completableFuture.complete(new StreamingResult(throwable, threads));
-            }
-
-            @Override
-            public void onClose() {
-                completableFuture.completeExceptionally(new IllegalStateException("onClose() should not be called"));
-            }
-        };
-        ServerSentEventListener spyListener = spy(listener);
-        client.execute(request, new ServerSentEventStrategy(), spyListener);
-
-        // then
-        StreamingResult streamingResult = completableFuture.get(readTimeoutMillis * 3, MILLISECONDS);
-
-        assertThat(streamingResult.throwable())
-                .isExactlyInstanceOf(expectedReadTimeoutExceptionTypeAsync())
-                .hasCauseExactlyInstanceOf(expectedReadTimeoutCauseExceptionTypeAsync())
-                .hasMessageContainingAll("time", "out");
-
-        assertThat(streamingResult.threads()).hasSize(1);
-        assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
-
-        verify(spyListener, times(1)).onError(any());
-        verifyNoMoreInteractions(spyListener);
     }
 }

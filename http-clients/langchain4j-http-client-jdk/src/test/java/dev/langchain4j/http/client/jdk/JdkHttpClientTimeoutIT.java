@@ -5,15 +5,18 @@ import dev.langchain4j.http.client.HttpClientTimeoutIT;
 
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CompletionException;
 
 class JdkHttpClientTimeoutIT extends HttpClientTimeoutIT {
 
     @Override
-    protected HttpClient client(Duration readTimeout) {
-        return new JdkHttpClientBuilder()
-                .readTimeout(readTimeout)
-                .build();
+    protected List<HttpClient> clients(Duration readTimeout) {
+        return List.of(
+                new JdkHttpClientBuilder()
+                        .readTimeout(readTimeout)
+                        .build()
+        );
     }
 
     @Override

@@ -6,14 +6,17 @@ import dev.langchain4j.http.client.HttpClientTimeoutIT;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.time.Duration;
+import java.util.List;
 
 class OkHttpClientTimeoutIT extends HttpClientTimeoutIT {
 
     @Override
-    protected HttpClient client(Duration readTimeout) {
-        return new OkHttpClientBuilder()
-                .readTimeout(readTimeout)
-                .build();
+    protected List<HttpClient> clients(Duration readTimeout) {
+        return List.of(
+                new OkHttpClientBuilder()
+                        .readTimeout(readTimeout)
+                        .build()
+        );
     }
 
     @Override
