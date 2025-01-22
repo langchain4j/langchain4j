@@ -57,23 +57,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createModelListenerRequest;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.createModelListenerResponse;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupAsyncClient;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -147,7 +133,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             AzureChatEnhancementConfiguration enhancements,
             Long seed,
             @Deprecated
-            ChatCompletionsResponseFormat responseFormat,
+            ChatCompletionsResponseFormat chatCompletionsResponseFormat,
             ResponseFormat responseFormat,
             Boolean strictJsonSchema,
             List<ChatModelListener> listeners,
@@ -305,7 +291,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 seed,
                 chatCompletionsResponseFormat,
                 responseFormat,
-                strictJsonSchema
+                strictJsonSchema,
                 listeners,
                 capabilities);
 
@@ -530,6 +516,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             List<ChatMessage> messages,
             List<ToolSpecification> toolSpecifications,
             ToolSpecification toolThatMustBeExecuted,
+            ResponseFormat responseFormat,
             StreamingResponseHandler<AiMessage> handler) {
             
         ChatCompletionsResponseFormat chatCompletionsResponseFormat = null;
