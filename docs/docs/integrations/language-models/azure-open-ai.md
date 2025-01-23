@@ -217,6 +217,7 @@ If `strictJsonSchema` is set to `false` and you provide a JSON Schema, the model
 :::
 
 You can then use this model either with the high level `Assistant` API or the low level `ChatLanguageModel` API, as detailed below.
+When using it with the high level `Assistant` API, configure `supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))` to enable structured outputs with a JSON schema.
 
 ### Using the high level `Assistant` API
 
