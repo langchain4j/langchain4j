@@ -134,7 +134,7 @@ public abstract class AiServicesWithNewToolsIT {
         }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .properties(singletonMap("arg0", JsonObjectSchema.builder()
+                .addProperties(singletonMap("arg0", JsonObjectSchema.builder()
                         .addStringProperty("name")
                         .addIntegerProperty("age")
                         .addNumberProperty("height")
@@ -199,7 +199,7 @@ public abstract class AiServicesWithNewToolsIT {
         }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .properties(singletonMap("arg0", JsonObjectSchema.builder()
+                .addProperties(singletonMap("arg0", JsonObjectSchema.builder()
                         .addProperty("name", new JsonStringSchema())
                         .addProperty("address", JsonObjectSchema.builder()
                                 .addProperty("city", new JsonStringSchema())
@@ -264,7 +264,7 @@ public abstract class AiServicesWithNewToolsIT {
         static final String REFERENCE = generateUUIDFrom(ToolWithRecursion.Person.class.getName());
 
         static final JsonObjectSchema PERSON_SCHEMA = JsonObjectSchema.builder()
-                .properties(new LinkedHashMap<>() {{
+                .addProperties(new LinkedHashMap<>() {{
                     put("name", new JsonStringSchema());
                     put("children", JsonArraySchema.builder()
                             .items(JsonReferenceSchema.builder()
@@ -276,7 +276,7 @@ public abstract class AiServicesWithNewToolsIT {
                 .build();
 
         static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .properties(singletonMap("arg0", PERSON_SCHEMA))
+                .addProperties(singletonMap("arg0", PERSON_SCHEMA))
                 .required("arg0")
                 .definitions(singletonMap(REFERENCE, PERSON_SCHEMA))
                 .build();
