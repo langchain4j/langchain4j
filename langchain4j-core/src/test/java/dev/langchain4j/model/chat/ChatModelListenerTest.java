@@ -24,13 +24,13 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-class ListenableChatModelTest {
+class ChatModelListenerTest {
 
-    static class TestObservableChatModel implements ChatLanguageModel {
+    static class TestChatModel implements ChatLanguageModel {
 
         private final List<ChatModelListener> listeners;
 
-        TestObservableChatModel(List<ChatModelListener> listeners) {
+        TestChatModel(List<ChatModelListener> listeners) {
             this.listeners = listeners;
         }
 
@@ -96,7 +96,7 @@ class ListenableChatModelTest {
         // given
         ChatModelListener listener1 = spy(new SuccessfulListener());
         ChatModelListener listener2 = spy(new SuccessfulListener());
-        TestObservableChatModel model = new TestObservableChatModel(List.of(listener1, listener2));
+        TestChatModel model = new TestChatModel(List.of(listener1, listener2));
 
         // when
         model.chat("hi");
@@ -116,7 +116,7 @@ class ListenableChatModelTest {
         // given
         ChatModelListener failingListener = spy(new FailingListener());
         ChatModelListener successfulListener = spy(new SuccessfulListener());
-        TestObservableChatModel model = new TestObservableChatModel(List.of(failingListener, successfulListener));
+        TestChatModel model = new TestChatModel(List.of(failingListener, successfulListener));
 
         // when - then
         assertThatNoException().isThrownBy(() -> model.chat("hi"));
@@ -146,7 +146,7 @@ class ListenableChatModelTest {
                 assertThat(responseContext.attributes()).containsExactly(entry("my-attribute", "my-value"));
             }
         });
-        TestObservableChatModel model = new TestObservableChatModel(List.of(listener1, listener2));
+        TestChatModel model = new TestChatModel(List.of(listener1, listener2));
 
         // when
         model.chat("hi");

@@ -38,6 +38,7 @@ import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherServ
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -363,17 +364,22 @@ class StreamingAiServicesWithToolsIT {
 
     public static void verifyNoMoreInteractionsFor(StreamingChatLanguageModel model) {
         try {
-            verify(model).defaultRequestParameters();
+            verify(model, atLeastOnce()).doChat(any(), any());
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }
         try {
-            verify(model).supportedCapabilities();
+            verify(model, atLeastOnce()).defaultRequestParameters();
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }
         try {
-            verify(model).listeners();
+            verify(model, atLeastOnce()).supportedCapabilities();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).listeners();
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }

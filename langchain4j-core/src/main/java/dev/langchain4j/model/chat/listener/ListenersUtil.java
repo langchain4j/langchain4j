@@ -12,11 +12,12 @@ public class ListenersUtil {
 
     private static final Logger LOG = LoggerFactory.getLogger(ListenersUtil.class);
 
-    private ListenersUtil() {}
+    private ListenersUtil() {
+    }
 
     public static void onRequest(ChatRequest chatRequest,
-                          Map<Object, Object> attributes,
-                          List<ChatModelListener> listeners) {
+                                 Map<Object, Object> attributes,
+                                 List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
@@ -25,15 +26,16 @@ public class ListenersUtil {
             try {
                 listener.onRequest(requestContext);
             } catch (Exception e) {
-                LOG.warn("An exception occurred during the invocation of the chat model listener", e);
+                LOG.warn("An exception occurred during the invocation of the chat model listener. " +
+                        "This exception has been ignored.", e);
             }
         });
     }
 
     public static void onResponse(ChatResponse chatResponse,
-                           ChatRequest chatRequest,
-                           Map<Object, Object> attributes,
-                           List<ChatModelListener> listeners) {
+                                  ChatRequest chatRequest,
+                                  Map<Object, Object> attributes,
+                                  List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
@@ -42,15 +44,16 @@ public class ListenersUtil {
             try {
                 listener.onResponse(responseContext);
             } catch (Exception e) {
-                LOG.warn("An exception occurred during the invocation of the chat model listener", e);
+                LOG.warn("An exception occurred during the invocation of the chat model listener. " +
+                        "This exception has been ignored.", e);
             }
         });
     }
 
     public static void onError(Throwable error,
-                        ChatRequest chatRequest,
-                        Map<Object, Object> attributes,
-                        List<ChatModelListener> listeners) {
+                               ChatRequest chatRequest,
+                               Map<Object, Object> attributes,
+                               List<ChatModelListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
         }
@@ -59,7 +62,8 @@ public class ListenersUtil {
             try {
                 listener.onError(errorContext);
             } catch (Exception e) {
-                LOG.warn("An exception occurred during the invocation of the chat model listener", e);
+                LOG.warn("An exception occurred during the invocation of the chat model listener. " +
+                        "This exception has been ignored.", e);
             }
         });
     }

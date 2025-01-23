@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -23,9 +24,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.chat.listener.ListenersUtil.onError;
-import static dev.langchain4j.model.chat.listener.ListenersUtil.onRequest;
-import static dev.langchain4j.model.chat.listener.ListenersUtil.onResponse;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static java.util.Arrays.asList;
 
@@ -59,13 +57,13 @@ public interface ChatLanguageModel {
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-        onRequest(finalChatRequest, attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
         try {
             ChatResponse chatResponse = doChat(finalChatRequest);
-            onResponse(chatResponse, finalChatRequest, attributes, listeners);
+            ListenersUtil.onResponse(chatResponse, finalChatRequest, attributes, listeners);
             return chatResponse;
         } catch (Exception error) {
-            onError(error, finalChatRequest, attributes, listeners);
+            ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
             throw error;
         }
     }

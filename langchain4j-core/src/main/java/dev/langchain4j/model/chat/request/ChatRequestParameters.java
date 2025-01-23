@@ -42,8 +42,8 @@ public interface ChatRequestParameters {
 
     /**
      * Creates a new {@link ChatRequestParameters} by combining the current parameters with the specified ones.
-     * Values from the specified parameters take precedence over the current ones when there is overlap.
-     * Neither the current nor the specified parameters are modified.
+     * Values from the specified parameters override values from the current parameters when there is overlap.
+     * Neither the current nor the specified {@link ChatRequestParameters} objects are modified.
      *
      * <p>Example:
      * <pre>
@@ -64,5 +64,5 @@ public interface ChatRequestParameters {
      * @param parameters the parameters whose values will override the current ones
      * @return a new {@link ChatRequestParameters} instance combining both sets of parameters
      */
-    ChatRequestParameters overrideWith(ChatRequestParameters parameters); // TODO find a better name? "mergeWith"?
+    ChatRequestParameters overrideWith(ChatRequestParameters parameters);
 }
