@@ -225,7 +225,7 @@ Like for Tools in the previous section, Structured Output can be automatically u
 ```java
 
 interface PersonAssistant {
-    Person favoriteColor(String message);
+    Person extractPerson(String message);
 }
 
 class Person {
