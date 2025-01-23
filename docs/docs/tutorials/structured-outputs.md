@@ -86,6 +86,13 @@ ChatLanguageModel chatModel = OpenAiChatModel.builder()
         .logResponses(true)
         .build();
 // OR
+ChatLanguageModel chatModel = AzureOpenAiChatModel.builder()
+        .endpoint(System.getenv("AZURE_OPENAI_URL"))
+        .apiKey(System.getenv("AZURE_OPENAI_API_KEY"))
+        .deploymentName("gpt-4o-mini")
+        .logRequestsAndResponses(true)
+        .build();
+// OR
 ChatLanguageModel chatModel = GoogleAiGeminiChatModel.builder()
         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
         .modelName("gemini-1.5-flash")
@@ -260,7 +267,7 @@ JsonObjectSchema jsonObjectSchema = JsonObjectSchema.builder()
 ```
 
 :::note
-The `JsonReferenceSchema` is currently supported only by OpenAI.
+The `JsonReferenceSchema` is currently supported only by OpenAI and Azure OpenAI.
 :::
 
 #### `JsonAnyOfSchema`
@@ -312,7 +319,7 @@ System.out.println(chatResponse.aiMessage().text()); // {"shapes":[{"radius":5},
 ```
 
 :::note
-The `JsonAnyOfSchema` is currently supported only by OpenAI.
+The `JsonAnyOfSchema` is currently supported only by OpenAI and Azure OpenAI.
 :::
 
 #### Adding Description
@@ -329,10 +336,10 @@ JsonSchemaElement stringSchema = JsonStringSchema.builder()
 #### Limitations
 
 When using JSON Schema with `ChatLanguageModel`, there are some limitations:
-- It works only with supported OpenAI, Google AI Gemini, and Ollama models.
+- It works only with supported OpenAI, Azure OpenAI, Google AI Gemini, and Ollama models.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming) for OpenAI yet.
 For Google AI Gemini and Ollama, JSON Schema can be specified via `responseSchema(...)` when creating/building the model.
-- `JsonReferenceSchema` and `JsonAnyOfSchema` are currently supported only by OpenAI.
+- `JsonReferenceSchema` and `JsonAnyOfSchema` are currently supported only by OpenAI and Azure OpenAI.
 
 
 ### Using JSON Schema with AI Services
@@ -353,17 +360,26 @@ ChatLanguageModel chatModel = OpenAiChatModel.builder() // see [1] below
         .logResponses(true)
         .build();
 // OR
+ChatLanguageModel chatModel = AzureOpenAiChatModel.builder() // see [1] below
+        .endpoint(System.getenv("AZURE_OPENAI_URL"))
+        .apiKey(System.getenv("AZURE_OPENAI_API_KEY"))
+        .deploymentName("gpt-4o-mini")
+        .strictJsonSchema(true)
+        .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA)) // see [3] below
+        .logRequestsAndResponses(true)
+        .build();
+// OR
 ChatLanguageModel chatModel = GoogleAiGeminiChatModel.builder() // see [1] below
         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
         .modelName("gemini-1.5-flash")
-        .responseFormat(ResponseFormat.JSON) // see [3] below
+        .responseFormat(ResponseFormat.JSON) // see [4] below
         .logRequestsAndResponses(true)
         .build();
 // OR
 ChatLanguageModel chatModel = OllamaChatModel.builder() // see [1] below
         .baseUrl("http://localhost:11434")
         .modelName("llama3.1")
-        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // see [4] below
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA) // see [5] below
         .logRequests(true)
         .logResponses(true)
         .build();
@@ -386,8 +402,9 @@ as these beans are created automatically. More info on this:
 [for Quarkus](https://docs.quarkiverse.io/quarkus-langchain4j/dev/ai-services.html),
 [for Spring Boot](https://docs.langchain4j.dev/tutorials/spring-boot-integration#spring-boot-starter-for-declarative-ai-services).
 - [2] - This is required to enable the JSON Schema feature for OpenAI, see more details [here](/integrations/language-models/open-ai#structured-outputs-for-response-format).
-- [3] - This is required to enable the JSON Schema feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
-- [4] - This is required to enable the JSON Schema feature for [Ollama](/integrations/language-models/ollama).
+- [3] - This is required to enable the JSON Schema feature for [Azure OpenAI](/integrations/language-models/azure-open-ai).
+- [4] - This is required to enable the JSON Schema feature for [Google AI Gemini](/integrations/language-models/google-ai-gemini).
+- [5] - This is required to enable the JSON Schema feature for [Ollama](/integrations/language-models/ollama).
 
 When all the following conditions are met:
 - AI Service method returns a POJO
@@ -430,7 +447,7 @@ record Person(@Description("person's first and last name, for example: John Doe"
 #### Limitations
 
 When using JSON Schema with AI Services, there are some limitations:
-- It works only with supported OpenAI, Google AI Gemini, and Ollama models.
+- It works only with supported OpenAI, Azure OpenAI, Google AI Gemini, and Ollama models.
 - Support for JSON Schema needs to be enabled explicitly when configuring `ChatLanguageModel`.
 - It does not work in the [streaming mode](/tutorials/ai-services#streaming).
 - Currently, it works only when return type is a (single) POJO or a `Result<POJO>`.
@@ -444,7 +461,7 @@ We are [working](https://github.com/langchain4j/langchain4j/pull/1938) on suppor
 - All fields and sub-fields in the generated `JsonSchema` are automatically marked as `required`, there is currently no way to make them optional.
 - When LLM does not support JSON Schema feature, or it is not enabled, or return type is not a POJO,
 AI Service will fall back to [prompting](/tutorials/structured-outputs#prompting).
-- Recursion is currently supported only by OpenAI.
+- Recursion is currently supported only by OpenAI and Azure OpenAI.
 - Polymorphism is not supported yet. The returned POJO and its nested POJOs must be concrete classes;
 interfaces or abstract classes are not supported.
 
