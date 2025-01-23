@@ -21,7 +21,7 @@ class OpenAiStreamingChatModelListenerIT extends StreamingChatModelListenerIT {
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
-                .maxCompletionTokens(maxTokens())
+                .maxTokens(maxTokens())
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(listener))
