@@ -23,20 +23,18 @@ import java.util.stream.Collectors;
 
 public class JsonSchemaElementHelper {
 
+    private static final String DEFAULT_UUID_DESCRIPTION = "String in a UUID format";
+
     public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz) {
         return jsonSchemaElementFrom(clazz, clazz, null, new LinkedHashMap<>());
     }
 
     public static JsonSchemaElement jsonSchemaElementFrom(
             Class<?> clazz, Type type, String fieldDescription, Map<Class<?>, VisitedClassMetadata> visited) {
-        if (isJsonUUID(clazz)) {
-            return JsonStringSchema.builder()
-                    .description(fieldDescription == null ? "String in a UUID format" : fieldDescription)
-                    .build();
-        }
-
         if (isJsonString(clazz)) {
-            return JsonStringSchema.builder().description(fieldDescription).build();
+            return JsonStringSchema.builder()
+                    .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
+                    .build();
         }
 
         if (isJsonInteger(clazz)) {
@@ -132,6 +130,9 @@ public class JsonSchemaElementHelper {
     }
 
     private static String descriptionFrom(Class<?> type) {
+        if (isJsonUUID(type)) {
+            return DEFAULT_UUID_DESCRIPTION;
+        }
         return descriptionFrom(type.getAnnotation(Description.class));
     }
 
