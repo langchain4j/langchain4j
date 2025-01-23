@@ -2,7 +2,6 @@ package dev.langchain4j.model.chat.request;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
-
 import java.util.List;
 
 /**
@@ -38,5 +37,19 @@ public interface ChatRequestParameters {
 
     static DefaultChatRequestParameters.Builder<?> builder() { // TODO
         return new DefaultChatRequestParameters.Builder<>();
+    }
+
+    /**
+     * Create a new builder, initialized from the given ChatRequestParameters instance.
+     * This lets you clone or merge parameters easily:
+     * <pre>
+     *   ChatRequestParameters merged =
+     *       ChatRequestParameters.builder(original)
+     *           .temperature(0.9)
+     *           .build();
+     * </pre>
+     */
+    static DefaultChatRequestParameters.Builder<?> builder(ChatRequestParameters from) {
+        return new DefaultChatRequestParameters.Builder<>().copyOf(from);
     }
 }

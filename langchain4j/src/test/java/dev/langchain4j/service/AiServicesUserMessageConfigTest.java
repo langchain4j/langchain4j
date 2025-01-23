@@ -1,21 +1,19 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.exception.IllegalConfigurationException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import static dev.langchain4j.service.AiServicesIT.chatRequest;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+import dev.langchain4j.exception.IllegalConfigurationException;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesUserMessageConfigTest {
@@ -67,7 +65,6 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("Hello")
         String illegalChat6(@UserMessage String userMessage);
 
-
         // TODO more tests with @UserName, @V, @MemoryId
     }
 
@@ -80,8 +77,7 @@ class AiServicesUserMessageConfigTest {
                 .build();
 
         // when-then
-        assertThat(aiService.chat1("What is the capital of Germany?"))
-                .containsIgnoringCase("Berlin");
+        assertThat(aiService.chat1("What is the capital of Germany?")).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatLanguageModel).supportedCapabilities();
     }
@@ -95,8 +91,7 @@ class AiServicesUserMessageConfigTest {
                 .build();
 
         // when-then
-        assertThat(aiService.chat2("What is the capital of Germany?"))
-                .containsIgnoringCase("Berlin");
+        assertThat(aiService.chat2("What is the capital of Germany?")).containsIgnoringCase("Berlin");
 
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatLanguageModel).supportedCapabilities();
@@ -126,8 +121,7 @@ class AiServicesUserMessageConfigTest {
                 .build();
 
         // when-then
-        assertThat(aiService.chat4())
-                .containsIgnoringCase("Berlin");
+        assertThat(aiService.chat4()).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatLanguageModel).supportedCapabilities();
     }
@@ -141,8 +135,7 @@ class AiServicesUserMessageConfigTest {
                 .build();
 
         // when-then
-        assertThat(aiService.chat5("Germany"))
-                .containsIgnoringCase("Berlin");
+        assertThat(aiService.chat5("Germany")).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatLanguageModel).supportedCapabilities();
     }
@@ -156,8 +149,7 @@ class AiServicesUserMessageConfigTest {
                 .build();
 
         // when-then
-        assertThat(aiService.chat6("Germany"))
-                .containsIgnoringCase("Berlin");
+        assertThat(aiService.chat6("Germany")).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatLanguageModel).supportedCapabilities();
     }
@@ -171,8 +163,7 @@ class AiServicesUserMessageConfigTest {
                 .build();
 
         // when-then
-        assertThat(aiService.chat7("capital", "Germany"))
-                .containsIgnoringCase("Berlin");
+        assertThat(aiService.chat7("capital", "Germany")).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatLanguageModel).supportedCapabilities();
     }
@@ -186,8 +177,7 @@ class AiServicesUserMessageConfigTest {
                 .build();
 
         // when-then
-        assertThat(aiService.chat8("Germany"))
-                .containsIgnoringCase("Berlin");
+        assertThat(aiService.chat8("Germany")).containsIgnoringCase("Berlin");
         verify(chatLanguageModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatLanguageModel).supportedCapabilities();
     }
@@ -231,8 +221,8 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat3("What is the capital of {{it}}?", "Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("Parameter 'arg0' of method 'illegalChat3' should be annotated " +
-                        "with @V or @UserMessage or @UserName or @MemoryId");
+                .hasMessage("Parameter 'arg0' of method 'illegalChat3' should be annotated "
+                        + "with @V or @UserMessage or @UserName or @MemoryId or be ChatRequestParameters");
     }
 
     @Test
@@ -246,8 +236,8 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat4("What is the capital of {{it}}?", "Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("Parameter 'arg1' of method 'illegalChat4' should be annotated " +
-                        "with @V or @UserMessage or @UserName or @MemoryId");
+                .hasMessage("Parameter 'arg1' of method 'illegalChat4' should be annotated "
+                        + "with @V or @UserMessage or @UserName or @MemoryId or be ChatRequestParameters");
     }
 
     @Test
@@ -275,6 +265,7 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat6("Hello"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("Error: The method 'illegalChat6' has multiple @UserMessage annotations. Please use only one.");
+                .hasMessage(
+                        "Error: The method 'illegalChat6' has multiple @UserMessage annotations. Please use only one.");
     }
 }
