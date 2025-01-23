@@ -268,7 +268,7 @@ The model will then generate a response that adheres to the schema, like in this
 
 ```java
 ChatRequest chatRequest = ChatRequest.builder()
-    .messages(singletonList(userMessage("Julien likes the colors blue, white and red")))
+    .messages(UserMessage.from("Julien likes the colors blue, white and red"))
     .responseFormat(ResponseFormat.builder()
         .type(JSON)
         .jsonSchema(JsonSchema.builder()
