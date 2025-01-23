@@ -4,7 +4,7 @@ sidebar_position: 31
 
 # Observability
 
-## LLM Observability
+## Chat Model Observability
 
 [Certain](/integrations/language-models) implementations of `ChatLanguageModel` and `StreamingChatLanguageModel`
 (see "Observability" column") allow configuring `ChatModelListener`(s) to listen for events such as:
@@ -155,3 +155,8 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
 - For `StreamingChatLanguageModel`, the `ChatModelListener.onResponse()` is called before the
   `StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
   before the `StreamingChatResponseHandler.onError()` is called.
+
+
+## Observability in Spring Boot Application
+
+See more details [here](/tutorials/spring-boot-integration#observability).
