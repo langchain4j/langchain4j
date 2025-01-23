@@ -43,9 +43,7 @@ jobs:
       # Execute recipes
       - name: Apply OpenRewrite recipes
         run: |
-          mvn --activate-profiles openrewrite \
-            -Dspotless.check.skip=true \
-            org.openrewrite.maven:rewrite-maven-plugin:run
+          mvn --activate-profiles openrewrite -Dspotless.check.skip=true rewrite:run
 
       # Apply spotless
       - name: Apply Spotless
