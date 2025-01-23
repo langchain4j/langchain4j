@@ -256,7 +256,7 @@ PersonAssistant assistant = AiServices.builder(PersonAssistant.class)
                 .chatLanguageModel(chatLanguageModel)
                 .build();
 
-Person person = assistant.favoriteColor(question);
+Person person = assistant.extractPerson(question);
 ```
 
 ### Using the low level `ChatLanguageModel` API
