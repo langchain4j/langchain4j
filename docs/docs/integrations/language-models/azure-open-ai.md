@@ -208,6 +208,7 @@ ChatLanguageModel model = AzureOpenAiChatModel.builder()
         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
         .deploymentName("gpt-4o")
         .strictJsonSchema(true)
+        .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
         .build();
 ```
 
