@@ -55,7 +55,6 @@ public class Embedding {
         }
         norm = Math.sqrt(norm);
         if (Math.abs(norm) < 1e-10) {
-            Arrays.fill(vector, 0.0f);
             return;
         }
         for (int i = 0; i < vector.length; i++) {
