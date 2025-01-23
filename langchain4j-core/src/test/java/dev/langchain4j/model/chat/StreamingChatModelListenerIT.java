@@ -95,7 +95,7 @@ public abstract class StreamingChatModelListenerIT {
             @Override
             public void onResponse(ChatModelResponseContext responseContext) {
                 responseReference.set(responseContext.response());
-                assertThat(responseContext.request()).isSameAs(requestReference.get());
+                assertThat(responseContext.request()).isEqualTo(requestReference.get());
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
@@ -199,7 +199,7 @@ public abstract class StreamingChatModelListenerIT {
             @Override
             public void onError(ChatModelErrorContext errorContext) {
                 errorReference.set(errorContext.error());
-                assertThat(errorContext.request()).isSameAs(requestReference.get());
+                assertThat(errorContext.request()).isEqualTo(requestReference.get());
                 assertThat(errorContext.partialResponse()).isNull(); // can be non-null if it fails in the middle of streaming
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
