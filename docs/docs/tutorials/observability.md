@@ -146,7 +146,7 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
 - If an exception is thrown from one of the `ChatModelListener` methods,
   it will be logged at the `WARN` level. The execution of subsequent listeners will continue as usual.
 - The `ChatRequest` provided via `ChatModelRequestContext`, `ChatModelResponseContext`, and `ChatModelErrorContext`
-  is the final request, containing both the default `ChatRequestParameters`
+  is the final request, containing both the default `ChatRequestParameters` configured on the `ChatLanguageModel`
   and the request-specific `ChatRequestParameters` merged together.
 - For `StreamingChatLanguageModel`, the `ChatModelListener.onResponse()` and `ChatModelListener.onError()`
   are called on a different thread than the `ChatModelListener.onRequest()`.
