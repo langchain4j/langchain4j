@@ -1,16 +1,12 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
-import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.ToolProvider;
-
-import java.util.List;
+import dev.langchain4j.service.tool.ToolService;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -27,11 +23,9 @@ public class AiServiceContext {
     public Map</* id */ Object, ChatMemory> chatMemories;
     public ChatMemoryProvider chatMemoryProvider;
 
-    public ModerationModel moderationModel;
+    public ToolService tools = new ToolService();
 
-    public List<ToolSpecification> toolSpecifications;
-    public Map<String, ToolExecutor> toolExecutors;
-    public ToolProvider toolProvider;
+    public ModerationModel moderationModel;
 
     public RetrievalAugmentor retrievalAugmentor;
 
