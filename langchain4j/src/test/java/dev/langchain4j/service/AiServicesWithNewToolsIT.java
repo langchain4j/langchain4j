@@ -760,7 +760,7 @@ public abstract class AiServicesWithNewToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("getUsernameFromId")
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("arg0" + "", "String in a UUID format")
+                        .addStringProperty("arg0", "String in a UUID format")
                         .required("arg0")
                         .build())
                 .build();
@@ -795,7 +795,7 @@ public abstract class AiServicesWithNewToolsIT {
             if (verifyModelInteractions()) {
                 verify(model).supportedCapabilities();
                 verify(model, times(2)).chat(chatRequestCaptor.capture());
-                verifyNoMoreInteractions(model);
+                verifyNoMoreInteractionsFor(model);
 
                 List<ToolSpecification> toolSpecifications =
                         chatRequestCaptor.getValue().parameters().toolSpecifications();

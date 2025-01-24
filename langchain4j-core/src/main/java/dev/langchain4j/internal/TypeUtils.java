@@ -34,12 +34,8 @@ public class TypeUtils {
         return type == String.class
                 || type == char.class
                 || type == Character.class
-                || isJsonUUID(type)
-                || CharSequence.class.isAssignableFrom(type);
-    }
-
-    public static boolean isJsonUUID(Class<?> type) {
-        return type == UUID.class;
+                || CharSequence.class.isAssignableFrom(type)
+                || type == UUID.class;
     }
 
     public static boolean isJsonArray(Class<?> type) {

@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
 import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
 import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
 import static dev.langchain4j.internal.TypeUtils.isJsonString;
-import static dev.langchain4j.internal.TypeUtils.isJsonUUID;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
@@ -19,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class JsonSchemaElementHelper {
@@ -130,7 +130,7 @@ public class JsonSchemaElementHelper {
     }
 
     private static String descriptionFrom(Class<?> type) {
-        if (isJsonUUID(type)) {
+        if (type == UUID.class) {
             return DEFAULT_UUID_DESCRIPTION;
         }
         return descriptionFrom(type.getAnnotation(Description.class));
