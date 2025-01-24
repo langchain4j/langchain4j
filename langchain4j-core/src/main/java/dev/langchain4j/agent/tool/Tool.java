@@ -38,13 +38,13 @@ public @interface Tool {
     String[] value() default "";
 
     /**
-     * Indicates whether the tool's String return value should be returned directly to the user.
-     * Only applicable if used within an AiService and if the return type is 'Result<String>'
+     * Indicates whether the tool's return value should be returned directly to the user.
+     * Only applicable if used within an AiService and if the return type is 'Result<String>'.
      * If true, the result will be returned directly without further LLM processing.
      * If false or if return type is not Result<String>, normal processing continues.
      * If true, the tool cannot be chained with other tools as the result will not be returned to the llm.
      *
      * @return whether to return the result directly
      */
-    boolean rawReturn() default false;
+    boolean returnRaw() default false;
 }

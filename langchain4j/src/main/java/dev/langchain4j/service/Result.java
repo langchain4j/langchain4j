@@ -4,10 +4,11 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
+
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 /**
  * Represents the result of an AI Service invocation.
@@ -26,19 +27,10 @@ public class Result<T> {
     private final List<ToolExecution> toolExecutions;
 
     public Result(T content, TokenUsage tokenUsage, List<Content> sources, FinishReason finishReason, List<ToolExecution> toolExecutions) {
-        this.content = ensureNotNull(content, "content");
-        this.tokenUsage = tokenUsage;
-        this.sources = copyIfNotNull(sources);
-        this.finishReason = finishReason;
-        this.toolExecutions = copyIfNotNull(toolExecutions);
-    }
-
-    /**
-     *
-     * For use only with result from Tools where returnDirectly=true and the content is nullable
-     */
-    public Result(TokenUsage tokenUsage, List<Content> sources, FinishReason finishReason, List<ToolExecution> toolExecutions) {
-        this.content = null;
+        if (content == null && isNullOrEmpty(toolExecutions)) {
+            throw new IllegalArgumentException("either 'content' or 'toolExecutions' must be specified");
+        }
+        this.content = content;
         this.tokenUsage = tokenUsage;
         this.sources = copyIfNotNull(sources);
         this.finishReason = finishReason;

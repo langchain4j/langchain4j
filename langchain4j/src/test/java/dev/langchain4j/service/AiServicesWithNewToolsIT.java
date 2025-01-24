@@ -37,7 +37,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -742,7 +741,7 @@ public abstract class AiServicesWithNewToolsIT {
 
     static class ToolWithPrimitiveParametersReturnRaw {
 
-        @Tool(rawReturn = true)
+        @Tool(returnRaw = true)
         int add(int a, int b) {
             return a + b;
         }
@@ -935,7 +934,7 @@ public abstract class AiServicesWithNewToolsIT {
 
 
     static class FirstToolReturnRawFalse {
-        @Tool(rawReturn = false)
+        @Tool(returnRaw = false)
         int add(int a, int b) {
             return a + b;
         }
@@ -948,7 +947,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     static class FirstToolReturnRawTrue {
-        @Tool(rawReturn = true)
+        @Tool(returnRaw = true)
         int add(int a, int b) {
             return a + b;
         }
@@ -961,7 +960,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     static class SecondToolReturnRawTrue {
-        @Tool(rawReturn = true)
+        @Tool(returnRaw = true)
         int multiply(int a, int b) {
             return a * b;
         }

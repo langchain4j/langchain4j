@@ -38,9 +38,9 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public boolean isRawReturn() {
+    public boolean returnRaw() {
         Tool toolAnnotation = method.getAnnotation(Tool.class);
-        return toolAnnotation != null && toolAnnotation.rawReturn();
+        return toolAnnotation != null && toolAnnotation.returnRaw();
     }
 
     Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
