@@ -29,7 +29,7 @@ class MicrometerChatModelListenerIT {
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
         observationRegistry = TestObservationRegistry.create();
-        listener = new MicrometerChatModelListener(meterRegistry, observationRegistry, "azure_openai");
+        listener = new MicrometerChatModelListener(meterRegistry, observationRegistry);
     }
 
     @Test
@@ -42,7 +42,7 @@ class MicrometerChatModelListenerIT {
                 .hasBeenStarted()
                 .hasBeenStopped()
                 .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.OPERATION_NAME.value(), "chat"))
-                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.SYSTEM.value(), "azure_openai"))
+                .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.SYSTEM.value(), "az.ai.inference"))
                 .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.REQUEST_MODEL.value(), "gpt-4o"))
                 .hasLowCardinalityKeyValue(KeyValue.of(OTelGenAiAttributes.RESPONSE_MODEL.value(), "gpt-4o"));
     }

@@ -26,26 +26,20 @@ public class MicrometerChatModelListener implements ChatModelListener {
     private final ObservationRegistry observationRegistry;
     private final AtomicReference<Observation.Scope> scope;
 
-    private final String aiSystemName;
-
     /**
      * Default constructor.
      * @param meterRegistry         Provided MeterRegistry by Micrometer Actuator
      * @param observationRegistry   Provided ObservationRegistry by Micrometer Observation API
-     * @param aiSystemName          AI system name should be in line with OpenTelemetry Semantic Convention for Generative AI Metrics.
      */
-    public MicrometerChatModelListener(
-            final MeterRegistry meterRegistry, ObservationRegistry observationRegistry, String aiSystemName) {
+    public MicrometerChatModelListener(MeterRegistry meterRegistry, ObservationRegistry observationRegistry) {
         this.observationRegistry = ensureNotNull(observationRegistry, "observationRegistry");
         this.scope = new AtomicReference<>();
-        this.aiSystemName = ensureNotNull(aiSystemName, "aiSystemName");
 
         observationRegistry.observationConfig().observationHandler(new ChatModelMeterObservationHandler(meterRegistry));
     }
 
     @Override
     public void onRequest(final ChatModelRequestContext requestContext) {
-        setAiProvider(requestContext);
         Observation observation = createObservation(requestContext);
         scope.set(observation.openScope());
     }
@@ -60,10 +54,6 @@ public class MicrometerChatModelListener implements ChatModelListener {
         handleErrorObservationScope(errorContext);
     }
 
-    private void setAiProvider(ChatModelRequestContext requestContext) {
-        requestContext.attributes().put(OTelGenAiAttributes.SYSTEM, aiSystemName);
-    }
-
     private static Supplier<Observation.Context> createContextSupplier(ChatModelRequestContext requestContext) {
         return () -> new ChatModelObservationContext(requestContext, null, null);
     }
@@ -74,7 +64,7 @@ public class MicrometerChatModelListener implements ChatModelListener {
                         createContextSupplier(requestContext),
                         observationRegistry)
                 .lowCardinalityKeyValue(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .lowCardinalityKeyValue(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
+                .lowCardinalityKeyValue(OTelGenAiAttributes.SYSTEM.value(), requestContext.observabilityName())
                 .lowCardinalityKeyValue(
                         OTelGenAiAttributes.REQUEST_MODEL.value(),
                         requestContext.request().model())
@@ -98,10 +88,6 @@ public class MicrometerChatModelListener implements ChatModelListener {
         observation.lowCardinalityKeyValue(
                 OTelGenAiAttributes.RESPONSE_MODEL.value(),
                 responseContext.response().model());
-    }
-
-    private String getSystemValue(Map<Object, Object> attributes) {
-        return (String) attributes.get(OTelGenAiAttributes.SYSTEM);
     }
 
     private void handleErrorObservationScope(ChatModelErrorContext errorContext) {

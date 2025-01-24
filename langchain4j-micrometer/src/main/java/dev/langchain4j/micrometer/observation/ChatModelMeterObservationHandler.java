@@ -11,7 +11,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationHandler;
-import java.util.Map;
 
 public class ChatModelMeterObservationHandler implements ObservationHandler<ChatModelObservationContext> {
 
@@ -47,7 +46,7 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
     private void addRequestMetrics(ChatModelRequestContext requestContext) {
         Counter.builder(LC_REQUEST_COUNTER)
                 .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
+                .tag(OTelGenAiAttributes.SYSTEM.value(), requestContext.observabilityName())
                 .tag(
                         OTelGenAiAttributes.REQUEST_MODEL.value(),
                         requestContext.request().model())
@@ -59,7 +58,7 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
     private void addErrorMetric(ChatModelErrorContext errorContext) {
         Counter.builder(LC_ERROR_COUNTER)
                 .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(errorContext.attributes()))
+                .tag(OTelGenAiAttributes.SYSTEM.value(), errorContext.observabilityName())
                 .tag(
                         OTelGenAiAttributes.REQUEST_MODEL.value(),
                         errorContext.request().model())
@@ -99,7 +98,7 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
             String description) {
         Counter.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
                 .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(responseContext.attributes()))
+                .tag(OTelGenAiAttributes.SYSTEM.value(), responseContext.observabilityName())
                 .tag(
                         OTelGenAiAttributes.REQUEST_MODEL.value(),
                         responseContext.request().model())
@@ -110,9 +109,5 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
                 .description(description)
                 .register(meterRegistry)
                 .increment(tokenCount);
-    }
-
-    private String getSystemValue(Map<Object, Object> attributes) {
-        return (String) attributes.get(OTelGenAiAttributes.SYSTEM);
     }
 }

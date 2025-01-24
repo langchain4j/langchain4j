@@ -452,7 +452,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         ChatModelRequest modelListenerRequest = createModelListenerRequest(options, messages, toolSpecifications);
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(
+                modelListenerRequest, observabilityName(), attributes);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -470,8 +471,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
             ChatModelResponse modelListenerResponse =
                     createModelListenerResponse(chatCompletions.getId(), options.getModel(), response);
-            ChatModelResponseContext responseContext =
-                    new ChatModelResponseContext(modelListenerResponse, modelListenerRequest, attributes);
+            ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                    modelListenerResponse, modelListenerRequest, observabilityName(), attributes);
             listeners.forEach(listener -> {
                 try {
                     listener.onResponse(responseContext);
@@ -483,8 +484,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return response;
         } catch (Exception exception) {
 
-            ChatModelErrorContext errorContext =
-                    new ChatModelErrorContext(exception, modelListenerRequest, null, attributes);
+            ChatModelErrorContext errorContext = new ChatModelErrorContext(
+                    exception, modelListenerRequest, null, observabilityName(), attributes);
 
             listeners.forEach(listener -> {
                 try {
@@ -496,6 +497,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
             throw exception;
         }
+    }
+
+    @Override
+    public String observabilityName() {
+        return "az.ai.inference";
     }
 
     @Override
