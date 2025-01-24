@@ -30,7 +30,7 @@ public class ClassPathSource implements DocumentSource {
 
         var file = this.url.getFile();
         this.metadata.put(URL, file);
-        this.metadata.put(FILE_NAME, file.substring(file.lastIndexOf(File.separatorChar) + 1));
+        this.metadata.put(FILE_NAME, file.substring(file.lastIndexOf('/') + 1));
     }
 
     /**
