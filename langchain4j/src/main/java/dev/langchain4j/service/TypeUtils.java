@@ -36,16 +36,6 @@ public class TypeUtils {
         return rawClass.equals(getRawClass(type));
     }
 
-    public static boolean isResultRawString(Type returnType) {
-        if (!(returnType instanceof ParameterizedType paramType)) {
-            return false;
-        }
-        return Arrays.stream(paramType.getActualTypeArguments())
-                .findFirst()
-                .map(String.class::equals)
-                .orElse(false);
-    }
-
     public static Class<?> resolveFirstGenericParameterClass(Type returnType) {
         Type[] typeArguments = getTypeArguments(returnType);
 
