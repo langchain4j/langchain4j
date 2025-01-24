@@ -105,7 +105,7 @@ public class JsonSchemaElementHelper {
 
         JsonObjectSchema.Builder builder = JsonObjectSchema.builder()
                 .description(Optional.ofNullable(description).orElse(descriptionFrom(type)))
-                .properties(properties)
+                .addProperties(properties)
                 .required(new ArrayList<>(properties.keySet()));
 
         visited.get(type).jsonSchemaElement = builder.build();

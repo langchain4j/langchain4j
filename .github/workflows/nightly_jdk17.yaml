@@ -35,6 +35,8 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
+      - name: Setup JBang
+        uses: jbangdev/setup-jbang@main
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
           ## compile and verify javadocs on ALL modules

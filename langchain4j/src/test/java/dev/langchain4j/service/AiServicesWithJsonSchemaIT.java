@@ -790,6 +790,7 @@ public abstract class AiServicesWithJsonSchemaIT {
             assertThat(person.name).isEqualTo("Klaus");
             assertThat(person.birthDate).isEqualTo(LocalDate.of(1976, 8, 12));
             assertThat(person.birthTime).isEqualTo(LocalTime.of(14, 43));
+
             assertThat(person.birthDateTime).isEqualTo(LocalDateTime.of(1976, 8, 12, 14, 43));
 
             verify(model)

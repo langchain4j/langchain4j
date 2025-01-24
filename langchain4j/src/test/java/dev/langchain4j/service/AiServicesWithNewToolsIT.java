@@ -273,7 +273,7 @@ public abstract class AiServicesWithNewToolsIT {
                 .build();
 
         static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .properties(singletonMap("arg0", PERSON_SCHEMA))
+                .addProperties(singletonMap("arg0", PERSON_SCHEMA))
                 .required("arg0")
                 .definitions(singletonMap(REFERENCE, PERSON_SCHEMA))
                 .build();
