@@ -1,5 +1,9 @@
 package dev.langchain4j.store.embedding.chroma;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static java.util.stream.Collectors.toList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -12,21 +16,16 @@ import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.logical.Not;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.chromadb.ChromaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Stream;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static java.util.stream.Collectors.toList;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
@@ -56,38 +55,34 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     @Override
     @ParameterizedTest
     @MethodSource("should_filter_by_metadata_chroma")
-    protected void should_filter_by_metadata(Filter metadataFilter,
-                                             List<Metadata> matchingMetadatas,
-                                             List<Metadata> notMatchingMetadatas) {
+    protected void should_filter_by_metadata(
+            Filter metadataFilter, List<Metadata> matchingMetadatas, List<Metadata> notMatchingMetadatas) {
         super.should_filter_by_metadata(metadataFilter, matchingMetadatas, notMatchingMetadatas);
     }
 
     // in chroma compare filter only works with numbers
     protected static Stream<Arguments> should_filter_by_metadata_chroma() {
-        return EmbeddingStoreWithFilteringIT.should_filter_by_metadata()
-                .filter(arguments -> {
-                            Filter filter = (Filter) arguments.get()[0];
-                            if (filter instanceof IsLessThan) {
-                                return ((IsLessThan) filter).comparisonValue() instanceof Number;
-                            } else if (filter instanceof IsLessThanOrEqualTo) {
-                                return ((IsLessThanOrEqualTo) filter).comparisonValue() instanceof Number;
-                            } else if (filter instanceof IsGreaterThan) {
-                                return ((IsGreaterThan) filter).comparisonValue() instanceof Number;
-                            } else if (filter instanceof IsGreaterThanOrEqualTo) {
-                                return ((IsGreaterThanOrEqualTo) filter).comparisonValue() instanceof Number;
-                            } else {
-                                return true;
-                            }
-                        }
-                );
+        return EmbeddingStoreWithFilteringIT.should_filter_by_metadata().filter(arguments -> {
+            Filter filter = (Filter) arguments.get()[0];
+            if (filter instanceof IsLessThan) {
+                return ((IsLessThan) filter).comparisonValue() instanceof Number;
+            } else if (filter instanceof IsLessThanOrEqualTo) {
+                return ((IsLessThanOrEqualTo) filter).comparisonValue() instanceof Number;
+            } else if (filter instanceof IsGreaterThan) {
+                return ((IsGreaterThan) filter).comparisonValue() instanceof Number;
+            } else if (filter instanceof IsGreaterThanOrEqualTo) {
+                return ((IsGreaterThanOrEqualTo) filter).comparisonValue() instanceof Number;
+            } else {
+                return true;
+            }
+        });
     }
 
     @Override
     @ParameterizedTest
     @MethodSource("should_filter_by_metadata_not_chroma")
-    protected void should_filter_by_metadata_not(Filter metadataFilter,
-                                                 List<Metadata> matchingMetadatas,
-                                                 List<Metadata> notMatchingMetadatas) {
+    protected void should_filter_by_metadata_not(
+            Filter metadataFilter, List<Metadata> matchingMetadatas, List<Metadata> notMatchingMetadatas) {
         super.should_filter_by_metadata_not(metadataFilter, matchingMetadatas, notMatchingMetadatas);
     }
 
@@ -96,29 +91,30 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     // without "key" metadata!
     // Therefore, all default *not* tests coming from parent class have to be rewritten here.
     protected static Stream<Arguments> should_filter_by_metadata_not_chroma() {
-        return EmbeddingStoreWithFilteringIT.should_filter_by_metadata_not()
-                .map(args -> {
-                    Object[] arguments = args.get();
-                    Filter filter = (Filter) arguments[0];
+        return EmbeddingStoreWithFilteringIT.should_filter_by_metadata_not().map(args -> {
+            Object[] arguments = args.get();
+            Filter filter = (Filter) arguments[0];
 
-                    String key = getMetadataKey(filter);
+            String key = getMetadataKey(filter);
 
-                    List<Metadata> matchingMetadatas = (List<Metadata>) arguments[1];
-                    List<Metadata> newMatchingMetadatas = matchingMetadatas.stream()
-                            .filter(metadata -> metadata.containsKey(key))
-                            .collect(toList());
+            List<Metadata> matchingMetadatas = (List<Metadata>) arguments[1];
+            List<Metadata> newMatchingMetadatas = matchingMetadatas.stream()
+                    .filter(metadata -> metadata.containsKey(key))
+                    .collect(toList());
 
-                    List<Metadata> notMatchingMetadatas = (List<Metadata>) arguments[2];
-                    List<Metadata> newNotMatchingMetadatas = new ArrayList<>(notMatchingMetadatas);
-                    newNotMatchingMetadatas.addAll(matchingMetadatas.stream()
-                            .filter(metadata -> !metadata.containsKey(key))
-                            .toList());
+            List<Metadata> notMatchingMetadatas = (List<Metadata>) arguments[2];
+            List<Metadata> newNotMatchingMetadatas = new ArrayList<>(notMatchingMetadatas);
+            newNotMatchingMetadatas.addAll(matchingMetadatas.stream()
+                    .filter(metadata -> !metadata.containsKey(key))
+                    .toList());
 
-                    assertThat(Stream.concat(newMatchingMetadatas.stream(), newNotMatchingMetadatas.stream()))
-                            .containsExactlyInAnyOrderElementsOf(Stream.concat(matchingMetadatas.stream(), notMatchingMetadatas.stream()).collect(toList()));
+            assertThat(Stream.concat(newMatchingMetadatas.stream(), newNotMatchingMetadatas.stream()))
+                    .containsExactlyInAnyOrderElementsOf(
+                            Stream.concat(matchingMetadatas.stream(), notMatchingMetadatas.stream())
+                                    .collect(toList()));
 
-                    return Arguments.of(filter, newMatchingMetadatas, newNotMatchingMetadatas);
-                });
+            return Arguments.of(filter, newMatchingMetadatas, newNotMatchingMetadatas);
+        });
     }
 
     private static String getMetadataKey(Filter filter) {

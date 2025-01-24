@@ -42,16 +42,10 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param logResponses   If true, responses from the Chroma service are logged.
      */
     public ChromaEmbeddingStore(
-        String baseUrl,
-        String collectionName,
-        Duration timeout,
-        boolean logRequests,
-        boolean logResponses
-    ) {
+            String baseUrl, String collectionName, Duration timeout, boolean logRequests, boolean logResponses) {
         this.collectionName = getOrDefault(collectionName, "default");
 
-        this.chromaClient =
-            new ChromaClient.Builder()
+        this.chromaClient = new ChromaClient.Builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(5)))
                 .logRequests(logRequests)
@@ -117,12 +111,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         public ChromaEmbeddingStore build() {
             return new ChromaEmbeddingStore(
-                this.baseUrl,
-                this.collectionName,
-                this.timeout,
-                this.logRequests,
-                this.logResponses
-            );
+                    this.baseUrl, this.collectionName, this.timeout, this.logRequests, this.logResponses);
         }
     }
 
@@ -155,40 +144,37 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
-        addAll(
-            singletonList(id),
-            singletonList(embedding),
-            textSegment == null ? null : singletonList(textSegment)
-        );
+        addAll(singletonList(id), singletonList(embedding), textSegment == null ? null : singletonList(textSegment));
     }
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-        AddEmbeddingsRequest addEmbeddingsRequest = AddEmbeddingsRequest
-            .builder()
-            .embeddings(embeddings.stream().map(Embedding::vector).collect(toList()))
-            .ids(ids)
-            .metadatas(
-                textSegments == null
-                    ? null
-                    : textSegments.stream().map(TextSegment::metadata).map(Metadata::toMap).collect(toList())
-            )
-            .documents(textSegments == null ? null : textSegments.stream().map(TextSegment::text).collect(toList()))
-            .build();
+        AddEmbeddingsRequest addEmbeddingsRequest = AddEmbeddingsRequest.builder()
+                .embeddings(embeddings.stream().map(Embedding::vector).collect(toList()))
+                .ids(ids)
+                .metadatas(
+                        textSegments == null
+                                ? null
+                                : textSegments.stream()
+                                        .map(TextSegment::metadata)
+                                        .map(Metadata::toMap)
+                                        .collect(toList()))
+                .documents(
+                        textSegments == null
+                                ? null
+                                : textSegments.stream().map(TextSegment::text).collect(toList()))
+                .build();
 
         chromaClient.addEmbeddings(collectionId, addEmbeddingsRequest);
     }
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(
-        Embedding referenceEmbedding,
-        int maxResults,
-        double minScore
-    ) {
+            Embedding referenceEmbedding, int maxResults, double minScore) {
         QueryRequest queryRequest = new QueryRequest.Builder()
-            .queryEmbeddings(referenceEmbedding.vectorAsList())
-            .nResults(maxResults)
-            .build();
+                .queryEmbeddings(referenceEmbedding.vectorAsList())
+                .nResults(maxResults)
+                .build();
 
         return queryAndFilter(queryRequest, minScore);
     }
@@ -196,10 +182,10 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         QueryRequest queryRequest = new QueryRequest.Builder()
-            .queryEmbeddings(request.queryEmbedding().vectorAsList())
-            .nResults(request.maxResults())
-            .where(ChromaMetadataFilterMapper.map(request.filter()))
-            .build();
+                .queryEmbeddings(request.queryEmbedding().vectorAsList())
+                .nResults(request.maxResults())
+                .where(ChromaMetadataFilterMapper.map(request.filter()))
+                .build();
 
         return new EmbeddingSearchResult<>(queryAndFilter(queryRequest, request.minScore()));
     }
@@ -208,18 +194,18 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll(java.util.Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
         chromaClient.deleteEmbeddings(
-            collectionId,
-            DeleteEmbeddingsRequest.builder().ids(new ArrayList<>(ids)).build()
-        );
+                collectionId,
+                DeleteEmbeddingsRequest.builder().ids(new ArrayList<>(ids)).build());
     }
 
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
         chromaClient.deleteEmbeddings(
-            collectionId,
-            DeleteEmbeddingsRequest.builder().where(ChromaMetadataFilterMapper.map(filter)).build()
-        );
+                collectionId,
+                DeleteEmbeddingsRequest.builder()
+                        .where(ChromaMetadataFilterMapper.map(filter))
+                        .build());
     }
 
     @Override
@@ -240,7 +226,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         for (int i = 0; i < queryResponse.getIds().get(0).size(); i++) {
             double score = distanceToScore(queryResponse.getDistances().get(0).get(i));
             String embeddingId = queryResponse.getIds().get(0).get(i);
-            Embedding embedding = Embedding.from(queryResponse.getEmbeddings().get(0).get(i));
+            Embedding embedding =
+                    Embedding.from(queryResponse.getEmbeddings().get(0).get(i));
             TextSegment textSegment = toTextSegment(queryResponse, i);
 
             embeddingMatches.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
@@ -266,6 +253,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void createCollection() {
-        collectionId = chromaClient.createCollection(new CreateCollectionRequest(this.collectionName)).getId();
+        collectionId = chromaClient
+                .createCollection(new CreateCollectionRequest(this.collectionName))
+                .getId();
     }
 }
