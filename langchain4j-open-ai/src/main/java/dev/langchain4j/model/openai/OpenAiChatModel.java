@@ -229,6 +229,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
+    public String observabilityName() {
+        return "openai";
+    }
+
+    @Override
     public int estimateTokenCount(List<ChatMessage> messages) {
         return tokenizer.estimateTokenCountInMessages(messages);
     }

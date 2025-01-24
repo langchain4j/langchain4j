@@ -64,18 +64,18 @@ public interface StreamingChatLanguageModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                ListenersUtil.onResponse(completeResponse, finalChatRequest, attributes, listeners);
+                ListenersUtil.onResponse(completeResponse, finalChatRequest, observabilityName(), attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+                ListenersUtil.onError(error, finalChatRequest, observabilityName(), attributes, listeners);
                 handler.onError(error);
             }
         };
 
-        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, observabilityName(), attributes, listeners);
         doChat(finalChatRequest, observingHandler);
     }
 
@@ -101,6 +101,10 @@ public interface StreamingChatLanguageModel {
 
     default List<ChatModelListener> listeners() {
         return Collections.emptyList();
+    }
+
+    default String observabilityName() {
+        return "_OTHER";
     }
 
     @Experimental

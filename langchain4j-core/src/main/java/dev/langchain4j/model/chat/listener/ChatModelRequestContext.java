@@ -5,6 +5,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 
 import java.util.Map;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -18,21 +19,35 @@ public class ChatModelRequestContext {
     private final ChatRequest chatRequest;
     @Deprecated(forRemoval = true)
     private final ChatModelRequest request;
+    private final String observabilityName;
     private final Map<Object, Object> attributes;
 
-    public ChatModelRequestContext(ChatRequest chatRequest, Map<Object, Object> attributes) {
+    public ChatModelRequestContext(ChatRequest chatRequest, String observabilityName, Map<Object, Object> attributes) {
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.request = ChatModelRequest.fromChatRequest(chatRequest);
+        this.observabilityName = ensureNotBlank(observabilityName, "observabilityName");
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
     /**
-     * @deprecated please use {@link #ChatModelRequestContext(ChatRequest, Map)} instead
+     * @deprecated please use {@link #ChatModelRequestContext(ChatRequest, String, Map)} instead
      */
     @Deprecated(forRemoval = true)
     public ChatModelRequestContext(ChatModelRequest request, Map<Object, Object> attributes) {
         this.chatRequest = ChatModelRequest.toChatRequest(request);
         this.request = ensureNotNull(request, "request");
+        this.observabilityName = null;
+        this.attributes = ensureNotNull(attributes, "attributes");
+    }
+
+    /**
+     * @deprecated please use {@link #ChatModelRequestContext(ChatRequest, String, Map)} instead
+     */
+    @Deprecated(forRemoval = true)
+    public ChatModelRequestContext(ChatModelRequest request, String observabilityName, Map<Object, Object> attributes) {
+        this.chatRequest = ChatModelRequest.toChatRequest(request);
+        this.request = ensureNotNull(request, "request");
+        this.observabilityName = ensureNotBlank(observabilityName, "observabilityName");
         this.attributes = ensureNotNull(attributes, "attributes");
     }
 
@@ -46,6 +61,15 @@ public class ChatModelRequestContext {
     @Deprecated(forRemoval = true)
     public ChatModelRequest request() {
         return request;
+    }
+
+    /**
+     * TODO
+     *
+     * @return
+     */
+    public String observabilityName() {
+        return observabilityName;
     }
 
     /**

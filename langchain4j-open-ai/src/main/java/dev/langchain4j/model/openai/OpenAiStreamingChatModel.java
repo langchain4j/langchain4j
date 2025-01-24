@@ -227,6 +227,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     @Override
+    public String observabilityName() {
+        return "openai";
+    }
+
+    @Override
     public int estimateTokenCount(List<ChatMessage> messages) {
         return tokenizer.estimateTokenCountInMessages(messages);
     }

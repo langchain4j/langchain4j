@@ -53,13 +53,13 @@ public interface ChatLanguageModel {
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        ListenersUtil.onRequest(finalChatRequest, observabilityName(), attributes, listeners);
         try {
             ChatResponse chatResponse = doChat(finalChatRequest);
-            ListenersUtil.onResponse(chatResponse, finalChatRequest, attributes, listeners);
+            ListenersUtil.onResponse(chatResponse, finalChatRequest, observabilityName(), attributes, listeners);
             return chatResponse;
         } catch (Exception error) {
-            ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+            ListenersUtil.onError(error, finalChatRequest, observabilityName(), attributes, listeners);
             throw error;
         }
     }
@@ -98,6 +98,10 @@ public interface ChatLanguageModel {
 
     default List<ChatModelListener> listeners() {
         return Collections.emptyList();
+    }
+
+    default String observabilityName() {
+        return "_OTHER";
     }
 
     @Experimental
