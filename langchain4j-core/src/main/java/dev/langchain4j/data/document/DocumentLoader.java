@@ -7,8 +7,7 @@ import java.io.InputStream;
  */
 public class DocumentLoader {
 
-    private DocumentLoader() {
-    }
+    private DocumentLoader() {}
 
     /**
      * Loads a document from the given source using the given parser.
@@ -23,7 +22,8 @@ public class DocumentLoader {
     public static Document load(DocumentSource source, DocumentParser parser) {
         try (InputStream inputStream = source.inputStream()) {
             Document document = parser.parse(inputStream);
-            source.metadata().toMap().forEach((key, value) -> document.metadata().put(key, value.toString()));
+            source.metadata().toMap().forEach((key, value) -> document.metadata()
+                    .put(key, value.toString()));
             return document;
         } catch (BlankDocumentException e) {
             throw e;
