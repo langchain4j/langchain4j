@@ -410,4 +410,32 @@ OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
     .build();
 ```
 
+### Custom Messages
 
+The `OllamaChatModel` supports custom chat messages in addition to the standard chat message types.
+Custom messages can be used to specify a message with arbitrary attributes. This can be useful for
+some models like Granite Guardian for example that make use of non-standard messages to assess the
+retrieved context used for Retrieval-Augmented Generation (RAG). Let's see how we can use a `CustomMessage`
+to specify a message with arbitrary attributes:
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("granite3-guardian")
+    .build();
+ 
+String retrievedContext = "One significant part of treaty making is that signing a treaty implies recognition that the other side is a sovereign state and that the agreement being considered is enforceable under international law. Hence, nations can be very careful about terming an agreement to be a treaty. For example, within the United States, agreements between states are compacts and agreements between states and the federal government or between agencies of the government are memoranda of understanding.";
+
+List<ChatMessage> messages = List.of(
+    SystemMessage.from("context_relevance"),
+    UserMessage.from("What is the history of treaty making?"),
+    CustomMessage.from(Map.of(
+        "role", "context",
+        "content", retrievedContext
+    ))
+);
+
+ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder().messages(messages).build());
+
+System.out.println(chatResponse.aiMessage().text()); // "Yes" (meaning risk detected by Granite Guardian)
+```

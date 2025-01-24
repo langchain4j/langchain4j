@@ -81,6 +81,11 @@ LLMs are trained to pay more attention to `SystemMessage` than to other types of
 so be careful, and it's better not to give an end user free access to define or inject some input into a `SystemMessage`.
 Usually, it is located at the start of the conversation.
 
+There is also a custom message type:
+
+- `CustomMessage`: This is a custom message that can contain arbitrary attributes. This message type can only be used by
+`ChatLanguageModel` implementations that support it.
+
 Now that we know all types of `ChatMessage`, let's see how we can combine them in the conversation.
 
 In the simplest scenario we can provide a single instance of a `UserMessage` into the `generate` method.
