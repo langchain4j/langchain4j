@@ -32,10 +32,10 @@ class ClassPathSourceTests {
     void findFile(String classPathResource) throws IOException {
         var classPathSource = ClassPathSource.from(classPathResource);
         var urlString = classPathSource.url().getFile();
-        var filename = urlString.substring(urlString.lastIndexOf(File.separatorChar) + 1);
+        var filename = urlString.substring(urlString.lastIndexOf('/') + 1);
         var expectedMetaData = new Metadata()
                 .put(Document.URL, urlString)
-                .put(Document.FILE_NAME, urlString.substring(urlString.lastIndexOf(File.separatorChar) + 1));
+                .put(Document.FILE_NAME, filename);
 
         assertThat(classPathSource)
                 .isNotNull()
