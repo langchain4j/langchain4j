@@ -7,11 +7,11 @@ import io.micrometer.observation.Observation;
 
 public class ChatModelObservationContext extends Observation.Context {
 
-    ChatModelRequestContext requestContext;
+    private final ChatModelRequestContext requestContext;
 
-    ChatModelResponseContext responseContext;
+    private ChatModelResponseContext responseContext;
 
-    ChatModelErrorContext errorContext;
+    private ChatModelErrorContext errorContext;
 
     public ChatModelObservationContext(
             ChatModelRequestContext requestContext,
