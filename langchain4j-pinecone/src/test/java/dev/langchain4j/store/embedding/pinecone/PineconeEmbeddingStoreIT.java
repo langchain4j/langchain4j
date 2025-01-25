@@ -12,43 +12,31 @@ import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-@Testcontainers
+@EnabledIfEnvironmentVariable(named = "PINECONE_API_KEY", matches = ".+")
 class PineconeEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
+    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    @Container
-    private static final PineconeContainer pineconeContainer = new PineconeContainer();
-
-    private static final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-    private static EmbeddingStore<TextSegment> embeddingStore;
-
-    @BeforeAll
-    static void beforeAll() {
-        String host = "http://localhost:5080";
-        embeddingStore = PineconeEmbeddingStore.builder()
-                .host(host)
-                .apiKey("apiKey")
-                .index("test")
-                .nameSpace(randomUUID())
-                .createIndex(PineconeServerlessIndexConfig.builder()
-                        .cloud("AWS")
-                        .region("us-east-1")
-                        .dimension(embeddingModel.dimension())
-                        .build())
-                .build();
-    }
+    EmbeddingStore<TextSegment> embeddingStore = PineconeEmbeddingStore.builder()
+            .apiKey(System.getenv("PINECONE_API_KEY"))
+            .index("test")
+            .nameSpace(randomUUID())
+            .createIndex(PineconeServerlessIndexConfig.builder()
+                    .cloud("AWS")
+                    .region("us-east-1")
+                    .dimension(embeddingModel.dimension())
+                    .build())
+            .build();
 
     @AfterEach
     protected void clear() {
