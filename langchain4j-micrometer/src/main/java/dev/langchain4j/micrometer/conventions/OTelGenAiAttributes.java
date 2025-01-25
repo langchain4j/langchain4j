@@ -91,21 +91,6 @@ public enum OTelGenAiAttributes {
      */
     ERROR_TYPE("error.type"),
 
-    // GenAI Usage
-
-    /**
-     * The number of tokens used in the model input.
-     */
-    USAGE_INPUT_TOKENS("gen_ai.usage.input_tokens"),
-    /**
-     * The number of tokens used in the model output.
-     */
-    USAGE_OUTPUT_TOKENS("gen_ai.usage.output_tokens"),
-    /**
-     * The total number of tokens used in the model exchange.
-     */
-    USAGE_TOTAL_TOKENS("gen_ai.usage.total_tokens"),
-
     // GenAI Content
 
     /**
