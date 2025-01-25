@@ -13,7 +13,7 @@ sidebar_position: 18
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mariadb</artifactId>
-    <version>xxx</version>
+    <version>1.0.0-beta1</version>
 </dependency>
 ```
 

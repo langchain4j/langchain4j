@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.mariadb;
 import java.sql.SQLException;
 import org.mariadb.jdbc.Driver;
 
-public class MariaDbValidator {
+class MariaDbValidator {
 
     /**
      * Escaped identifier according to MariaDB requirement.

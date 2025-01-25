@@ -30,7 +30,7 @@ abstract class MariaDbEmbeddingStoreConfigTest extends EmbeddingStoreWithFilteri
                         mariadbContainer.getJdbcUrl(), mariadbContainer.getUsername(), mariadbContainer.getPassword());
         try {
             dataSource = new MariaDbPoolDataSource(jdbcUrl);
-            embeddingStore = MariaDbEmbeddingStore.datasourceBuilder()
+            embeddingStore = MariaDbEmbeddingStore.builder()
                     .datasource(dataSource)
                     .table(TABLE_NAME)
                     .dimension(TABLE_DIMENSION)

@@ -66,9 +66,9 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Constructor for MariaDbEmbeddingStore Class
      *
      * @param datasource            The datasource to use
-     * @param builder               Common part of builder
+     * @param builder               builder
      */
-    private MariaDbEmbeddingStore(DataSource datasource, CommonBuilder builder) {
+    private MariaDbEmbeddingStore(DataSource datasource, Builder builder) {
         this.datasource = ensureNotNull(datasource, "datasource");
         this.table = validateAndEnquoteIdentifier(builder.table, DEFAULT_TABLE_NAME);
         this.contentFieldName = validateAndEnquoteIdentifier(builder.contentFieldName, DEFAULT_COLUMN_CONTENT);
@@ -378,7 +378,17 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         return new Builder();
     }
 
-    public static final class Builder extends CommonBuilder {
+    public static final class Builder {
+        private String table;
+        private MariaDBDistanceType distanceType;
+        private String idFieldName;
+        private String embeddingFieldName;
+        private String contentFieldName;
+        private MetadataStorageConfig metadataStorageConfig;
+        private boolean dropTableFirst;
+        private boolean createTable = true;
+        private int dimension = 1536;
+        private DataSource datasource;
         private String url;
         private String user;
         private String password;
@@ -402,217 +412,82 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         @NonNull
-        @Override
-        public Builder table(@NonNull String table) {
-            return (Builder) super.table(table);
-        }
-
-        @NonNull
-        @Override
-        public Builder distanceType(@NonNull MariaDBDistanceType distanceType) {
-            return (Builder) super.distanceType(distanceType);
-        }
-
-        @NonNull
-        @Override
-        public Builder idFieldName(@NonNull String idFieldName) {
-            return (Builder) super.idFieldName(idFieldName);
-        }
-
-        @NonNull
-        @Override
-        public Builder embeddingFieldName(@NonNull String embeddingFieldName) {
-            return (Builder) super.embeddingFieldName(embeddingFieldName);
-        }
-
-        @NonNull
-        @Override
-        public Builder contentFieldName(@NonNull String contentFieldName) {
-            return (Builder) super.contentFieldName(contentFieldName);
-        }
-
-        @NonNull
-        @Override
-        public Builder metadataStorageConfig(@NonNull MetadataStorageConfig metadataStorageConfig) {
-            return (Builder) super.metadataStorageConfig(metadataStorageConfig);
-        }
-
-        @NonNull
-        @Override
-        public Builder dropTableFirst(boolean dropTableFirst) {
-            return (Builder) super.dropTableFirst(dropTableFirst);
-        }
-
-        @NonNull
-        @Override
-        public Builder createTable(boolean createTable) {
-            return (Builder) super.createTable(createTable);
-        }
-
-        @NonNull
-        @Override
-        public Builder dimension(int dimension) {
-            return (Builder) super.dimension(dimension);
-        }
-
-        @NonNull
-        public MariaDbEmbeddingStore build() {
-            if (url == null) {
-                throw new IllegalArgumentException("set datasource or url ");
-            }
-            MariaDbDataSource datasource;
-            try {
-                datasource = new MariaDbDataSource();
-                datasource.setUrl(this.url);
-                datasource.setUser(this.user);
-                datasource.setPassword(this.password);
-            } catch (SQLException e) {
-                throw new IllegalArgumentException("Wrong url configuring builder: '%s'".formatted(url), e);
-            }
-            return new MariaDbEmbeddingStore(datasource, this);
-        }
-    }
-
-    public static DataSourceBuilder datasourceBuilder() {
-        return new DataSourceBuilder();
-    }
-
-    public static class DataSourceBuilder extends CommonBuilder {
-        private DataSource datasource;
-
-        @NonNull
-        public DataSourceBuilder datasource(@NonNull DataSource datasource) {
+        public Builder datasource(@NonNull DataSource datasource) {
             this.datasource = datasource;
             return this;
         }
 
         @NonNull
-        @Override
-        public DataSourceBuilder table(@NonNull String table) {
-            return (DataSourceBuilder) super.table(table);
-        }
-
-        @NonNull
-        @Override
-        public DataSourceBuilder distanceType(@NonNull MariaDBDistanceType distanceType) {
-            return (DataSourceBuilder) super.distanceType(distanceType);
-        }
-
-        @NonNull
-        @Override
-        public DataSourceBuilder idFieldName(@NonNull String idFieldName) {
-            return (DataSourceBuilder) super.idFieldName(idFieldName);
-        }
-
-        @NonNull
-        @Override
-        public DataSourceBuilder embeddingFieldName(@NonNull String embeddingFieldName) {
-            return (DataSourceBuilder) super.embeddingFieldName(embeddingFieldName);
-        }
-
-        @NonNull
-        @Override
-        public DataSourceBuilder contentFieldName(@NonNull String contentFieldName) {
-            return (DataSourceBuilder) super.contentFieldName(contentFieldName);
-        }
-
-        @NonNull
-        @Override
-        public DataSourceBuilder metadataStorageConfig(@NonNull MetadataStorageConfig metadataStorageConfig) {
-            return (DataSourceBuilder) super.metadataStorageConfig(metadataStorageConfig);
-        }
-
-        @NonNull
-        @Override
-        public DataSourceBuilder dropTableFirst(boolean dropTableFirst) {
-            return (DataSourceBuilder) super.dropTableFirst(dropTableFirst);
-        }
-
-        @NonNull
-        @Override
-        public DataSourceBuilder createTable(boolean createTable) {
-            return (DataSourceBuilder) super.createTable(createTable);
-        }
-
-        @NonNull
-        @Override
-        public DataSourceBuilder dimension(int dimension) {
-            return (DataSourceBuilder) super.dimension(dimension);
-        }
-
-        @NonNull
-        public MariaDbEmbeddingStore build() {
-            return new MariaDbEmbeddingStore(this.datasource, this);
-        }
-    }
-
-    protected abstract static class CommonBuilder {
-        protected String table;
-        protected MariaDBDistanceType distanceType;
-        protected String idFieldName;
-        protected String embeddingFieldName;
-        protected String contentFieldName;
-        protected MetadataStorageConfig metadataStorageConfig;
-        protected boolean dropTableFirst;
-        protected boolean createTable = true;
-
-        protected int dimension = 1536;
-
-        @NonNull
-        public CommonBuilder table(@NonNull String table) {
+        public Builder table(@NonNull String table) {
             this.table = table;
             return this;
         }
 
         @NonNull
-        public CommonBuilder distanceType(@NonNull MariaDBDistanceType distanceType) {
+        public Builder distanceType(@NonNull MariaDBDistanceType distanceType) {
             this.distanceType = distanceType;
             return this;
         }
 
         @NonNull
-        public CommonBuilder idFieldName(@NonNull String idFieldName) {
+        public Builder idFieldName(@NonNull String idFieldName) {
             this.idFieldName = idFieldName;
             return this;
         }
 
         @NonNull
-        public CommonBuilder embeddingFieldName(@NonNull String embeddingFieldName) {
+        public Builder embeddingFieldName(@NonNull String embeddingFieldName) {
             this.embeddingFieldName = embeddingFieldName;
             return this;
         }
 
         @NonNull
-        public CommonBuilder contentFieldName(@NonNull String contentFieldName) {
+        public Builder contentFieldName(@NonNull String contentFieldName) {
             this.contentFieldName = contentFieldName;
             return this;
         }
 
         @NonNull
-        public CommonBuilder metadataStorageConfig(@NonNull MetadataStorageConfig metadataStorageConfig) {
+        public Builder metadataStorageConfig(@NonNull MetadataStorageConfig metadataStorageConfig) {
             this.metadataStorageConfig = metadataStorageConfig;
             return this;
         }
 
         @NonNull
-        public CommonBuilder dropTableFirst(boolean dropTableFirst) {
+        public Builder dropTableFirst(boolean dropTableFirst) {
             this.dropTableFirst = dropTableFirst;
             return this;
         }
 
         @NonNull
-        public CommonBuilder createTable(boolean createTable) {
+        public Builder createTable(boolean createTable) {
             this.createTable = createTable;
             return this;
         }
 
         @NonNull
-        public CommonBuilder dimension(int dimension) {
+        public Builder dimension(int dimension) {
             this.dimension = dimension;
             return this;
         }
 
         @NonNull
-        public abstract MariaDbEmbeddingStore build();
+        public MariaDbEmbeddingStore build() {
+            if (datasource == null) {
+                if (url == null) {
+                    throw new IllegalArgumentException("set datasource or url ");
+                }
+                MariaDbDataSource ds = new MariaDbDataSource();
+                try {
+                    ds.setUrl(this.url);
+                    ds.setUser(this.user);
+                    ds.setPassword(this.password);
+                } catch (SQLException e) {
+                    throw new IllegalArgumentException("Wrong url configuring builder: '%s'".formatted(url), e);
+                }
+                datasource = ds;
+            }
+            return new MariaDbEmbeddingStore(datasource, this);
+        }
     }
 }
