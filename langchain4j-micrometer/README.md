@@ -42,7 +42,7 @@ For Gradle:
 implementation 'org.springframework.boot:spring-boot-starter-actuator'
 ```
 
-Enable the metrics for Actuator in your properties.
+Enable the `/metrics` Actuator endpoint in your properties.
 
 application.properties:
 ```properties
