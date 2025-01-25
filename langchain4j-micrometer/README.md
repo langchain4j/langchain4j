@@ -65,10 +65,13 @@ Then, add the `MicrometerChatModelListener` to a list of listeners for your Chat
 Finally, add this list of listeners to the chat model in its builder.
 
 ```java
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.observation.ObservationRegistry;
+
 List<ChatModelListener> list;
 
-public ChatApp(ObservationRegistry observationRegistry, CompositeMeterRegistry meterRegistry) {
-        this.list = List.of(new MicrometerChatModelListener(meterRegistry, observationRegistry));
+public ChatApp(MeterRegistry meterRegistry, ObservationRegistry observationRegistry) {
+        this.list = List.of(new MicrometerChatModelListener(meterRegistry, observationRegistry, "azure_openai"));
     }
     
 // For example an AzureOpenAiChatModel
