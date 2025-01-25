@@ -121,7 +121,28 @@
             <scope>test</scope>
         </dependency>
 
+        <!--  Contains references to a jar file created specifically for the ClasspathFileSystemDocumentLoaderTest tests  -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-classpath-test-lib</artifactId>
+            <version>999-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
+
+    <!--  Contains references to a jar file created specifically for the ClasspathFileSystemDocumentLoaderTest tests  -->
+    <repositories>
+        <repository>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+                <checksumPolicy>ignore</checksumPolicy>
+            </snapshots>
+            <id>local-classpath-test-repo</id>
+            <url>file:///${project.basedir}/src/test/externalLib</url>
+        </repository>
+    </repositories>
 
     <build>
         <plugins>
@@ -154,7 +175,16 @@
                 </executions>
             </plugin>
 
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <!-- This was manually built  -->
+                        <exclude>dev.langchain4j:langchain4j-classpath-test-lib</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
-
 </project>

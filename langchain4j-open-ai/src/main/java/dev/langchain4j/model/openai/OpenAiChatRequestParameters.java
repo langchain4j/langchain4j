@@ -8,10 +8,12 @@ import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 
 @Experimental
 public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
+    private final Integer maxCompletionTokens;
     private final Map<String, Integer> logitBias;
     private final Boolean parallelToolCalls;
     private final Integer seed;
@@ -22,6 +24,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
     private OpenAiChatRequestParameters(Builder builder) {
         super(builder);
+        this.maxCompletionTokens = builder.maxCompletionTokens;
         this.logitBias = copyIfNotNull(builder.logitBias);
         this.parallelToolCalls = builder.parallelToolCalls;
         this.seed = builder.seed;
@@ -31,25 +34,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         this.serviceTier = builder.serviceTier;
     }
 
-    OpenAiChatRequestParameters(ChatRequestParameters parameters) {
-        super(parameters);
-        if (parameters instanceof OpenAiChatRequestParameters openAiParameters) {
-            this.logitBias = copyIfNotNull(openAiParameters.logitBias);
-            this.parallelToolCalls = openAiParameters.parallelToolCalls;
-            this.seed = openAiParameters.seed;
-            this.user = openAiParameters.user;
-            this.store = openAiParameters.store;
-            this.metadata = copyIfNotNull(openAiParameters.metadata);
-            this.serviceTier = openAiParameters.serviceTier;
-        } else {
-            this.logitBias = null;
-            this.parallelToolCalls = null;
-            this.seed = null;
-            this.user = null;
-            this.store = null;
-            this.metadata = null;
-            this.serviceTier = null;
-        }
+    public Integer maxCompletionTokens() {
+        return maxCompletionTokens;
     }
 
     public Map<String, Integer> logitBias() {
@@ -81,12 +67,21 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     }
 
     @Override
+    public OpenAiChatRequestParameters overrideWith(ChatRequestParameters that) {
+        return OpenAiChatRequestParameters.builder()
+                .overrideWith(this)
+                .overrideWith(that)
+                .build();
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         OpenAiChatRequestParameters that = (OpenAiChatRequestParameters) o;
-        return Objects.equals(logitBias, that.logitBias)
+        return Objects.equals(maxCompletionTokens, that.maxCompletionTokens)
+                && Objects.equals(logitBias, that.logitBias)
                 && Objects.equals(parallelToolCalls, that.parallelToolCalls)
                 && Objects.equals(seed, that.seed)
                 && Objects.equals(user, that.user)
@@ -99,6 +94,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     public int hashCode() {
         return Objects.hash(
                 super.hashCode(),
+                maxCompletionTokens,
                 logitBias,
                 parallelToolCalls,
                 seed,
@@ -123,6 +119,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 ", toolSpecifications=" + toolSpecifications() +
                 ", toolChoice=" + toolChoice() +
                 ", responseFormat=" + responseFormat() +
+                ", maxCompletionTokens=" + maxCompletionTokens +
                 ", logitBias=" + logitBias +
                 ", parallelToolCalls=" + parallelToolCalls +
                 ", seed=" + seed +
@@ -139,6 +136,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
 
+        private Integer maxCompletionTokens;
         private Map<String, Integer> logitBias;
         private Boolean parallelToolCalls;
         private Integer seed;
@@ -147,8 +145,29 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         private Map<String, String> metadata;
         private String serviceTier;
 
+        @Override
+        public Builder overrideWith(ChatRequestParameters parameters) {
+            super.overrideWith(parameters);
+            if (parameters instanceof OpenAiChatRequestParameters openAiParameters) {
+                maxCompletionTokens(getOrDefault(openAiParameters.maxCompletionTokens(), maxCompletionTokens));
+                logitBias(copyIfNotNull(getOrDefault(openAiParameters.logitBias(), logitBias)));
+                parallelToolCalls(getOrDefault(openAiParameters.parallelToolCalls(), parallelToolCalls));
+                seed(getOrDefault(openAiParameters.seed(), seed));
+                user(getOrDefault(openAiParameters.user(), user));
+                store(getOrDefault(openAiParameters.store(), store));
+                metadata(copyIfNotNull(getOrDefault(openAiParameters.metadata(), metadata)));
+                serviceTier(getOrDefault(openAiParameters.serviceTier(), serviceTier));
+            }
+            return this;
+        }
+
         public Builder modelName(OpenAiChatModelName modelName) {
             return super.modelName(modelName.toString());
+        }
+
+        public Builder maxCompletionTokens(Integer maxCompletionTokens) {
+            this.maxCompletionTokens = maxCompletionTokens;
+            return this;
         }
 
         public Builder logitBias(Map<String, Integer> logitBias) {
