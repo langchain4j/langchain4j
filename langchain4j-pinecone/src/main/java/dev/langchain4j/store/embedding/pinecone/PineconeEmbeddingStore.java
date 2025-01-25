@@ -71,6 +71,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                                   String environment,
                                   String projectId) {
         this(
+                null,
                 apiKey,
                 null,
                 index,
@@ -95,7 +96,8 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param environment     (Deprecated) Please use @{@link Builder#createIndex(PineconeIndexConfig)}.
      * @param projectId       (Deprecated) Please use @{@link Builder#createIndex(PineconeIndexConfig)}.
      */
-    public PineconeEmbeddingStore(String apiKey,
+    public PineconeEmbeddingStore(Pinecone pineconeClient,
+                                  String apiKey,
                                   String host,
                                   String index,
                                   String nameSpace,
@@ -104,11 +106,15 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                                   String environment,
                                   String projectId) {
         Pinecone client;
-        Pinecone.Builder clientBuilder = new Pinecone.Builder(apiKey);
-        if (!isNullOrEmpty(host)){
-            clientBuilder.withHost(host);
+        if (pineconeClient == null) {
+            Pinecone.Builder clientBuilder = new Pinecone.Builder(apiKey);
+            if (!isNullOrEmpty(host)) {
+                clientBuilder.withHost(host);
+            }
+            client = clientBuilder.build();
+        }else {
+            client = pineconeClient;
         }
-        client = clientBuilder.build();
         this.nameSpace = nameSpace == null ? DEFAULT_NAMESPACE : nameSpace;
         this.metadataTextKey = metadataTextKey == null ? DEFAULT_METADATA_TEXT_KEY : metadataTextKey;
 
@@ -246,6 +252,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     public static class Builder {
 
+        private Pinecone client;
         private String apiKey;
         private String host;
         private String index;
@@ -256,6 +263,15 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String environment;
         @Deprecated(forRemoval = true)
         private String projectId;
+
+
+        /**
+         * @param client the Pinecone client
+         */
+        public Builder client(Pinecone client) {
+            this.client = client;
+            return this;
+        }
 
         /**
          * @param apiKey The Pinecone API key.
@@ -327,7 +343,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public PineconeEmbeddingStore build() {
-            return new PineconeEmbeddingStore(apiKey, host, index, nameSpace, metadataTextKey, createIndex, environment, projectId);
+            return new PineconeEmbeddingStore(client, apiKey, host, index, nameSpace, metadataTextKey, createIndex, environment, projectId);
         }
     }
 }
