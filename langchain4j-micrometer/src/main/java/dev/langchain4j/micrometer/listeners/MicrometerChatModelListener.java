@@ -76,7 +76,7 @@ public class MicrometerChatModelListener implements ChatModelListener {
                 .lowCardinalityKeyValue(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
                 .lowCardinalityKeyValue(
                         OTelGenAiAttributes.REQUEST_MODEL.value(),
-                        requestContext.request().model())
+                        requestContext.chatRequest().parameters().modelName())
                 .contextualName("GenAI operation duration")
                 .start();
     }
@@ -96,7 +96,7 @@ public class MicrometerChatModelListener implements ChatModelListener {
     private void updateObservationWithResponse(Observation observation, ChatModelResponseContext responseContext) {
         observation.lowCardinalityKeyValue(
                 OTelGenAiAttributes.RESPONSE_MODEL.value(),
-                responseContext.response().model());
+                responseContext.chatResponse().metadata().modelName());
     }
 
     private String getSystemValue(Map<Object, Object> attributes) {
@@ -120,7 +120,7 @@ public class MicrometerChatModelListener implements ChatModelListener {
         observation
                 .lowCardinalityKeyValue(
                         OTelGenAiAttributes.REQUEST_MODEL.value(),
-                        errorContext.request().model())
+                        errorContext.chatRequest().parameters().modelName())
                 .lowCardinalityKeyValue(
                         OTelGenAiAttributes.ERROR_TYPE.value(),
                         errorContext.error().getClass().getSimpleName());

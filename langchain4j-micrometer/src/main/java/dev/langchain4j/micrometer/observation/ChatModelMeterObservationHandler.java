@@ -50,7 +50,7 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
                 .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(requestContext.attributes()))
                 .tag(
                         OTelGenAiAttributes.REQUEST_MODEL.value(),
-                        requestContext.request().model())
+                        requestContext.chatRequest().parameters().modelName())
                 .description("The number of requests that were made to the chat model")
                 .register(meterRegistry)
                 .increment();
@@ -62,14 +62,14 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
                 .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(errorContext.attributes()))
                 .tag(
                         OTelGenAiAttributes.REQUEST_MODEL.value(),
-                        errorContext.request().model())
+                        errorContext.chatRequest().parameters().modelName())
                 .description("The number of errors that occurred in the chat model")
                 .register(meterRegistry)
                 .increment();
     }
 
     private void addResponseMetrics(ChatModelResponseContext responseContext) {
-        if (responseContext.response().tokenUsage() != null) {
+        if (responseContext.chatResponse().tokenUsage() != null) {
             addTokenUsageMetrics(responseContext);
         }
     }
@@ -78,12 +78,12 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
         addTokenMetric(
                 responseContext,
                 OTelGenAiTokenType.INPUT,
-                responseContext.response().tokenUsage().inputTokenCount(),
+                responseContext.chatResponse().tokenUsage().inputTokenCount(),
                 "Measures the number of input tokens used");
         addTokenMetric(
                 responseContext,
                 OTelGenAiTokenType.OUTPUT,
-                responseContext.response().tokenUsage().outputTokenCount(),
+                responseContext.chatResponse().tokenUsage().outputTokenCount(),
                 "Measures the number of output tokens used");
     }
 
@@ -97,10 +97,10 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
                 .tag(OTelGenAiAttributes.SYSTEM.value(), getSystemValue(responseContext.attributes()))
                 .tag(
                         OTelGenAiAttributes.REQUEST_MODEL.value(),
-                        responseContext.request().model())
+                        responseContext.chatRequest().parameters().modelName())
                 .tag(
                         OTelGenAiAttributes.RESPONSE_MODEL.value(),
-                        responseContext.response().model())
+                        responseContext.chatResponse().metadata().modelName())
                 .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), tokenType.value())
                 .description(description)
                 .register(meterRegistry)

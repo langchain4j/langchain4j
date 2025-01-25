@@ -1,5 +1,7 @@
 package dev.langchain4j.micrometer.listeners;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.micrometer.conventions.OTelGenAiAttributes;
 import dev.langchain4j.micrometer.conventions.OTelGenAiMetricName;
@@ -12,12 +14,9 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.tck.TestObservationRegistry;
 import io.micrometer.observation.tck.TestObservationRegistryAssert;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class MicrometerChatModelListenerIT {
 
