@@ -1,17 +1,11 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.contentFilterManagement;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.Choice;
 import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -19,14 +13,19 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -300,14 +299,9 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             });
 
             Response<AiMessage> response = responseBuilder.build(tokenizer, false);
+
             handler.onComplete(
                     Response.from(response.content().text(), response.tokenUsage(), response.finishReason()));
-        } catch (HttpResponseException httpResponseException) {
-            logger.info("Error generating response, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
-            Response<String> response = Response.from(httpResponseException.getMessage(), null, exceptionFinishReason);
-
-            handler.onComplete(response);
         } catch (Exception exception) {
             handler.onError(exception);
         }
@@ -413,6 +407,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
         /**
          * Used to authenticate to Azure OpenAI with Azure Active Directory credentials.
+         *
          * @param tokenCredential the credentials to authenticate with Azure Active Directory
          * @return builder
          */

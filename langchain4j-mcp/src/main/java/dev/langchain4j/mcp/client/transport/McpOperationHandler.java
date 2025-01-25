@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.mcp.client.protocol.PingResponse;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
@@ -16,9 +17,11 @@ public class McpOperationHandler {
 
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations;
     private static final Logger log = LoggerFactory.getLogger(McpOperationHandler.class);
+    private final McpTransport transport;
 
-    public McpOperationHandler(Map<Long, CompletableFuture<JsonNode>> pendingOperations) {
+    public McpOperationHandler(Map<Long, CompletableFuture<JsonNode>> pendingOperations, McpTransport transport) {
         this.pendingOperations = pendingOperations;
+        this.transport = transport;
     }
 
     public void handle(JsonNode message) {
@@ -28,6 +31,13 @@ public class McpOperationHandler {
             if (op != null) {
                 op.complete(message);
             } else {
+                if (message.has("method")) {
+                    String method = message.get("method").asText();
+                    if (method.equals("ping")) {
+                        transport.executeOperationWithoutResponse(new PingResponse(messageId));
+                        return;
+                    }
+                }
                 log.warn("Received response for unknown message id: {}", messageId);
             }
         } else {
