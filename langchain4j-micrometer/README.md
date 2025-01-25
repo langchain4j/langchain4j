@@ -5,7 +5,7 @@ It uses the Micrometer Observation API in a `ChatModelListener` to collect metri
 The following metrics are collected:
 
 - `langchain4j.chat.model.request` - The number of requests made to the chat model. Not part of the OpenTelemetry Semantic Conventions.
-- `langchain4j.chat.model.error` - The number of errors that soccurred during the chat model interaction. Not part of the OpenTelemetry Semantic Conventions.
+- `langchain4j.chat.model.error` - The number of errors that occurred during the chat model interaction. Not part of the OpenTelemetry Semantic Conventions.
 - `gen_ai.client.operation.duration` - The duration of the GenAI operation.
 - `gen_ai.client.token.usage` - The number of tokens used by the model for input, output, or both.
 
