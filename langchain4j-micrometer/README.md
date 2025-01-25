@@ -91,11 +91,9 @@ You can view the metrics by visiting the `/actuator/metrics` endpoint of your ap
 The measurement of tokens for the `gen_ai.client.token.usage` metric is based on the `gen_ai.token.type` tag. The tag can have the following values:
 - `output`: The number of tokens used for the output.
 - `input`: The number of tokens used for the input.
-- `total`: The total number of tokens used for both input and output.
 
 For each tag (output, input or total), you can view the metrics by visiting the following endpoints:
 - `output`: `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:output`
 - `input`: `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:input`
-- `total`: `/actuator/metrics/gen_ai.client.token.usage?tag=gen_ai.token.type:total`
 
-**Be advised**, the endpoint for the `gen_ai.client.token.usage` metric shows the sum of the values of all tags. This value is NOT the total amount of tokens used by the model. Check the tag `total` for the total amount of tokens used by the model. 
+**Note**, the endpoint for the `gen_ai.client.token.usage` metric, without any tags, shows the sum of the values of both the output and the input tags. Subsequently, this value is the total amount of tokens used by the model. 

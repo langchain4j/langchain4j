@@ -12,11 +12,7 @@ public enum OTelGenAiTokenType {
     /**
      * Output token.
      */
-    OUTPUT("output"),
-    /**
-     * Total token.
-     */
-    TOTAL("total");
+    OUTPUT("output");
 
     private final String value;
 

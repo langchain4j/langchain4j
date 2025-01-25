@@ -85,11 +85,6 @@ public class ChatModelMeterObservationHandler implements ObservationHandler<Chat
                 OTelGenAiTokenType.OUTPUT,
                 responseContext.response().tokenUsage().outputTokenCount(),
                 "Measures the number of output tokens used");
-        addTokenMetric(
-                responseContext,
-                OTelGenAiTokenType.TOTAL,
-                responseContext.response().tokenUsage().totalTokenCount(),
-                "Measures the total number of tokens used (input + output)");
     }
 
     private void addTokenMetric(
