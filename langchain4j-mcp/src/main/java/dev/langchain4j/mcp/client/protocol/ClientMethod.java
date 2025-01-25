@@ -12,5 +12,7 @@ public enum ClientMethod {
     @JsonProperty("notifications/cancelled")
     NOTIFICATION_CANCELLED,
     @JsonProperty("notifications/initialized")
-    NOTIFICATION_INITIALIZED
+    NOTIFICATION_INITIALIZED,
+    @JsonProperty("ping")
+    PING
 }

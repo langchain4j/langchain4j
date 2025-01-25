@@ -152,7 +152,7 @@ public class ToolParameters {
          *
          * @param properties the {@code properties}
          * @return the {@code Builder}.
-         * @deprecated please use {@link JsonObjectSchema.Builder#properties(Map)} instead
+         * @deprecated please use {@link JsonObjectSchema.Builder#addProperties(Map)} instead
          */
         @Deprecated(forRemoval = true)
         public Builder properties(Map<String, Map<String, Object>> properties) {

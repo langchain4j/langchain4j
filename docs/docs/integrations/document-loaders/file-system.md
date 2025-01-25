@@ -17,7 +17,7 @@ sidebar_position: 3
 
 ## APIs
 
-- `FileSystemDocumentLoader`
+- `FileSystemSource` / `FileSystemDocumentLoader`
 
 
 ## Examples
