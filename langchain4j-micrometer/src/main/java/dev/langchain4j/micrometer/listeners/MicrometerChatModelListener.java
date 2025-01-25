@@ -1,5 +1,7 @@
 package dev.langchain4j.micrometer.listeners;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.micrometer.conventions.OTelGenAiAttributes;
 import dev.langchain4j.micrometer.conventions.OTelGenAiMetricName;
@@ -13,12 +15,9 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
-
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Experimental
 public class MicrometerChatModelListener implements ChatModelListener {

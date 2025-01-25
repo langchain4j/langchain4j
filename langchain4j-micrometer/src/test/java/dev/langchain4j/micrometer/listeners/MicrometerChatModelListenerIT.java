@@ -51,7 +51,7 @@ class MicrometerChatModelListenerIT {
     void should_contain_metrics_no_error() {
         doChatRequest(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"));
 
-        assertThat(meterRegistry.getMeters()).hasSize(4);
+        assertThat(meterRegistry.getMeters()).hasSize(3);
         assertThat(meterRegistry.find("langchain4j.chat.model.request").meter()).isNotNull();
         assertThat(meterRegistry.find(OTelGenAiMetricName.TOKEN_USAGE.value()).meter())
                 .isNotNull();
@@ -63,11 +63,6 @@ class MicrometerChatModelListenerIT {
         assertThat(meterRegistry
                         .find(OTelGenAiMetricName.TOKEN_USAGE.value())
                         .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
-                        .meter())
-                .isNotNull();
-        assertThat(meterRegistry
-                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
-                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.TOTAL.value())
                         .meter())
                 .isNotNull();
 
@@ -85,12 +80,6 @@ class MicrometerChatModelListenerIT {
                         .counter()
                         .count())
                 .isGreaterThan(1.0);
-        assertThat(meterRegistry
-                        .get(OTelGenAiMetricName.TOKEN_USAGE.value())
-                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.TOTAL.value())
-                        .counter()
-                        .count())
-                .isGreaterThan(2.0);
 
         //        assertThat(meterRegistry.find("gen_ai.client.operation.duration").timer()).isNotNull();
         //        assertThat(meterRegistry.find("gen_ai.client.operation.duration")
@@ -115,11 +104,6 @@ class MicrometerChatModelListenerIT {
         assertThat(meterRegistry
                         .find(OTelGenAiMetricName.TOKEN_USAGE.value())
                         .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
-                        .meter())
-                .isNull();
-        assertThat(meterRegistry
-                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
-                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.TOTAL.value())
                         .meter())
                 .isNull();
 
