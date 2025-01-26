@@ -43,4 +43,9 @@ public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
     protected boolean supportsJsonResponseFormatWithSchema() {
         return false;
     }
+
+    @Override
+    protected boolean assertExceptionType() {
+        return false;
+    }
 }

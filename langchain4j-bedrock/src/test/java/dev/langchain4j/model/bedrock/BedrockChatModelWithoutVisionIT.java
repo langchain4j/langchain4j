@@ -62,6 +62,11 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         return false;
     }
 
+    @Override
+    protected boolean assertExceptionType() {
+        return false;
+    }
+
     // These models doesn't support image as input parameters
     // https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
     @Override

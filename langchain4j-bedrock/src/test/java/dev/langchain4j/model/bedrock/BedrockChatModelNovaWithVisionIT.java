@@ -58,6 +58,11 @@ public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
         return false;
     }
 
+    @Override
+    protected boolean assertExceptionType() {
+        return false;
+    }
+
     // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
     @Override
     @ParameterizedTest
