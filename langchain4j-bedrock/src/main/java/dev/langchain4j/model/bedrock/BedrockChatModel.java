@@ -95,11 +95,13 @@ public class BedrockChatModel implements ChatLanguageModel {
     public BedrockChatModel(Builder builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
         this.credentialsProvider = getOrDefault(builder.credentialsProvider, DefaultCredentialsProvider.create());
-        this.modelId = ensureNotBlank(getOrDefault(
-                builder.modelId,
-                nonNull(builder.defaultRequestParameters)
-                        ? builder.defaultRequestParameters.modelName()
-                        : null), "modelId");
+        this.modelId = ensureNotBlank(
+                getOrDefault(
+                        builder.modelId,
+                        nonNull(builder.defaultRequestParameters)
+                                ? builder.defaultRequestParameters.modelName()
+                                : null),
+                "modelId");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
         this.client = isNull(builder.client) ? createClient(builder.logRequests, builder.logResponses) : builder.client;
@@ -109,24 +111,20 @@ public class BedrockChatModel implements ChatLanguageModel {
                         nonNull(builder.defaultRequestParameters)
                                 ? builder.defaultRequestParameters.modelName()
                                 : null))
-                .temperature(getOrDefault(
-                        builder.temperature,
+                .temperature(
                         nonNull(builder.defaultRequestParameters)
                                 ? builder.defaultRequestParameters.temperature()
-                                : null))
+                                : null)
                 .maxOutputTokens(getOrDefault(
                         builder.maxTokens,
                         nonNull(builder.defaultRequestParameters)
                                 ? builder.defaultRequestParameters.maxOutputTokens()
                                 : null))
-                .topP(getOrDefault(
-                        builder.topP,
-                        nonNull(builder.defaultRequestParameters) ? builder.defaultRequestParameters.topP() : null))
-                .stopSequences(copyIfNotNull(getOrDefault(
-                        builder.stopSequences,
+                .topP(nonNull(builder.defaultRequestParameters) ? builder.defaultRequestParameters.topP() : null)
+                .stopSequences(copyIfNotNull(
                         nonNull(builder.defaultRequestParameters)
                                 ? builder.defaultRequestParameters.stopSequences()
-                                : null)))
+                                : null))
                 .build();
 
         validate(this.defaultRequestParameters, modelId);
@@ -536,9 +534,6 @@ public class BedrockChatModel implements ChatLanguageModel {
         private AwsCredentialsProvider credentialsProvider;
         private String modelId;
         private Integer maxTokens;
-        private Double temperature;
-        private Double topP;
-        private List<String> stopSequences;
         private Integer maxRetries;
         private Duration timeout;
         private BedrockRuntimeClient client;
@@ -563,21 +558,6 @@ public class BedrockChatModel implements ChatLanguageModel {
 
         public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
-            return this;
-        }
-
-        public Builder temperature(Double temperature) {
-            this.temperature = temperature;
-            return this;
-        }
-
-        public Builder topP(Double topP) {
-            this.topP = topP;
-            return this;
-        }
-
-        public Builder stopSequences(List<String> stopSequences) {
-            this.stopSequences = stopSequences;
             return this;
         }
 
