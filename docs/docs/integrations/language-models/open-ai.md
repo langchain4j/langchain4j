@@ -59,11 +59,13 @@ The `demo` key has a quota, is restricted to the `gpt-4o-mini` model, and should
 ```java
 ChatLanguageModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        ...
+        .defaultRequestParameters(ChatRequestParameters.builder()
+                .modelName("gpt-4o-mini")
+                .temperature(0.7)
+                .build())
         .build();
 ```
-This will create an instance of `OpenAiChatModel` with default model parameters (e.g. `gpt-3.5-turbo` model name, `0.7` temperature, etc.).
-Default model parameters can be customized by providing values in the builder.
+This will create an instance of `OpenAiChatModel` with the specified default parameters.
 
 ### Spring Boot
 Add to the `application.properties`:
@@ -156,9 +158,12 @@ Other return types will be supported in the near future.
 
 ### Plain Java
 ```java
-OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        ...
+        .defaultRequestParameters(ChatRequestParameters.builder()
+                .modelName("gpt-4o-mini")
+                .temperature(0.7)
+                .build())
         .build();
 ```
 
