@@ -23,7 +23,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public class ChromaEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    private static final ChromaDBContainer chroma = new ChromaDBContainer("chromadb/chroma:latest");
+    private static final ChromaDBContainer chroma = new ChromaDBContainer("chromadb/chroma:0.5.4");
 
     EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
             .baseUrl(chroma.getEndpoint())
