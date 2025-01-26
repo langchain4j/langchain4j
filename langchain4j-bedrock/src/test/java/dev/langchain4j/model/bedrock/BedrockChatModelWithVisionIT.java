@@ -34,13 +34,13 @@ public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
                 .build();
     }
 
-    //output format not supported
+    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormat() {
         return false;
     }
 
-    //output format not supported
+    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
         return false;

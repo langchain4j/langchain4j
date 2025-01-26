@@ -54,13 +54,13 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         return false;
     }
 
-    //output format not supported
+    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormat() {
         return false;
     }
 
-    //output format not supported
+    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
         return false;
@@ -77,6 +77,7 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false;
     }
+
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
         return false;
@@ -95,7 +96,8 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         }
     }
 
-    // Nova models include support StopSequence but have an incoherrent behavior, it includes the stopSequence in the response
+    // Nova models include support StopSequence but have an incoherrent behavior, it includes the stopSequence in the
+    // response
     // TODO Titan express error : "Malformed input request: 3 schema violations found"
     @Override
     @ParameterizedTest

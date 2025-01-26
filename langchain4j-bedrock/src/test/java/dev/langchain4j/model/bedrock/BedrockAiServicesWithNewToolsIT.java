@@ -1,14 +1,12 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.model.bedrock.converse.TestedModels.*;
+
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.AiServicesWithNewToolsIT;
-import dev.langchain4j.service.common.AbstractAiServiceIT;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.List;
-
-import static dev.langchain4j.model.bedrock.converse.TestedModels.*;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockAiServicesWithNewToolsIT extends AiServicesWithNewToolsIT {
@@ -24,5 +22,4 @@ class BedrockAiServicesWithNewToolsIT extends AiServicesWithNewToolsIT {
             Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
     }
-
 }

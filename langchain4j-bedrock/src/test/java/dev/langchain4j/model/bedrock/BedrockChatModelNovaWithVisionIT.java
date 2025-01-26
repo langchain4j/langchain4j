@@ -50,13 +50,13 @@ public class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
         return false;
     }
 
-    //output format not supported
+    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormat() {
         return false;
     }
 
-    //output format not supported
+    // output format not supported
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
         return false;
