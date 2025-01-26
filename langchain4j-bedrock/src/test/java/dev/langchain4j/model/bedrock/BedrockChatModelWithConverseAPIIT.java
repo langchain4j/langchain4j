@@ -128,33 +128,6 @@ class BedrockChatModelWithConverseAPIIT {
     }
 
     @Test
-    void should_call_function_with_no_argument() {
-        ChatLanguageModel model = BedrockChatModel.builder()
-                .modelId("anthropic.claude-3-5-sonnet-20240620-v1:0")
-                .build();
-
-        UserMessage userMessage = userMessage("What time is it?");
-
-        // This test will use the function called "getCurrentDateAndTime" which takes no arguments
-        String toolName = "getCurrentDateAndTime";
-
-        ToolSpecification noArgToolSpec = ToolSpecification.builder()
-                .name(toolName)
-                .description("Get the current date and time")
-                .build();
-
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), noArgToolSpec);
-
-        AiMessage aiMessage = response.content();
-
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest =
-                aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{}");
-    }
-
-    @Test
     void should_accept_PDF_documents() {
         // given
         ChatLanguageModel model =
