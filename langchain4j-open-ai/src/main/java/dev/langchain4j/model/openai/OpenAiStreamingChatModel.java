@@ -37,7 +37,6 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.convertHandler;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiChatRequest;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyList;
@@ -122,12 +121,12 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
                 // common parameters
-                .modelName(getOrDefault(getOrDefault(modelName, commonParameters.modelName()), GPT_3_5_TURBO))
-                .temperature(getOrDefault(getOrDefault(temperature, commonParameters.temperature()), 0.7))
+                .modelName(getOrDefault(modelName, commonParameters.modelName()))
+                .temperature(getOrDefault(temperature, commonParameters.temperature()))
                 .topP(getOrDefault(topP, commonParameters.topP()))
                 .frequencyPenalty(getOrDefault(frequencyPenalty, commonParameters.frequencyPenalty()))
                 .presencePenalty(getOrDefault(presencePenalty, commonParameters.presencePenalty()))
-                .maxOutputTokens(getOrDefault(maxTokens, commonParameters.maxOutputTokens())) // TODO maxCompletionTokens
+                .maxOutputTokens(getOrDefault(maxTokens, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(stop, () -> copyIfNotNull(commonParameters.stopSequences())))
                 .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
                 .toolChoice(commonParameters.toolChoice())
@@ -141,6 +140,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .store(getOrDefault(store, openAiParameters.store()))
                 .metadata(getOrDefault(metadata, () -> copyIfNotNull(openAiParameters.metadata())))
                 .serviceTier(getOrDefault(serviceTier, openAiParameters.serviceTier()))
+                .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(strictTools, false); // TODO move into OpenAI-specific params?
