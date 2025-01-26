@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -57,6 +58,7 @@ class CompressingQueryTransformerIT {
                                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                                 .apiKey(System.getenv("OPENAI_API_KEY"))
                                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                                .modelName(GPT_4_O_MINI)
                                 .logRequests(true)
                                 .logResponses(true)
                                 .build()

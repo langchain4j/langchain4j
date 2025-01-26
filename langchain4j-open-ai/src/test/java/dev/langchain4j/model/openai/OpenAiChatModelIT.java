@@ -15,6 +15,8 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.Base64;
 import java.util.List;
@@ -30,6 +32,7 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiChatModelIT {
@@ -73,6 +76,32 @@ class OpenAiChatModelIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = OpenAiChatModelName.class, mode = EXCLUDE, names = {
+            "GPT_4_32K", "GPT_4_32K_0613", "O1", "O1_2024_12_17", // don't have access
+            "GPT_4_VISION_PREVIEW" // deprecated
+    })
+    void should_support_all_model_names(OpenAiChatModelName modelName) {
+
+        // given
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(modelName)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        String question = "What is the capital of Germany?";
+
+        // when
+        String answer = model.chat(question);
+
+        // then
+        assertThat(answer).containsIgnoringCase("Berlin");
     }
 
     @Test

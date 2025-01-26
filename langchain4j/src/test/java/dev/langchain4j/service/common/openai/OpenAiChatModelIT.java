@@ -56,14 +56,17 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
-        return OpenAiChatModel.builder()
+        OpenAiChatModel.OpenAiChatModelBuilder openAiChatModelBuilder = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .defaultRequestParameters(parameters)
                 .logRequests(true)
-                .logResponses(true)
-                .build();
+                .logResponses(true);
+        if (parameters.modelName() == null) {
+            openAiChatModelBuilder.modelName(GPT_4_O_MINI);
+        }
+        return openAiChatModelBuilder.build();
     }
 
     @Override
