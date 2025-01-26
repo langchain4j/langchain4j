@@ -47,16 +47,20 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
                 .build();
     }
 
+    // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
+    // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html
     @Override
     protected boolean supportsToolChoiceRequired() {
         return false;
     }
 
+    //output format not supported
     @Override
     protected boolean supportsJsonResponseFormat() {
         return false;
     }
 
+    //output format not supported
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
         return false;
@@ -73,7 +77,6 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     protected boolean supportsSingleImageInputAsBase64EncodedString() {
         return false;
     }
-
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
         return false;
@@ -92,7 +95,7 @@ public class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         }
     }
 
-    // TODO Nova models include StopSequence
+    // Nova models include support StopSequence but have an incoherrent behavior, it includes the stopSequence in the response
     // TODO Titan express error : "Malformed input request: 3 schema violations found"
     @Override
     @ParameterizedTest

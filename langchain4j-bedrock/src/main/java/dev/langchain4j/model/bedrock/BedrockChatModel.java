@@ -104,7 +104,7 @@ public class BedrockChatModel implements ChatLanguageModel {
                 "modelId");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
-        this.client = isNull(builder.client) ? createClient(builder.logRequests, builder.logResponses) : builder.client;
+        this.client = isNull(builder.client) ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false)) : builder.client;
         this.defaultRequestParameters = ChatRequestParameters.builder()
                 .modelName(getOrDefault(
                         modelId,
@@ -538,8 +538,8 @@ public class BedrockChatModel implements ChatLanguageModel {
         private Duration timeout;
         private BedrockRuntimeClient client;
         private ChatRequestParameters defaultRequestParameters;
-        private boolean logRequests;
-        private boolean logResponses;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         public Builder region(Region region) {
             this.region = region;
@@ -576,12 +576,12 @@ public class BedrockChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public Builder logRequests(boolean logRequests) {
+        public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        public Builder logResponses(boolean logResponses) {
+        public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
