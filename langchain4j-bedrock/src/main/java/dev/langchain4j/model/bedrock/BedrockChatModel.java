@@ -48,8 +48,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
@@ -76,9 +74,11 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolResultBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 
+/**
+ * BedrockChatModel uses the Bedrock ConverseAPI.
+ * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html">https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html</a>
+ */
 public class BedrockChatModel implements ChatLanguageModel {
-
-    private final Logger logger = LoggerFactory.getLogger(BedrockChatModel.class);
 
     private final Region region;
     private final AwsCredentialsProvider credentialsProvider;
@@ -129,7 +129,7 @@ public class BedrockChatModel implements ChatLanguageModel {
                                 : null))
                 .build();
 
-        validate(this.defaultRequestParameters, modelId);
+        validate(this.defaultRequestParameters);
     }
 
     @Override
@@ -178,7 +178,7 @@ public class BedrockChatModel implements ChatLanguageModel {
         final String model =
                 isNull(parameters) || isNull(parameters.modelName()) ? this.modelId : parameters.modelName();
 
-        if (nonNull(parameters)) validate(parameters, model);
+        if (nonNull(parameters)) validate(parameters);
 
         return ConverseRequest.builder()
                 .modelId(model)
@@ -189,7 +189,7 @@ public class BedrockChatModel implements ChatLanguageModel {
                 .build();
     }
 
-    static void validate(ChatRequestParameters parameters, String modelId) {
+    static void validate(ChatRequestParameters parameters) {
         String errorTemplate = "%s is not supported yet by this model provider";
 
         if (parameters.topK() != null) {
@@ -448,9 +448,7 @@ public class BedrockChatModel implements ChatLanguageModel {
                 toolExecRequests.add(ToolExecutionRequest.builder()
                         .name(cBlock.toolUse().name())
                         .id(cBlock.toolUse().toolUseId())
-                        .arguments(documentToJson(cBlock.toolUse().input())
-                                .replace("\r", "")
-                                .replace("\n", ""))
+                        .arguments(documentToJson(cBlock.toolUse().input()))
                         .build());
             } else if (cBlock.type() == ContentBlock.Type.TEXT) {
                 textAnswer = cBlock.text();

@@ -43,7 +43,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-class BedrockChatModelIT {
+class BedrockChatModelWithInvokeAPIIT {
 
     private static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
@@ -819,8 +819,7 @@ class BedrockChatModelIT {
                     }
 
                     @Override
-                    public void close() {
-                    }
+                    public void close() {}
                 })
                 .build();
 
