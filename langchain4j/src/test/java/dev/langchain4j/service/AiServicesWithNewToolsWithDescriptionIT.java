@@ -145,7 +145,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
         }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .properties(singletonMap("arg0", JsonObjectSchema.builder()
+                .addProperties(singletonMap("arg0", JsonObjectSchema.builder()
                         .description("a person 2")
                         .addStringProperty("name", "a name")
                         .addStringProperty("name", "a name")
@@ -215,7 +215,7 @@ class AiServicesWithNewToolsWithDescriptionIT {
         }
 
         static JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
-                .properties(singletonMap("arg0", JsonObjectSchema.builder()
+                .addProperties(singletonMap("arg0", JsonObjectSchema.builder()
                         .description("a person 2")
                         .addStringProperty("name", "a name")
                         .addProperty("address", JsonObjectSchema.builder()
