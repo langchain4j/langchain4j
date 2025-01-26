@@ -35,13 +35,13 @@ public enum OpenAiChatModelName {
     GPT_4_O_MINI_2024_07_18("gpt-4o-mini-2024-07-18"),
 
     O1("o1"), // alias
-    O1_2024_12_17("o1-2024-12-17"), // alias
+    O1_2024_12_17("o1-2024-12-17"),
 
     O1_MINI("o1-mini"), // alias
-    O1_MINI_2024_09_12("o1-mini-2024-09-12"), // alias
+    O1_MINI_2024_09_12("o1-mini-2024-09-12"),
 
     O1_PREVIEW("o1-preview"), // alias
-    O1_PREVIEW_2024_09_12("o1-preview-2024-09-12"); // alias
+    O1_PREVIEW_2024_09_12("o1-preview-2024-09-12");
 
     private final String stringValue;
 
