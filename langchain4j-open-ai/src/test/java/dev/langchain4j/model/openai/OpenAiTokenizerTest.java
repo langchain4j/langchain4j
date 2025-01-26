@@ -98,8 +98,8 @@ class OpenAiTokenizerTest {
     }
 
     @ParameterizedTest
-    @EnumSource(OpenAiChatModelName.class)
-    void should_support_all_chat_models(OpenAiChatModelName modelName) {
+    @EnumSource(value = OpenAiChatModelName.class)
+    void should_support_all_model_names(OpenAiChatModelName modelName) {
 
         // given
         Tokenizer tokenizer = new OpenAiTokenizer(modelName);
