@@ -104,7 +104,9 @@ public class BedrockChatModel implements ChatLanguageModel {
                 "modelId");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
-        this.client = isNull(builder.client) ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false)) : builder.client;
+        this.client = isNull(builder.client)
+                ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
+                : builder.client;
         this.defaultRequestParameters = ChatRequestParameters.builder()
                 .modelName(getOrDefault(
                         modelId,
