@@ -1,10 +1,12 @@
 package dev.langchain4j.model.bedrock.converse;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +27,6 @@ public class AwsLoggingInterceptor implements ExecutionInterceptor {
     private final boolean logResponses;
 
     public AwsLoggingInterceptor(final boolean logRequests, final boolean logResponses) {
-        super();
         this.logRequests = logRequests;
         this.logResponses = logResponses;
     }
@@ -55,8 +56,8 @@ public class AwsLoggingInterceptor implements ExecutionInterceptor {
                     request.method(),
                     request.getUri(),
                     request.headers(),
-                    request.rawQueryParameters(),
-                    body);
+                    body,
+                    request.rawQueryParameters());
         }
     }
 
@@ -85,11 +86,11 @@ public class AwsLoggingInterceptor implements ExecutionInterceptor {
             try {
                 final InputStream responseContentStream = context.responseBody().orElse(InputStream.nullInputStream());
                 content = IoUtils.toByteArray(responseContentStream);
-                logger.debug("Response Body: {}", new String(content, "UTF-8"));
+                logger.debug("Response Body: {}", new String(content, StandardCharsets.UTF_8));
             } catch (IOException e) {
                 logger.warn("Unable to obtain response body", e);
             }
         }
-        return Optional.of(new ByteArrayInputStream(content));
+        return isNull(content) ? Optional.empty() : Optional.of(new ByteArrayInputStream(content));
     }
 }

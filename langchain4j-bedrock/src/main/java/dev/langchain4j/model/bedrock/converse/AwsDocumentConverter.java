@@ -17,7 +17,7 @@ import java.util.Map;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.core.document.internal.MapDocument;
 
-class AwsDocumentConverter {
+public class AwsDocumentConverter {
 
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .enable(INDENT_OUTPUT)

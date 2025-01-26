@@ -1,4 +1,4 @@
-package dev.langchain4j.model.bedrock.converse;
+package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.model.bedrock.converse.TestedModels.AWS_NOVA_LITE;
 import static dev.langchain4j.model.bedrock.converse.TestedModels.AWS_NOVA_MICRO;

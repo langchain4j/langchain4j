@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock.converse;
 
+import dev.langchain4j.model.bedrock.BedrockChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 
 public final class TestedModels {

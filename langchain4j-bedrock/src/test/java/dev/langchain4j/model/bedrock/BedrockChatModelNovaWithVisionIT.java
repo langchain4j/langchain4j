@@ -1,4 +1,4 @@
-package dev.langchain4j.model.bedrock.converse;
+package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.model.bedrock.converse.TestedModels.*;
 import static dev.langchain4j.model.output.FinishReason.STOP;

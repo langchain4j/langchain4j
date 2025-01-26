@@ -1,4 +1,4 @@
-package dev.langchain4j.model.bedrock.converse;
+package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
@@ -27,6 +27,7 @@ import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.bedrock.converse.AwsLoggingInterceptor;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
