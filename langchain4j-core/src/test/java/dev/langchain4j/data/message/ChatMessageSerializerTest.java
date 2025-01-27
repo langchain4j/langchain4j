@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.data.message.ChatMessageDeserializer.messageFromJson;
@@ -78,8 +79,10 @@ class ChatMessageSerializerTest {
                 Arguments.of(
                         ToolExecutionResultMessage.from("12345", "weather", "sunny"),
                         "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"
-                )
-        );
+                ),
+                Arguments.of(
+                        CustomMessage.from(Map.of("content", "The sky is blue.", "myAttribute", "myValue")),
+                        "{\"attributes\":{\"content\":\"The sky is blue.\", \"myAttribute\":\"myValue\"},\"type\":\"CUSTOM\"}"));
     }
 
     @Test

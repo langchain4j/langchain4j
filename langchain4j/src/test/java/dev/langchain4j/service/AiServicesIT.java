@@ -41,6 +41,8 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -79,12 +81,22 @@ class AiServicesIT {
 
     public static void verifyNoMoreInteractionsFor(ChatLanguageModel model) {
         try {
-            verify(model).defaultRequestParameters();
+            verify(model, atLeastOnce()).doChat(any());
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }
         try {
-            verify(model).supportedCapabilities();
+            verify(model, atLeastOnce()).defaultRequestParameters();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).supportedCapabilities();
+        } catch (Throwable ignored) {
+            // don't care if it was called or not
+        }
+        try {
+            verify(model, atLeastOnce()).listeners();
         } catch (Throwable ignored) {
             // don't care if it was called or not
         }
