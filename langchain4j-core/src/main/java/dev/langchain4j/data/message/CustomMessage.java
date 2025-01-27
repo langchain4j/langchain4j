@@ -1,15 +1,16 @@
 package dev.langchain4j.data.message;
 
-import static dev.langchain4j.data.message.ChatMessageType.CUSTOM;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.quoted;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.data.message.ChatMessageType.CUSTOM;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+
 /**
  * Represents a custom message.
+ * Can be used only with {@link ChatLanguageModel} implementations that support this type of message.
  */
 public class CustomMessage implements ChatMessage {
 
@@ -17,6 +18,7 @@ public class CustomMessage implements ChatMessage {
 
     /**
      * Creates a new custom message.
+     *
      * @param attributes the message attributes.
      */
     public CustomMessage(Map<String, Object> attributes) {
@@ -25,6 +27,7 @@ public class CustomMessage implements ChatMessage {
 
     /**
      * Returns the message attributes.
+     *
      * @return the message attributes.
      */
     public Map<String, Object> attributes() {
@@ -38,7 +41,7 @@ public class CustomMessage implements ChatMessage {
 
     @Override
     public String text() {
-        throw new UnsupportedFeatureException("This method is deprecated and will be removed soon");
+        throw new UnsupportedOperationException("use attributes() instead");
     }
 
     @Override
@@ -56,11 +59,12 @@ public class CustomMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "CustomMessage {" + " attributes = " + quoted(attributes) + " }";
+        return "CustomMessage {" + " attributes = " + attributes + " }";
     }
 
     /**
      * Creates a new custom message.
+     *
      * @param attributes the message attributes.
      * @return the custom message.
      */
@@ -70,6 +74,7 @@ public class CustomMessage implements ChatMessage {
 
     /**
      * Creates a new custom message.
+     *
      * @param attributes the message attributes.
      * @return the custom message.
      */

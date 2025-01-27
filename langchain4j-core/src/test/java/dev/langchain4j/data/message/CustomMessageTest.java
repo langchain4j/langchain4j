@@ -16,7 +16,7 @@ class CustomMessageTest implements WithAssertions {
         assertThat(message.type()).isEqualTo(ChatMessageType.CUSTOM);
 
         assertThat(message)
-                .hasToString("CustomMessage " + "{ attributes = \"{content=The sky is blue., myAttribute=myValue}\" }");
+                .hasToString("CustomMessage { attributes = {content=The sky is blue., myAttribute=myValue} }");
     }
 
     @Test

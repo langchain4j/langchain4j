@@ -6,7 +6,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -33,9 +32,6 @@ class ChatMessageSerializerTest {
     }
 
     static Stream<Arguments> should_serialize_and_deserialize_chat_message() {
-        LinkedHashMap<String, Object> attributes = new LinkedHashMap<>();
-        attributes.put("content", "The sky is blue.");
-        attributes.put("myAttribute", "myValue");
         return Stream.of(
                 Arguments.of(
                         SystemMessage.from("hello"),
@@ -85,11 +81,7 @@ class ChatMessageSerializerTest {
                         "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"
                 ),
                 Arguments.of(
-                        CustomMessage.from(Map.of("content", "The sky is blue.")),
-                        "{\"attributes\":{\"content\":\"The sky is blue.\"},\"type\":\"CUSTOM\"}"
-                ),
-                Arguments.of(
-                        CustomMessage.from(attributes),
+                        CustomMessage.from(Map.of("content", "The sky is blue.", "myAttribute", "myValue")),
                         "{\"attributes\":{\"content\":\"The sky is blue.\", \"myAttribute\":\"myValue\"},\"type\":\"CUSTOM\"}"));
     }
 

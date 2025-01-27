@@ -120,12 +120,13 @@ class OllamaMessagesUtils {
     }
 
     private static Message otherMessages(ChatMessage chatMessage) {
-        List<ToolCall> toolCalls = null;
-        if (ChatMessageType.CUSTOM == chatMessage.type()) {
+        if (chatMessage instanceof CustomMessage customMessage) {
             return Message.builder()
-                    .additionalFields(((CustomMessage) chatMessage).attributes())
+                    .additionalFields(customMessage.attributes())
                     .build();
         }
+
+        List<ToolCall> toolCalls = null;
         if (ChatMessageType.AI == chatMessage.type()) {
             AiMessage aiMessage = (AiMessage) chatMessage;
             List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();

@@ -412,11 +412,12 @@ OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
 
 ### Custom Messages
 
-The `OllamaChatModel` supports custom chat messages in addition to the standard chat message types.
+The `OllamaChatModel` and `OllamaStreamingChatModel` support custom chat messages in addition to the standard chat message types.
 Custom messages can be used to specify a message with arbitrary attributes. This can be useful for
-some models like Granite Guardian for example that make use of non-standard messages to assess the
-retrieved context used for Retrieval-Augmented Generation (RAG). Let's see how we can use a `CustomMessage`
-to specify a message with arbitrary attributes:
+some models like [Granite Guardian](https://ollama.com/library/granite3-guardian) that make use of 
+non-standard messages to assess the retrieved context used for Retrieval-Augmented Generation (RAG).
+
+Let's see how we can use a `CustomMessage` to specify a message with arbitrary attributes:
 
 ```java
 OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
