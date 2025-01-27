@@ -100,7 +100,7 @@ final class SQLFilters {
         FilterConstructor constructor = CONSTRUCTORS.get(filterClass);
 
         if (constructor == null)
-            throw new IllegalArgumentException("Unrecognized Filter class: " + filterClass);
+            throw new UnsupportedOperationException("Unsupported Filter class: " + filterClass);
 
         return constructor.construct(filter, keyMapper);
     }

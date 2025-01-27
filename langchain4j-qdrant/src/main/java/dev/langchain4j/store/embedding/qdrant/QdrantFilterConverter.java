@@ -65,7 +65,7 @@ class QdrantFilterConverter {
         } else if (comparision instanceof IsNotIn isNotIn) {
             return buildNInCondition(isNotIn);
         } else {
-            throw new UnsupportedOperationException("Unsupported comparision type: " + comparision);
+            throw new UnsupportedOperationException("Unsupported comparison type: " + comparision);
         }
     }
 
