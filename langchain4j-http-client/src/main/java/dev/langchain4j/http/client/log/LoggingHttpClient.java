@@ -19,12 +19,12 @@ public class LoggingHttpClient implements HttpClient {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingHttpClient.class);
 
-    private final HttpClient delegate;
+    private final HttpClient delegateHttpClient;
     private final boolean logRequests;
     private final boolean logResponses;
 
-    public LoggingHttpClient(HttpClient delegate, Boolean logRequests, Boolean logResponses) {
-        this.delegate = ensureNotNull(delegate, "delegate");
+    public LoggingHttpClient(HttpClient delegateHttpClient, Boolean logRequests, Boolean logResponses) {
+        this.delegateHttpClient = ensureNotNull(delegateHttpClient, "delegateHttpClient");
         this.logRequests = getOrDefault(logRequests, false);
         this.logResponses = getOrDefault(logResponses, false);
     }
@@ -36,7 +36,7 @@ public class LoggingHttpClient implements HttpClient {
             HttpRequestLogger.log(log, request);
         }
 
-        SuccessfulHttpResponse response = delegate.execute(request);
+        SuccessfulHttpResponse response = delegateHttpClient.execute(request);
 
         if (logResponses) {
             HttpResponseLogger.log(log, response);
@@ -46,20 +46,20 @@ public class LoggingHttpClient implements HttpClient {
     }
 
     @Override
-    public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+    public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener delegateListener) {
 
         if (logRequests) {
             HttpRequestLogger.log(log, request); // TODO log on the thread where request is actually made?
         }
 
-        delegate.execute(request, parser, new ServerSentEventListener() {
+        this.delegateHttpClient.execute(request, parser, new ServerSentEventListener() {
 
             @Override
             public void onOpen(SuccessfulHttpResponse response) {
                 if (logResponses) {
                     HttpResponseLogger.log(log, response);
                 }
-                listener.onOpen(response);
+                delegateListener.onOpen(response);
             }
 
             @Override
@@ -67,12 +67,17 @@ public class LoggingHttpClient implements HttpClient {
                 if (logResponses) {
                     log.debug("{}", event);
                 }
-                listener.onEvent(event);
+                delegateListener.onEvent(event);
             }
 
             @Override
             public void onError(Throwable throwable) {
-                listener.onError(throwable);
+                delegateListener.onError(throwable);
+            }
+
+            @Override
+            public void onClose() {
+                delegateListener.onClose();
             }
         });
     }
