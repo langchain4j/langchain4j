@@ -69,7 +69,8 @@ jobs:
         run: |
           mvn -B -U -T8C test javadoc:aggregate \
             ${{ matrix.mvn_opts }}
-
+      - name: Setup JBang
+        uses: jbangdev/setup-jbang@main
       - name: Integration test with JDK ${{ matrix.java_version }}
         ## The step or job will only run if the `experimental` variable
         ## in the matrix is false (not set to true)

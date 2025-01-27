@@ -6,6 +6,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -15,8 +17,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
@@ -43,6 +48,32 @@ public interface ChatLanguageModel {
      */
     @Experimental
     default ChatResponse chat(ChatRequest chatRequest) {
+
+        ChatRequest finalChatRequest = ChatRequest.builder()
+                .messages(chatRequest.messages())
+                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                .build();
+
+        List<ChatModelListener> listeners = listeners();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        try {
+            ChatResponse chatResponse = doChat(finalChatRequest);
+            ListenersUtil.onResponse(chatResponse, finalChatRequest, attributes, listeners);
+            return chatResponse;
+        } catch (Exception error) {
+            ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+            throw error;
+        }
+    }
+
+    default List<ChatModelListener> listeners() {
+        return Collections.emptyList();
+    }
+
+    @Experimental
+    default ChatResponse doChat(ChatRequest chatRequest) {
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
@@ -82,25 +113,25 @@ public interface ChatLanguageModel {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'modelName' parameter"));
         }
         if (parameters.temperature() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'temperature' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'temperature' parameter"));
         }
         if (parameters.topP() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'topP' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'topP' parameter"));
         }
         if (parameters.topK() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'topK' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'topK' parameter"));
         }
         if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'frequencyPenalty' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'frequencyPenalty' parameter"));
         }
         if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'presencePenalty' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'presencePenalty' parameter"));
         }
         if (parameters.maxOutputTokens() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'maxOutputTokens' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'maxOutputTokens' parameter"));
         }
         if (parameters.stopSequences() != null) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"'stopSequences' parameter"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "'stopSequences' parameter"));
         }
     }
 
@@ -115,7 +146,7 @@ public interface ChatLanguageModel {
         String errorTemplate = "%s is not supported yet by this model provider";
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
             // TODO check supportedCapabilities() instead?
-            throw new UnsupportedFeatureException(String.format(errorTemplate,"JSON response format"));
+            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
         }
     }
 
@@ -133,7 +164,7 @@ public interface ChatLanguageModel {
 
     @Experimental
     default ChatRequestParameters defaultRequestParameters() {
-        return null;
+        return ChatRequestParameters.builder().build();
     }
 
     @Experimental
