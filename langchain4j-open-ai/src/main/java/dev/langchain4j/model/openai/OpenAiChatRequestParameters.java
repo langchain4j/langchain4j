@@ -9,6 +9,7 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.quoted;
 
 @Experimental
 public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
@@ -21,6 +22,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     private final Boolean store;
     private final Map<String, String> metadata;
     private final String serviceTier;
+    private final String reasoningEffort;
 
     private OpenAiChatRequestParameters(Builder builder) {
         super(builder);
@@ -32,6 +34,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         this.store = builder.store;
         this.metadata = copyIfNotNull(builder.metadata);
         this.serviceTier = builder.serviceTier;
+        this.reasoningEffort = builder.reasoningEffort;
     }
 
     public Integer maxCompletionTokens() {
@@ -66,6 +69,10 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         return serviceTier;
     }
 
+    public String reasoningEffort() {
+        return reasoningEffort;
+    }
+
     @Override
     public OpenAiChatRequestParameters overrideWith(ChatRequestParameters that) {
         return OpenAiChatRequestParameters.builder()
@@ -87,7 +94,8 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(user, that.user)
                 && Objects.equals(store, that.store)
                 && Objects.equals(metadata, that.metadata)
-                && Objects.equals(serviceTier, that.serviceTier);
+                && Objects.equals(serviceTier, that.serviceTier)
+                && Objects.equals(reasoningEffort, that.reasoningEffort);
     }
 
     @Override
@@ -101,14 +109,15 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 user,
                 store,
                 metadata,
-                serviceTier
+                serviceTier,
+                reasoningEffort
         );
     }
 
     @Override
     public String toString() {
         return "OpenAiChatRequestParameters{" +
-                "modelName='" + modelName() + '\'' +
+                "modelName=" + quoted(modelName()) +
                 ", temperature=" + temperature() +
                 ", topP=" + topP() +
                 ", topK=" + topK() +
@@ -123,10 +132,11 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 ", logitBias=" + logitBias +
                 ", parallelToolCalls=" + parallelToolCalls +
                 ", seed=" + seed +
-                ", user='" + user + '\'' +
+                ", user=" + quoted(user) +
                 ", store=" + store +
                 ", metadata=" + metadata +
-                ", serviceTier='" + serviceTier + '\'' +
+                ", serviceTier=" + quoted(serviceTier) +
+                ", reasoningEffort=" + quoted(reasoningEffort) +
                 '}';
     }
 
@@ -144,6 +154,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private String reasoningEffort;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -157,6 +168,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
                 store(getOrDefault(openAiParameters.store(), store));
                 metadata(copyIfNotNull(getOrDefault(openAiParameters.metadata(), metadata)));
                 serviceTier(getOrDefault(openAiParameters.serviceTier(), serviceTier));
+                reasoningEffort(getOrDefault(openAiParameters.reasoningEffort(), reasoningEffort));
             }
             return this;
         }
@@ -202,6 +214,11 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        public Builder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
             return this;
         }
 
