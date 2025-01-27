@@ -45,4 +45,9 @@ class PgVectorEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
     }
+
+    @Override
+    protected boolean supportsContains() {
+        return true;
+    }
 }
