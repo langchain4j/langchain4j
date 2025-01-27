@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 ```
 
@@ -262,6 +262,7 @@ and update it in the `EmbeddingStore` as well to keep it in sync.
 ### Document Loader
 You can create a `Document` from a `String`, but a simpler method is to use one of our document loaders included in the library:
 - `FileSystemDocumentLoader` from the `langchain4j` module
+- `ClassPathDocumentLoader` from the `langchain4j` module
 - `UrlDocumentLoader` from the `langchain4j` module
 - `AmazonS3DocumentLoader` from the `langchain4j-document-loader-amazon-s3` module
 - `AzureBlobStorageDocumentLoader` from the `langchain4j-document-loader-azure-storage-blob` module
@@ -896,5 +897,5 @@ assistant.chat("How to do Easy RAG with LangChain4j?")
 - [Advanced RAG with Web Search](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_08_Advanced_RAG_Web_Search_Example.java)
 - [Advanced RAG with SQL Database](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_10_Advanced_RAG_SQL_Database_Retreiver_Example.java)
 - [Skipping Retrieval](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_06_Advanced_RAG_Skip_Retrieval_Example.java)
-- [RAG + Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentApplicationTest.java)
+- [RAG + Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
 - [Loading Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/DocumentLoaderExamples.java)

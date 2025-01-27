@@ -14,6 +14,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -50,13 +51,11 @@ import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -195,14 +194,18 @@ class AiServicesWithToolsIT {
         assertThat(messages.get(3).text()).contains("11.1");
 
 
-        verify(spyChatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build()
         );
 
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0), messages.get(1), messages.get(2))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build()
         );
     }
 
@@ -278,19 +281,25 @@ class AiServicesWithToolsIT {
         assertThat(messages.get(5).text()).contains("11.1", "22.2");
 
 
-        verify(spyChatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build()
         );
 
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0), messages.get(1), messages.get(2))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build()
         );
 
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2), messages.get(3), messages.get(4)),
-                singletonList(EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0), messages.get(1), messages.get(2), messages.get(3), messages.get(4))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build()
         );
     }
 
@@ -364,14 +373,18 @@ class AiServicesWithToolsIT {
         assertThat(messages.get(4).text()).contains("11.1", "22.2");
 
 
-        verify(spyChatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build()
         );
 
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2), messages.get(3)),
-                singletonList(EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0), messages.get(1), messages.get(2), messages.get(3))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build()
         );
     }
 
@@ -382,7 +395,7 @@ class AiServicesWithToolsIT {
                 .name("processStrings")
                 .description("Processes list of strings")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("arg0", JsonArraySchema.builder()
+                        .addProperties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("List of strings to process")
                                 .items(new JsonStringSchema())
                                 .build()))
@@ -422,13 +435,17 @@ class AiServicesWithToolsIT {
         verifyNoMoreInteractions(stringListProcessor);
 
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(StringListProcessor.EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0))
+                        .toolSpecifications(StringListProcessor.EXPECTED_SPECIFICATION)
+                        .build()
         );
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(StringListProcessor.EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0), messages.get(1), messages.get(2))
+                        .toolSpecifications(StringListProcessor.EXPECTED_SPECIFICATION)
+                        .build()
         );
     }
 
@@ -439,7 +456,7 @@ class AiServicesWithToolsIT {
                 .name("processIntegers")
                 .description("Processes list of integers")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("arg0", JsonArraySchema.builder()
+                        .addProperties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("List of integers to process")
                                 .items(new JsonIntegerSchema())
                                 .build()))
@@ -479,13 +496,17 @@ class AiServicesWithToolsIT {
         verifyNoMoreInteractions(integerListProcessor);
 
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(IntegerListProcessor.EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0))
+                        .toolSpecifications(IntegerListProcessor.EXPECTED_SPECIFICATION)
+                        .build()
         );
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(IntegerListProcessor.EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0), messages.get(1), messages.get(2))
+                        .toolSpecifications(IntegerListProcessor.EXPECTED_SPECIFICATION)
+                        .build()
         );
     }
 
@@ -496,7 +517,7 @@ class AiServicesWithToolsIT {
                 .name("processStrings")
                 .description("Processes array of strings")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("arg0", JsonArraySchema.builder()
+                        .addProperties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("Array of strings to process")
                                 .items(new JsonStringSchema())
                                 .build()))
@@ -536,13 +557,17 @@ class AiServicesWithToolsIT {
         verifyNoMoreInteractions(stringArrayProcessor);
 
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(StringArrayProcessor.EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0))
+                        .toolSpecifications(StringArrayProcessor.EXPECTED_SPECIFICATION)
+                        .build()
         );
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(StringArrayProcessor.EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0), messages.get(1), messages.get(2))
+                        .toolSpecifications(StringArrayProcessor.EXPECTED_SPECIFICATION)
+                        .build()
         );
     }
 
@@ -552,7 +577,7 @@ class AiServicesWithToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("currentTemperature")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                        .addProperties(new LinkedHashMap<String, JsonSchemaElement>() {{
                             put("arg0", new JsonStringSchema());
                             put("arg1", JsonEnumSchema.builder()
                                     .enumValues("CELSIUS", "fahrenheit", "Kelvin")
@@ -600,13 +625,17 @@ class AiServicesWithToolsIT {
         verifyNoMoreInteractions(weatherService);
 
         List<ChatMessage> messages = chatMemory.messages();
-        verify(spyChatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(WeatherService.EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0))
+                        .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
+                        .build()
         );
-        verify(spyChatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(WeatherService.EXPECTED_SPECIFICATION)
+        verify(spyChatLanguageModel).chat(
+                ChatRequest.builder()
+                        .messages(messages.get(0), messages.get(1), messages.get(2))
+                        .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
+                        .build()
         );
     }
 
@@ -692,7 +721,7 @@ class AiServicesWithToolsIT {
                 .name("get_booking_details")
                 .description("Returns booking details")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("bookingNumber", new JsonStringSchema()))
+                        .addProperties(singletonMap("bookingNumber", new JsonStringSchema()))
                         .build())
                 .build();
 
@@ -932,7 +961,7 @@ class AiServicesWithToolsIT {
         assertThat(toolExecution.request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
         assertThat(toolExecution.result()).isEqualTo("11.1");
 
-        verify(spyChatLanguageModel, times(2)).generate(anyList(), anyList());
+        verify(spyChatLanguageModel, times(2)).chat(any(ChatRequest.class));
     }
 
 
@@ -973,7 +1002,7 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecution.request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
         assertThat(secondToolExecution.result()).contains("22.2");
 
-        verify(spyChatLanguageModel, times(2)).generate(anyList(), anyList());
+        verify(spyChatLanguageModel, times(2)).chat(any(ChatRequest.class));
     }
 
     @ParameterizedTest
@@ -1011,6 +1040,6 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecution.request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
         assertThat(secondToolExecution.result()).contains("22.2");
 
-        verify(spyChatLanguageModel, times(3)).generate(anyList(), anyList());
+        verify(spyChatLanguageModel, times(3)).chat(any(ChatRequest.class));
     }
 }

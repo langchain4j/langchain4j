@@ -12,7 +12,10 @@ import dev.ai4j.openai4j.chat.ImageUrl;
 import dev.ai4j.openai4j.chat.Message;
 import dev.ai4j.openai4j.chat.Tool;
 import dev.ai4j.openai4j.chat.ToolCall;
+import dev.ai4j.openai4j.chat.ToolChoiceMode;
 import dev.ai4j.openai4j.chat.ToolMessage;
+import dev.ai4j.openai4j.shared.CompletionTokensDetails;
+import dev.ai4j.openai4j.shared.PromptTokensDetails;
 import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
@@ -26,9 +29,12 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.listener.ChatModelRequest;
-import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
@@ -40,9 +46,12 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
+import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,9 +63,9 @@ import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_OBJECT;
 import static dev.ai4j.openai4j.chat.ResponseFormatType.JSON_SCHEMA;
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -192,6 +201,10 @@ public class InternalOpenAiHelper {
     }
 
     public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
+        if (toolSpecifications == null) {
+            return null;
+        }
+
         return toolSpecifications.stream()
                 .map((ToolSpecification toolSpecification) -> toTool(toolSpecification, strict))
                 .collect(toList());
@@ -457,15 +470,30 @@ public class InternalOpenAiHelper {
                 .build();
     }
 
-    public static TokenUsage tokenUsageFrom(Usage openAiUsage) {
+    public static OpenAiTokenUsage tokenUsageFrom(Usage openAiUsage) {
         if (openAiUsage == null) {
             return null;
         }
-        return new TokenUsage(
-                openAiUsage.promptTokens(),
-                openAiUsage.completionTokens(),
-                openAiUsage.totalTokens()
-        );
+
+        PromptTokensDetails promptTokensDetails = openAiUsage.promptTokensDetails();
+        InputTokensDetails inputTokensDetails = null;
+        if (promptTokensDetails != null) {
+            inputTokensDetails = new InputTokensDetails(promptTokensDetails.cachedTokens());
+        }
+
+        CompletionTokensDetails completionTokensDetails = openAiUsage.completionTokensDetails();
+        OutputTokensDetails outputTokensDetails = null;
+        if (completionTokensDetails != null) {
+            outputTokensDetails = new OutputTokensDetails(completionTokensDetails.reasoningTokens());
+        }
+
+        return OpenAiTokenUsage.builder()
+                .inputTokenCount(openAiUsage.promptTokens())
+                .inputTokensDetails(inputTokensDetails)
+                .outputTokenCount(openAiUsage.completionTokens())
+                .outputTokensDetails(outputTokensDetails)
+                .totalTokenCount(openAiUsage.totalTokens())
+                .build();
     }
 
     public static FinishReason finishReasonFrom(String openAiFinishReason) {
@@ -485,35 +513,6 @@ public class InternalOpenAiHelper {
             default:
                 return null;
         }
-    }
-
-    static ChatModelRequest createModelListenerRequest(ChatCompletionRequest request,
-                                                       List<ChatMessage> messages,
-                                                       List<ToolSpecification> toolSpecifications) {
-        return ChatModelRequest.builder()
-                .model(request.model())
-                .temperature(request.temperature())
-                .topP(request.topP())
-                .maxTokens(getOrDefault(request.maxCompletionTokens(), request.maxTokens()))
-                .messages(messages)
-                .toolSpecifications(toolSpecifications)
-                .build();
-    }
-
-    static ChatModelResponse createModelListenerResponse(String responseId,
-                                                         String responseModel,
-                                                         Response<AiMessage> response) {
-        if (response == null) {
-            return null;
-        }
-
-        return ChatModelResponse.builder()
-                .id(responseId)
-                .model(responseModel)
-                .tokenUsage(response.tokenUsage())
-                .finishReason(response.finishReason())
-                .aiMessage(response.content())
-                .build();
     }
 
     static dev.ai4j.openai4j.chat.ResponseFormat toOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
@@ -540,5 +539,87 @@ public class InternalOpenAiHelper {
                     .jsonSchema(openAiJsonSchema)
                     .build();
         }
+    }
+
+    public static ToolChoiceMode toOpenAiToolChoice(ToolChoice toolChoice) {
+        if (toolChoice == null) {
+            return null;
+        }
+
+        return switch (toolChoice) {
+            case AUTO -> ToolChoiceMode.AUTO;
+            case REQUIRED -> ToolChoiceMode.REQUIRED;
+        };
+    }
+
+    public static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
+        return Response.from(
+                chatResponse.aiMessage(),
+                chatResponse.metadata().tokenUsage(),
+                chatResponse.metadata().finishReason()
+        );
+    }
+
+    static StreamingChatResponseHandler convertHandler(StreamingResponseHandler<AiMessage> handler) {
+        return new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                handler.onNext(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                handler.onComplete(convertResponse(completeResponse));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(error);
+            }
+        };
+    }
+
+    static void validate(ChatRequestParameters parameters) {
+        if (parameters.topK() != null) {
+            throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI");
+        }
+    }
+
+    static dev.langchain4j.model.chat.request.ResponseFormat fromOpenAiResponseFormat(String responseFormat) {
+        if ("json_object".equals(responseFormat)) {
+            return JSON;
+        } else {
+            return null;
+        }
+    }
+
+    static ChatCompletionRequest.Builder toOpenAiChatRequest(ChatRequest chatRequest,
+                                                             OpenAiChatRequestParameters parameters,
+                                                             Boolean strictTools,
+                                                             Boolean strictJsonSchema) {
+        return ChatCompletionRequest.builder()
+                .messages(toOpenAiMessages(chatRequest.messages()))
+                // common parameters
+                .model(parameters.modelName())
+                .temperature(parameters.temperature())
+                .topP(parameters.topP())
+                .frequencyPenalty(parameters.frequencyPenalty())
+                .presencePenalty(parameters.presencePenalty())
+                .maxTokens(parameters.maxOutputTokens())
+                .stop(parameters.stopSequences())
+                .tools(toTools(parameters.toolSpecifications(), strictTools))
+                .toolChoice(toOpenAiToolChoice(parameters.toolChoice()))
+                .responseFormat(toOpenAiResponseFormat(parameters.responseFormat(), strictJsonSchema))
+                // OpenAI-specific parameters
+                .maxCompletionTokens(parameters.maxCompletionTokens())
+                .logitBias(parameters.logitBias())
+                .parallelToolCalls(parameters.parallelToolCalls())
+                .seed(parameters.seed())
+                .user(parameters.user())
+                .store(parameters.store())
+                .metadata(parameters.metadata())
+                .serviceTier(parameters.serviceTier())
+                .reasoningEffort(parameters.reasoningEffort());
     }
 }

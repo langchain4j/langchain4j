@@ -31,6 +31,7 @@ import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.DICE_IMAGE_URL;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -96,6 +97,96 @@ class OpenAiStreamingChatModelIT {
         assertTokenUsage(response.tokenUsage());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_respoct_maxTokens() throws Exception {
+
+        // given
+        int maxTokens = 1;
+
+        OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .maxTokens(maxTokens)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+
+        // when
+        model.generate("Tell me a long story", new StreamingResponseHandler<AiMessage>() {
+
+            @Override
+            public void onNext(String token) {
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                futureResponse.complete(response);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureResponse.completeExceptionally(error);
+            }
+        });
+
+        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+
+        // then
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(maxTokens);
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
+    }
+
+    @Test
+    void should_respoct_maxCompletionTokens() throws Exception {
+
+        // given
+        int maxCompletionTokens = 1;
+
+        OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .maxCompletionTokens(maxCompletionTokens)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+
+        // when
+        model.generate("Tell me a long story", new StreamingResponseHandler<AiMessage>() {
+
+            @Override
+            public void onNext(String token) {
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                futureResponse.complete(response);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureResponse.completeExceptionally(error);
+            }
+        });
+
+        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+
+        // then
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(maxCompletionTokens);
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
     @Test
@@ -224,7 +315,7 @@ class OpenAiStreamingChatModelIT {
 
         assertTokenUsage(response.tokenUsage());
 
-        assertThat(response.finishReason()).isEqualTo(STOP); // not sure if a bug in OpenAI or stop is expected here
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         // given
         ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
@@ -491,10 +582,10 @@ class OpenAiStreamingChatModelIT {
 
     @ParameterizedTest
     @EnumSource(value = OpenAiChatModelName.class, mode = EXCLUDE, names = {
-            "GPT_4_32K", "GPT_4_32K_0314", "GPT_4_32K_0613", // don't have access
-            "GPT_4_0314", "GPT_4_VISION_PREVIEW" // deprecated
+            "GPT_4_32K", "GPT_4_32K_0613", "O1", "O1_2024_12_17", // don't have access
+            "GPT_4_VISION_PREVIEW" // deprecated
     })
-    void should_use_enum_as_model_name(OpenAiChatModelName modelName) {
+    void should_support_all_model_names(OpenAiChatModelName modelName) {
 
         // given
         OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()

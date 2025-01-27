@@ -36,7 +36,7 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>0.36.2</version>
+    <version>1.0.0-alpha1</version>
 </dependency>
 
 <dependency>
@@ -132,7 +132,7 @@ class OllamaChatLocalModelTest {
       model = OllamaChatModel.builder()
               .baseUrl(BASE_URL)
               .modelName(MODEL_NAME)
-              .format("json")
+              .responseFormat(JSON)
               .build();
 
       String json = model.generate("List top 10 cites in US");
@@ -268,20 +268,22 @@ class OllamaStreamingChatLocalModelTest {
 `OllamaChatModel` and `OllamaStreamingChatModel` classes can be instantiated with the following
 params with the builder pattern:
 
-| Parameter       | Description                                                                                                                                                                       | Type           | Example                |
-|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|------------------------|
-| `baseUrl`       | The base URL of Ollama server.                                                                                                                                                    | `String`       | http://localhost:11434 |
-| `modelName`     | The name of the model to use from Ollama server.                                                                                                                                  | `String`       |                        |
-| `temperature`   | Controls the randomness of the generated responses. Higher values (e.g., 1.0) result in more diverse output, while lower values (e.g., 0.2) produce more deterministic responses. | `Double`       |                        |
-| `topK`          | Specifies the number of highest probability tokens to consider for each step during generation.                                                                                   | `Integer`      |                        |
-| `topP`          | Controls the diversity of the generated responses by setting a threshold for the cumulative probability of top tokens.                                                            | `Double`       |                        |
-| `repeatPenalty` | Penalizes the model for repeating similar tokens in the generated output.                                                                                                         | `Double`       |                        |
-| `seed`          | Sets the random seed for reproducibility of generated responses.                                                                                                                  | `Integer`      |                        |
-| `numPredict`    | The number of predictions to generate for each input prompt.                                                                                                                      | `Integer`      |                        |
-| `stop`          | A list of strings that, if generated, will mark the end of the response.                                                                                                          | `List<String>` |                        |
-| `format`        | The desired format for the generated output.                                                                                                                                      | `String`       |                        |
-| `timeout`       | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`     | PT60S                  |
-| `maxRetries`    | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`      |                        |
+| Parameter        | Description                                                                                                                                                                       | Type             | Example                |
+|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|------------------------|
+| `baseUrl`        | The base URL of Ollama server.                                                                                                                                                    | `String`         | http://localhost:11434 |
+| `modelName`      | The name of the model to use from Ollama server.                                                                                                                                  | `String`         |                        |
+| `temperature`    | Controls the randomness of the generated responses. Higher values (e.g., 1.0) result in more diverse output, while lower values (e.g., 0.2) produce more deterministic responses. | `Double`         |                        |
+| `topK`           | Specifies the number of highest probability tokens to consider for each step during generation.                                                                                   | `Integer`        |                        |
+| `topP`           | Controls the diversity of the generated responses by setting a threshold for the cumulative probability of top tokens.                                                            | `Double`         |                        |
+| `repeatPenalty`  | Penalizes the model for repeating similar tokens in the generated output.                                                                                                         | `Double`         |                        |
+| `seed`           | Sets the random seed for reproducibility of generated responses.                                                                                                                  | `Integer`        |                        |
+| `numPredict`     | The number of predictions to generate for each input prompt.                                                                                                                      | `Integer`        |                        |
+| `stop`           | A list of strings that, if generated, will mark the end of the response.                                                                                                          | `List<String>`   |                        |
+| `format`         | The desired format for the generated output. (**Depracated** see **responseFormat**)                                                                                              | `String`         |                        |
+| `responseFormat` | The desired format for the generated output. TEXT or JSON with optional JSON Schema definition                                                                                    | `ResponseFormat` |                        |
+| `supportedCapabilities` | Set of model capabilities used by `AiServices` API (only `OllamaChatModel` supported)                                                                                             | `Capability` | RESPONSE_FORMAT_JSON_SCHEMA |
+| `timeout`        | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`       | PT60S                  |
+| `maxRetries`     | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`        |                        |
 
 #### Usage Example
 ```java
@@ -299,4 +301,142 @@ langchain4j.ollama.chat-model.base-url=http://localhost:11434
 langchain4j.ollama.chat-model.model-name=llama3.1
 langchain4j.ollama.chat-model.temperature=0.8
 langchain4j.ollama.chat-model.timeout=PT60S
+```
+
+### JSON mode
+
+#### JSON mode using builder
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
+    .responseFormat(ResponseFormat.JSON)    
+    .temperature(0.8)
+    .timeout(Duration.ofSeconds(60))
+    .build();
+```
+
+#### JSON mode using builder *deprecated*
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
+    .format("json")    
+    .temperature(0.8)
+    .timeout(Duration.ofSeconds(60))
+    .build();
+```
+
+### Structured outputs
+
+#### JSON schema definition using builder
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
+    .responseFormat(ResponseFormat.builder()
+            .type(ResponseFormatType.JSON)
+            .jsonSchema(JsonSchema.builder().rootElement(JsonObjectSchema.builder()
+                            .addProperty("name", JsonStringSchema.builder().build())
+                            .addProperty("capital", JsonStringSchema.builder().build())
+                            .addProperty(
+                                    "languages",
+                                    JsonArraySchema.builder()
+                                            .items(JsonStringSchema.builder().build())
+                                            .build())
+                            .required("name", "capital", "languages")
+                            .build())
+                    .build())
+            .build())
+    .temperature(0.8)
+    .timeout(Duration.ofSeconds(60))
+    .build();
+```
+
+#### JSON Schema using ChatRequest API
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("llama3.1")
+    .build();
+
+ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder()
+        .messages(userMessage("Tell me about Canada."))
+        .responseFormat(ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder().rootElement(JsonObjectSchema.builder()
+                                .addProperty("name", JsonStringSchema.builder().build())
+                                .addProperty("capital", JsonStringSchema.builder().build())
+                                .addProperty(
+                                        "languages",
+                                        JsonArraySchema.builder()
+                                                .items(JsonStringSchema.builder().build())
+                                                .build())
+                                .required("name", "capital", "languages")
+                                .build())
+                        .build())
+                .build())
+        .build());
+
+String jsonFormattedResponse = chatResponse.aiMessage().text();
+
+/* jsonFormattedResponse value:
+
+  {
+    "capital" : "Ottawa",
+    "languages" : [ "English", "French" ],
+    "name" : "Canada"
+  }
+
+ */
+
+
+```
+
+
+### Json Schema with AiServices
+
+When `OllamaChatModel` is created with supported capability `RESPONSE_FORMAT_JSON_SCHEMA`, `AIService` will automatically generate schema from interface return value. More about it in [Structured Outputs](/tutorials/structured-outputs.md#using-json-schema-with-ai-services)
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("...")
+    .modelName("...")
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)    
+    .build();
+```
+
+### Custom Messages
+
+The `OllamaChatModel` and `OllamaStreamingChatModel` support custom chat messages in addition to the standard chat message types.
+Custom messages can be used to specify a message with arbitrary attributes. This can be useful for
+some models like [Granite Guardian](https://ollama.com/library/granite3-guardian) that make use of 
+non-standard messages to assess the retrieved context used for Retrieval-Augmented Generation (RAG).
+
+Let's see how we can use a `CustomMessage` to specify a message with arbitrary attributes:
+
+```java
+OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("granite3-guardian")
+    .build();
+ 
+String retrievedContext = "One significant part of treaty making is that signing a treaty implies recognition that the other side is a sovereign state and that the agreement being considered is enforceable under international law. Hence, nations can be very careful about terming an agreement to be a treaty. For example, within the United States, agreements between states are compacts and agreements between states and the federal government or between agencies of the government are memoranda of understanding.";
+
+List<ChatMessage> messages = List.of(
+    SystemMessage.from("context_relevance"),
+    UserMessage.from("What is the history of treaty making?"),
+    CustomMessage.from(Map.of(
+        "role", "context",
+        "content", retrievedContext
+    ))
+);
+
+ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder().messages(messages).build());
+
+System.out.println(chatResponse.aiMessage().text()); // "Yes" (meaning risk detected by Granite Guardian)
 ```

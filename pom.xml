@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.37.0-SNAPSHOT</version>
+    <version>1.0.0-alpha2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -92,6 +92,7 @@
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-onnx-scoring</module>
+        <module>langchain4j-mcp</module>
 
     </modules>
 
@@ -143,12 +144,27 @@
                     </pom>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.simpligility.maven.plugins</groupId>
+                <artifactId>android-maven-plugin</artifactId>
+                <version>4.6.0</version>
+                <extensions>true</extensions>
+                <executions>
+                    <execution>
+                        <id>lint</id>
+                        <goals>
+                            <goal>lint</goal>
+                        </goals>
+                        <phase>process-classes</phase>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
         <extensions>
             <extension>
                 <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
                 <artifactId>gitflow-incremental-builder</artifactId>
-                <version>3.15.0</version>
+                <version>3.16.0</version>
             </extension>
         </extensions>
     </build>
@@ -190,13 +206,13 @@
         </profile>
         <profile>
             <id>openrewrite</id>
-            <!-- `mvn -P openrewrite org.openrewrite.maven:rewrite-maven-plugin:run` -->
+            <!-- `mvn -P openrewrite rewrite:run` -->
             <build>
                 <plugins>
                     <plugin>
                         <groupId>org.openrewrite.maven</groupId>
                         <artifactId>rewrite-maven-plugin</artifactId>
-                        <version>5.42.2</version>
+                        <version>5.43.4</version>
                         <configuration>
                             <activeRecipes>
                                 <!--<recipe>org.openrewrite.java.OrderImports</recipe>-->
