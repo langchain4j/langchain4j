@@ -1,4 +1,4 @@
-package dev.langchain4j.model.bedrock.converse;
+package dev.langchain4j.model.bedrock;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -20,7 +20,7 @@ import software.amazon.awssdk.http.SdkHttpRequest;
 import software.amazon.awssdk.http.SdkHttpResponse;
 import software.amazon.awssdk.utils.IoUtils;
 
-public class AwsLoggingInterceptor implements ExecutionInterceptor {
+class AwsLoggingInterceptor implements ExecutionInterceptor {
     private static final Logger logger = LoggerFactory.getLogger(AwsLoggingInterceptor.class);
 
     private final boolean logRequests;

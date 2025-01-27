@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.model.bedrock.converse.TestedModels.*;
+import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.*;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.AiServicesWithNewToolsIT;

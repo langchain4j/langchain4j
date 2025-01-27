@@ -53,7 +53,7 @@ class BedrockChatModelWithConverseAPIIT {
     }
 
     @Test
-    void should_call_multiple_functions() {
+    void should_call_multiple_functions() throws InterruptedException {
         ChatLanguageModel model = BedrockChatModel.builder()
                 .modelId("anthropic.claude-3-5-sonnet-20240620-v1:0")
                 .build();
@@ -109,6 +109,11 @@ class BedrockChatModelWithConverseAPIIT {
                 throw new AssertionError("Unexpected tool name: " + toolExecutionRequest.name());
             }
             messages.add(toolExecutionResultMessage);
+        }
+
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_BEDROCK");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
 
         Response<AiMessage> response2 = model.generate(messages, toolSpecifications);

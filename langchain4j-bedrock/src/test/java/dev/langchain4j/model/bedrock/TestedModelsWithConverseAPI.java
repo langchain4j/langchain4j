@@ -1,9 +1,8 @@
-package dev.langchain4j.model.bedrock.converse;
+package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.model.bedrock.BedrockChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 
-public final class TestedModels {
+public final class TestedModelsWithConverseAPI {
 
     public static final ChatLanguageModel AWS_NOVA_MICRO =
             BedrockChatModel.builder().modelId("us.amazon.nova-micro-v1:0").build();

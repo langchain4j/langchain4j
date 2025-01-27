@@ -1,11 +1,11 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.model.bedrock.converse.TestedModels.AWS_NOVA_LITE;
-import static dev.langchain4j.model.bedrock.converse.TestedModels.AWS_NOVA_MICRO;
-import static dev.langchain4j.model.bedrock.converse.TestedModels.AWS_NOVA_PRO;
-import static dev.langchain4j.model.bedrock.converse.TestedModels.CLAUDE_3_HAIKU;
-import static dev.langchain4j.model.bedrock.converse.TestedModels.COHERE_COMMAND_R_PLUS;
-import static dev.langchain4j.model.bedrock.converse.TestedModels.MISTRAL_LARGE;
+import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AWS_NOVA_LITE;
+import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AWS_NOVA_MICRO;
+import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.AWS_NOVA_PRO;
+import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.CLAUDE_3_HAIKU;
+import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.COHERE_COMMAND_R_PLUS;
+import static dev.langchain4j.model.bedrock.TestedModelsWithConverseAPI.MISTRAL_LARGE;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.common.AbstractAiServiceIT;

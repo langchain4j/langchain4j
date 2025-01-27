@@ -6,9 +6,9 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.bedrock.converse.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
-import static dev.langchain4j.model.bedrock.converse.AwsDocumentConverter.documentFromJson;
-import static dev.langchain4j.model.bedrock.converse.AwsDocumentConverter.documentToJson;
+import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
+import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
+import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentToJson;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -28,7 +28,6 @@ import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.bedrock.converse.AwsLoggingInterceptor;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -48,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
@@ -81,7 +79,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
 public class BedrockChatModel implements ChatLanguageModel {
 
     private final Region region;
-    private final AwsCredentialsProvider credentialsProvider;
     private final String modelId;
     private final Integer maxRetries;
     private final Duration timeout;
@@ -94,7 +91,6 @@ public class BedrockChatModel implements ChatLanguageModel {
 
     public BedrockChatModel(Builder builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
-        this.credentialsProvider = getOrDefault(builder.credentialsProvider, DefaultCredentialsProvider.create());
         this.modelId = ensureNotBlank(
                 getOrDefault(
                         builder.modelId,
@@ -107,27 +103,15 @@ public class BedrockChatModel implements ChatLanguageModel {
         this.client = isNull(builder.client)
                 ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
                 : builder.client;
-        this.defaultRequestParameters = ChatRequestParameters.builder()
-                .modelName(getOrDefault(
-                        modelId,
-                        nonNull(builder.defaultRequestParameters)
-                                ? builder.defaultRequestParameters.modelName()
-                                : null))
-                .temperature(
-                        nonNull(builder.defaultRequestParameters)
-                                ? builder.defaultRequestParameters.temperature()
-                                : null)
-                .maxOutputTokens(getOrDefault(
-                        builder.maxTokens,
-                        nonNull(builder.defaultRequestParameters)
-                                ? builder.defaultRequestParameters.maxOutputTokens()
-                                : null))
-                .topP(nonNull(builder.defaultRequestParameters) ? builder.defaultRequestParameters.topP() : null)
-                .stopSequences(copyIfNotNull(
-                        nonNull(builder.defaultRequestParameters)
-                                ? builder.defaultRequestParameters.stopSequences()
-                                : null))
-                .build();
+        this.defaultRequestParameters = isNull(builder.defaultRequestParameters)
+                ? ChatRequestParameters.builder().modelName(this.modelId).build()
+                : ChatRequestParameters.builder()
+                        .modelName(this.modelId)
+                        .temperature(builder.defaultRequestParameters.temperature())
+                        .maxOutputTokens(builder.defaultRequestParameters.maxOutputTokens())
+                        .topP(builder.defaultRequestParameters.topP())
+                        .stopSequences(copyIfNotNull(builder.defaultRequestParameters.stopSequences()))
+                        .build();
 
         validate(this.defaultRequestParameters);
     }
@@ -493,7 +477,7 @@ public class BedrockChatModel implements ChatLanguageModel {
     private BedrockRuntimeClient createClient(boolean logRequests, boolean logResponses) {
         return BedrockRuntimeClient.builder()
                 .region(this.region)
-                .credentialsProvider(this.credentialsProvider)
+                .credentialsProvider(DefaultCredentialsProvider.create())
                 .overrideConfiguration(config -> {
                     config.apiCallTimeout(this.timeout);
                     if (logRequests || logResponses)
@@ -531,9 +515,7 @@ public class BedrockChatModel implements ChatLanguageModel {
 
     public static class Builder {
         private Region region;
-        private AwsCredentialsProvider credentialsProvider;
         private String modelId;
-        private Integer maxTokens;
         private Integer maxRetries;
         private Duration timeout;
         private BedrockRuntimeClient client;
@@ -546,18 +528,8 @@ public class BedrockChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public Builder credentialsProvider(AwsCredentialsProvider credentialsProvider) {
-            this.credentialsProvider = credentialsProvider;
-            return this;
-        }
-
         public Builder modelId(String modelId) {
             this.modelId = modelId;
-            return this;
-        }
-
-        public Builder maxTokens(Integer maxTokens) {
-            this.maxTokens = maxTokens;
             return this;
         }
 
