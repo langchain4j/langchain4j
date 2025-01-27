@@ -6,7 +6,7 @@ import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.comparison.Contains;
+import dev.langchain4j.store.embedding.filter.comparison.ContainsString;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
@@ -35,10 +35,10 @@ public class MetadataFilterBuilder {
         return new MetadataFilterBuilder(key);
     }
 
-    // contains
+    // containsString
 
-    public Filter contains(String value) {
-        return new Contains(key, value);
+    public Filter containsString(String value) {
+        return new ContainsString(key, value);
     }
 
     // isEqualTo

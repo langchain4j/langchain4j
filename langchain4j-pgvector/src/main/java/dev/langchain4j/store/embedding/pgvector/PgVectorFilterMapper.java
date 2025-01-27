@@ -29,8 +29,8 @@ abstract class PgVectorFilterMapper {
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     public String map(Filter filter) {
-        if (filter instanceof Contains contains) {
-            return mapContains(contains);
+        if (filter instanceof ContainsString containsString) {
+            return mapContains(containsString);
         } else if (filter instanceof IsEqualTo isEqualTo) {
             return mapEqual(isEqualTo);
         } else if (filter instanceof IsNotEqualTo isNotEqualTo) {
@@ -59,9 +59,9 @@ abstract class PgVectorFilterMapper {
         }
     }
 
-    private String mapContains(Contains contains) {
-        String key = formatKey(contains.key(), contains.comparisonValue().getClass());
-        return format("%s is not null and %s ~ %s", key, key, formatValue(contains.comparisonValue()));
+    private String mapContains(ContainsString containsString) {
+        String key = formatKey(containsString.key(), containsString.comparisonValue().getClass());
+        return format("%s is not null and %s ~ %s", key, key, formatValue(containsString.comparisonValue()));
     }
 
     private String mapEqual(IsEqualTo isEqualTo) {

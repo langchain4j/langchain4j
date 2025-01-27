@@ -1757,7 +1757,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
     @Test
     protected void should_throw_exception_when_contains_is_not_supported() {
         // given
-        Filter metadataFilter = metadataKey("key").contains("value");
+        Filter metadataFilter = metadataKey("key").containsString("value");
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("matching").content())
                 .filter(metadataFilter)
@@ -1776,18 +1776,18 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
     @Test
     protected void should_filter_by_metadata_contains() {
         should_filter_by_metadata(
-                metadataKey("key").contains("contains"),
+                metadataKey("key").containsString("contains"),
                 List.of(
                         new Metadata().put("key", "|contains|"),
                         new Metadata().put("key", "contains").put("key2", "not")),
-                List.of(new Metadata().put("key", "Contains"), new Metadata().put("key2", "contains"), new Metadata()));
+                List.of(new Metadata().put("key", "ContainsString"), new Metadata().put("key2", "contains"), new Metadata()));
     }
 
     @EnabledIf("supportsContains")
     @Test
     protected void should_filter_by_not_metadata_contains() {
         should_filter_by_metadata_not(
-                not(metadataKey("key").contains("contains")),
+                not(metadataKey("key").containsString("contains")),
                 List.of(
                         new Metadata().put("key", "not"),
                         new Metadata().put("key", "not").put("key2", "contains"),

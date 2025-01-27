@@ -12,7 +12,7 @@ class QdrantFilterConverterTest {
 
     @Test
     void testContainsFilter() {
-        Filter filter = new Contains("string-value", "contains");
+        Filter filter = new ContainsString("string-value", "contains");
         Points.Filter convertedFilter = QdrantFilterConverter.convertExpression(filter);
         assertThat(convertedFilter).isNotNull();
         assertThat(convertedFilter.getMustCount()).isEqualTo(1);

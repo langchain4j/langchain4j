@@ -7,40 +7,40 @@ import dev.langchain4j.data.document.Metadata;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class ContainsTest {
+class ContainsStringTest {
 
     @Test
     void testShouldReturnFalseWhenNotMetadata() {
-        Contains contains = new Contains("key", "value");
-        assertThat(contains.test("notMetadata")).isFalse();
+        ContainsString containsString = new ContainsString("key", "value");
+        assertThat(containsString.test("notMetadata")).isFalse();
     }
 
     @Test
     void testShouldReturnFalseWhenKeyNotFound() {
-        Contains contains = new Contains("key", "value");
+        ContainsString containsString = new ContainsString("key", "value");
         Metadata metadata = new Metadata(Map.of());
-        assertThat(contains.test(metadata)).isFalse();
+        assertThat(containsString.test(metadata)).isFalse();
     }
 
     @Test
     void testShouldReturnTrueWhenContains() {
-        Contains contains = new Contains("key", "value");
+        ContainsString containsString = new ContainsString("key", "value");
         Metadata metadata = new Metadata(Map.of("key", "foovaluebar"));
-        assertThat(contains.test(metadata)).isTrue();
+        assertThat(containsString.test(metadata)).isTrue();
     }
 
     @Test
     void testShouldReturnFalseWhenNotContains() {
-        Contains contains = new Contains("key", "value");
+        ContainsString containsString = new ContainsString("key", "value");
         Metadata metadata = new Metadata(Map.of("key", "foobar"));
-        assertThat(contains.test(metadata)).isFalse();
+        assertThat(containsString.test(metadata)).isFalse();
     }
 
     @Test
     void testShouldThrowIllegalArgumentExceptionWhenTypeMismatch() {
-        Contains contains = new Contains("key", "value");
+        ContainsString containsString = new ContainsString("key", "value");
         Metadata metadata = new Metadata(Map.of("key", 42));
-        assertThatThrownBy(() -> contains.test(metadata))
+        assertThatThrownBy(() -> containsString.test(metadata))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(
                         "Type mismatch: actual value of metadata key \"key\" (42) has type java.lang.Integer, while it is expected to be a string");

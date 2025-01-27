@@ -12,12 +12,12 @@ import java.util.Objects;
  * A filter that checks if the value of a metadata key contains a specific string.
  * The value of the metadata key must be a string.
  */
-public class Contains implements Filter {
+public class ContainsString implements Filter {
 
     private final String key;
     private final String comparisonValue;
 
-    public Contains(String key, String comparisonValue) {
+    public ContainsString(String key, String comparisonValue) {
         this.key = ensureNotBlank(key, "key");
         this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
     }
@@ -55,7 +55,7 @@ public class Contains implements Filter {
     @Override
     public boolean equals(final Object o) {
         if (o == this) return true;
-        if (!(o instanceof Contains other)) return false;
+        if (!(o instanceof ContainsString other)) return false;
 
         return Objects.equals(this.key, other.key) && Objects.equals(this.comparisonValue, other.comparisonValue);
     }
@@ -67,6 +67,6 @@ public class Contains implements Filter {
 
     @Override
     public String toString() {
-        return "Contains(key=" + this.key + ", comparisonValue=" + this.comparisonValue + ")";
+        return "ContainsString(key=" + this.key + ", comparisonValue=" + this.comparisonValue + ")";
     }
 }

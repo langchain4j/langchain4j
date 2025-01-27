@@ -15,8 +15,8 @@ import java.util.UUID;
 class MilvusMetadataFilterMapper {
 
     static String map(Filter filter, String metadataFieldName) {
-        if (filter instanceof Contains contains) {
-            return mapContains(contains, metadataFieldName);
+        if (filter instanceof ContainsString containsString) {
+            return mapContains(containsString, metadataFieldName);
         } else if (filter instanceof IsEqualTo isEqualTo) {
             return mapEqual(isEqualTo, metadataFieldName);
         } else if (filter instanceof IsNotEqualTo isNotEqualTo) {
@@ -45,10 +45,10 @@ class MilvusMetadataFilterMapper {
         }
     }
 
-    private static String mapContains(Contains contains, String metadataFieldName) {
+    private static String mapContains(ContainsString containsString, String metadataFieldName) {
         return format(
                 "%s LIKE %s",
-                formatKey(contains.key(), metadataFieldName), formatValue("%" + contains.comparisonValue() + "%"));
+                formatKey(containsString.key(), metadataFieldName), formatValue("%" + containsString.comparisonValue() + "%"));
     }
 
     private static String mapEqual(IsEqualTo isEqualTo, String metadataFieldName) {
