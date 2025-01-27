@@ -6,7 +6,6 @@ import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-
 import java.sql.*;
 import java.sql.SQLType;
 import java.util.*;
@@ -32,45 +31,38 @@ final class SQLFilters {
      * Map of {@link Filter} classes to functions which construct the equivalent {@link SQLFilter}.
      */
     private static final Map<Class<? extends Filter>, FilterConstructor> CONSTRUCTORS;
+
     static {
         Map<Class<? extends Filter>, FilterConstructor> map = new HashMap<>();
 
-        map.put(IsEqualTo.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsEqualTo) filter, keyMapper));
+        map.put(IsEqualTo.class, (filter, keyMapper) -> new SQLComparisonFilter((IsEqualTo) filter, keyMapper));
 
-        map.put(IsNotEqualTo.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsNotEqualTo) filter, keyMapper));
+        map.put(IsNotEqualTo.class, (filter, keyMapper) -> new SQLComparisonFilter((IsNotEqualTo) filter, keyMapper));
 
-        map.put(IsGreaterThan.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsGreaterThan) filter, keyMapper));
+        map.put(IsGreaterThan.class, (filter, keyMapper) -> new SQLComparisonFilter((IsGreaterThan) filter, keyMapper));
 
-        map.put(IsGreaterThanOrEqualTo.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsGreaterThanOrEqualTo) filter, keyMapper));
+        map.put(
+                IsGreaterThanOrEqualTo.class,
+                (filter, keyMapper) -> new SQLComparisonFilter((IsGreaterThanOrEqualTo) filter, keyMapper));
 
-        map.put(IsLessThan.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsLessThan) filter, keyMapper));
+        map.put(IsLessThan.class, (filter, keyMapper) -> new SQLComparisonFilter((IsLessThan) filter, keyMapper));
 
-        map.put(IsLessThanOrEqualTo.class, (filter, keyMapper) ->
-            new SQLComparisonFilter((IsLessThanOrEqualTo) filter, keyMapper));
+        map.put(
+                IsLessThanOrEqualTo.class,
+                (filter, keyMapper) -> new SQLComparisonFilter((IsLessThanOrEqualTo) filter, keyMapper));
 
-        map.put(IsIn.class, (filter, keyMapper) ->
-            new SQLInFilter((IsIn) filter, keyMapper));
+        map.put(IsIn.class, (filter, keyMapper) -> new SQLInFilter((IsIn) filter, keyMapper));
 
-        map.put(IsNotIn.class, (filter, keyMapper) ->
-            new SQLInFilter((IsNotIn) filter, keyMapper));
+        map.put(IsNotIn.class, (filter, keyMapper) -> new SQLInFilter((IsNotIn) filter, keyMapper));
 
-        map.put(And.class, (filter, keyMapper) ->
-            new SQLLogicalFilter((And) filter, keyMapper));
+        map.put(And.class, (filter, keyMapper) -> new SQLLogicalFilter((And) filter, keyMapper));
 
-        map.put(Or.class, (filter, keyMapper) ->
-            new SQLLogicalFilter((Or) filter, keyMapper));
+        map.put(Or.class, (filter, keyMapper) -> new SQLLogicalFilter((Or) filter, keyMapper));
 
-        map.put(Not.class, (filter, keyMapper) ->
-            new SQLNot((Not)filter, keyMapper));
+        map.put(Not.class, (filter, keyMapper) -> new SQLNot((Not) filter, keyMapper));
 
         CONSTRUCTORS = Collections.unmodifiableMap(map);
     }
-
 
     /**
      * <p>
@@ -93,14 +85,12 @@ final class SQLFilters {
      * @throws IllegalArgumentException If the class of the Filter is not recognized.
      */
     static SQLFilter create(Filter filter, BiFunction<String, SQLType, String> keyMapper) {
-        if (filter == null)
-            return EMPTY;
+        if (filter == null) return EMPTY;
 
         Class<? extends Filter> filterClass = filter.getClass();
         FilterConstructor constructor = CONSTRUCTORS.get(filterClass);
 
-        if (constructor == null)
-            throw new UnsupportedOperationException("Unsupported Filter class: " + filterClass);
+        if (constructor == null) throw new UnsupportedOperationException("Unsupported Filter class: " + filterClass);
 
         return constructor.construct(filter, keyMapper);
     }
@@ -168,7 +158,8 @@ final class SQLFilters {
             this(isGreaterThan.key(), keyMapper, ">", isGreaterThan.comparisonValue(), false);
         }
 
-        SQLComparisonFilter(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo, BiFunction<String, SQLType, String> keyMapper) {
+        SQLComparisonFilter(
+                IsGreaterThanOrEqualTo isGreaterThanOrEqualTo, BiFunction<String, SQLType, String> keyMapper) {
             this(isGreaterThanOrEqualTo.key(), keyMapper, ">=", isGreaterThanOrEqualTo.comparisonValue(), false);
         }
 
@@ -213,7 +204,10 @@ final class SQLFilters {
          * @param isNullTrue Result of the filter when the metadata does not contain the key.
          */
         private <T> SQLComparisonFilter(
-                String key, BiFunction<String, SQLType, String> keyMapper, String operator, T comparisonValue,
+                String key,
+                BiFunction<String, SQLType, String> keyMapper,
+                String operator,
+                T comparisonValue,
                 boolean isNullTrue) {
             this.sqlType = toSQLType(comparisonValue);
             this.sql = "NVL(" + keyMapper.apply(key, sqlType) + " " + operator + " ?, " + isNullTrue + ")";
@@ -270,7 +264,8 @@ final class SQLFilters {
             this(or.left(), "OR", or.right(), keyMapper);
         }
 
-        private SQLLogicalFilter(Filter left, String operator, Filter right, BiFunction<String, SQLType, String> keyMapper) {
+        private SQLLogicalFilter(
+                Filter left, String operator, Filter right, BiFunction<String, SQLType, String> keyMapper) {
             this(create(left, keyMapper), operator, create(right, keyMapper));
         }
 
@@ -403,13 +398,13 @@ final class SQLFilters {
          * @param comparisonValues Set of values to search within. Not null. Not empty.
          */
         private SQLInFilter(
-                String key, BiFunction<String, SQLType, String> keyMapper, boolean isIn,
+                String key,
+                BiFunction<String, SQLType, String> keyMapper,
+                boolean isIn,
                 Collection<?> comparisonValues) {
             this.sqlType = toSQLType(comparisonValues);
             this.sql = "NVL(" + keyMapper.apply(key, sqlType) + (isIn ? " IN " : " NOT IN ") + "("
-                    + Stream.generate(() -> "?")
-                        .limit(comparisonValues.size())
-                        .collect(Collectors.joining(", "))
+                    + Stream.generate(() -> "?").limit(comparisonValues.size()).collect(Collectors.joining(", "))
                     + "), "
                     + !isIn + ")"; // <-- 2nd argument to NVL
             this.comparisonValues = comparisonValues;
@@ -465,8 +460,7 @@ final class SQLFilters {
      * @return The converted object, or the same object if no conversion is required. May be null.
      */
     static Object toJdbcObject(Object object) {
-        if (object instanceof UUID)
-            return object.toString();
+        if (object instanceof UUID) return object.toString();
 
         return object;
     }
@@ -489,20 +483,17 @@ final class SQLFilters {
      * @return The SQL data type to convert objects into. Not null.
      */
     static SQLType toSQLType(Collection<?> objects) {
-        Set<SQLType> jdbcTypes =
-            objects.stream()
-                    .map(SQLFilters::toSQLType)
-                    .collect(Collectors.toSet());
+        Set<SQLType> jdbcTypes = objects.stream().map(SQLFilters::toSQLType).collect(Collectors.toSet());
 
         // Not supporting the case where a collection contains different classes of objects.
         if (jdbcTypes.size() != 1) {
             throw new IllegalArgumentException(
-                    "Filters comparing a Collection of non-uniform object classes are not supported. The Collection " +
-                            "contains objects of the following classes: " +
-                    objects.stream()
-                            .map(Object::getClass)
-                            .map(Class::getSimpleName)
-                            .collect(Collectors.joining(", ")));
+                    "Filters comparing a Collection of non-uniform object classes are not supported. The Collection "
+                            + "contains objects of the following classes: "
+                            + objects.stream()
+                                    .map(Object::getClass)
+                                    .map(Class::getSimpleName)
+                                    .collect(Collectors.joining(", ")));
         }
 
         return jdbcTypes.iterator().next();
@@ -523,14 +514,10 @@ final class SQLFilters {
                 return JDBCType.REAL; // REAL with default precision is a 32-bit floating point number
             else if (object instanceof Double)
                 return JDBCType.FLOAT; // FLOAT with default precision is a 64-bit floating point number
-            else if (object instanceof Integer)
-                return JDBCType.INTEGER;
-            else if (object instanceof Long)
-                return JDBCType.NUMERIC; // NUMERIC is an integer with 38 decimal digits
-            else
-                throw new RuntimeException("Unsupported type: " + object.getClass());
-        }
-        else {
+            else if (object instanceof Integer) return JDBCType.INTEGER;
+            else if (object instanceof Long) return JDBCType.NUMERIC; // NUMERIC is an integer with 38 decimal digits
+            else throw new RuntimeException("Unsupported type: " + object.getClass());
+        } else {
             // Compare null, String, UUID, and any other object that Metadata supports in the future as VARCHAR objects.
             // It is assumed that the getOsonFromMetadata object method in OracleEmbeddingStore will convert these
             // objects to String. A VARCHAR can store the information of a Java String without losing any information.
