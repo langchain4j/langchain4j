@@ -1757,10 +1757,15 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
     @Test
     protected void should_throw_exception_when_contains_is_not_supported() {
         // given
-        Filter filter = metadataKey("key").contains("value");
+        Filter metadataFilter = metadataKey("key").contains("value");
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel().embed("matching").content())
+                .filter(metadataFilter)
+                .maxResults(100)
+                .build();
 
         // when
-        Throwable throwable = catchThrowable(() -> embeddingStore().search(EmbeddingSearchRequest.builder().filter(filter).build()));
+        Throwable throwable = catchThrowable(() -> embeddingStore().search(embeddingSearchRequest));
 
         // then
         assertThat(throwable)
