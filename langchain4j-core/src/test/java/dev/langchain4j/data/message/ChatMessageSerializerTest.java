@@ -6,8 +6,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.data.message.ChatMessageDeserializer.messageFromJson;
@@ -81,8 +81,11 @@ class ChatMessageSerializerTest {
                         "{\"id\":\"12345\",\"toolName\":\"weather\",\"text\":\"sunny\",\"type\":\"TOOL_EXECUTION_RESULT\"}"
                 ),
                 Arguments.of(
-                        CustomMessage.from(Map.of("content", "The sky is blue.", "myAttribute", "myValue")),
-                        "{\"attributes\":{\"content\":\"The sky is blue.\", \"myAttribute\":\"myValue\"},\"type\":\"CUSTOM\"}"));
+                        CustomMessage.from(new LinkedHashMap<>() {{
+                            put("k1", "v1");
+                            put("k2", "v2");
+                        }}),
+                        "{\"attributes\":{\"k1\":\"v1\", \"k2\":\"v2\"},\"type\":\"CUSTOM\"}"));
     }
 
     @Test
