@@ -36,7 +36,7 @@ class QdrantFilterConverter {
             shouldClauses.add(ConditionFactory.filter(convertOperand(or.left())));
             shouldClauses.add(ConditionFactory.filter(convertOperand(or.right())));
         } else {
-            mustClauses.add(parseComparison(operand));
+            mustClauses.add(convert(operand));
         }
 
         return context.addAllMust(mustClauses)
@@ -45,27 +45,27 @@ class QdrantFilterConverter {
                 .build();
     }
 
-    private static Condition parseComparison(Filter comparision) {
-        if (comparision instanceof ContainsString containsString) {
+    private static Condition convert(Filter filter) {
+        if (filter instanceof ContainsString containsString) {
             return buildContainsCondition(containsString);
-        } else if (comparision instanceof IsEqualTo isEqualTo) {
+        } else if (filter instanceof IsEqualTo isEqualTo) {
             return buildEqCondition(isEqualTo);
-        } else if (comparision instanceof IsNotEqualTo isNotEqualTo) {
+        } else if (filter instanceof IsNotEqualTo isNotEqualTo) {
             return buildNeCondition(isNotEqualTo);
-        } else if (comparision instanceof IsGreaterThan isGreaterThan) {
+        } else if (filter instanceof IsGreaterThan isGreaterThan) {
             return buildGtCondition(isGreaterThan);
-        } else if (comparision instanceof IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
+        } else if (filter instanceof IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
             return buildGteCondition(isGreaterThanOrEqualTo);
-        } else if (comparision instanceof IsLessThan isLessThan) {
+        } else if (filter instanceof IsLessThan isLessThan) {
             return buildLtCondition(isLessThan);
-        } else if (comparision instanceof IsLessThanOrEqualTo isLessThanOrEqualTo) {
+        } else if (filter instanceof IsLessThanOrEqualTo isLessThanOrEqualTo) {
             return buildLteCondition(isLessThanOrEqualTo);
-        } else if (comparision instanceof IsIn isIn) {
+        } else if (filter instanceof IsIn isIn) {
             return buildInCondition(isIn);
-        } else if (comparision instanceof IsNotIn isNotIn) {
+        } else if (filter instanceof IsNotIn isNotIn) {
             return buildNInCondition(isNotIn);
         } else {
-            throw new UnsupportedOperationException("Unsupported comparison type: " + comparision);
+            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
