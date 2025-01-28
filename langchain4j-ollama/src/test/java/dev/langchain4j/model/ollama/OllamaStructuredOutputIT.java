@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -66,7 +67,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         final String response = chatResponse.aiMessage().text();
 
         // then
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(response, CountryInfo.class);
+        CountryInfo countryInfo = fromJson(response, CountryInfo.class);
 
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
@@ -94,7 +95,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         final String response = chatResponse.content().text();
 
         // then
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(response, CountryInfo.class);
+        CountryInfo countryInfo = fromJson(response, CountryInfo.class);
 
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
@@ -139,7 +140,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         // then
         Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
         AiMessage secondAiMessage = secondResponse.content();
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(secondAiMessage.text(), CountryInfo.class);
+        CountryInfo countryInfo = fromJson(secondAiMessage.text(), CountryInfo.class);
 
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
@@ -183,7 +184,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         final Response<String> generated = languageModel.generate("Tell me about Canada.");
 
         // then
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(generated.content(), CountryInfo.class);
+        CountryInfo countryInfo = fromJson(generated.content(), CountryInfo.class);
 
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");
@@ -211,7 +212,7 @@ class OllamaStructuredOutputIT extends AbstractOllamaStructuredOutputLanguageMod
         languageModel.generate("Tell me about Canada.", handler);
         final Response<String> generated = handler.get();
 
-        CountryInfo countryInfo = OllamaJsonUtils.toObject(generated.content(), CountryInfo.class);
+        CountryInfo countryInfo = fromJson(generated.content(), CountryInfo.class);
 
         assertThat(countryInfo.name()).isEqualTo("Canada");
         assertThat(countryInfo.capital()).isEqualTo("Ottawa");

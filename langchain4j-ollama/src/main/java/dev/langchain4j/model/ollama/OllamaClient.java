@@ -1,6 +1,5 @@
 package dev.langchain4j.model.ollama;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.http.client.HttpClient;
@@ -33,8 +32,8 @@ import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.createMo
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenError;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenRequest;
 import static dev.langchain4j.model.ollama.OllamaChatModelListenerUtils.onListenResponse;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.getObjectMapper;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static java.lang.Boolean.TRUE;
 import static java.time.Duration.ofSeconds;
 
@@ -50,7 +49,7 @@ class OllamaClient {
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
         HttpClient httpClient = httpClientBuilder
-                .connectTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(10))) // TODO default value
+                .connectTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
                 .readTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
 
@@ -70,88 +69,71 @@ class OllamaClient {
 
     public CompletionResponse completion(CompletionRequest request) {
 
-        try {
-            HttpRequest httpRequest = HttpRequest.builder()
-                    .method(POST)
-                    .url(baseUrl, "api/generate")
-                    .addHeader("Content-Type", "application/json")
-                    .addHeaders(defaultHeaders)
-                    .body(getObjectMapper().writeValueAsString(request))
-                    .build();
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "api/generate")
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders)
+                .body(toJson(request))
+                .build();
 
-            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
 
-            return getObjectMapper().readValue(successfulHttpResponse.body(), CompletionResponse.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return fromJson(successfulHttpResponse.body(), CompletionResponse.class);
     }
 
     public ChatResponse chat(ChatRequest request) {
-        try {
-            HttpRequest httpRequest = HttpRequest.builder()
-                    .method(POST)
-                    .url(baseUrl, "api/chat")
-                    .addHeader("Content-Type", "application/json")
-                    .addHeaders(defaultHeaders)
-                    .body(getObjectMapper().writeValueAsString(request))
-                    .build();
 
-            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "api/chat")
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders)
+                .body(toJson(request))
+                .build();
 
-            return getObjectMapper().readValue(successfulHttpResponse.body(), ChatResponse.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+
+        return fromJson(successfulHttpResponse.body(), ChatResponse.class);
     }
 
     public void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {
 
-        try {
-            HttpRequest httpRequest = HttpRequest.builder()
-                    .method(POST)
-                    .url(baseUrl, "api/generate")
-                    .addHeader("Content-Type", "application/x-ndjson") // TODO x-nd?
-                    .addHeaders(defaultHeaders)
-                    .body(getObjectMapper().writeValueAsString(request))
-                    .build();
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "api/generate")
+                .addHeaders(defaultHeaders)
+                .body(toJson(request))
+                .build();
 
-            httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
+        httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
-                final StringBuilder contentBuilder = new StringBuilder();
+            final StringBuilder contentBuilder = new StringBuilder();
 
-                @Override
-                public void onEvent(ServerSentEvent event) {
+            @Override
+            public void onEvent(ServerSentEvent event) {
 
-                    CompletionResponse completionResponse = toObject(event.data(), CompletionResponse.class);
-                    contentBuilder.append(completionResponse.getResponse());
-                    handler.onNext(completionResponse.getResponse());
+                CompletionResponse completionResponse = fromJson(event.data(), CompletionResponse.class);
+                contentBuilder.append(completionResponse.getResponse());
+                handler.onNext(completionResponse.getResponse());
 
-                    if (TRUE.equals(completionResponse.getDone())) {
-                        Response<String> response = Response.from(
-                                contentBuilder.toString(),
-                                new TokenUsage(
-                                        completionResponse.getPromptEvalCount(),
-                                        completionResponse.getEvalCount()
-                                )
-                        );
-                        handler.onComplete(response);
-                    }
+                if (TRUE.equals(completionResponse.getDone())) {
+                    Response<String> response = Response.from(
+                            contentBuilder.toString(),
+                            new TokenUsage(
+                                    completionResponse.getPromptEvalCount(),
+                                    completionResponse.getEvalCount()
+                            )
+                    );
+                    handler.onComplete(response);
                 }
+            }
 
-                @Override
-                public void onClose() {
-//                    handler.onComplete(); TODO?
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    handler.onError(throwable);
-                }
-            });
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e); // TODO
-        }
+            @Override
+            public void onError(Throwable throwable) {
+                handler.onError(throwable);
+            }
+        });
     }
 
     public void streamingChat(ChatRequest request, StreamingResponseHandler<AiMessage> handler,
@@ -161,137 +143,111 @@ class OllamaClient {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         onListenRequest(listeners, modelListenerRequest, attributes);
 
-        try {
-            HttpRequest httpRequest = HttpRequest.builder()
-                    .method(POST)
-                    .url(baseUrl, "api/chat")
-                    .addHeader("Content-Type", "application/x-ndjson") // TODO x-nd?
-                    .addHeaders(defaultHeaders)
-                    .body(getObjectMapper().writeValueAsString(request))
-                    .build();
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "api/chat")
+                .addHeaders(defaultHeaders)
+                .body(toJson(request))
+                .build();
 
-            httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
+        httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
-                final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder();
+            final OllamaStreamingResponseBuilder responseBuilder = new OllamaStreamingResponseBuilder();
 
-                @Override
-                public void onEvent(ServerSentEvent event) {
+            @Override
+            public void onEvent(ServerSentEvent event) {
 
-                    ChatResponse chatResponse = toObject(event.data(), ChatResponse.class);
-                    String content = chatResponse.getMessage().getContent();
-                    responseBuilder.append(chatResponse);
-                    handler.onNext(content);
+                ChatResponse chatResponse = fromJson(event.data(), ChatResponse.class);
+                String content = chatResponse.getMessage().getContent();
+                responseBuilder.append(chatResponse);
+                handler.onNext(content);
 
-                    if (TRUE.equals(chatResponse.getDone())) {
-                        Response<AiMessage> response = responseBuilder.build();
-                        handler.onComplete(response);
-
-                        onListenResponse(listeners, response, modelListenerRequest, attributes); // TODO before or after?
-                    }
+                if (TRUE.equals(chatResponse.getDone())) {
+                    Response<AiMessage> response = responseBuilder.build();
+                    onListenResponse(listeners, response, modelListenerRequest, attributes);
+                    handler.onComplete(response);
                 }
+            }
 
-                @Override
-                public void onClose() {
-//                    handler.onComplete(); TODO?
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    handler.onError(throwable);
-                    // TODO call onListenError here?
-                    onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), attributes);
-                }
-            });
-        } catch (JsonProcessingException e) {
-            // TODO onListenError(...)?
-            throw new RuntimeException(e); // TODO
-        }
+            @Override
+            public void onError(Throwable throwable) {
+                onListenError(listeners, throwable, modelListenerRequest, responseBuilder.build(), attributes);
+                handler.onError(throwable);
+            }
+        });
     }
 
     public EmbeddingResponse embed(EmbeddingRequest request) {
-        try {
-            HttpRequest httpRequest = HttpRequest.builder()
-                    .method(POST)
-                    .url(baseUrl, "api/embed")
-                    .addHeader("Content-Type", "application/json")
-                    .addHeaders(defaultHeaders)
-                    .body(getObjectMapper().writeValueAsString(request))
-                    .build();
 
-            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "api/embed")
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders)
+                .body(toJson(request))
+                .build();
 
-            return getObjectMapper().readValue(successfulHttpResponse.body(), EmbeddingResponse.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+
+        return fromJson(successfulHttpResponse.body(), EmbeddingResponse.class);
     }
 
     public ModelsListResponse listModels() {
-        try {
-            HttpRequest httpRequest = HttpRequest.builder()
-                    .method(GET)
-                    .url(baseUrl, "api/tags")
-                    .addHeader("Content-Type", "application/json")
-                    .addHeaders(defaultHeaders)
-                    .build();
 
-            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "api/tags")
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders)
+                .build();
 
-            return getObjectMapper().readValue(successfulHttpResponse.body(), ModelsListResponse.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+
+        return fromJson(successfulHttpResponse.body(), ModelsListResponse.class);
     }
 
     public OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
-        try {
-            HttpRequest httpRequest = HttpRequest.builder()
-                    .method(POST)
-                    .url(baseUrl, "api/show")
-                    .addHeader("Content-Type", "application/json")
-                    .addHeaders(defaultHeaders)
-                    .body(getObjectMapper().writeValueAsString(showInformationRequest))
-                    .build();
 
-            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "api/show")
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders)
+                .body(toJson(showInformationRequest))
+                .build();
 
-            return getObjectMapper().readValue(successfulHttpResponse.body(), OllamaModelCard.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+
+        return fromJson(successfulHttpResponse.body(), OllamaModelCard.class);
     }
 
     public RunningModelsListResponse listRunningModels() {
-        try {
-            HttpRequest httpRequest = HttpRequest.builder()
-                    .method(GET)
-                    .url(baseUrl, "api/ps")
-                    .addHeader("Content-Type", "application/json")
-                    .addHeaders(defaultHeaders)
-                    .build();
 
-            SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "api/ps")
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders)
+                .build();
 
-            return getObjectMapper().readValue(successfulHttpResponse.body(), RunningModelsListResponse.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+
+        return fromJson(successfulHttpResponse.body(), RunningModelsListResponse.class);
     }
 
     public Void deleteModel(DeleteModelRequest deleteModelRequest) {
-        try {
-            HttpRequest httpRequest = HttpRequest.builder()
-                    .method(DELETE)
-                    .url(baseUrl, "api/delete")
-                    .addHeader("Content-Type", "application/json")
-                    .addHeaders(defaultHeaders)
-                    .body(getObjectMapper().writeValueAsString(deleteModelRequest))
-                    .build();
-            httpClient.execute(httpRequest);
-            return null;
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(DELETE)
+                .url(baseUrl, "api/delete")
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(defaultHeaders)
+                .body(toJson(deleteModelRequest))
+                .build();
+
+        httpClient.execute(httpRequest);
+
+        return null;
     }
 
     static class Builder {

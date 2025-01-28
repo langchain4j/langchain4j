@@ -6,8 +6,8 @@ import java.io.InputStream;
 
 /**
  * TODO
- *
- * @see DefaultServerSentEventParser
+ * <p>
+ * TODO @see DefaultServerSentEventParser
  */
 @Experimental
 public interface ServerSentEventParser {
