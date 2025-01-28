@@ -9,6 +9,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentToJson;
+import static dev.langchain4j.model.bedrock.internal.Utils.extractAndValidateFormat;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -28,6 +29,7 @@ import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.bedrock.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -39,7 +41,6 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -47,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
@@ -111,6 +113,10 @@ public class BedrockChatModel implements ChatLanguageModel {
                         .maxOutputTokens(builder.defaultRequestParameters.maxOutputTokens())
                         .topP(builder.defaultRequestParameters.topP())
                         .stopSequences(copyIfNotNull(builder.defaultRequestParameters.stopSequences()))
+                        .topK(builder.defaultRequestParameters.topK())
+                        .frequencyPenalty(builder.defaultRequestParameters.frequencyPenalty())
+                        .presencePenalty(builder.defaultRequestParameters.presencePenalty())
+                        .responseFormat(builder.defaultRequestParameters.responseFormat())
                         .build();
 
         validate(this.defaultRequestParameters);
@@ -338,18 +344,14 @@ public class BedrockChatModel implements ChatLanguageModel {
         throw new IllegalArgumentException("Unsupported content type: " + content.getClass());
     }
 
+    // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_DocumentBlock.html
+    // DocumentBlock must have a non duplicated name. So if we can't extract one from filename we set a random one
     private static String extractFilenameWithoutExtensionFromUri(URI uri) {
-        // The name can only contain the following characters:
-        // Alphanumeric characters, Whitespace characters (no more than one in a row), Hyphens, Parentheses, Square,
-        // brackets
-        try {
-            final String filename = Paths.get(uri).getFileName().toString();
-            int dotIndex = filename.lastIndexOf('.');
-            String filenameWithoutExtension = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
-            return filenameWithoutExtension.replace(".", "-");
-        } catch (Exception e) {
-            return "document";
+        String extractedCleanFileName = Utils.extractCleanFileName(uri);
+        if (isNullOrEmpty(extractedCleanFileName)) {
+            extractedCleanFileName = UUID.randomUUID().toString();
         }
+        return extractedCleanFileName;
     }
 
     private ContentBlock createImageBlock(ImageContent imageContent) {
@@ -357,35 +359,15 @@ public class BedrockChatModel implements ChatLanguageModel {
                 nonNull(imageContent.image().base64Data())
                         ? Base64.getDecoder().decode(imageContent.image().base64Data())
                         : readBytes(String.valueOf(imageContent.image().url())));
-        final String imgFormat = nonNull(imageContent.image().mimeType())
-                ? extractImageFormat(imageContent.image().mimeType())
-                : extractURIFileExtension(imageContent.image().url());
+        // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ImageBlock.html
+        // imgFormat valid values are : png | jpeg | gif | webp
+        final String imgFormat = extractAndValidateFormat(imageContent.image());
         return ContentBlock.builder()
                 .image(ImageBlock.builder()
                         .format(imgFormat)
                         .source(ImageSource.builder().bytes(bytes).build())
                         .build())
                 .build();
-    }
-
-    private String extractURIFileExtension(URI url) {
-        String path = url.getPath();
-
-        // Extract the file extension
-        String extension = "";
-        int lastDotIndex = path.lastIndexOf('.');
-        if (lastDotIndex != -1 && lastDotIndex < path.length() - 1) {
-            extension = path.substring(lastDotIndex + 1);
-        }
-        return extension;
-    }
-
-    private String extractImageFormat(String mimeType) {
-        if (mimeType == null || mimeType.isEmpty()) {
-            return "jpeg"; // default format
-        }
-        String[] parts = mimeType.split("/");
-        return parts.length > 1 ? parts[1] : "jpeg";
     }
 
     private ToolConfiguration extractToolConfigurationFrom(
