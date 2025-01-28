@@ -1,13 +1,19 @@
 package dev.langchain4j.store.embedding.qdrant;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static io.qdrant.client.grpc.Collections.Distance.Cosine;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
+import dev.langchain4j.test.condition.DisabledOnWindowsCI;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
 import io.qdrant.client.grpc.Collections;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,12 +21,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.qdrant.QdrantContainer;
 
-import java.util.concurrent.ExecutionException;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static io.qdrant.client.grpc.Collections.Distance.Cosine;
-import static org.assertj.core.api.Assertions.assertThat;
-
+@DisabledOnWindowsCI
 @Testcontainers
 public class QdrantEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
 
@@ -44,8 +45,7 @@ public class QdrantEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemoval
                 QdrantGrpcClient.newBuilder(QDRANT_CONTAINER.getHost(), QDRANT_CONTAINER.getGrpcPort(), false)
                         .build());
 
-        client
-                .createCollectionAsync(
+        client.createCollectionAsync(
                         COLLECTION_NAME,
                         Collections.VectorParams.newBuilder()
                                 .setDistance(Cosine)

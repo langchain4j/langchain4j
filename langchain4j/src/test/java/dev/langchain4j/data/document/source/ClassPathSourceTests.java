@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
-import java.io.File;
 import java.io.IOException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -32,10 +31,8 @@ class ClassPathSourceTests {
     void findFile(String classPathResource) throws IOException {
         var classPathSource = ClassPathSource.from(classPathResource);
         var urlString = classPathSource.url().getFile();
-        var filename = urlString.substring(urlString.lastIndexOf(File.separatorChar) + 1);
-        var expectedMetaData = new Metadata()
-                .put(Document.URL, urlString)
-                .put(Document.FILE_NAME, urlString.substring(urlString.lastIndexOf(File.separatorChar) + 1));
+        var filename = urlString.substring(urlString.lastIndexOf('/') + 1);
+        var expectedMetaData = new Metadata().put(Document.URL, urlString).put(Document.FILE_NAME, filename);
 
         assertThat(classPathSource)
                 .isNotNull()
@@ -43,7 +40,7 @@ class ClassPathSourceTests {
                 .isEqualTo(expectedMetaData);
 
         assertThat(new String(classPathSource.inputStream().readAllBytes()))
-                .isEqualTo("This is %s\n".formatted(filename));
+                .startsWith("This is %s".formatted(filename));
     }
 
     @ParameterizedTest

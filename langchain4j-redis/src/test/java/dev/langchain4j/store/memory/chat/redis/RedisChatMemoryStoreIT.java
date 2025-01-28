@@ -1,24 +1,25 @@
 package dev.langchain4j.store.memory.chat.redis;
 
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.redis.testcontainers.RedisContainer;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.test.condition.DisabledOnWindowsCI;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
-import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
+@DisabledOnWindowsCI
 class RedisChatMemoryStoreIT {
 
     static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
@@ -147,9 +148,9 @@ class RedisChatMemoryStoreIT {
     @Test
     void constructor_port_null() {
         assertThatThrownBy(() -> RedisChatMemoryStore.builder()
-                .port(null)
-                .host(redis.getHost())
-                .build())
+                        .port(null)
+                        .host(redis.getHost())
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("port cannot be null");
     }
@@ -157,9 +158,9 @@ class RedisChatMemoryStoreIT {
     @Test
     void constructor_host_null() {
         assertThatThrownBy(() -> RedisChatMemoryStore.builder()
-                .port(redis.getFirstMappedPort())
-                .host(null)
-                .build())
+                        .port(redis.getFirstMappedPort())
+                        .host(null)
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("host cannot be null or blank");
     }
@@ -167,9 +168,9 @@ class RedisChatMemoryStoreIT {
     @Test
     void constructor_host_empty() {
         assertThatThrownBy(() -> RedisChatMemoryStore.builder()
-                .port(redis.getFirstMappedPort())
-                .host("   ")
-                .build())
+                        .port(redis.getFirstMappedPort())
+                        .host("   ")
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("host cannot be null or blank");
     }
@@ -177,11 +178,11 @@ class RedisChatMemoryStoreIT {
     @Test
     void constructor_user_empty() {
         assertThatThrownBy(() -> RedisChatMemoryStore.builder()
-                .port(redis.getFirstMappedPort())
-                .host(redis.getHost())
-                .user("  ")
-                .password("123456")
-                .build())
+                        .port(redis.getFirstMappedPort())
+                        .host(redis.getHost())
+                        .user("  ")
+                        .password("123456")
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("user cannot be null or blank");
     }
@@ -189,11 +190,11 @@ class RedisChatMemoryStoreIT {
     @Test
     void constructor_password_empty() {
         assertThatThrownBy(() -> RedisChatMemoryStore.builder()
-                .port(redis.getFirstMappedPort())
-                .host(redis.getHost())
-                .user("redisUser")
-                .password("   ")
-                .build())
+                        .port(redis.getFirstMappedPort())
+                        .host(redis.getHost())
+                        .user("redisUser")
+                        .password("   ")
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("password cannot be null or blank");
     }
@@ -201,11 +202,11 @@ class RedisChatMemoryStoreIT {
     @Test
     void constructor_password_null() {
         assertThatThrownBy(() -> RedisChatMemoryStore.builder()
-                .port(redis.getFirstMappedPort())
-                .host(redis.getHost())
-                .user("redisUser")
-                .password(null)
-                .build())
+                        .port(redis.getFirstMappedPort())
+                        .host(redis.getHost())
+                        .user("redisUser")
+                        .password(null)
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("password cannot be null or blank");
     }

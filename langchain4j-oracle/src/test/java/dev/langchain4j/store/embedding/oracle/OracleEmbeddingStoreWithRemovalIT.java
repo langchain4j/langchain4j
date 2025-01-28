@@ -4,10 +4,12 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
+import dev.langchain4j.store.embedding.oracle.test.condition.DisabledOnWindowsCIRequiringContainer;
 import java.sql.SQLException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 
+@DisabledOnWindowsCIRequiringContainer
 public class OracleEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     private final OracleEmbeddingStore embeddingStore = CommonTestOperations.newEmbeddingStore();

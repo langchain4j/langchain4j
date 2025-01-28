@@ -11,13 +11,16 @@ jobs:
     strategy:
       fail-fast: false # do not cancel jobs on error
       matrix:
+        os:
+          - { name: 'ubuntu-latest', threading: '-T8C' }
+          - { name: 'windows-latest', threading: '' }
         java_version:
           - 21
         include:
           - java_version: '21'
-            mvn_opts: '-pl !langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus'
+            mvn_opts: '-pl "!langchain4j-ollama,!langchain4j-local-ai,!langchain4j-milvus"'
       max-parallel: 1
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os.name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -40,15 +43,10 @@ jobs:
       - name: Build with JDK ${{ matrix.java_version }}
         run: |
           ## compile and verify javadocs on ALL modules
-          mvn -B -U -T8C test javadoc:aggregate \
-            --fail-at-end \
-            ${{ matrix.mvn_opts }}
+          mvn -B -U ${{ matrix.os.threading }} test javadoc:aggregate --fail-at-end ${{ matrix.mvn_opts }}
           
           ## run tests for some modules
-          mvn -B -U verify \
-              --fail-at-end \
-              -Dmaven.test.failure.ignore=true \
-              ${{ matrix.mvn_opts }}
+          mvn -B -U verify --fail-at-end -Dmaven.test.failure.ignore=true ${{ matrix.mvn_opts }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -68,6 +66,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
+          IS_GH_ACTION_CI: 'true'
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
           MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
           MILVUS_URI: ${{ secrets.MILVUS_URI }}
@@ -93,7 +92,7 @@ jobs:
         if: always() # always run even if the previous step failed or was cancelled
         uses: actions/upload-artifact@v4
         with:
-          name: Test-Reports-${{ matrix.java-version }}
+          name: Test-Reports-${{ matrix.java-version }}-${{ matrix.os.name }}
           path: '**/target/*-reports/*'
 
       - name: Publish Test Report

@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import dev.langchain4j.store.embedding.elasticsearch.test.condition.DisabledOnWindowsCIRequiringContainer;
+
+@DisabledOnWindowsCIRequiringContainer
 class ElasticsearchEmbeddingStoreScriptIT extends AbstractElasticsearchEmbeddingStoreIT {
 
     @Override
