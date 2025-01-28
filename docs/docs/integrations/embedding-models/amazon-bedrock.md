@@ -40,7 +40,6 @@ Below is an example of how to configure and use a Bedrock embedding model:
 BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel
         .builder()
         .region(Region.US_EAST_1)
-        .maxRetries(1)
         .model("cohere.embed-multilingual-v3")
         .inputType(BedrockCohereEmbeddingModel.InputType.SEARCH_QUERY)
         .truncation(BedrockCohereEmbeddingModel.Truncate.NONE)
