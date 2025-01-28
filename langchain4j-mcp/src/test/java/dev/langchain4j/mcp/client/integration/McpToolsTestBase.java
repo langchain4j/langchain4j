@@ -1,7 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.*;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -13,18 +12,17 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import java.io.File;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class McpTransportTestBase {
+public abstract class McpToolsTestBase {
 
     static McpClient mcpClient;
 
-    private static final Logger log = LoggerFactory.getLogger(McpTransportTestBase.class);
+    private static final Logger log = LoggerFactory.getLogger(McpToolsTestBase.class);
 
     @Test
     public void verifyToolSpecifications() {
@@ -137,37 +135,5 @@ public abstract class McpTransportTestBase {
                 .findFirst()
                 .get()
                 .getValue();
-    }
-
-    static String getJBangCommand() {
-        String command = System.getProperty("jbang.command");
-        if (command == null || command.isEmpty()) {
-            command = isWindows() ? "jbang.cmd" : "jbang";
-        }
-        return command;
-    }
-
-    static void skipTestsIfJbangNotAvailable() {
-        String command = getJBangCommand();
-        try {
-            new ProcessBuilder().command(command, "--version").start().waitFor();
-        } catch (Exception e) {
-            String message = "jbang is not available (could not execute command '" + command
-                    + "', MCP integration tests will be skipped. "
-                    + "The command may be overridden via the system property 'jbang.command'";
-            log.warn(message, e);
-            assumeTrue(false, message);
-        }
-    }
-
-    static String getPathToScript(String script) {
-        return ClassLoader.getSystemResource(script)
-                .getFile()
-                .substring(isWindows() ? 1 : 0)
-                .replace("/", File.separator);
-    }
-
-    private static boolean isWindows() {
-        return System.getProperty("os.name").toLowerCase().contains("windows");
     }
 }

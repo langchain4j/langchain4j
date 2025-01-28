@@ -1,7 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //DEPS io.quarkus:quarkus-bom:${quarkus.version:3.17.5}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.0.0.Alpha3
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.0.0.Alpha3
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.0.0.Alpha6
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.0.0.Alpha6
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
