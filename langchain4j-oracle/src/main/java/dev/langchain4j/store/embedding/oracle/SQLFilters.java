@@ -90,7 +90,9 @@ final class SQLFilters {
         Class<? extends Filter> filterClass = filter.getClass();
         FilterConstructor constructor = CONSTRUCTORS.get(filterClass);
 
-        if (constructor == null) throw new UnsupportedOperationException("Unsupported Filter class: " + filterClass);
+        if (constructor == null) {
+            throw new UnsupportedOperationException("Unsupported filter type: " + filterClass.getName());
+        }
 
         return constructor.construct(filter, keyMapper);
     }
