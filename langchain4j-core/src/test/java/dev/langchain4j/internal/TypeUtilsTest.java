@@ -1,13 +1,13 @@
 package dev.langchain4j.internal;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
 
 public class TypeUtilsTest {
 
@@ -19,6 +19,7 @@ public class TypeUtilsTest {
         assertThat(TypeUtils.isJsonString(StringBuffer.class)).isTrue();
         assertThat(TypeUtils.isJsonString(StringBuilder.class)).isTrue();
         assertThat(TypeUtils.isJsonString(CharSequence.class)).isTrue();
+        assertThat(TypeUtils.isJsonString(UUID.class)).isTrue();
     }
 
     @Test

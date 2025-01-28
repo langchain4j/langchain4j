@@ -451,7 +451,7 @@ public class GoogleAiGeminiStreamingChatModelIT {
                 .type(JSON)
                 .jsonSchema(JsonSchema.builder()
                     .rootElement(JsonObjectSchema.builder()
-                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                        .addProperties(new LinkedHashMap<String, JsonSchemaElement>() {{
                             put("sentiment", JsonEnumSchema.builder()
                                 .enumValues("POSITIVE", "NEGATIVE")
                                 .build());

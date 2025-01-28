@@ -4,6 +4,9 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.filter.Filter;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIf;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -21,6 +24,7 @@ import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metad
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 /**
@@ -1747,5 +1751,53 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 ))
 
                 .build();
+    }
+
+    @DisabledIf("supportsContains")
+    @Test
+    protected void should_throw_exception_when_contains_is_not_supported() {
+        // given
+        Filter metadataFilter = metadataKey("key").containsString("value");
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel().embed("matching").content())
+                .filter(metadataFilter)
+                .maxResults(100)
+                .build();
+
+        // when
+        Throwable throwable = catchThrowable(() -> embeddingStore().search(embeddingSearchRequest));
+
+        // then
+        assertThat(throwable)
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @EnabledIf("supportsContains")
+    @Test
+    protected void should_filter_by_metadata_contains() {
+        should_filter_by_metadata(
+                metadataKey("key").containsString("contains"),
+                List.of(
+                        new Metadata().put("key", "|contains|"),
+                        new Metadata().put("key", "contains").put("key2", "not")),
+                List.of(new Metadata().put("key", "ContainsString"), new Metadata().put("key2", "contains"), new Metadata()));
+    }
+
+    @EnabledIf("supportsContains")
+    @Test
+    protected void should_filter_by_not_metadata_contains() {
+        should_filter_by_metadata_not(
+                not(metadataKey("key").containsString("contains")),
+                List.of(
+                        new Metadata().put("key", "not"),
+                        new Metadata().put("key", "not").put("key2", "contains"),
+                        new Metadata()),
+                List.of(
+                        new Metadata().put("key", "|contains|"),
+                        new Metadata().put("key", "contains").put("key2", "not")));
+    }
+
+    protected boolean supportsContains() {
+        return false;
     }
 }
