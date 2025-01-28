@@ -8,6 +8,7 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
@@ -67,8 +68,10 @@ public class HttpRequest {
             return this;
         }
 
-        // TODO unit test
         public Builder url(String baseUrl, String path) {
+            ensureNotBlank(baseUrl, "baseUrl");
+            ensureNotBlank(path, "path");
+
             if (baseUrl.endsWith("/")) {
                 baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
             }
@@ -79,16 +82,17 @@ public class HttpRequest {
             return this;
         }
 
-        // TODO unit test
         public Builder addHeader(String name, String... values) {
+            ensureNotBlank(name, "name");
+            ensureNotEmpty(values, "values");
+
             if (this.headers == null) {
                 this.headers = new HashMap<>();
             }
-            this.headers.put(ensureNotBlank(name, "name"), asList(values));
+            this.headers.put(name, asList(values));
             return this;
         }
 
-        // TODO unit test
         public Builder addHeaders(Map<String, String> headers) {
             if (isNullOrEmpty(headers)) {
                 return this;

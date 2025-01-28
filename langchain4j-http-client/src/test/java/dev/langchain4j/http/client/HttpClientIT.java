@@ -203,7 +203,7 @@ public abstract class HttpClientIT {
                 }
             };
             ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, spyListener);
+            client.execute(request, new DefaultServerSentEventParser(), spyListener);
 
             // then
             StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
@@ -290,7 +290,7 @@ public abstract class HttpClientIT {
                 }
             };
             ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, spyListener);
+            client.execute(request, new DefaultServerSentEventParser(), spyListener);
 
             // then
             StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);
@@ -368,7 +368,7 @@ public abstract class HttpClientIT {
                 }
             };
             ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, spyListener);
+            client.execute(request, new DefaultServerSentEventParser(), spyListener);
 
             // then
             StreamingResult streamingResult = completableFuture.get(30, TimeUnit.SECONDS);

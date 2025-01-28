@@ -21,19 +21,6 @@ public interface HttpClient {
 
     /**
      * TODO
-     * TODO DefaultServerSentEventParser
-     * TODO errors
-     * TODO threads
-     *
-     * @param request
-     * @param listener
-     */
-    default void execute(HttpRequest request, ServerSentEventListener listener) {
-        execute(request, new DefaultServerSentEventParser(), listener);
-    }
-
-    /**
-     * TODO
      * TODO ServerSentEventParser
      * TODO errors
      * TODO threads
