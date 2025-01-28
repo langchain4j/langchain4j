@@ -1,4 +1,4 @@
-package dev.langchain4j.http.client;
+package dev.langchain4j.exception;
 
 import dev.langchain4j.Experimental;
 

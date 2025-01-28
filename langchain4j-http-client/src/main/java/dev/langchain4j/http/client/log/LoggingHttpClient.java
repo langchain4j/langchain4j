@@ -2,7 +2,7 @@ package dev.langchain4j.http.client.log;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClient;
-import dev.langchain4j.http.client.HttpException;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;

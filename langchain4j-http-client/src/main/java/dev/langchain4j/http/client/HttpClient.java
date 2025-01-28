@@ -1,6 +1,7 @@
 package dev.langchain4j.http.client;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;

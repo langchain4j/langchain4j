@@ -1,6 +1,6 @@
 package dev.langchain4j.model.ollama;
 
-import dev.langchain4j.http.client.HttpException;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
