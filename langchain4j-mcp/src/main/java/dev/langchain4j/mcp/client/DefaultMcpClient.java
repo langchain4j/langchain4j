@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
+import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
 import dev.langchain4j.mcp.client.protocol.CancellationNotification;
 import dev.langchain4j.mcp.client.protocol.InitializeParams;
 import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
@@ -47,6 +49,7 @@ public class DefaultMcpClient implements McpClient {
     private final String toolExecutionTimeoutErrorMessage;
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
     private final McpOperationHandler messageHandler;
+    private final McpLogMessageHandler logHandler;
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -54,10 +57,11 @@ public class DefaultMcpClient implements McpClient {
         clientVersion = getOrDefault(builder.clientVersion, "1.0");
         protocolVersion = getOrDefault(builder.protocolVersion, "2024-11-05");
         toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
+        logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
         toolExecutionTimeoutErrorMessage =
                 getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
         RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
-        messageHandler = new McpOperationHandler(pendingOperations, transport);
+        messageHandler = new McpOperationHandler(pendingOperations, transport, logHandler::handleLogMessage);
         ((ObjectNode) RESULT_TIMEOUT)
                 .putObject("result")
                 .putArray("content")
@@ -136,15 +140,13 @@ public class DefaultMcpClient implements McpClient {
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeout) {
             transport.executeOperationWithoutResponse(new CancellationNotification(operationId, "Timeout"));
-            return ToolExecutionHelper.extractResult(
-                    (ArrayNode) RESULT_TIMEOUT.get("result").get("content"));
+            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT);
         } catch (ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             pendingOperations.remove(operationId);
         }
-        return ToolExecutionHelper.extractResult(
-                (ArrayNode) result.get("result").get("content"));
+        return ToolExecutionHelper.extractResult(result);
     }
 
     @Override
@@ -164,6 +166,7 @@ public class DefaultMcpClient implements McpClient {
         private String clientVersion;
         private String protocolVersion;
         private Duration toolExecutionTimeout;
+        private McpLogMessageHandler logHandler;
 
         public Builder transport(McpTransport transport) {
             this.transport = transport;
@@ -217,6 +220,14 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder toolExecutionTimeoutErrorMessage(String toolExecutionTimeoutErrorMessage) {
             this.toolExecutionTimeoutErrorMessage = toolExecutionTimeoutErrorMessage;
+            return this;
+        }
+
+        /**
+         * Sets the log message handler for the client.
+         */
+        public Builder logHandler(McpLogMessageHandler logHandler) {
+            this.logHandler = logHandler;
             return this;
         }
 

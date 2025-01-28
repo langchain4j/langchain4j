@@ -80,6 +80,8 @@ how it should behave, in what style to answer, etc.
 LLMs are trained to pay more attention to `SystemMessage` than to other types of messages,
 so be careful, and it's better not to give an end user free access to define or inject some input into a `SystemMessage`.
 Usually, it is located at the start of the conversation.
+- `CustomMessage`: This is a custom message that can contain arbitrary attributes. This message type can only be used by
+`ChatLanguageModel` implementations that support it (currently only Ollama).
 
 Now that we know all types of `ChatMessage`, let's see how we can combine them in the conversation.
 
@@ -181,3 +183,7 @@ See more details [here](https://platform.openai.com/docs/guides/vision#low-or-hi
 ### Kotlin Extensions
 
 The `ChatLanguageModel` [Kotlin extensions](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/kotlin/dev/langchain4j/model/chat/ChatLanguageModelExtensions.kt) provide asynchronous methods for handling chat interactions with a language model, utilizing Kotlin's [coroutine](https://kotlinlang.org/docs/coroutines-guide.html) capabilities. The `chatAsync` methods allow non-blocking processing of `ChatRequest` or `ChatRequest.Builder` configurations, returning `ChatResponse` with the model's reply. Similarly, `generateAsync` handles the asynchronous generation of responses from chat messages. These extensions simplify building chat requests and handling conversations efficiently in Kotlin applications. Note that these methods are marked as experimental and may evolve over time.
+
+**`ChatLanguageModel.chatAsync(request: ChatRequest)`**: Designed for Kotlin coroutines, this *asynchronous* extension function wraps the synchronous `chat` method within a coroutine scope using `Dispatchers.IO`. This enables non-blocking operations, crucial for maintaining application responsiveness.  It's named `chatAsync` specifically to avoid conflicts with the existing synchronous `chat`. Its function signature is: `suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse`. The keyword `suspend` designates it as a coroutine function.
+
+**`ChatLanguageModel.chat(block: ChatRequestBuilder.() -> Unit)`**: This variant of `chat` offers a more streamlined approach by using Kotlin's type-safe builder DSL. It simplifies constructing `ChatRequest` objects while internally using `chatAsync` for asynchronous execution. This version offers both conciseness and non-blocking behavior through coroutines.
