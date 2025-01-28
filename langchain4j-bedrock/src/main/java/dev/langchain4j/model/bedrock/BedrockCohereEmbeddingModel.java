@@ -2,6 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockEmbeddingModel;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,31 +18,19 @@ import java.util.Map;
  */
 public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockCohereEmbeddingResponse> {
 
-    private String model;
-    private String inputType;
-    private String truncate;
-    private String embeddingType;
+    private final String model;
+    private final String inputType;
+    private final String truncate;
 
-    public BedrockCohereEmbeddingModel(String model, String inputType, String truncate, String embeddingType,
-                                       AbstractBedrockEmbeddingModelBuilder builder) {
+    public BedrockCohereEmbeddingModel(Builder builder) {
         super(builder);
-        this.model = model;
-        this.inputType = inputType;
-        this.truncate = truncate;
-        this.embeddingType = embeddingType;
+        this.model = ensureNotBlank(builder.model, "model");
+        this.inputType = ensureNotBlank(builder.inputType, "inputType");
+        this.truncate = builder.truncate;
     }
 
     @Override
     protected List<Map<String, Object>> getRequestParameters(List<TextSegment> textSegments) {
-        if (model == null) {
-            throw new IllegalArgumentException("Model is required.");
-        }
-        if (inputType == null) {
-            throw new IllegalArgumentException("Input type is required.");
-        }
-        if (!embeddingType.equalsIgnoreCase("float")) {
-            throw new IllegalArgumentException("Only float embedding type is supported.");
-        }
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (TextSegment textSegment : textSegments) {
@@ -49,7 +38,7 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
             parameters.put("texts", List.of(textSegment.text()));
             parameters.put("input_type", inputType);
             parameters.put("truncate", truncate);
-            parameters.put("embedding_types", List.of(embeddingType));
+            parameters.put("embedding_types", List.of(EmbeddingType.FLOAT.getValue()));
             result.add(parameters);
         }
         return result;
@@ -74,7 +63,6 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
         private String model;
         private String inputType;
         private String truncate = Truncate.NONE.getValue();
-        private String embeddingType = EmbeddingType.FLOAT.getValue();
 
         @Override
         protected Builder self() {
@@ -96,19 +84,8 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
             return this;
         }
 
-        public Builder embeddingType(String embeddingType) {
-            this.embeddingType = embeddingType;
-            return this;
-        }
-
         public BedrockCohereEmbeddingModel build() {
-            return new BedrockCohereEmbeddingModel(
-                    this.model,
-                    this.inputType,
-                    this.truncate,
-                    this.embeddingType,
-                    self()
-            );
+            return new BedrockCohereEmbeddingModel(self());
         }
     }
 
