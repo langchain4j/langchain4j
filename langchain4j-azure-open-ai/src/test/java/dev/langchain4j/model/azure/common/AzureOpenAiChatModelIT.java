@@ -45,11 +45,6 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        return true; // Azure OpenAI supports JSON response with Schema
-    }
-
-    @Override
     protected boolean supportsDefaultRequestParameters() {
         return false; // TODO implement
     }
