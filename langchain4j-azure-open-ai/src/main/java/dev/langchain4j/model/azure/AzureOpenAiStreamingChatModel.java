@@ -462,7 +462,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     public void chat(ChatRequest request, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = request.parameters();
         validate(parameters);
-        validate(parameters.toolChoice());
 
         // If the response format is not specified in the request, use the one specified in the model
         ResponseFormat responseFormat = request.responseFormat();
