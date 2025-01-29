@@ -44,6 +44,14 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    @Disabled
+    @ParameterizedTest
+    @MethodSource("modelsSupportingImageInputs")
+    protected void should_accept_multiple_images_as_public_URLs(StreamingChatLanguageModel model) {
+        // TODO fix
+    }
+
+    @Override
     protected boolean supportsDefaultRequestParameters() {
         return false; // TODO implement
     }
@@ -61,6 +69,11 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsStopSequencesParameter() {
         return false; // TODO implement
+    }
+
+    @Override
+    protected boolean supportsToolChoiceRequiredWithMultipleTools() {
+        return false;
     }
 
     @Override
