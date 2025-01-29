@@ -515,6 +515,7 @@ final class SQLFilters {
      * @throws SQLException If a JDBC API call results in an error, perhaps because the statement or connection is
      * closed, or because a Java-to-SQL conversion is not supported.
      */
+
     private static void setObject(
             PreparedStatement preparedStatement, int parameterIndex, Object object, OracleType sqlType)
             throws SQLException {

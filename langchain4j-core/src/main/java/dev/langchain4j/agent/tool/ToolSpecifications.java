@@ -129,7 +129,7 @@ public class ToolSpecifications {
         }
 
         return JsonObjectSchema.builder()
-                .properties(properties)
+                .addProperties(properties)
                 .required(required)
                 .definitions(definitions.isEmpty() ? null : definitions)
                 .build();
