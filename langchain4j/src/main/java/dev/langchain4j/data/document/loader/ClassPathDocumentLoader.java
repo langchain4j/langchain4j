@@ -11,6 +11,7 @@ import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.source.ClassPathSource;
+import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystems;
@@ -223,13 +224,12 @@ public class ClassPathDocumentLoader {
                 .filter(Files::isRegularFile)
                 // converting absolute pathMatcherRoot into relative before using pathMatcher
                 // because patterns defined in pathMatcher are relative to pathMatcherRoot (directoryPath)
-                .map(pathMatcherRoot::relativize)
-                .filter(pathMatcher::matches)
-                // converting relative pathMatcherRoot back into absolute before loading document
-                .map(pathMatcherRoot::resolve)
+                .filter(p -> pathMatcher.matches(
+                        Path.of(pathMatcherRoot.relativize(p).toString().replace('/', File.separatorChar))))
                 .map(p -> {
                     try {
                         var relativePath = getRelativePath(rootDirectoryClassPathSource, p);
+
                         return loadDocument(
                                 ClassPathSource.from(relativePath, rootDirectoryClassPathSource.classLoader()),
                                 p,
@@ -258,7 +258,7 @@ public class ClassPathDocumentLoader {
             var rootClasspathPath = Path.of(rootClasspathURI);
             var relativeClasspathPath = rootClasspathPath.relativize(subPath);
 
-            return relativeClasspathPath.toString();
+            return relativeClasspathPath.toString().replace(File.separatorChar, '/');
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
