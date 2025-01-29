@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
 
 import java.util.ArrayList;
@@ -8,6 +9,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 
@@ -48,19 +50,27 @@ public class ReciprocalRankFuser {
     public static List<Content> fuse(Collection<List<Content>> listsOfContents, int k) {
         ensureBetween(k, 1, Integer.MAX_VALUE, "k");
 
-        Map<Content, Double> scores = new LinkedHashMap<>();
+        Map<TextSegment, Double> scores = new LinkedHashMap<>();
+        Map<TextSegment, Content> contentMap = new LinkedHashMap<>();
+
         for (List<Content> singleListOfContent : listsOfContents) {
             for (int i = 0; i < singleListOfContent.size(); i++) {
                 Content content = singleListOfContent.get(i);
-                double currentScore = scores.getOrDefault(content, 0.0);
+                TextSegment textSegment = content.textSegment();
+                double currentScore = scores.getOrDefault(textSegment, 0.0);
                 int rank = i + 1;
                 double newScore = currentScore + 1.0 / (k + rank);
-                scores.put(content, newScore);
+                scores.put(textSegment, newScore);
+                contentMap.put(textSegment, content);
             }
         }
 
-        List<Content> fused = new ArrayList<>(scores.keySet());
-        fused.sort(Comparator.comparingDouble(scores::get).reversed());
-        return fused;
+        return contentMap.values().stream()
+                .sorted((c1, c2) -> Double.compare(
+                        scores.get(c2.textSegment()),
+                        scores.get(c1.textSegment())
+                ))
+                .collect(Collectors.toList());
     }
+
 }
