@@ -21,7 +21,6 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 import org.neo4j.driver.Driver;
@@ -260,7 +259,7 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     private boolean indexExists() {
         try (var session = session()) {
             Map<String, Object> params = Map.of("name", this.indexName);
-            var resIndex = session.run("SHOW INDEX WHERE type = 'VECTOR' AND name = $name", params);
+            var resIndex = session.run("SHOW VECTOR INDEX WHERE name = $name", params);
             if (!resIndex.hasNext()) {
                 return false;
             }
@@ -296,8 +295,16 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         // create vector index
         try (var session = session()) {
-            session.run("CALL db.index.vector.createNodeIndex($indexName, $label, $embeddingProperty, $dimension, 'cosine')",
-                    params);
+            String query = """
+                    CREATE VECTOR INDEX %s IF NOT EXISTS
+                    FOR (m:%s) ON m.%s
+                    OPTIONS { indexConfig: {
+                        `vector.dimensions`: %s,
+                        `vector.similarity_function`: 'cosine'
+                    }}
+                    """
+                    .formatted(indexName, sanitizedLabel, sanitizedEmbeddingProperty, dimension);
+            session.run(query, params);
 
             session.run("CALL db.awaitIndexes($timeout)", 
                     Map.of("timeout", awaitIndexTimeout)

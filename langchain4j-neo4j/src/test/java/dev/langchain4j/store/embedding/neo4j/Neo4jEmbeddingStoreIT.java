@@ -51,7 +51,7 @@ class Neo4jEmbeddingStoreIT {
     public static final String LABEL_TO_SANITIZE = "Label ` to \\ sanitize";
     
     @Container
-    static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.14.0"))
+    static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.26.1"))
             .withAdminPassword(ADMIN_PASSWORD);
 
     private static final String METADATA_KEY = "test-key";
