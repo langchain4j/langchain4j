@@ -262,7 +262,7 @@ public class VectorIndexIT {
             throws SQLException {
         try (Connection connection = getDataSource().getConnection();
                 PreparedStatement preparedStatement = connection.prepareStatement(
-                        "SELECT 'OK' FROM user_indexes WHERE table_name=? AND index_name=? AND index_type?")) {
+                        "SELECT 'OK' FROM user_indexes WHERE table_name=? AND index_name=? AND index_type=?")) {
             preparedStatement.setString(1, tableName);
             preparedStatement.setString(2, indexName);
             preparedStatement.setString(3, indexType);

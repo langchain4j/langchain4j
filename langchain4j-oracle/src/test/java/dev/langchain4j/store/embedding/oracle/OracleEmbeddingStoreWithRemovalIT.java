@@ -10,7 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 
 public class OracleEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
 
-    private static final OracleEmbeddingStore EMBEDDING_STORE = CommonTestOperations.newEmbeddingStore();
+    private final OracleEmbeddingStore embeddingStore = CommonTestOperations.newEmbeddingStore();
 
     @BeforeEach
     public void clearTable() {
@@ -21,7 +21,7 @@ public class OracleEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemoval
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return EMBEDDING_STORE;
+        return embeddingStore;
     }
 
     @Override
