@@ -90,7 +90,7 @@ final class SQLFilters {
      *
      * @return The equivalent SQLFilter, which may be {@link #EMPTY} if the input <code>Filter</code> is null.
      *
-     * @throws IllegalArgumentException If the class of the Filter is not recognized.
+     * @throws UnsupportedOperationException If the class of the Filter is not recognized.
      */
     static SQLFilter create(Filter filter, BiFunction<String, OracleType, String> keyMapper) {
         if (filter == null) return EMPTY;
@@ -98,7 +98,8 @@ final class SQLFilters {
         Class<? extends Filter> filterClass = filter.getClass();
         FilterConstructor constructor = CONSTRUCTORS.get(filterClass);
 
-        if (constructor == null) throw new IllegalArgumentException("Unrecognized Filter class: " + filterClass);
+        if (constructor == null)
+            throw new UnsupportedOperationException("Unsupported filter type: " + filterClass.getName());
 
         return constructor.construct(filter, keyMapper);
     }
