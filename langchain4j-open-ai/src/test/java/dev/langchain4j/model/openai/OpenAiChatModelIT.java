@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -18,6 +19,10 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 
@@ -37,8 +42,10 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiChatModelIT {
 
-    static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
+    static final String CAT_IMAGE_URL =
+            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    static final String DICE_IMAGE_URL =
+            "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     ToolSpecification calculator = ToolSpecification.builder()
             .name("calculator")
@@ -79,10 +86,16 @@ class OpenAiChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OpenAiChatModelName.class, mode = EXCLUDE, names = {
-            "GPT_4_32K", "GPT_4_32K_0613", "O1", "O1_2024_12_17", // don't have access
-            "GPT_4_VISION_PREVIEW" // deprecated
-    })
+    @EnumSource(
+            value = OpenAiChatModelName.class,
+            mode = EXCLUDE,
+            names = {
+                "GPT_4_32K",
+                "GPT_4_32K_0613",
+                "O1",
+                "O1_2024_12_17", // don't have access
+                "GPT_4_VISION_PREVIEW" // deprecated
+            })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
         // given
@@ -181,7 +194,8 @@ class OpenAiChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.id()).isNotBlank();
         assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
@@ -229,7 +243,8 @@ class OpenAiChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.id()).isNotBlank();
         assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
@@ -288,11 +303,13 @@ class OpenAiChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
 
-        ToolExecutionRequest toolExecutionRequest1 = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest1.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
-        ToolExecutionRequest toolExecutionRequest2 = aiMessage.toolExecutionRequests().get(1);
+        ToolExecutionRequest toolExecutionRequest2 =
+                aiMessage.toolExecutionRequests().get(1);
         assertThat(toolExecutionRequest2.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
 
@@ -308,7 +325,8 @@ class OpenAiChatModelIT {
         ToolExecutionResultMessage toolExecutionResultMessage1 = from(toolExecutionRequest1, "4");
         ToolExecutionResultMessage toolExecutionResultMessage2 = from(toolExecutionRequest2, "6");
 
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
+        List<ChatMessage> messages =
+                asList(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
 
         // when
         Response<AiMessage> secondResponse = model.generate(messages);
@@ -337,8 +355,8 @@ class OpenAiChatModelIT {
     void should_generate_valid_json() {
 
         // given
-        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
-                "Before returning, tell me a joke."; // nudging it to say something additionally to json
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. "
+                + "Before returning, tell me a joke."; // nudging it to say something additionally to json
 
         ChatLanguageModel modelGeneratingJson = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -394,9 +412,7 @@ class OpenAiChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply in one word."),
-                ImageContent.from(CAT_IMAGE_URL)
-        );
+                TextContent.from("What do you see? Reply in one word."), ImageContent.from(CAT_IMAGE_URL));
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
@@ -412,16 +428,13 @@ class OpenAiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see? Reply with one word per image."),
                 ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(DICE_IMAGE_URL)
-        );
+                ImageContent.from(DICE_IMAGE_URL));
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
 
         // then
-        assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -431,16 +444,13 @@ class OpenAiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image.")
-        );
+                TextContent.from("What do you see? Reply with one word per image."));
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
 
         // then
-        assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -451,6 +461,27 @@ class OpenAiChatModelIT {
 
         // then
         assertThat(tokenCount).isEqualTo(14);
+    }
+
+    @Test
+    public void should_generate_audio_content() throws URISyntaxException, IOException {
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("gpt-4o-audio-preview")
+                .logRequests(false) // avoid base64 output
+                .logResponses(true)
+                .build();
+
+        var file = Paths.get(getClass().getClassLoader().getResource("sample.wav").toURI());
+        var audioBase64 = Base64.getEncoder().encodeToString(Files.readAllBytes(file));
+
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What is on the audio?"), AudioContent.from(audioBase64, "audio/wav"));
+
+        final Response<AiMessage> response = model.generate(userMessage);
+
+        assertThat(response.content().text()).containsIgnoringCase("hello");
     }
 
     @Test
