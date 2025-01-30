@@ -2,12 +2,13 @@ package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockEmbeddingModel;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * Bedrock Cohere embedding model with support for both versions:
@@ -38,7 +39,7 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
             parameters.put("texts", List.of(textSegment.text()));
             parameters.put("input_type", inputType);
             parameters.put("truncate", truncate);
-            parameters.put("embedding_types", List.of(EmbeddingType.FLOAT.getValue()));
+            parameters.put("embedding_types", List.of("float"));
             result.add(parameters);
         }
         return result;
@@ -62,11 +63,15 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
 
         private String model;
         private String inputType;
-        private String truncate = Truncate.NONE.getValue();
+        private String truncate;
 
         @Override
         protected Builder self() {
             return this;
+        }
+
+        public Builder model(Model model) {
+            return model(model.getValue());
         }
 
         public Builder model(String model) {
@@ -74,9 +79,17 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
             return this;
         }
 
+        public Builder inputType(InputType inputType) {
+            return inputType(inputType.getValue());
+        }
+
         public Builder inputType(String inputType) {
             this.inputType = inputType;
             return this;
+        }
+
+        public Builder truncate(Truncate truncate) {
+            return truncate(truncate.getValue());
         }
 
         public Builder truncate(String truncate) {
@@ -89,13 +102,14 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
         }
     }
 
-    public enum Types {
-        CohereEmbedEnglishV3("cohere.embed-english-v3"),
-        CohereEmbedMultilingualV3("cohere.embed-multilingual-v3");
+    public enum Model {
+
+        COHERE_EMBED_ENGLISH_V3("cohere.embed-english-v3"),
+        COHERE_EMBED_MULTILINGUAL_V3("cohere.embed-multilingual-v3");
 
         private final String value;
 
-        Types(String value) {
+        Model(String value) {
             this.value = value;
         }
 
@@ -105,6 +119,7 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
     }
 
     public enum InputType {
+
         SEARCH_DOCUMENT("search_document"),
         SEARCH_QUERY("search_query"),
         CLASSIFICATION("classification"),
@@ -122,6 +137,7 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
     }
 
     public enum Truncate {
+
         NONE("NONE"),
         START("START"),
         END("END");
@@ -129,24 +145,6 @@ public class BedrockCohereEmbeddingModel extends AbstractBedrockEmbeddingModel<B
         private final String value;
 
         Truncate(String value) {
-            this.value = value;
-        }
-
-        public String getValue() {
-            return value;
-        }
-    }
-
-    public enum EmbeddingType {
-        FLOAT("float"),
-        INT8("int8"),
-        UINT8("uint8"),
-        BINARY("binary"),
-        UBINARY("ubinary");
-
-        private final String value;
-
-        EmbeddingType(String value) {
             this.value = value;
         }
 
