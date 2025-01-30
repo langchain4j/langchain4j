@@ -37,7 +37,7 @@ import java.util.concurrent.Future;
 import java.util.function.Function;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
-import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
