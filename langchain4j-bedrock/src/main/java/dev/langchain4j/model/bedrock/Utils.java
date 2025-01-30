@@ -1,4 +1,4 @@
-package dev.langchain4j.model.bedrock.internal;
+package dev.langchain4j.model.bedrock;
 
 import static java.util.Objects.isNull;
 
@@ -12,7 +12,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ImageFormat;
 /**
  * Utility methods.
  */
-public class Utils {
+class Utils {
     /**
      * Extracts the extension from a file path, URI, or URL.
      * @param uri The path to analyze.

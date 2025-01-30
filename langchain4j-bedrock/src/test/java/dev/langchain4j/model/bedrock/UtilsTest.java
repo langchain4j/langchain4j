@@ -1,12 +1,14 @@
-package dev.langchain4j.model.bedrock.internal;
-
-import static org.junit.jupiter.api.Assertions.*;
+package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import org.junit.jupiter.api.Test;
+
 import java.net.URI;
 import java.net.URISyntaxException;
-import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class UtilsTest {
 

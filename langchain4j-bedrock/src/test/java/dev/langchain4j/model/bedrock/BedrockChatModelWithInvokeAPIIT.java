@@ -831,7 +831,7 @@ class BedrockChatModelWithInvokeAPIIT {
         sleepIfNeeded();
     }
 
-    private static void sleepIfNeeded() {
+    static void sleepIfNeeded() {
         try {
             String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_BEDROCK");
             if (ciDelaySeconds != null) {
