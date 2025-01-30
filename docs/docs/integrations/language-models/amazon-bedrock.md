@@ -34,6 +34,9 @@ ChatLanguageModel model = BedrockAnthropicMessageChatModel.builder()
 .build();
 ```
 
+## Cohere Models
+- `BedrockCohereChatModel`
+
 ## Meta Llama Models
 - `BedrockLlamaChatModel`
 
