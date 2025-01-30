@@ -10,6 +10,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 public class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
+
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(CLAUDE_3_HAIKU); // , LLAMA_3_2_90B); NOT AVAILABLE FOR ME AT THIS MOMENT
