@@ -8,25 +8,25 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Json {
-  
-  static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-      .enable(INDENT_OUTPUT)
-      .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-      .setSerializationInclusion(JsonInclude.Include.NON_NULL);
-  
-  public static String toJson(Object o) {
-    try {
-      return OBJECT_MAPPER.writeValueAsString(o);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
+
+    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .enable(INDENT_OUTPUT)
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+
+    public static String toJson(Object o) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(o);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
-  }
-  
-  public static <T> T fromJson(String json, Class<T> type) {
-    try {
-      return OBJECT_MAPPER.readValue(json, type);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
+
+    public static <T> T fromJson(String json, Class<T> type) {
+        try {
+            return OBJECT_MAPPER.readValue(json, type);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
-  }
 }

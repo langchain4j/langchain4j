@@ -55,7 +55,7 @@
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
-        <openai4j.version>0.26.0</openai4j.version>
+        <openai4j.version>0.27.0</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.13</azure-ai-openai.version>
         <azure-ai-search.version>11.7.3</azure-ai-search.version>
         <azure.storage-blob.version>12.29.0</azure.storage-blob.version>
@@ -84,7 +84,7 @@
         <elastic.version>8.15.3</elastic.version>
         <jackson.version>2.18.2</jackson.version>
         <jedis.version>5.0.0</jedis.version>
-        <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
+        <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <milvus-sdk-java.version>2.5.3</milvus-sdk-java.version>
         <netty.version>4.1.111.Final</netty.version>
