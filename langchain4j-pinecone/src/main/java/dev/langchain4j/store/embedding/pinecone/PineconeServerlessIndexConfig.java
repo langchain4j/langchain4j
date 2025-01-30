@@ -10,7 +10,7 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
     private final Integer dimension;
     private final String cloud;
     private final String region;
-    private final boolean deletionProtection;
+    private final DeletionProtection deletionProtection;
 
     PineconeServerlessIndexConfig(Integer dimension,
                                   String cloud,
@@ -19,14 +19,14 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
                 dimension,
                 cloud,
                 region,
-                true
+                DeletionProtection.ENABLED
         );
     }
 
     PineconeServerlessIndexConfig(Integer dimension,
                                   String cloud,
                                   String region,
-                                  boolean deletionProtection){
+                                  DeletionProtection deletionProtection){
 
         cloud = ensureNotNull(cloud, "cloud");
         region = ensureNotNull(region, "region");
@@ -42,8 +42,7 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
     public void createIndex(Pinecone pinecone, String index) {
         ensureNotNull(pinecone, "pinecone");
         ensureNotNull(index, "index");
-        pinecone.createServerlessIndex(index, "cosine", dimension, cloud, region,
-                deletionProtection ? DeletionProtection.ENABLED : DeletionProtection.DISABLED);
+        pinecone.createServerlessIndex(index, "cosine", dimension, cloud, region, deletionProtection);
     }
 
     public static Builder builder() {
@@ -55,7 +54,7 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
         private Integer dimension;
         private String cloud;
         private String region;
-        private boolean deletionProtection = true;
+        private DeletionProtection deletionProtection;
 
         public Builder dimension(Integer dimension) {
             this.dimension = dimension;
@@ -72,12 +71,15 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
             return this;
         }
 
-        public Builder deletionProtection(boolean deletionProtection) {
+        public Builder deletionProtection(DeletionProtection deletionProtection) {
             this.deletionProtection = deletionProtection;
             return this;
         }
 
         public PineconeServerlessIndexConfig build() {
+            if (deletionProtection == null) {
+                return new PineconeServerlessIndexConfig(dimension, cloud, region);
+            }
             return new PineconeServerlessIndexConfig(dimension, cloud, region, deletionProtection);
         }
     }
