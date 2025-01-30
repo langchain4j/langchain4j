@@ -1,9 +1,7 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +13,6 @@ import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesUserMessageConfigTest {

@@ -1,4 +1,4 @@
-package dev.langchain4j.exception;
+package dev.langchain4j.service;
 
 import static java.lang.String.format;
 
