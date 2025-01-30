@@ -7,6 +7,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ListenersUtil;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -15,8 +17,11 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.Response;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.ChatLanguageModel.validate;
@@ -44,6 +49,45 @@ public interface StreamingChatLanguageModel {
      */
     @Experimental
     default void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+
+        ChatRequest finalChatRequest = ChatRequest.builder()
+                .messages(chatRequest.messages())
+                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                .build();
+
+        List<ChatModelListener> listeners = listeners();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+        StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                handler.onPartialResponse(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                ListenersUtil.onResponse(completeResponse, finalChatRequest, attributes, listeners);
+                handler.onCompleteResponse(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                ListenersUtil.onError(error, finalChatRequest, attributes, listeners);
+                handler.onError(error);
+            }
+        };
+
+        ListenersUtil.onRequest(finalChatRequest, attributes, listeners);
+        doChat(finalChatRequest, observingHandler);
+    }
+
+    default List<ChatModelListener> listeners() {
+        return Collections.emptyList();
+    }
+
+    @Experimental
+    default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
         ChatRequestParameters parameters = chatRequest.parameters();
         validate(parameters);
@@ -94,7 +138,7 @@ public interface StreamingChatLanguageModel {
 
     @Experimental
     default ChatRequestParameters defaultRequestParameters() {
-        return null;
+        return ChatRequestParameters.builder().build();
     }
 
     @Experimental

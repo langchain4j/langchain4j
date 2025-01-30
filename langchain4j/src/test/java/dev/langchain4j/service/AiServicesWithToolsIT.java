@@ -395,7 +395,7 @@ class AiServicesWithToolsIT {
                 .name("processStrings")
                 .description("Processes list of strings")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("arg0", JsonArraySchema.builder()
+                        .addProperties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("List of strings to process")
                                 .items(new JsonStringSchema())
                                 .build()))
@@ -456,7 +456,7 @@ class AiServicesWithToolsIT {
                 .name("processIntegers")
                 .description("Processes list of integers")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("arg0", JsonArraySchema.builder()
+                        .addProperties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("List of integers to process")
                                 .items(new JsonIntegerSchema())
                                 .build()))
@@ -517,7 +517,7 @@ class AiServicesWithToolsIT {
                 .name("processStrings")
                 .description("Processes array of strings")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("arg0", JsonArraySchema.builder()
+                        .addProperties(singletonMap("arg0", JsonArraySchema.builder()
                                 .description("Array of strings to process")
                                 .items(new JsonStringSchema())
                                 .build()))
@@ -577,7 +577,7 @@ class AiServicesWithToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("currentTemperature")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(new LinkedHashMap<String, JsonSchemaElement>() {{
+                        .addProperties(new LinkedHashMap<String, JsonSchemaElement>() {{
                             put("arg0", new JsonStringSchema());
                             put("arg1", JsonEnumSchema.builder()
                                     .enumValues("CELSIUS", "fahrenheit", "Kelvin")
@@ -721,7 +721,7 @@ class AiServicesWithToolsIT {
                 .name("get_booking_details")
                 .description("Returns booking details")
                 .parameters(JsonObjectSchema.builder()
-                        .properties(singletonMap("bookingNumber", new JsonStringSchema()))
+                        .addProperties(singletonMap("bookingNumber", new JsonStringSchema()))
                         .build())
                 .build();
 

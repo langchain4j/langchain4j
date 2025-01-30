@@ -16,6 +16,8 @@ public enum OpenAiChatModelName {
     GPT_4_TURBO_PREVIEW("gpt-4-turbo-preview"), // alias
     GPT_4_1106_PREVIEW("gpt-4-1106-preview"),
     GPT_4_0125_PREVIEW("gpt-4-0125-preview"),
+    GPT_4_TURBO("gpt-4-turbo"), // alias
+    GPT_4_TURBO_2024_04_09("gpt-4-turbo-2024-04-09"),
 
     GPT_4_32K("gpt-4-32k"), // alias
     GPT_4_32K_0314("gpt-4-32k-0314"),
@@ -24,8 +26,22 @@ public enum OpenAiChatModelName {
     @Deprecated
     GPT_4_VISION_PREVIEW("gpt-4-vision-preview"),
 
-    GPT_4_O("gpt-4o"),
-    GPT_4_O_MINI("gpt-4o-mini");
+    GPT_4_O("gpt-4o"), // alias
+    GPT_4_O_2024_05_13("gpt-4o-2024-05-13"),
+    GPT_4_O_2024_08_06("gpt-4o-2024-08-06"),
+    GPT_4_O_2024_11_20("gpt-4o-2024-11-20"),
+
+    GPT_4_O_MINI("gpt-4o-mini"), // alias
+    GPT_4_O_MINI_2024_07_18("gpt-4o-mini-2024-07-18"),
+
+    O1("o1"), // alias
+    O1_2024_12_17("o1-2024-12-17"),
+
+    O1_MINI("o1-mini"), // alias
+    O1_MINI_2024_09_12("o1-mini-2024-09-12"),
+
+    O1_PREVIEW("o1-preview"), // alias
+    O1_PREVIEW_2024_09_12("o1-preview-2024-09-12");
 
     private final String stringValue;
 
