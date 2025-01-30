@@ -19,7 +19,7 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
                 dimension,
                 cloud,
                 region,
-                false
+                true
         );
     }
 
@@ -55,7 +55,7 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
         private Integer dimension;
         private String cloud;
         private String region;
-        private boolean deletionProtection;
+        private boolean deletionProtection = true;
 
         public Builder dimension(Integer dimension) {
             this.dimension = dimension;
