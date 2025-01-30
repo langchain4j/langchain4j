@@ -465,6 +465,7 @@ class OpenAiChatModelIT {
 
     @Test
     public void should_generate_audio_content() throws URISyntaxException, IOException {
+        // given
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -479,8 +480,10 @@ class OpenAiChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What is on the audio?"), AudioContent.from(audioBase64, "audio/wav"));
 
+        // when
         final Response<AiMessage> response = model.generate(userMessage);
 
+        // then
         assertThat(response.content().text()).containsIgnoringCase("hello");
     }
 
