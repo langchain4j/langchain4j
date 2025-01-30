@@ -1,7 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -9,7 +8,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentToJson;
-import static dev.langchain4j.model.bedrock.internal.Utils.extractAndValidateFormat;
+import static dev.langchain4j.model.bedrock.Utils.extractAndValidateFormat;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -29,7 +28,6 @@ import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.bedrock.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -105,21 +103,17 @@ public class BedrockChatModel implements ChatLanguageModel {
         this.client = isNull(builder.client)
                 ? createClient(getOrDefault(builder.logRequests, false), getOrDefault(builder.logResponses, false))
                 : builder.client;
-        this.defaultRequestParameters = isNull(builder.defaultRequestParameters)
-                ? ChatRequestParameters.builder().modelName(this.modelId).build()
-                : ChatRequestParameters.builder()
-                        .modelName(this.modelId)
-                        .temperature(builder.defaultRequestParameters.temperature())
-                        .maxOutputTokens(builder.defaultRequestParameters.maxOutputTokens())
-                        .topP(builder.defaultRequestParameters.topP())
-                        .stopSequences(copyIfNotNull(builder.defaultRequestParameters.stopSequences()))
-                        .topK(builder.defaultRequestParameters.topK())
-                        .frequencyPenalty(builder.defaultRequestParameters.frequencyPenalty())
-                        .presencePenalty(builder.defaultRequestParameters.presencePenalty())
-                        .responseFormat(builder.defaultRequestParameters.responseFormat())
-                        .build();
-
-        validate(this.defaultRequestParameters);
+        if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
+            this.defaultRequestParameters = ChatRequestParameters.builder()
+                    .overrideWith(builder.defaultRequestParameters)
+                    .modelName(this.modelId)
+                    .build();
+        } else {
+            this.defaultRequestParameters = ChatRequestParameters.builder()
+                    .modelName(this.modelId)
+                    .build();
+        }
     }
 
     @Override

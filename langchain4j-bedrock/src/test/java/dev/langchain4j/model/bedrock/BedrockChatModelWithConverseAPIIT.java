@@ -1,12 +1,5 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -20,28 +13,35 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.bedrock.BedrockChatModelWithInvokeAPIIT.sleepIfNeeded;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 class BedrockChatModelWithConverseAPIIT {
 
     @AfterEach
-    void afterEach() throws InterruptedException {
-        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_BEDROCK");
-        if (ciDelaySeconds != null) {
-            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
-        }
+    void afterEach() {
+        sleepIfNeeded();
     }
 
     @Test
     void should_generate_with_default_config() {
-        BedrockChatModel bedrockChatModel = new BedrockChatModel("anthropic.claude-3-5-sonnet-20240620-v1:0");
+
+        BedrockChatModel bedrockChatModel = new BedrockChatModel("us.amazon.nova-micro-v1:0");
         assertThat(bedrockChatModel).isNotNull();
 
         Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
@@ -53,9 +53,10 @@ class BedrockChatModelWithConverseAPIIT {
     }
 
     @Test
-    void should_call_multiple_functions() throws InterruptedException {
+    void should_call_multiple_functions() {
+
         ChatLanguageModel model = BedrockChatModel.builder()
-                .modelId("anthropic.claude-3-5-sonnet-20240620-v1:0")
+                .modelId("us.amazon.nova-micro-v1:0")
                 .build();
 
         UserMessage userMessage = userMessage(
@@ -111,11 +112,7 @@ class BedrockChatModelWithConverseAPIIT {
             messages.add(toolExecutionResultMessage);
         }
 
-        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_BEDROCK");
-        if (ciDelaySeconds != null) {
-            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
-        }
-
+        sleepIfNeeded();
         Response<AiMessage> response2 = model.generate(messages, toolSpecifications);
         AiMessage aiMessage2 = response2.content();
 
@@ -134,6 +131,7 @@ class BedrockChatModelWithConverseAPIIT {
 
     @Test
     void should_accept_PDF_documents() {
+
         // given
         ChatLanguageModel model =
                 BedrockChatModel.builder().modelId("us.amazon.nova-lite-v1:0").build();
