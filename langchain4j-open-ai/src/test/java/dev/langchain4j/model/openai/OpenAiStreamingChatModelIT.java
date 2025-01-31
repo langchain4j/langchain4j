@@ -574,13 +574,10 @@ class OpenAiStreamingChatModelIT {
             value = OpenAiChatModelName.class,
             mode = EXCLUDE,
             names = {
-                "GPT_4_32K",
-                "GPT_4_32K_0613",
-                "O1",
+                "GPT_4_32K", // don't have access
+                "GPT_4_32K_0613", // don't have access
+                "O1", // don't have access
                 "O1_2024_12_17", // don't have access
-                "GPT_4_VISION_PREVIEW", // deprecated
-                "GPT_4_32K_0314", // deprecated
-                "GPT_4_0314" // deprecated
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
