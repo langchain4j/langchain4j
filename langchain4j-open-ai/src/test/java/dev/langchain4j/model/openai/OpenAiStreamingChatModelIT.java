@@ -1,29 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.Json;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-
-import java.util.Base64;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -39,6 +15,29 @@ import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import java.util.Base64;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelIT {
@@ -122,8 +121,7 @@ class OpenAiStreamingChatModelIT {
         model.generate("Tell me a long story", new StreamingResponseHandler<AiMessage>() {
 
             @Override
-            public void onNext(String token) {
-            }
+            public void onNext(String token) {}
 
             @Override
             public void onComplete(Response<AiMessage> response) {
@@ -167,8 +165,7 @@ class OpenAiStreamingChatModelIT {
         model.generate("Tell me a long story", new StreamingResponseHandler<AiMessage>() {
 
             @Override
-            public void onNext(String token) {
-            }
+            public void onNext(String token) {}
 
             @Override
             public void onComplete(Response<AiMessage> response) {
@@ -246,8 +243,7 @@ class OpenAiStreamingChatModelIT {
         model.generate(messages, new StreamingResponseHandler<AiMessage>() {
 
             @Override
-            public void onNext(String token) {
-            }
+            public void onNext(String token) {}
 
             @Override
             public void onComplete(Response<AiMessage> response) {
@@ -328,8 +324,7 @@ class OpenAiStreamingChatModelIT {
         model.generate(messages, new StreamingResponseHandler<AiMessage>() {
 
             @Override
-            public void onNext(String token) {
-            }
+            public void onNext(String token) {}
 
             @Override
             public void onComplete(Response<AiMessage> response) {
@@ -400,11 +395,13 @@ class OpenAiStreamingChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
 
-        ToolExecutionRequest toolExecutionRequest1 = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest1.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
-        ToolExecutionRequest toolExecutionRequest2 = aiMessage.toolExecutionRequests().get(1);
+        ToolExecutionRequest toolExecutionRequest2 =
+                aiMessage.toolExecutionRequests().get(1);
         assertThat(toolExecutionRequest2.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
 
@@ -416,7 +413,8 @@ class OpenAiStreamingChatModelIT {
         ToolExecutionResultMessage toolExecutionResultMessage1 = from(toolExecutionRequest1, "4");
         ToolExecutionResultMessage toolExecutionResultMessage2 = from(toolExecutionRequest2, "6");
 
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
+        List<ChatMessage> messages =
+                asList(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
 
         // when
         CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
@@ -424,8 +422,7 @@ class OpenAiStreamingChatModelIT {
         model.generate(messages, new StreamingResponseHandler<AiMessage>() {
 
             @Override
-            public void onNext(String token) {
-            }
+            public void onNext(String token) {}
 
             @Override
             public void onComplete(Response<AiMessage> response) {
@@ -459,11 +456,11 @@ class OpenAiStreamingChatModelIT {
     @Test
     void should_stream_valid_json() {
 
-        //given
+        // given
         String responseFormat = "json_object";
 
-        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
-                "Before returning, tell me a joke."; // nudging it to say something additionally to json
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. "
+                + "Before returning, tell me a joke."; // nudging it to say something additionally to json
 
         StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -525,9 +522,7 @@ class OpenAiStreamingChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply in one word."),
-                ImageContent.from(CAT_IMAGE_URL)
-        );
+                TextContent.from("What do you see? Reply in one word."), ImageContent.from(CAT_IMAGE_URL));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -545,8 +540,7 @@ class OpenAiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see? Reply with one word per image."),
                 ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(DICE_IMAGE_URL)
-        );
+                ImageContent.from(DICE_IMAGE_URL));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -554,9 +548,7 @@ class OpenAiStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         // then
-        assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @Test
@@ -566,8 +558,7 @@ class OpenAiStreamingChatModelIT {
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image.")
-        );
+                TextContent.from("What do you see? Reply with one word per image."));
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -575,16 +566,22 @@ class OpenAiStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         // then
-        assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+        assertThat(response.content().text()).containsIgnoringCase("cat").containsIgnoringCase("dice");
     }
 
     @ParameterizedTest
-    @EnumSource(value = OpenAiChatModelName.class, mode = EXCLUDE, names = {
-            "GPT_4_32K", "GPT_4_32K_0613", "O1", "O1_2024_12_17", // don't have access
-            "GPT_4_VISION_PREVIEW" // deprecated
-    })
+    @EnumSource(
+            value = OpenAiChatModelName.class,
+            mode = EXCLUDE,
+            names = {
+                "GPT_4_32K",
+                "GPT_4_32K_0613",
+                "O1",
+                "O1_2024_12_17", // don't have access
+                "GPT_4_VISION_PREVIEW", // deprecated
+                "GPT_4_32K_0314", // deprecated
+                "GPT_4_0314" // deprecated
+            })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
         // given
