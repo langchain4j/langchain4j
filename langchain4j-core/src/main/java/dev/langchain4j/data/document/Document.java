@@ -2,10 +2,6 @@ package dev.langchain4j.data.document;
 
 import dev.langchain4j.data.segment.TextSegment;
 
-import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 /**
  * Represents an unstructured piece of text that usually corresponds to a content of a single file.
  * This text could originate from various sources such as a text file, PDF, DOCX, or a web page (HTML).
@@ -107,44 +103,5 @@ public interface Document {
      */
     static Document document(String text, Metadata metadata) {
         return from(text, metadata);
-    }
-
-    /**
-     * DefaultDocument is an implementation of the Document interface.
-     * It represents an unstructured piece of text with associated metadata.
-     */
-    record DefaultDocument(
-            String text,
-            Metadata metadata
-    ) implements Document {
-
-        public DefaultDocument(String text, Metadata metadata) {
-            this.text = ensureNotBlank(text, "text");
-            this.metadata = ensureNotNull(metadata, "metadata");
-        }
-
-        @Override
-        public String metadata(String key) {
-            return metadata.get(key);
-        }
-
-        /**
-         * Creates a new DefaultDocument from the given text.
-         *
-         * <p>The created document will have empty metadata.
-         *
-         * @param text the text of the document.
-         */
-        public DefaultDocument(String text) {
-            this(text, new Metadata());
-        }
-
-        @Override
-        public String toString() {
-            return "DefaultDocument {"
-                    + " text = " + quoted(text)  // todo: Be careful with PII
-                    + " metadata = " + metadata.toMap()
-                    + " }";
-        }
     }
 }
