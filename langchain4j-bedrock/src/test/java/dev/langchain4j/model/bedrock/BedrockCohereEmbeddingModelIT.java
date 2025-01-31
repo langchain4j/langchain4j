@@ -34,6 +34,7 @@ public class BedrockCohereEmbeddingModelIT {
 
         assertThat(embedding.vector()).hasSize(1024);
 
+        assertThat(response.tokenUsage()).isNull();
         assertThat(response.finishReason()).isNull();
 
         assertThat(embeddingModel.dimension()).isEqualTo(1024);
@@ -63,6 +64,7 @@ public class BedrockCohereEmbeddingModelIT {
         Embedding embedding = embeddings.get(0);
         assertThat(embedding.vector()).hasSize(1024);
 
+        assertThat(response.tokenUsage()).isNull();
         assertThat(response.finishReason()).isNull();
 
         assertThat(embeddingModel.dimension()).isEqualTo(1024);
