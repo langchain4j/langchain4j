@@ -3,7 +3,10 @@ package dev.langchain4j.store.embedding.pinecone;
 import io.pinecone.clients.Pinecone;
 import org.openapitools.db_control.client.model.DeletionProtection;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static org.openapitools.db_control.client.model.DeletionProtection.ENABLED;
 
 public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
 
@@ -14,28 +17,22 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
 
     PineconeServerlessIndexConfig(Integer dimension,
                                   String cloud,
-                                  String region) {
-        this(
-                dimension,
-                cloud,
-                region,
-                DeletionProtection.ENABLED
-        );
+                                  String region,
+                                  DeletionProtection deletionProtection) {
+        this.dimension = ensureNotNull(dimension, "dimension");
+        this.cloud = ensureNotBlank(cloud, "cloud");
+        this.region = ensureNotBlank(region, "region");
+        this.deletionProtection = getOrDefault(deletionProtection, ENABLED);
     }
 
+    /**
+     * @deprecated please use {@link #PineconeServerlessIndexConfig(Integer, String, String, DeletionProtection)} instead
+     */
+    @Deprecated(since = "1.0.0-beta1", forRemoval = true)
     PineconeServerlessIndexConfig(Integer dimension,
                                   String cloud,
-                                  String region,
-                                  DeletionProtection deletionProtection){
-
-        cloud = ensureNotNull(cloud, "cloud");
-        region = ensureNotNull(region, "region");
-        ensureNotNull(dimension, "dimension");
-
-        this.dimension = dimension;
-        this.cloud = cloud;
-        this.region = region;
-        this.deletionProtection = deletionProtection;
+                                  String region) {
+        this(dimension, cloud, region, null);
     }
 
     @Override
@@ -77,9 +74,6 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
         }
 
         public PineconeServerlessIndexConfig build() {
-            if (deletionProtection == null) {
-                return new PineconeServerlessIndexConfig(dimension, cloud, region);
-            }
             return new PineconeServerlessIndexConfig(dimension, cloud, region, deletionProtection);
         }
     }
