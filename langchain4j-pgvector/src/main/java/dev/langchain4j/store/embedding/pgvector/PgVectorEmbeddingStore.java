@@ -276,22 +276,24 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         Embedding referenceEmbedding = request.queryEmbedding();
         int maxResults = request.maxResults();
-        double minScore = request.minScore();
+        double maxScore = 2 - 2 * request.minScore();
         Filter filter = request.filter();
 
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         try (Connection connection = getConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
             String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
-            whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause;
+            whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
             String query = String.format(
-                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, " +
-                            "%s FROM %s %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
-                    referenceVector, join(",", metadataHandler.columnsNames()), table, whereClause, minScore, maxResults);
+                    "SELECT (embedding <=> '%s') AS score, embedding_id, embedding, text, %s FROM %s " +
+                    "WHERE (embedding <=> '%s') <= %s %s ORDER BY embedding <=> '%s' LIMIT %s;",
+                    referenceVector, join(",", metadataHandler.columnsNames()), table, referenceVector, maxScore,
+                    whereClause, referenceVector, maxResults
+            );
             try (PreparedStatement selectStmt = connection.prepareStatement(query)) {
                 try (ResultSet resultSet = selectStmt.executeQuery()) {
                     while (resultSet.next()) {
-                        double score = resultSet.getDouble("score");
+                        double score = (2 - resultSet.getDouble("score")) / 2;
                         String embeddingId = resultSet.getString("embedding_id");
 
                         PGvector vector = (PGvector) resultSet.getObject("embedding");
