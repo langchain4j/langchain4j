@@ -11,8 +11,10 @@ import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
+import io.pinecone.clients.DockerPinecone;
+import io.pinecone.clients.Pinecone;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -22,21 +24,39 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-@EnabledIfEnvironmentVariable(named = "PINECONE_API_KEY", matches = ".+")
+
 class PineconeEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    static EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    EmbeddingStore<TextSegment> embeddingStore = PineconeEmbeddingStore.builder()
-            .apiKey(System.getenv("PINECONE_API_KEY"))
-            .index("test")
-            .nameSpace(randomUUID())
-            .createIndex(PineconeServerlessIndexConfig.builder()
-                    .cloud("AWS")
-                    .region("us-east-1")
-                    .dimension(embeddingModel.dimension())
-                    .build())
-            .build();
+    static EmbeddingStore<TextSegment> embeddingStore;
+
+    @BeforeAll
+    static void setup() throws Exception {
+        PineconeContainer pineconeContainer = new PineconeContainer();
+        pineconeContainer.start();
+
+
+        String pineconeHost = "http://" + pineconeContainer.getHost() + ":" + pineconeContainer.getHttpPort();
+
+        Integer indexPort = pineconeContainer.getMappedPort(5081);
+
+        Pinecone pineconeClient = new DockerPinecone(new Pinecone.Builder("pclocal")
+                .withHost(pineconeHost)
+                .withTlsEnabled(false)
+                .build(), indexPort);
+
+         embeddingStore = PineconeEmbeddingStore.builder()
+                .client(pineconeClient)
+                .index("test")
+                .nameSpace(randomUUID())
+                .createIndex(PineconeServerlessIndexConfig.builder()
+                        .cloud("AWS")
+                        .region("us-east-1")
+                        .dimension(embeddingModel.dimension())
+                        .build())
+                .build();
+    }
 
     @AfterEach
     protected void clear() {
