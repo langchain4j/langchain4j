@@ -16,21 +16,17 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public record DefaultContent(TextSegment textSegment, Map<ContentMetadata, Object> metadata) implements Content {
 
+    public DefaultContent {
+        ensureNotNull(textSegment, "textSegment");
+        ensureNotNull(metadata, "metadata");
+    }
+
     public DefaultContent(String text) {
         this(TextSegment.from(text));
     }
 
     public DefaultContent(TextSegment textSegment) {
         this(textSegment, Map.of());
-    }
-
-    public DefaultContent(TextSegment textSegment, Map<ContentMetadata, Object> metadata) {
-        this.textSegment = ensureNotNull(textSegment, "textSegment");
-        this.metadata = metadata == null ? Map.of() : Map.copyOf(metadata);
-    }
-
-    public Map<ContentMetadata, Object> metadata() {
-        return metadata;
     }
 
     /**
@@ -57,13 +53,5 @@ public record DefaultContent(TextSegment textSegment, Map<ContentMetadata, Objec
     @Override
     public int hashCode() {
         return Objects.hash(textSegment);
-    }
-
-    @Override
-    public String toString() {
-        return "DefaultContent {" +
-                " textSegment = " + textSegment +
-                ", metadata = " + metadata +
-                " }";
     }
 }
