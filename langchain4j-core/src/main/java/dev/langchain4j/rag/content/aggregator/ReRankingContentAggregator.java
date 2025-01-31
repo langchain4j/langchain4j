@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.rag.content.ContentMetadata.RERANKED_SCORE;
 import static java.util.Collections.emptyList;
 
 /**
@@ -138,7 +139,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
         return segmentToScore.entrySet().stream()
                 .filter(entry -> minScore == null || entry.getValue() >= minScore)
                 .sorted(Map.Entry.<TextSegment, Double>comparingByValue().reversed())
-                .map(entry -> new Content(entry.getKey(), Map.of(ContentMetadata.RERANKED_SCORE, entry.getValue())))
+                .map(entry ->  Content.from(entry.getKey(), Map.of(RERANKED_SCORE, entry.getValue())))
                 .limit(maxResults)
                 .collect(Collectors.toList());
     }
