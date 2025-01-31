@@ -87,7 +87,12 @@ public class OpenAiTokenizer implements Tokenizer {
         // Doing so would cause the failure of every OpenAI***Model that uses this tokenizer.
         // This is done to account for situations when a new OpenAI model is available,
         // but JTokkit does not yet support it.
-        this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
+        if (modelName.startsWith("o1")) {
+            // temporary fix until https://github.com/knuddelsgmbh/jtokkit/pull/118 is released
+            this.encoding = Encodings.newLazyEncodingRegistry().getEncoding("o200k_base");
+        } else {
+            this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
+        }
     }
 
     public int estimateTokenCountInText(String text) {

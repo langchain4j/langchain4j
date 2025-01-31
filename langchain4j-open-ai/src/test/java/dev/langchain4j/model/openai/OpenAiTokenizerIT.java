@@ -25,7 +25,6 @@ import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_1106;
 import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_0125_PREVIEW;
 import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_1106_PREVIEW;
 import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K_0314;
 import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K_0613;
 import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_TURBO_PREVIEW;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
@@ -53,7 +52,6 @@ class OpenAiTokenizerIT {
     private static final Set<ChatCompletionModel> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
             GPT_3_5_TURBO_0125,
             GPT_4_32K,
-            GPT_4_32K_0314,
             GPT_4_32K_0613
     ));
 

@@ -20,7 +20,7 @@ Here's how:
    Since early 2023, the community has been building numerous LLM-powered applications,
    identifying common abstractions, patterns, and techniques. LangChain4j has refined these into a ready to use package.
    Our toolbox includes tools ranging from low-level prompt templating, chat memory management, and function calling
-   to high-level patterns like AI Services and RAG.
+   to high-level patterns like Agents and RAG.
    For each abstraction, we provide an interface along with multiple ready-to-use implementations based on common techniques.
    Whether you're building a chatbot or developing a RAG with a complete pipeline from data ingestion to retrieval,
    LangChain4j offers a wide variety of options.
@@ -133,3 +133,9 @@ Here are some examples:
   - Summarize
   - Proofread and rewrite
   - Translate
+
+## Community Integrations
+LangChain4j maintains some integrations in [community repo](https://github.com/langchain4j/langchain4j-community). 
+They support the same functionality as integrations in the main repository. 
+The only difference between them is that community has different artifact and package name from the main repo (i.e. the `community` prefix in artifact and package name).
+The community was created to separate the maintenance of some integrations, thus making it easier to maintain the main repository.

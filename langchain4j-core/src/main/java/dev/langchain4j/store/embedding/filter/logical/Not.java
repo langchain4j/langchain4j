@@ -1,10 +1,10 @@
 package dev.langchain4j.store.embedding.filter.logical;
 
-import dev.langchain4j.store.embedding.filter.Filter;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Objects;
 
 public class Not implements Filter {
 
@@ -20,6 +20,9 @@ public class Not implements Filter {
 
     @Override
     public boolean test(Object object) {
+        if (!(object instanceof Metadata)) {
+            return false;
+        }
         return !expression.test(object);
     }
 

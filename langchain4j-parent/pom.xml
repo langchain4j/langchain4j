@@ -1,17 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.37.0-SNAPSHOT</version>
+    <version>1.0.0-alpha2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
     <description>Parent POM for langchain4j submodules</description>
     <url>https://github.com/langchain4j/langchain4j</url>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>deep-learning-dynamo</id>
+            <email>deeplearningdynamo@gmail.com</email>
+            <url>https://github.com/deep-learning-dynamo</url>
+        </developer>
+        <developer>
+            <id>kuraleta</id>
+            <email>digital.kuraleta@gmail.com</email>
+            <url>https://github.com/kuraleta</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/langchain4j/langchain4j.git</connection>
+        <developerConnection>scm:git:git@github.com:langchain4j/langchain4j.git</developerConnection>
+        <url>https://github.com/langchain4j/langchain4j</url>
+    </scm>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <properties>
         <java.version>17</java.version>
@@ -22,8 +55,8 @@
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
-        <openai4j.version>0.24.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.11</azure-ai-openai.version>
+        <openai4j.version>0.27.0</openai4j.version>
+        <azure-ai-openai.version>1.0.0-beta.13</azure-ai-openai.version>
         <azure-ai-search.version>11.7.3</azure-ai-search.version>
         <azure.storage-blob.version>12.29.0</azure.storage-blob.version>
         <azure.storage-common.version>12.28.0</azure.storage-common.version>
@@ -32,33 +65,34 @@
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.1.0</jtokkit.version>
         <langchain4j-embeddings.version>${project.version}</langchain4j-embeddings.version>
-        <lombok.version>1.18.30</lombok.version>
+        <lombok.version>1.18.36</lombok.version>
         <slf4j-api.version>2.0.16</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.11.3</junit.version>
-        <testcontainers.version>1.20.3</testcontainers.version>
+        <testcontainers.version>1.20.4</testcontainers.version>
         <bytebuddy.version>1.15.10</bytebuddy.version>
-        <mockito.version>5.14.1</mockito.version>
+        <mockito.version>5.14.2</mockito.version>
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
         <assertj.version>3.24.2</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <tinylog.version>2.6.2</tinylog.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <opensearch-java.version>2.9.0</opensearch-java.version>
-        <aws-java-sdk-core.version>1.12.777</aws-java-sdk-core.version>
+        <aws-java-sdk-core.version>1.12.780</aws-java-sdk-core.version>
         <aws-opensearch.version>2.20.161</aws-opensearch.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <elastic.version>8.15.3</elastic.version>
-        <jackson.version>2.16.1</jackson.version>
+        <jackson.version>2.18.2</jackson.version>
         <jedis.version>5.0.0</jedis.version>
-        <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
+        <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
-        <milvus-sdk-java.version>2.4.2</milvus-sdk-java.version>
+        <milvus-sdk-java.version>2.5.3</milvus-sdk-java.version>
         <netty.version>4.1.111.Final</netty.version>
         <awaitility.version>4.2.2</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
+        <jspecify.version>1.0.0</jspecify.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
-        <kotlin.version>2.1.0</kotlin.version>
+        <kotlin.version>1.9.25</kotlin.version>
         <kotlinx.version>1.9.0</kotlinx.version>
     </properties>
 
@@ -131,28 +165,6 @@
                 <version>${retrofit.version}</version>
             </dependency>
 
-            <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (START) -->
-
-            <!-- To resolve version conflicts inside the 'okhttp' library, we are excluding the transitive -->
-            <!-- dependencies causing version divergence errors and including them explicitly. This ensures a consistent -->
-            <!-- version to be used in the project and satisfies Maven Enforcer requirements to avoid version divergence -->
-            <!-- in the project. -->
-
-            <!-- Please check whether version conflicts are gone after upgrading  this library as this will make it -->
-            <!-- possible to remove these exclusions and explicit inclusions below. -->
-            <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp</artifactId>
-                <version>${okhttp.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp-sse</artifactId>
-                <version>${okhttp.version}</version>
-            </dependency>
-
-
             <dependency>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-bom</artifactId>
@@ -164,8 +176,8 @@
             <dependency>
                 <groupId>org.jetbrains.kotlinx</groupId>
                 <artifactId>kotlinx-coroutines-core-jvm</artifactId>
-                <optional>true</optional>
                 <version>${kotlinx.version}</version>
+                <optional>true</optional>
             </dependency>
 
             <dependency>
@@ -175,12 +187,19 @@
                 <scope>test</scope>
             </dependency>
 
-            <!-- DEPENDENCY CONFLICT RESOLUTION FOR OKHTTP (END)  -->
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp-bom</artifactId>
+                <version>${okhttp.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
 
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>mockwebserver</artifactId>
                 <version>${okhttp.version}</version>
+                <scope>test</scope>
             </dependency>
 
             <dependency>
@@ -193,18 +212,27 @@
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
+                <artifactId>slf4j-bom</artifactId>
                 <version>${slf4j-api.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <dependency>
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jspecify</groupId>
+                <artifactId>jspecify</artifactId>
+                <version>${jspecify.version}</version>
             </dependency>
 
             <dependency>
@@ -219,8 +247,8 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
                 <version>${testcontainers.version}</version>
-                <scope>import</scope>
                 <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <dependency>
@@ -251,14 +279,15 @@
 
             <dependency>
                 <groupId>org.assertj</groupId>
-                <artifactId>assertj-core</artifactId>
+                <artifactId>assertj-bom</artifactId>
                 <version>${assertj.version}</version>
-                <scope>test</scope>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <dependency>
                 <groupId>com.willowtreeapps.assertk</groupId>
-                <artifactId>assertk</artifactId>
+                <artifactId>assertk-coroutines-jvm</artifactId>
                 <version>${assertk.version}</version>
                 <scope>test</scope>
             </dependency>
@@ -315,8 +344,8 @@
                 <groupId>com.fasterxml.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
                 <version>${jackson.version}</version>
-                <scope>import</scope>
                 <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <dependency>
@@ -392,7 +421,22 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+            <id>snapshot-repo</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
+    </repositories>
 
     <build>
         <pluginManagement>
@@ -406,6 +450,11 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
                     <version>3.3.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.1</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -463,13 +512,32 @@
                     <version>3.5.0</version>
                 </plugin>
                 <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>2.43.0</version>
+                    <configuration>
+                        <!-- optional: limit format enforcement to just the files changed by this feature branch -->
+                        <ratchetFrom>origin/main</ratchetFrom>
+                        <java>
+                            <palantirJavaFormat>
+                                <version>2.50.0</version>
+                            </palantirJavaFormat>
+                        </java>
+                        <pom>
+                            <sortPom>
+                                <nrOfIndentSpace>4</nrOfIndentSpace>
+                            </sortPom>
+                        </pom>
+                    </configuration>
+                </plugin>
+                <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
                     <version>0.8.12</version>
                 </plugin>
                 <plugin>
-                    <artifactId>kotlin-maven-plugin</artifactId>
                     <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-maven-plugin</artifactId>
                     <version>${kotlin.version}</version>
                     <configuration>
                         <jvmTarget>${java.version}</jvmTarget>
@@ -484,7 +552,7 @@
                 <plugin>
                     <groupId>org.jetbrains.dokka</groupId>
                     <artifactId>dokka-maven-plugin</artifactId>
-                    <version>1.9.20</version>
+                    <version>2.0.0</version>
                     <configuration>
                         <jdkVersion>${java.version}</jdkVersion>
                         <languageVersion>2.0</languageVersion>
@@ -494,6 +562,12 @@
                     <groupId>com.github.ozsie</groupId>
                     <artifactId>detekt-maven-plugin</artifactId>
                     <version>1.23.7</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.simpligility.maven.plugins</groupId>
+                    <artifactId>android-maven-plugin</artifactId>
+                    <version>4.6.0</version>
+                    <extensions>true</extensions>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -515,10 +589,9 @@
                             <goal>analyze-only</goal>
                         </goals>
                         <configuration>
-                            <ignoredUsedUndeclaredDependencies>true
-                            </ignoredUsedUndeclaredDependencies>
-                            <failOnWarning>false
-                            </failOnWarning><!-- todo: fix dependencies and set to true -->
+                            <ignoredUsedUndeclaredDependencies>true</ignoredUsedUndeclaredDependencies>
+                            <failOnWarning>false</failOnWarning>
+                            <!-- todo: fix dependencies and set to true -->
                         </configuration>
                     </execution>
                     <execution>
@@ -531,12 +604,25 @@
             </plugin>
 
             <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>validate</phase>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration combine.children="append">
                     <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                     <systemPropertyVariables>
-                        <tinylog.level>info</tinylog.level>
+                        <tinylog.level>debug</tinylog.level>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -547,7 +633,7 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration combine.children="append">
                     <systemPropertyVariables>
-                        <tinylog.level>info</tinylog.level>
+                        <tinylog.level>debug</tinylog.level>
                     </systemPropertyVariables>
                 </configuration>
                 <executions>
@@ -573,9 +659,21 @@
             </plugin>
 
             <plugin>
+                <groupId>com.simpligility.maven.plugins</groupId>
+                <artifactId>android-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>lint</id>
+                        <goals>
+                            <goal>lint</goal>
+                        </goals>
+                        <phase>compile</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.2.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -606,71 +704,25 @@
                 <executions>
                     <execution>
                         <id>enforce</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
                         <configuration>
                             <rules>
-                                <banDuplicatePomDependencyVersions/>
-                                <dependencyConvergence/>
+                                <banDuplicatePomDependencyVersions></banDuplicatePomDependencyVersions>
+                                <dependencyConvergence></dependencyConvergence>
                                 <requireMavenVersion>
                                     <version>3.8</version>
                                 </requireMavenVersion>
                                 <!-- TODO: Add requireUpperBoundDeps -->
                             </rules>
                         </configuration>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
                     </execution>
                 </executions>
             </plugin>
 
         </plugins>
     </build>
-
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
-
-    <developers>
-        <developer>
-            <id>deep-learning-dynamo</id>
-            <email>deeplearningdynamo@gmail.com</email>
-            <url>https://github.com/deep-learning-dynamo</url>
-        </developer>
-        <developer>
-            <id>kuraleta</id>
-            <email>digital.kuraleta@gmail.com</email>
-            <url>https://github.com/kuraleta</url>
-        </developer>
-    </developers>
-
-    <scm>
-        <url>https://github.com/langchain4j/langchain4j</url>
-        <connection>scm:git:git://github.com/langchain4j/langchain4j.git</connection>
-        <developerConnection>scm:git:git@github.com:langchain4j/langchain4j.git
-        </developerConnection>
-    </scm>
-
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-    </distributionManagement>
-
-    <repositories>
-        <repository>
-            <id>snapshot-repo</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
 
     <profiles>
         <profile>
@@ -689,10 +741,10 @@
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
-                                <phase>verify</phase>
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                                <phase>verify</phase>
                             </execution>
                         </executions>
                     </plugin>
@@ -712,13 +764,6 @@
                         <groupId>org.honton.chas</groupId>
                         <artifactId>license-maven-plugin</artifactId>
                         <version>0.0.6</version>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>compliance</goal>
-                                </goals>
-                            </execution>
-                        </executions>
                         <configuration>
                             <scopes>compile,runtime,provided,test</scopes>
                             <acceptableLicenses>
@@ -736,9 +781,7 @@
                                 </license>
                                 <license>
                                     <name>(The MIT License|MIT License|MIT)</name>
-                                    <url>
-                                        (https?://opensource.org/licenses/MIT|https://projectlombok.org/LICENSE)
-                                    </url>
+                                    <url>(https?://opensource.org/licenses/MIT|https://projectlombok.org/LICENSE)</url>
                                 </license>
                                 <license>
                                     <name>Eclipse Public License v2.0</name>
@@ -755,6 +798,13 @@
                                 </license>
                             </acceptableLicenses>
                         </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>compliance</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>

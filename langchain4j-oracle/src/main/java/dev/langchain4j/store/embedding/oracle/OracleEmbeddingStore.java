@@ -1,5 +1,9 @@
 package dev.langchain4j.store.embedding.oracle;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -8,6 +12,10 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.sql.*;
+import java.util.*;
+import java.util.Map.Entry;
+import javax.sql.DataSource;
 import oracle.jdbc.OracleStatement;
 import oracle.jdbc.OracleType;
 import oracle.jdbc.OracleTypes;
@@ -18,16 +26,6 @@ import oracle.sql.json.OracleJsonValue;
 import oracle.sql.json.OracleJsonValue.OracleJsonType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.sql.DataSource;
-import java.sql.*;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.function.BiFunction;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * <p>
@@ -50,8 +48,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * If the table does not already exist, it can be created by passing a {@link CreateOption} to
  * {@link Builder#embeddingTable(String, CreateOption)} or to {@link EmbeddingTable.Builder#createOption(CreateOption)}.
  * </p><p>
- * An inverted flat file (IVF) vector index is created on the embedding column. The index is named
- * "{tableName}_EMBEDDING_INDEX", where {tableName} is the name configured using the {@link Builder}.
+ * By default no index is created on the {@link EmbeddingTable}. The {@link Builder#index(Index...)} allows to create
+ * indexes on the embedding and metadata columns of the embedding table. Two builders allow to configure an {@link
+ * Index}: {@link IVFIndexBuilder} to configure an IVF index on the embedding column and {@link JSONIndexBuilder} to
+ * configure function-based indexes on keys of the metadata column.
  * </p><p>
  * Instances of this embedding store are safe for use by multiple threads.
  * </p>
@@ -68,13 +68,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Table where embeddings are stored.
      */
     private final EmbeddingTable table;
-
-    /**
-     * The mapping function for use with {@link SQLFilters#create(Filter, BiFunction)}. The function maps a
-     * {@link Metadata} key to a field of the JSON "metadata" column. The builtin JSON_VALUE function is used to
-     * evaluate a JSON path expression.
-     */
-    private final BiFunction<String, SQLType, String> metadataKeyMapper;
 
     /**
      * <code>true</code> if {@link #search(EmbeddingSearchRequest)} should use an exact search, or <code>false</code> if
@@ -94,9 +87,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         dataSource = builder.dataSource;
         table = builder.embeddingTable;
         isExactSearch = builder.isExactSearch;
-        metadataKeyMapper = (key, type) ->
-                "JSON_VALUE(" + table.metadataColumn() + ", '$." + key + "' RETURNING " + type.getName() + ")";
-
 
         try {
             table.create(dataSource);
@@ -104,44 +94,23 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
-
     }
 
     /**
-     * Creates an index on the {@link EmbeddingTable#embeddingColumn()}, if configured to do so by
-     * {@link Builder#vectorIndex(CreateOption)}.
-     *
-     * @param builder Builder that configures an embedding store. Not null.
-     *
-     * @throws SQLException If a database error prevents the index from being created.
+     * Creates all index described by the builder.
+     * @param builder Then builder.
+     * @throws SQLException If an error occurs during index creation.
      */
     private static void createIndex(Builder builder) throws SQLException {
 
-        if (builder.vectorIndexCreateOption == CreateOption.CREATE_NONE)
-            return;
-
-        try (Connection connection = builder.dataSource.getConnection();
-             Statement statement = connection.createStatement()
-        ) {
-            String tableName = builder.embeddingTable.name();
-
-            // If the table name is a quoted identifier, then the index name must also be quoted.
-            String indexName = tableName.startsWith("\"") && tableName.endsWith("\"")
-                    ? "\"" + tableName.substring(1, tableName.length() - 1) + "_embedding_index\""
-                    : tableName + "_embedding_index";
-
-            if (builder.vectorIndexCreateOption == CreateOption.CREATE_OR_REPLACE)
-                statement.addBatch("DROP INDEX IF EXISTS " + indexName);
-
-            // The COSINE metric used here should match the VECTOR_DISTANCE metric of the search method.
-            statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + indexName +
-                        " ON " + tableName + "(" + builder.embeddingTable.embeddingColumn() + ")" +
-                        " ORGANIZATION NEIGHBOR PARTITIONS" +
-                        " WITH DISTANCE COSINE");
-
-            statement.executeBatch();
-        } catch (SQLException sqlException) {
-            throw uncheckSQLException(sqlException);
+        if (builder.indexes != null) {
+            try {
+                for (Index index : builder.indexes) {
+                    index.create(builder.dataSource, builder.embeddingTable);
+                }
+            } catch (SQLException sqlException) {
+                throw uncheckSQLException(sqlException);
+            }
         }
     }
 
@@ -158,23 +127,20 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         String[] ids = new String[embeddings.size()];
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement insert = connection.prepareStatement(
-                     "INSERT INTO " + table.name() + "(" +
-                             table.idColumn() + ", " + table.embeddingColumn() + ") VALUES (?, ?)")
-        ) {
-           for (int i = 0; i < embeddings.size(); i++) {
-               String id = randomUUID();
-               ids[i] = id;
+                PreparedStatement insert = connection.prepareStatement("INSERT INTO " + table.name() + "("
+                        + table.idColumn() + ", " + table.embeddingColumn() + ") VALUES (?, ?)")) {
+            for (int i = 0; i < embeddings.size(); i++) {
+                String id = randomUUID();
+                ids[i] = id;
 
-               Embedding embedding = ensureIndexNotNull(embeddings, i, "embeddings");
+                Embedding embedding = ensureIndexNotNull(embeddings, i, "embeddings");
 
-               insert.setString(1, id);
-               insert.setObject(2, embedding.vector(), OracleType.VECTOR_FLOAT32);
-               insert.addBatch();
-           }
-           insert.executeBatch();
-        }
-        catch (SQLException sqlException) {
+                insert.setString(1, id);
+                insert.setObject(2, embedding.vector(), OracleType.VECTOR_FLOAT32);
+                insert.addBatch();
+            }
+            insert.executeBatch();
+        } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
 
@@ -185,39 +151,35 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     public String add(Embedding embedding, TextSegment textSegment) {
         ensureNotNull(embedding, "embedding");
         ensureNotNull(textSegment, "textSegment");
-        List<String> id = addAll(
-                Collections.singletonList(embedding),
-                Collections.singletonList(textSegment));
+        List<String> id = addAll(Collections.singletonList(embedding), Collections.singletonList(textSegment));
         return id.get(0);
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         ensureNotNull(embeddings, "embeddings");
         ensureNotNull(embedded, "embedded");
 
         if (embeddings.size() != embedded.size()) {
-            throw new IllegalArgumentException("embeddings.size() " + embeddings.size()
-                    + " is not equal to embedded.size() " + embedded.size());
+            throw new IllegalArgumentException(
+                    "embeddings.size() " + embeddings.size() + " is not equal to embedded.size() " + embedded.size());
         }
 
-        String[] ids = new String[embeddings.size()];
-
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement insert = connection.prepareStatement(
-                     "INSERT INTO " + table.name() + "(" +
-                         String.join(", ",
-                                 table.idColumn(), table.embeddingColumn(), table.textColumn(),
-                                 table.metadataColumn()) +
-                         ") VALUES (?, ?, ?, ?)")
-        ) {
+                PreparedStatement insert = connection.prepareStatement("INSERT INTO " + table.name() + "("
+                        + String.join(
+                                ", ",
+                                table.idColumn(),
+                                table.embeddingColumn(),
+                                table.textColumn(),
+                                table.metadataColumn())
+                        + ") VALUES (?, ?, ?, ?)")) {
 
             for (int i = 0; i < embeddings.size(); i++) {
-                String id = ids[i] = randomUUID();
                 Embedding embedding = ensureIndexNotNull(embeddings, i, "embeddings");
                 TextSegment textSegment = ensureIndexNotNull(embedded, i, "embedded");
 
-                insert.setString(1, id);
+                insert.setString(1, ids.get(i));
                 insert.setObject(2, embedding.vector(), OracleType.VECTOR_FLOAT32);
                 insert.setObject(3, textSegment.text());
                 insert.setObject(4, getOsonFromMetadata(textSegment.metadata()));
@@ -225,9 +187,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             insert.executeBatch();
 
-            return Arrays.asList(ids);
-        }
-        catch (SQLException sqlException) {
+        } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
     }
@@ -241,20 +201,17 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         // method should do in this case, but updating an existing row is consistent with other EmbeddingStore
         // implementations.
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement merge = connection.prepareStatement(
-                     "MERGE INTO " + table.name() + " existing" +
-                             " USING (SELECT ? as id, ? as embedding) new" +
-                             " ON (new.id = existing." + table.idColumn() + ")" +
-                             " WHEN MATCHED THEN UPDATE SET existing." + table.embeddingColumn() + " = new.embedding" +
-                             " WHEN NOT MATCHED THEN INSERT (" +
-                             table.idColumn() + ", " + table.embeddingColumn() +
-                             ") VALUES (new.id, new.embedding)");
-        ) {
+                PreparedStatement merge = connection.prepareStatement(
+                        "MERGE INTO " + table.name() + " existing" + " USING (SELECT ? as id, ? as embedding) new"
+                                + " ON (new.id = existing."
+                                + table.idColumn() + ")" + " WHEN MATCHED THEN UPDATE SET existing."
+                                + table.embeddingColumn() + " = new.embedding" + " WHEN NOT MATCHED THEN INSERT ("
+                                + table.idColumn()
+                                + ", " + table.embeddingColumn() + ") VALUES (new.id, new.embedding)"); ) {
             merge.setString(1, id);
             merge.setObject(2, embedding.vector(), OracleType.VECTOR_FLOAT32);
             merge.execute();
-        }
-        catch (SQLException sqlException) {
+        } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
     }
@@ -264,17 +221,15 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureNotEmpty(ids, "ids");
 
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement delete = connection.prepareStatement(
-                     "DELETE FROM " + table.name() + " WHERE " + table.idColumn() + " = ?")
-        ) {
+                PreparedStatement delete = connection.prepareStatement(
+                        "DELETE FROM " + table.name() + " WHERE " + table.idColumn() + " = ?")) {
             for (String id : ids) {
                 ensureNotNull(id, "id");
                 delete.setString(1, id);
                 delete.addBatch();
             }
             delete.executeBatch();
-        }
-        catch (SQLException sqlException) {
+        } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
     }
@@ -283,16 +238,14 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
 
-        SQLFilter sqlFilter = SQLFilters.create(filter, metadataKeyMapper);
+        SQLFilter sqlFilter = SQLFilters.create(filter, table::mapMetadataKey);
 
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement delete = connection.prepareStatement(
-                     "DELETE FROM " + table.name() + sqlFilter.asWhereClause())
-        ) {
+                PreparedStatement delete =
+                        connection.prepareStatement("DELETE FROM " + table.name() + sqlFilter.asWhereClause())) {
             sqlFilter.setParameters(delete, 1);
             delete.executeUpdate();
-        }
-        catch (SQLException sqlException) {
+        } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
     }
@@ -300,10 +253,9 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll() {
         try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement()) {
+                Statement statement = connection.createStatement()) {
             statement.execute("TRUNCATE TABLE " + table.name());
-        }
-        catch (SQLException sqlException) {
+        } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
     }
@@ -312,7 +264,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         ensureNotNull(request, "request");
 
-        SQLFilter sqlFilter = SQLFilters.create(request.filter(), metadataKeyMapper);
+        SQLFilter sqlFilter = SQLFilters.create(request.filter(), table::mapMetadataKey);
         final int maxResults = request.maxResults();
 
         // In a 23.4 build of Oracle Database, ORA-06553 will result if the distance column is referenced in the WHERE
@@ -321,17 +273,21 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         // performance improvement.
         // The COSINE metric used here should match the VECTOR INDEX metric of the createIndex method.
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement query = connection.prepareStatement(
-                     "SELECT VECTOR_DISTANCE(" +
-                             table.embeddingColumn() + ", ?, COSINE) distance, " +
-                             String.join(", ", table.idColumn(), table.embeddingColumn(), table.textColumn(),
-                                     table.metadataColumn()) +
-                         " FROM " + table.name() +
-                         sqlFilter.asWhereClause() +
-                         " ORDER BY distance" +
-                         " FETCH " + (isExactSearch ? "" : " APPROXIMATE") +
-                         " FIRST " + maxResults + " ROWS ONLY")
-        ) {
+                PreparedStatement query =
+                        connection.prepareStatement("SELECT VECTOR_DISTANCE(" + table.embeddingColumn()
+                                + ", ?, COSINE) distance, "
+                                + String.join(
+                                        ", ",
+                                        table.idColumn(),
+                                        table.embeddingColumn(),
+                                        table.textColumn(),
+                                        table.metadataColumn())
+                                + " FROM "
+                                + table.name() + sqlFilter.asWhereClause()
+                                + " ORDER BY distance"
+                                + " FETCH "
+                                + (isExactSearch ? "" : " APPROXIMATE") + " FIRST "
+                                + maxResults + " ROWS ONLY")) {
             query.setObject(1, request.queryEmbedding().vector(), OracleTypes.VECTOR_FLOAT32);
             sqlFilter.setParameters(query, 2);
             query.setFetchSize(maxResults);
@@ -340,13 +296,14 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             // fetching VECTOR, CLOB, and/or JSON columns, the first request it sends to the database can include a LOB
             // prefetch size (VECTOR and JSON are value-based-lobs). If defineColumnType is not called, then JDBC needs
             // to send an additional request with the LOB prefetch size, after the first request has the database
-            // respond with the column data types.
+            // respond with the column data types. To request all data, the prefetch size is Integer.MAX_VALUE.
             OracleStatement oracleStatement = query.unwrap(OracleStatement.class);
-            oracleStatement.defineColumnType(1, OracleTypes.BINARY_DOUBLE);
-            oracleStatement.defineColumnType(2, OracleTypes.VARCHAR);
-            oracleStatement.defineColumnType(3, OracleTypes.VECTOR_FLOAT32, 524308); // <-- Max vector size, in bytes
-            oracleStatement.defineColumnType(4, OracleTypes.CLOB, Integer.MAX_VALUE);
-            oracleStatement.defineColumnType(5, OracleTypes.JSON, Integer.MAX_VALUE);
+            oracleStatement.defineColumnType(1, OracleTypes.BINARY_DOUBLE); // distance
+            oracleStatement.defineColumnType(2, OracleTypes.VARCHAR); // id
+            oracleStatement.defineColumnType(3, OracleTypes.VECTOR_FLOAT32, Integer.MAX_VALUE); // embedding
+            oracleStatement.defineColumnType(4, OracleTypes.CLOB, Integer.MAX_VALUE); // text
+            oracleStatement.defineColumnType(5, OracleTypes.JSON, Integer.MAX_VALUE); // metadata
+            oracleStatement.setLobPrefetchSize(Integer.MAX_VALUE); // Workaround for Oracle JDBC bug 37030121
 
             List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>(maxResults);
             try (ResultSet resultSet = query.executeQuery()) {
@@ -356,8 +313,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                     double score = 1d - (resultSet.getDouble("distance") / 2d);
 
                     // Local filtering of the minScore. See note about ORA-06553 above.
-                    if (score < request.minScore())
-                        break; // Break, because results are ordered by ascending distances.
+                    if (score < request.minScore()) break; // Break, because results are ordered by ascending distances.
 
                     String id = resultSet.getString(table.idColumn());
                     float[] embedding = resultSet.getObject(table.embeddingColumn(), float[].class);
@@ -373,8 +329,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                 }
             }
             return new EmbeddingSearchResult<>(matches);
-        }
-        catch (SQLException sqlException) {
+        } catch (SQLException sqlException) {
             throw uncheckSQLException(sqlException);
         }
     }
@@ -388,8 +343,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private static OracleJsonObject getOsonFromMetadata(Metadata metadata) {
 
-        if (metadata == null)
-            return null;
+        if (metadata == null) return null;
 
         OracleJsonFactory factory = new OracleJsonFactory();
         OracleJsonObject object = factory.createObject();
@@ -401,20 +355,15 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
             // Metadata does not store null values
             if (value instanceof Number) {
-                Number number = (Number)value;
-                if (number instanceof Integer)
-                    object.put(key, number.intValue());
-                else if (number instanceof Long)
-                    object.put(key, number.longValue());
+                Number number = (Number) value;
+                if (number instanceof Integer) object.put(key, number.intValue());
+                else if (number instanceof Long) object.put(key, number.longValue());
                 else if (number instanceof Float)
                     // There is no put(String, float) method, only a put(String, double)
                     object.put(key, factory.createFloat(number.floatValue()));
-                else if (number instanceof Double)
-                    object.put(key, number.doubleValue());
-                else
-                    throw unrecognizedMetadata(key, value);
-            }
-            else {
+                else if (number instanceof Double) object.put(key, number.doubleValue());
+                else throw unrecognizedMetadata(key, value);
+            } else {
                 // This branch is taken for both String, UUID, and any object that Metadata supports in the future. The
                 // getMetadataFromOson method will attempt to parse the string back out as a UUID. The toJdbcType method
                 // of SQLFilters assumes these objects are stored as a String in the OSON.
@@ -434,8 +383,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static Metadata getMetadataFromOson(OracleJsonObject oson) {
         Metadata metadata = new Metadata();
 
-        if (oson == null)
-            return metadata;
+        if (oson == null) return metadata;
 
         for (Entry<String, OracleJsonValue> entry : oson.entrySet()) {
             String key = entry.getKey();
@@ -485,8 +433,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private static RuntimeException uncheckSQLException(SQLException sqlException) {
         return sqlException instanceof BatchUpdateException
-            ? uncheckSQLException((BatchUpdateException) sqlException)
-            : new RuntimeException(sqlException);
+                ? uncheckSQLException((BatchUpdateException) sqlException)
+                : new RuntimeException(sqlException);
     }
 
     /**
@@ -520,16 +468,14 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static <T> T ensureIndexNotNull(List<T> list, int index, String name) {
         T value = list.get(index);
 
-        if (value != null)
-            return value;
+        if (value != null) return value;
 
         throw new IllegalArgumentException("null entry at index " + index + " in " + name);
     }
 
     private static IllegalArgumentException unrecognizedMetadata(String key, Object value) {
-        return new IllegalArgumentException(
-                "Unrecognized object type in Metadata with key \"" + key + "\" and value \"" + value
-                        + "\" of class " + value.getClass().getSimpleName());
+        return new IllegalArgumentException("Unrecognized object type in Metadata with key \"" + key + "\" and value \""
+                + value + "\" of class " + value.getClass().getSimpleName());
     }
 
     /**
@@ -551,7 +497,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         private DataSource dataSource;
         private EmbeddingTable embeddingTable;
         private boolean isExactSearch = false;
-        private CreateOption vectorIndexCreateOption = CreateOption.CREATE_NONE;
+        private Index[] indexes;
 
         private Builder() {}
 
@@ -599,11 +545,10 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         public Builder embeddingTable(String tableName, CreateOption createOption) {
             ensureNotNull(tableName, "tableName");
             ensureNotNull(createOption, "createOption");
-            return embeddingTable(
-                    EmbeddingTable.builder()
-                            .name(tableName)
-                            .createOption(createOption)
-                            .build());
+            return embeddingTable(EmbeddingTable.builder()
+                    .name(tableName)
+                    .createOption(createOption)
+                    .build());
         }
 
         /**
@@ -632,8 +577,17 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
          * @return This builder. Not null.
          */
         public Builder vectorIndex(CreateOption createOption) {
-            ensureNotNull(createOption, "createOption");
-            vectorIndexCreateOption = createOption;
+            return this.index(Index.ivfIndexBuilder().createOption(createOption).build());
+        }
+
+        /**
+         * Configures the indexes that will be created on the {@link EmbeddingTable}. Two types of
+         * indexes can be created {@link IVFIndexBuilder} and {@link JSONIndexBuilder}.
+         * @param indexes Indexes to create.
+         * @return This builder.
+         */
+        public Builder index(Index... indexes) {
+            this.indexes = indexes;
             return this;
         }
 
