@@ -1,7 +1,7 @@
 # LangChain for Java: Supercharge your Java application with the power of LLMs
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/main.yaml?branch=main&style=for-the-badge&label=CI%20BUILD&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/main.yaml)
-[![Nightly Build](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/nightly.yaml?branch=main&style=for-the-badge&label=NIGHTLY%20BUILD&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/nightly.yaml)
+[![Nightly Build](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/nightly_jdk17.yaml?branch=main&style=for-the-badge&label=NIGHTLY%20BUILD&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/nightly_jdk17.yaml)
 [![CODACY](https://img.shields.io/badge/Codacy-Dashboard-blue?style=for-the-badge&logo=codacy)](https://app.codacy.com/gh/langchain4j/langchain4j/dashboard)
 
 [![Discord](https://dcbadge.vercel.app/api/server/JzTFvyjG6R?style=for-the-badge)](https://discord.gg/JzTFvyjG6R)
@@ -27,7 +27,7 @@ Here's how:
    Since early 2023, the community has been building numerous LLM-powered applications,
    identifying common abstractions, patterns, and techniques. LangChain4j has refined these into practical code.
    Our toolbox includes tools ranging from low-level prompt templating, chat memory management, and function calling
-   to high-level patterns like AI Services and RAG.
+   to high-level patterns like Agents and RAG.
    For each abstraction, we provide an interface along with multiple ready-to-use implementations based on common techniques.
    Whether you're building a chatbot or developing a RAG with a complete pipeline from data ingestion to retrieval,
    LangChain4j offers a wide variety of options.
@@ -49,6 +49,8 @@ the core functionality is in place, allowing you to start building LLM-powered a
 
 ## Documentation
 Documentation can be found [here](https://docs.langchain4j.dev).
+
+The documentation chatbot (experimental) can be found [here](https://chat.langchain4j.dev/).
 
 
 ## Getting Started

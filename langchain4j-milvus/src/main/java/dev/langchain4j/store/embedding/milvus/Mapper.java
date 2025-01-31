@@ -100,7 +100,8 @@ class Mapper {
 
     private static TextSegment toTextSegment(RowRecord rowRecord, FieldDefinition fieldDefinition) {
 
-        String text = (String) rowRecord.get(fieldDefinition.getTextFieldName());
+        Object textField = rowRecord.get(fieldDefinition.getTextFieldName());
+        String text = textField == null ? null : textField.toString();
         if (isNullOrBlank(text)) {
             return null;
         }

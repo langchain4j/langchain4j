@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.Duration;
 import java.util.Base64;
@@ -32,9 +31,6 @@ import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_SONNET_20240620;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -217,7 +213,7 @@ class AnthropicChatModelIT {
         ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .beta("prompt-caching-2024-07-31")
-            .modelName(CLAUDE_3_HAIKU_20240307)
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
             .cacheSystemMessages(true)
             .logRequests(true)
             .logResponses(true)
@@ -250,7 +246,7 @@ class AnthropicChatModelIT {
         ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .beta("prompt-caching-2024-07-31")
-            .modelName(CLAUDE_3_HAIKU_20240307)
+            .modelName(CLAUDE_3_5_HAIKU_20241022)
             .cacheSystemMessages(true)
             .logRequests(true)
             .logResponses(true)
@@ -284,7 +280,7 @@ class AnthropicChatModelIT {
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .beta("prompt-caching-2024-07-31")
-                .modelName(CLAUDE_3_HAIKU_20240307)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .cacheSystemMessages(true)
                 .logRequests(true)
                 .logResponses(true)
@@ -318,7 +314,7 @@ class AnthropicChatModelIT {
                 .baseUrl("https://api.anthropic.com/v1/")
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
-                .modelName(CLAUDE_3_SONNET_20240229)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(1.0)
                 .topP(1.0)
                 .topK(1)
@@ -394,14 +390,13 @@ class AnthropicChatModelIT {
                         "It can be generated here: https://console.anthropic.com/settings/keys");
     }
 
-    @ParameterizedTest
-    @MethodSource("models_supporting_tools")
-    void should_execute_a_tool_then_answer(AnthropicChatModelName modelName) {
+    @Test
+    void should_execute_a_tool_then_answer() {
 
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(modelName)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -543,7 +538,7 @@ class AnthropicChatModelIT {
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_SONNET_20240620)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -605,7 +600,7 @@ class AnthropicChatModelIT {
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_SONNET_20240620)
+                .modelName(CLAUDE_3_5_HAIKU_20241022)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)

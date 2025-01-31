@@ -3,6 +3,8 @@ package dev.langchain4j.rag.content;
 import dev.langchain4j.data.segment.TextSegment;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ContentTest {
@@ -11,10 +13,10 @@ class ContentTest {
     void test_create_from_string() {
 
         // given
-        final var contentText = "content";
+        String contentText = "content";
 
         // when
-        final var content = Content.from(contentText);
+        Content content = Content.from(contentText);
 
         // then
         assertThat(content.textSegment().text()).isEqualTo(contentText);
@@ -24,40 +26,62 @@ class ContentTest {
     void test_create_from_text_segment() {
 
         // given
-        final var segment = TextSegment.from("text");
+        TextSegment segment = TextSegment.from("text");
 
         // when
-        final var content = Content.from(segment);
+        Content content = Content.from(segment);
 
         // then
         assertThat(content.textSegment()).isSameAs(segment);
     }
 
     @Test
+    void test_create_from_embedding_match() {
+
+        // given
+        TextSegment segment = TextSegment.from("text");
+        Map<ContentMetadata, Object> metadata = Map.of(
+                ContentMetadata.SCORE, 0.2d,
+                ContentMetadata.EMBEDDING_ID, "test-eid"
+        );
+
+        // when
+        Content content = Content.from(segment, metadata);
+
+        // then
+        assertThat(content.textSegment())
+                .isSameAs(segment);
+        assertThat(content.metadata())
+                .isNotEmpty();
+        assertThat(content.metadata())
+                .containsExactlyEntriesOf(Map.of(ContentMetadata.SCORE,0.2, ContentMetadata.EMBEDDING_ID,"test-eid"));
+
+    }
+
+    @Test
     void test_equals_hashCode() {
 
         // given
-        final var content1 = Content.from("content");
-        final var content2 = Content.from("content 2");
-        final var content3 = Content.from("content");
+        Content content1 = Content.from("content");
+        Content content2 = Content.from("content 2");
+        Content content3 = Content.from("content");
 
         // then
         assertThat(content1)
                 .isNotEqualTo(content2)
-                .doesNotHaveSameHashCodeAs(content2);
-
-        assertThat(content1)
+                .doesNotHaveSameHashCodeAs(content2)
                 .isEqualTo(content3)
                 .hasSameHashCodeAs(content3);
     }
 
     @Test
     void test_toString() {
+
         // given
         final var content = Content.from("content");
 
         // then
         assertThat(content)
-                .hasToString("DefaultContent { textSegment = TextSegment { text = \"content\" metadata = {} } }");
+                .hasToString("DefaultContent { textSegment = TextSegment { text = \"content\" metadata = {} }, metadata = {} }");
     }
 }

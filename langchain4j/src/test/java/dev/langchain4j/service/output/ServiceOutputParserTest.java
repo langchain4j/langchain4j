@@ -3,7 +3,7 @@ package dev.langchain4j.service.output;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.exception.IllegalConfigurationException;
+import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.Test;

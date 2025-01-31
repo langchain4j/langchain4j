@@ -29,13 +29,13 @@ import static org.assertj.core.api.Assertions.fail;
  *
  * <dependency>
  *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j</artifactId>
+ *     <artifactId>langchain4j-core</artifactId>
  *     <scope>test</scope>
  * </dependency>
  *
  * <dependency>
  *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j</artifactId>
+ *     <artifactId>langchain4j-core</artifactId>
  *     <classifier>tests</classifier>
  *     <type>test-jar</type>
  *     <scope>test</scope>
@@ -95,7 +95,7 @@ public abstract class StreamingChatModelListenerIT {
             @Override
             public void onResponse(ChatModelResponseContext responseContext) {
                 responseReference.set(responseContext.response());
-                assertThat(responseContext.request()).isSameAs(requestReference.get());
+                assertThat(responseContext.request()).isEqualTo(requestReference.get());
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
@@ -199,7 +199,7 @@ public abstract class StreamingChatModelListenerIT {
             @Override
             public void onError(ChatModelErrorContext errorContext) {
                 errorReference.set(errorContext.error());
-                assertThat(errorContext.request()).isSameAs(requestReference.get());
+                assertThat(errorContext.request()).isEqualTo(requestReference.get());
                 assertThat(errorContext.partialResponse()).isNull(); // can be non-null if it fails in the middle of streaming
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }

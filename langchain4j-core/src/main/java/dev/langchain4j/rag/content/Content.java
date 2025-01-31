@@ -35,7 +35,8 @@ public interface Content {
      * Implements the Content interface.
      */
     record DefaultContent(
-            TextSegment textSegment
+            TextSegment textSegment,
+            Map<ContentMetadata, Object> metadata
     ) implements Content {
 
         public DefaultContent(TextSegment textSegment) {
