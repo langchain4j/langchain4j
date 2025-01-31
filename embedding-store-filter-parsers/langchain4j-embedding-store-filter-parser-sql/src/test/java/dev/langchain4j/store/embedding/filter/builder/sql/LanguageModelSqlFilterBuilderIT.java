@@ -18,9 +18,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class LanguageModelSqlFilterBuilderIT {
 
-    private static final String OLLAMA_BASE_URL = "http://localhost:11434";
-    private static final int OLLAMA_NUM_PREDICT = 25;
-
     TableDefinition table = new TableDefinition(
             "movies",
             "",
@@ -109,45 +106,11 @@ class LanguageModelSqlFilterBuilderIT {
                                 .apiKey(System.getenv("OPENAI_API_KEY"))
                                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                                 .modelName(GPT_4_O_MINI)
+                                .temperature(0.0)
                                 .logRequests(true)
                                 .logResponses(true)
                                 .build()
                 )
-//                Arguments.of(
-//                        OllamaChatModel.builder()
-//                                .baseUrl(OLLAMA_BASE_URL)
-//                                .modelName("sqlcoder")
-//                                .numPredict(OLLAMA_NUM_PREDICT)
-//                                .build()
-//                ),
-//                Arguments.of(
-//                        OllamaChatModel.builder()
-//                                .baseUrl(OLLAMA_BASE_URL)
-//                                .modelName("codellama")
-//                                .numPredict(OLLAMA_NUM_PREDICT)
-//                                .build()
-//                ),
-//                Arguments.of(
-//                        OllamaChatModel.builder()
-//                                .baseUrl(OLLAMA_BASE_URL)
-//                                .modelName("mistral")
-//                                .numPredict(OLLAMA_NUM_PREDICT)
-//                                .build()
-//                ),
-//                Arguments.of(
-//                        OllamaChatModel.builder()
-//                                .baseUrl(OLLAMA_BASE_URL)
-//                                .modelName("llama2")
-//                                .numPredict(OLLAMA_NUM_PREDICT)
-//                                .build()
-//                ),
-//                Arguments.of(
-//                        OllamaChatModel.builder()
-//                                .baseUrl(OLLAMA_BASE_URL)
-//                                .modelName("phi")
-//                                .numPredict(OLLAMA_NUM_PREDICT)
-//                                .build()
-//                )
         );
     }
 }
