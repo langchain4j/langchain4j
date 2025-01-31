@@ -20,9 +20,6 @@ public enum OpenAiChatModelName {
     GPT_4_32K("gpt-4-32k"), // alias
     GPT_4_32K_0613("gpt-4-32k-0613"),
 
-    @Deprecated
-    GPT_4_VISION_PREVIEW("gpt-4-vision-preview"),
-
     GPT_4_O("gpt-4o"), // alias
     GPT_4_O_2024_05_13("gpt-4o-2024-05-13"),
     GPT_4_O_2024_08_06("gpt-4o-2024-08-06"),

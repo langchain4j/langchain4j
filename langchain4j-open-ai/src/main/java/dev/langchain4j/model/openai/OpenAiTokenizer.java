@@ -32,7 +32,6 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_110
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_0125_PREVIEW;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1106_PREVIEW;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_VISION_PREVIEW;
 import static java.util.Collections.singletonList;
 
 /**
@@ -137,7 +136,7 @@ public class OpenAiTokenizer implements Tokenizer {
             }
         }
 
-        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW.toString())) {
+        if (userMessage.name() != null) {
             tokenCount += extraTokensPerName();
             tokenCount += estimateTokenCountInText(userMessage.name());
         }
