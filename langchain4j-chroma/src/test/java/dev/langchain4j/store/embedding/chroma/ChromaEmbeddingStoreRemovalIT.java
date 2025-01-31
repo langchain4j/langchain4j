@@ -13,12 +13,14 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
+import dev.langchain4j.test.condition.DisabledOnWindowsCI;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.chromadb.ChromaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+@DisabledOnWindowsCI
 @Testcontainers
 public class ChromaEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 

@@ -1,18 +1,20 @@
 package dev.langchain4j.store.embedding.redis;
 
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
+import static dev.langchain4j.internal.Utils.randomUUID;
+
 import com.redis.testcontainers.RedisContainer;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.test.condition.DisabledOnWindowsCI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
-import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
-import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
-import static dev.langchain4j.internal.Utils.randomUUID;
-
+@DisabledOnWindowsCI
 class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
 
     static RedisContainer redis = new RedisContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
@@ -34,13 +36,13 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected void clearStore() {
         embeddingStore = RedisEmbeddingStore.builder()
-            .host(redis.getHost())
-            .port(redis.getFirstMappedPort())
-            .indexName(randomUUID())
-            .prefix(randomUUID() + ":")
-            .dimension(384)
-            .metadataKeys(createMetadata().toMap().keySet())
-            .build();
+                .host(redis.getHost())
+                .port(redis.getFirstMappedPort())
+                .indexName(randomUUID())
+                .prefix(randomUUID() + ":")
+                .dimension(384)
+                .metadataKeys(createMetadata().toMap().keySet())
+                .build();
     }
 
     @Override

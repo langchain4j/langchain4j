@@ -1,17 +1,19 @@
 package dev.langchain4j.store.embedding.opensearch;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.test.condition.DisabledOnWindowsCI;
 import org.junit.jupiter.api.BeforeAll;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.utility.DockerImageName;
 
-import static dev.langchain4j.internal.Utils.randomUUID;
-
+@DisabledOnWindowsCI
 class OpenSearchEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     /**
@@ -19,7 +21,6 @@ class OpenSearchEmbeddingStoreLocalIT extends EmbeddingStoreIT {
      * uses TestContainers (https://testcontainers.com) and the built-in support for OpenSearch. Thus,
      * if you just execute the tests then a container will be spun up automatically for you.
      */
-
     @Container
     static OpensearchContainer opensearch =
             new OpensearchContainer(DockerImageName.parse("opensearchproject/opensearch:2.10.0"));

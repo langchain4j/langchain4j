@@ -84,6 +84,18 @@
             <artifactId>oracle-free</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java-api</artifactId>
+            <version>3.4.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java-transport-zerodep</artifactId>
+            <version>3.4.1</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- SLF4J Logger used by various dependencies -->
         <dependency>
@@ -109,6 +121,13 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-test-internal</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
 

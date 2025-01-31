@@ -1,10 +1,11 @@
 package dev.langchain4j.store.embedding.oracle;
 
+import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.randomFloats;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -12,9 +13,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.randomFloats;
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * An object representation of the data stored by {@link OracleEmbeddingStore}. This class can be
@@ -38,7 +36,7 @@ final class TestData {
 
     /** Create data with a random id */
     public TestData(Embedding embedding, TextSegment textSegment) {
-       this(UUID.randomUUID().toString(), embedding, textSegment);
+        this(UUID.randomUUID().toString(), embedding, textSegment);
     }
 
     /** Create data with the same id, embedding, and text segment as an embedding match */
@@ -49,9 +47,7 @@ final class TestData {
     /** Create data with the given id, embedding, and textSegment. All mutable objects are copied. */
     public TestData(String id, Embedding embedding, TextSegment textSegment) {
         this.id = id;
-        this.embedding = embedding == null
-                ? null
-                : Embedding.from(embedding.vector());
+        this.embedding = embedding == null ? null : Embedding.from(embedding.vector());
         this.textSegment = textSegment == null
                 ? null
                 : TextSegment.from(textSegment.text(), textSegment.metadata().copy());
@@ -59,8 +55,7 @@ final class TestData {
 
     @Override
     public boolean equals(Object other) {
-        if (!(other instanceof TestData))
-            return false;
+        if (!(other instanceof TestData)) return false;
 
         TestData testEmbedding = (TestData) other;
         return Objects.equals(id, testEmbedding.id)
@@ -92,7 +87,8 @@ final class TestData {
     static TextSegment randomTextSegment() {
         float[] random = randomFloats(3);
         TextSegment textSegment = TextSegment.from("TEST " + random[0]);
-        textSegment.metadata()
+        textSegment
+                .metadata()
                 .put("x", random[1])
                 .put("y", random[2])
                 .put("hashCode", textSegment.hashCode())
@@ -150,9 +146,7 @@ final class TestData {
      */
     static List<TestData> addAll(EmbeddingStore<TextSegment> embeddingStore) {
         List<Embedding> embeddings =
-                Stream.generate(TestData::randomEmbedding)
-                        .limit(100)
-                        .collect(Collectors.toList());
+                Stream.generate(TestData::randomEmbedding).limit(100).collect(Collectors.toList());
 
         List<String> ids = embeddingStore.addAll(embeddings);
 
@@ -170,14 +164,11 @@ final class TestData {
      */
     static List<TestData> addAllWithTextSegment(EmbeddingStore<TextSegment> embeddingStore) {
         List<Embedding> embeddings =
-                Stream.generate(TestData::randomEmbedding)
-                        .limit(100)
-                        .collect(Collectors.toList());
+                Stream.generate(TestData::randomEmbedding).limit(100).collect(Collectors.toList());
 
-        List<TextSegment> textSegments =
-                Stream.generate(TestData::randomTextSegment)
-                        .limit(embeddings.size())
-                        .collect(Collectors.toList());
+        List<TextSegment> textSegments = Stream.generate(TestData::randomTextSegment)
+                .limit(embeddings.size())
+                .collect(Collectors.toList());
 
         List<String> ids = embeddingStore.addAll(embeddings, textSegments);
 
@@ -185,5 +176,4 @@ final class TestData {
                 .mapToObj(i -> new TestData(ids.get(i), embeddings.get(i), textSegments.get(i)))
                 .collect(Collectors.toList());
     }
-
 }

@@ -13,6 +13,7 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.logical.And;
+import dev.langchain4j.store.embedding.oracle.test.condition.DisabledOnWindowsCIRequiringContainer;
 import java.sql.*;
 import java.util.Collections;
 import java.util.HashSet;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Verifies {@link OracleEmbeddingStore.Builder} methods which configure the names of columns.
  */
+@DisabledOnWindowsCIRequiringContainer
 public class EmbeddingTableIT {
 
     /**
