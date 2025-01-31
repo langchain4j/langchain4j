@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -24,8 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-
 public class ToolService {
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 100;
@@ -37,7 +36,8 @@ public class ToolService {
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             ToolHallucinationStrategy.THROW_EXCEPTION;
 
-    public void toolHallucinationStrategy(Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
+    public void toolHallucinationStrategy(
+            Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
         this.toolHallucinationStrategy = toolHallucinationStrategy;
     }
 
@@ -146,9 +146,10 @@ public class ToolService {
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                 ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
 
-                ToolExecutionResultMessage toolExecutionResultMessage = toolExecutor == null ?
-                        toolHallucinationStrategy.apply(toolExecutionRequest) :
-                        ToolExecutionResultMessage.from(toolExecutionRequest, toolExecutor.execute(toolExecutionRequest, memoryId));
+                ToolExecutionResultMessage toolExecutionResultMessage = toolExecutor == null
+                        ? toolHallucinationStrategy.apply(toolExecutionRequest)
+                        : ToolExecutionResultMessage.from(
+                                toolExecutionRequest, toolExecutor.execute(toolExecutionRequest, memoryId));
 
                 toolExecutions.add(ToolExecution.builder()
                         .request(toolExecutionRequest)

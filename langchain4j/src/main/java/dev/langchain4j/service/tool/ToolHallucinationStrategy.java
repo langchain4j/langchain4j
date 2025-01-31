@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-
 import java.util.function.Function;
 
 public enum ToolHallucinationStrategy implements Function<ToolExecutionRequest, ToolExecutionResultMessage> {

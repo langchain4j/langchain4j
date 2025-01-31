@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
@@ -37,8 +38,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Function;
-
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 /**
  * AI Services is a high-level API of LangChain4j to interact with {@link ChatLanguageModel} and {@link StreamingChatLanguageModel}.
@@ -357,7 +356,8 @@ public abstract class AiServices<T> {
      *                                  the response provided to the LLM when it hallucinates a tool name.
      * @return builder
      */
-    public AiServices<T> toolHallucinationStrategy(Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
+    public AiServices<T> toolHallucinationStrategy(
+            Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
         context.tools.toolHallucinationStrategy(toolHallucinationStrategy);
         return this;
     }
