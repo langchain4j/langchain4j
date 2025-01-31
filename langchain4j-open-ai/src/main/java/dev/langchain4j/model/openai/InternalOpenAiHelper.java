@@ -67,6 +67,7 @@ import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
@@ -191,13 +192,13 @@ public class InternalOpenAiHelper {
         return dev.ai4j.openai4j.chat.Content.builder()
                 .type(ContentType.AUDIO)
                 .inputAudio(InputAudio.builder()
-                        .data(audioContent.audio().base64Data())
-                        .format(extractMimeTypeSubtype(audioContent.audio().mimeType()))
+                        .data(ensureNotBlank(audioContent.audio().base64Data(), "audio.base64Data"))
+                        .format(extractSubtype(ensureNotBlank(audioContent.audio().mimeType(), "audio.mimeType")))
                         .build())
                 .build();
     }
 
-    private static String extractMimeTypeSubtype(String mimetype) {
+    private static String extractSubtype(String mimetype) {
         return mimetype.split("/")[1];
     }
 
