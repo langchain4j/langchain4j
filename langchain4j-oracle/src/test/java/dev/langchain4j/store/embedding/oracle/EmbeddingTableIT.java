@@ -1,22 +1,5 @@
 package dev.langchain4j.store.embedding.oracle;
 
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
-import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
-import dev.langchain4j.store.embedding.filter.logical.And;
-import oracle.jdbc.OracleType;
-import org.junit.jupiter.api.Test;
-
-import java.sql.*;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.dropTable;
 import static dev.langchain4j.store.embedding.oracle.CommonTestOperations.getDataSource;
 import static dev.langchain4j.store.embedding.oracle.CreateOption.*;
@@ -24,10 +7,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
+import dev.langchain4j.store.embedding.filter.logical.And;
+import java.sql.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import oracle.jdbc.OracleType;
+import org.junit.jupiter.api.Test;
+
 /**
  * Verifies {@link OracleEmbeddingStore.Builder} methods which configure the names of columns.
  */
-public class EmbeddingTableTest {
+public class EmbeddingTableIT {
 
     /**
      *  Verifies that {@link dev.langchain4j.store.embedding.oracle.OracleEmbeddingStore.Builder#build()} creates a
@@ -42,25 +40,23 @@ public class EmbeddingTableTest {
         String metadataColumn = "TEST_METADATA";
         try {
             // The call to build() should create a table with the configured names
-            OracleEmbeddingStore embeddingStore =
-                OracleEmbeddingStore.builder()
-                        .dataSource(getDataSource())
-                        .embeddingTable(EmbeddingTable.builder()
-                                .createOption(CREATE_OR_REPLACE)
-                                .name(tableName)
-                                .idColumn(idColumn)
-                                .embeddingColumn(embeddingColumn)
-                                .textColumn(textColumn)
-                                .metadataColumn(metadataColumn)
-                                .build())
-                        // Verify interactions with the CREATE INDEX command
-                        .vectorIndex(CREATE_OR_REPLACE)
-                        .build();
+            OracleEmbeddingStore embeddingStore = OracleEmbeddingStore.builder()
+                    .dataSource(getDataSource())
+                    .embeddingTable(EmbeddingTable.builder()
+                            .createOption(CREATE_OR_REPLACE)
+                            .name(tableName)
+                            .idColumn(idColumn)
+                            .embeddingColumn(embeddingColumn)
+                            .textColumn(textColumn)
+                            .metadataColumn(metadataColumn)
+                            .build())
+                    // Verify interactions with the CREATE INDEX command
+                    .vectorIndex(CREATE_OR_REPLACE)
+                    .build();
 
             assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
             verifyAddSearchAndRemove(embeddingStore);
-        }
-        finally {
+        } finally {
             CommonTestOperations.dropTable(tableName);
         }
     }
@@ -80,25 +76,22 @@ public class EmbeddingTableTest {
         String metadataColumn = "البيانات الوصفية";
         try {
             // Oracle Database supports non-ascii identifiers wrapped in double quotes.
-            OracleEmbeddingStore embeddingStore =
-                OracleEmbeddingStore.builder()
-                        .dataSource(getDataSource())
-                        .embeddingTable(EmbeddingTable.builder()
-                                .createOption(CREATE_OR_REPLACE)
-                                .name("\"" + tableName +"\"")
-                                .idColumn("\"" + idColumn + "\"")
-                                .embeddingColumn("\"" + embeddingColumn + "\"")
-                                .textColumn("\"" + textColumn + "\"")
-                                .metadataColumn("\"" + metadataColumn + "\"")
-                                .build())
-                        // CREATE INDEX fails with lower case Unicode names
-                        .vectorIndex(CREATE_NONE)
-                        .build();
+            OracleEmbeddingStore embeddingStore = OracleEmbeddingStore.builder()
+                    .dataSource(getDataSource())
+                    .embeddingTable(EmbeddingTable.builder()
+                            .createOption(CREATE_OR_REPLACE)
+                            .name("\"" + tableName + "\"")
+                            .idColumn("\"" + idColumn + "\"")
+                            .embeddingColumn("\"" + embeddingColumn + "\"")
+                            .textColumn("\"" + textColumn + "\"")
+                            .metadataColumn("\"" + metadataColumn + "\"")
+                            .build())
+                    // CREATE INDEX fails with lower case Unicode names
+                    .build();
 
             assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
             verifyAddSearchAndRemove(embeddingStore);
-        }
-        finally {
+        } finally {
             dropTable(tableName);
         }
     }
@@ -118,25 +111,23 @@ public class EmbeddingTableTest {
         String metadataColumn = "البيانات الوصفية".toUpperCase();
         try {
             // Oracle Database supports non-ascii identifiers wrapped in double quotes.
-            OracleEmbeddingStore embeddingStore =
-                OracleEmbeddingStore.builder()
+            OracleEmbeddingStore embeddingStore = OracleEmbeddingStore.builder()
                     .dataSource(getDataSource())
                     .embeddingTable(EmbeddingTable.builder()
-                        .createOption(CREATE_OR_REPLACE)
-                        .name("\"" + tableName +"\"")
-                        .idColumn("\"" + idColumn + "\"")
-                        .embeddingColumn("\"" + embeddingColumn + "\"")
-                        .textColumn("\"" + textColumn + "\"")
-                        .metadataColumn("\"" + metadataColumn + "\"")
-                        .build())
+                            .createOption(CREATE_OR_REPLACE)
+                            .name("\"" + tableName + "\"")
+                            .idColumn("\"" + idColumn + "\"")
+                            .embeddingColumn("\"" + embeddingColumn + "\"")
+                            .textColumn("\"" + textColumn + "\"")
+                            .metadataColumn("\"" + metadataColumn + "\"")
+                            .build())
                     // Verify interactions with the CREATE INDEX command
                     .vectorIndex(CREATE_OR_REPLACE)
                     .build();
 
             assertColumnNamesEquals(tableName, idColumn, embeddingColumn, textColumn, metadataColumn);
             verifyAddSearchAndRemove(embeddingStore);
-        }
-        finally {
+        } finally {
             dropTable(tableName);
         }
     }
@@ -180,8 +171,7 @@ public class EmbeddingTableTest {
                     // Verify interactions with the CREATE INDEX command
                     .vectorIndex(CREATE_OR_REPLACE)
                     .build());
-        }
-        finally {
+        } finally {
             dropTable(tableName);
         }
     }
@@ -201,12 +191,11 @@ public class EmbeddingTableTest {
                     .build());
 
             // Set up the existing table to have just one row of data
-            TestData testData =
-                    new TestData(TestData.randomId(), TestData.randomEmbedding(), TextSegment.from("TEST"));
+            TestData testData = new TestData(TestData.randomId(), TestData.randomEmbedding(), TextSegment.from("TEST"));
             try (Connection connection = getDataSource().getConnection();
-                 Statement statement = connection.createStatement();
-                 PreparedStatement insert = connection.prepareStatement(
-                         "INSERT INTO " + tableName + "(id, embedding, text) VALUES (?, ?, ?)")) {
+                    Statement statement = connection.createStatement();
+                    PreparedStatement insert = connection.prepareStatement(
+                            "INSERT INTO " + tableName + "(id, embedding, text) VALUES (?, ?, ?)")) {
 
                 statement.execute("DELETE FROM " + tableName);
 
@@ -217,22 +206,20 @@ public class EmbeddingTableTest {
             }
 
             // Expect the existing table to be reused; A search of min score 0 should return 1 match.
-            List<TestData> matches =
-                OracleEmbeddingStore.builder()
-                        .dataSource(getDataSource())
-                        .embeddingTable(tableName, CREATE_IF_NOT_EXISTS)
-                        .build()
-                        .search(EmbeddingSearchRequest.builder()
-                                .queryEmbedding(testData.embedding)
-                                .minScore(0d)
-                                .build())
-                        .matches()
-                        .stream()
-                        .map(TestData::new)
-                        .collect(Collectors.toList());
+            List<TestData> matches = OracleEmbeddingStore.builder()
+                    .dataSource(getDataSource())
+                    .embeddingTable(tableName, CREATE_IF_NOT_EXISTS)
+                    .build()
+                    .search(EmbeddingSearchRequest.builder()
+                            .queryEmbedding(testData.embedding)
+                            .minScore(0d)
+                            .build())
+                    .matches()
+                    .stream()
+                    .map(TestData::new)
+                    .collect(Collectors.toList());
             assertThat(matches).isEqualTo(Collections.singletonList(testData));
-        }
-        finally {
+        } finally {
             dropTable(tableName);
         }
     }
@@ -254,9 +241,9 @@ public class EmbeddingTableTest {
             // Set up the existing table to have at least one row of data
             Embedding embedding = TestData.randomEmbedding();
             try (Connection connection = getDataSource().getConnection();
-                 Statement statement = connection.createStatement();
-                 PreparedStatement insert = connection.prepareStatement(
-                         "INSERT INTO " + tableName + "(id, embedding) VALUES (?, ?)")) {
+                    Statement statement = connection.createStatement();
+                    PreparedStatement insert =
+                            connection.prepareStatement("INSERT INTO " + tableName + "(id, embedding) VALUES (?, ?)")) {
 
                 insert.setString(1, TestData.randomId());
                 insert.setObject(2, embedding.vector(), OracleType.VECTOR);
@@ -264,23 +251,21 @@ public class EmbeddingTableTest {
             }
 
             // Expect the existing table to be dropped and replaced; A search of min score 0 should find no matches.
-            List<TestData> matches =
-                    OracleEmbeddingStore.builder()
-                            .dataSource(getDataSource())
-                            .embeddingTable(tableName, CREATE_OR_REPLACE)
-                            .build()
-                            .search(EmbeddingSearchRequest.builder()
-                                    .queryEmbedding(embedding)
-                                    .minScore(0d)
-                                    .build())
-                            .matches()
-                            .stream()
-                            .map(TestData::new)
-                            .collect(Collectors.toList());
+            List<TestData> matches = OracleEmbeddingStore.builder()
+                    .dataSource(getDataSource())
+                    .embeddingTable(tableName, CREATE_OR_REPLACE)
+                    .build()
+                    .search(EmbeddingSearchRequest.builder()
+                            .queryEmbedding(embedding)
+                            .minScore(0d)
+                            .build())
+                    .matches()
+                    .stream()
+                    .map(TestData::new)
+                    .collect(Collectors.toList());
             assertThat(matches).isEqualTo(Collections.emptyList());
 
-        }
-        finally {
+        } finally {
             dropTable(tableName);
         }
     }
@@ -302,9 +287,7 @@ public class EmbeddingTableTest {
                 .maxResults(expectedData.size())
                 .minScore(0.0)
                 .build();
-        Set<TestData> actualData = embeddingStore.search(requestAll)
-                .matches()
-                .stream()
+        Set<TestData> actualData = embeddingStore.search(requestAll).matches().stream()
                 .map(TestData::new)
                 .collect(Collectors.toSet());
 
@@ -315,12 +298,9 @@ public class EmbeddingTableTest {
 
         // Remove all embeddings
         embeddingStore.removeAll(
-                expectedData.stream()
-                    .map(testData -> testData.id)
-                    .collect(Collectors.toList()));
+                expectedData.stream().map(testData -> testData.id).collect(Collectors.toList()));
 
         assertThat(embeddingStore.search(requestAll).matches()).isEmpty();
-
     }
 
     /**
@@ -328,16 +308,15 @@ public class EmbeddingTableTest {
      * identifiers to upper case, unless they are enclosed in double quotes.
      */
     private static void assertColumnNamesEquals(
-            String tableName,
-            String idColumn, String embeddingColumn, String textColumn, String metadataColumn)
+            String tableName, String idColumn, String embeddingColumn, String textColumn, String metadataColumn)
             throws SQLException {
 
         Set<String> actualNames = new HashSet<>();
 
         // Query the database to get the column names
         try (Connection connection = getDataSource().getConnection();
-             ResultSet resultSet =
-                     connection.getMetaData().getColumns(null, connection.getSchema(), tableName, "%")) {
+                ResultSet resultSet =
+                        connection.getMetaData().getColumns(null, connection.getSchema(), tableName, "%")) {
             while (resultSet.next()) {
                 assertThat(resultSet.getString("TABLE_NAME")).isEqualTo(tableName);
                 actualNames.add(resultSet.getString("COLUMN_NAME"));
@@ -359,8 +338,7 @@ public class EmbeddingTableTest {
             // Expect "ORA-00942: table or view does not exist"  if the table does not exist
             SQLException sqlException = assertInstanceOf(SQLException.class, runtimeException.getCause());
             assertThat(sqlException.getErrorCode()).isEqualTo(942);
-        }
-        catch (AssertionError assertionError) {
+        } catch (AssertionError assertionError) {
             assertionError.addSuppressed(runtimeException);
             throw assertionError;
         }
@@ -369,10 +347,10 @@ public class EmbeddingTableTest {
     /** Creates a table with the default column names */
     private static void createTable(String tableName) throws SQLException {
         try (Connection connection = getDataSource().getConnection();
-             Statement statement = connection.createStatement()) {
+                Statement statement = connection.createStatement()) {
 
-            statement.execute("CREATE TABLE " + tableName +
-                    "(id VARCHAR(36) PRIMARY KEY, embedding VECTOR, text CLOB, metadata JSON)");
+            statement.execute("CREATE TABLE " + tableName
+                    + "(id VARCHAR(36) PRIMARY KEY, embedding VECTOR, text CLOB, metadata JSON)");
         }
     }
 }

@@ -12,7 +12,7 @@
     <name>langchain4j-onnx-scoring</name>
 
     <properties>
-        <ai.djl.version>0.30.0</ai.djl.version>
+        <ai.djl.version>0.31.1</ai.djl.version>
         <onnxruntime.version>1.20.0</onnxruntime.version>
     </properties>
 
