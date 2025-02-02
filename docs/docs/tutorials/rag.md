@@ -262,6 +262,7 @@ and update it in the `EmbeddingStore` as well to keep it in sync.
 ### Document Loader
 You can create a `Document` from a `String`, but a simpler method is to use one of our document loaders included in the library:
 - `FileSystemDocumentLoader` from the `langchain4j` module
+- `ClassPathDocumentLoader` from the `langchain4j` module
 - `UrlDocumentLoader` from the `langchain4j` module
 - `AmazonS3DocumentLoader` from the `langchain4j-document-loader-amazon-s3` module
 - `AzureBlobStorageDocumentLoader` from the `langchain4j-document-loader-azure-storage-blob` module
@@ -486,6 +487,29 @@ It has the following attributes:
 
 #### Filter
 The `Filter` allows filtering by `Metadata` entries when performing a vector search.
+
+Currently, the following `Filter` types/operations are supported:
+-  `IsEqualTo`
+-  `IsNotEqualTo`
+-  `IsGreaterThan`
+-  `IsGreaterThanOrEqualTo`
+-  `IsLessThan`
+-  `IsLessThanOrEqualTo`
+-  `IsIn`
+-  `IsNotIn`
+-  `ContainsString`
+-  `And`
+-  `Not`
+-  `Or`
+
+:::note
+Not all embedding stores support filtering by `Metadata`,
+please see the "Filtering by Metadata" column [here](https://docs.langchain4j.dev/integrations/embedding-stores/).
+
+Some stores that support filtering by `Metadata` do not support all possible `Filter` types/operations.
+For example, `ContainsString` is currently supported only by Milvus, PgVector and Qdrant.
+:::
+
 More details about `Filter` can be found [here](https://github.com/langchain4j/langchain4j/pull/610).
 
 

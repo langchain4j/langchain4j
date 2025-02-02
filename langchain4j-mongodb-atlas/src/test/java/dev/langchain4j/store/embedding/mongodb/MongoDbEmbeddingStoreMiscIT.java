@@ -1,5 +1,13 @@
 package dev.langchain4j.store.embedding.mongodb;
 
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.EMBEDDING_MODEL;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.createDefaultClient;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.data.Percentage.withPercentage;
+
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.Filters;
 import dev.langchain4j.data.document.Metadata;
@@ -8,19 +16,9 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
-import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.*;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.data.Percentage.withPercentage;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 class MongoDbEmbeddingStoreMiscIT {
 
@@ -48,13 +46,14 @@ class MongoDbEmbeddingStoreMiscIT {
     @Test
     void should_find_relevant_with_native_filter() {
         // given
-        fixture = new MongoDbTestFixture(createClient()).initialize(builder -> builder
-                        .filter(Filters.and(Filters.eq("metadata.test-key", "test-value"))));
+        fixture = new MongoDbTestFixture(createClient())
+                .initialize(builder -> builder.filter(Filters.and(Filters.eq("metadata.test-key", "test-value"))));
 
         TextSegment segment = TextSegment.from("this segment should be found", Metadata.from("test-key", "test-value"));
         Embedding embedding = embeddingModel().embed(segment.text()).content();
 
-        TextSegment filterSegment = TextSegment.from("this segment should not be found", Metadata.from("test-key", "no-value"));
+        TextSegment filterSegment =
+                TextSegment.from("this segment should not be found", Metadata.from("test-key", "no-value"));
         Embedding filterEmbedding = embeddingModel().embed(filterSegment.text()).content();
 
         List<String> ids = embeddingStore().addAll(asList(embedding, filterEmbedding), asList(segment, filterSegment));
@@ -85,7 +84,7 @@ class MongoDbEmbeddingStoreMiscIT {
             fixture = fixture.initialize(builder -> builder.createIndex(false));
             fail("Expected exception");
         } catch (RuntimeException r) {
-            assertTrue(r.getMessage().contains("Search Index 'test_index' not found"));
+            assertThat(r.getMessage()).contains("Search Index 'test_index' not found");
         }
     }
 }

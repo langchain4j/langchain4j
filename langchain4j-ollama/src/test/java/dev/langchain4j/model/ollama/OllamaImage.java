@@ -23,6 +23,8 @@ public class OllamaImage {
 
     public static final String ALL_MINILM_MODEL = "all-minilm";
 
+    public static final String GRANITE_3_GUARDIAN = "granite3-guardian";
+
     public static DockerImageName resolve(String baseImage, String localImageName) {
         DockerImageName dockerImageName = DockerImageName.parse(baseImage);
         DockerClient dockerClient = DockerClientFactory.instance().client();

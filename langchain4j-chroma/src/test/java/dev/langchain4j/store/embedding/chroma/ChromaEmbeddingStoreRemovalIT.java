@@ -8,8 +8,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
@@ -23,13 +23,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public class ChromaEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    private static final ChromaDBContainer chroma = new ChromaDBContainer("chromadb/chroma:0.5.2");
+    private static final ChromaDBContainer chroma = new ChromaDBContainer("chromadb/chroma:0.5.4");
 
-    EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore
-        .builder()
-        .baseUrl(chroma.getEndpoint())
-        .collectionName(randomUUID())
-        .build();
+    EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
+            .baseUrl(chroma.getEndpoint())
+            .collectionName(randomUUID())
+            .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -70,14 +69,17 @@ public class ChromaEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
         TextSegment segment1 = TextSegment.from("not matching", new Metadata().put("cat", 10));
         String id1 = embeddingStore().add(embeddingModel().embed(segment1).content(), segment1);
 
-        TextSegment segment2 = TextSegment.from("matching", new Metadata().put("cat", 15).put("type", "a"));
+        TextSegment segment2 =
+                TextSegment.from("matching", new Metadata().put("cat", 15).put("type", "a"));
         embeddingStore().add(embeddingModel().embed(segment2).content(), segment2);
 
         TextSegment segment3 = TextSegment.from("not matching", new Metadata().put("cat", 1));
         String id3 = embeddingStore().add(embeddingModel().embed(segment3).content(), segment3);
 
         // when
-        embeddingStore().removeAll(and(metadataKey("cat").isGreaterThan(5), metadataKey("type").isEqualTo("a")));
+        embeddingStore()
+                .removeAll(and(
+                        metadataKey("cat").isGreaterThan(5), metadataKey("type").isEqualTo("a")));
 
         // then
         List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();

@@ -30,7 +30,7 @@
         <dependency>
             <groupId>io.pinecone</groupId>
             <artifactId>pinecone-client</artifactId>
-            <version>1.2.2</version>
+            <version>3.1.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.netty</groupId>
