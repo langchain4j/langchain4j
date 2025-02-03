@@ -12,8 +12,10 @@ import org.commonmark.Extension;
 import org.commonmark.ext.front.matter.YamlFrontMatterExtension;
 import org.commonmark.ext.front.matter.YamlFrontMatterVisitor;
 import org.commonmark.ext.gfm.tables.TablesExtension;
+import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.Heading;
+import org.commonmark.node.HtmlInline;
 import org.commonmark.node.Image;
 import org.commonmark.node.IndentedCodeBlock;
 import org.commonmark.node.Link;
@@ -356,7 +358,7 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
             // The buffer will contain the header, clean it out and read it directly from the Heading instead to
             // remove any markup characters.
             buffer.rollover();
-            currentHeader = new Header(heading);
+            currentHeader = Header.create(heading);
         }
 
         private void addSectionSegments(Header header, String sectionText) {
@@ -569,6 +571,23 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
         }
     }
 
+    private static class HeaderVisitor extends AbstractVisitor {
+        private final StringBuilder buffer = new StringBuilder();
+
+        @Override
+        public void visit(final HtmlInline htmlInline) {
+            buffer.append(htmlInline.getLiteral());
+            super.visit(htmlInline);
+        }
+
+        @Override
+        public void visit(final Text text) {
+            buffer.append(text.getLiteral());
+            super.visit(text);
+        }
+    }
+
+
     private static class Header {
         private final String text;
         private final int level;
@@ -576,15 +595,15 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
         private final List<Header> children = new ArrayList<>();
         private int indexInParent;
 
-        Header(Heading heading) {
-            this(
-                    heading.getFirstChild() != null ? ((Text) heading.getFirstChild()).getLiteral() : null,
-                    heading.getLevel());
-        }
-
         private Header(final String text, final int level) {
             this.text = text;
             this.level = level - 1;
+        }
+
+        private static Header create(Heading heading) {
+            HeaderVisitor visitor = new HeaderVisitor();
+            heading.accept(visitor);
+            return new Header(visitor.buffer.toString(), heading.getLevel());
         }
 
         @Override

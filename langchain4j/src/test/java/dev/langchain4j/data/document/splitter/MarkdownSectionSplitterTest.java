@@ -27,7 +27,6 @@ import static dev.langchain4j.data.document.splitter.MarkdownSectionSplitter.SEC
 import static dev.langchain4j.data.document.splitter.MarkdownSectionSplitter.SECTION_LEVEL;
 import static dev.langchain4j.data.document.splitter.MarkdownSectionSplitter.SECTION_PARENT_HEADER;
 import static dev.langchain4j.data.document.splitter.MarkdownSectionSplitter.SEGMENT_LINKS;
-import static org.junit.Assert.assertEquals;
 
 public class MarkdownSectionSplitterTest implements WithAssertions {
 
@@ -628,6 +627,39 @@ public class MarkdownSectionSplitterTest implements WithAssertions {
         Assertions.assertEquals(0, frontMatter.get("empty").size());
     }
 
+    @Test
+    public void testHtmlInHeaders() {
+                String text = "# 1 <ejb>\n\n" +
+                "intro\n" +
+                "## 1.1 <stateful>\n\n" +
+                "stateful\n" +
+                "## 1.2 <stateless>\n\n" +
+                "stateless\n" +
+                "## **<mdb>**\n\n" +
+                "mdb\n";
+
+        Map<String, List<String>> frontMatter = new HashMap<>();
+
+        DocumentSplitter splitter = MarkdownSectionSplitter.builder()
+                .setYamlFrontMatterConsumer(frontMatter::putAll)
+                .build();
+        Document source = createDocument(text);
+        List<TextSegment> segments = splitter.split(source);
+
+        Assertions.assertEquals(4, segments.size());
+
+        checkTextSegment(source, segments.get(0), "1 <ejb>", null, 0, 0,
+                "intro");
+        checkTextSegment(source, segments.get(1), "1.1 <stateful>", "1 <ejb>", 1, 0,
+                "stateful");
+        checkTextSegment(source, segments.get(2), "1.2 <stateless>", "1 <ejb>", 1, 1,
+                "stateless");
+        // The visitor used to parse Headings doesn't care about emphasis markup
+        checkTextSegment(source, segments.get(3), "<mdb>", "1 <ejb>", 1, 2,
+                "mdb");
+
+
+    }
 
     private Document createDocument(String text) {
         DocumentSource loader = new StringDocumentSource(text);
