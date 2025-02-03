@@ -350,7 +350,7 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Configures the strategy to be used when the LLM hallucinates the name of a tool.
+     * Configures the strategy to be used when the LLM hallucinates a tool name (i.e., attempts to call a nonexistent tool).
      *
      * @param toolHallucinationStrategy A Function from {@link ToolExecutionRequest} to {@link String} defining
      *                                  the response provided to the LLM when it hallucinates a tool name.
