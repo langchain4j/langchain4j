@@ -190,8 +190,13 @@ public class JsonSchemaElementHelper {
                 properties.put("description", jsonObjectSchema.description());
             }
             properties.put("properties", toMap(jsonObjectSchema.properties(), strict));
-            if (jsonObjectSchema.required() != null) {
-                properties.put("required", jsonObjectSchema.required());
+            if (strict) {
+                // When using Structured Outputs, all fields must be required, see https://platform.openai.com/docs/guides/structured-outputs/supported-schemas#all-fields-must-be-required
+                properties.put("required", jsonObjectSchema.properties().keySet().stream().toList());
+            } else {
+                if (jsonObjectSchema.required() != null) {
+                    properties.put("required", jsonObjectSchema.required());
+                }
             }
             if (strict) {
                 properties.put("additionalProperties", false);

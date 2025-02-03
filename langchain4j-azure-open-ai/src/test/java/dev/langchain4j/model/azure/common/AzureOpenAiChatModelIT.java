@@ -20,11 +20,19 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
             .logRequestsAndResponses(true)
             .build();
 
+    static final AzureOpenAiChatModel AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA = AzureOpenAiChatModel.builder()
+            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+            .deploymentName("gpt-4o-mini")
+            .strictJsonSchema(true)
+            .logRequestsAndResponses(true)
+            .build();
+
     @Override
     protected List<ChatLanguageModel> models() {
         return List.of(
-                AZURE_OPEN_AI_CHAT_MODEL
-                // TODO add more model configs, see OpenAiChatModelIT
+                AZURE_OPEN_AI_CHAT_MODEL,
+                AZURE_OPEN_AI_CHAT_MODEL_STRICT_SCHEMA
         );
     }
 
