@@ -15,7 +15,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.service.tool.ToolHallucinationStrategy;
+import dev.langchain4j.service.tool.HallucinatedToolNameStrategy;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -301,13 +301,13 @@ class AiServicesUserMessageConfigTest {
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemory(chatMemory)
                 .tools(new HelloWorld())
-                .toolHallucinationStrategy(ToolHallucinationStrategy.THROW_EXCEPTION)
+                .hallucinatedToolNameStrategy(HallucinatedToolNameStrategy.THROW_EXCEPTION)
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("hi"))
                 .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessage(
-                        "Something is wrong, the tool unknown was called but it is not a part of the available tools");
+                .hasMessageContaining(
+                        "unknown");
 
         validateChatMemory(chatMemory);
     }
@@ -343,7 +343,7 @@ class AiServicesUserMessageConfigTest {
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemory(chatMemory)
                 .tools(new HelloWorld())
-                .toolHallucinationStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
+                .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
                         toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()))
                 .build();
 

@@ -17,6 +17,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.IllegalConfigurationException;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,9 +36,9 @@ public class ToolService {
     private ToolProvider toolProvider;
 
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
-            ToolHallucinationStrategy.THROW_EXCEPTION;
+            HallucinatedToolNameStrategy.THROW_EXCEPTION;
 
-    public void toolHallucinationStrategy(
+    public void hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
         this.toolHallucinationStrategy = toolHallucinationStrategy;
     }
@@ -50,6 +52,10 @@ public class ToolService {
     }
 
     public void tools(Map<ToolSpecification, ToolExecutor> tools) {
+        if (toolProvider != null) {
+            throw new IllegalArgumentException(
+                    "Either the tools or the tool provider can be configured, but not both!");
+        }
         initTools();
 
         tools.forEach((toolSpecification, toolExecutor) -> {
@@ -59,6 +65,10 @@ public class ToolService {
     }
 
     public void tools(Collection<Object> objectsWithTools) {
+        if (toolProvider != null) {
+            throw new IllegalArgumentException(
+                    "Either the tools or the tool provider can be configured, but not both!");
+        }
         initTools();
 
         for (Object objectWithTool : objectsWithTools) {
@@ -70,7 +80,7 @@ public class ToolService {
                 if (method.isAnnotationPresent(Tool.class)) {
                     ToolSpecification toolSpecification = toolSpecificationFrom(method);
                     if (toolExecutors.containsKey(toolSpecification.name())) {
-                        throw new DuplicateToolException(toolSpecification.name());
+                        throw new IllegalConfigurationException("Duplicated definition for tool: " + toolSpecification.name());
                     }
                     toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
                     toolSpecifications.add(toolSpecificationFrom(method));
@@ -80,10 +90,6 @@ public class ToolService {
     }
 
     private void initTools() {
-        if (toolProvider != null) {
-            throw new IllegalArgumentException(
-                    "Either the tools or the tool provider can be configured, but not both!");
-        }
         if (toolSpecifications == null) {
             toolSpecifications = new ArrayList<>();
         }
@@ -111,7 +117,7 @@ public class ToolService {
         return new ToolExecutionContext(toolsSpecs, toolExecs);
     }
 
-    public ToolExecutionResult executeTools(
+    public ToolExecutionResult executeInferenceAndToolsLoop(
             ChatResponse chatResponse,
             ChatRequestParameters parameters,
             List<ChatMessage> messages,

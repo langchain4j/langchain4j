@@ -320,7 +320,7 @@ public abstract class AiServices<T> {
      * @see Tool
      */
     public AiServices<T> tools(Collection<Object> objectsWithTools) {
-        context.tools.tools(objectsWithTools);
+        context.toolService.tools(objectsWithTools);
         return this;
     }
 
@@ -331,7 +331,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> toolProvider(ToolProvider toolProvider) {
-        context.tools.toolProvider(toolProvider);
+        context.toolService.toolProvider(toolProvider);
         return this;
     }
 
@@ -345,20 +345,20 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools) {
-        context.tools.tools(tools);
+        context.toolService.tools(tools);
         return this;
     }
 
     /**
      * Configures the strategy to be used when the LLM hallucinates a tool name (i.e., attempts to call a nonexistent tool).
      *
-     * @param toolHallucinationStrategy A Function from {@link ToolExecutionRequest} to {@link String} defining
+     * @param hallucinatedToolNameStrategy A Function from {@link ToolExecutionRequest} to {@link String} defining
      *                                  the response provided to the LLM when it hallucinates a tool name.
      * @return builder
      */
-    public AiServices<T> toolHallucinationStrategy(
-            Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
-        context.tools.toolHallucinationStrategy(toolHallucinationStrategy);
+    public AiServices<T> hallucinatedToolNameStrategy(
+            Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy) {
+        context.toolService.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
         return this;
     }
 

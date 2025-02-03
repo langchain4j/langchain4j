@@ -26,25 +26,25 @@ public class ChatModelMock implements ChatLanguageModel {
 
     private final String staticResponse;
     private final RuntimeException exception;
-    private final Function<ChatRequest, AiMessage> toolExecutor;
+    private final Function<ChatRequest, AiMessage> aiMessageGenerator;
     private final List<List<ChatMessage>> requests = synchronizedList(new ArrayList<>());
 
     public ChatModelMock(String staticResponse) {
         this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
         this.exception = null;
-        this.toolExecutor = null;
+        this.aiMessageGenerator = null;
     }
 
     public ChatModelMock(RuntimeException exception) {
         this.staticResponse = null;
         this.exception = ensureNotNull(exception, "exception");
-        this.toolExecutor = null;
+        this.aiMessageGenerator = null;
     }
 
-    public ChatModelMock(Function<ChatRequest, AiMessage> toolExecutor) {
+    public ChatModelMock(Function<ChatRequest, AiMessage> aiMessageGenerator) {
         this.staticResponse = null;
         this.exception = null;
-        this.toolExecutor = ensureNotNull(toolExecutor, "toolRequest");
+        this.aiMessageGenerator = ensureNotNull(aiMessageGenerator, "toolRequest");
     }
 
     @Override
@@ -55,7 +55,7 @@ public class ChatModelMock implements ChatLanguageModel {
             throw exception;
         }
 
-        AiMessage aiMessage = toolExecutor != null ? toolExecutor.apply(chatRequest) : AiMessage.from(staticResponse);
+        AiMessage aiMessage = aiMessageGenerator != null ? aiMessageGenerator.apply(chatRequest) : AiMessage.from(staticResponse);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)

@@ -23,7 +23,7 @@ public class AiServiceContext {
     public Map</* id */ Object, ChatMemory> chatMemories;
     public ChatMemoryProvider chatMemoryProvider;
 
-    public ToolService tools = new ToolService();
+    public ToolService toolService = new ToolService();
 
     public ModerationModel moderationModel;
 

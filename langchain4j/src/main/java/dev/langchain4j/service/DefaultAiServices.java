@@ -176,7 +176,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolExecutionContext toolExecutionContext =
-                                context.tools.executionContext(memoryId, userMessage);
+                                context.toolService.executionContext(memoryId, userMessage);
 
                         if (streaming) {
                             TokenStream tokenStream = new AiServiceTokenStream(
@@ -216,7 +216,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
-                        ToolExecutionResult toolExecutionResult = context.tools.executeTools(
+                        ToolExecutionResult toolExecutionResult = context.toolService.executeInferenceAndToolsLoop(
                                 chatResponse,
                                 parameters,
                                 messages,
