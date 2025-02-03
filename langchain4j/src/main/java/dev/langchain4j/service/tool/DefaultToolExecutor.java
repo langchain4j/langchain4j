@@ -1,11 +1,10 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.internal.Json;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -15,8 +14,8 @@ import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
-
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -45,9 +44,9 @@ public class DefaultToolExecutor implements ToolExecutor {
             }
         }
 
-        throw new IllegalArgumentException(
-                String.format("Method '%s' is not found in object '%s'",
-                        requestedMethodName, object.getClass().getName()));
+        throw new IllegalArgumentException(String.format(
+                "Method '%s' is not found in object '%s'",
+                requestedMethodName, object.getClass().getName()));
     }
 
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
@@ -81,8 +80,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    private String execute(Object[] arguments)
-            throws IllegalAccessException, InvocationTargetException {
+    private String execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = method.invoke(object, arguments);
         Class<?> returnType = method.getReturnType();
         if (returnType == void.class) {
@@ -94,11 +92,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    static Object[] prepareArguments(
-            Method method,
-            Map<String, Object> argumentsMap,
-            Object memoryId
-    ) {
+    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, Object memoryId) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -124,11 +118,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         return arguments;
     }
 
-    static Object coerceArgument(
-            Object argument,
-            String parameterName,
-            Class<?> parameterClass,
-            Type parameterType) {
+    static Object coerceArgument(Object argument, String parameterName, Class<?> parameterClass, Type parameterType) {
         if (parameterClass == String.class) {
             return argument.toString();
         }
@@ -139,15 +129,20 @@ public class DefaultToolExecutor implements ToolExecutor {
                 @SuppressWarnings({"unchecked", "rawtypes"})
                 Class<Enum> enumClass = (Class<Enum>) parameterClass;
                 try {
-                    return Enum.valueOf(enumClass, Objects.requireNonNull(argument).toString());
+                    return Enum.valueOf(
+                            enumClass, Objects.requireNonNull(argument).toString());
                 } catch (IllegalArgumentException e) {
                     // try to convert to uppercase as a last resort
-                    return Enum.valueOf(enumClass, Objects.requireNonNull(argument).toString().toUpperCase());
+                    return Enum.valueOf(
+                            enumClass,
+                            Objects.requireNonNull(argument).toString().toUpperCase());
                 }
             } catch (Exception | Error e) {
-                throw new IllegalArgumentException(String.format(
-                        "Argument \"%s\" is not a valid enum value for %s: <%s>",
-                        parameterName, parameterClass.getName(), argument), e);
+                throw new IllegalArgumentException(
+                        String.format(
+                                "Argument \"%s\" is not a valid enum value for %s: <%s>",
+                                parameterName, parameterClass.getName(), argument),
+                        e);
             }
         }
 
@@ -175,28 +170,26 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         if (parameterClass == Integer.class || parameterClass == int.class) {
-            return (int) getBoundedLongValue(
-                    argument, parameterName, parameterClass, Integer.MIN_VALUE, Integer.MAX_VALUE);
+            return (int)
+                    getBoundedLongValue(argument, parameterName, parameterClass, Integer.MIN_VALUE, Integer.MAX_VALUE);
         }
 
         if (parameterClass == Long.class || parameterClass == long.class) {
-            return getBoundedLongValue(
-                    argument, parameterName, parameterClass, Long.MIN_VALUE, Long.MAX_VALUE);
+            return getBoundedLongValue(argument, parameterName, parameterClass, Long.MIN_VALUE, Long.MAX_VALUE);
         }
 
         if (parameterClass == Short.class || parameterClass == short.class) {
-            return (short) getBoundedLongValue(
-                    argument, parameterName, parameterClass, Short.MIN_VALUE, Short.MAX_VALUE);
+            return (short)
+                    getBoundedLongValue(argument, parameterName, parameterClass, Short.MIN_VALUE, Short.MAX_VALUE);
         }
 
         if (parameterClass == Byte.class || parameterClass == byte.class) {
-            return (byte) getBoundedLongValue(
-                    argument, parameterName, parameterClass, Byte.MIN_VALUE, Byte.MAX_VALUE);
+            return (byte) getBoundedLongValue(argument, parameterName, parameterClass, Byte.MIN_VALUE, Byte.MAX_VALUE);
         }
 
         if (parameterClass == BigInteger.class) {
-            return BigDecimal.valueOf(
-                    getNonFractionalDoubleValue(argument, parameterName, parameterClass)).toBigInteger();
+            return BigDecimal.valueOf(getNonFractionalDoubleValue(argument, parameterName, parameterClass))
+                    .toBigInteger();
         }
 
         if (parameterClass.isArray() && argument instanceof Collection) {
@@ -219,11 +212,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    private static double getDoubleValue(
-            Object argument,
-            String parameterName,
-            Class<?> parameterType
-    ) {
+    private static double getDoubleValue(Object argument, String parameterName, Class<?> parameterType) {
         if (argument instanceof String) {
             try {
                 return Double.parseDouble(argument.toString());
@@ -239,11 +228,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         return ((Number) argument).doubleValue();
     }
 
-    private static double getNonFractionalDoubleValue(
-            Object argument,
-            String parameterName,
-            Class<?> parameterType
-    ) {
+    private static double getNonFractionalDoubleValue(Object argument, String parameterName, Class<?> parameterType) {
         double doubleValue = getDoubleValue(argument, parameterName, parameterType);
         if (!hasNoFractionalPart(doubleValue)) {
             throw new IllegalArgumentException(String.format(
@@ -254,12 +239,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     private static void checkBounds(
-            double doubleValue,
-            String parameterName,
-            Class<?> parameterType,
-            double minValue,
-            double maxValue
-    ) {
+            double doubleValue, String parameterName, Class<?> parameterType, double minValue, double maxValue) {
         if (doubleValue < minValue || doubleValue > maxValue) {
             throw new IllegalArgumentException(String.format(
                     "Argument \"%s\" is out of range for %s: <%s>",
@@ -268,17 +248,11 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     private static long getBoundedLongValue(
-            Object argument,
-            String parameterName,
-            Class<?> parameterType,
-            long minValue,
-            long maxValue
-    ) {
+            Object argument, String parameterName, Class<?> parameterType, long minValue, long maxValue) {
         double doubleValue = getNonFractionalDoubleValue(argument, parameterName, parameterType);
         checkBounds(doubleValue, parameterName, parameterType, minValue, maxValue);
         return (long) doubleValue;
     }
-
 
     static boolean hasNoFractionalPart(Double doubleValue) {
         return doubleValue.equals(Math.floor(doubleValue));
