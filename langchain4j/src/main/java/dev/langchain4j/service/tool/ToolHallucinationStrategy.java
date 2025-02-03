@@ -13,7 +13,7 @@ public enum ToolHallucinationStrategy implements Function<ToolExecutionRequest, 
         switch (this) {
             case THROW_EXCEPTION -> {
                 throw runtime(
-                        "Something is wrong, the tool %s was called but it is not a part of the available tools",
+                        "The LLM is trying to execute the '%s' tool, but no such tool exists. Most likely, it is a hallucination. You can override this default strategy by ...",
                         toolExecutionRequest.name());
             }
         }
