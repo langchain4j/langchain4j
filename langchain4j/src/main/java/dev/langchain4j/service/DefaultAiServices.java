@@ -225,9 +225,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 memoryId,
                                 toolExecutionContext.toolExecutors());
 
+                        chatResponse = toolExecutionResult.chatResponse();
                         FinishReason finishReason = chatResponse.metadata().finishReason();
                         Response<AiMessage> response = Response.from(
-                                toolExecutionResult.chatResponse().aiMessage(),
+                                chatResponse.aiMessage(),
                                 toolExecutionResult.tokenUsageAccumulator(),
                                 finishReason);
 
