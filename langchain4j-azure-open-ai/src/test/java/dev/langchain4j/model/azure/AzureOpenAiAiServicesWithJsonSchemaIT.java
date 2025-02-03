@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Set;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 
 class AzureOpenAiAiServicesWithJsonSchemaIT extends AiServicesWithJsonSchemaIT {
 
