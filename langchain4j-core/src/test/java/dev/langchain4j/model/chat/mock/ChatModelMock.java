@@ -55,7 +55,8 @@ public class ChatModelMock implements ChatLanguageModel {
             throw exception;
         }
 
-        AiMessage aiMessage = aiMessageGenerator != null ? aiMessageGenerator.apply(chatRequest) : AiMessage.from(staticResponse);
+        AiMessage aiMessage =
+                aiMessageGenerator != null ? aiMessageGenerator.apply(chatRequest) : AiMessage.from(staticResponse);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
