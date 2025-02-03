@@ -64,7 +64,7 @@ public class ToolSpecifications {
         Set<String> names = new HashSet<>();
         for (ToolSpecification toolSpecification : toolSpecifications) {
             if (!names.add(toolSpecification.name())) {
-                throw new IllegalArgumentException("Tool names must be unique. The tool '%s' appears several times".formatted(toolSpecification.name()));
+                throw new IllegalArgumentException(String.format("Tool names must be unique. The tool '%s' appears several times", toolSpecification.name()));
             }
         }
     }
@@ -129,7 +129,7 @@ public class ToolSpecifications {
         }
 
         return JsonObjectSchema.builder()
-                .properties(properties)
+                .addProperties(properties)
                 .required(required)
                 .definitions(definitions.isEmpty() ? null : definitions)
                 .build();

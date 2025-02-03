@@ -163,7 +163,7 @@ public class DefaultContentInjector implements ContentInjector {
     protected String format(String segmentContent, String segmentMetadata) {
         return segmentMetadata.isEmpty()
                 ? segmentContent
-                : "content: %s\n%s".formatted(segmentContent, segmentMetadata);
+                : String.format("content: %s\n%s", segmentContent, segmentMetadata);
     }
 
     public static class DefaultContentInjectorBuilder {

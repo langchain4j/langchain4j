@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;

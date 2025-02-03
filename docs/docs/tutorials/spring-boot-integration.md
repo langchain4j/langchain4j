@@ -9,7 +9,7 @@ LangChain4j provides [Spring Boot starters](https://github.com/langchain4j/langc
 - declarative [AI Services](/tutorials/ai-services)
 
 
-## Spring Boot starters for popular integrations
+## Spring Boot Starters
 
 Spring Boot starters help with creating and configuring
 [language models](/category/language-models),
@@ -17,7 +17,8 @@ Spring Boot starters help with creating and configuring
 [embedding stores](/category/embedding-stores),
 and other core LangChain4j components through properties.
 
-To use one of the Spring Boot starters, import the corresponding dependency.
+To use one of the [Spring Boot starters](https://github.com/langchain4j/langchain4j-spring),
+import the corresponding dependency.
 
 The naming convention for the Spring Boot starter dependency is: `langchain4j-{integration-name}-spring-boot-starter`.
 
@@ -223,6 +224,49 @@ interface Assistant {
 ```
 For this, please import `langchain4j-reactor` module.
 See more details [here](/tutorials/ai-services#flux).
+
+
+## Observability
+
+To enable observability for a `ChatLanguageModel` or `StreamingChatLanguageModel`
+bean, you need to declare one or more `ChatModelListener` beans:
+
+```java
+@Configuration
+class MyConfiguration {
+    
+    @Bean
+    ChatModelListener chatModelListener() {
+        return new ChatModelListener() {
+
+            private static final Logger log = LoggerFactory.getLogger(ChatModelListener.class);
+
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                log.info("onRequest(): {}", requestContext.chatRequest());
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                log.info("onResponse(): {}", responseContext.chatResponse());
+            }
+
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                log.info("onError(): {}", errorContext.error().getMessage());
+            }
+        };
+    }
+}
+```
+
+Every `ChatModelListener` bean in the application context will be automatically
+injected into all `ChatLanguageModel` and `StreamingChatLanguageModel` beans
+created by one of our Spring Boot starters.
+
+## Testing
+
+- [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
 
 ## Supported versions
 

@@ -13,10 +13,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.rag.content.ContentMetadata.RERANKED_SCORE;
 import static java.util.Collections.emptyList;
 
 /**
@@ -125,7 +127,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
         List<TextSegment> segments = contents.stream()
                 .map(Content::textSegment)
-                .toList();
+                .collect(Collectors.toList());
 
         List<Double> scores = scoringModel.scoreAll(segments, query.text()).content();
 
@@ -137,9 +139,9 @@ public class ReRankingContentAggregator implements ContentAggregator {
         return segmentToScore.entrySet().stream()
                 .filter(entry -> minScore == null || entry.getValue() >= minScore)
                 .sorted(Map.Entry.<TextSegment, Double>comparingByValue().reversed())
-                .map(entry -> new Content(entry.getKey(), Map.of(ContentMetadata.RERANKED_SCORE, entry.getValue())))
+                .map(entry ->  Content.from(entry.getKey(), Map.of(RERANKED_SCORE, entry.getValue())))
                 .limit(maxResults)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     public static class ReRankingContentAggregatorBuilder {
