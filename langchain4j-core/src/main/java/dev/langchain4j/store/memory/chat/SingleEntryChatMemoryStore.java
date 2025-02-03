@@ -1,7 +1,6 @@
 package dev.langchain4j.store.memory.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
-
 import java.util.ArrayList;
 import java.util.List;
 
