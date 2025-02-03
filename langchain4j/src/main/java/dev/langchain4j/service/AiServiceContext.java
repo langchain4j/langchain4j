@@ -46,6 +46,10 @@ public class AiServiceContext {
         return defaultChatMemory != null || chatMemoryProvider != null;
     }
 
+    public boolean hasChatMemoryProvider() {
+        return chatMemoryProvider != null;
+    }
+
     public void initChatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
         checkNotInitialized();
         this.chatMemoryProvider = chatMemoryProvider;
