@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static java.util.Collections.synchronizedList;
+import static java.util.Collections.synchronizedSet;
 import static java.util.stream.Collectors.joining;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
@@ -107,7 +109,7 @@ public abstract class HttpClientIT {
         for (HttpClient client : clients()) {
 
             // given
-            String incorrectApiKey = "wrong";
+            String incorrectApiKey = "banana";
 
             HttpRequest request = HttpRequest.builder()
                     .method(POST)
@@ -248,6 +250,7 @@ public abstract class HttpClientIT {
                                         "content" : "What is the capital of Germany? What is a capital of France? Your answers must be separated by a double newline!"
                                     }
                                 ],
+                                "temperature": 0.0,
                                 "stream": true
                             }
                             """)
@@ -381,6 +384,240 @@ public abstract class HttpClientIT {
 
             assertThat(streamingResult.threads()).hasSize(1);
             assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
+
+            InOrder inOrder = inOrder(spyListener);
+            inOrder.verify(spyListener, times(1)).onError(any());
+            inOrder.verifyNoMoreInteractions();
+        }
+    }
+
+    @Test
+    void should_fail_when_listener_onOpen_throws_exception() throws Exception {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body("""
+                            {
+                                "model": "gpt-4o-mini",
+                                "messages": [
+                                    {
+                                        "role" : "user",
+                                        "content" : "What is the capital of Germany?"
+                                    }
+                                ],
+                                "stream": true
+                            }
+                            """)
+                    .build();
+
+            // when
+            AtomicReference<SuccessfulHttpResponse> response = new AtomicReference<>();
+            List<ServerSentEvent> events = synchronizedList(new ArrayList<>());
+            List<Throwable> errors = synchronizedList(new ArrayList<>());
+            Set<Thread> threads = synchronizedSet(new HashSet<>());
+
+            ServerSentEventListener listener = new ServerSentEventListener() {
+
+                @Override
+                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
+                    response.set(successfulHttpResponse);
+                    threads.add(Thread.currentThread());
+
+                    throw new RuntimeException("Unexpected exception in onOpen()");
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    events.add(event);
+                    threads.add(Thread.currentThread());
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    errors.add(throwable);
+                    threads.add(Thread.currentThread());
+                }
+
+                @Override
+                public void onClose() {
+                    threads.add(Thread.currentThread());
+                }
+            };
+            ServerSentEventListener spyListener = spy(listener);
+            client.execute(request, new DefaultServerSentEventParser(), spyListener);
+            Thread.sleep(5_000);
+
+            // then
+            assertThat(response.get()).isNotNull();
+            assertThat(events).isEmpty();
+            assertThat(errors).isEmpty();
+
+            assertThat(threads).hasSize(1);
+            assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+
+            InOrder inOrder = inOrder(spyListener);
+            inOrder.verify(spyListener, times(1)).onOpen(any());
+            inOrder.verifyNoMoreInteractions();
+        }
+    }
+
+    @Test
+    void should_fail_when_listener_onEvent_throws_exception() throws Exception {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body("""
+                            {
+                                "model": "gpt-4o-mini",
+                                "messages": [
+                                    {
+                                        "role" : "user",
+                                        "content" : "What is the capital of Germany?"
+                                    }
+                                ],
+                                "stream": true
+                            }
+                            """)
+                    .build();
+
+            // when
+            AtomicReference<SuccessfulHttpResponse> response = new AtomicReference<>();
+            List<ServerSentEvent> events = synchronizedList(new ArrayList<>());
+            List<Throwable> errors = synchronizedList(new ArrayList<>());
+            Set<Thread> threads = synchronizedSet(new HashSet<>());
+
+            ServerSentEventListener listener = new ServerSentEventListener() {
+
+                @Override
+                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
+                    response.set(successfulHttpResponse);
+                    threads.add(Thread.currentThread());
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    events.add(event);
+                    threads.add(Thread.currentThread());
+
+                    throw new RuntimeException("Unexpected exception in onEvent()");
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    errors.add(throwable);
+                    threads.add(Thread.currentThread());
+                }
+
+                @Override
+                public void onClose() {
+                    threads.add(Thread.currentThread());
+                }
+            };
+            ServerSentEventListener spyListener = spy(listener);
+            client.execute(request, new DefaultServerSentEventParser(), spyListener);
+            Thread.sleep(5_000);
+
+            // then
+            assertThat(response.get()).isNotNull();
+            assertThat(events).hasSize(1);
+            assertThat(errors).isEmpty();
+
+            assertThat(threads).hasSize(1);
+            assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+
+            InOrder inOrder = inOrder(spyListener);
+            inOrder.verify(spyListener, times(1)).onOpen(any());
+            inOrder.verify(spyListener, times(1)).onEvent(any());
+            inOrder.verifyNoMoreInteractions();
+        }
+    }
+
+    @Test
+    void should_fail_when_listener_onError_throws_exception() throws Exception {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            String incorrectApiKey = "banana";
+
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + incorrectApiKey)
+                    .addHeader("Content-Type", "application/json")
+                    .body("""
+                            {
+                                "model": "gpt-4o-mini",
+                                "messages": [
+                                    {
+                                        "role" : "user",
+                                        "content" : "What is the capital of Germany?"
+                                    }
+                                ],
+                                "stream": true
+                            }
+                            """)
+                    .build();
+
+            // when
+            AtomicReference<SuccessfulHttpResponse> response = new AtomicReference<>();
+            List<ServerSentEvent> events = synchronizedList(new ArrayList<>());
+            List<Throwable> errors = synchronizedList(new ArrayList<>());
+            Set<Thread> threads = synchronizedSet(new HashSet<>());
+
+            ServerSentEventListener listener = new ServerSentEventListener() {
+
+                @Override
+                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
+                    response.set(successfulHttpResponse);
+                    threads.add(Thread.currentThread());
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    events.add(event);
+                    threads.add(Thread.currentThread());
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    errors.add(throwable);
+                    threads.add(Thread.currentThread());
+
+                    throw new RuntimeException("Unexpected exception in onError()");
+                }
+
+                @Override
+                public void onClose() {
+                    threads.add(Thread.currentThread());
+                }
+            };
+            ServerSentEventListener spyListener = spy(listener);
+            client.execute(request, new DefaultServerSentEventParser(), spyListener);
+            Thread.sleep(5_000);
+
+            // then
+            assertThat(response.get()).isNull();
+            assertThat(events).isEmpty();
+            assertThat(errors).hasSize(1);
+            assertThat(errors.get(0))
+                    .isExactlyInstanceOf(HttpException.class)
+                    .hasMessageContaining("Incorrect API key provided");
+
+            assertThat(threads).hasSize(1);
+            assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
 
             InOrder inOrder = inOrder(spyListener);
             inOrder.verify(spyListener, times(1)).onError(any());

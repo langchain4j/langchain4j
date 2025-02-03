@@ -1,7 +1,7 @@
 package dev.langchain4j.http.client.jdk;
 
-import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
@@ -70,13 +70,9 @@ public class JdkHttpClient implements HttpClient {
                     try (InputStream inputStream = jdkResponse.body()) {
                         parser.parse(inputStream, listener);
                         listener.onClose();
-                    } catch (Exception e) {
-                        listener.onError(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
                     }
-                })
-                .exceptionally(throwable -> {
-                    listener.onError(throwable);
-                    return null;
                 });
     }
 
