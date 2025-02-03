@@ -41,6 +41,7 @@ class MariaDbEmbeddingStoreUpgradeTest {
                 .password(mariadbContainer.getPassword())
                 .table(tableName)
                 .dimension(384)
+                .createTable(true)
                 .dropTableFirst(true)
                 .build();
 
@@ -49,6 +50,7 @@ class MariaDbEmbeddingStoreUpgradeTest {
                 .user(mariadbContainer.getUsername())
                 .password(mariadbContainer.getPassword())
                 .table(tableName)
+                .createTable(true)
                 .dimension(384)
                 .build();
     }

@@ -19,6 +19,7 @@ class MariaDbEmbeddingStoreRemovalTest extends EmbeddingStoreWithRemovalIT {
             .password(mariadbContainer.getPassword())
             .table("test" + nextInt(2000, 3000))
             .dimension(384)
+            .createTable(true)
             .dropTableFirst(true)
             .build();
 

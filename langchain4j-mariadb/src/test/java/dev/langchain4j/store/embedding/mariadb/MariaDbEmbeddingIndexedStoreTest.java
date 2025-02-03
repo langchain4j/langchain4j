@@ -30,6 +30,7 @@ class MariaDbEmbeddingIndexedStoreTest extends EmbeddingStoreWithFilteringIT {
                 .user(mariadbContainer.getUsername())
                 .password(mariadbContainer.getPassword())
                 .table("test" + nextInt(1, 1000))
+                .createTable(true)
                 .dimension(embeddingModel.dimension())
                 .dropTableFirst(true)
                 .build();

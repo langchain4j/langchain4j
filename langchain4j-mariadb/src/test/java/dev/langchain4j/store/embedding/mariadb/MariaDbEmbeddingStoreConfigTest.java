@@ -34,6 +34,7 @@ abstract class MariaDbEmbeddingStoreConfigTest extends EmbeddingStoreWithFilteri
                     .datasource(dataSource)
                     .table(TABLE_NAME)
                     .dimension(TABLE_DIMENSION)
+                    .createTable(true)
                     .dropTableFirst(true)
                     .metadataStorageConfig(config)
                     .build();

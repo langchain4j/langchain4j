@@ -111,7 +111,12 @@
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
                 <configuration>
-                    <skipCompliance>true</skipCompliance>
+                    <acceptableLicenses combine.children="append">
+                        <license>
+                            <name>LGPL-2.1-or-later</name>
+                            <url>https://spdx.org/licenses/LGPL-2.1-or-later.html</url>
+                        </license>
+                    </acceptableLicenses>
                 </configuration>
             </plugin>
         </plugins>

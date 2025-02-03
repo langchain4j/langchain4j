@@ -16,7 +16,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.sql.DataSource;
-import org.jspecify.annotations.NonNull;
 import org.mariadb.jdbc.MariaDbDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,8 +78,8 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                 getOrDefault(builder.metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
         this.metadataHandler = MetadataHandlerFactory.get(config, this.datasource);
         this.distanceType = builder.distanceType == null ? MariaDBDistanceType.COSINE : builder.distanceType;
-
-        initTable(builder.dropTableFirst, builder.createTable, builder.dimension);
+        int dimension = ensureNotNull(builder.dimension, "dimension");
+        initTable(builder.dropTableFirst, builder.createTable, dimension);
     }
 
     private String validateAndEnquoteIdentifier(String value, String defaultValue) {
@@ -96,7 +95,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param createTable    Should create table automatically
      * @param dimension      The vector dimension
      */
-    protected void initTable(boolean dropTableFirst, boolean createTable, Integer dimension) {
+    protected void initTable(boolean dropTableFirst, boolean createTable, int dimension) {
         String query = "init";
         try (Connection connection = datasource.getConnection();
                 Statement statement = connection.createStatement()) {
@@ -386,92 +385,78 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String contentFieldName;
         private MetadataStorageConfig metadataStorageConfig;
         private boolean dropTableFirst;
-        private boolean createTable = true;
-        private int dimension = 1536;
+        private boolean createTable = false;
+        private Integer dimension;
         private DataSource datasource;
         private String url;
         private String user;
         private String password;
 
-        @NonNull
-        public Builder url(@NonNull String url) {
+        public Builder url(String url) {
             this.url = url;
             return this;
         }
 
-        @NonNull
-        public Builder user(@NonNull String user) {
+        public Builder user(String user) {
             this.user = user;
             return this;
         }
 
-        @NonNull
         public Builder password(String password) {
             this.password = password;
             return this;
         }
 
-        @NonNull
-        public Builder datasource(@NonNull DataSource datasource) {
+        public Builder datasource(DataSource datasource) {
             this.datasource = datasource;
             return this;
         }
 
-        @NonNull
-        public Builder table(@NonNull String table) {
+        public Builder table(String table) {
             this.table = table;
             return this;
         }
 
-        @NonNull
-        public Builder distanceType(@NonNull MariaDBDistanceType distanceType) {
+        public Builder distanceType(MariaDBDistanceType distanceType) {
             this.distanceType = distanceType;
             return this;
         }
 
-        @NonNull
-        public Builder idFieldName(@NonNull String idFieldName) {
+        public Builder idFieldName(String idFieldName) {
             this.idFieldName = idFieldName;
             return this;
         }
 
-        @NonNull
-        public Builder embeddingFieldName(@NonNull String embeddingFieldName) {
+        public Builder embeddingFieldName(String embeddingFieldName) {
             this.embeddingFieldName = embeddingFieldName;
             return this;
         }
 
-        @NonNull
-        public Builder contentFieldName(@NonNull String contentFieldName) {
+        public Builder contentFieldName(String contentFieldName) {
             this.contentFieldName = contentFieldName;
             return this;
         }
 
-        @NonNull
-        public Builder metadataStorageConfig(@NonNull MetadataStorageConfig metadataStorageConfig) {
+        public Builder metadataStorageConfig(MetadataStorageConfig metadataStorageConfig) {
             this.metadataStorageConfig = metadataStorageConfig;
             return this;
         }
 
-        @NonNull
         public Builder dropTableFirst(boolean dropTableFirst) {
             this.dropTableFirst = dropTableFirst;
             return this;
         }
 
-        @NonNull
         public Builder createTable(boolean createTable) {
             this.createTable = createTable;
             return this;
         }
 
-        @NonNull
-        public Builder dimension(int dimension) {
+        public Builder dimension(Integer dimension) {
             this.dimension = dimension;
             return this;
         }
 
-        @NonNull
         public MariaDbEmbeddingStore build() {
             if (datasource == null) {
                 if (url == null) {

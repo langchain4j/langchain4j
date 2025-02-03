@@ -55,6 +55,7 @@ class MariaDbEmbeddingCustomNamingTest {
                 .contentFieldName(contentName)
                 .metadataStorageConfig(metadataStorageConfig)
                 .dimension(384)
+                .createTable(true)
                 .dropTableFirst(true)
                 .build();
 
@@ -99,6 +100,7 @@ class MariaDbEmbeddingCustomNamingTest {
                 .contentFieldName(contentName)
                 .metadataStorageConfig(metadataStorageConfig)
                 .dimension(384)
+                .createTable(true)
                 .dropTableFirst(true)
                 .build();
 
