@@ -2,6 +2,7 @@ package dev.langchain4j.data.document.splitter;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
@@ -23,7 +24,6 @@ import org.commonmark.renderer.NodeRenderer;
 import org.commonmark.renderer.markdown.CoreMarkdownNodeRenderer;
 import org.commonmark.renderer.markdown.MarkdownNodeRendererContext;
 import org.commonmark.renderer.markdown.MarkdownNodeRendererFactory;
-import org.commonmark.renderer.markdown.MarkdownRenderer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -108,10 +108,10 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
         }
 
         MarkdownSplitterContext context = new MarkdownSplitterContext(document.metadata());
-        MarkdownRenderer renderer = MarkdownRenderer.builder()
+        TempMarkdownRenderer renderer = TempMarkdownRenderer.builder()
                 .nodeRendererFactory(new MarkdownSectionSplitterNodeRendererFactory(context))
                 .extensions(EXTENSIONS)
-                .build();
+                .tempBuild();
         // We use the Appendable allowed by the renderer as the hook in.
         // I tried a few other approaches, but this is the only one I can find that works...
         renderer.render(node, context.getBuffer());
@@ -375,7 +375,7 @@ public class MarkdownSectionSplitter implements DocumentSplitter {
                 // Document constructor does not like blank text
                 sectionText = emptySectionPlaceholderText;
             }
-            Document document = new Document(sectionText, metadata);
+            Document document = new DefaultDocument(sectionText, metadata);
             document = documentAdjuster.adjust(document);
 
             List<TextSegment> segments = sectionSplitter.split(document);
