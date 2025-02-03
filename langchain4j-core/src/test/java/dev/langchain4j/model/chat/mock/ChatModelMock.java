@@ -44,7 +44,7 @@ public class ChatModelMock implements ChatLanguageModel {
     public ChatModelMock(Function<ChatRequest, AiMessage> aiMessageGenerator) {
         this.staticResponse = null;
         this.exception = null;
-        this.aiMessageGenerator = ensureNotNull(aiMessageGenerator, "toolRequest");
+        this.aiMessageGenerator = ensureNotNull(aiMessageGenerator, "aiMessageGenerator");
     }
 
     @Override
