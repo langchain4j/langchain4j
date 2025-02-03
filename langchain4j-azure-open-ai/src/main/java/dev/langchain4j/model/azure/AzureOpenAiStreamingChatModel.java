@@ -517,12 +517,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             ToolSpecification toolThatMustBeExecuted,
             ResponseFormat responseFormat,
             StreamingResponseHandler<AiMessage> handler) {
-            
+
         ChatCompletionsResponseFormat chatCompletionsResponseFormat = null;
-        if (this.chatCompletionsResponseFormat != null) {
-            chatCompletionsResponseFormat = this.chatCompletionsResponseFormat;
-        } else {
+        if (responseFormat != null) {
             chatCompletionsResponseFormat = toAzureOpenAiResponseFormat(responseFormat, this.strictJsonSchema);
+        } else {
+            chatCompletionsResponseFormat = this.chatCompletionsResponseFormat;
         }
 
         ChatCompletionsOptions options = new ChatCompletionsOptions(InternalAzureOpenAiHelper.toOpenAiMessages(messages))
