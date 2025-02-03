@@ -83,7 +83,6 @@
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <elastic.version>8.15.3</elastic.version>
         <jackson.version>2.18.2</jackson.version>
-        <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.29.12</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <milvus-sdk-java.version>2.5.3</milvus-sdk-java.version>
@@ -352,12 +351,6 @@
                 <groupId>org.apache.opennlp</groupId>
                 <artifactId>opennlp-tools</artifactId>
                 <version>1.9.4</version>
-            </dependency>
-
-            <dependency>
-                <groupId>redis.clients</groupId>
-                <artifactId>jedis</artifactId>
-                <version>${jedis.version}</version>
             </dependency>
 
             <dependency>
