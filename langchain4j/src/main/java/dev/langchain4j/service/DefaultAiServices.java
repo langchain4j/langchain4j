@@ -228,9 +228,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         chatResponse = toolExecutionResult.chatResponse();
                         FinishReason finishReason = chatResponse.metadata().finishReason();
                         Response<AiMessage> response = Response.from(
-                                chatResponse.aiMessage(),
-                                toolExecutionResult.tokenUsageAccumulator(),
-                                finishReason);
+                                chatResponse.aiMessage(), toolExecutionResult.tokenUsageAccumulator(), finishReason);
 
                         Object parsedResponse = serviceOutputParser.parse(response, returnType);
                         if (typeHasRawClass(returnType, Result.class)) {
