@@ -13,8 +13,8 @@ public enum HallucinatedToolNameStrategy implements Function<ToolExecutionReques
         switch (this) {
             case THROW_EXCEPTION -> {
                 throw runtime(
-                        "The LLM is trying to execute the '%s' tool, but no such tool exists. Most likely, it is a " +
-                                "hallucination. You can override this default strategy by setting the hallucinatedToolNameStrategy on the AiService",
+                        "The LLM is trying to execute the '%s' tool, but no such tool exists. Most likely, it is a "
+                                + "hallucination. You can override this default strategy by setting the hallucinatedToolNameStrategy on the AiService",
                         toolExecutionRequest.name());
             }
         }

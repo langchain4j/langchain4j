@@ -80,7 +80,8 @@ public class ToolService {
                 if (method.isAnnotationPresent(Tool.class)) {
                     ToolSpecification toolSpecification = toolSpecificationFrom(method);
                     if (toolExecutors.containsKey(toolSpecification.name())) {
-                        throw new IllegalConfigurationException("Duplicated definition for tool: " + toolSpecification.name());
+                        throw new IllegalConfigurationException(
+                                "Duplicated definition for tool: " + toolSpecification.name());
                     }
                     toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
                     toolSpecifications.add(toolSpecificationFrom(method));

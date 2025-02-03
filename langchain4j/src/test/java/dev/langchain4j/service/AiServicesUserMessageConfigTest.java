@@ -306,8 +306,7 @@ class AiServicesUserMessageConfigTest {
 
         assertThatThrownBy(() -> assistant.chat("hi"))
                 .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessageContaining(
-                        "unknown");
+                .hasMessageContaining("unknown");
 
         validateChatMemory(chatMemory);
     }
