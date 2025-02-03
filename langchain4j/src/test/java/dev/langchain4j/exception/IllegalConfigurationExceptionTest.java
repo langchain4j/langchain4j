@@ -1,5 +1,6 @@
 package dev.langchain4j.exception;
 
+import dev.langchain4j.service.IllegalConfigurationException;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 

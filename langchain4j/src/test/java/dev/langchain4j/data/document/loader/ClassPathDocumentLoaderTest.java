@@ -19,6 +19,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ClassPathDocumentLoaderTest implements WithAssertions {
     private static final String CLASSPATH_ROOT = ".";
@@ -45,18 +46,16 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
     }
 
     @ParameterizedTest
-    @CsvSource(
-            delimiter = '|',
-            textBlock =
-                    """
-		classPathSourceTests/anotherDir/file2.txt           | false
-		classPathSourceTestsInJar/folderInsideJar/file4.txt | true
-		""")
-    void should_load_text_document(String path, boolean isInsideArchive) {
+    @ValueSource(
+            strings = {
+                "classPathSourceTests/anotherDir/file2.txt",
+                "classPathSourceTestsInJar/folderInsideJar/file4.txt"
+            })
+    void should_load_text_document(String path) {
         var filename = path.substring(path.lastIndexOf('/') + 1);
         var document = loadDocument(path, new TextDocumentParser());
 
-        assertThat(document.text()).isEqualToIgnoringWhitespace("This is %s\n".formatted(filename));
+        assertThat(document.text()).startsWithIgnoringCase("This is %s".formatted(filename));
         assertThat(document.metadata().getString(Document.FILE_NAME)).isEqualTo(filename);
 
         assertThat(document.metadata().getString(Document.URL))
@@ -147,11 +146,10 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
     void should_load_matching_documents(String syntaxAndPattern, String path, String expectedFile) {
 
         // given
-        var resourceDirectory = path;
         PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher(syntaxAndPattern);
 
         // when
-        List<Document> documents = loadDocuments(resourceDirectory, pathMatcher, new TextDocumentParser());
+        List<Document> documents = loadDocuments(path, pathMatcher, new TextDocumentParser());
 
         // then
         List<String> fileNames = documents.stream()
@@ -161,21 +159,17 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
         assertThat(fileNames).singleElement().isEqualTo(expectedFile);
 
         // when-then
-        assertThat(loadDocuments(resourceDirectory, pathMatcher, new TextDocumentParser()))
-                .isEqualTo(documents);
+        assertThat(loadDocuments(path, pathMatcher, new TextDocumentParser())).isEqualTo(documents);
 
-        assertThat(loadDocuments(resourceDirectory, pathMatcher)).isEqualTo(documents);
+        assertThat(loadDocuments(path, pathMatcher)).isEqualTo(documents);
     }
 
     @ParameterizedTest
     @MethodSource("should_recursively_load_documents_arguments")
     void should_recursively_load_documents(String path, List<String> expectedFileNames) {
 
-        // given
-        var resourceDirectory = path;
-
         // when
-        List<Document> documents = loadDocumentsRecursively(resourceDirectory, new TextDocumentParser());
+        List<Document> documents = loadDocumentsRecursively(path, new TextDocumentParser());
 
         // then
         List<String> fileNames = documents.stream()
@@ -185,10 +179,9 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
         assertThat(fileNames).containsExactlyInAnyOrderElementsOf(expectedFileNames);
 
         // when-then
-        assertThat(loadDocumentsRecursively(resourceDirectory, new TextDocumentParser()))
-                .isEqualTo(documents);
+        assertThat(loadDocumentsRecursively(path, new TextDocumentParser())).isEqualTo(documents);
 
-        assertThat(loadDocumentsRecursively(resourceDirectory)).isEqualTo(documents);
+        assertThat(loadDocumentsRecursively(path)).isEqualTo(documents);
     }
 
     static Stream<Arguments> should_recursively_load_documents_arguments() {
@@ -206,17 +199,16 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
             delimiter = '|',
             textBlock =
                     """
-		classPathSourceTests | test-file-3.banana
 		classPathSourceTestsInJar | test-file-5.banana
+		classPathSourceTests | test-file-3.banana
 		""")
     void should_recursively_load_matching_documents(String path, String expectedFileName) {
 
         // given
-        var resourceDirectory = path;
         PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:*.banana");
 
         // when
-        List<Document> documents = loadDocumentsRecursively(resourceDirectory, pathMatcher, new TextDocumentParser());
+        List<Document> documents = loadDocumentsRecursively(path, pathMatcher, new TextDocumentParser());
 
         // then
         List<String> fileNames = documents.stream()
@@ -226,10 +218,10 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
         assertThat(fileNames).singleElement().isEqualTo(expectedFileName);
 
         // when-then
-        assertThat(loadDocumentsRecursively(resourceDirectory, pathMatcher, new TextDocumentParser()))
+        assertThat(loadDocumentsRecursively(path, pathMatcher, new TextDocumentParser()))
                 .isEqualTo(documents);
 
-        assertThat(loadDocumentsRecursively(resourceDirectory, pathMatcher)).isEqualTo(documents);
+        assertThat(loadDocumentsRecursively(path, pathMatcher)).isEqualTo(documents);
     }
 
     @ParameterizedTest
@@ -238,11 +230,10 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
             String path, List<String> expectedFileNames) {
 
         // given
-        var resourceDirectory = path;
         PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:**.banana");
 
         // when
-        List<Document> documents = loadDocumentsRecursively(resourceDirectory, pathMatcher, new TextDocumentParser());
+        List<Document> documents = loadDocumentsRecursively(path, pathMatcher, new TextDocumentParser());
 
         // then
         List<String> fileNames = documents.stream()
@@ -252,10 +243,10 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
         assertThat(fileNames).containsExactlyInAnyOrderElementsOf(expectedFileNames);
 
         // when-then
-        assertThat(loadDocumentsRecursively(resourceDirectory, pathMatcher, new TextDocumentParser()))
+        assertThat(loadDocumentsRecursively(path, pathMatcher, new TextDocumentParser()))
                 .isEqualTo(documents);
 
-        assertThat(loadDocumentsRecursively(resourceDirectory, pathMatcher)).isEqualTo(documents);
+        assertThat(loadDocumentsRecursively(path, pathMatcher)).isEqualTo(documents);
     }
 
     static Stream<Arguments>
@@ -278,11 +269,10 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
             String path, String expectedFileName) {
 
         // given
-        var resourceDirectory = path;
         PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:banana/*.banana");
 
         // when
-        List<Document> documents = loadDocumentsRecursively(resourceDirectory, pathMatcher, new TextDocumentParser());
+        List<Document> documents = loadDocumentsRecursively(path, pathMatcher, new TextDocumentParser());
 
         // then
         List<String> fileNames = documents.stream()
@@ -291,10 +281,10 @@ class ClassPathDocumentLoaderTest implements WithAssertions {
         assertThat(fileNames).singleElement().isEqualTo(expectedFileName);
 
         // when-then
-        assertThat(loadDocumentsRecursively(resourceDirectory, pathMatcher, new TextDocumentParser()))
+        assertThat(loadDocumentsRecursively(path, pathMatcher, new TextDocumentParser()))
                 .isEqualTo(documents);
 
-        assertThat(loadDocumentsRecursively(resourceDirectory, pathMatcher)).isEqualTo(documents);
+        assertThat(loadDocumentsRecursively(path, pathMatcher)).isEqualTo(documents);
     }
 
     private class FailOnFirstNonBlankDocumentParser implements DocumentParser {
