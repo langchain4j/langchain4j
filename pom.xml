@@ -1,23 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
     <version>1.0.0-alpha2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
-
     <modules>
-
         <module>langchain4j-parent</module>
         <module>langchain4j-bom</module>
-
         <module>langchain4j-core</module>
         <module>langchain4j</module>
-
         <module>langchain4j-easy-rag</module>
-
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
@@ -37,7 +31,6 @@
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-voyage-ai</module>
-
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
         <module>langchain4j-azure-cosmos-mongo-vcore</module>
@@ -60,7 +53,6 @@
         <module>langchain4j-tablestore</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
-
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
         <module>document-loaders/langchain4j-document-loader-azure-storage-blob</module>
@@ -68,38 +60,30 @@
         <module>document-loaders/langchain4j-document-loader-selenium</module>
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
         <module>document-loaders/langchain4j-document-loader-google-cloud-storage</module>
-
         <!-- document parsers -->
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
         <module>document-parsers/langchain4j-document-parser-apache-tika</module>
-
         <!-- document transformers -->
         <module>document-transformers/langchain4j-document-transformer-jsoup</module>
-
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
         <module>code-execution-engines/langchain4j-code-execution-engine-judge0</module>
-
         <!-- web search engines -->
         <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
         <module>web-search-engines/langchain4j-web-search-engine-tavily</module>
         <module>web-search-engines/langchain4j-web-search-engine-searchapi</module>
-
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
-
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-onnx-scoring</module>
         <module>langchain4j-mcp</module>
-
+        <module>langchain4j-langfuse</module>
     </modules>
-
     <properties>
         <gib.disable>true</gib.disable>
     </properties>
-
     <build>
         <plugins>
             <plugin>
@@ -153,7 +137,6 @@
             </extension>
         </extensions>
     </build>
-
     <reporting>
         <plugins>
             <plugin>
@@ -178,7 +161,6 @@
             </plugin>
         </plugins>
     </reporting>
-
     <profiles>
         <profile>
             <id>jdk21</id>
@@ -217,5 +199,4 @@
             </build>
         </profile>
     </profiles>
-
 </project>
