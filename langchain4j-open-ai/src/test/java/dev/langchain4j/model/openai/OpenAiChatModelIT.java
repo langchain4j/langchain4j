@@ -12,6 +12,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,7 @@ import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -89,10 +92,10 @@ class OpenAiChatModelIT {
             value = OpenAiChatModelName.class,
             mode = EXCLUDE,
             names = {
-                "GPT_4_32K", // don't have access
-                "GPT_4_32K_0613", // don't have access
-                "O1", // don't have access
-                "O1_2024_12_17", // don't have access
+                    "GPT_4_32K", // don't have access
+                    "GPT_4_32K_0613", // don't have access
+                    "O1", // don't have access
+                    "O1_2024_12_17", // don't have access
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
@@ -531,5 +534,73 @@ class OpenAiChatModelIT {
 
         // then
         assertThat(tokenCount).isEqualTo(42);
+    }
+
+    @Test
+    void should_answer_with_reasoning_effort_low() {
+
+        // given
+        String reasoningEffort = "low";
+
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(O3_MINI)
+                .defaultRequestParameters(OpenAiChatRequestParameters.builder()
+                        .reasoningEffort(reasoningEffort)
+                        .build())
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
+
+        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        assertThat(tokenUsage).isExactlyInstanceOf(OpenAiTokenUsage.class);
+        OpenAiTokenUsage openAiTokenUsage = (OpenAiTokenUsage) tokenUsage;
+        assertThat(openAiTokenUsage.outputTokensDetails().reasoningTokens()).isZero();
+    }
+
+    @Test
+    void should_answer_with_reasoning_effort_medium() {
+
+        // given
+        String reasoningEffort = "medium";
+
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(O3_MINI)
+                .defaultRequestParameters(OpenAiChatRequestParameters.builder()
+                        .reasoningEffort(reasoningEffort)
+                        .build())
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
+
+        TokenUsage tokenUsage = chatResponse.tokenUsage();
+        assertThat(tokenUsage).isExactlyInstanceOf(OpenAiTokenUsage.class);
+        OpenAiTokenUsage openAiTokenUsage = (OpenAiTokenUsage) tokenUsage;
+        assertThat(openAiTokenUsage.outputTokensDetails().reasoningTokens()).isPositive();
     }
 }
