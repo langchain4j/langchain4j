@@ -33,6 +33,7 @@ class OpenAiChatRequestParametersTest {
                 .store(true)
                 .metadata(originalMetadata)
                 .serviceTier("tier1")
+                .reasoningEffort("low")
                 .build();
 
         Map<String, Integer> overrideLogitBias = new HashMap<>();
@@ -65,5 +66,6 @@ class OpenAiChatRequestParametersTest {
         assertThat(openAiResult.store()).isTrue();
         assertThat(openAiResult.metadata()).isEqualTo(overrideMetadata);
         assertThat(openAiResult.serviceTier()).isEqualTo("tier1");
+        assertThat(openAiResult.reasoningEffort()).isEqualTo("low");
     }
 }

@@ -35,7 +35,10 @@ public enum OpenAiChatModelName {
     O1_MINI_2024_09_12("o1-mini-2024-09-12"),
 
     O1_PREVIEW("o1-preview"), // alias
-    O1_PREVIEW_2024_09_12("o1-preview-2024-09-12");
+    O1_PREVIEW_2024_09_12("o1-preview-2024-09-12"),
+
+    O3_MINI("o3-mini"), // alias
+    O3_MINI_2025_01_31("o3-mini-2025-01-31");
 
     private final String stringValue;
 
