@@ -31,6 +31,7 @@
         <module>langchain4j-ollama</module>
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
+        <module>langchain4j-open-ai-official</module>
         <module>langchain4j-github-models</module>
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-vertex-ai</module>

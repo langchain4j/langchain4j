@@ -56,6 +56,7 @@
         <argLine></argLine>
         <!-- Dependency Versions -->
         <openai4j.version>0.27.0</openai4j.version>
+        <openai-java.version>0.20.0</openai-java.version>
         <azure-ai-openai.version>1.0.0-beta.13</azure-ai-openai.version>
         <azure-ai-search.version>11.7.3</azure-ai-search.version>
         <azure.storage-blob.version>12.29.0</azure.storage-blob.version>
@@ -307,6 +308,12 @@
                 <groupId>org.apache.httpcomponents.client5</groupId>
                 <artifactId>httpclient5</artifactId>
                 <version>${httpclient5.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.openai</groupId>
+                <artifactId>openai-java</artifactId>
+                <version>${openai-java.version}</version>
             </dependency>
 
             <dependency>
