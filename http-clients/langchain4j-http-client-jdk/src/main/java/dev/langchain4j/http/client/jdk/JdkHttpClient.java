@@ -15,6 +15,7 @@ import java.net.URI;
 import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -73,6 +74,12 @@ public class JdkHttpClient implements HttpClient {
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
+                })
+                .exceptionally(throwable -> {
+                    if (throwable.getCause() instanceof HttpTimeoutException) {
+                        listener.onError(throwable);
+                    }
+                    return null;
                 });
     }
 

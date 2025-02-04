@@ -21,7 +21,7 @@ class JdkHttpClientTimeoutIT extends HttpClientTimeoutIT {
 
     @Override
     protected Class<? extends Exception> expectedReadTimeoutExceptionTypeSync() {
-        return RuntimeException.class;
+        return RuntimeException.class; // TODO unwrap
     }
 
     @Override
@@ -31,7 +31,7 @@ class JdkHttpClientTimeoutIT extends HttpClientTimeoutIT {
 
     @Override
     protected Class<? extends Exception> expectedReadTimeoutExceptionTypeAsync() {
-        return CompletionException.class;
+        return CompletionException.class; // TODO unwrap
     }
 
     @Override
