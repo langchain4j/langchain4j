@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.output.Response;
 import java.nio.charset.Charset;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +21,7 @@ import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
@@ -148,9 +150,13 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
      * @return bedrock client
      */
     private BedrockRuntimeClient initClient() {
+        // 480 sec default suggested by aws, see
+        // https://repost.aws/articles/AR_A_6aqweQYOR5FCgvM2vdA/solving-read-timed-out-error-and-high-latencies-in-amazon-bedrock-with-aws-java-sdk-client
+        Duration socketTimeout = timeout != null ? timeout : Duration.ofSeconds(480);
         return BedrockRuntimeClient.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
+                .httpClientBuilder(ApacheHttpClient.builder().socketTimeout(socketTimeout))
                 .overrideConfiguration(c -> c.apiCallTimeout(timeout))
                 .build();
     }
