@@ -1,16 +1,15 @@
 package dev.langchain4j.model.googleai.common;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
-
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
-// TODO add streaming counterpart
+    // TODO add streaming counterpart
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
@@ -25,7 +24,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return List.of(
                 GOOGLE_AI_GEMINI_CHAT_MODEL
                 // TODO add more model configs, see OpenAiChatModelIT
-        );
+                );
     }
 
     @Override
@@ -46,7 +45,6 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
                 .maxOutputTokens(parameters.maxOutputTokens())
                 .stopSequences(parameters.stopSequences())
                 .responseFormat(parameters.responseFormat())
-
                 .build();
     }
 

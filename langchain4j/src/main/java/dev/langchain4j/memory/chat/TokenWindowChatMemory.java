@@ -1,5 +1,8 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -9,15 +12,11 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This chat memory operates as a sliding window of {@link #maxTokens} tokens.
@@ -106,8 +105,10 @@ public class TokenWindowChatMemory implements ChatMemory {
 
             ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
             int tokenCountOfEvictedMessage = tokenizer.estimateTokenCountInMessage(evictedMessage);
-            log.trace("Evicting the following message ({} tokens) to comply with the capacity requirement: {}",
-                    tokenCountOfEvictedMessage, evictedMessage);
+            log.trace(
+                    "Evicting the following message ({} tokens) to comply with the capacity requirement: {}",
+                    tokenCountOfEvictedMessage,
+                    evictedMessage);
             currentTokenCount -= tokenCountOfEvictedMessage;
 
             if (evictedMessage instanceof AiMessage && ((AiMessage) evictedMessage).hasToolExecutionRequests()) {
@@ -132,7 +133,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         return new Builder();
     }
 
-    public static class Builder {
+    public static class Builder implements ChatMemoryBuilder {
 
         private Object id = "default";
         private Integer maxTokens;
@@ -167,17 +168,19 @@ public class TokenWindowChatMemory implements ChatMemory {
          *              If not provided, an {@link InMemoryChatMemoryStore} will be used.
          * @return builder
          */
+        @Override
         public Builder chatMemoryStore(ChatMemoryStore store) {
             this.store = store;
             return this;
         }
 
-        public TokenWindowChatMemory build() {
-            return new TokenWindowChatMemory(this);
+        @Override
+        public ChatMemory build() {
+            return store == null ? new StorelessChatMemory.Impl(this) : new TokenWindowChatMemory(this);
         }
     }
 
-    public static TokenWindowChatMemory withMaxTokens(int maxTokens, Tokenizer tokenizer) {
+    public static ChatMemory withMaxTokens(int maxTokens, Tokenizer tokenizer) {
         return builder().maxTokens(maxTokens, tokenizer).build();
     }
 }

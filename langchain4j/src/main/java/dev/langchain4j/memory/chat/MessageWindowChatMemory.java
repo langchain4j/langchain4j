@@ -1,5 +1,8 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -8,15 +11,11 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This chat memory operates as a sliding window of {@link #maxMessages} messages.
@@ -118,11 +117,11 @@ public class MessageWindowChatMemory implements ChatMemory {
         return new Builder();
     }
 
-    public static class Builder {
+    public static class Builder implements ChatMemoryBuilder {
 
         private Object id = "default";
         private Integer maxMessages;
-        private ChatMemoryStore store = new InMemoryChatMemoryStore();
+        private ChatMemoryStore store = null;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -149,17 +148,19 @@ public class MessageWindowChatMemory implements ChatMemory {
          *              If not provided, an {@link InMemoryChatMemoryStore} will be used.
          * @return builder
          */
+        @Override
         public Builder chatMemoryStore(ChatMemoryStore store) {
             this.store = store;
             return this;
         }
 
-        public MessageWindowChatMemory build() {
-            return new MessageWindowChatMemory(this);
+        @Override
+        public ChatMemory build() {
+            return store == null ? new StorelessChatMemory.Impl(this) : new MessageWindowChatMemory(this);
         }
     }
 
-    public static MessageWindowChatMemory withMaxMessages(int maxMessages) {
+    public static ChatMemory withMaxMessages(int maxMessages) {
         return builder().maxMessages(maxMessages).build();
     }
 }

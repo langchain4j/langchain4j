@@ -1,43 +1,5 @@
 package dev.langchain4j.model.vertexai;
 
-import com.google.cloud.vertexai.VertexAI;
-import com.google.cloud.vertexai.api.GenerationConfig;
-import com.google.cloud.vertexai.api.Schema;
-import com.google.cloud.vertexai.api.Type;
-import com.google.cloud.vertexai.generativeai.GenerativeModel;
-import com.google.gson.Gson;
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.TokenStream;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junitpioneer.jupiter.RetryingTest;
-
-import java.io.File;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Stream;
-
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNext;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -56,6 +18,44 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.google.cloud.vertexai.VertexAI;
+import com.google.cloud.vertexai.api.GenerationConfig;
+import com.google.cloud.vertexai.api.Schema;
+import com.google.cloud.vertexai.api.Type;
+import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import com.google.gson.Gson;
+import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.*;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.TestStreamingResponseHandler;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.TokenStream;
+import java.io.File;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
 class VertexAiGeminiStreamingChatModelIT {
 
@@ -426,7 +426,7 @@ class VertexAiGeminiStreamingChatModelIT {
             .topK(1)
             .build();
 
-        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         StreamingStockAssistant assistant = AiServices.builder(StreamingStockAssistant.class)
             .streamingChatLanguageModel(model)
             .chatMemory(chatMemory)

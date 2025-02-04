@@ -1,11 +1,11 @@
 package dev.langchain4j.store.memory.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
-
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.WeakHashMap;
 
 /**
  * Implementation of {@link ChatMemoryStore} that stores state of {@link dev.langchain4j.memory.ChatMemory} (chat messages) in-memory.
@@ -13,12 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * This storage mechanism is transient and does not persist data across application restarts.
  */
 public class InMemoryChatMemoryStore implements ChatMemoryStore {
-    private final Map<Object, List<ChatMessage>> messagesByMemoryId = new ConcurrentHashMap<>();
 
-    /**
-     * Constructs a new {@link InMemoryChatMemoryStore}.
-     */
-    public InMemoryChatMemoryStore() {}
+    private final Map<Object, List<ChatMessage>> messagesByMemoryId = Collections.synchronizedMap(new WeakHashMap<>());
 
     @Override
     public List<ChatMessage> getMessages(Object memoryId) {

@@ -1,13 +1,18 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.memory.chat.StorelessChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.tool.ToolService;
-import java.util.Map;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -20,8 +25,11 @@ public class AiServiceContext {
     public ChatLanguageModel chatModel;
     public StreamingChatLanguageModel streamingChatModel;
 
-    public Map</* id */ Object, ChatMemory> chatMemories;
-    public ChatMemoryProvider chatMemoryProvider;
+    private ChatMemory defaultChatMemory;
+    private ChatMemoryProvider chatMemoryProvider;
+
+    // used only when a store for the chat memory is not explicitly provided
+    private final ChatMemoryStore contextStore = new InMemoryChatMemoryStore();
 
     public ToolService toolService = new ToolService();
 
@@ -36,10 +44,59 @@ public class AiServiceContext {
     }
 
     public boolean hasChatMemory() {
-        return chatMemories != null;
+        return defaultChatMemory != null || chatMemoryProvider != null;
+    }
+
+    public boolean hasChatMemoryProvider() {
+        return chatMemoryProvider != null;
+    }
+
+    public void initChatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
+        checkNotInitialized();
+        this.chatMemoryProvider = chatMemoryProvider;
+    }
+
+    public void initDefaultChatMemory(ChatMemory defaultChatMemory) {
+        checkNotInitialized();
+        this.defaultChatMemory = defaultChatMemory instanceof StorelessChatMemory storeless
+                ? storeless.withStore(new SingleEntryChatMemoryStore())
+                : defaultChatMemory;
+    }
+
+    private void checkNotInitialized() {
+        if (this.chatMemoryProvider != null) {
+            throw new IllegalStateException("Chat memory provider already set");
+        }
+        if (this.defaultChatMemory != null) {
+            throw new IllegalStateException("Default chat memory already set");
+        }
     }
 
     public ChatMemory chatMemory(Object memoryId) {
-        return chatMemories.computeIfAbsent(memoryId, ignored -> chatMemoryProvider.get(memoryId));
+        if (defaultChatMemory != null && memoryId.equals(AiServices.DEFAULT)) {
+            return defaultChatMemory;
+        }
+        ChatMemory chatMemory = chatMemoryProvider.get(memoryId);
+        return chatMemory instanceof StorelessChatMemory storeless ? storeless.withStore(contextStore) : chatMemory;
+    }
+
+    static class SingleEntryChatMemoryStore implements ChatMemoryStore {
+
+        List<ChatMessage> chatMessages = new ArrayList<>();
+
+        @Override
+        public List<ChatMessage> getMessages(final Object memoryId) {
+            return chatMessages;
+        }
+
+        @Override
+        public void updateMessages(final Object memoryId, final List<ChatMessage> messages) {
+            this.chatMessages = messages;
+        }
+
+        @Override
+        public void deleteMessages(final Object memoryId) {
+            chatMessages.clear();
+        }
     }
 }

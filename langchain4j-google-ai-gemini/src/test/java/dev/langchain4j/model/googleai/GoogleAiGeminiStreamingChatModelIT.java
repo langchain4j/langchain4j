@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.TextFileContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -669,7 +670,7 @@ public class GoogleAiGeminiStreamingChatModelIT {
         // when
         Transactions spyTransactions = spy(new Transactions());
 
-        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
             .tools(spyTransactions)
             .chatMemory(chatMemory)
