@@ -151,6 +151,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
             Document document = new Document();
             document.setId(randomUUID());
             document.setContent(segment.text());
+            document.setMetadata(segment.metadata());
             documents.add(document);
         }
 
