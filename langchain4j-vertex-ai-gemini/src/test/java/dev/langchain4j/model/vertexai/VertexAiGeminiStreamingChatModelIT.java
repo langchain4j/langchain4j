@@ -1,5 +1,24 @@
 package dev.langchain4j.model.vertexai;
 
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNext;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT;
+import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_HARASSMENT;
+import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_HATE_SPEECH;
+import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT;
+import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_LOW_AND_ABOVE;
+import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_MEDIUM_AND_ABOVE;
+import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_NONE;
+import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_ONLY_HIGH;
+import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.CAT_IMAGE_URL;
+import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.DICE_IMAGE_URL;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
@@ -19,13 +38,6 @@ import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junitpioneer.jupiter.RetryingTest;
-
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -38,25 +50,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNext;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT;
-import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_HARASSMENT;
-import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_HATE_SPEECH;
-import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT;
-import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_LOW_AND_ABOVE;
-import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_MEDIUM_AND_ABOVE;
-import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_NONE;
-import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_ONLY_HIGH;
-import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.CAT_IMAGE_URL;
-import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.DICE_IMAGE_URL;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junitpioneer.jupiter.RetryingTest;
 
 class VertexAiGeminiStreamingChatModelIT {
 
