@@ -76,20 +76,16 @@ public class InternalOpenAiOfficialHelper {
         }
 
         if (message instanceof UserMessage userMessage) {
-
+            final ChatCompletionUserMessageParam.Builder builder = ChatCompletionUserMessageParam.builder();
             if (userMessage.hasSingleText()) {
-                return ChatCompletionMessageParam.ofUser(
-                        ChatCompletionUserMessageParam.builder()
-                                .content(userMessage.singleText())
-                                .name(userMessage.name())
-                                .build());
+                builder.content(userMessage.singleText());
             } else {
-                return ChatCompletionMessageParam.ofUser(
-                        ChatCompletionUserMessageParam.builder()
-                                .contentOfArrayOfContentParts(toOpenAiContent(userMessage.contents()))
-                                .name(userMessage.name())
-                                .build());
+                builder.contentOfArrayOfContentParts(toOpenAiContent(userMessage.contents()));
             }
+            if (userMessage.name() != null) {
+                builder.name(userMessage.name());
+            }
+            return ChatCompletionMessageParam.ofUser(builder.build());
         }
 
         if (message instanceof AiMessage aiMessage) {
@@ -583,18 +579,43 @@ public class InternalOpenAiOfficialHelper {
         }
 
         // Request parameters
-        builder
-                .messages(toOpenAiMessages(chatRequest.messages()))
-                .temperature(parameters.temperature())
-                .topP(parameters.topP())
-                .frequencyPenalty(parameters.frequencyPenalty())
-                .presencePenalty(parameters.presencePenalty())
-                .maxCompletionTokens(parameters.maxOutputTokens())
-                .stop(ChatCompletionCreateParams.Stop.ofStrings(parameters.stopSequences()))
-                .tools(toTools(parameters.toolSpecifications(), strictTools))
-                .toolChoice(toOpenAiToolChoice(parameters.toolChoice()))
-                .responseFormat(toOpenAiResponseFormat(parameters.responseFormat(), strictJsonSchema));
+        builder.messages(toOpenAiMessages(chatRequest.messages()));
 
+        if (parameters.temperature() != null) {
+            builder.temperature(parameters.temperature());
+        }
+
+        if (parameters.topP() != null) {
+            builder.topP(parameters.topP());
+        }
+
+        if (parameters.frequencyPenalty() != null) {
+            builder.frequencyPenalty(parameters.frequencyPenalty());
+        }
+
+        if (parameters.presencePenalty() != null) {
+            builder.presencePenalty(parameters.presencePenalty());
+        }
+
+        if (parameters.maxCompletionTokens() != null) {
+            builder.maxCompletionTokens(parameters.maxCompletionTokens());
+        }
+
+        if (parameters.stopSequences() != null) {
+            builder.stop(ChatCompletionCreateParams.Stop.ofStrings(parameters.stopSequences()));
+        }
+
+        if (parameters.toolSpecifications() != null) {
+            builder.tools(toTools(parameters.toolSpecifications(), strictTools));
+        }
+
+        if (parameters.toolChoice() != null) {
+            builder.toolChoice(toOpenAiToolChoice(parameters.toolChoice()));
+        }
+
+        if (parameters.responseFormat() != null) {
+            builder.responseFormat(toOpenAiResponseFormat(parameters.responseFormat(), strictJsonSchema));
+        }
         return builder;
     }
 }
