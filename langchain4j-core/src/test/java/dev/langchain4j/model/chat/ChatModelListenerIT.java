@@ -9,6 +9,10 @@ import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 
@@ -25,13 +29,13 @@ import static org.assertj.core.api.Assertions.fail;
  *
  * <dependency>
  *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j</artifactId>
+ *     <artifactId>langchain4j-core</artifactId>
  *     <scope>test</scope>
  * </dependency>
  *
  * <dependency>
  *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j</artifactId>
+ *     <artifactId>langchain4j-core</artifactId>
  *     <classifier>tests</classifier>
  *     <type>test-jar</type>
  *     <scope>test</scope>
@@ -52,6 +56,7 @@ import static org.assertj.core.api.Assertions.fail;
  * </pre>
  */
 public abstract class ChatModelListenerIT {
+    // TODO move to "common" package
 
     protected abstract ChatLanguageModel createModel(ChatModelListener listener);
 
@@ -77,6 +82,9 @@ public abstract class ChatModelListenerIT {
     void should_listen_request_and_response() {
 
         // given
+        AtomicReference<ChatRequest> chatRequestReference = new AtomicReference<>();
+        AtomicReference<ChatResponse> chatResponseReference = new AtomicReference<>();
+
         AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
 
@@ -84,14 +92,20 @@ public abstract class ChatModelListenerIT {
 
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
+                chatRequestReference.set(requestContext.chatRequest());
                 requestReference.set(requestContext.request());
+
                 requestContext.attributes().put("id", "12345");
             }
 
             @Override
             public void onResponse(ChatModelResponseContext responseContext) {
+                chatResponseReference.set(responseContext.chatResponse());
                 responseReference.set(responseContext.response());
-                assertThat(responseContext.request()).isSameAs(requestReference.get());
+
+                assertThat(responseContext.chatRequest()).isEqualTo(chatRequestReference.get());
+                assertThat(responseContext.request()).isEqualTo(requestReference.get());
+
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
@@ -123,6 +137,19 @@ public abstract class ChatModelListenerIT {
         }
 
         // then
+        ChatRequest chatRequest = chatRequestReference.get();
+        assertThat(chatRequest.messages()).containsExactly(userMessage);
+
+        ChatRequestParameters parameters = chatRequest.parameters();
+        assertThat(parameters.modelName()).isEqualTo(modelName());
+        assertThat(parameters.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
+        assertThat(parameters.topP()).isEqualTo(topP());
+        assertThat(parameters.maxOutputTokens()).isEqualTo(maxTokens());
+        if (supportToolCalls()) {
+            assertThat(parameters.toolSpecifications()).containsExactly(toolSpecification);
+        }
+
+        // old API
         ChatModelRequest request = requestReference.get();
         assertThat(request.model()).isEqualTo(modelName());
         assertThat(request.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
@@ -133,6 +160,22 @@ public abstract class ChatModelListenerIT {
             assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
         }
 
+        ChatResponse chatResponse = chatResponseReference.get();
+        assertThat(chatResponse.aiMessage()).isEqualTo(aiMessage);
+
+        ChatResponseMetadata metadata = chatResponse.metadata();
+        if (assertResponseId()) {
+            assertThat(metadata.id()).isNotBlank();
+        }
+        assertThat(metadata.modelName()).isNotBlank();
+        assertThat(metadata.tokenUsage().inputTokenCount()).isGreaterThan(0);
+        assertThat(metadata.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(metadata.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        if (assertFinishReason()) {
+            assertThat(metadata.finishReason()).isNotNull();
+        }
+
+        // old API
         ChatModelResponse response = responseReference.get();
         if (assertResponseId()) {
             assertThat(response.id()).isNotBlank();
@@ -163,6 +206,7 @@ public abstract class ChatModelListenerIT {
     void should_listen_error() {
 
         // given
+        AtomicReference<ChatRequest> chatRequestReference = new AtomicReference<>();
         AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
 
@@ -170,7 +214,9 @@ public abstract class ChatModelListenerIT {
 
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
+                chatRequestReference.set(requestContext.chatRequest());
                 requestReference.set(requestContext.request());
+
                 requestContext.attributes().put("id", "12345");
             }
 
@@ -182,8 +228,12 @@ public abstract class ChatModelListenerIT {
             @Override
             public void onError(ChatModelErrorContext errorContext) {
                 errorReference.set(errorContext.error());
-                assertThat(errorContext.request()).isSameAs(requestReference.get());
+
+                assertThat(errorContext.chatRequest()).isEqualTo(chatRequestReference.get());
+                assertThat(errorContext.request()).isEqualTo(requestReference.get());
+
                 assertThat(errorContext.partialResponse()).isNull();
+
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
         };

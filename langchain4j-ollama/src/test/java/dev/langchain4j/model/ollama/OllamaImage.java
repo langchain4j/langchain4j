@@ -9,16 +9,23 @@ import java.util.List;
 
 public class OllamaImage {
 
-    static final String OLLAMA_IMAGE = "ollama/ollama:latest";
+    public static final String OLLAMA_IMAGE = "ollama/ollama:latest";
 
-    static final String BAKLLAVA_MODEL = "bakllava";
+    public static String localOllamaImage(String modelName) {
+        return String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, modelName);
+    }
 
-    static final String TINY_DOLPHIN_MODEL = "tinydolphin";
-    static final String TOOL_MODEL = "llama3.1";
+    public static final String BAKLLAVA_MODEL = "bakllava"; // TODO use llama3.2?
 
-    static final String ALL_MINILM_MODEL = "all-minilm";
+    public static final String TINY_DOLPHIN_MODEL = "tinydolphin";
+    public static final String LLAMA_3_1 = "llama3.1";
+    public static final String LLAMA_3_2_VISION = "llama3.2-vision";
 
-    static DockerImageName resolve(String baseImage, String localImageName) {
+    public static final String ALL_MINILM_MODEL = "all-minilm";
+
+    public static final String GRANITE_3_GUARDIAN = "granite3-guardian";
+
+    public static DockerImageName resolve(String baseImage, String localImageName) {
         DockerImageName dockerImageName = DockerImageName.parse(baseImage);
         DockerClient dockerClient = DockerClientFactory.instance().client();
         List<Image> images = dockerClient.listImagesCmd().withReferenceFilter(localImageName).exec();

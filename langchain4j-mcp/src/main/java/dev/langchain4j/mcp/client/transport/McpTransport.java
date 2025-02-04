@@ -1,12 +1,10 @@
 package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.client.protocol.McpClientMessage;
 import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
-import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
 import java.io.Closeable;
-import java.time.Duration;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.CompletableFuture;
 
 public interface McpTransport extends Closeable {
 
@@ -14,7 +12,7 @@ public interface McpTransport extends Closeable {
      * Creates a connection to the MCP server (runs the server as a subprocess if needed).
      * This does NOT yet send the "initialize" message to negotiate capabilities.
      */
-    void start();
+    void start(McpOperationHandler messageHandler);
 
     /**
      * Sends the "initialize" message to the MCP server to negotiate
@@ -22,18 +20,16 @@ public interface McpTransport extends Closeable {
      * returns successfully, the transport is fully initialized and ready to
      * be used. This has to be called AFTER the "start" method.
      */
-    JsonNode initialize(McpInitializeRequest request);
+    CompletableFuture<JsonNode> initialize(McpInitializeRequest request);
 
     /**
-     * Requests a list of available tools from the MCP server.
+     * Executes an operation that expects a response from the server.
      */
-    JsonNode listTools(McpListToolsRequest request);
+    CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request);
 
     /**
-     * Executes a tool on the MCP server.
-     * @param request the tool execution request
-     * @param timeout the maximum time to wait for the tool to complete
-     * @throws TimeoutException if the tool execution times out (in this case, the transport should also send a CancellationNotification to the server)
+     * Sends a message that does not expect a response from the server. The 'id' field
+     * of the message should be null.
      */
-    JsonNode executeTool(McpCallToolRequest request, Duration timeout) throws TimeoutException;
+    void executeOperationWithoutResponse(McpClientMessage request);
 }

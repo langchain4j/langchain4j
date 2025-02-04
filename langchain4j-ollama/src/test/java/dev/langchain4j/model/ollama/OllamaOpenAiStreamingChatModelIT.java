@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +21,7 @@ class OllamaOpenAiStreamingChatModelIT extends AbstractOllamaLanguageModelInfras
 
     StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
             .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
-            .baseUrl(ollamaBaseUrl() + "/v1") // TODO add "/v1" by default?
+            .baseUrl(ollamaBaseUrl(ollama) + "/v1") // TODO add "/v1" by default?
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .logRequests(true)
@@ -43,7 +44,14 @@ class OllamaOpenAiStreamingChatModelIT extends AbstractOllamaLanguageModelInfras
         assertThat(aiMessage.text()).contains("Berlin");
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
-        assertThat(response.tokenUsage()).isNull();
+        OpenAiTokenUsage tokenUsage = (OpenAiTokenUsage) response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.inputTokensDetails()).isNull();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokensDetails()).isNull();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 

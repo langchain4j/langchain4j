@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
+import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -78,13 +79,13 @@ class OllamaMessagesUtils {
         }
     }
 
-    static List<ToolExecutionRequest> toToolExecutionRequest(List<ToolCall> toolCalls) {
+    static List<ToolExecutionRequest> toToolExecutionRequests(List<ToolCall> toolCalls) {
         return toolCalls.stream().map(toolCall ->
                         ToolExecutionRequest.builder()
                                 .name(toolCall.getFunction().getName())
                                 .arguments(toJson(toolCall.getFunction().getArguments()))
                                 .build())
-                .collect(Collectors.toList());
+                .toList();
     }
 
     static String toOllamaResponseFormat(ResponseFormat responseFormat) {
@@ -119,6 +120,12 @@ class OllamaMessagesUtils {
     }
 
     private static Message otherMessages(ChatMessage chatMessage) {
+        if (chatMessage instanceof CustomMessage customMessage) {
+            return Message.builder()
+                    .additionalFields(customMessage.attributes())
+                    .build();
+        }
+
         List<ToolCall> toolCalls = null;
         if (ChatMessageType.AI == chatMessage.type()) {
             AiMessage aiMessage = (AiMessage) chatMessage;

@@ -71,15 +71,15 @@ public class ToolSpecificationHelperTest {
                 """;
         ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
-        assertThat(toolSpecifications.size()).isEqualTo(1);
+        assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("operation");
         assertThat(toolSpecification.description()).isEqualTo("Super operation");
 
         // validate parameters
         JsonObjectSchema parameters = toolSpecification.parameters();
-        assertThat(parameters.properties().size()).isEqualTo(6);
-        assertThat(parameters.required().size()).isEqualTo(1);
+        assertThat(parameters.properties()).hasSize(6);
+        assertThat(parameters.required()).hasSize(1);
         assertThat(parameters.required().get(0)).isEqualTo("stringParameter");
 
         JsonStringSchema messageParameter =
@@ -141,19 +141,19 @@ public class ToolSpecificationHelperTest {
                 """;
         ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
-        assertThat(toolSpecifications.size()).isEqualTo(1);
+        assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("operation");
         assertThat(toolSpecification.description()).isEqualTo("Super operation");
 
         // validate parameters
         JsonObjectSchema parameters = toolSpecification.parameters();
-        assertThat(parameters.properties().size()).isEqualTo(1);
+        assertThat(parameters.properties()).hasSize(1);
 
         JsonObjectSchema complexParameter =
                 (JsonObjectSchema) parameters.properties().get("complexParameter");
         assertThat(complexParameter.description()).isEqualTo("A complex parameter");
-        assertThat(complexParameter.properties().size()).isEqualTo(2);
+        assertThat(complexParameter.properties()).hasSize(2);
 
         JsonStringSchema nestedStringParameter =
                 (JsonStringSchema) complexParameter.properties().get("nestedString");
@@ -182,11 +182,11 @@ public class ToolSpecificationHelperTest {
                 """;
         ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
-        assertThat(toolSpecifications.size()).isEqualTo(1);
+        assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("getTinyImage");
         assertThat(toolSpecification.description()).isEqualTo("Returns the MCP_TINY_IMAGE");
         JsonObjectSchema parameters = toolSpecification.parameters();
-        assertThat(parameters.properties().size()).isEqualTo(0);
+        assertThat(parameters.properties()).hasSize(0);
     }
 }

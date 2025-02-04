@@ -1,9 +1,9 @@
 package dev.langchain4j.model.huggingface;
 
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
-
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 class FactoryCreator {
 
@@ -20,7 +20,7 @@ class FactoryCreator {
 
         @Override
         public HuggingFaceClient create(Input input) {
-            return new DefaultHuggingFaceClient(input.apiKey(), input.modelId(), input.timeout());
+            return new DefaultHuggingFaceClient(input.baseUrl(), input.apiKey(), input.modelId(), input.timeout());
         }
     }
 }

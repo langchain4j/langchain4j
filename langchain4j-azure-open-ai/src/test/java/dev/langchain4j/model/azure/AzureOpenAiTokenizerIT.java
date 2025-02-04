@@ -1,41 +1,17 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import static dev.langchain4j.data.message.SystemMessage.systemMessage;
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
 import dev.langchain4j.model.Tokenizer;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_0613;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0125_PREVIEW;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0613;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_1106_PREVIEW;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_32K;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_32K_0613;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_TURBO_2024_04_09;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_VISION_PREVIEW;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.output.Response;
-import static java.util.Arrays.asList;
-import static java.util.Arrays.stream;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.data.Percentage.withPercentage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opentest4j.AssertionFailedError;
 
@@ -43,6 +19,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.data.message.SystemMessage.systemMessage;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.*;
+import static java.util.Arrays.asList;
+import static java.util.Arrays.stream;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 // TODO use exact model for Tokenizer (the one returned by LLM)
 @Disabled("this test is very long and expensive, we will need to set a schedule for it to run maybe 1 time per month")
@@ -147,7 +135,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.name());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
@@ -363,7 +351,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.name());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
@@ -789,7 +777,7 @@ class AzureOpenAiTokenizerIT {
 
         List<ChatMessage> dummyMessages = singletonList(userMessage("hi"));
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.name());
 
         int expectedTokenCount = model.generate(dummyMessages, toolSpecifications).tokenUsage().inputTokenCount()
                 - tokenizer.estimateTokenCountInMessages(dummyMessages);
@@ -836,180 +824,276 @@ class AzureOpenAiTokenizerIT {
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("city") // 1 token
+                                .parameters(JsonObjectSchema.builder()
+                                        .addStringProperty("city") // 1 token
+                                        .required("city")
+                                        .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("target_city") // 2 tokens
+                                .parameters(JsonObjectSchema.builder()
+                                        .addStringProperty("target_city") // 2 token
+                                        .required("city")
+                                        .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("target_city_name") // 3 tokens
+                                .parameters(JsonObjectSchema.builder()
+                                        .addStringProperty("target_city_name") // 3 token
+                                        .required("city")
+                                        .build())
                                 .build()), model),
 
                         // 1 parameter with "description" of various lengths
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("city", description("city")) // 1 token
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("city", "city") // 1 token
+                                                .required("city")
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("city", description("target city name")) // 3 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("city", "target city name") // 3 tokens
+                                                .required("city")
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("city", description("city for which time should be returned")) // 7 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("city", "city for which time should be returned") // 7 tokens
+                                                .required("city")
+                                                .build())
                                 .build()), model),
 
                         // 1 parameter with varying "type"
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("city", STRING)
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("city")
+                                                .required("city")
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("city", INTEGER)
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addIntegerProperty("city")
+                                                .required("city")
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("cities", ARRAY, items(INTEGER))
-                                .build()), model),
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addProperty("cities", JsonArraySchema.builder()
+                                                        .items(JsonObjectSchema.builder()
+                                                                .addIntegerProperty("city")
+                                                                .build())
+                                                .build())
+                                                .required("city")
+                                .build())), model),
 
                         // 1 parameter with "enum" of various range of values
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_temperature")
                                 .description("current temperature")
-                                .addParameter("unit", enums("C"))
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addEnumProperty("unit", List.of("C"))
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_temperature")
                                 .description("current temperature")
-                                .addParameter("unit", enums("C", "K"))
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addEnumProperty("unit", List.of("C", "K"))
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_temperature")
                                 .description("current temperature")
-                                .addParameter("unit", enums("C", "K", "F"))
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addEnumProperty("unit", List.of("C", "K", "F"))
+                                                .build())
                                 .build()), model),
 
                         // 1 parameter with "enum" of various name lengths
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_temperature")
                                 .description("current temperature")
-                                .addParameter("unit", enums("celsius", "kelvin", "fahrenheit")) // 2 tokens each
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addEnumProperty("unit", List.of("celsius", "kelvin", "fahrenheit")) // 2 tokens each
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_temperature")
                                 .description("current temperature")
-                                .addParameter("unit", enums("CELSIUS", "KELVIN", "FAHRENHEIT")) // 3-5 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addEnumProperty("unit", List.of("CELSIUS", "KELVIN", "FAHRENHEIT")) // 3-5 tokens
+                                                .build())
                                 .build()), model),
 
                         // 2 parameters with "name" of various length
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("city") // 1 token
-                                .addParameter("country") // 1 token
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("city") // 1 token
+                                                .addStringProperty("country") // 1 token
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("target_city") // 2 tokens
-                                .addParameter("target_country") // 2 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("target_city") // 2 tokens
+                                                .addStringProperty("target_country") // 2 tokens
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("target_city_name") // 3 tokens
-                                .addParameter("target_country_name") // 3 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("target_city_name") // 3 tokens
+                                                .addStringProperty("target_country_name") // 3 tokens
+                                                .build())
                                 .build()), model),
 
                         // 3 parameters with "name" of various length
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("city") // 1 token
-                                .addParameter("country") // 1 token
-                                .addParameter("format", enums("12H", "24H")) // 1 token
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("city") // 1 token
+                                                .addStringProperty("country") // 1 token
+                                                .addEnumProperty("format", List.of("12H", "24H")) // 1 token
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("target_city") // 2 tokens
-                                .addParameter("target_country") // 2 tokens
-                                .addParameter("time_format", enums("12H", "24H")) // 2 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("target_city") // 2 tokens
+                                                .addStringProperty("target_country") // 2 tokens
+                                                .addEnumProperty("time_format", List.of("12H", "24H")) // 2 tokens
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("target_city_name") // 3 tokens
-                                .addParameter("target_country_name") // 3 tokens
-                                .addParameter("current_time_format", enums("12H", "24H")) // 3 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("target_city_name") // 3 tokens
+                                                .addStringProperty("target_country_name") // 3 tokens
+                                                .addEnumProperty("current_time_format", List.of("12H", "24H")) // 3 tokens
+                                                .build())
                                 .build()), model),
 
                         // 1 optional parameter with "name" of various lengths
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addOptionalParameter("city") // 1 token
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("city") // 1 token
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addOptionalParameter("target_city") // 2 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("target_city") // 2 token
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addOptionalParameter("target_city_name") // 3 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("target_city_name") // 3 tokens
+                                                .build())
                                 .build()), model),
 
                         // 2 optional parameters with "name" of various lengths
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addOptionalParameter("city") // 1 token
-                                .addOptionalParameter("country") // 1 token
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("city") // 1 token
+                                                .addStringProperty("country") // 1 token
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addOptionalParameter("target_city") // 2 tokens
-                                .addOptionalParameter("target_country") // 2 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("target_city") // 2 tokens
+                                                .addStringProperty("target_country") // 2 tokens
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addOptionalParameter("target_city_name") // 3 tokens
-                                .addOptionalParameter("target_country_name") // 3 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("target_city_name") // 3 tokens
+                                                .addStringProperty("target_country_name") // 3 tokens
+                                                .build())
                                 .build()), model),
 
                         // 1 mandatory, 1 optional parameters with "name" of various lengths
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("city") // 1 token
-                                .addOptionalParameter("country") // 1 token
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("city") // 1 token
+                                                .addStringProperty("country") // 1 token
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("target_city") // 2 tokens
-                                .addOptionalParameter("target_country") // 2 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("target_city") // 2 tokens
+                                                .addStringProperty("target_country") // 2 tokens
+                                                .build())
                                 .build()), model),
                         arguments(singletonList(ToolSpecification.builder()
                                 .name("current_time")
                                 .description("current time")
-                                .addParameter("target_city_name") // 3 tokens
-                                .addOptionalParameter("target_country_name") // 3 tokens
+                                .parameters(
+                                        JsonObjectSchema.builder()
+                                                .addStringProperty("target_city_name") // 3 tokens
+                                                .addStringProperty("target_country_name") // 3 tokens
+                                                .build())
                                 .build()), model),
 
                         // 2 tools
@@ -1017,14 +1101,22 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("current time")
-                                        .addParameter("city_name", description("city name"))
-                                        .addOptionalParameter("country_name", description("optional country name"))
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city_name", "city name")
+                                                        .addStringProperty("country_name", "optional country name")
+                                                        .required("city_name")
+                                                        .build())
                                         .build(),
                                 ToolSpecification.builder()
                                         .name("current_temperature")
                                         .description("current temperature")
-                                        .addParameter("city_name", description("city name"))
-                                        .addOptionalParameter("country_name", description("optional country name"))
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city_name", "city name")
+                                                        .addStringProperty("country_name", "optional country name")
+                                                        .required("city_name")
+                                                        .build())
                                         .build()
                         ), model),
 
@@ -1033,20 +1125,32 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("current time")
-                                        .addParameter("city_name", description("city name"))
-                                        .addOptionalParameter("country_name", description("optional country name"))
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city_name", "city name")
+                                                        .addStringProperty("country_name", "optional country name")
+                                                        .required("city_name")
+                                                        .build())
                                         .build(),
                                 ToolSpecification.builder()
                                         .name("current_temperature")
                                         .description("current temperature")
-                                        .addParameter("city_name", description("city name"))
-                                        .addOptionalParameter("country_name", description("optional country name"))
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city_name", "city name")
+                                                        .addStringProperty("country_name", "optional country name")
+                                                        .required("city_name")
+                                                        .build())
                                         .build(),
                                 ToolSpecification.builder()
                                         .name("current_weather")
                                         .description("current weather")
-                                        .addParameter("city_name", description("city name"))
-                                        .addOptionalParameter("country_name", description("optional country name"))
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city_name", "city name")
+                                                        .addStringProperty("country_name", "optional country name")
+                                                        .required("city_name")
+                                                        .build())
                                         .build()
                         ), model)
                 ));
@@ -1078,7 +1182,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = response.tokenUsage().outputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.name());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInToolExecutionRequests(toolExecutionRequests);
@@ -1118,7 +1222,7 @@ class AzureOpenAiTokenizerIT {
 
         Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecification);
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.name());
 
         int expectedTokenCountInSpecification = response.tokenUsage().inputTokenCount()
                 - tokenizer.estimateTokenCountInMessages(singletonList(userMessage));
@@ -1197,7 +1301,11 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("returns current time")
-                                        .addParameter("city")
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city")
+                                                        .required("city")
+                                                        .build())
                                         .build(),
                                 ToolExecutionRequest.builder()
                                         .name("current_time")
@@ -1210,7 +1318,11 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("returns current time")
-                                        .addParameter("city")
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city")
+                                                        .required("city")
+                                                        .build())
                                         .build(),
                                 ToolExecutionRequest.builder()
                                         .name("current_time")
@@ -1223,7 +1335,11 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("returns current time")
-                                        .addParameter("city")
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city")
+                                                        .required("city")
+                                                        .build())
                                         .build(),
                                 ToolExecutionRequest.builder()
                                         .name("current_time")
@@ -1238,8 +1354,12 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("returns current time")
-                                        .addParameter("city")
-                                        .addParameter("country")
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city")
+                                                        .addStringProperty("country")
+                                                        .required("city", "country")
+                                                        .build())
                                         .build(),
                                 ToolExecutionRequest.builder()
                                         .name("current_time")
@@ -1252,8 +1372,12 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("returns current time")
-                                        .addParameter("city")
-                                        .addParameter("country")
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city")
+                                                        .addStringProperty("country")
+                                                        .required("city", "country")
+                                                        .build())
                                         .build(),
                                 ToolExecutionRequest.builder()
                                         .name("current_time")
@@ -1266,8 +1390,12 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("returns current time")
-                                        .addParameter("city")
-                                        .addParameter("country")
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city")
+                                                        .addStringProperty("country")
+                                                        .required("city", "country")
+                                                        .build())
                                         .build(),
                                 ToolExecutionRequest.builder()
                                         .name("current_time")
@@ -1282,9 +1410,13 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("returns current time")
-                                        .addParameter("city")
-                                        .addParameter("country")
-                                        .addParameter("format", enums("12", "24"))
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city")
+                                                        .addStringProperty("country")
+                                                        .addEnumProperty("format", List.of("12", "24"))
+                                                        .required("city", "country", "format")
+                                                        .build())
                                         .build(),
                                 ToolExecutionRequest.builder()
                                         .name("current_time")
@@ -1297,9 +1429,13 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("returns current time")
-                                        .addParameter("city")
-                                        .addParameter("country")
-                                        .addParameter("format", enums("12", "24"))
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city")
+                                                        .addStringProperty("country")
+                                                        .addEnumProperty("format", List.of("12", "24"))
+                                                        .required("city", "country", "format")
+                                                        .build())
                                         .build(),
                                 ToolExecutionRequest.builder()
                                         .name("current_time")
@@ -1312,9 +1448,13 @@ class AzureOpenAiTokenizerIT {
                                 ToolSpecification.builder()
                                         .name("current_time")
                                         .description("returns current time")
-                                        .addParameter("city")
-                                        .addParameter("country")
-                                        .addParameter("format", enums("12", "24"))
+                                        .parameters(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("city")
+                                                        .addStringProperty("country")
+                                                        .addEnumProperty("format", List.of("12", "24"))
+                                                        .required("city", "country", "format")
+                                                        .build())
                                         .build(),
                                 ToolExecutionRequest.builder()
                                         .name("current_time")
@@ -1354,7 +1494,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = response.tokenUsage().outputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.name());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInToolExecutionRequests(toolExecutionRequests);
@@ -1484,7 +1624,11 @@ class AzureOpenAiTokenizerIT {
                                         ToolSpecification.builder()
                                                 .name("time")
                                                 .description("returns current time")
-                                                .addParameter("city")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .required("city")
+                                                                .build())
                                                 .build(),
                                         ToolSpecification.builder()
                                                 .name("date")
@@ -1511,12 +1655,20 @@ class AzureOpenAiTokenizerIT {
                                         ToolSpecification.builder()
                                                 .name("current_time")
                                                 .description("returns current time")
-                                                .addParameter("city")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .required("city")
+                                                                .build())
                                                 .build(),
                                         ToolSpecification.builder()
                                                 .name("current_date")
                                                 .description("returns current date")
-                                                .addParameter("city")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .required("city")
+                                                                .build())
                                                 .build()
                                 ),
                                 asList(
@@ -1537,12 +1689,20 @@ class AzureOpenAiTokenizerIT {
                                         ToolSpecification.builder()
                                                 .name("current_time")
                                                 .description("returns current time")
-                                                .addParameter("city")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .required("city")
+                                                                .build())
                                                 .build(),
                                         ToolSpecification.builder()
                                                 .name("current_date")
                                                 .description("returns current date")
-                                                .addParameter("city")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .required("city")
+                                                                .build())
                                                 .build()
                                 ),
                                 asList(
@@ -1565,12 +1725,20 @@ class AzureOpenAiTokenizerIT {
                                         ToolSpecification.builder()
                                                 .name("current_time")
                                                 .description("returns current time")
-                                                .addParameter("city")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .required("city")
+                                                                .build())
                                                 .build(),
                                         ToolSpecification.builder()
                                                 .name("current_date")
                                                 .description("returns current date")
-                                                .addParameter("city")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .required("city")
+                                                                .build())
                                                 .build()
                                 ),
                                 asList(
@@ -1593,12 +1761,20 @@ class AzureOpenAiTokenizerIT {
                                         ToolSpecification.builder()
                                                 .name("time")
                                                 .description("returns current time")
-                                                .addParameter("city")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .required("city")
+                                                                .build())
                                                 .build(),
                                         ToolSpecification.builder()
                                                 .name("current_date")
                                                 .description("returns current date")
-                                                .addParameter("city")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .required("city")
+                                                                .build())
                                                 .build()
                                 ),
                                 asList(
@@ -1621,7 +1797,11 @@ class AzureOpenAiTokenizerIT {
                                         ToolSpecification.builder()
                                                 .name("time")
                                                 .description("returns current time")
-                                                .addParameter("city")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .required("city")
+                                                                .build())
                                                 .build()
                                 ),
                                 asList(
@@ -1652,14 +1832,22 @@ class AzureOpenAiTokenizerIT {
                                         ToolSpecification.builder()
                                                 .name("current_time")
                                                 .description("returns current time")
-                                                .addParameter("city")
-                                                .addParameter("country")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .addStringProperty("country")
+                                                                .required("city", "country")
+                                                                .build())
                                                 .build(),
                                         ToolSpecification.builder()
                                                 .name("current_date")
                                                 .description("returns current date")
-                                                .addParameter("city")
-                                                .addParameter("country")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .addStringProperty("country")
+                                                                .required("city", "country")
+                                                                .build())
                                                 .build()
                                 ),
                                 asList(
@@ -1680,14 +1868,22 @@ class AzureOpenAiTokenizerIT {
                                         ToolSpecification.builder()
                                                 .name("current_time")
                                                 .description("returns current time")
-                                                .addParameter("city")
-                                                .addParameter("country")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .addStringProperty("country")
+                                                                .required("city", "country")
+                                                                .build())
                                                 .build(),
                                         ToolSpecification.builder()
                                                 .name("current_date")
                                                 .description("returns current date")
-                                                .addParameter("city")
-                                                .addParameter("country")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .addStringProperty("country")
+                                                                .required("city", "country")
+                                                                .build())
                                                 .build()
                                 ),
                                 asList(
@@ -1710,9 +1906,13 @@ class AzureOpenAiTokenizerIT {
                                         ToolSpecification.builder()
                                                 .name("current_time")
                                                 .description("returns current time")
-                                                .addParameter("city")
-                                                .addParameter("country")
-                                                .addParameter("format", enums("12", "24"))
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .addStringProperty("country")
+                                                                .addEnumProperty("format", List.of("12", "24"))
+                                                                .required("city", "country", "format")
+                                                                .build())
                                                 .build()
                                 ),
                                 asList(
@@ -1735,15 +1935,23 @@ class AzureOpenAiTokenizerIT {
                                         ToolSpecification.builder()
                                                 .name("current_time")
                                                 .description("returns current time")
-                                                .addParameter("city")
-                                                .addParameter("country")
-                                                .addParameter("format", enums("12", "24"))
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .addStringProperty("country")
+                                                                .addEnumProperty("format", List.of("12", "24"))
+                                                                .required("city", "country", "format")
+                                                                .build())
                                                 .build(),
                                         ToolSpecification.builder()
                                                 .name("current_date")
                                                 .description("returns current date")
-                                                .addParameter("city")
-                                                .addParameter("country")
+                                                .parameters(
+                                                        JsonObjectSchema.builder()
+                                                                .addStringProperty("city")
+                                                                .addStringProperty("country")
+                                                                .required("city", "country")
+                                                                .build())
                                                 .build()
                                 ),
                                 asList(
