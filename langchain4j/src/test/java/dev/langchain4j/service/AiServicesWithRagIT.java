@@ -121,16 +121,17 @@ class AiServicesWithRagIT {
                 .build());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-        UserMessage userMessage = UserMessage.from("Hello");
-        chatMemory.add(userMessage);
-        AiMessage aiMessage = AiMessage.from("Hi, how can I help you today?");
-        chatMemory.add(aiMessage);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(model)
                 .contentRetriever(contentRetriever)
                 .chatMemory(chatMemory)
                 .build();
+
+        UserMessage userMessage = UserMessage.from("Hello");
+        chatMemory.add(userMessage);
+        AiMessage aiMessage = AiMessage.from("Hi, how can I help you today?");
+        chatMemory.add(aiMessage);
 
         String query = "In which cases can I cancel my booking?";
 

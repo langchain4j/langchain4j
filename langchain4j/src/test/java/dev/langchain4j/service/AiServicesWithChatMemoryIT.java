@@ -381,5 +381,7 @@ class AiServicesWithChatMemoryIT {
 
         String anotherResponse = anotherChatWithMemory.chat(firstMemoryId, "Hi");
         assertThat(anotherResponse).doesNotContain("Klaus");
+
+        verify(chatLanguageModel).chat(chatRequest("Hi"));
     }
 }
