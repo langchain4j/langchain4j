@@ -64,6 +64,7 @@ ChatModelListener listener = new ChatModelListener() {
             System.out.println(openAiParameters.store());
             System.out.println(openAiParameters.metadata());
             System.out.println(openAiParameters.serviceTier());
+            System.out.println(openAiParameters.reasoningEffort());
         }
 
         Map<Object, Object> attributes = requestContext.attributes();

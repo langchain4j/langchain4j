@@ -635,6 +635,7 @@ public class InternalOpenAiHelper {
                 .user(parameters.user())
                 .store(parameters.store())
                 .metadata(parameters.metadata())
-                .serviceTier(parameters.serviceTier());
+                .serviceTier(parameters.serviceTier())
+                .reasoningEffort(parameters.reasoningEffort());
     }
 }
