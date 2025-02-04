@@ -11,7 +11,6 @@ import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import dev.langchain4j.store.memory.chat.SingleEntryChatMemoryStore;
-
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -57,7 +56,9 @@ public class AiServiceContext {
 
     public void initDefaultChatMemory(ChatMemory defaultChatMemory) {
         checkNotInitialized();
-        this.defaultChatMemory = defaultChatMemory instanceof StorelessChatMemory storeless ? storeless.withStore(new SingleEntryChatMemoryStore()) : defaultChatMemory;
+        this.defaultChatMemory = defaultChatMemory instanceof StorelessChatMemory storeless
+                ? storeless.withStore(new SingleEntryChatMemoryStore())
+                : defaultChatMemory;
     }
 
     private void checkNotInitialized() {

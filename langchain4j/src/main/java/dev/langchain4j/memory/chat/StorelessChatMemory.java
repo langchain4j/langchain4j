@@ -4,7 +4,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
-
 import java.util.List;
 
 public interface StorelessChatMemory extends ChatMemory {
