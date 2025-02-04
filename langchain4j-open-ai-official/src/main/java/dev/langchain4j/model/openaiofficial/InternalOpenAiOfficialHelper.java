@@ -393,13 +393,13 @@ public class InternalOpenAiOfficialHelper {
 
         Optional<CompletionUsage.PromptTokensDetails> promptTokensDetails = openAiUsage.get().promptTokensDetails();
         OpenAiOfficialTokenUsage.InputTokensDetails inputTokensDetails = null;
-        if (promptTokensDetails != null) {
+        if (promptTokensDetails.isPresent()) {
             inputTokensDetails = new OpenAiOfficialTokenUsage.InputTokensDetails(promptTokensDetails.get().cachedTokens().get());
         }
 
         Optional<CompletionUsage.CompletionTokensDetails> completionTokensDetails = openAiUsage.get().completionTokensDetails();
         OpenAiOfficialTokenUsage.OutputTokensDetails outputTokensDetails = null;
-        if (completionTokensDetails != null) {
+        if (completionTokensDetails.isPresent()) {
             outputTokensDetails = new OpenAiOfficialTokenUsage.OutputTokensDetails(completionTokensDetails.get().reasoningTokens().get());
         }
 
