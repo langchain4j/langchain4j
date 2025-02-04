@@ -2,6 +2,8 @@ package dev.langchain4j.model.openaiofficial;
 
 import com.azure.identity.AuthenticationUtil;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.openai.azure.AzureOpenAIServiceVersion;
+import com.openai.azure.credential.AzureApiKeyCredential;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.credential.BearerTokenCredential;
@@ -68,6 +70,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
 
     public OpenAiOfficialChatModel(String baseUrl,
                            String apiKey,
+                           AzureOpenAIServiceVersion azureOpenAIServiceVersion,
                            String organizationId,
                            ChatRequestParameters defaultRequestParameters,
                            String modelName,
@@ -95,21 +98,30 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                            Map<String, String> customHeaders,
                            List<ChatModelListener> listeners) {
 
+        OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
+
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
             baseUrl = OPENAI_DEMO_URL;
         }
+        builder.baseUrl(baseUrl);
 
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
-        OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
         if (apiKey != null) {
             builder.apiKey(apiKey);
         } else {
             builder
                     .fromEnv()
+
+                    .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                     .credential(BearerTokenCredential.create(AuthenticationUtil.getBearerTokenSupplier(
-                    new DefaultAzureCredentialBuilder().build(), "https://api.openai.com/.default")));
+                            new DefaultAzureCredentialBuilder().build(), "https://cognitiveservices.azure.com/.default")));
+
+        }
+
+        builder.organization(organizationId);
+
+        if (azureOpenAIServiceVersion != null) {
+            builder.azureServiceVersion(azureOpenAIServiceVersion);
         }
 
         if (proxy != null) {
@@ -123,13 +135,12 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                             entry -> Collections.singletonList(entry.getValue())
                     )));
         }
+        builder.putHeader("User-Agent", DEFAULT_USER_AGENT);
 
-        this.client = builder
-                .baseUrl(baseUrl)
-                .organization(organizationId)
-                .timeout(timeout)
-                .putHeader("User-Agent", DEFAULT_USER_AGENT)
-                .build();
+        timeout = getOrDefault(timeout, ofSeconds(60));
+        builder.timeout(timeout);
+
+        this.client = builder.build();
 
         this.maxRetries = getOrDefault(maxRetries, 3);
 
@@ -274,6 +285,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
 
         private String baseUrl;
         private String apiKey;
+        private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
 
         private ChatRequestParameters defaultRequestParameters;
@@ -335,6 +347,11 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
 
         public OpenAiOfficialChatModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        public OpenAiOfficialChatModelBuilder azureOpenAIServiceVersion(AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+            this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
             return this;
         }
 
@@ -462,6 +479,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
             return new OpenAiOfficialChatModel(
                     this.baseUrl,
                     this.apiKey,
+                    this.azureOpenAIServiceVersion,
                     this.organizationId,
                     this.defaultRequestParameters,
                     this.modelName,
@@ -495,6 +513,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         public String toString() {
             return new StringJoiner(", ", OpenAiOfficialChatModelBuilder.class.getSimpleName() + "[", "]")
                     .add("baseUrl='" + baseUrl + "'")
+                    .add("azureOpenAIServiceVersion=" + azureOpenAIServiceVersion)
                     .add("organizationId='" + organizationId + "'")
                     .add("defaultRequestParameters='" + defaultRequestParameters + "'")
                     .add("modelName='" + modelName + "'")
