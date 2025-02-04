@@ -99,6 +99,7 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
     }
 
     @Test
+    @Disabled("llama3.1 struggles with this test scenario")
     void should_not_execute_a_tool_and_tell_a_joke() {
 
         // given
@@ -193,7 +194,19 @@ class OllamaToolChatModelIT extends AbstractOllamaToolsLanguageModelInfrastructu
     @Test
     @Disabled("llama3.1 struggles with this test scenario")
     @Override
+    protected void should_execute_tool_with_pojo_with_primitives() {
+    }
+
+    @Test
+    @Disabled("llama3.1 struggles with this test scenario")
+    @Override
     protected void should_execute_tool_with_pojo_with_nested_pojo() {
+    }
+
+    @Test
+    @Disabled("llama3.1 struggles with this test scenario")
+    @Override
+    protected void should_execute_tool_with_list_of_strings_parameter() {
     }
 
     @Test

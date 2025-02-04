@@ -76,6 +76,29 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
+    public void test_ensureNotEmpty_array() {
+        {
+            Object[] array = {new Object()};
+            assertThat(ValidationUtils.ensureNotEmpty(array, "test"))
+                    .isSameAs(array);
+        }
+
+        {
+            Object[] array = {};
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(array, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+
+        {
+            Object[] array = null;
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(array, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+    }
+
+    @Test
     public void test_ensureNotEmpty_map() {
         {
             Map<Object, Object> map = new HashMap<>();
