@@ -31,7 +31,7 @@ class OllamaChatModelVisionIT extends AbstractOllamaVisionModelInfrastructure {
 
         // when
         Response<AiMessage> response = model.generate(UserMessage.userMessage(
-                TextContent.from("What is on the picture?"),
+                TextContent.from("What animal is on this picture?"),
                 ImageContent.from(CAT_IMAGE_URL)
         ));
 

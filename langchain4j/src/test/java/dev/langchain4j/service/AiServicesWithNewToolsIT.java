@@ -142,7 +142,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_pojo_with_primitives() {
+    protected void should_execute_tool_with_pojo_with_primitives() {
 
         for (ChatLanguageModel model : models()) {
 
@@ -523,7 +523,7 @@ public abstract class AiServicesWithNewToolsIT {
     }
 
     @Test
-    void should_execute_tool_with_list_of_strings_parameter() {
+    protected void should_execute_tool_with_list_of_strings_parameter() {
 
         for (ChatLanguageModel model : models()) {
 

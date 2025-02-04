@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.language.StreamingLanguageModel;
@@ -9,11 +10,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -27,7 +26,8 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
     private final Options options;
     private final ResponseFormat responseFormat;
 
-    public OllamaStreamingLanguageModel(String baseUrl,
+    public OllamaStreamingLanguageModel(HttpClientBuilder httpClientBuilder,
+                                        String baseUrl,
                                         String modelName,
                                         Double temperature,
                                         Integer topK,
@@ -48,10 +48,11 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
             throw new IllegalStateException("Cant use both 'format' and 'responseFormat' parameters");
         }
         this.client = OllamaClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .timeout(timeout)
                 .logRequests(logRequests)
-                .logStreamingResponses(logResponses)
+                .logResponses(logResponses)
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
@@ -90,6 +91,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
 
     public static class OllamaStreamingLanguageModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String modelName;
         private Double temperature;
@@ -110,6 +112,18 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
         public OllamaStreamingLanguageModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        /**
+         * TODO
+         * TODO {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}
+         *
+         * @param httpClientBuilder
+         * @return
+         */
+        public OllamaStreamingLanguageModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OllamaStreamingLanguageModelBuilder baseUrl(String baseUrl) {
@@ -202,6 +216,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
 
         public OllamaStreamingLanguageModel build() {
             return new OllamaStreamingLanguageModel(
+                    httpClientBuilder,
                     baseUrl,
                     modelName,
                     temperature,

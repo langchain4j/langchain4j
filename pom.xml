@@ -18,6 +18,10 @@
 
         <module>langchain4j-easy-rag</module>
 
+        <!-- http clients -->
+        <module>langchain4j-http-client</module>
+        <module>http-clients/langchain4j-http-client-jdk</module>
+
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
