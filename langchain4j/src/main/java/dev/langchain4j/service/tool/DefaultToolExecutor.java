@@ -1,10 +1,11 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
-
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.internal.Json;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -14,28 +15,31 @@ import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultToolExecutor.class);
 
     private final Object object;
-    private final Method method;
+    private final Method originalMethod;
+    private final Method methodToInvoke;
 
     public DefaultToolExecutor(Object object, Method method) {
         this.object = Objects.requireNonNull(object, "object");
-        this.method = Objects.requireNonNull(method, "method");
+        this.originalMethod = Objects.requireNonNull(method, "method");
+        this.methodToInvoke = this.originalMethod;
     }
 
     public DefaultToolExecutor(Object object, ToolExecutionRequest toolExecutionRequest) {
         this.object = Objects.requireNonNull(object, "object");
         Objects.requireNonNull(toolExecutionRequest, "toolExecutionRequest");
-        this.method = findMethod(object, toolExecutionRequest);
+        this.originalMethod = findMethod(object, toolExecutionRequest);
+        this.methodToInvoke = this.originalMethod;
     }
 
-    Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
+    private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
         String requestedMethodName = toolExecutionRequest.name();
 
         for (Method method : object.getClass().getDeclaredMethods()) {
@@ -49,20 +53,35 @@ public class DefaultToolExecutor implements ToolExecutor {
                 requestedMethodName, object.getClass().getName()));
     }
 
+    /**
+     * When methods annotated with @Tool are wrapped into proxies (AOP),
+     * the parameters of the proxied method do not retain their original names.
+     * Therefore, access to the original method is required to retrieve those names.
+     *
+     * @param object         the object on which the method should be invoked
+     * @param originalMethod the original method, used to retrieve parameter names and prepare arguments
+     * @param methodToInvoke the method that should actually be invoked
+     */
+    public DefaultToolExecutor(Object object, Method originalMethod, Method methodToInvoke) {
+        this.object = Objects.requireNonNull(object, "object");
+        this.originalMethod = Objects.requireNonNull(originalMethod, "originalMethod");
+        this.methodToInvoke = Objects.requireNonNull(methodToInvoke, "methodToInvoke");
+    }
+
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
         log.debug("About to execute {} for memoryId {}", toolExecutionRequest, memoryId);
 
         // TODO ensure this method never throws exceptions
 
         Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-        Object[] arguments = prepareArguments(method, argumentsMap, memoryId);
+        Object[] arguments = prepareArguments(originalMethod, argumentsMap, memoryId);
         try {
             String result = execute(arguments);
             log.debug("Tool execution result: {}", result);
             return result;
         } catch (IllegalAccessException e) {
             try {
-                method.setAccessible(true);
+                methodToInvoke.setAccessible(true);
                 String result = execute(arguments);
                 log.debug("Tool execution result: {}", result);
                 return result;
@@ -81,8 +100,8 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     private String execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
-        Object result = method.invoke(object, arguments);
-        Class<?> returnType = method.getReturnType();
+        Object result = methodToInvoke.invoke(object, arguments);
+        Class<?> returnType = methodToInvoke.getReturnType();
         if (returnType == void.class) {
             return "Success";
         } else if (returnType == String.class) {
