@@ -150,7 +150,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
-    // TODO deprecate
+    /**
+     * @deprecated please use {@link #defaultRequestParameters()} and then {@link ChatRequestParameters#modelName()} instead
+     */
+    @Deprecated(forRemoval = true)
     public String modelName() {
         return defaultRequestParameters.modelName();
     }
