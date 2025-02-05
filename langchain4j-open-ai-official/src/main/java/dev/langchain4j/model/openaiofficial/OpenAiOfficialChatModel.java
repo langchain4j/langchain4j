@@ -146,8 +146,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         timeout = getOrDefault(timeout, ofSeconds(60));
         builder.timeout(timeout);
 
-        Integer maxRetries1 = getOrDefault(maxRetries, 3);
-        builder.maxRetries(maxRetries1);
+        builder.maxRetries(getOrDefault(maxRetries, 3));
 
         this.client = builder.build();
 
