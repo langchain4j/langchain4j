@@ -80,7 +80,6 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                            Double temperature,
                            Double topP,
                            List<String> stop,
-                           Integer maxTokens,
                            Integer maxCompletionTokens,
                            Double presencePenalty,
                            Double frequencyPenalty,
@@ -175,12 +174,12 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                 .topP(getOrDefault(topP, commonParameters.topP()))
                 .frequencyPenalty(getOrDefault(frequencyPenalty, commonParameters.frequencyPenalty()))
                 .presencePenalty(getOrDefault(presencePenalty, commonParameters.presencePenalty()))
-                .maxOutputTokens(getOrDefault(maxTokens, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(stop, () -> copyIfNotNull(commonParameters.stopSequences())))
                 .toolSpecifications(copyIfNotNull(commonParameters.toolSpecifications()))
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
+                .maxOutputTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
@@ -306,7 +305,6 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         private Double temperature;
         private Double topP;
         private List<String> stop;
-        private Integer maxTokens;
         private Integer maxCompletionTokens;
         private Double presencePenalty;
         private Double frequencyPenalty;
@@ -400,11 +398,6 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
 
         public OpenAiOfficialChatModelBuilder stop(List<String> stop) {
             this.stop = stop;
-            return this;
-        }
-
-        public OpenAiOfficialChatModelBuilder maxTokens(Integer maxTokens) {
-            this.maxTokens = maxTokens;
             return this;
         }
 
@@ -517,7 +510,6 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                     this.temperature,
                     this.topP,
                     this.stop,
-                    this.maxTokens,
                     this.maxCompletionTokens,
                     this.presencePenalty,
                     this.frequencyPenalty,
@@ -551,7 +543,6 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                     .add("temperature=" + temperature)
                     .add("topP=" + topP)
                     .add("stop=" + stop)
-                    .add("maxTokens=" + maxTokens)
                     .add("maxCompletionTokens=" + maxCompletionTokens)
                     .add("presencePenalty=" + presencePenalty)
                     .add("frequencyPenalty=" + frequencyPenalty)
