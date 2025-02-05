@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import com.openai.models.ChatModel;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
@@ -7,7 +8,9 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.util.Map;
 import java.util.Objects;
 
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.quoted;
 
 @Experimental
 public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParameters {
@@ -171,7 +174,7 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
             return this;
         }
 
-        public Builder modelName(OpenAiOfficialChatModelName modelName) {
+        public Builder modelName(ChatModel modelName) {
             return super.modelName(modelName.toString());
         }
 

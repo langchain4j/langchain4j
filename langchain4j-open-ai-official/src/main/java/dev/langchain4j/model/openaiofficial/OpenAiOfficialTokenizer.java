@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.IntArrayList;
+import com.openai.models.ChatModel;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -23,14 +24,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import static com.openai.models.ChatModel.GPT_3_5_TURBO_0125;
+import static com.openai.models.ChatModel.GPT_3_5_TURBO_1106;
+import static com.openai.models.ChatModel.GPT_4_0125_PREVIEW;
+import static com.openai.models.ChatModel.GPT_4_1106_PREVIEW;
+import static com.openai.models.ChatModel.GPT_4_TURBO_PREVIEW;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelName.GPT_3_5_TURBO_0125;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelName.GPT_4_0125_PREVIEW;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelName.GPT_4_1106_PREVIEW;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelName.GPT_4_TURBO_PREVIEW;
 import static java.util.Collections.singletonList;
 
 /**
@@ -45,9 +46,9 @@ public class OpenAiOfficialTokenizer implements Tokenizer {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
-     * Creates an instance of the {@code OpenAiTokenizer} for a given {@link OpenAiOfficialChatModelName}.
+     * Creates an instance of the {@code OpenAiTokenizer} for a given {@link ChatModel}.
      */
-    public OpenAiOfficialTokenizer(OpenAiOfficialChatModelName modelName) {
+    public OpenAiOfficialTokenizer(ChatModel modelName) {
         this(modelName.toString());
     }
 
