@@ -89,7 +89,7 @@ public class ToolService {
         }
     }
 
-    private void initTools() {
+    public void initTools() {
         if (toolSpecifications == null) {
             toolSpecifications = new ArrayList<>();
         }
