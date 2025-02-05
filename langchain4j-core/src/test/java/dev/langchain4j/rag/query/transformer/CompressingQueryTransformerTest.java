@@ -41,7 +41,7 @@ class CompressingQueryTransformerTest {
         UserMessage userMessage = UserMessage.from("How old is he?");
         Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
 
-        Query query = Query.from(userMessage.text(), metadata);
+        Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
 
@@ -82,7 +82,7 @@ class CompressingQueryTransformerTest {
         UserMessage userMessage = UserMessage.from("Hello");
         Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
 
-        Query query = Query.from(userMessage.text(), metadata);
+        Query query = Query.from(userMessage.singleText(), metadata);
 
         ChatLanguageModel model = mock(ChatLanguageModel.class);
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
@@ -109,7 +109,7 @@ class CompressingQueryTransformerTest {
         );
         UserMessage userMessage = UserMessage.from("How old is he?");
         Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
-        Query query = Query.from(userMessage.text(), metadata);
+        Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);
@@ -144,7 +144,7 @@ class CompressingQueryTransformerTest {
         );
         UserMessage userMessage = UserMessage.from("How old is he?");
         Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
-        Query query = Query.from(userMessage.text(), metadata);
+        Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);

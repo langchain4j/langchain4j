@@ -402,7 +402,7 @@ class DefaultRetrievalAugmentorTest {
             String joinedContents = contents.stream()
                 .map(it -> it.textSegment().text())
                 .collect(joining("\n"));
-            return UserMessage.from(userMessage.text() + "\n" + joinedContents);
+            return UserMessage.from(userMessage.singleText() + "\n" + joinedContents);
         }
     }
 }
