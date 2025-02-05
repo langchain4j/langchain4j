@@ -57,7 +57,6 @@ import static java.util.Collections.emptyList;
 public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final OpenAIClient client;
-    private final Integer maxRetries;
 
     private final OpenAiOfficialChatRequestParameters defaultRequestParameters;
     private final String responseFormat;
@@ -147,8 +146,8 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         timeout = getOrDefault(timeout, ofSeconds(60));
         builder.timeout(timeout);
 
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        builder.maxRetries(this.maxRetries);
+        Integer maxRetries1 = getOrDefault(maxRetries, 3);
+        builder.maxRetries(maxRetries1);
 
         this.client = builder.build();
 
