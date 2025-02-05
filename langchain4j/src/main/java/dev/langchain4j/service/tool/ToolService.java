@@ -186,4 +186,16 @@ public class ToolService {
 
         return new ToolExecutionResult(chatResponse, toolExecutions, tokenUsageAccumulator);
     }
+
+    public List<ToolSpecification> toolSpecifications() {
+        return toolSpecifications;
+    }
+
+    public Map<String, ToolExecutor> toolExecutors() {
+        return toolExecutors;
+    }
+
+    public ToolProvider toolProvider() {
+        return toolProvider;
+    }
 }
