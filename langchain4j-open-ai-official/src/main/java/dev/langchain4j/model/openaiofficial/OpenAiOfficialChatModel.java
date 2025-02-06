@@ -109,6 +109,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
             // Using Azure OpenAI
             ensureNotBlank(azureDeploymentName, "azureDeploymentName");
             ensureNotNull(azureOpenAIServiceVersion, "azureOpenAIServiceVersion");
+            baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
             builder.baseUrl(baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version=" + azureOpenAIServiceVersion.value());
         } else {
             builder.baseUrl(baseUrl);

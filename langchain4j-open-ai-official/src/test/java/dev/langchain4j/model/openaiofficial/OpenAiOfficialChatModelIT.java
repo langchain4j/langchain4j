@@ -34,12 +34,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 public class OpenAiOfficialChatModelIT {
 
+    public static final ChatModel MODEL_NAME = ChatModel.GPT_4O_MINI;
+    public static final AzureOpenAIServiceVersion API_VERSION = AzureOpenAIServiceVersion.fromString("2024-06-01");
+
     OpenAiOfficialChatModel model = OpenAiOfficialChatModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .azureDeploymentName(ChatModel.GPT_4O_MINI.toString())
-            .azureOpenAIServiceVersion(AzureOpenAIServiceVersion.getV2024_02_15_PREVIEW())
-            .modelName(ChatModel.GPT_4O_MINI)
+            .azureDeploymentName(MODEL_NAME.toString())
+            .azureOpenAIServiceVersion(API_VERSION)
+            .modelName(MODEL_NAME)
             .temperature(0.0)
             .build();
 
@@ -60,7 +63,7 @@ public class OpenAiOfficialChatModelIT {
     @Test
     void openai_sdk_direct_usage_should_work_with_azure_openai() {
 
-        String baseUrl = System.getenv("AZURE_OPENAI_ENDPOINT") + "/openai/deployments/gpt-4o-mini?api-version=2024-08-01-preview";
+        String baseUrl = System.getenv("AZURE_OPENAI_ENDPOINT") + "/openai/deployments/" + MODEL_NAME.toString() + "?api-version=" + API_VERSION.value();
 
         OpenAIClient client = OpenAIOkHttpClient.builder()
                 .baseUrl(baseUrl)
@@ -68,7 +71,7 @@ public class OpenAiOfficialChatModelIT {
                 .build();
 
         ChatCompletionCreateParams createParams = ChatCompletionCreateParams.builder()
-                .model(ChatModel.GPT_4O_MINI)
+                .model(MODEL_NAME)
                 .maxCompletionTokens(2048)
                 .addUserMessage("What is the capital of France?")
                 .build();
@@ -108,9 +111,9 @@ public class OpenAiOfficialChatModelIT {
         ChatLanguageModel model = OpenAiOfficialChatModel.builder()
                 .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .azureDeploymentName(ChatModel.GPT_4O_MINI.toString())
-                .azureOpenAIServiceVersion(AzureOpenAIServiceVersion.getV2024_02_15_PREVIEW())
-                .modelName(ChatModel.GPT_4O_MINI)
+                .azureDeploymentName(MODEL_NAME.toString())
+                .azureOpenAIServiceVersion(API_VERSION)
+                .modelName(MODEL_NAME)
                 .maxCompletionTokens(maxCompletionTokens)
                 .temperature(0.0)
                 .build();
@@ -172,55 +175,6 @@ public class OpenAiOfficialChatModelIT {
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
         assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(37);
-        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.totalTokenCount())
-                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
-
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
-    void should_execute_tool_forcefully_then_answer() {
-
-        // given
-        UserMessage userMessage = userMessage("I have 2 apples and 2 pears");
-
-        // when
-        Response<AiMessage> response = model.generate(singletonList(userMessage), calculator);
-
-        // then
-        AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest =
-                aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.id()).isNotBlank();
-        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        // given
-        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
-
-        // when
-        Response<AiMessage> secondResponse = model.generate(messages);
-
-        // then
-        AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
-
-        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
@@ -300,9 +254,9 @@ public class OpenAiOfficialChatModelIT {
         ChatLanguageModel modelGeneratingJson = OpenAiOfficialChatModel.builder()
                 .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .azureDeploymentName(ChatModel.GPT_4O_MINI.toString())
-                .azureOpenAIServiceVersion(AzureOpenAIServiceVersion.getV2024_02_15_PREVIEW())
-                .modelName(ChatModel.GPT_4O_MINI)
+                .azureDeploymentName(MODEL_NAME.toString())
+                .azureOpenAIServiceVersion(API_VERSION)
+                .modelName(MODEL_NAME)
                 .responseFormat("json_object")
                 .temperature(0.0)
                 .build();

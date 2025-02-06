@@ -1,0 +1,19 @@
+package dev.langchain4j.model.openaiofficial.common;
+
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.service.common.AbstractAiServiceIT;
+
+import java.util.List;
+
+import static dev.langchain4j.model.openaiofficial.common.OpenAiOfficialChatModelIT.OPEN_AI_CHAT_MODEL;
+
+class OpenAiOfficialAiServiceIT extends AbstractAiServiceIT {
+
+    @Override
+    protected List<ChatLanguageModel> models() {
+        return List.of(
+                OPEN_AI_CHAT_MODEL
+                // TODO add more model configs
+        );
+    }
+}
