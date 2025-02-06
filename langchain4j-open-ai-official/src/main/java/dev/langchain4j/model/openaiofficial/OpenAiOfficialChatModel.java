@@ -66,6 +66,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
     private final Tokenizer tokenizer;
 
     private final List<ChatModelListener> listeners;
+    private Set<Capability> supportedCapabilities;
 
     public OpenAiOfficialChatModel(String baseUrl,
                            String apiKey,
@@ -97,7 +98,8 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                            Proxy proxy,
                            Tokenizer tokenizer,
                            Map<String, String> customHeaders,
-                           List<ChatModelListener> listeners) {
+                           List<ChatModelListener> listeners,
+                           Set<Capability> capabilities) {
 
         OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder();
 
@@ -196,6 +198,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         this.tokenizer = getOrDefault(tokenizer, new OpenAiOfficialTokenizer(this.defaultRequestParameters.modelName()));
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        this.supportedCapabilities = copyIfNotNull(capabilities);
     }
 
     @Override
@@ -205,11 +208,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
 
     @Override
     public Set<Capability> supportedCapabilities() {
-        Set<Capability> capabilities = new HashSet<>();
-        if ("json_schema".equals(responseFormat)) {
-            capabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
-        }
-        return capabilities;
+        return supportedCapabilities;
     }
 
     @Override
@@ -324,6 +323,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         private Tokenizer tokenizer;
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
+        private Set<Capability> capabilities;
 
         public OpenAiOfficialChatModelBuilder() {
             // This is public so it can be extended
@@ -495,6 +495,11 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
             return this;
         }
 
+        public OpenAiOfficialChatModelBuilder supportedCapabilities(Set<Capability> capabilities) {
+            this.capabilities = capabilities;
+            return this;
+        }
+
         public OpenAiOfficialChatModel build() {
             return new OpenAiOfficialChatModel(
                     this.baseUrl,
@@ -527,7 +532,8 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                     this.proxy,
                     this.tokenizer,
                     this.customHeaders,
-                    this.listeners
+                    this.listeners,
+                    this.capabilities
             );
         }
 
@@ -561,6 +567,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                     .add("tokenizer=" + tokenizer)
                     .add("customHeaders=" + customHeaders)
                     .add("listeners=" + listeners)
+                    .add("capabilities=" + capabilities)
                     .toString();
         }
     }
