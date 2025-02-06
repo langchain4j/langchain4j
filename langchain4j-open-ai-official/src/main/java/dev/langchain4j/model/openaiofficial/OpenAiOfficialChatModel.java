@@ -180,7 +180,6 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
-                .maxOutputTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
