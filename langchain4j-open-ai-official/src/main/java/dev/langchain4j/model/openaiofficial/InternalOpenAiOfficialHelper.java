@@ -46,6 +46,7 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -55,7 +56,6 @@ import dev.langchain4j.model.output.Response;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -428,20 +428,11 @@ public class InternalOpenAiOfficialHelper {
         if (responseFormat == null || responseFormat.type() == TEXT) {
             return null;
         }
-        // TODO NOT IMPLEMENTED YET
-        return ResponseFormatJsonObject.builder().build();
-    }
-
-        /*
-    static dev.ai4j.openai4j.chat.ResponseFormat toOpenAiResponseFormat(ResponseFormat responseFormat, Boolean strict) {
-        if (responseFormat == null || responseFormat.type() == TEXT) {
-            return null;
-        }
 
         JsonSchema jsonSchema = responseFormat.jsonSchema();
         if (jsonSchema == null) {
-            return dev.ai4j.openai4j.chat.ResponseFormat.builder()
-                    .type(JSON_OBJECT)
+            return ResponseFormatJsonObject.builder()
+                    .type(JsonValue.from("json_object"))
                     .build();
         } else {
             if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
@@ -449,19 +440,17 @@ public class InternalOpenAiOfficialHelper {
                         "For OpenAI, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
-            dev.ai4j.openai4j.chat.JsonSchema openAiJsonSchema = dev.ai4j.openai4j.chat.JsonSchema.builder()
-                    .name(jsonSchema.name())
-                    .strict(strict)
-                    .schema((dev.ai4j.openai4j.chat.JsonObjectSchema)
-                            toOpenAiJsonSchemaElement(jsonSchema.rootElement(), strict))
-                    .build();
-            return dev.ai4j.openai4j.chat.ResponseFormat.builder()
-                    .type(JSON_SCHEMA)
-                    .jsonSchema(openAiJsonSchema)
+            Map<String, JsonValue> properties = new HashMap<>();
+            properties.put("name", JsonValue.from(jsonSchema.name()));
+            properties.put("strict", strict ? JsonValue.from(true) : JsonValue.from(false));
+            properties.put("schema", JsonValue.from(toOpenAiJsonSchemaElement(jsonSchema.rootElement(), strict)));
+
+            return ResponseFormatJsonObject.builder()
+                    .type(JsonValue.from("json_schema"))
+                    .putAllAdditionalProperties(Map.of("json_schema", JsonValue.from(properties)))
                     .build();
         }
     }
-    */
 
     public static ChatCompletionToolChoiceOption toOpenAiToolChoice(ToolChoice toolChoice) {
         if (toolChoice == null) {
