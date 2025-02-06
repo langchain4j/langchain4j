@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
+import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -27,7 +28,7 @@ import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.model.chat.request.json.JsonSchemaElementHelper.toMap;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.toObject;
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 
 class OllamaMessagesUtils {
 
@@ -93,7 +94,7 @@ class OllamaMessagesUtils {
         } else if (responseFormat == ResponseFormat.JSON && responseFormat.jsonSchema() == null) {
             return "json";
         } else {
-            return OllamaJsonUtils.toJson(JsonSchemaElementHelper.toMap(responseFormat.jsonSchema().rootElement()));
+            return toJson(JsonSchemaElementHelper.toMap(responseFormat.jsonSchema().rootElement()));
         }
     }
 
@@ -119,6 +120,12 @@ class OllamaMessagesUtils {
     }
 
     private static Message otherMessages(ChatMessage chatMessage) {
+        if (chatMessage instanceof CustomMessage customMessage) {
+            return Message.builder()
+                    .additionalFields(customMessage.attributes())
+                    .build();
+        }
+
         List<ToolCall> toolCalls = null;
         if (ChatMessageType.AI == chatMessage.type()) {
             AiMessage aiMessage = (AiMessage) chatMessage;
@@ -130,7 +137,7 @@ class OllamaMessagesUtils {
                                 };
                                 FunctionCall functionCall = FunctionCall.builder()
                                         .name(toolExecutionRequest.name())
-                                        .arguments(toObject(toolExecutionRequest.arguments(), typeReference))
+                                        .arguments(fromJson(toolExecutionRequest.arguments(), typeReference))
                                         .build();
                                 return ToolCall.builder()
                                         .function(functionCall).build();

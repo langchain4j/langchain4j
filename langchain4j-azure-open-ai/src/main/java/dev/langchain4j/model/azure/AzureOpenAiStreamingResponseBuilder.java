@@ -126,13 +126,10 @@ class AzureOpenAiStreamingResponseBuilder {
     public Response<AiMessage> build(Tokenizer tokenizer, boolean forcefulToolExecution) {
 
         String content = contentBuilder.toString();
-        if (!content.isEmpty()) {
-            return Response.from(
-                    AiMessage.from(content),
-                    tokenUsage(content, tokenizer),
-                    finishReasonFrom(finishReason)
-            );
-        }
+        TokenUsage contentDeltaOutTokenUsage = 
+            !content.isEmpty() ?
+                tokenUsage(content, tokenizer):
+                new TokenUsage(0,0);
 
         String toolName = toolNameBuilder.toString();
         if (!toolName.isEmpty()) {
@@ -141,8 +138,10 @@ class AzureOpenAiStreamingResponseBuilder {
                     .arguments(toolArgumentsBuilder.toString())
                     .build();
             return Response.from(
-                    AiMessage.from(toolExecutionRequest),
-                    tokenUsage(singletonList(toolExecutionRequest), tokenizer, forcefulToolExecution),
+                    !content.isEmpty() ?
+                        AiMessage.from(content, singletonList(toolExecutionRequest)) :
+                        AiMessage.from(toolExecutionRequest),
+                    tokenUsage(singletonList(toolExecutionRequest), tokenizer, forcefulToolExecution).add(contentDeltaOutTokenUsage),
                     finishReasonFrom(finishReason)
             );
         }
@@ -156,12 +155,22 @@ class AzureOpenAiStreamingResponseBuilder {
                             .build())
                     .collect(toList());
             return Response.from(
-                    AiMessage.from(toolExecutionRequests),
-                    tokenUsage(toolExecutionRequests, tokenizer, forcefulToolExecution),
+                    !content.isEmpty() ?
+                        AiMessage.from(content, toolExecutionRequests) :
+                        AiMessage.from(toolExecutionRequests),
+                    tokenUsage(toolExecutionRequests, tokenizer, forcefulToolExecution).add(contentDeltaOutTokenUsage),
                     finishReasonFrom(finishReason)
             );
         }
-
+        
+        if (!content.isEmpty()) {
+            return Response.from(
+                    AiMessage.from(content),
+                    tokenUsage(content, tokenizer),
+                    finishReasonFrom(finishReason)
+            );
+        }
+        
         return null;
     }
 

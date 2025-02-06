@@ -1,7 +1,14 @@
 package dev.langchain4j.model.chat.request.json;
 
-import dev.langchain4j.model.output.structured.Description;
+import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
+import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
+import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
+import static dev.langchain4j.internal.TypeUtils.isJsonString;
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
+import static java.lang.reflect.Modifier.isStatic;
+import static java.util.Arrays.stream;
 
+import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -11,53 +18,42 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.TypeUtils.isJsonBoolean;
-import static dev.langchain4j.internal.TypeUtils.isJsonInteger;
-import static dev.langchain4j.internal.TypeUtils.isJsonNumber;
-import static dev.langchain4j.internal.TypeUtils.isJsonString;
-import static dev.langchain4j.internal.Utils.generateUUIDFrom;
-import static java.lang.reflect.Modifier.isStatic;
-import static java.util.Arrays.stream;
-
 public class JsonSchemaElementHelper {
+
+    private static final String DEFAULT_UUID_DESCRIPTION = "String in a UUID format";
 
     public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz) {
         return jsonSchemaElementFrom(clazz, clazz, null, new LinkedHashMap<>());
     }
 
-    public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz,
-                                                          Type type,
-                                                          String fieldDescription,
-                                                          Map<Class<?>, VisitedClassMetadata> visited) {
+    public static JsonSchemaElement jsonSchemaElementFrom(
+            Class<?> clazz, Type type, String fieldDescription, Map<Class<?>, VisitedClassMetadata> visited) {
         if (isJsonString(clazz)) {
             return JsonStringSchema.builder()
-                    .description(fieldDescription)
+                    .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
                     .build();
         }
 
         if (isJsonInteger(clazz)) {
-            return JsonIntegerSchema.builder()
-                    .description(fieldDescription)
-                    .build();
+            return JsonIntegerSchema.builder().description(fieldDescription).build();
         }
 
         if (isJsonNumber(clazz)) {
-            return JsonNumberSchema.builder()
-                    .description(fieldDescription)
-                    .build();
+            return JsonNumberSchema.builder().description(fieldDescription).build();
         }
 
         if (isJsonBoolean(clazz)) {
-            return JsonBooleanSchema.builder()
-                    .description(fieldDescription)
-                    .build();
+            return JsonBooleanSchema.builder().description(fieldDescription).build();
         }
 
         if (clazz.isEnum()) {
             return JsonEnumSchema.builder()
-                    .enumValues(stream(clazz.getEnumConstants()).map(Object::toString).collect(Collectors.toList()))
+                    .enumValues(stream(clazz.getEnumConstants())
+                            .map(Object::toString)
+                            .collect(Collectors.toList()))
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
                     .build();
         }
@@ -79,10 +75,8 @@ public class JsonSchemaElementHelper {
         return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, visited, false);
     }
 
-    public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(Class<?> type,
-                                                                    String description,
-                                                                    Map<Class<?>, VisitedClassMetadata> visited,
-                                                                    boolean setDefinitions) {
+    public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(
+            Class<?> type, String description, Map<Class<?>, VisitedClassMetadata> visited, boolean setDefinitions) {
         if (visited.containsKey(type) && isCustomClass(type)) {
             VisitedClassMetadata visitedClassMetadata = visited.get(type);
             JsonSchemaElement jsonSchemaElement = visitedClassMetadata.jsonSchemaElement;
@@ -93,9 +87,8 @@ public class JsonSchemaElementHelper {
         }
 
         String reference = generateUUIDFrom(type.getName());
-        JsonReferenceSchema jsonReferenceSchema = JsonReferenceSchema.builder()
-                .reference(reference)
-                .build();
+        JsonReferenceSchema jsonReferenceSchema =
+                JsonReferenceSchema.builder().reference(reference).build();
         visited.put(type, new VisitedClassMetadata(jsonReferenceSchema, reference, false));
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
@@ -105,18 +98,14 @@ public class JsonSchemaElementHelper {
                 continue;
             }
             String fieldDescription = descriptionFrom(field);
-            JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(
-                    field.getType(),
-                    field.getGenericType(),
-                    fieldDescription,
-                    visited
-            );
+            JsonSchemaElement jsonSchemaElement =
+                    jsonSchemaElementFrom(field.getType(), field.getGenericType(), fieldDescription, visited);
             properties.put(fieldName, jsonSchemaElement);
         }
 
         JsonObjectSchema.Builder builder = JsonObjectSchema.builder()
                 .description(Optional.ofNullable(description).orElse(descriptionFrom(type)))
-                .properties(properties)
+                .addProperties(properties)
                 .required(new ArrayList<>(properties.keySet()));
 
         visited.get(type).jsonSchemaElement = builder.build();
@@ -141,6 +130,9 @@ public class JsonSchemaElementHelper {
     }
 
     private static String descriptionFrom(Class<?> type) {
+        if (type == UUID.class) {
+            return DEFAULT_UUID_DESCRIPTION;
+        }
         return descriptionFrom(type.getAnnotation(Description.class));
     }
 
@@ -198,8 +190,13 @@ public class JsonSchemaElementHelper {
                 properties.put("description", jsonObjectSchema.description());
             }
             properties.put("properties", toMap(jsonObjectSchema.properties(), strict));
-            if (jsonObjectSchema.required() != null) {
-                properties.put("required", jsonObjectSchema.required());
+            if (strict) {
+                // When using Structured Outputs, all fields must be required, see https://platform.openai.com/docs/guides/structured-outputs/supported-schemas#all-fields-must-be-required
+                properties.put("required", jsonObjectSchema.properties().keySet().stream().toList());
+            } else {
+                if (jsonObjectSchema.required() != null) {
+                    properties.put("required", jsonObjectSchema.required());
+                }
             }
             if (strict) {
                 properties.put("additionalProperties", false);

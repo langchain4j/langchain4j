@@ -32,7 +32,6 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_110
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_0125_PREVIEW;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1106_PREVIEW;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_VISION_PREVIEW;
 import static java.util.Collections.singletonList;
 
 /**
@@ -87,7 +86,12 @@ public class OpenAiTokenizer implements Tokenizer {
         // Doing so would cause the failure of every OpenAI***Model that uses this tokenizer.
         // This is done to account for situations when a new OpenAI model is available,
         // but JTokkit does not yet support it.
-        this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
+        if (modelName.startsWith("o1") || modelName.startsWith("o3")) {
+            // temporary fix until https://github.com/knuddelsgmbh/jtokkit/pull/118 is released
+            this.encoding = Encodings.newLazyEncodingRegistry().getEncoding("o200k_base");
+        } else {
+            this.encoding = Encodings.newLazyEncodingRegistry().getEncodingForModel(modelName);
+        }
     }
 
     public int estimateTokenCountInText(String text) {
@@ -132,7 +136,7 @@ public class OpenAiTokenizer implements Tokenizer {
             }
         }
 
-        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW.toString())) {
+        if (userMessage.name() != null) {
             tokenCount += extraTokensPerName();
             tokenCount += estimateTokenCountInText(userMessage.name());
         }

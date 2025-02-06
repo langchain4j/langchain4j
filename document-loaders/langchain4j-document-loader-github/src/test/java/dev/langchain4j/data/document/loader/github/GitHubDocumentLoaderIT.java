@@ -64,7 +64,7 @@ class GitHubDocumentLoaderIT {
 
     @Test
     public void should_load_repository() {
-        List<Document> documents = loader.loadDocuments(TEST_OWNER, "awesome-langchain", "main", parser);
+        List<Document> documents = loader.loadDocuments(TEST_OWNER, "awesome-langchain4j", "main", parser);
 
         assertThat(documents.size()).isGreaterThan(1);
     }

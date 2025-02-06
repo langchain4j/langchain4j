@@ -78,3 +78,20 @@ Bot bot = AiServices.builder(Bot.class)
     .toolProvider(toolProvider)
     .build();
 ```
+
+## Logging
+
+The MCP protocol also defines a way for the server to send log messages to
+the client. By default, the behavior of the client is to transform these log
+messages and log them using the SLF4J logger. If you want to change this
+behavior, there is an interface named
+`dev.langchain4j.mcp.client.logging.McpLogMessageHandler` that serves as a
+callback for received log messages. If you create your own implementation of
+`McpLogMessageHandler`, pass it to the MCP client builder:
+
+```java
+McpClient mcpClient = new DefaultMcpClient.Builder()
+    .transport(transport)
+    .logMessageHandler(new MyLogMessageHandler())
+    .build();
+```

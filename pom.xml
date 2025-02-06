@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.0.0-alpha2-SNAPSHOT</version>
+    <version>1.0.0-beta1</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
     <modules>
@@ -12,6 +12,14 @@
         <module>langchain4j-core</module>
         <module>langchain4j</module>
         <module>langchain4j-easy-rag</module>
+<<<<<<< HEAD
+=======
+
+        <!-- http clients -->
+        <module>langchain4j-http-client</module>
+        <module>http-clients/langchain4j-http-client-jdk</module>
+
+>>>>>>> origin/main
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
@@ -41,6 +49,7 @@
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-infinispan</module>
+        <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
         <module>langchain4j-mongodb-atlas</module>
         <module>langchain4j-neo4j</module>
@@ -49,7 +58,6 @@
         <module>langchain4j-pgvector</module>
         <module>langchain4j-pinecone</module>
         <module>langchain4j-qdrant</module>
-        <module>langchain4j-redis</module>
         <module>langchain4j-tablestore</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
@@ -128,6 +136,21 @@
                     </pom>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.simpligility.maven.plugins</groupId>
+                <artifactId>android-maven-plugin</artifactId>
+                <version>4.6.0</version>
+                <extensions>true</extensions>
+                <executions>
+                    <execution>
+                        <id>lint</id>
+                        <goals>
+                            <goal>lint</goal>
+                        </goals>
+                        <phase>process-classes</phase>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
         <extensions>
             <extension>
@@ -173,13 +196,13 @@
         </profile>
         <profile>
             <id>openrewrite</id>
-            <!-- `mvn -P openrewrite org.openrewrite.maven:rewrite-maven-plugin:run` -->
+            <!-- `mvn -P openrewrite rewrite:run` -->
             <build>
                 <plugins>
                     <plugin>
                         <groupId>org.openrewrite.maven</groupId>
                         <artifactId>rewrite-maven-plugin</artifactId>
-                        <version>5.42.2</version>
+                        <version>5.43.4</version>
                         <configuration>
                             <activeRecipes>
                                 <!--<recipe>org.openrewrite.java.OrderImports</recipe>-->

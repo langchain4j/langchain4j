@@ -1,11 +1,10 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
 public class ToolProviderResult {
 

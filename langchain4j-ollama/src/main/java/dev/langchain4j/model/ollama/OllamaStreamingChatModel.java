@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -24,7 +25,6 @@ import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaResponseFormat;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaTools;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
@@ -43,7 +43,8 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
 
-    public OllamaStreamingChatModel(String baseUrl,
+    public OllamaStreamingChatModel(HttpClientBuilder httpClientBuilder,
+                                    String baseUrl,
                                     String modelName,
                                     Double temperature,
                                     Integer topK,
@@ -67,10 +68,11 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         }
 
         this.client = OllamaClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(baseUrl)
-                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .timeout(timeout)
                 .logRequests(logRequests)
-                .logStreamingResponses(logResponses)
+                .logResponses(logResponses)
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
@@ -133,6 +135,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
 
     public static class OllamaStreamingChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String modelName;
         private Double temperature;
@@ -155,6 +158,18 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
         public OllamaStreamingChatModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        /**
+         * TODO
+         * TODO {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}
+         *
+         * @param httpClientBuilder
+         * @return
+         */
+        public OllamaStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OllamaStreamingChatModelBuilder baseUrl(String baseUrl) {
@@ -261,6 +276,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
 
         public OllamaStreamingChatModel build() {
             return new OllamaStreamingChatModel(
+                    httpClientBuilder,
                     baseUrl,
                     modelName,
                     temperature,
