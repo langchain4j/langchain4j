@@ -155,16 +155,18 @@ public class InternalOpenAiOfficialHelper {
             if (content instanceof TextContent textContent) {
                 parts.add(ChatCompletionContentPart.ofText(
                         ChatCompletionContentPartText.builder()
-                                .text((textContent).text())
+                                .text(textContent.text())
                                 .build()
                                 ));
             } else if (content instanceof ImageContent imageContent) {
+                ChatCompletionContentPartImage.ImageUrl.Builder imageUrlBuilder = ChatCompletionContentPartImage.ImageUrl.builder();
+                if (imageContent.image() != null && imageContent.image().url() != null) {
+                    imageUrlBuilder.url(imageContent.image().url().toString());
+                }
+
                 parts.add(ChatCompletionContentPart.ofImageUrl(
                         ChatCompletionContentPartImage.builder()
-                                .imageUrl(
-                                        ChatCompletionContentPartImage.ImageUrl.builder()
-                                                .url((imageContent).image().url().toString())
-                                                .build())
+                                .imageUrl(imageUrlBuilder.build())
                                 .build()
                 ));
             } else if (content instanceof AudioContent audioContent) {
