@@ -176,7 +176,7 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
-> **Note**: This example uses Docker and therefore executes a Docker command. If you want to use Podman instead of Docker, change the command accordingly.
+> **Note**: This example uses Docker and therefore executes a Docker command available in `/usr/local/bin/docker` (change the path according to your operating system). If you want to use Podman instead of Docker, change the command accordingly.
 
 ## Executing the Code
 
