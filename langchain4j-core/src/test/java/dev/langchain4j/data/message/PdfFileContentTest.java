@@ -51,6 +51,12 @@ class PdfFileContentTest {
     }
 
     @Test
+    void should_replace_space_from_url() {
+        PdfFileContent content = PdfFileContent.from("https://example.com/ pdf File .pdf");
+        assertThat(content.pdfFile().url().toString()).isEqualTo("https://example.com/%20pdf%20File%20.pdf");
+    }
+
+    @Test
     public void test_builders() {
         PdfFile urlPdfFile = PdfFile.builder()
             .url(URI.create("https://example.com/pdfFile.pdf"))

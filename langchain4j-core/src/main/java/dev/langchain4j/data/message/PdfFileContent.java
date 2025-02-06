@@ -106,7 +106,7 @@ public class PdfFileContent implements Content {
      * @return the new {@link PdfFileContent}.
      */
     public static PdfFileContent from(String url) {
-        return new PdfFileContent(url);
+        return new PdfFileContent(url.replace(" ", "%20"));
     }
 
     /**
