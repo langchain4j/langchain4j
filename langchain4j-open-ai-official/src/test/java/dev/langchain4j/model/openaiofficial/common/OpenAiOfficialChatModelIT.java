@@ -2,6 +2,7 @@ package dev.langchain4j.model.openaiofficial.common;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -37,6 +38,21 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
                 OPEN_AI_CHAT_MODEL,
                 OPEN_AI_CHAT_MODEL_STRICT_SCHEMA
         );
+    }
+
+    @Override
+    protected ChatLanguageModel createModelWith(ChatRequestParameters parameters) {
+        OpenAiOfficialChatModel.OpenAiOfficialChatModelBuilder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
+                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .azureDeploymentName(MODEL_NAME.toString())
+                .azureOpenAIServiceVersion(API_VERSION)
+                .modelName(MODEL_NAME)
+                .defaultRequestParameters(parameters);
+        if (parameters.modelName() == null) {
+            openAiChatModelBuilder.modelName(MODEL_NAME);
+        }
+        return openAiChatModelBuilder.build();
     }
 
     @Override
