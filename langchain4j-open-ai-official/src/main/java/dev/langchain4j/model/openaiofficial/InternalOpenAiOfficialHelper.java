@@ -517,6 +517,9 @@ public class InternalOpenAiOfficialHelper {
         ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder()
                 .model(parameters.modelName());
 
+        if (parameters.maxOutputTokens() != null && parameters.maxCompletionTokens() == null) {
+            builder.maxTokens(parameters.maxOutputTokens());
+        }
         if (parameters.maxCompletionTokens() != null) {
             builder.maxCompletionTokens(parameters.maxCompletionTokens());
         }
