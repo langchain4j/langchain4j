@@ -66,7 +66,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
     private final Tokenizer tokenizer;
 
     private final List<ChatModelListener> listeners;
-    private Set<Capability> supportedCapabilities;
+    private final Set<Capability> supportedCapabilities;
 
     public OpenAiOfficialChatModel(String baseUrl,
                            String apiKey,
@@ -180,6 +180,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
                 // OpenAI-specific parameters
+                .maxOutputTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxOutputTokens()))
                 .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(logitBias, () -> copyIfNotNull(openAiParameters.logitBias())))
                 .parallelToolCalls(getOrDefault(parallelToolCalls, openAiParameters.parallelToolCalls()))
@@ -197,7 +198,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         this.tokenizer = getOrDefault(tokenizer, new OpenAiOfficialTokenizer(this.defaultRequestParameters.modelName()));
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
-        this.supportedCapabilities = copyIfNotNull(capabilities);
+        this.supportedCapabilities = getOrDefault(copyIfNotNull(capabilities), new HashSet<>());
     }
 
     @Override
@@ -207,7 +208,10 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
 
     @Override
     public Set<Capability> supportedCapabilities() {
-        return supportedCapabilities;
+        if ("json_schema".equals(responseFormat)) {
+            this.supportedCapabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
+        }
+        return this.supportedCapabilities;
     }
 
     @Override
