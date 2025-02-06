@@ -579,10 +579,6 @@ public class InternalOpenAiOfficialHelper {
             builder.presencePenalty(parameters.presencePenalty());
         }
 
-        if (parameters.maxCompletionTokens() != null) {
-            builder.maxCompletionTokens(parameters.maxCompletionTokens());
-        }
-
         if (parameters.stopSequences() != null) {
             builder.stop(ChatCompletionCreateParams.Stop.ofStrings(parameters.stopSequences()));
         }

@@ -51,6 +51,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
                 .azureDeploymentName(MODEL_NAME.toString())
                 .azureOpenAIServiceVersion(API_VERSION)
                 .modelName(MODEL_NAME)
+                .maxCompletionTokens(parameters.maxOutputTokens())
                 .defaultRequestParameters(parameters);
         if (parameters.modelName() == null) {
             openAiChatModelBuilder.modelName(MODEL_NAME);
