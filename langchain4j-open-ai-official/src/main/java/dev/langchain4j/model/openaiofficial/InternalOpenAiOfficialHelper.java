@@ -220,9 +220,9 @@ public class InternalOpenAiOfficialHelper {
     private static ChatCompletionTool toTool(ToolSpecification toolSpecification, boolean strict) {
 
         FunctionDefinition.Builder functionDefinitionBuilder = FunctionDefinition.builder()
-                        .name(toolSpecification.name())
-                                .description(toolSpecification.description())
-                                        .parameters(toOpenAiParameters(toolSpecification, strict));
+                .name(toolSpecification.name())
+                .description(toolSpecification.description() != null ? toolSpecification.description() : "")
+                .parameters(toOpenAiParameters(toolSpecification, strict));
 
         if (strict) {
             functionDefinitionBuilder.strict(true);
@@ -283,7 +283,7 @@ public class InternalOpenAiOfficialHelper {
 
             Map<String, Object> objectMap =  new HashMap<>();
             objectMap.put("type", "object");
-            objectMap.put("description", jsonObjectSchema.description());
+            objectMap.put("description", JsonValue.from(jsonObjectSchema.description() != null ? jsonObjectSchema.description() : ""));
             objectMap.put("properties", toOpenAiProperties(jsonObjectSchema.properties(), strict));
             objectMap.put("$defs", toOpenAiProperties(jsonObjectSchema.definitions(), strict));
             if (strict) {
@@ -301,36 +301,36 @@ public class InternalOpenAiOfficialHelper {
             return Map.of("type",
                     "array",
                     "description",
-                    jsonArraySchema.description(),
+                    JsonValue.from(jsonArraySchema.description() != null ? jsonArraySchema.description() : ""),
                     "items",
                     JsonValue.from(toOpenAiJsonSchemaElement(jsonArraySchema.items(), strict)));
         } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
             return Map.of("type",
                     "string",
                     "description",
-                    jsonEnumSchema.description(),
+                    JsonValue.from(jsonEnumSchema.description() != null ? jsonEnumSchema.description() : ""),
                     "enum",
                     JsonValue.from(jsonEnumSchema.enumValues()));
         } else if (jsonSchemaElement instanceof JsonStringSchema jsonStringSchema) {
             return Map.of("type",
                     "string",
                     "description",
-                    JsonValue.from(jsonStringSchema.description()));
+                    JsonValue.from(jsonStringSchema.description() != null ? jsonStringSchema.description() : ""));
         } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
             return Map.of("type",
                     "integer",
                     "description",
-                    JsonValue.from(jsonIntegerSchema.description()));
+                    JsonValue.from(jsonIntegerSchema.description() != null ? jsonIntegerSchema.description() : ""));
         } else if (jsonSchemaElement instanceof JsonNumberSchema jsonNumberSchema) {
             return Map.of("type",
                     "number",
                     "description",
-                    JsonValue.from(jsonNumberSchema.description()));
+                    JsonValue.from(jsonNumberSchema.description() != null ? jsonNumberSchema.description() : ""));
         } else if (jsonSchemaElement instanceof JsonBooleanSchema jsonBooleanSchema) {
             return Map.of("type",
                     "boolean",
                     "description",
-                    JsonValue.from(jsonBooleanSchema.description()));
+                    JsonValue.from(jsonBooleanSchema.description() != null ? jsonBooleanSchema.description() : ""));
         } else if (jsonSchemaElement instanceof JsonReferenceSchema jsonReferenceSchema) {
             return Map.of("type",
                     "",
@@ -340,7 +340,7 @@ public class InternalOpenAiOfficialHelper {
             return Map.of("type",
                     "anyOf",
                     "description",
-                    JsonValue.from(jsonAnyOfSchema.description()),
+                    JsonValue.from(jsonAnyOfSchema.description() != null ? jsonAnyOfSchema.description() : ""),
                     "anyOf",
                     JsonValue.from(jsonAnyOfSchema.anyOf().stream()
                             .map(it -> toOpenAiJsonSchemaElement(it, strict))
