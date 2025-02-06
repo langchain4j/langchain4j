@@ -4,6 +4,9 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.pdf.PdfFile;
 
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLDecoder;;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ContentType.PDF;
@@ -106,7 +109,16 @@ public class PdfFileContent implements Content {
      * @return the new {@link PdfFileContent}.
      */
     public static PdfFileContent from(String url) {
-        return new PdfFileContent(url.replace(" ", "%20"));
+        if (isURLEncoded(url)) {
+            return new PdfFileContent(url);
+        }
+
+        try {
+            URI uri = new URI(null, url, null);
+            return from(uri);
+        } catch (URISyntaxException e) {
+            throw new Error(e);
+        }
     }
 
     /**
@@ -129,4 +141,10 @@ public class PdfFileContent implements Content {
     public static PdfFileContent from(PdfFile pdfFile) {
         return new PdfFileContent(pdfFile);
     }
+
+    public static boolean isURLEncoded(String url) {
+        String decodedURL = URLDecoder.decode(url, StandardCharsets.UTF_8);
+        return !decodedURL.equals(url);
+    }
+
 }

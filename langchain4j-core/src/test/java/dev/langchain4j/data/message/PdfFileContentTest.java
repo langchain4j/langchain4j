@@ -4,6 +4,7 @@ import dev.langchain4j.data.pdf.PdfFile;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -51,9 +52,18 @@ class PdfFileContentTest {
     }
 
     @Test
-    void should_replace_space_from_url() {
+    void should_replace_all_space_from_url() {
         PdfFileContent content = PdfFileContent.from("https://example.com/ pdf File .pdf");
         assertThat(content.pdfFile().url().toString()).isEqualTo("https://example.com/%20pdf%20File%20.pdf");
+    }
+
+    @Test
+    void should_not_do_anything_with_encoded_or_no_spaced_Urls() {
+        PdfFileContent contentEncoded = PdfFileContent.from("https://example.com/%20pdf%20File%20.pdf");
+        PdfFileContent content = PdfFileContent.from("https://example.com/pdfFile.pdf");
+
+        assertThat(contentEncoded.pdfFile().url().toString()).isEqualTo("https://example.com/%20pdf%20File%20.pdf");
+        assertThat(content.pdfFile().url().toString()).isEqualTo("https://example.com/pdfFile.pdf");
     }
 
     @Test
