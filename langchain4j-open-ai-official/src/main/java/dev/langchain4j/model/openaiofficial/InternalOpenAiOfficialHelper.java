@@ -81,10 +81,10 @@ public class InternalOpenAiOfficialHelper {
     }
 
     public static ChatCompletionMessageParam toOpenAiMessage(ChatMessage message) {
-        if (message instanceof SystemMessage) {
-            ChatCompletionMessageParam.ofSystem(
+        if (message instanceof SystemMessage systemMessage) {
+            return ChatCompletionMessageParam.ofSystem(
                     ChatCompletionSystemMessageParam.builder()
-                            .content(((SystemMessage) message).text()).build());
+                            .content(systemMessage.text()).build());
         }
 
         if (message instanceof UserMessage userMessage) {
