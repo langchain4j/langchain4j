@@ -9,7 +9,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+import java.util.Set;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelIT.API_VERSION;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelIT.MODEL_NAME;
 
@@ -29,6 +31,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
             .azureDeploymentName(MODEL_NAME.toString())
             .azureOpenAIServiceVersion(API_VERSION)
             .modelName(MODEL_NAME)
+            .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
             .strictJsonSchema(true)
             .build();
 
