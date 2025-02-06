@@ -29,7 +29,7 @@ class PdfFileContentTest {
     }
 
     @Test
-    public void test_equals_hashCode() {
+    public void test_equals_hashCode() throws URISyntaxException {
         PdfFileContent pdf1 = PdfFileContent.from("https://example.com/pdfFile1.pdf");
         PdfFileContent pdf2 = PdfFileContent.from("https://example.com/pdfFile1.pdf");
 
@@ -52,13 +52,13 @@ class PdfFileContentTest {
     }
 
     @Test
-    void should_replace_all_space_from_url() {
+    void should_replace_all_space_from_url() throws URISyntaxException {
         PdfFileContent content = PdfFileContent.from("https://example.com/ pdf File .pdf");
         assertThat(content.pdfFile().url().toString()).isEqualTo("https://example.com/%20pdf%20File%20.pdf");
     }
 
     @Test
-    void should_not_do_anything_with_encoded_or_no_spaced_Urls() {
+    void should_not_do_anything_with_encoded_or_no_spaced_Urls() throws URISyntaxException {
         PdfFileContent contentEncoded = PdfFileContent.from("https://example.com/%20pdf%20File%20.pdf");
         PdfFileContent content = PdfFileContent.from("https://example.com/pdfFile.pdf");
 
@@ -67,7 +67,7 @@ class PdfFileContentTest {
     }
 
     @Test
-    public void test_builders() {
+    public void test_builders() throws URISyntaxException {
         PdfFile urlPdfFile = PdfFile.builder()
             .url(URI.create("https://example.com/pdfFile.pdf"))
             .build();

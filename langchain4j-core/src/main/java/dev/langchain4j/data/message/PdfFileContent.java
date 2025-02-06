@@ -5,9 +5,10 @@ import dev.langchain4j.data.pdf.PdfFile;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLDecoder;;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 import static dev.langchain4j.data.message.ContentType.PDF;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -108,17 +109,13 @@ public class PdfFileContent implements Content {
      * @param url the url of the PDF.
      * @return the new {@link PdfFileContent}.
      */
-    public static PdfFileContent from(String url) {
+    public static PdfFileContent from(String url) throws URISyntaxException {
         if (isURLEncoded(url)) {
             return new PdfFileContent(url);
         }
 
-        try {
-            URI uri = new URI(null, url, null);
-            return from(uri);
-        } catch (URISyntaxException e) {
-            throw new Error(e);
-        }
+        URI uri = new URI(null, url, null);
+        return from(uri);
     }
 
     /**
@@ -143,6 +140,10 @@ public class PdfFileContent implements Content {
     }
 
     public static boolean isURLEncoded(String url) {
+        Pattern encoderPattern = Pattern.compile("%[0-9A-Fa-f]{2}");
+        if (!encoderPattern.matcher(url).find()) {
+            return false;
+        }
         String decodedURL = URLDecoder.decode(url, StandardCharsets.UTF_8);
         return !decodedURL.equals(url);
     }
