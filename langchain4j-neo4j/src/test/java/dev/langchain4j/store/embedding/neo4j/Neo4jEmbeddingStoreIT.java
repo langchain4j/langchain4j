@@ -7,6 +7,7 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import org.junit.jupiter.api.AfterEach;
@@ -51,7 +52,7 @@ class Neo4jEmbeddingStoreIT {
     public static final String LABEL_TO_SANITIZE = "Label ` to \\ sanitize";
     
     @Container
-    static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.26.1"))
+    static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.26"))
             .withAdminPassword(ADMIN_PASSWORD);
 
     private static final String METADATA_KEY = "test-key";
@@ -92,7 +93,12 @@ class Neo4jEmbeddingStoreIT {
         String id = embeddingStore.add(embedding);
         assertThat(id).isNotNull();
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
+        final EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.search(request).matches();
+
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
@@ -113,7 +119,11 @@ class Neo4jEmbeddingStoreIT {
 
         embeddingStore.add(id, embedding);
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
+        final EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.search(request).matches();
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
@@ -135,7 +145,11 @@ class Neo4jEmbeddingStoreIT {
         String id = embeddingStore.add(embedding, segment);
         assertThat(id).isNotNull();
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
+        final EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.search(request).matches();
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
@@ -193,7 +207,11 @@ class Neo4jEmbeddingStoreIT {
         String id = embeddingStore.add(embedding, segment);
         assertThat(id).isNotNull();
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
+        final EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.search(request).matches();
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
@@ -238,7 +256,11 @@ class Neo4jEmbeddingStoreIT {
         List<String> ids = embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
         assertThat(ids).hasSize(2);
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
+        final EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.search(request).matches();
         assertThat(relevant).hasSize(2);
 
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
@@ -279,7 +301,11 @@ class Neo4jEmbeddingStoreIT {
         );
         assertThat(ids).hasSize(2);
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
+        final EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.search(request).matches();
         assertThat(relevant).hasSize(2);
 
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
@@ -318,7 +344,11 @@ class Neo4jEmbeddingStoreIT {
         Embedding secondEmbedding = embeddingModel.embed("secondEmbedText").content();
         embeddingStore.add(secondId, secondEmbedding);
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
+        final EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.search(request).matches();
         assertThat(relevant).hasSize(2);
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
         assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
@@ -327,29 +357,32 @@ class Neo4jEmbeddingStoreIT {
         assertThat(secondMatch.score()).isBetween(0d, 1d);
         assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
 
-        List<EmbeddingMatch<TextSegment>> relevant2 = embeddingStore.findRelevant(
-                firstEmbedding,
-                10,
-                secondMatch.score() - 0.01
-        );
+        final EmbeddingSearchRequest request2 = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .minScore(secondMatch.score() - 0.01)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant2 = embeddingStore.search(request2).matches();
         assertThat(relevant2).hasSize(2);
         assertThat(relevant2.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(relevant2.get(1).embeddingId()).isEqualTo(secondId);
 
-        List<EmbeddingMatch<TextSegment>> relevant3 = embeddingStore.findRelevant(
-                firstEmbedding,
-                10,
-                secondMatch.score()
-        );
+        final EmbeddingSearchRequest request3 = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .minScore(secondMatch.score())
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant3 = embeddingStore.search(request3).matches();
         assertThat(relevant3).hasSize(2);
         assertThat(relevant3.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(relevant3.get(1).embeddingId()).isEqualTo(secondId);
 
-        List<EmbeddingMatch<TextSegment>> relevant4 = embeddingStore.findRelevant(
-                firstEmbedding,
-                10,
-                secondMatch.score() + 0.01
-        );
+        final EmbeddingSearchRequest request4 = EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .minScore(secondMatch.score() + 0.01)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant4 = embeddingStore.search(request4).matches();
         assertThat(relevant4).hasSize(1);
         assertThat(relevant4.get(0).embeddingId()).isEqualTo(firstId);
 
@@ -375,7 +408,11 @@ class Neo4jEmbeddingStoreIT {
 
         Embedding referenceEmbedding = embeddingModel.embed("hi").content();
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(referenceEmbedding, 1);
+        final EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(referenceEmbedding)
+                .maxResults(1)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.search(request).matches();
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
@@ -469,7 +506,11 @@ class Neo4jEmbeddingStoreIT {
         String id = embeddingStore.add(embedding, segment);
         assertThat(id).isNotNull();
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
+        final EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+        final List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.search(request).matches();
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
