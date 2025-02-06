@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.retriever.neo4j;
 
+import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.rag.content.Content;
@@ -16,6 +17,9 @@ import org.neo4j.driver.Session;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
@@ -128,6 +132,84 @@ class Neo4jContentRetrieverIT {
 
         // Then
         assertThat(contents).hasSize(1);
+    }
+    
+    @Test
+    void shouldRetrieveContentWhenQueryIsValidAndOpenAiChatModelIsUsedWithExample() throws Exception {
+        // remove existing `Book` and `Person` entities
+        driver.session().run("MATCH (n) DETACH DELETE n");
+        // recreate Neo4jGraph instead of reuse `this.graph`, otherwise it remains the old one with (:Book), etc..
+        final Neo4jGraph graphStreamer = Neo4jGraph.builder()
+                .driver(driver)
+                .build();
+        
+        URI resource =  getClass().getClassLoader().getResource("streamer_dataset.cypher")
+                .toURI();
+        String datasetEntities = Files.readString( Paths.get(resource) );
+
+        driver.session().executeWriteWithoutResult(tx -> {
+            for (String query: datasetEntities.split(";")) {
+                System.out.println("query = " + query);
+                tx.run(query);
+            }
+        });
+
+        // With
+        ChatLanguageModel openAiChatModel = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        String examples = """
+            # Which streamer has the most followers?
+            MATCH (s:Stream)
+            RETURN s.name AS streamer
+            ORDER BY s.followers DESC LIMIT 1
+            
+            # How many streamers are from Norway?
+            MATCH (s:Stream)-[:HAS_LANGUAGE]->(:Language {{name: 'Norwegian'}})
+            RETURN count(s) AS streamers
+
+            Note: Do not include any explanations or apologies in your responses.
+            Do not respond to any questions that might ask anything else than for you to construct a Cypher statement.
+            Do not include any text except the generated Cypher statement.
+            """;
+        final String textQuery = "Which streamer from Italy has the most followers?";
+        Query query = new Query(textQuery);
+
+        Neo4jContentRetriever neo4jContentRetrieverWithoutExample = Neo4jContentRetriever.builder()
+                .graph(graphStreamer)
+                .chatLanguageModel(openAiChatModel)
+                .build();
+        List<Content> contentsWithoutExample = neo4jContentRetrieverWithoutExample.retrieve(query);
+        assertThat(contentsWithoutExample).hasSize(0);
+
+        // When
+        Neo4jContentRetriever neo4jContentRetriever = Neo4jContentRetriever.builder()
+                .graph(graphStreamer)
+                .chatLanguageModel(openAiChatModel)
+                .examples(examples)
+                .build();
+
+        // Then
+        // retry mechanism since the result is not deterministic
+        final String text = RetryUtils.withRetry(() -> {
+            List<Content> contents = neo4jContentRetriever.retrieve(query);
+            assertThat(contents).hasSize(1);
+            return contents.get(0).textSegment().text();
+        }, 5);
+
+        // check validity of the response
+        final String name = driver.session().run("MATCH (s:Stream)-[:HAS_LANGUAGE]->(l:Language {name: 'Italian'}) RETURN s.name ORDER BY s.followers DESC LIMIT 1")
+                .single()
+                .values()
+                .get(0)
+                .toString();
+        assertThat(text).isEqualTo(name);
     }
 
     @Test

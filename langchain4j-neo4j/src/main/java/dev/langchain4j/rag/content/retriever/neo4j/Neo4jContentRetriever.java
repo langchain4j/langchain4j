@@ -27,11 +27,20 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 public class Neo4jContentRetriever implements ContentRetriever {
 
     private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from("""
-            Based on the Neo4j graph schema below, write a Cypher query that would answer the user's question:
-            {{schema}}
+            Task:Generate Cypher statement to query a graph database.
+            Instructions
+            Use only the provided relationship types and properties in the schema.
+            Do not use any other relationship types or properties that are not provided.
 
-            Question: {{question}}
-            Cypher query:
+            Schema:
+            {{schema}}
+            
+            {{examples}}
+
+            Note: Do not include any explanations or apologies in your responses.
+            Do not respond to any questions that might ask anything else than for you to construct a Cypher statement.
+            Do not include any text except the generated Cypher statement.
+            The question is: {{question}}
             """);
 
     private static final Pattern BACKTICKS_PATTERN = Pattern.compile("```(.*?)```", Pattern.MULTILINE | Pattern.DOTALL);
@@ -43,12 +52,17 @@ public class Neo4jContentRetriever implements ContentRetriever {
 
     private final PromptTemplate promptTemplate;
 
+    private final String examples;
+
     @Builder
-    public Neo4jContentRetriever(Neo4jGraph graph, ChatLanguageModel chatLanguageModel, PromptTemplate promptTemplate) {
+    public Neo4jContentRetriever(Neo4jGraph graph, ChatLanguageModel chatLanguageModel, PromptTemplate promptTemplate, String examples) {
 
         this.graph = ensureNotNull(graph, "graph");
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
+        this.examples = examples == null
+                ? ""
+                : "Cypher examples: " + examples;
     }
 
     @Override
@@ -63,7 +77,10 @@ public class Neo4jContentRetriever implements ContentRetriever {
 
     private String generateCypherQuery(String schema, String question) {
 
-        Prompt cypherPrompt = promptTemplate.apply(Map.of("schema", schema, "question", question));
+        final Map<String, Object> variables = Map.of("schema", schema,
+                "question", question,
+                "examples", examples);
+        Prompt cypherPrompt = promptTemplate.apply(variables);
         String cypherQuery = chatLanguageModel.generate(cypherPrompt.text());
         Matcher matcher = BACKTICKS_PATTERN.matcher(cypherQuery);
         if (matcher.find()) {
