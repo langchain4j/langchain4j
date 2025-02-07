@@ -187,27 +187,6 @@ public class InternalOpenAiOfficialHelper {
         return parts;
     }
 
-    /*
-
-    private static String extractSubtype(String mimetype) {
-        return mimetype.split("/")[1];
-    }
-
-    private static String toUrl(Image image) {
-        if (image.url() != null) {
-            return image.url().toString();
-        }
-        return format("data:%s;base64,%s", image.mimeType(), image.base64Data());
-    }
-
-    private static ImageDetail toDetail(ImageContent.DetailLevel detailLevel) {
-        if (detailLevel == null) {
-            return null;
-        }
-        return ImageDetail.valueOf(detailLevel.name());
-    }
-    */
-
     public static List<ChatCompletionTool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
         if (toolSpecifications == null) {
             return null;
@@ -472,27 +451,6 @@ public class InternalOpenAiOfficialHelper {
                 chatResponse.metadata().tokenUsage(),
                 chatResponse.metadata().finishReason());
     }
-/*
-    static StreamingChatResponseHandler convertHandler(StreamingResponseHandler<AiMessage> handler) {
-        return new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                handler.onNext(partialResponse);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                handler.onComplete(convertResponse(completeResponse));
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                handler.onError(error);
-            }
-        };
-    }
-    */
 
     static void validate(ChatRequestParameters parameters) {
         if (parameters.topK() != null) {
