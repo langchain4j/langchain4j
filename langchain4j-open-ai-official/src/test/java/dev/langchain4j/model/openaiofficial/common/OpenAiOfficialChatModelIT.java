@@ -22,7 +22,6 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL = OpenAiOfficialChatModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .azureDeploymentName(MODEL_NAME.toString())
             .azureOpenAIServiceVersion(API_VERSION)
             .modelName(MODEL_NAME)
             .build();
@@ -30,7 +29,6 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL_STRICT_SCHEMA = OpenAiOfficialChatModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .azureDeploymentName(MODEL_NAME.toString())
             .azureOpenAIServiceVersion(API_VERSION)
             .modelName(MODEL_NAME)
             .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
@@ -42,6 +40,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
         return List.of(
                 //OPEN_AI_CHAT_MODEL, //TODO FIX this doesn't run reliably when generating JSON (as there is no schema)
                 OPEN_AI_CHAT_MODEL_STRICT_SCHEMA
+                // TODO Add a model using OpenAI (NOT Azure OpenAI)
         );
     }
 
@@ -50,8 +49,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
         OpenAiOfficialChatModel.OpenAiOfficialChatModelBuilder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
                 .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .azureApiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .azureDeploymentName(ChatModel.GPT_4O.toString())
-                .modelName(ChatModel.GPT_4O_2024_08_06.toString())
+                .modelName(ChatModel.GPT_4O.toString())
                 .azureOpenAIServiceVersion(API_VERSION)
                 .maxCompletionTokens(parameters.maxOutputTokens())
                 .defaultRequestParameters(parameters);
@@ -69,6 +67,12 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
         return OpenAiOfficialChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
+    }
+
+    @Override
+    protected boolean supportsModelNameParameter() {
+        // With Azure OpenAI, the deployment name is part of the URL, changing the model name will not have any effect.
+        return false;
     }
 
     @Override

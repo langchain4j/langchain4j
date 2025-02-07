@@ -11,6 +11,7 @@ import com.openai.models.ChatModel;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -57,6 +58,8 @@ import static java.util.Collections.emptyList;
 public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final OpenAIClient client;
+    private final boolean useAzure;
+    private final String azureModelName;
 
     private final OpenAiOfficialChatRequestParameters defaultRequestParameters;
     private final String responseFormat;
@@ -107,13 +110,24 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
             baseUrl = OPENAI_DEMO_URL;
         }
+
         if (azureApiKey != null || credential != null) {
             // Using Azure OpenAI
+            this.useAzure = true;
+            ensureNotBlank(modelName, "modelName");
+            this.azureModelName = modelName;
+            // If the Azure deployment name is not configured, we use the model name instead, as it's the default deployment name
+            if (azureDeploymentName == null) {
+                azureDeploymentName = modelName;
+            }
             ensureNotBlank(azureDeploymentName, "azureDeploymentName");
             ensureNotNull(azureOpenAIServiceVersion, "azureOpenAIServiceVersion");
             baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
             builder.baseUrl(baseUrl + "/openai/deployments/" + azureDeploymentName + "?api-version=" + azureOpenAIServiceVersion.value());
         } else {
+            // Using OpenAI
+            this.useAzure = false;
+            this.azureModelName = null;
             builder.baseUrl(baseUrl);
         }
 
@@ -152,7 +166,6 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         builder.maxRetries(getOrDefault(maxRetries, 3));
 
         this.client = builder.build();
-
 
         ChatRequestParameters commonParameters;
         if (defaultRequestParameters != null) {
@@ -251,6 +264,12 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
 
         OpenAiOfficialChatRequestParameters parameters = (OpenAiOfficialChatRequestParameters) chatRequest.parameters();
         InternalOpenAiOfficialHelper.validate(parameters);
+
+        if (this.useAzure) {
+            if (!parameters.modelName().equals(this.azureModelName)) {
+                throw new UnsupportedFeatureException("On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
+            }
+        }
 
         ChatCompletionCreateParams chatCompletionCreateParams =
                 toOpenAiChatCompletionCreateParams(chatRequest, parameters, strictTools, strictJsonSchema).build();
@@ -504,6 +523,16 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         }
 
         public OpenAiOfficialChatModel build() {
+
+            if (azureApiKey != null || credential != null) {
+                // Using Azure OpenAI
+                if (this.defaultRequestParameters != null && this.defaultRequestParameters.modelName() != null) {
+                    if (!this.defaultRequestParameters.modelName().equals(this.modelName)) {
+                        throw new UnsupportedFeatureException("On Azure OpenAI, it is not supported to change the modelName, as it's part of the deployment URL");
+                    }
+                }
+            }
+
             return new OpenAiOfficialChatModel(
                     this.baseUrl,
                     this.apiKey,
