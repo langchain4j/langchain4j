@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class OpenAiOfficialChatModelIT {
 
     public static final ChatModel MODEL_NAME = ChatModel.GPT_4O_MINI;
-    public static final AzureOpenAIServiceVersion API_VERSION = AzureOpenAIServiceVersion.fromString("2024-08-01-preview");
+    public static final AzureOpenAIServiceVersion API_VERSION = AzureOpenAIServiceVersion.getV2024_08_01_PREVIEW();
 
     OpenAiOfficialChatModel model = OpenAiOfficialChatModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
