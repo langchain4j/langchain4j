@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
@@ -14,10 +15,11 @@ import java.util.List;
 import java.util.Set;
 
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelIT.API_VERSION;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModelIT.MODEL_NAME;
 
 class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
+
+    public static final ChatModel MODEL_NAME = ChatModel.GPT_4O_MINI;
+    public static final AzureOpenAIServiceVersion API_VERSION = AzureOpenAIServiceVersion.getV2024_08_01_PREVIEW();
 
     static final OpenAiOfficialChatModel OPEN_AI_CHAT_MODEL = OpenAiOfficialChatModel.builder()
             .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
