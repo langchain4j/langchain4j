@@ -370,7 +370,7 @@ public class InternalOpenAiOfficialHelper {
             }
         }
 
-        return AiMessage.from(text.isPresent() ? text.get() : "");
+        return AiMessage.from(text.orElse(""));
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ChatCompletionMessageToolCall toolCall) {
@@ -389,13 +389,13 @@ public class InternalOpenAiOfficialHelper {
 
         Optional<CompletionUsage.PromptTokensDetails> promptTokensDetails = openAiUsage.get().promptTokensDetails();
         OpenAiOfficialTokenUsage.InputTokensDetails inputTokensDetails = null;
-        if (promptTokensDetails.isPresent()) {
+        if (promptTokensDetails.isPresent() && promptTokensDetails.get().cachedTokens().isPresent()) {
             inputTokensDetails = new OpenAiOfficialTokenUsage.InputTokensDetails(promptTokensDetails.get().cachedTokens().get());
         }
 
         Optional<CompletionUsage.CompletionTokensDetails> completionTokensDetails = openAiUsage.get().completionTokensDetails();
         OpenAiOfficialTokenUsage.OutputTokensDetails outputTokensDetails = null;
-        if (completionTokensDetails.isPresent()) {
+        if (completionTokensDetails.isPresent() && completionTokensDetails.get().reasoningTokens().isPresent()) {
             outputTokensDetails = new OpenAiOfficialTokenUsage.OutputTokensDetails(completionTokensDetails.get().reasoningTokens().get());
         }
 
