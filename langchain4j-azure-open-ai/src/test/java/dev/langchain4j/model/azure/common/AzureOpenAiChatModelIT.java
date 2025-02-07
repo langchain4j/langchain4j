@@ -92,6 +92,7 @@ class AzureOpenAiChatModelIT extends AbstractChatModelIT {
         return false; // TODO implement
     }
 
+    @Override
     protected boolean assertFinishReason() {
         return false; // TODO implement
     }
