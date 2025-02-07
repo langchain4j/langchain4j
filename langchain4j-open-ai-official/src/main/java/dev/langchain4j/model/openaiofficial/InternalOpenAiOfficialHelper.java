@@ -162,13 +162,12 @@ public class InternalOpenAiOfficialHelper {
                 ChatCompletionContentPartImage.ImageUrl.Builder imageUrlBuilder = ChatCompletionContentPartImage.ImageUrl.builder();
                 if (imageContent.image() != null && imageContent.image().url() != null) {
                     imageUrlBuilder.url(imageContent.image().url().toString());
-                }
 
-                parts.add(ChatCompletionContentPart.ofImageUrl(
-                        ChatCompletionContentPartImage.builder()
-                                .imageUrl(imageUrlBuilder.build())
-                                .build()
-                ));
+                    parts.add(ChatCompletionContentPart.ofImageUrl(
+                            ChatCompletionContentPartImage.builder()
+                                    .imageUrl(imageUrlBuilder.build())
+                                    .build()));
+                }
             } else if (content instanceof AudioContent audioContent) {
                 parts.add(ChatCompletionContentPart.ofInputAudio(
                         ChatCompletionContentPartInputAudio.builder()
