@@ -281,7 +281,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
             return (T) this;
         }
 
-        public DefaultChatRequestParameters build() {
+        public ChatRequestParameters build() {
             return new DefaultChatRequestParameters(this);
         }
     }

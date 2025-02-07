@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.0.0-alpha2-SNAPSHOT</version>
+    <version>1.0.0-beta1</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -17,6 +17,10 @@
         <module>langchain4j</module>
 
         <module>langchain4j-easy-rag</module>
+
+        <!-- http clients -->
+        <module>langchain4j-http-client</module>
+        <module>http-clients/langchain4j-http-client-jdk</module>
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
@@ -49,6 +53,7 @@
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-infinispan</module>
+        <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
         <module>langchain4j-mongodb-atlas</module>
         <module>langchain4j-neo4j</module>

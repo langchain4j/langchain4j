@@ -206,7 +206,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatRequest.Builder chatRequestBuilder = ChatRequest.builder()
                 .messages(UserMessage.from("Tell me a story"));
         if (supportsMaxOutputTokensParameter()) {
-            DefaultChatRequestParameters parameters = ChatRequestParameters.builder()
+            ChatRequestParameters parameters = ChatRequestParameters.builder()
                     .maxOutputTokens(1) // to save tokens
                     .build();
             chatRequestBuilder.parameters(parameters);
