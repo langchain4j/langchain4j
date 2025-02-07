@@ -364,6 +364,8 @@ public class InternalOpenAiOfficialHelper {
 
             if (text.isEmpty()) {
                 return AiMessage.from(toolExecutionRequests);
+            } else if (toolExecutionRequests.isEmpty()) {
+                return AiMessage.from(text.get());
             } else {
                 return AiMessage.from(text.get(), toolExecutionRequests);
             }
