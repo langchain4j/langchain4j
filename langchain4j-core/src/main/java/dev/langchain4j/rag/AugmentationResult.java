@@ -24,14 +24,14 @@ public class AugmentationResult {
     private final List<Content> contents;
 
     /**
-     * Whether to skip the large model.
+     * Whether to skip the content injector.
      */
-    private final boolean skipLargeModel;
+    private final boolean skipInjection;
 
-    public AugmentationResult(ChatMessage chatMessage, List<Content> contents, boolean skipLargeModel) {
+    public AugmentationResult(ChatMessage chatMessage, List<Content> contents, boolean skipInjection) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
         this.contents = copyIfNotNull(contents);
-        this.skipLargeModel = skipLargeModel;
+        this.skipInjection = skipInjection;
     }
 
     public static AugmentationResultBuilder builder() {
@@ -46,8 +46,8 @@ public class AugmentationResult {
         return contents;
     }
 
-    public boolean skipLargeModel() {
-        return skipLargeModel;
+    public boolean isSkipInjection() {
+        return skipInjection;
     }
 
     public static class AugmentationResultBuilder {
@@ -78,7 +78,7 @@ public class AugmentationResult {
         }
 
         public String toString() {
-            return "AugmentationResult.AugmentationResultBuilder(chatMessage=" + this.chatMessage + ", contents=" + this.contents + ")";
+            return "AugmentationResult.AugmentationResultBuilder(chatMessage=" + this.chatMessage + ", contents=" + this.contents + ", skipInjection=" + this.skipInjection + ")";
         }
     }
 }
