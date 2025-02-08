@@ -46,7 +46,7 @@ public class AugmentationResult {
         return contents;
     }
 
-    public boolean isSkipInjection() {
+    public boolean skipInjection() {
         return skipInjection;
     }
 
