@@ -27,6 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -117,17 +118,20 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private final ContentAggregator contentAggregator;
     private final ContentInjector contentInjector;
     private final Executor executor;
+    private final Supplier<Boolean> shouldSkipInjection;
 
     public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
                                      QueryRouter queryRouter,
                                      ContentAggregator contentAggregator,
                                      ContentInjector contentInjector,
-                                     Executor executor) {
+                                     Executor executor,
+                                     Supplier<Boolean> shouldSkipInjection) {
         this.queryTransformer = getOrDefault(queryTransformer, DefaultQueryTransformer::new);
         this.queryRouter = ensureNotNull(queryRouter, "queryRouter");
         this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
         this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
         this.executor = getOrDefault(executor, DefaultRetrievalAugmentor::createDefaultExecutor);
+        this.shouldSkipInjection = shouldSkipInjection != null ? shouldSkipInjection : () -> false;
     }
 
     private static ExecutorService createDefaultExecutor() {
@@ -162,7 +166,15 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         Map<Query, Collection<List<Content>>> queryToContents = process(queries);
 
         List<Content> contents = contentAggregator.aggregate(queryToContents);
-        log(queryToContents, contents);
+        boolean skipInjection = shouldSkipInjection(contents);
+        log(queryToContents, contents, skipInjection);
+        if (skipInjection) {
+            return AugmentationResult.builder()
+                .chatMessage(chatMessage)
+                .contents(contents)
+                .skipInjection(true)
+                .build();
+        }
 
         ChatMessage augmentedChatMessage = contentInjector.inject(contents, chatMessage);
         log(augmentedChatMessage);
@@ -170,7 +182,12 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         return AugmentationResult.builder()
             .chatMessage(augmentedChatMessage)
             .contents(contents)
+            .skipInjection(false)
             .build();
+    }
+
+    protected boolean shouldSkipInjection(List<Content> contents) {
+        return shouldSkipInjection.get() || contents == null || contents.isEmpty();
     }
 
     private Map<Query, Collection<List<Content>>> process(Collection<Query> queries) {
@@ -210,7 +227,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                                                                          Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
             .map(retriever -> supplyAsync(() -> retrieve(retriever, query), executor))
-            .collect(Collectors.toList());
+            .toList();
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))
             .thenApply(ignored ->
@@ -293,7 +310,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
     }
 
-    private static void log(Map<Query, Collection<List<Content>>> queryToContents, List<Content> contents) {
+    private static void log(Map<Query, Collection<List<Content>>> queryToContents, List<Content> contents, boolean shouldSkipInjection) {
 
         int contentCount = 0;
         for (Map.Entry<Query, Collection<List<Content>>> entry : queryToContents.entrySet()) {
@@ -306,7 +323,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         }
 
         log.debug("Aggregated {} content(s) into {}", contentCount, contents.size());
-
+        log.debug("ContentInjection skipped: {}", shouldSkipInjection);
         if (log.isTraceEnabled()) {
             log.trace("Aggregated {} content(s) into:\n{}",
                 contentCount, contents.stream()
@@ -339,6 +356,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         private ContentAggregator contentAggregator;
         private ContentInjector contentInjector;
         private Executor executor;
+        private Supplier<Boolean> shouldSkipInjection;
 
         DefaultRetrievalAugmentorBuilder() {
         }
@@ -373,12 +391,17 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             return this;
         }
 
+        public DefaultRetrievalAugmentorBuilder shouldSkipInjection(Supplier<Boolean> shouldSkipInjection) {
+            this.shouldSkipInjection = shouldSkipInjection;
+            return this;
+        }
+
         public DefaultRetrievalAugmentor build() {
-            return new DefaultRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjector, this.executor);
+            return new DefaultRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjector, this.executor, this.shouldSkipInjection);
         }
 
         public String toString() {
-            return "DefaultRetrievalAugmentor.DefaultRetrievalAugmentorBuilder(queryTransformer=" + this.queryTransformer + ", queryRouter=" + this.queryRouter + ", contentAggregator=" + this.contentAggregator + ", contentInjector=" + this.contentInjector + ", executor=" + this.executor + ")";
+            return "DefaultRetrievalAugmentor.DefaultRetrievalAugmentorBuilder(queryTransformer=" + this.queryTransformer + ", queryRouter=" + this.queryRouter + ", contentAggregator=" + this.contentAggregator + ", contentInjector=" + this.contentInjector + ", executor=" + this.executor + ", shouldSkipInjection=" + this.shouldSkipInjection + ")";
         }
     }
 }

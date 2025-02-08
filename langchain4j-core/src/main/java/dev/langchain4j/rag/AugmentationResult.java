@@ -23,9 +23,15 @@ public class AugmentationResult {
      */
     private final List<Content> contents;
 
-    public AugmentationResult(ChatMessage chatMessage, List<Content> contents) {
+    /**
+     * Whether to skip the large model.
+     */
+    private final boolean skipLargeModel;
+
+    public AugmentationResult(ChatMessage chatMessage, List<Content> contents, boolean skipLargeModel) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
         this.contents = copyIfNotNull(contents);
+        this.skipLargeModel = skipLargeModel;
     }
 
     public static AugmentationResultBuilder builder() {
@@ -40,9 +46,14 @@ public class AugmentationResult {
         return contents;
     }
 
+    public boolean skipLargeModel() {
+        return skipLargeModel;
+    }
+
     public static class AugmentationResultBuilder {
         private ChatMessage chatMessage;
         private List<Content> contents;
+        private boolean skipInjection;
 
         AugmentationResultBuilder() {
         }
@@ -57,8 +68,13 @@ public class AugmentationResult {
             return this;
         }
 
+        public AugmentationResultBuilder skipInjection(boolean skipInjection) {
+            this.skipInjection = skipInjection;
+            return this;
+        }
+
         public AugmentationResult build() {
-            return new AugmentationResult(this.chatMessage, this.contents);
+            return new AugmentationResult(this.chatMessage, this.contents, this.skipInjection);
         }
 
         public String toString() {
