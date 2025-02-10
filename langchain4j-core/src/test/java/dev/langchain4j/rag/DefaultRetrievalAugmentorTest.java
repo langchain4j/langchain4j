@@ -400,6 +400,58 @@ class DefaultRetrievalAugmentorTest {
             .build();
     }
 
+    @Test
+    void should_not_augment_but_with_contents_when_contentInjector_is_null() {
+        // given
+        QueryTransformer queryTransformer = spy(new DefaultQueryTransformer());
+
+        Content content1 = Content.from("content 1");
+        Content content2 = Content.from("content 2");
+        ContentRetriever contentRetriever = spy(new TestContentRetriever(content1, content2));
+
+        QueryRouter queryRouter = spy(new DefaultQueryRouter(contentRetriever));
+
+        ContentAggregator contentAggregator = spy(new TestContentAggregator());
+        // contentInjector is null or use another implementation
+        Supplier<ContentInjector> contentInjectorSupplier = () -> null;
+        Executor executor = mock(Executor.class);
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .queryTransformer(queryTransformer)
+                .queryRouter(queryRouter)
+                .contentAggregator(contentAggregator)
+                .contentInjector(contentInjectorSupplier)
+                .executor(executor)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("query");
+
+        Metadata metadata = Metadata.from(userMessage, null, null);
+        AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
+        // when
+        AugmentationResult augmentationResult = retrievalAugmentor.augment(augmentationRequest);
+
+        // then
+        UserMessage augmentedUserMessage=(UserMessage) augmentationResult.chatMessage();
+        assertThat(augmentedUserMessage.singleText()).isEqualTo("query");
+        assertThat(augmentationResult.contents()).containsExactly(content1, content2);
+
+        Query query = Query.from("query", metadata);
+        verify(queryTransformer).transform(query);
+        verifyNoMoreInteractions(queryTransformer);
+
+        verify(queryRouter).route(query);
+        verifyNoMoreInteractions(queryRouter);
+
+        verify(contentRetriever).retrieve(query);
+        verifyNoMoreInteractions(contentRetriever);
+
+        Map<Query, Collection<List<Content>>> queryToContents = new HashMap<>();
+        queryToContents.put(query, singletonList(asList(content1, content2)));
+        verify(contentAggregator).aggregate(queryToContents);
+        verifyNoMoreInteractions(contentAggregator);
+
+        verifyNoInteractions(executor);
+    }
     static class TestQueryTransformer implements QueryTransformer {
 
         private final List<Query> queries;

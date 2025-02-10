@@ -116,22 +116,29 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private final QueryTransformer queryTransformer;
     private final QueryRouter queryRouter;
     private final ContentAggregator contentAggregator;
-    private final ContentInjector contentInjector;
+    private final Supplier<ContentInjector> contentInjectorSupplier;
     private final Executor executor;
-    private final Supplier<Boolean> shouldSkipInjection;
+
+    public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
+                                     QueryRouter queryRouter,
+                                     ContentAggregator contentAggregator,
+                                     Supplier<ContentInjector> contentInjectorSupplier,
+                                     Executor executor) {
+        this.queryTransformer = getOrDefault(queryTransformer, DefaultQueryTransformer::new);
+        this.queryRouter = ensureNotNull(queryRouter, "queryRouter");
+        this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
+        this.contentInjectorSupplier = contentInjectorSupplier != null
+                ? contentInjectorSupplier
+                : DefaultContentInjector::new;
+        this.executor = getOrDefault(executor, DefaultRetrievalAugmentor::createDefaultExecutor);
+    }
 
     public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
                                      QueryRouter queryRouter,
                                      ContentAggregator contentAggregator,
                                      ContentInjector contentInjector,
-                                     Executor executor,
-                                     Supplier<Boolean> shouldSkipInjection) {
-        this.queryTransformer = getOrDefault(queryTransformer, DefaultQueryTransformer::new);
-        this.queryRouter = ensureNotNull(queryRouter, "queryRouter");
-        this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
-        this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
-        this.executor = getOrDefault(executor, DefaultRetrievalAugmentor::createDefaultExecutor);
-        this.shouldSkipInjection = shouldSkipInjection != null ? shouldSkipInjection : () -> false;
+                                     Executor executor) {
+        this(queryTransformer, queryRouter, contentAggregator, () -> contentInjector, executor);
     }
 
     private static ExecutorService createDefaultExecutor() {
@@ -166,13 +173,14 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         Map<Query, Collection<List<Content>>> queryToContents = process(queries);
 
         List<Content> contents = contentAggregator.aggregate(queryToContents);
-        boolean skipInjection = shouldSkipInjection.get();
-        log(queryToContents, contents, skipInjection);
-        if (skipInjection) {
+        log(queryToContents, contents);
+
+        ContentInjector contentInjector = contentInjectorSupplier.get();
+
+        if (contentInjector == null) {
             return AugmentationResult.builder()
                 .chatMessage(chatMessage)
                 .contents(contents)
-                .skipInjection(true)
                 .build();
         }
 
@@ -182,7 +190,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         return AugmentationResult.builder()
             .chatMessage(augmentedChatMessage)
             .contents(contents)
-            .skipInjection(false)
             .build();
     }
 
@@ -306,7 +313,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
     }
 
-    private static void log(Map<Query, Collection<List<Content>>> queryToContents, List<Content> contents, boolean shouldSkipInjection) {
+    private static void log(Map<Query, Collection<List<Content>>> queryToContents, List<Content> contents) {
 
         int contentCount = 0;
         for (Map.Entry<Query, Collection<List<Content>>> entry : queryToContents.entrySet()) {
@@ -319,7 +326,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         }
 
         log.debug("Aggregated {} content(s) into {}", contentCount, contents.size());
-        log.debug("ContentInjection skipped: {}", shouldSkipInjection);
+
         if (log.isTraceEnabled()) {
             log.trace("Aggregated {} content(s) into:\n{}",
                 contentCount, contents.stream()
@@ -350,9 +357,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         private QueryTransformer queryTransformer;
         private QueryRouter queryRouter;
         private ContentAggregator contentAggregator;
-        private ContentInjector contentInjector;
+        private Supplier<ContentInjector> contentInjectorSupplier;
         private Executor executor;
-        private Supplier<Boolean> shouldSkipInjection;
 
         DefaultRetrievalAugmentorBuilder() {
         }
@@ -378,7 +384,12 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         }
 
         public DefaultRetrievalAugmentorBuilder contentInjector(ContentInjector contentInjector) {
-            this.contentInjector = contentInjector;
+            this.contentInjectorSupplier = () -> contentInjector;
+            return this;
+        }
+
+        public DefaultRetrievalAugmentorBuilder contentInjector(Supplier<ContentInjector> contentInjectorSupplier) {
+            this.contentInjectorSupplier = contentInjectorSupplier;
             return this;
         }
 
@@ -387,17 +398,12 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             return this;
         }
 
-        public DefaultRetrievalAugmentorBuilder shouldSkipInjection(Supplier<Boolean> shouldSkipInjection) {
-            this.shouldSkipInjection = shouldSkipInjection;
-            return this;
-        }
-
         public DefaultRetrievalAugmentor build() {
-            return new DefaultRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjector, this.executor, this.shouldSkipInjection);
+            return new DefaultRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjectorSupplier, this.executor);
         }
 
         public String toString() {
-            return "DefaultRetrievalAugmentor.DefaultRetrievalAugmentorBuilder(queryTransformer=" + this.queryTransformer + ", queryRouter=" + this.queryRouter + ", contentAggregator=" + this.contentAggregator + ", contentInjector=" + this.contentInjector + ", executor=" + this.executor + ", shouldSkipInjection=" + this.shouldSkipInjection + ")";
+            return "DefaultRetrievalAugmentor.DefaultRetrievalAugmentorBuilder(queryTransformer=" + this.queryTransformer + ", queryRouter=" + this.queryRouter + ", contentAggregator=" + this.contentAggregator + ", contentInjectorSupplier=" + this.contentInjectorSupplier + ", executor=" + this.executor + ")";
         }
     }
 }
