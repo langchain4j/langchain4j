@@ -221,8 +221,8 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
 
     @Override
     public Set<Capability> supportedCapabilities() {
-        if ("json_schema".equals(responseFormat)) {
-            this.supportedCapabilities.add(RESPONSE_FORMAT_JSON_SCHEMA);
+        if ("json_schema".equals(responseFormat)  && !this.supportedCapabilities.contains(RESPONSE_FORMAT_JSON_SCHEMA)) {
+            throw new IllegalArgumentException("The model does not support the 'json_schema' response format");
         }
         return this.supportedCapabilities;
     }
