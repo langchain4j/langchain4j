@@ -166,7 +166,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         Map<Query, Collection<List<Content>>> queryToContents = process(queries);
 
         List<Content> contents = contentAggregator.aggregate(queryToContents);
-        boolean skipInjection = shouldSkipInjection(contents);
+        boolean skipInjection = shouldSkipInjection.get();
         log(queryToContents, contents, skipInjection);
         if (skipInjection) {
             return AugmentationResult.builder()
@@ -184,10 +184,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             .contents(contents)
             .skipInjection(false)
             .build();
-    }
-
-    protected boolean shouldSkipInjection(List<Content> contents) {
-        return shouldSkipInjection.get() || contents == null || contents.isEmpty();
     }
 
     private Map<Query, Collection<List<Content>>> process(Collection<Query> queries) {
