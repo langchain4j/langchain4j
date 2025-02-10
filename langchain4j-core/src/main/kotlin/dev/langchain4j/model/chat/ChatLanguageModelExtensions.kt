@@ -25,6 +25,7 @@ import kotlinx.coroutines.coroutineScope
  * @see ChatLanguageModel.chat(ChatRequest)
  * @see ChatRequest
  * @see ChatResponse
+ * @author Konstantin Pavlov
  */
 @Experimental
 suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse {
@@ -57,6 +58,7 @@ suspend fun ChatLanguageModel.chatAsync(request: ChatRequest): ChatResponse {
  * @see ChatResponse
  * @see ChatRequest.Builder
  * @see chatAsync
+ * @author Konstantin Pavlov
  */
 @Experimental
 suspend fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatResponse =
@@ -84,6 +86,7 @@ suspend fun ChatLanguageModel.chat(requestBuilder: ChatRequest.Builder): ChatRes
  * @return A [ChatResponse] containing the response from the model and any
  *    associated metadata.
  * @throws Exception if the chat request fails or encounters an error during execution.
+ * @author Konstantin Pavlov
  */
 @Experimental
 suspend fun ChatLanguageModel.chat(block: ChatRequestBuilder.() -> Unit): ChatResponse = chatAsync(chatRequest(block))
