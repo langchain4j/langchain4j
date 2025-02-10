@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
@@ -329,6 +330,64 @@ class DefaultRetrievalAugmentorTest {
         verifyNoMoreInteractions(queryRouter);
     }
 
+    @Test
+    void should_not_augment_but_with_contents_when_skip_content_injection() {
+        // given
+        QueryTransformer queryTransformer = spy(new DefaultQueryTransformer());
+
+        Content content1 = Content.from("content 1");
+        Content content2 = Content.from("content 2");
+        ContentRetriever contentRetriever = spy(new TestContentRetriever(content1, content2));
+
+        QueryRouter queryRouter = spy(new DefaultQueryRouter(contentRetriever));
+
+        ContentAggregator contentAggregator = spy(new TestContentAggregator());
+
+        ContentInjector contentInjector = spy(new TestContentInjector());
+
+        Executor executor = mock(Executor.class);
+        Supplier<Boolean> shouldSkipInjection = () -> true;
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+            .queryTransformer(queryTransformer)
+            .queryRouter(queryRouter)
+            .contentAggregator(contentAggregator)
+            .contentInjector(contentInjector)
+            .executor(executor)
+            .shouldSkipInjection(shouldSkipInjection)
+            .build();
+
+        UserMessage userMessage = UserMessage.from("query");
+
+        Metadata metadata = Metadata.from(userMessage, null, null);
+        AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
+        // when
+        AugmentationResult augmentationResult = retrievalAugmentor.augment(augmentationRequest);
+
+        // then
+        UserMessage augmentedUserMessage=(UserMessage) augmentationResult.chatMessage();
+        assertThat(augmentedUserMessage.singleText()).isEqualTo("query");
+        assertThat(augmentationResult.contents()).containsExactly(content1, content2);
+
+        Query query = Query.from("query", metadata);
+        verify(queryTransformer).transform(query);
+        verifyNoMoreInteractions(queryTransformer);
+
+        verify(queryRouter).route(query);
+        verifyNoMoreInteractions(queryRouter);
+
+        verify(contentRetriever).retrieve(query);
+        verifyNoMoreInteractions(contentRetriever);
+
+        Map<Query, Collection<List<Content>>> queryToContents = new HashMap<>();
+        queryToContents.put(query, singletonList(asList(content1, content2)));
+        verify(contentAggregator).aggregate(queryToContents);
+        verifyNoMoreInteractions(contentAggregator);
+
+        verifyNoInteractions(contentInjector);
+        verifyNoInteractions(executor);
+    }
+
+
     static Stream<Executor> executors() {
         return Stream.<Executor>builder()
             .add(Executors.newCachedThreadPool())
@@ -402,7 +461,8 @@ class DefaultRetrievalAugmentorTest {
             String joinedContents = contents.stream()
                 .map(it -> it.textSegment().text())
                 .collect(joining("\n"));
-            return UserMessage.from(userMessage.text() + "\n" + joinedContents);
+            return UserMessage.from(userMessage.singleText() + "\n" + joinedContents);
         }
     }
+
 }
