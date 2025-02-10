@@ -208,7 +208,7 @@ public class OpenAiOfficialChatModel implements ChatLanguageModel, TokenCountEst
         this.strictJsonSchema = getOrDefault(strictJsonSchema, false); // TODO move into OpenAI-specific params?
         this.strictTools = getOrDefault(strictTools, false); // TODO move into OpenAI-specific params?
 
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiOfficialTokenizer(this.defaultRequestParameters.modelName()));
+        this.tokenizer = tokenizer;
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = getOrDefault(copyIfNotNull(capabilities), new HashSet<>());
