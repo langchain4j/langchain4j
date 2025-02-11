@@ -4,7 +4,7 @@ import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
 import com.github.tjake.jlama.safetensors.DType;
 import com.github.tjake.jlama.safetensors.prompt.PromptContext;
-import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.model.chat.policy.RetryUtils;
 import dev.langchain4j.model.jlama.spi.JlamaLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.FinishReason;

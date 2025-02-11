@@ -1,6 +1,8 @@
 package dev.langchain4j.model.chat.mock;
 
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.model.chat.policy.PolicyUtil.invokePolicy;
+import static dev.langchain4j.model.chat.policy.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.synchronizedList;
@@ -8,6 +10,7 @@ import static java.util.Collections.synchronizedList;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.policy.InvocationPolicy;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -15,6 +18,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.function.Function;
 
 /**
@@ -28,6 +32,8 @@ public class ChatModelMock implements ChatLanguageModel {
     private final RuntimeException exception;
     private final Function<ChatRequest, AiMessage> aiMessageGenerator;
     private final List<List<ChatMessage>> requests = synchronizedList(new ArrayList<>());
+
+    private InvocationPolicy invocationPolicy = EmptyInvocationPolicy.INSTANCE;
 
     public ChatModelMock(String staticResponse) {
         this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
@@ -55,13 +61,16 @@ public class ChatModelMock implements ChatLanguageModel {
             throw exception;
         }
 
-        AiMessage aiMessage =
-                aiMessageGenerator != null ? aiMessageGenerator.apply(chatRequest) : AiMessage.from(staticResponse);
+        AiMessage aiMessage = aiMessageGenerator != null ? internalChat(chatRequest) : AiMessage.from(staticResponse);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(ChatResponseMetadata.builder().build())
                 .build();
+    }
+
+    private AiMessage internalChat(ChatRequest chatRequest) {
+        return invokePolicy(invocationPolicy, () -> aiMessageGenerator.apply(chatRequest));
     }
 
     @Override
@@ -93,6 +102,11 @@ public class ChatModelMock implements ChatLanguageModel {
         return message.text();
     }
 
+    public ChatModelMock withInvocationPolicy(InvocationPolicy invocationPolicy) {
+        this.invocationPolicy = invocationPolicy;
+        return this;
+    }
+
     public static ChatModelMock thatAlwaysResponds(String response) {
         return new ChatModelMock(response);
     }
@@ -103,5 +117,15 @@ public class ChatModelMock implements ChatLanguageModel {
 
     public static ChatModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
         return new ChatModelMock(new RuntimeException(message));
+    }
+
+    private static class EmptyInvocationPolicy implements InvocationPolicy {
+
+        private static final EmptyInvocationPolicy INSTANCE = new EmptyInvocationPolicy();
+
+        @Override
+        public Callable<?> apply(final Callable<?> action) {
+            return action;
+        }
     }
 }

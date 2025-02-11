@@ -9,7 +9,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.model.chat.policy.RetryUtils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.jlama.spi.JlamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;

@@ -20,7 +20,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.model.chat.policy.RetryUtils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.jlama.spi.JlamaStreamingChatModelBuilderFactory;

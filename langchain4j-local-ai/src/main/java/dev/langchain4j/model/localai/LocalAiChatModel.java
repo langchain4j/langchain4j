@@ -14,7 +14,7 @@ import lombok.Builder;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.chat.policy.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;

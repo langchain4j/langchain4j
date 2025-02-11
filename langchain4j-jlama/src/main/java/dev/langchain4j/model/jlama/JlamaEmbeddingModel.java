@@ -6,7 +6,7 @@ import com.github.tjake.jlama.model.bert.BertModel;
 import com.github.tjake.jlama.model.functions.Generator;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.model.chat.policy.RetryUtils;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.jlama.spi.JlamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
