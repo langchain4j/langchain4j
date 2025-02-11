@@ -29,7 +29,6 @@ public class DefaultOpenAiClient extends OpenAiClient {
     private final HttpClient httpClient;
     private final String baseUrl;
     private final Map<String, String> defaultHeaders;
-    private final String apiVersion; // TODO
 
     private DefaultOpenAiClient(Builder builder) {
 
@@ -48,20 +47,10 @@ public class DefaultOpenAiClient extends OpenAiClient {
         }
 
         this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
-        this.apiVersion = builder.apiVersion;
-
-        if (builder.openAiApiKey != null && builder.azureApiKey != null) {
-            // TODO
-            throw new IllegalArgumentException("openAiApiKey AND azureApiKey cannot both be defined at the same time");
-        }
 
         Map<String, String> defaultHeaders = new HashMap<>();
         if (builder.openAiApiKey != null) {
             defaultHeaders.put("Authorization", "Bearer " + builder.openAiApiKey);
-        }
-        if (builder.azureApiKey != null) {
-            // TODO !!! is "api-key" masked in generic logger?
-            defaultHeaders.put("api-key", builder.openAiApiKey); // TODO test with azure?
         }
         if (builder.organizationId != null) {
             defaultHeaders.put("OpenAI-Organization", builder.organizationId);
@@ -92,7 +81,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
-                .url(baseUrl, "completions") // TODO apiVersion
+                .url(baseUrl, "completions")
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(syncRequest))
@@ -112,7 +101,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
-                .url(baseUrl, "chat/completions") // TODO apiVersion
+                .url(baseUrl, "chat/completions")
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(syncRequest))
@@ -131,7 +120,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
-                .url(baseUrl, "embeddings") // TODO apiVersion
+                .url(baseUrl, "embeddings")
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(request))
@@ -145,7 +134,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
-                .url(baseUrl, "moderations") // TODO apiVersion
+                .url(baseUrl, "moderations")
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(request))
@@ -158,23 +147,12 @@ public class DefaultOpenAiClient extends OpenAiClient {
     public SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request) {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
-                .url(baseUrl, "images/generations") // TODO apiVersion
+                .url(baseUrl, "images/generations")
                 .addHeader("Content-Type", "application/json")
                 .addHeaders(defaultHeaders)
                 .body(Json.toJson(request))
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, GenerateImagesResponse.class);
-    }
-
-    private String formatUrl(String endpoint) { // TODO
-        return baseUrl + endpoint + apiVersionQueryParam();
-    }
-
-    private String apiVersionQueryParam() { // TODO
-        if (apiVersion == null || apiVersion.trim().isEmpty()) {
-            return "";
-        }
-        return "?api-version=" + apiVersion;
     }
 }
