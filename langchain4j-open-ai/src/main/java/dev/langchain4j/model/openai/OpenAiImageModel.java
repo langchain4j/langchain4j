@@ -10,7 +10,6 @@ import dev.langchain4j.model.openai.internal.image.ImageData;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -51,12 +50,7 @@ public class OpenAiImageModel implements ImageModel {
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)
-                .persistTo(builder.persistTo)
                 .customHeaders(builder.customHeaders);
-
-        if (builder.withPersisting != null && builder.withPersisting) {
-            cBuilder.withPersisting();
-        }
 
         this.client = cBuilder.build();
 
@@ -116,8 +110,6 @@ public class OpenAiImageModel implements ImageModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Boolean withPersisting;
-        private Path persistTo;
         private Map<String, String> customHeaders;
 
         public OpenAiImageModelBuilder() {
@@ -135,25 +127,6 @@ public class OpenAiImageModel implements ImageModel {
 
         public OpenAiImageModelBuilder modelName(OpenAiImageModelName modelName) {
             this.modelName = modelName.toString();
-            return this;
-        }
-
-        /**
-         * Generated response will be persisted under <code>java.io.tmpdir</code>.
-         * The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain
-         * the URL to local images then.
-         */
-        public OpenAiImageModelBuilder withPersisting() {
-            return withPersisting(true);
-        }
-
-        /**
-         * Generated response will be persisted under <code>java.io.tmpdir</code>.
-         * The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain
-         * the URL to local images then.
-         */
-        public OpenAiImageModelBuilder withPersisting(Boolean withPersisting) {
-            this.withPersisting = withPersisting;
             return this;
         }
 
@@ -214,16 +187,6 @@ public class OpenAiImageModel implements ImageModel {
 
         public OpenAiImageModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
-            return this;
-        }
-
-        /**
-         * Specifies the local path where the generated image will be downloaded to (in case provided).
-         * The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain
-         * the URL to local images then.
-         */
-        public OpenAiImageModelBuilder persistTo(Path persistTo) {
-            this.persistTo = persistTo;
             return this;
         }
 

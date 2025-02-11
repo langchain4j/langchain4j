@@ -14,8 +14,6 @@ import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.spi.OpenAiClientBuilderFactory;
 import dev.langchain4j.model.openai.internal.spi.ServiceHelper;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Map;
 
@@ -54,7 +52,6 @@ public abstract class OpenAiClient {
         public String userAgent;
         public boolean logRequests;
         public boolean logResponses;
-        public Path persistTo; // TODO
         public Map<String, String> customHeaders;
 
         public abstract T build();
@@ -153,29 +150,6 @@ public abstract class OpenAiClient {
                 logResponses = false;
             }
             this.logResponses = logResponses;
-            return (B) this;
-        }
-
-        /**
-         * Generated response will be persisted under <code>java.io.tmpdir</code>. Used with images generation for the moment only.
-         * The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain the URL to local images then.
-         *
-         * @return builder
-         */
-        public B withPersisting() {
-            persistTo = Paths.get(System.getProperty("java.io.tmpdir"));
-            return (B) this;
-        }
-
-        /**
-         * Generated response will be persisted under provided path. Used with images generation for the moment only.
-         * The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain the URL to local images then.
-         *
-         * @param persistTo path
-         * @return builder
-         */
-        public B persistTo(Path persistTo) {
-            this.persistTo = persistTo;
             return (B) this;
         }
 

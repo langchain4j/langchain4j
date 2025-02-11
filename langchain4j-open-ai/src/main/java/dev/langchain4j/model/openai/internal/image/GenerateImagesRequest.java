@@ -37,7 +37,7 @@ public class GenerateImagesRequest {
     private final String responseFormat;
 
     private GenerateImagesRequest(Builder builder) {
-        this.model = builder.model.toString();
+        this.model = builder.model;
         this.prompt = builder.prompt;
         this.n = builder.n;
         this.size = builder.size;

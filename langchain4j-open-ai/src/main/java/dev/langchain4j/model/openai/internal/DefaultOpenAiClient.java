@@ -73,10 +73,6 @@ public class DefaultOpenAiClient extends OpenAiClient {
             defaultHeaders.putAll(builder.customHeaders);
         }
         this.defaultHeaders = defaultHeaders;
-
-//        if (builder.persistTo != null) {
-//            retrofitBuilder.addConverterFactory(new PersistorConverterFactory(builder.persistTo));
-//        }
     }
 
     public static Builder builder() {
