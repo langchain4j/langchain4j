@@ -22,7 +22,6 @@ import dev.langchain4j.model.openai.internal.chat.Delta;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -83,7 +82,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Map<String, String> metadata,
                                     String serviceTier,
                                     Duration timeout,
-                                    Proxy proxy,
                                     Boolean logRequests,
                                     Boolean logResponses,
                                     Tokenizer tokenizer,
@@ -99,7 +97,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .organizationId(organizationId)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .proxy(proxy)
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
@@ -309,7 +306,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         private Map<String, String> metadata;
         private String serviceTier;
         private Duration timeout;
-        private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
         private Tokenizer tokenizer;
@@ -450,11 +446,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             return this;
         }
 
-        public OpenAiStreamingChatModelBuilder proxy(Proxy proxy) {
-            this.proxy = proxy;
-            return this;
-        }
-
         public OpenAiStreamingChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -506,7 +497,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     this.metadata,
                     this.serviceTier,
                     this.timeout,
-                    this.proxy,
                     this.logRequests,
                     this.logResponses,
                     this.tokenizer,
@@ -542,7 +532,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     .add("metadata=" + metadata)
                     .add("serviceTier=" + serviceTier)
                     .add("timeout=" + timeout)
-                    .add("proxy=" + proxy)
                     .add("logRequests=" + logRequests)
                     .add("logResponses=" + logResponses)
                     .add("tokenizer=" + tokenizer)

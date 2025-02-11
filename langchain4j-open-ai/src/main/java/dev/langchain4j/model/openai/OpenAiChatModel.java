@@ -20,7 +20,6 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -91,7 +90,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            String serviceTier,
                            Duration timeout,
                            Integer maxRetries,
-                           Proxy proxy,
                            Boolean logRequests,
                            Boolean logResponses,
                            Tokenizer tokenizer,
@@ -112,7 +110,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .organizationId(organizationId)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
@@ -312,7 +309,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         private Duration timeout;
         private Integer maxRetries;
-        private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
         private Tokenizer tokenizer;
@@ -458,11 +454,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             return this;
         }
 
-        public OpenAiChatModelBuilder proxy(Proxy proxy) {
-            this.proxy = proxy;
-            return this;
-        }
-
         public OpenAiChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -515,7 +506,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                     this.serviceTier,
                     this.timeout,
                     this.maxRetries,
-                    this.proxy,
                     this.logRequests,
                     this.logResponses,
                     this.tokenizer,
@@ -552,7 +542,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                     .add("serviceTier=" + serviceTier)
                     .add("timeout=" + timeout)
                     .add("maxRetries=" + maxRetries)
-                    .add("proxy=" + proxy)
                     .add("logRequests=" + logRequests)
                     .add("logResponses=" + logResponses)
                     .add("tokenizer=" + tokenizer)

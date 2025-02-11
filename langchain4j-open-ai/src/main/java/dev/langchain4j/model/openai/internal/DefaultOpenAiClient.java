@@ -78,10 +78,6 @@ public class DefaultOpenAiClient extends OpenAiClient {
         }
         this.defaultHeaders = defaultHeaders;
 
-//        if (builder.proxy != null) { TODO
-//            okHttpClientBuilder.proxy(builder.proxy);
-//        }
-
 //        if (builder.persistTo != null) {
 //            retrofitBuilder.addConverterFactory(new PersistorConverterFactory(builder.persistTo));
 //        }

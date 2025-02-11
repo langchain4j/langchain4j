@@ -13,7 +13,6 @@ import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,7 +56,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
             Duration timeout,
             Integer maxRetries,
             Integer maxSegmentsPerBatch,
-            Proxy proxy,
             Boolean logRequests,
             Boolean logResponses,
             Tokenizer tokenizer,
@@ -77,7 +75,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
                 .organizationId(organizationId)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
@@ -194,7 +191,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         private Duration timeout;
         private Integer maxRetries;
         private Integer maxSegmentsPerBatch;
-        private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
         private Tokenizer tokenizer;
@@ -253,11 +249,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
             return this;
         }
 
-        public OpenAiEmbeddingModelBuilder proxy(Proxy proxy) {
-            this.proxy = proxy;
-            return this;
-        }
-
         public OpenAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -295,7 +286,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
                     this.timeout,
                     this.maxRetries,
                     this.maxSegmentsPerBatch,
-                    this.proxy,
                     this.logRequests,
                     this.logResponses,
                     this.tokenizer,
@@ -314,7 +304,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
                     .add("user='" + user + "'")
                     .add("timeout=" + timeout)
                     .add("maxRetries=" + maxRetries)
-                    .add("proxy=" + proxy)
                     .add("logRequests=" + logRequests)
                     .add("logResponses=" + logResponses)
                     .add("tokenizer=" + tokenizer)

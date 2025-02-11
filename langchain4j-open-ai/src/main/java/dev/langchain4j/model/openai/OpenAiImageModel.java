@@ -10,7 +10,6 @@ import dev.langchain4j.model.openai.internal.image.ImageData;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
-import java.net.Proxy;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -67,7 +66,6 @@ public class OpenAiImageModel implements ImageModel {
             String responseFormat,
             Duration timeout,
             Integer maxRetries,
-            Proxy proxy,
             Boolean logRequests,
             Boolean logResponses,
             Boolean withPersisting,
@@ -83,7 +81,6 @@ public class OpenAiImageModel implements ImageModel {
                 .organizationId(organizationId)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .proxy(proxy)
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)
@@ -150,7 +147,6 @@ public class OpenAiImageModel implements ImageModel {
         private String responseFormat;
         private Duration timeout;
         private Integer maxRetries;
-        private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
         private Boolean withPersisting;
@@ -234,11 +230,6 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
-        public OpenAiImageModelBuilder proxy(Proxy proxy) {
-            this.proxy = proxy;
-            return this;
-        }
-
         public OpenAiImageModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -273,7 +264,6 @@ public class OpenAiImageModel implements ImageModel {
                     this.responseFormat,
                     this.timeout,
                     this.maxRetries,
-                    this.proxy,
                     this.logRequests,
                     this.logResponses,
                     this.withPersisting,
@@ -297,7 +287,6 @@ public class OpenAiImageModel implements ImageModel {
                     .add("responseFormat='" + responseFormat + "'")
                     .add("timeout=" + timeout)
                     .add("maxRetries=" + maxRetries)
-                    .add("proxy=" + proxy)
                     .add("logRequests=" + logRequests)
                     .add("logResponses=" + logResponses)
                     .add("withPersisting=" + withPersisting)

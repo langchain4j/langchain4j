@@ -11,7 +11,6 @@ import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -47,7 +46,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                                Double temperature,
                                Duration timeout,
                                Integer maxRetries,
-                               Proxy proxy,
                                Boolean logRequests,
                                Boolean logResponses,
                                Tokenizer tokenizer,
@@ -62,7 +60,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .organizationId(organizationId)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
@@ -133,7 +130,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         private Double temperature;
         private Duration timeout;
         private Integer maxRetries;
-        private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
         private Tokenizer tokenizer;
@@ -187,11 +183,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
             return this;
         }
 
-        public OpenAiLanguageModelBuilder proxy(Proxy proxy) {
-            this.proxy = proxy;
-            return this;
-        }
-
         public OpenAiLanguageModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -222,7 +213,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                     this.temperature,
                     this.timeout,
                     this.maxRetries,
-                    this.proxy,
                     this.logRequests,
                     this.logResponses,
                     this.tokenizer,
@@ -241,7 +231,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                     .add("temperature=" + temperature)
                     .add("timeout=" + timeout)
                     .add("maxRetries=" + maxRetries)
-                    .add("proxy=" + proxy)
                     .add("logRequests=" + logRequests)
                     .add("logResponses=" + logResponses)
                     .add("tokenizer=" + tokenizer)

@@ -11,7 +11,6 @@ import dev.langchain4j.model.openai.internal.moderation.ModerationResult;
 import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +43,6 @@ public class OpenAiModerationModel implements ModerationModel {
                                  String modelName,
                                  Duration timeout,
                                  Integer maxRetries,
-                                 Proxy proxy,
                                  Boolean logRequests,
                                  Boolean logResponses,
                                  Map<String, String> customHeaders) {
@@ -63,7 +61,6 @@ public class OpenAiModerationModel implements ModerationModel {
                 .organizationId(organizationId)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
@@ -138,7 +135,6 @@ public class OpenAiModerationModel implements ModerationModel {
         private String modelName;
         private Duration timeout;
         private Integer maxRetries;
-        private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
         private Map<String, String> customHeaders;
@@ -186,11 +182,6 @@ public class OpenAiModerationModel implements ModerationModel {
             return this;
         }
 
-        public OpenAiModerationModelBuilder proxy(Proxy proxy) {
-            this.proxy = proxy;
-            return this;
-        }
-
         public OpenAiModerationModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -215,7 +206,6 @@ public class OpenAiModerationModel implements ModerationModel {
                     this.modelName,
                     this.timeout,
                     this.maxRetries,
-                    this.proxy,
                     this.logRequests,
                     this.logResponses,
                     this.customHeaders
@@ -232,7 +222,6 @@ public class OpenAiModerationModel implements ModerationModel {
                     .add("modelName='" + modelName + "'")
                     .add("timeout=" + timeout)
                     .add("maxRetries=" + maxRetries)
-                    .add("proxy=" + proxy)
                     .add("logRequests=" + logRequests)
                     .add("logResponses=" + logResponses)
                     .add("customHeaders=" + customHeaders)

@@ -14,7 +14,6 @@ import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.spi.OpenAiClientBuilderFactory;
 import dev.langchain4j.model.openai.internal.spi.ServiceHelper;
 
-import java.net.Proxy;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -52,7 +51,6 @@ public abstract class OpenAiClient {
         public String azureApiKey;
         public Duration connectTimeout = Duration.ofSeconds(60); // TODO remove default?
         public Duration readTimeout = Duration.ofSeconds(60); // TODO remove default?
-        public Proxy proxy; // TODO
         public String userAgent;
         public boolean logRequests;
         public boolean logResponses;
@@ -140,12 +138,6 @@ public abstract class OpenAiClient {
                 throw new IllegalArgumentException("readTimeout cannot be null");
             }
             this.readTimeout = readTimeout;
-            return (B) this;
-        }
-
-        // TODO
-        public B proxy(Proxy proxy) {
-            this.proxy = proxy;
             return (B) this;
         }
 

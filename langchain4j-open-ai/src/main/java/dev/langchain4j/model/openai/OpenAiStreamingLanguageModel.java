@@ -13,7 +13,6 @@ import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -46,7 +45,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                                         String modelName,
                                         Double temperature,
                                         Duration timeout,
-                                        Proxy proxy,
                                         Boolean logRequests,
                                         Boolean logResponses,
                                         Tokenizer tokenizer,
@@ -61,7 +59,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .organizationId(organizationId)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .proxy(proxy)
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
@@ -144,7 +141,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         private String modelName;
         private Double temperature;
         private Duration timeout;
-        private Proxy proxy;
         private Boolean logRequests;
         private Boolean logResponses;
         private Tokenizer tokenizer;
@@ -193,11 +189,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
             return this;
         }
 
-        public OpenAiStreamingLanguageModelBuilder proxy(Proxy proxy) {
-            this.proxy = proxy;
-            return this;
-        }
-
         public OpenAiStreamingLanguageModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -227,7 +218,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                     this.modelName,
                     this.temperature,
                     this.timeout,
-                    this.proxy,
                     this.logRequests,
                     this.logResponses,
                     this.tokenizer,
@@ -245,7 +235,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                     .add("modelName='" + modelName + "'")
                     .add("temperature=" + temperature)
                     .add("timeout=" + timeout)
-                    .add("proxy=" + proxy)
                     .add("logRequests=" + logRequests)
                     .add("logResponses=" + logResponses)
                     .add("tokenizer=" + tokenizer)
