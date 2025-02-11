@@ -123,8 +123,9 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
             // This is public so it can be extended
         }
 
-        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+        public OpenAiLanguageModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OpenAiLanguageModelBuilder modelName(String modelName) {

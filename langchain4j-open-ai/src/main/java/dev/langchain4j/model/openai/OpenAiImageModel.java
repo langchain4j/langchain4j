@@ -116,8 +116,9 @@ public class OpenAiImageModel implements ImageModel {
             // This is public so it can be extended
         }
 
-        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+        public OpenAiImageModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OpenAiImageModelBuilder modelName(String modelName) {

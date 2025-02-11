@@ -131,8 +131,9 @@ public class OpenAiModerationModel implements ModerationModel {
             // This is public so it can be extended
         }
 
-        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+        public OpenAiModerationModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OpenAiModerationModelBuilder modelName(String modelName) {

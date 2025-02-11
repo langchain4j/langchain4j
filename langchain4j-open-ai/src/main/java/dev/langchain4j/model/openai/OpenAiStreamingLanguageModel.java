@@ -135,8 +135,9 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
             // This is public so it can be extended
         }
 
-        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+        public OpenAiStreamingLanguageModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OpenAiStreamingLanguageModelBuilder modelName(String modelName) {

@@ -287,8 +287,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             // This is public so it can be extended
         }
 
-        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+        public OpenAiChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         /**

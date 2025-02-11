@@ -183,8 +183,9 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
             // This is public so it can be extended
         }
 
-        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+        public OpenAiEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public OpenAiEmbeddingModelBuilder modelName(String modelName) {
