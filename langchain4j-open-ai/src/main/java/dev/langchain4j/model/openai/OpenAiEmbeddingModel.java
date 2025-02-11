@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -42,41 +41,26 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     private final Integer maxSegmentsPerBatch;
     private final Tokenizer tokenizer;
 
-    public OpenAiEmbeddingModel(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            String apiKey,
-            String organizationId,
-            String modelName,
-            Integer dimensions,
-            String user,
-            Duration timeout,
-            Integer maxRetries,
-            Integer maxSegmentsPerBatch,
-            Boolean logRequests,
-            Boolean logResponses,
-            Tokenizer tokenizer,
-            Map<String, String> customHeaders
-    ) {
+    public OpenAiEmbeddingModel(OpenAiEmbeddingModelBuilder builder) {
         this.client = OpenAiClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_OPENAI_URL))
-                .openAiApiKey(apiKey)
-                .organizationId(organizationId)
-                .connectTimeout(getOrDefault(timeout, ofSeconds(15)))
-                .readTimeout(getOrDefault(timeout, ofSeconds(60)))
-                .logRequests(logRequests)
-                .logResponses(logResponses)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
+                .openAiApiKey(builder.apiKey)
+                .organizationId(builder.organizationId)
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(customHeaders)
+                .customHeaders(builder.customHeaders)
                 .build();
-        this.modelName = modelName;
-        this.dimensions = dimensions;
-        this.user = user;
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, 2048);
+        this.modelName = builder.modelName;
+        this.dimensions = builder.dimensions;
+        this.user = builder.user;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
-        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
     }
 
     @Override
@@ -265,40 +249,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         }
 
         public OpenAiEmbeddingModel build() {
-            return new OpenAiEmbeddingModel(
-                    this.httpClientBuilder,
-                    this.baseUrl,
-                    this.apiKey,
-                    this.organizationId,
-                    this.modelName,
-                    this.dimensions,
-                    this.user,
-                    this.timeout,
-                    this.maxRetries,
-                    this.maxSegmentsPerBatch,
-                    this.logRequests,
-                    this.logResponses,
-                    this.tokenizer,
-                    this.customHeaders);
-        }
-
-        @Override
-        public String toString() {
-            // TODO remove?
-            return new StringJoiner(", ", OpenAiEmbeddingModelBuilder.class.getSimpleName() + "[", "]")
-                    .add("httpClientBuilder=" + httpClientBuilder)
-                    .add("baseUrl='" + baseUrl + "'")
-                    .add("organizationId='" + organizationId + "'")
-                    .add("modelName='" + modelName + "'")
-                    .add("dimensions=" + dimensions)
-                    .add("user='" + user + "'")
-                    .add("timeout=" + timeout)
-                    .add("maxRetries=" + maxRetries)
-                    .add("logRequests=" + logRequests)
-                    .add("logResponses=" + logResponses)
-                    .add("tokenizer=" + tokenizer)
-                    .add("customHeaders=" + customHeaders)
-                    .toString();
+            return new OpenAiEmbeddingModel(this);
         }
     }
 }

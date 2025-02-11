@@ -14,18 +14,18 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
  * Represents an OpenAI DALL·E models to generate artistic images. Versions 2 and 3 (default) are supported.
+ * Find the parameters description <a href="https://platform.openai.com/docs/api-reference/images/create">here</a>.
  */
 public class OpenAiImageModel implements ImageModel {
 
@@ -40,64 +40,33 @@ public class OpenAiImageModel implements ImageModel {
 
     private final Integer maxRetries;
 
-    /**
-     * Instantiates OpenAI DALL·E image processing model.
-     * Find the parameters description <a href="https://platform.openai.com/docs/api-reference/images/create">here</a>.
-     *
-     * @param modelName      dall-e-3 is default one
-     * @param persistTo      specifies the local path where the generated image will be downloaded to (in case provided).
-     *                       The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain
-     *                       the URL to local images then.
-     * @param withPersisting generated response will be persisted under <code>java.io.tmpdir</code>.
-     *                       The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain
-     *                       the URL to local images then.
-     */
-    @SuppressWarnings("rawtypes")
-    public OpenAiImageModel(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            String apiKey,
-            String organizationId,
-            String modelName,
-            String size,
-            String quality,
-            String style,
-            String user,
-            String responseFormat,
-            Duration timeout,
-            Integer maxRetries,
-            Boolean logRequests,
-            Boolean logResponses,
-            Boolean withPersisting,
-            Path persistTo,
-            Map<String, String> customHeaders
-    ) {
+    public OpenAiImageModel(OpenAiImageModelBuilder builder) {
         OpenAiClient.Builder cBuilder = OpenAiClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_OPENAI_URL))
-                .openAiApiKey(apiKey)
-                .organizationId(organizationId)
-                .connectTimeout(getOrDefault(timeout, ofSeconds(15)))
-                .readTimeout(getOrDefault(timeout, ofSeconds(60)))
-                .logRequests(getOrDefault(logRequests, false))
-                .logResponses(getOrDefault(logResponses, false))
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
+                .openAiApiKey(builder.apiKey)
+                .organizationId(builder.organizationId)
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)
-                .persistTo(persistTo)
-                .customHeaders(customHeaders);
+                .persistTo(builder.persistTo)
+                .customHeaders(builder.customHeaders);
 
-        if (withPersisting != null && withPersisting) {
+        if (builder.withPersisting != null && builder.withPersisting) {
             cBuilder.withPersisting();
         }
 
         this.client = cBuilder.build();
 
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        this.modelName = modelName;
-        this.size = size;
-        this.quality = quality;
-        this.style = style;
-        this.user = user;
-        this.responseFormat = responseFormat;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.modelName = builder.modelName;
+        this.size = builder.size;
+        this.quality = builder.quality;
+        this.style = builder.style;
+        this.user = builder.user;
+        this.responseFormat = builder.responseFormat;
     }
 
     public String modelName() {
@@ -169,10 +138,20 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * Generated response will be persisted under <code>java.io.tmpdir</code>.
+         * The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain
+         * the URL to local images then.
+         */
         public OpenAiImageModelBuilder withPersisting() {
             return withPersisting(true);
         }
 
+        /**
+         * Generated response will be persisted under <code>java.io.tmpdir</code>.
+         * The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain
+         * the URL to local images then.
+         */
         public OpenAiImageModelBuilder withPersisting(Boolean withPersisting) {
             this.withPersisting = withPersisting;
             return this;
@@ -238,6 +217,11 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * Specifies the local path where the generated image will be downloaded to (in case provided).
+         * The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain
+         * the URL to local images then.
+         */
         public OpenAiImageModelBuilder persistTo(Path persistTo) {
             this.persistTo = persistTo;
             return this;
@@ -249,48 +233,7 @@ public class OpenAiImageModel implements ImageModel {
         }
 
         public OpenAiImageModel build() {
-            return new OpenAiImageModel(
-                    this.httpClientBuilder,
-                    this.baseUrl,
-                    this.apiKey,
-                    this.organizationId,
-                    this.modelName,
-                    this.size,
-                    this.quality,
-                    this.style,
-                    this.user,
-                    this.responseFormat,
-                    this.timeout,
-                    this.maxRetries,
-                    this.logRequests,
-                    this.logResponses,
-                    this.withPersisting,
-                    this.persistTo,
-                    this.customHeaders
-            );
-        }
-
-        @Override
-        public String toString() {
-            // TODO remove?
-            return new StringJoiner(", ", OpenAiImageModelBuilder.class.getSimpleName() + "[", "]")
-                    .add("httpClientBuilder=" + httpClientBuilder)
-                    .add("baseUrl='" + baseUrl + "'")
-                    .add("organizationId='" + organizationId + "'")
-                    .add("modelName='" + modelName + "'")
-                    .add("size='" + size + "'")
-                    .add("quality='" + quality + "'")
-                    .add("style='" + style + "'")
-                    .add("user='" + user + "'")
-                    .add("responseFormat='" + responseFormat + "'")
-                    .add("timeout=" + timeout)
-                    .add("maxRetries=" + maxRetries)
-                    .add("logRequests=" + logRequests)
-                    .add("logResponses=" + logResponses)
-                    .add("withPersisting=" + withPersisting)
-                    .add("persistTo=" + persistTo)
-                    .add("customHeaders=" + customHeaders)
-                    .toString();
+            return new OpenAiImageModel(this);
         }
     }
 

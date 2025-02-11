@@ -14,7 +14,6 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -33,32 +32,21 @@ public class OpenAiModerationModel implements ModerationModel {
     private final String modelName;
     private final Integer maxRetries;
 
-    public OpenAiModerationModel(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            String apiKey,
-            String organizationId,
-            String modelName,
-            Duration timeout,
-            Integer maxRetries,
-            Boolean logRequests,
-            Boolean logResponses,
-            Map<String, String> customHeaders
-    ) {
+    public OpenAiModerationModel(OpenAiModerationModelBuilder builder) {
         this.client = OpenAiClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_OPENAI_URL))
-                .openAiApiKey(apiKey)
-                .organizationId(organizationId)
-                .connectTimeout(getOrDefault(timeout, ofSeconds(15)))
-                .readTimeout(getOrDefault(timeout, ofSeconds(60)))
-                .logRequests(logRequests)
-                .logResponses(logResponses)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
+                .openAiApiKey(builder.apiKey)
+                .organizationId(builder.organizationId)
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(customHeaders)
+                .customHeaders(builder.customHeaders)
                 .build();
-        this.modelName = modelName;
-        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.modelName = builder.modelName;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
     }
 
     public String modelName() {
@@ -189,34 +177,7 @@ public class OpenAiModerationModel implements ModerationModel {
         }
 
         public OpenAiModerationModel build() {
-            return new OpenAiModerationModel(
-                    this.httpClientBuilder,
-                    this.baseUrl,
-                    this.apiKey,
-                    this.organizationId,
-                    this.modelName,
-                    this.timeout,
-                    this.maxRetries,
-                    this.logRequests,
-                    this.logResponses,
-                    this.customHeaders
-            );
-        }
-
-        @Override
-        public String toString() {
-            // TODO remove?
-            return new StringJoiner(", ", OpenAiModerationModelBuilder.class.getSimpleName() + "[", "]")
-                    .add("httpClientBuilder=" + httpClientBuilder)
-                    .add("baseUrl='" + baseUrl + "'")
-                    .add("organizationId='" + organizationId + "'")
-                    .add("modelName='" + modelName + "'")
-                    .add("timeout=" + timeout)
-                    .add("maxRetries=" + maxRetries)
-                    .add("logRequests=" + logRequests)
-                    .add("logResponses=" + logResponses)
-                    .add("customHeaders=" + customHeaders)
-                    .toString();
+            return new OpenAiModerationModel(this);
         }
     }
 }

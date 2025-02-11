@@ -15,7 +15,6 @@ import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.StringJoiner;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -37,34 +36,22 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     private final Double temperature;
     private final Tokenizer tokenizer;
 
-    public OpenAiStreamingLanguageModel(
-            HttpClientBuilder httpClientBuilder,
-            String baseUrl,
-            String apiKey,
-            String organizationId,
-            String modelName,
-            Double temperature,
-            Duration timeout,
-            Boolean logRequests,
-            Boolean logResponses,
-            Tokenizer tokenizer,
-            Map<String, String> customHeaders
-    ) {
+    public OpenAiStreamingLanguageModel(OpenAiStreamingLanguageModelBuilder builder) {
         this.client = OpenAiClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_OPENAI_URL))
-                .openAiApiKey(apiKey)
-                .organizationId(organizationId)
-                .connectTimeout(getOrDefault(timeout, ofSeconds(15)))
-                .readTimeout(getOrDefault(timeout, ofSeconds(60)))
-                .logRequests(logRequests)
-                .logResponses(logResponses)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
+                .openAiApiKey(builder.apiKey)
+                .organizationId(builder.organizationId)
+                .connectTimeout(getOrDefault(builder.timeout, ofSeconds(15)))
+                .readTimeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(customHeaders)
+                .customHeaders(builder.customHeaders)
                 .build();
-        this.modelName = modelName;
-        this.temperature = temperature;
-        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.modelName = builder.modelName;
+        this.temperature = builder.temperature;
+        this.tokenizer = getOrDefault(builder.tokenizer, OpenAiTokenizer::new);
     }
 
     public String modelName() {
@@ -208,36 +195,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         }
 
         public OpenAiStreamingLanguageModel build() {
-            return new OpenAiStreamingLanguageModel(
-                    this.httpClientBuilder,
-                    this.baseUrl,
-                    this.apiKey,
-                    this.organizationId,
-                    this.modelName,
-                    this.temperature,
-                    this.timeout,
-                    this.logRequests,
-                    this.logResponses,
-                    this.tokenizer,
-                    this.customHeaders
-            );
-        }
-
-        @Override
-        public String toString() {
-            // TODO remove?
-            return new StringJoiner(", ", OpenAiStreamingLanguageModelBuilder.class.getSimpleName() + "[", "]")
-                    .add("httpClientBuilder=" + httpClientBuilder)
-                    .add("baseUrl='" + baseUrl + "'")
-                    .add("organizationId='" + organizationId + "'")
-                    .add("modelName='" + modelName + "'")
-                    .add("temperature=" + temperature)
-                    .add("timeout=" + timeout)
-                    .add("logRequests=" + logRequests)
-                    .add("logResponses=" + logResponses)
-                    .add("tokenizer=" + tokenizer)
-                    .add("customHeaders=" + customHeaders)
-                    .toString();
+            return new OpenAiStreamingLanguageModel(this);
         }
     }
 }
