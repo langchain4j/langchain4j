@@ -1,14 +1,15 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.completion.CompletionChoice;
-import dev.ai4j.openai4j.completion.CompletionRequest;
-import dev.ai4j.openai4j.shared.StreamOptions;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
+import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
+import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
@@ -38,7 +39,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     private final Double temperature;
     private final Tokenizer tokenizer;
 
-    public OpenAiStreamingLanguageModel(String baseUrl,
+    public OpenAiStreamingLanguageModel(HttpClientBuilder httpClientBuilder,
+                                        String baseUrl,
                                         String apiKey,
                                         String organizationId,
                                         String modelName,
@@ -53,13 +55,12 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .organizationId(organizationId)
-                .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
@@ -136,6 +137,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
 
     public static class OpenAiStreamingLanguageModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
@@ -150,6 +152,10 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
 
         public OpenAiStreamingLanguageModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
         }
 
         public OpenAiStreamingLanguageModelBuilder modelName(String modelName) {
@@ -214,6 +220,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
 
         public OpenAiStreamingLanguageModel build() {
             return new OpenAiStreamingLanguageModel(
+                    this.httpClientBuilder,
                     this.baseUrl,
                     this.apiKey,
                     this.organizationId,
@@ -230,7 +237,9 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
 
         @Override
         public String toString() {
+            // TODO remove?
             return new StringJoiner(", ", OpenAiStreamingLanguageModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("httpClientBuilder=" + httpClientBuilder)
                     .add("baseUrl='" + baseUrl + "'")
                     .add("organizationId='" + organizationId + "'")
                     .add("modelName='" + modelName + "'")

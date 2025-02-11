@@ -1,12 +1,10 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.OpenAiHttpException;
-import dev.ai4j.openai4j.chat.ChatCompletionRequest;
-import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -16,6 +14,9 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
@@ -65,7 +66,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final List<ChatModelListener> listeners;
 
-    public OpenAiChatModel(String baseUrl,
+    public OpenAiChatModel(HttpClientBuilder httpClientBuilder,
+                           String baseUrl,
                            String apiKey,
                            String organizationId,
                            ChatRequestParameters defaultRequestParameters,
@@ -104,13 +106,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .openAiApiKey(apiKey)
                 .baseUrl(baseUrl)
                 .organizationId(organizationId)
-                .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
@@ -247,8 +248,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                     .metadata(responseMetadata)
                     .build();
         } catch (RuntimeException e) {
-            if (e.getCause() instanceof OpenAiHttpException openAiHttpException) {
-                throw openAiHttpException;
+            if (e.getCause() instanceof HttpException httpException) {
+                throw httpException;
             } else {
                 throw e;
             }
@@ -284,6 +285,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     public static class OpenAiChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
@@ -319,6 +321,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         public OpenAiChatModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
         }
 
         /**
@@ -484,6 +490,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         public OpenAiChatModel build() {
             return new OpenAiChatModel(
+                    this.httpClientBuilder,
                     this.baseUrl,
                     this.apiKey,
                     this.organizationId,
@@ -519,7 +526,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         @Override
         public String toString() {
+            // TODO remove?
             return new StringJoiner(", ", OpenAiChatModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("httpClientBuilder=" + httpClientBuilder)
                     .add("baseUrl='" + baseUrl + "'")
                     .add("organizationId='" + organizationId + "'")
                     .add("defaultRequestParameters='" + defaultRequestParameters + "'")

@@ -1,14 +1,9 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.chat.ChatCompletionChoice;
-import dev.ai4j.openai4j.chat.ChatCompletionRequest;
-import dev.ai4j.openai4j.chat.ChatCompletionResponse;
-import dev.ai4j.openai4j.chat.Delta;
-import dev.ai4j.openai4j.shared.StreamOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -19,6 +14,12 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.openai.internal.chat.Delta;
+import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 
 import java.net.Proxy;
@@ -58,7 +59,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     private final List<ChatModelListener> listeners;
 
-    public OpenAiStreamingChatModel(String baseUrl,
+    public OpenAiStreamingChatModel(HttpClientBuilder httpClientBuilder,
+                                    String baseUrl,
                                     String apiKey,
                                     String organizationId,
                                     ChatRequestParameters defaultRequestParameters,
@@ -91,13 +93,12 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .organizationId(organizationId)
-                .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
@@ -283,6 +284,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     public static class OpenAiStreamingChatModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
@@ -316,6 +318,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
         }
 
         /**
@@ -476,6 +482,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         public OpenAiStreamingChatModel build() {
             return new OpenAiStreamingChatModel(
+                    this.httpClientBuilder,
                     this.baseUrl,
                     this.apiKey,
                     this.organizationId,
@@ -510,7 +517,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         @Override
         public String toString() {
+            // TODO remove?
             return new StringJoiner(", ", OpenAiStreamingChatModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("httpClientBuilder=" + httpClientBuilder)
                     .add("baseUrl='" + baseUrl + "'")
                     .add("organizationId='" + organizationId + "'")
                     .add("defaultRequestParameters='" + defaultRequestParameters + "'")

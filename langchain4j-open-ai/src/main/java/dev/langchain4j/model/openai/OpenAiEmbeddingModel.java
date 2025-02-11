@@ -1,5 +1,26 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.embedding.TokenCountEstimator;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
+import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
+import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+
+import java.net.Proxy;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.StringJoiner;
+
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -11,25 +32,6 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
-
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.embedding.EmbeddingRequest;
-import dev.ai4j.openai4j.embedding.EmbeddingResponse;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.embedding.TokenCountEstimator;
-import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-import java.net.Proxy;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.StringJoiner;
 
 /**
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
@@ -45,6 +47,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     private final Tokenizer tokenizer;
 
     public OpenAiEmbeddingModel(
+            HttpClientBuilder httpClientBuilder,
             String baseUrl,
             String apiKey,
             String organizationId,
@@ -68,13 +71,12 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .openAiApiKey(apiKey)
                 .baseUrl(baseUrl)
                 .organizationId(organizationId)
-                .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
@@ -181,6 +183,8 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     }
 
     public static class OpenAiEmbeddingModelBuilder {
+
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
@@ -198,6 +202,10 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
         public OpenAiEmbeddingModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
         }
 
         public OpenAiEmbeddingModelBuilder modelName(String modelName) {
@@ -277,6 +285,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
         public OpenAiEmbeddingModel build() {
             return new OpenAiEmbeddingModel(
+                    this.httpClientBuilder,
                     this.baseUrl,
                     this.apiKey,
                     this.organizationId,
@@ -295,7 +304,9 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
 
         @Override
         public String toString() {
+            // TODO remove?
             return new StringJoiner(", ", OpenAiEmbeddingModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("httpClientBuilder=" + httpClientBuilder)
                     .add("baseUrl='" + baseUrl + "'")
                     .add("organizationId='" + organizationId + "'")
                     .add("modelName='" + modelName + "'")

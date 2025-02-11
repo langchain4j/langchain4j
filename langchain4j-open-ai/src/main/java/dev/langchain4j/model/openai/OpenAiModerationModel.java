@@ -1,12 +1,13 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.moderation.ModerationRequest;
-import dev.ai4j.openai4j.moderation.ModerationResponse;
-import dev.ai4j.openai4j.moderation.ModerationResult;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
+import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
+import dev.langchain4j.model.openai.internal.moderation.ModerationResult;
 import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
@@ -36,7 +37,8 @@ public class OpenAiModerationModel implements ModerationModel {
     private final String modelName;
     private final Integer maxRetries;
 
-    public OpenAiModerationModel(String baseUrl,
+    public OpenAiModerationModel(HttpClientBuilder httpClientBuilder,
+                                 String baseUrl,
                                  String apiKey,
                                  String organizationId,
                                  String modelName,
@@ -55,13 +57,12 @@ public class OpenAiModerationModel implements ModerationModel {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .openAiApiKey(apiKey)
                 .baseUrl(baseUrl)
                 .organizationId(organizationId)
-                .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
@@ -130,6 +131,7 @@ public class OpenAiModerationModel implements ModerationModel {
 
     public static class OpenAiModerationModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
@@ -143,6 +145,10 @@ public class OpenAiModerationModel implements ModerationModel {
 
         public OpenAiModerationModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
         }
 
         public OpenAiModerationModelBuilder modelName(String modelName) {
@@ -202,6 +208,7 @@ public class OpenAiModerationModel implements ModerationModel {
 
         public OpenAiModerationModel build() {
             return new OpenAiModerationModel(
+                    this.httpClientBuilder,
                     this.baseUrl,
                     this.apiKey,
                     this.organizationId,
@@ -217,7 +224,9 @@ public class OpenAiModerationModel implements ModerationModel {
 
         @Override
         public String toString() {
+            // TODO remove?
             return new StringJoiner(", ", OpenAiModerationModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("httpClientBuilder=" + httpClientBuilder)
                     .add("baseUrl='" + baseUrl + "'")
                     .add("organizationId='" + organizationId + "'")
                     .add("modelName='" + modelName + "'")

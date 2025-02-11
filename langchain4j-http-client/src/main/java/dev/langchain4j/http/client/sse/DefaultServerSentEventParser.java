@@ -1,9 +1,6 @@
-package dev.langchain4j.http.client;
+package dev.langchain4j.http.client.sse;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.http.client.sse.ServerSentEvent;
-import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.http.client.sse.ServerSentEventParser;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,7 +27,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             while ((line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
                     if (!data.isEmpty()) {
-                        listener.onEvent(new ServerSentEvent(event, data.toString()));
+                        listener.onEvent(new ServerSentEvent(event, data.toString().trim()));
                         event = null;
                         data.setLength(0);
                     }
@@ -49,7 +46,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             }
 
             if (!data.isEmpty()) {
-                listener.onEvent(new ServerSentEvent(event, data.toString()));
+                listener.onEvent(new ServerSentEvent(event, data.toString().trim()));
             }
         } catch (IOException e) {
             listener.onError(e);

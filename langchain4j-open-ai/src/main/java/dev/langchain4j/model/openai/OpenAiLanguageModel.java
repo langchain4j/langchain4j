@@ -1,12 +1,13 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.completion.CompletionChoice;
-import dev.ai4j.openai4j.completion.CompletionRequest;
-import dev.ai4j.openai4j.completion.CompletionResponse;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
+import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
+import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
@@ -38,7 +39,8 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
-    public OpenAiLanguageModel(String baseUrl,
+    public OpenAiLanguageModel(HttpClientBuilder httpClientBuilder,
+                               String baseUrl,
                                String apiKey,
                                String organizationId,
                                String modelName,
@@ -54,13 +56,12 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .organizationId(organizationId)
-                .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
@@ -124,6 +125,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
      */
     public static class OpenAiLanguageModelBuilder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
@@ -139,6 +141,10 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
         public OpenAiLanguageModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
         }
 
         public OpenAiLanguageModelBuilder modelName(String modelName) {
@@ -208,6 +214,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
         public OpenAiLanguageModel build() {
             return new OpenAiLanguageModel(
+                    this.httpClientBuilder,
                     this.baseUrl,
                     this.apiKey,
                     this.organizationId,
@@ -225,7 +232,9 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
         @Override
         public String toString() {
+            // TODO remove?
             return new StringJoiner(", ", OpenAiLanguageModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("httpClientBuilder=" + httpClientBuilder)
                     .add("baseUrl='" + baseUrl + "'")
                     .add("organizationId='" + organizationId + "'")
                     .add("modelName='" + modelName + "'")

@@ -4,7 +4,6 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,9 +11,6 @@ import java.io.File;
 import java.net.URI;
 import java.util.List;
 
-import static dev.ai4j.openai4j.image.ImageModel.DALL_E_QUALITY_HD;
-import static dev.ai4j.openai4j.image.ImageModel.DALL_E_RESPONSE_FORMAT_B64_JSON;
-import static dev.ai4j.openai4j.image.ImageModel.DALL_E_SIZE_256_x_256;
 import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,8 +23,8 @@ class OpenAiImageModelIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(DALL_E_2) // so that you pay not much :)
-            .size(DALL_E_SIZE_256_x_256)
+            .modelName(DALL_E_2)
+            .size("256x256")
             .logRequests(true)
             .logResponses(true);
 
@@ -45,7 +41,7 @@ class OpenAiImageModelIT {
 
     @Test
     void image_generation_with_persisting_works() {
-        OpenAiImageModel model = modelBuilder.responseFormat(DALL_E_RESPONSE_FORMAT_B64_JSON).withPersisting().build();
+        OpenAiImageModel model = modelBuilder.responseFormat("b64_json").withPersisting().build();
 
         Response<Image> response = model.generate("Bird flying in the sky");
 
@@ -56,7 +52,7 @@ class OpenAiImageModelIT {
 
     @Test
     void multiple_images_generation_with_base64_works() {
-        OpenAiImageModel model = modelBuilder.responseFormat(DALL_E_RESPONSE_FORMAT_B64_JSON).withPersisting().build();
+        OpenAiImageModel model = modelBuilder.responseFormat("b64_json").withPersisting().build();
 
         Response<List<Image>> response = model.generate("Cute red parrot sings", 2);
 
@@ -79,7 +75,7 @@ class OpenAiImageModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .quality(DALL_E_QUALITY_HD)
+                .quality("hd")
                 .logRequests(true)
                 .logResponses(true)
                 .build();

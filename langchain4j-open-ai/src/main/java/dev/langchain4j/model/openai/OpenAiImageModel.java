@@ -1,11 +1,12 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.image.GenerateImagesRequest;
-import dev.ai4j.openai4j.image.GenerateImagesResponse;
-import dev.ai4j.openai4j.image.ImageData;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
+import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
+import dev.langchain4j.model.openai.internal.image.ImageData;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 
@@ -21,7 +22,6 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
-import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
@@ -55,6 +55,7 @@ public class OpenAiImageModel implements ImageModel {
      */
     @SuppressWarnings("rawtypes")
     public OpenAiImageModel(
+            HttpClientBuilder httpClientBuilder,
             String baseUrl,
             String apiKey,
             String organizationId,
@@ -75,15 +76,13 @@ public class OpenAiImageModel implements ImageModel {
     ) {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
-        OpenAiClient.Builder cBuilder = OpenAiClient
-                .builder()
+        OpenAiClient.Builder cBuilder = OpenAiClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .organizationId(organizationId)
-                .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
@@ -138,6 +137,8 @@ public class OpenAiImageModel implements ImageModel {
     }
 
     public static class OpenAiImageModelBuilder {
+
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String organizationId;
@@ -158,6 +159,10 @@ public class OpenAiImageModel implements ImageModel {
 
         public OpenAiImageModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public void httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
         }
 
         public OpenAiImageModelBuilder modelName(String modelName) {
@@ -256,6 +261,7 @@ public class OpenAiImageModel implements ImageModel {
 
         public OpenAiImageModel build() {
             return new OpenAiImageModel(
+                    this.httpClientBuilder,
                     this.baseUrl,
                     this.apiKey,
                     this.organizationId,
@@ -278,7 +284,9 @@ public class OpenAiImageModel implements ImageModel {
 
         @Override
         public String toString() {
+            // TODO remove?
             return new StringJoiner(", ", OpenAiImageModelBuilder.class.getSimpleName() + "[", "]")
+                    .add("httpClientBuilder=" + httpClientBuilder)
                     .add("baseUrl='" + baseUrl + "'")
                     .add("organizationId='" + organizationId + "'")
                     .add("modelName='" + modelName + "'")
@@ -314,19 +322,13 @@ public class OpenAiImageModel implements ImageModel {
     }
 
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {
-        GenerateImagesRequest.Builder requestBuilder = GenerateImagesRequest
-                .builder()
+        return GenerateImagesRequest.builder()
+                .model(modelName)
                 .prompt(prompt)
                 .size(size)
                 .quality(quality)
                 .style(style)
                 .user(user)
                 .responseFormat(responseFormat);
-
-        if (DALL_E_2.equals(modelName)) {
-            requestBuilder.model(dev.ai4j.openai4j.image.ImageModel.DALL_E_2);
-        }
-
-        return requestBuilder;
     }
 }
