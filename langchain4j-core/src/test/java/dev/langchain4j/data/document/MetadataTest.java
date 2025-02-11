@@ -6,9 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static java.util.Collections.singletonMap;
 
@@ -171,6 +169,16 @@ class MetadataTest implements WithAssertions {
         map.put("uuid", uuid);
         map.put("uuid_as_string", uuid.toString());
 
+        List<String> stringList = Arrays.asList("a", "b", "c");
+        Set<String> stringSet = new HashSet<>(stringList);
+        map.put("string_list", stringList);
+        map.put("string_set", stringSet);
+
+        List<UUID> uuidList = Arrays.asList(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+        Set<UUID> uuidSet = new HashSet<>(uuidList);
+        map.put("uuid_list", uuidList);
+        map.put("uuid_set", uuidSet);
+
         // when
         Metadata metadata = new Metadata(map);
 
@@ -216,6 +224,18 @@ class MetadataTest implements WithAssertions {
         assertThat(metadata.getDouble("double_as_long")).isEqualTo(1d);
         assertThat(metadata.getDouble("double_as_float")).isEqualTo(1d);
         assertThat(metadata.getDouble("banana")).isNull();
+
+        assertThat(metadata.getStrings("string_list")).isInstanceOf(List.class);
+        assertThat(metadata.getStrings("string_list")).isEqualTo(stringList);
+        assertThat(metadata.getStrings("string_set")).isInstanceOf(Set.class);
+        assertThat(metadata.getStrings("string_set")).isEqualTo(stringSet);
+        assertThat(metadata.getStrings("banana")).isEmpty();
+
+        assertThat(metadata.getUUIDs("uuid_list")).isInstanceOf(List.class);
+        assertThat(metadata.getUUIDs("uuid_list")).isEqualTo(uuidList);
+        assertThat(metadata.getUUIDs("uuid_set")).isInstanceOf(Set.class);
+        assertThat(metadata.getUUIDs("uuid_set")).isEqualTo(uuidSet);
+        assertThat(metadata.getUUIDs("banana")).isEmpty();
     }
 
     @ParameterizedTest
@@ -278,20 +298,49 @@ class MetadataTest implements WithAssertions {
     }
 
     @Test
+    void should_fail_to_create_from_map_when_value_is_of_unsupported_collection_type() {
+
+        // given
+        Map<String, Object> map = new HashMap<>();
+        map.put("key", Arrays.asList(new Object(), new Object(), new Object()));
+
+        // when-then
+        assertThatThrownBy(() -> new Metadata(map))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("The metadata key 'key' collection contains a value")
+                .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. " +
+                        "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, " +
+                        "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+
+        assertThatThrownBy(() -> Metadata.from(map))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("The metadata key 'key' collection contains a value")
+                .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. " +
+                        "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, " +
+                        "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+    }
+
+    @Test
     void should_get_typed_values() {
-        UUID uuid = UUID.randomUUID();
+        UUID uuid1 = UUID.randomUUID();
+        UUID uuid2 = UUID.randomUUID();
+        UUID uuid3 = UUID.randomUUID();
         Metadata metadata = new Metadata()
                 .put("string", "s")
-                .put("uuid", uuid)
+                .put("uuid", uuid1)
                 .put("integer", 1)
                 .put("long", 1L)
                 .put("float", 1f)
-                .put("double", 1d);
+                .put("double", 1d)
+                .put("string_list", Arrays.asList("a", "b", "c"))
+                .put("string_set", new HashSet<>(Arrays.asList("a", "b", "c")))
+                .put("uuid_list", Arrays.asList(uuid1, uuid2, uuid3))
+                .put("uuid_set", new HashSet<>(Arrays.asList(uuid1, uuid2, uuid3)));
 
         assertThat(metadata.getString("string")).isEqualTo("s");
         assertThat(metadata.getString("banana")).isNull();
 
-        assertThat(metadata.getUUID("uuid")).isEqualTo(uuid);
+        assertThat(metadata.getUUID("uuid")).isEqualTo(uuid1);
 
         assertThat(metadata.getInteger("integer")).isEqualTo(1);
         assertThat(metadata.getInteger("banana")).isNull();
@@ -304,6 +353,18 @@ class MetadataTest implements WithAssertions {
 
         assertThat(metadata.getDouble("double")).isEqualTo(1d);
         assertThat(metadata.getDouble("banana")).isNull();
+
+        assertThat(metadata.getStrings("string_list")).isInstanceOf(List.class);
+        assertThat(metadata.getStrings("string_list")).isEqualTo(Arrays.asList("a", "b", "c"));
+        assertThat(metadata.getStrings("string_set")).isInstanceOf(Set.class);
+        assertThat(metadata.getStrings("string_set")).isEqualTo(new HashSet<>(Arrays.asList("a", "b", "c")));
+        assertThat(metadata.getStrings("banana")).isEmpty();
+
+        assertThat(metadata.getUUIDs("uuid_list")).isInstanceOf(List.class);
+        assertThat(metadata.getUUIDs("uuid_list")).isEqualTo(Arrays.asList(uuid1, uuid2, uuid3));
+        assertThat(metadata.getUUIDs("uuid_set")).isInstanceOf(Set.class);
+        assertThat(metadata.getUUIDs("uuid_set")).isEqualTo(new HashSet<>(Arrays.asList(uuid1, uuid2, uuid3)));
+        assertThat(metadata.getUUIDs("banana")).isEmpty();
     }
 
     @Test
@@ -357,15 +418,21 @@ class MetadataTest implements WithAssertions {
 
     @Test
     void should_convert_to_map() {
-        UUID uuid = UUID.randomUUID();
+        UUID uuid1 = UUID.randomUUID();
+        UUID uuid2 = UUID.randomUUID();
+        UUID uuid3 = UUID.randomUUID();
         // given
         Map<String, Object> originalMap = new HashMap<>();
         originalMap.put("string", "s");
-        originalMap.put("uuid", uuid);
+        originalMap.put("uuid", uuid1);
         originalMap.put("integer", 1);
         originalMap.put("long", 1L);
         originalMap.put("float", 1f);
         originalMap.put("double", 1d);
+        originalMap.put("string_list", Arrays.asList("a", "b", "c"));
+        originalMap.put("string_set", new HashSet<>(Arrays.asList("a", "b", "c")));
+        originalMap.put("uuid_list", Arrays.asList(uuid1, uuid2, uuid3));
+        originalMap.put("uuid_set", new HashSet<>(Arrays.asList(uuid1, uuid2, uuid3)));
         Metadata metadata = Metadata.from(originalMap);
 
         // when
